@@ -1,0 +1,259 @@
+use crate::error::{Result, VideoRoomError};
+use crate::db::Database;
+use serde::{Deserialize, Serialize};
+use std::path::Path;
+use std::process::Command;
+use uuid::Uuid;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VideoMetadata {
+    pub id: String,
+    pub video_id: String,
+    pub duration_ms: i64,
+    pub codec_video: Option<String>,
+    pub codec_audio: Option<String>,
+    pub width: i32,
+    pub height: i32,
+    pub fps: f64,
+    pub bitrate: i64,
+    pub color_space: Option<String>,
+    pub hdr: bool,
+    pub audio_channels: i32,
+    pub audio_sample_rate: i32,
+    pub creation_date: Option<i64>,
+    pub camera_model: Option<String>,
+    pub lens_model: Option<String>,
+    pub gps_latitude: Option<f64>,
+    pub gps_longitude: Option<f64>,
+    pub gps_altitude: Option<f64>,
+    pub metadata_json: String,
+}
+
+pub struct MetadataExtractor;
+
+impl MetadataExtractor {
+    pub fn extract(video_path: &Path) -> Result<FFProbeOutput> {
+        // Check if ffprobe is available
+        if !Self::ffprobe_available() {
+            return Err(VideoRoomError::FfmpegError(
+                "ffprobe not found in PATH. Please install FFmpeg.".to_string(),
+            ));
+        }
+
+        let output = Command::new("ffprobe")
+            .args(&[
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "format=duration,size,bit_rate:stream=index,codec_type,codec_name,width,height,r_frame_rate,color_space,tags",
+                "-of",
+                "json",
+                video_path.to_str().unwrap_or(""),
+            ])
+            .output()
+            .map_err(|e| VideoRoomError::FfmpegError(format!("Failed to run ffprobe: {}", e)))?;
+
+        if !output.status.success() {
+            let error_msg = String::from_utf8_lossy(&output.stderr);
+            return Err(VideoRoomError::MetadataExtractionFailed(error_msg.to_string()));
+        }
+
+        let json_str = String::from_utf8(output.stdout)
+            .map_err(|e| VideoRoomError::FfmpegError(format!("Invalid UTF-8 from ffprobe: {}", e)))?;
+
+        let probe_output: FFProbeOutput = serde_json::from_str(&json_str)
+            .map_err(|e| VideoRoomError::MetadataExtractionFailed(format!("Failed to parse ffprobe JSON: {}", e)))?;
+
+        Ok(probe_output)
+    }
+
+    pub fn store_metadata(
+        db: &Database,
+        video_id: &str,
+        probe_output: &FFProbeOutput,
+        file_size: i64,
+    ) -> Result<()> {
+        let (video_stream, format) = Self::parse_probe_output(probe_output)?;
+
+        // Extract technical metadata
+        let duration_ms = (format.duration.unwrap_or(0.0) * 1000.0) as i64;
+        let width = video_stream.width.unwrap_or(0);
+        let height = video_stream.height.unwrap_or(0);
+        let fps = Self::parse_fps(&video_stream.r_frame_rate);
+        let bitrate = format.bit_rate.unwrap_or(0);
+        let codec_video = video_stream.codec_name.clone();
+        let codec_audio = probe_output.streams
+            .iter()
+            .find(|s| s.codec_type == Some("audio".to_string()))
+            .and_then(|s| s.codec_name.clone());
+
+        // Extract EXIF data from tags
+        let camera_model = Self::extract_tag(&video_stream.tags, "model")
+            .or_else(|| Self::extract_tag(&format.tags, "model"));
+        let lens_model = Self::extract_tag(&video_stream.tags, "lens_model")
+            .or_else(|| Self::extract_tag(&format.tags, "lens_model"));
+        let creation_date = Self::extract_creation_date(&video_stream.tags)
+            .or_else(|| Self::extract_creation_date(&format.tags));
+
+        // Audio info
+        let audio_stream = probe_output.streams
+            .iter()
+            .find(|s| s.codec_type == Some("audio".to_string()));
+        let audio_channels = audio_stream.and_then(|s| s.channels).unwrap_or(0);
+        let audio_sample_rate = audio_stream.and_then(|s| s.sample_rate.map(|r| r.parse::<i32>().unwrap_or(0))).unwrap_or(0);
+
+        // Color space
+        let color_space = video_stream.color_space.clone();
+
+        // Metadata JSON for future expansion
+        let metadata_json = serde_json::to_string(probe_output)
+            .unwrap_or_else(|_| "{}".to_string());
+
+        let conn = db.get_connection()?;
+
+        conn.execute(
+            "INSERT INTO metadata
+             (video_id, duration_ms, codec_video, codec_audio, width, height, fps, bitrate,
+              color_space, hdr, audio_channels, audio_sample_rate, creation_date, camera_model,
+              lens_model, metadata_json)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(video_id) DO UPDATE SET
+             duration_ms=excluded.duration_ms,
+             codec_video=excluded.codec_video,
+             codec_audio=excluded.codec_audio,
+             width=excluded.width,
+             height=excluded.height,
+             fps=excluded.fps,
+             bitrate=excluded.bitrate,
+             color_space=excluded.color_space,
+             audio_channels=excluded.audio_channels,
+             audio_sample_rate=excluded.audio_sample_rate,
+             creation_date=excluded.creation_date,
+             camera_model=excluded.camera_model,
+             lens_model=excluded.lens_model,
+             metadata_json=excluded.metadata_json",
+            rusqlite::params![
+                video_id,
+                duration_ms,
+                codec_video,
+                codec_audio,
+                width,
+                height,
+                fps,
+                bitrate,
+                color_space,
+                0, // HDR - TODO: detect HDR
+                audio_channels,
+                audio_sample_rate,
+                creation_date,
+                camera_model,
+                lens_model,
+                metadata_json
+            ],
+        )
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+
+        tracing::debug!("Stored metadata for video {}: {}x{}@{:.2}fps", video_id, width, height, fps);
+
+        Ok(())
+    }
+
+    fn ffprobe_available() -> bool {
+        Command::new("ffprobe")
+            .arg("-version")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    }
+
+    fn parse_probe_output(probe: &FFProbeOutput) -> Result<(&FFProbeStream, &FFProbeFormat)> {
+        let format = &probe.format;
+        let video_stream = probe
+            .streams
+            .iter()
+            .find(|s| s.codec_type == Some("video".to_string()))
+            .ok_or_else(|| VideoRoomError::MetadataExtractionFailed("No video stream found".to_string()))?;
+
+        Ok((video_stream, format))
+    }
+
+    fn parse_fps(r_frame_rate: &Option<String>) -> f64 {
+        match r_frame_rate {
+            Some(fps_str) => {
+                // Handle formats like "30000/1001" (29.97 fps)
+                let parts: Vec<&str> = fps_str.split('/').collect();
+                if parts.len() == 2 {
+                    let num: f64 = parts[0].parse().unwrap_or(0.0);
+                    let den: f64 = parts[1].parse().unwrap_or(1.0);
+                    num / den
+                } else {
+                    fps_str.parse().unwrap_or(0.0)
+                }
+            }
+            None => 0.0,
+        }
+    }
+
+    fn extract_tag(tags: &Option<FFProbeTagMap>, key: &str) -> Option<String> {
+        tags.as_ref().and_then(|t| t.get(key).cloned())
+    }
+
+    fn extract_creation_date(tags: &Option<FFProbeTagMap>) -> Option<i64> {
+        tags.as_ref().and_then(|t| {
+            let date_str = t.get("creation_time")?;
+            // Parse ISO 8601: "2024-01-15T10:30:00.000000Z"
+            chrono::DateTime::parse_from_rfc3339(date_str)
+                .ok()
+                .map(|dt| dt.timestamp_millis())
+        })
+    }
+}
+
+// FFprobe output structures
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FFProbeOutput {
+    pub streams: Vec<FFProbeStream>,
+    pub format: FFProbeFormat,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FFProbeStream {
+    pub index: Option<i32>,
+    pub codec_type: Option<String>,
+    pub codec_name: Option<String>,
+    pub width: Option<i32>,
+    pub height: Option<i32>,
+    pub r_frame_rate: Option<String>,
+    pub color_space: Option<String>,
+    pub channels: Option<i32>,
+    pub sample_rate: Option<String>,
+    pub tags: Option<FFProbeTagMap>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FFProbeFormat {
+    pub duration: Option<f64>,
+    pub size: Option<String>,
+    pub bit_rate: Option<i64>,
+    pub tags: Option<FFProbeTagMap>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FFProbeTagMap(#[serde(flatten)] pub std::collections::HashMap<String, String>);
+
+impl std::ops::Deref for FFProbeTagMap {
+    type Target = std::collections::HashMap<String, String>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl FFProbeTagMap {
+    pub fn get(&self, key: &str) -> Option<&String> {
+        self.0.get(&key.to_lowercase())
+            .or_else(|| self.0.get(key))
+    }
+}

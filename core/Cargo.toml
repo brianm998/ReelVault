@@ -1,0 +1,70 @@
+[package]
+name = "videoroom-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+tokio-util = "0.7"
+
+# gRPC and serialization
+tonic = "0.11"
+tonic-reflection = "0.11"
+prost = "0.12"
+prost-types = "0.12"
+
+# Database
+rusqlite = { version = "0.31", features = ["bundled", "chrono", "uuid"] }
+rusqlite_migration = "1.2"
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# File operations
+walkdir = "2.4"
+notify = "6.1"
+tempfile = "3.8"
+dirs = "5.0"
+
+# Process execution (for FFprobe)
+which = "5.0"
+serde_with = "3.4"
+
+# Platform-specific
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.27", features = ["process"] }
+
+[target.'cfg(windows)'.dependencies]
+winapi = "0.3"
+
+# Development
+[dev-dependencies]
+criterion = "0.5"
+mockall = "0.12"
+
+# Build configuration
+[build-dependencies]
+tonic-build = "0.11"
+
+[[bin]]
+name = "videoroom-core"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
