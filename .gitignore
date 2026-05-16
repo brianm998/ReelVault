@@ -1,0 +1,37 @@
+# Rust
+target/
+Cargo.lock
+**/*.rs.bk
+
+# Kotlin
+.gradle/
+build/
+.idea/
+*.iml
+*.apk
+*.aar
+
+# macOS
+.DS_Store
+.swiftpm/
+.build/
+*.xcodeproj/xcuserdata/
+*.playground
+
+# IDE
+.vscode/
+*.swp
+*.swo
+*~
+.env
+.env.local
+
+# Database & Cache
+*.db
+*.sqlite
+*.sqlite3
+.cache/
+.thumbnails/
+
+# OS
+Thumbs.db
