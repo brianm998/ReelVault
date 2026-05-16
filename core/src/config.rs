@@ -99,8 +99,9 @@ impl Config {
 
     fn default_cache_path() -> Result<PathBuf> {
         let cache_dir = if cfg!(target_os = "macos") {
-            dirs::library_dir()
-                .ok_or_else(|| VideoRoomError::ConfigError("Could not find library directory".to_string()))?
+            dirs::home_dir()
+                .ok_or_else(|| VideoRoomError::ConfigError("Could not find home directory".to_string()))?
+                .join("Library")
                 .join("Caches")
                 .join("VideoRoom")
         } else if cfg!(target_os = "windows") {

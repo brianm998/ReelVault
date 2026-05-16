@@ -9,7 +9,11 @@ use std::sync::Arc;
 use tonic::{Request, Response, Status};
 
 // Import generated protobuf code
-include!(concat!(env!("OUT_DIR"), "/videoroom.rs"));
+pub mod videoroom {
+    tonic::include_proto!("videoroom");
+}
+
+use videoroom::*;
 
 pub struct VideoRoomService {
     db: Arc<Database>,
@@ -325,9 +329,7 @@ impl video_room_server::VideoRoom for VideoRoomService {
         });
 
         Ok(Response::new(
-            tokio_util::io::ReaderStream::new(
-                tokio::io::DuplexStream::new(8192).0,
-            ),
+            tokio_util::io::ReceiverStream::new(rx),
         ))
     }
 
@@ -352,13 +354,13 @@ impl video_room_server::VideoRoom for VideoRoomService {
 
         let tag_id = self
             .db
-            .create_tag(&req.name, req.color.as_deref())
+            .create_tag(&req.name, if req.color.is_empty() { None } else { Some(&req.color) })
             .map_err(|e| Status::from(e))?;
 
         Ok(Response::new(TagResponse {
             id: tag_id,
             name: req.name,
-            color: req.color,
+            color: if req.color.is_empty() { String::new() } else { req.color },
         }))
     }
 
@@ -393,7 +395,7 @@ impl video_room_server::VideoRoom for VideoRoomService {
             .map(|t| TagResponse {
                 id: t.id.clone(),
                 name: t.name.clone(),
-                color: t.color.clone(),
+                color: t.color.clone().unwrap_or_default(),
             })
             .collect();
 
@@ -446,7 +448,7 @@ impl video_room_server::VideoRoom for VideoRoomService {
 
         let collection_id = self
             .db
-            .create_collection(&req.name, req.is_smart, req.filter_json.as_deref())
+            .create_collection(&req.name, req.is_smart, if req.filter_json.is_empty() { None } else { Some(&req.filter_json) })
             .map_err(|e| Status::from(e))?;
 
         Ok(Response::new(CollectionResponse {
@@ -583,10 +585,9 @@ impl video_room_server::VideoRoom for VideoRoomService {
         let _req = request.into_inner();
 
         // TODO: Implement proxy generation
+        let (_tx, rx) = tokio::sync::mpsc::channel(10);
         Ok(Response::new(
-            tokio_util::io::ReaderStream::new(
-                tokio::io::DuplexStream::new(8192).0,
-            ),
+            tokio_util::io::ReceiverStream::new(rx),
         ))
     }
 
@@ -601,14 +602,14 @@ impl video_room_server::VideoRoom for VideoRoomService {
         &self,
         _request: Request<GetStatusRequest>,
     ) -> std::result::Result<Response<StatusResponse>, Status> {
-        let (videos, _) = self
+        let (_videos, total) = self
             .db
             .list_videos(1, 0)
             .map_err(|e| Status::from(e))?;
 
         Ok(Response::new(StatusResponse {
             running: true,
-            total_videos: 0,
+            total_videos: total,
             total_library_size_bytes: 0,
             cache_size_bytes: 0,
             uptime_seconds: 0,

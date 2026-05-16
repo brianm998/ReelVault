@@ -18,17 +18,14 @@ impl Database {
     pub async fn initialize(&self) -> Result<()> {
         let conn = self.get_connection()?;
 
-        // Enable WAL mode for better concurrency
-        conn.execute("PRAGMA journal_mode = WAL", [])
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        // Set WAL mode for better concurrency - must be before execute_batch
+        let _ = conn.pragma_update(None, "journal_mode", "WAL");
 
         // Set synchronous mode for safety
-        conn.execute("PRAGMA synchronous = NORMAL", [])
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        let _ = conn.pragma_update(None, "synchronous", "NORMAL");
 
         // Enable foreign keys
-        conn.execute("PRAGMA foreign_keys = ON", [])
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        let _ = conn.pragma_update(None, "foreign_keys", "ON");
 
         // Create schema from SQL file embedded at compile time
         let schema = include_str!("../schema.sql");

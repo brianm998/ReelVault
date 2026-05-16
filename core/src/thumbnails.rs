@@ -13,10 +13,11 @@ impl ThumbnailGenerator {
     pub const LARGE_WIDTH: i32 = 800;
 
     pub fn generate(
-        db: &Database,
+        _db: &Database,
         video_path: &Path,
         video_id: &str,
         cache_dir: &Path,
+        duration_secs: f64,
     ) -> Result<()> {
         if !Self::ffmpeg_available() {
             return Err(VideoRoomError::FfmpegError(
@@ -25,7 +26,7 @@ impl ThumbnailGenerator {
         }
 
         // Extract one frame from middle of video
-        let thumbnail_frame = Self::extract_frame(video_path, cache_dir, video_id)?;
+        let thumbnail_frame = Self::extract_frame(video_path, cache_dir, video_id, duration_secs)?;
 
         // Generate different sizes
         Self::generate_size(
@@ -56,16 +57,23 @@ impl ThumbnailGenerator {
         Ok(())
     }
 
-    fn extract_frame(video_path: &Path, cache_dir: &Path, video_id: &str) -> Result<PathBuf> {
+    fn extract_frame(video_path: &Path, cache_dir: &Path, video_id: &str, duration_secs: f64) -> Result<PathBuf> {
         // Extract frame at 50% through the video
         let temp_path = cache_dir.join(format!("{}_temp.jpg", video_id));
+
+        // Calculate seek position at 50% of duration
+        let seek_pos = if duration_secs > 0.0 {
+            (duration_secs * 0.5).to_string()
+        } else {
+            "0".to_string()
+        };
 
         let output = Command::new("ffmpeg")
             .args(&[
                 "-v",
                 "error",
                 "-ss",
-                "50%",
+                &seek_pos,
                 "-i",
                 video_path.to_str().unwrap_or(""),
                 "-vframes",

@@ -1,5 +1,4 @@
 use thiserror::Error;
-use tonic::Status;
 
 #[derive(Error, Debug)]
 pub enum VideoRoomError {
@@ -46,31 +45,7 @@ pub enum VideoRoomError {
     InternalError(String),
 }
 
-impl From<VideoRoomError> for Status {
-    fn from(err: VideoRoomError) -> Status {
-        match err {
-            VideoRoomError::VideoNotFound(msg) => Status::not_found(msg),
-            VideoRoomError::TagNotFound(msg) => Status::not_found(msg),
-            VideoRoomError::CollectionNotFound(msg) => Status::not_found(msg),
-            VideoRoomError::InvalidRequest(msg) => Status::invalid_argument(msg),
-            VideoRoomError::DuplicateEntry(msg) => Status::already_exists(msg),
-            VideoRoomError::DatabaseError(msg) => Status::internal(format!("Database error: {}", msg)),
-            VideoRoomError::MetadataExtractionFailed(msg) => {
-                Status::internal(format!("Metadata extraction failed: {}", msg))
-            }
-            VideoRoomError::ThumbnailGenerationFailed(msg) => {
-                Status::internal(format!("Thumbnail generation failed: {}", msg))
-            }
-            VideoRoomError::FileNotFound(msg) => Status::not_found(format!("File not found: {}", msg)),
-            VideoRoomError::InvalidPath(msg) => Status::invalid_argument(format!("Invalid path: {}", msg)),
-            VideoRoomError::IoError(err) => Status::internal(format!("IO error: {}", err)),
-            VideoRoomError::ConfigError(msg) => Status::internal(format!("Config error: {}", msg)),
-            VideoRoomError::FfmpegError(msg) => {
-                Status::internal(format!("FFmpeg error: {}", msg))
-            }
-            VideoRoomError::InternalError(msg) => Status::internal(msg),
-        }
-    }
-}
+// gRPC conversion (when tonic is re-enabled)
+// impl From<VideoRoomError> for Status { ... }
 
 pub type Result<T> = std::result::Result<T, VideoRoomError>;

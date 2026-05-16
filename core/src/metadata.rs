@@ -1,6 +1,7 @@
 use crate::error::{Result, VideoRoomError};
 use crate::db::Database;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Deserializer};
+use serde_with::serde_as;
 use std::path::Path;
 use std::process::Command;
 use uuid::Uuid;
@@ -73,7 +74,7 @@ impl MetadataExtractor {
         db: &Database,
         video_id: &str,
         probe_output: &FFProbeOutput,
-        file_size: i64,
+        _file_size: i64,
     ) -> Result<()> {
         let (video_stream, format) = Self::parse_probe_output(probe_output)?;
 
@@ -102,7 +103,9 @@ impl MetadataExtractor {
             .iter()
             .find(|s| s.codec_type == Some("audio".to_string()));
         let audio_channels = audio_stream.and_then(|s| s.channels).unwrap_or(0);
-        let audio_sample_rate = audio_stream.and_then(|s| s.sample_rate.map(|r| r.parse::<i32>().unwrap_or(0))).unwrap_or(0);
+        let audio_sample_rate = audio_stream
+            .and_then(|s| s.sample_rate.as_ref().map(|r| r.parse::<i32>().unwrap_or(0)))
+            .unwrap_or(0);
 
         // Color space
         let color_space = video_stream.color_space.clone();
@@ -218,6 +221,102 @@ pub struct FFProbeOutput {
     pub format: FFProbeFormat,
 }
 
+fn deserialize_f64_from_str<'de, D>(deserializer: D) -> std::result::Result<Option<f64>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::{self, Visitor};
+    use std::fmt;
+
+    struct F64Visitor;
+
+    impl<'de> Visitor<'de> for F64Visitor {
+        type Value = Option<f64>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a f64 or string representation of f64")
+        }
+
+        fn visit_f64<E>(self, value: f64) -> std::result::Result<Option<f64>, E>
+        where
+            E: de::Error,
+        {
+            Ok(Some(value))
+        }
+
+        fn visit_str<E>(self, value: &str) -> std::result::Result<Option<f64>, E>
+        where
+            E: de::Error,
+        {
+            value.parse::<f64>().map(Some).map_err(de::Error::custom)
+        }
+
+        fn visit_none<E>(self) -> std::result::Result<Option<f64>, E>
+        where
+            E: de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_unit<E>(self) -> std::result::Result<Option<f64>, E>
+        where
+            E: de::Error,
+        {
+            Ok(None)
+        }
+    }
+
+    deserializer.deserialize_any(F64Visitor)
+}
+
+fn deserialize_i64_from_str<'de, D>(deserializer: D) -> std::result::Result<Option<i64>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::{self, Visitor};
+    use std::fmt;
+
+    struct I64Visitor;
+
+    impl<'de> Visitor<'de> for I64Visitor {
+        type Value = Option<i64>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("an i64 or string representation of i64")
+        }
+
+        fn visit_i64<E>(self, value: i64) -> std::result::Result<Option<i64>, E>
+        where
+            E: de::Error,
+        {
+            Ok(Some(value))
+        }
+
+        fn visit_str<E>(self, value: &str) -> std::result::Result<Option<i64>, E>
+        where
+            E: de::Error,
+        {
+            value.parse::<i64>().map(Some).map_err(de::Error::custom)
+        }
+
+        fn visit_none<E>(self) -> std::result::Result<Option<i64>, E>
+        where
+            E: de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_unit<E>(self) -> std::result::Result<Option<i64>, E>
+        where
+            E: de::Error,
+        {
+            Ok(None)
+        }
+    }
+
+    deserializer.deserialize_any(I64Visitor)
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FFProbeStream {
     pub index: Option<i32>,
@@ -234,14 +333,36 @@ pub struct FFProbeStream {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FFProbeFormat {
+    #[serde(deserialize_with = "deserialize_f64_from_str")]
     pub duration: Option<f64>,
     pub size: Option<String>,
+    #[serde(deserialize_with = "deserialize_i64_from_str")]
     pub bit_rate: Option<i64>,
     pub tags: Option<FFProbeTagMap>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FFProbeTagMap(#[serde(flatten)] pub std::collections::HashMap<String, String>);
+#[derive(Debug, Clone)]
+pub struct FFProbeTagMap(pub std::collections::HashMap<String, String>);
+
+impl<'de> serde::Deserialize<'de> for FFProbeTagMap {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Ok(FFProbeTagMap(
+            std::collections::HashMap::deserialize(deserializer)?,
+        ))
+    }
+}
+
+impl serde::Serialize for FFProbeTagMap {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
 
 impl std::ops::Deref for FFProbeTagMap {
     type Target = std::collections::HashMap<String, String>;

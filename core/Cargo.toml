@@ -3,16 +3,20 @@ name = "videoroom-core"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "videoroom_core"
+path = "src/lib.rs"
+
 [dependencies]
 # Async runtime
 tokio = { version = "1.35", features = ["full"] }
 tokio-util = "0.7"
 
-# gRPC and serialization
-tonic = "0.11"
-tonic-reflection = "0.11"
-prost = "0.12"
-prost-types = "0.12"
+# gRPC and serialization (for future use)
+# tonic = "0.11"
+# tonic-reflection = "0.11"
+# prost = "0.12"
+# prost-types = "0.12"
 
 # Database
 rusqlite = { version = "0.31", features = ["bundled", "chrono", "uuid"] }
@@ -33,6 +37,12 @@ thiserror = "1.0"
 # Logging
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# CLI
+clap = { version = "4.5", features = ["derive"] }
+prettytable-rs = "0.10"
+humansize = "2.1"
+indicatif = "0.17"
 
 # File operations
 walkdir = "2.4"
@@ -63,6 +73,10 @@ tonic-build = "0.11"
 [[bin]]
 name = "videoroom-core"
 path = "src/main.rs"
+
+[[bin]]
+name = "videoroom-cli"
+path = "src/bin/cli.rs"
 
 [profile.release]
 opt-level = 3

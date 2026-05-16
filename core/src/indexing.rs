@@ -39,7 +39,7 @@ impl IndexingEngine {
         for entry in WalkDir::new(path)
             .into_iter()
             .filter_map(|e| e.ok())
-            .filter(|e| !recursive && e.depth() > 1)
+            .filter(|e| recursive || e.depth() <= 1)
         {
             let file_path = entry.path();
             if file_path.is_file() {
@@ -136,8 +136,11 @@ impl IndexingEngine {
         // Store metadata
         MetadataExtractor::store_metadata(db, &video_id, &probe_output, file_size.unwrap_or(0))?;
 
+        // Get duration from probe output for thumbnail generation
+        let duration_secs = probe_output.format.duration.unwrap_or(0.0);
+
         // Generate thumbnail (async in real implementation)
-        match ThumbnailGenerator::generate(db, video_path, &video_id, thumbnail_cache) {
+        match ThumbnailGenerator::generate(db, video_path, &video_id, thumbnail_cache, duration_secs) {
             Ok(_) => {
                 tracing::debug!("Generated thumbnail for {}", video_id);
             }

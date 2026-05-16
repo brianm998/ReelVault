@@ -36,7 +36,7 @@ impl SearchEngine {
         // Add tag filters if provided
         if !filter_tags.is_empty() {
             sql.push_str(" AND (");
-            for (i, _) in filter_tags.iter().enumerate() {
+            for (i, _tag) in filter_tags.iter().enumerate() {
                 if i > 0 {
                     sql.push_str(" OR ");
                 }
