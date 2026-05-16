@@ -23,23 +23,86 @@ VideoRoom helps you:
 ## Project Status
 
 **Phase 1 (MVP)** — In Progress
-- [ ] Rust backend scaffolding
-- [ ] SQLite schema & migrations
-- [ ] Metadata extraction (FFprobe)
-- [ ] Thumbnail generation
-- [ ] Kotlin Compose UI (grid + detail + search)
-- [ ] Tag and collection management
+
+### ✅ Completed (Rust Core)
+- [x] Rust backend daemon scaffolding
+- [x] SQLite database with complete schema (videos, metadata, tags, collections, proxies, FTS5)
+- [x] gRPC API specification and implementation
+- [x] FFprobe integration for metadata extraction (codec, resolution, FPS, EXIF, GPS)
+- [x] Thumbnail generation pipeline (multiple resolutions)
+- [x] Video library scanning and indexing
+- [x] Full-text search with advanced filtering
+- [x] Tag and collection management
+- [x] Configuration management
+- [x] Error handling and logging
+
+### 🚧 In Progress / Planned
+- [ ] Kotlin Compose desktop client (UI: grid + detail + search)
+- [ ] macOS SwiftUI client (post-MVP)
+- [ ] Real-time file watching
+- [ ] Proxy video generation (for 4K+ footage)
 - [ ] External editor integration
-- [ ] GitHub auto-update
+- [ ] GitHub auto-update system
+- [ ] CI/CD pipeline
 
 ## Documentation
 
-- [CLAUDE.md](./CLAUDE.md) — Comprehensive project specification and architecture
-- [docs/](./docs/) — Detailed documentation (coming soon)
+- [CLAUDE.md](./CLAUDE.md) — Complete project vision, architecture, and specifications
+- [SETUP.md](./SETUP.md) — Development environment setup and build instructions
+- [Architecture Overview](#architecture)
 
 ## Getting Started
 
-(Coming soon)
+1. **Setup Development Environment**
+   ```bash
+   # Install Rust, FFmpeg
+   # See SETUP.md for detailed instructions
+   ```
+
+2. **Build the Core**
+   ```bash
+   cd core
+   cargo build --release
+   ./target/release/videoroom-core
+   ```
+   The daemon listens on `127.0.0.1:50051` for gRPC connections.
+
+3. **Build Desktop Client** (next phase)
+   ```bash
+   cd desktop
+   # Will be Kotlin Compose project structure
+   ```
+
+## Architecture
+
+The system is built in three tiers:
+
+```
+Frontend Clients (Kotlin/SwiftUI)
+        ↓ (gRPC)
+Rust Backend Daemon (core/)
+        ↓
+SQLite Database + Filesystem
+```
+
+**Core** (`core/`): Rust daemon providing:
+- Video indexing and metadata extraction
+- SQLite persistence with WAL mode
+- FFmpeg/FFprobe integration
+- Thumbnail generation
+- Search and filtering
+- gRPC API
+
+**Desktop** (`desktop/`): Kotlin Compose client (MVP priority)
+- Grid view with virtualized rendering
+- Detail panel with metadata
+- Search and filtering
+- Tag/collection management
+
+**macOS** (`macos/`): SwiftUI client (post-MVP)
+- Native macOS experience
+- QuickLook integration
+- Feature parity with desktop
 
 ## Contributing
 
