@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 
+@MainActor
 class GridViewModel: ObservableObject {
     @Published var videos: [VideoSummary] = []
     @Published var selectedVideoId: String?
@@ -87,7 +88,4 @@ class GridViewModel: ObservableObject {
         error = nil
     }
 
-    deinit {
-        cancellables.removeAll()
-    }
 }

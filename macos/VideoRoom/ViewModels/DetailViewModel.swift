@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 
+@MainActor
 class DetailViewModel: ObservableObject {
     @Published var metadata: VideoMetadata?
     @Published var thumbnail: NSImage?
