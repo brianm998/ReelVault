@@ -45,10 +45,8 @@ impl MetadataExtractor {
             .args(&[
                 "-v",
                 "error",
-                "-select_streams",
-                "v:0",
-                "-show_entries",
-                "format=duration,size,bit_rate:stream=index,codec_type,codec_name,width,height,r_frame_rate,color_space,tags",
+                "-show_format",
+                "-show_streams",
                 "-of",
                 "json",
                 video_path.to_str().unwrap_or(""),
@@ -90,13 +88,13 @@ impl MetadataExtractor {
             .find(|s| s.codec_type == Some("audio".to_string()))
             .and_then(|s| s.codec_name.clone());
 
-        // Extract EXIF data from tags
-        let camera_model = Self::extract_tag(&video_stream.tags, "model")
-            .or_else(|| Self::extract_tag(&format.tags, "model"));
-        let lens_model = Self::extract_tag(&video_stream.tags, "lens_model")
-            .or_else(|| Self::extract_tag(&format.tags, "lens_model"));
-        let creation_date = Self::extract_creation_date(&video_stream.tags)
-            .or_else(|| Self::extract_creation_date(&format.tags));
+        // Extract EXIF data from tags - check format tags first (where camera/lens usually live for MOV/MP4)
+        let camera_model = Self::build_camera_name(&format.tags)
+            .or_else(|| Self::build_camera_name(&video_stream.tags));
+        let lens_model = Self::extract_lens(&format.tags)
+            .or_else(|| Self::extract_lens(&video_stream.tags));
+        let creation_date = Self::extract_creation_date(&format.tags)
+            .or_else(|| Self::extract_creation_date(&video_stream.tags));
 
         // Audio info
         let audio_stream = probe_output.streams
@@ -203,9 +201,41 @@ impl MetadataExtractor {
         tags.as_ref().and_then(|t| t.get(key).cloned())
     }
 
+    /// Combine `make` and `model` tags into a readable camera name.
+    /// Example: "SONY ILCE-7RM3" -> "Sony A7R III" friendly is hard, so just use raw values.
+    fn build_camera_name(tags: &Option<FFProbeTagMap>) -> Option<String> {
+        let make = Self::extract_tag(tags, "make")
+            .or_else(|| Self::extract_tag(tags, "com.apple.quicktime.make"));
+        let model = Self::extract_tag(tags, "model")
+            .or_else(|| Self::extract_tag(tags, "com.apple.quicktime.model"));
+
+        match (make, model) {
+            (Some(make), Some(model)) => {
+                // Avoid duplication if model already starts with make
+                if model.to_lowercase().starts_with(&make.to_lowercase()) {
+                    Some(model)
+                } else {
+                    Some(format!("{} {}", make, model))
+                }
+            }
+            (None, Some(model)) => Some(model),
+            (Some(make), None) => Some(make),
+            (None, None) => None,
+        }
+    }
+
+    /// Look for lens info in various tag formats used by different cameras.
+    fn extract_lens(tags: &Option<FFProbeTagMap>) -> Option<String> {
+        Self::extract_tag(tags, "lens_model")
+            .or_else(|| Self::extract_tag(tags, "com.apple.quicktime.lens.model"))
+            .or_else(|| Self::extract_tag(tags, "lens"))
+            .or_else(|| Self::extract_tag(tags, "lensmodel"))
+    }
+
     fn extract_creation_date(tags: &Option<FFProbeTagMap>) -> Option<i64> {
         tags.as_ref().and_then(|t| {
-            let date_str = t.get("creation_time")?;
+            let date_str = t.get("creation_time")
+                .or_else(|| t.get("com.apple.quicktime.creationdate"))?;
             // Parse ISO 8601: "2024-01-15T10:30:00.000000Z"
             chrono::DateTime::parse_from_rfc3339(date_str)
                 .ok()

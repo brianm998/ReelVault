@@ -135,19 +135,53 @@ impl Database {
     }
 
     pub fn list_videos(&self, limit: i64, offset: i64) -> Result<(Vec<VideoRecord>, i64)> {
+        self.list_videos_sorted(limit, offset, "indexed_at", false)
+    }
+
+    /// List videos with sorting by a specified field.
+    /// Accepts: name|filename, indexed_at|date_added, duration, size|size_bytes,
+    /// resolution|width|height, fps, codec|codec_video, bitrate, camera|camera_model
+    pub fn list_videos_sorted(
+        &self,
+        limit: i64,
+        offset: i64,
+        sort_by: &str,
+        ascending: bool,
+    ) -> Result<(Vec<VideoRecord>, i64)> {
         let conn = self.get_connection()?;
 
-        // Get total count
         let total: i64 = conn
             .query_row("SELECT COUNT(*) FROM videos", [], |row| row.get(0))
             .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
 
-        // Get videos
+        let direction = if ascending { "ASC" } else { "DESC" };
+        // Whitelist sort columns to avoid SQL injection
+        let order_by = match sort_by.to_lowercase().as_str() {
+            "name" | "filename" => format!("v.filename {}", direction),
+            "date_added" | "indexed_at" | "" => format!("v.indexed_at {}", direction),
+            "duration" | "duration_ms" => format!("COALESCE(m.duration_ms, 0) {}", direction),
+            "size" | "size_bytes" | "file_size_bytes" => format!("COALESCE(v.file_size_bytes, 0) {}", direction),
+            "resolution" | "width" | "height" => {
+                // Sort by total pixels
+                format!("(COALESCE(m.width, 0) * COALESCE(m.height, 0)) {}", direction)
+            }
+            "fps" => format!("COALESCE(m.fps, 0) {}", direction),
+            "codec" | "codec_video" => format!("COALESCE(m.codec_video, '') {}", direction),
+            "bitrate" => format!("COALESCE(m.bitrate, 0) {}", direction),
+            "camera" | "camera_model" => format!("COALESCE(m.camera_model, '') {}", direction),
+            "creation_date" | "shot_date" => format!("COALESCE(m.creation_date, 0) {}", direction),
+            _ => format!("v.filename {}", direction),
+        };
+
+        let sql = format!(
+            "SELECT v.id, v.path, v.filename, v.volume_id, v.hash, v.file_size_bytes, v.indexed_at, v.is_online
+             FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
+             ORDER BY {} LIMIT ? OFFSET ?",
+            order_by
+        );
+
         let mut stmt = conn
-            .prepare(
-                "SELECT id, path, filename, volume_id, hash, file_size_bytes, indexed_at, is_online
-                 FROM videos ORDER BY indexed_at DESC LIMIT ? OFFSET ?",
-            )
+            .prepare(&sql)
             .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
 
         let videos = stmt

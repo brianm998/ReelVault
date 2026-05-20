@@ -105,11 +105,6 @@ impl IndexingEngine {
         video_path: &Path,
         thumbnail_cache: &Path,
     ) -> Result<String> {
-        // Check if already indexed
-        if let Ok(Some(existing)) = db.get_video_by_path(video_path.to_str().unwrap_or("")) {
-            return Ok(existing.id);
-        }
-
         // Extract filename
         let filename = video_path
             .file_name()
@@ -124,28 +119,36 @@ impl IndexingEngine {
         // Extract metadata
         let probe_output = MetadataExtractor::extract(video_path)?;
 
-        // Create video record
-        let video_id = db.add_video(
-            video_path.to_str().unwrap_or(""),
-            filename,
-            None,
-            None,
-            file_size,
-        )?;
+        // Check if already indexed — if so, reuse the existing ID and just refresh metadata.
+        let video_id = if let Ok(Some(existing)) = db.get_video_by_path(video_path.to_str().unwrap_or("")) {
+            existing.id
+        } else {
+            // Create video record
+            db.add_video(
+                video_path.to_str().unwrap_or(""),
+                filename,
+                None,
+                None,
+                file_size,
+            )?
+        };
 
-        // Store metadata
+        // (Re-)store metadata (UPSERT)
         MetadataExtractor::store_metadata(db, &video_id, &probe_output, file_size.unwrap_or(0))?;
 
         // Get duration from probe output for thumbnail generation
         let duration_secs = probe_output.format.duration.unwrap_or(0.0);
 
-        // Generate thumbnail (async in real implementation)
-        match ThumbnailGenerator::generate(db, video_path, &video_id, thumbnail_cache, duration_secs) {
-            Ok(_) => {
-                tracing::debug!("Generated thumbnail for {}", video_id);
-            }
-            Err(e) => {
-                tracing::warn!("Failed to generate thumbnail for {}: {}", video_id, e);
+        // Generate thumbnail (skip if already exists, ffmpeg overwrite would be redundant)
+        let thumb_path = thumbnail_cache.join(format!("{}_medium.jpg", video_id));
+        if !thumb_path.exists() {
+            match ThumbnailGenerator::generate(db, video_path, &video_id, thumbnail_cache, duration_secs) {
+                Ok(_) => {
+                    tracing::debug!("Generated thumbnail for {}", video_id);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to generate thumbnail for {}: {}", video_id, e);
+                }
             }
         }
 

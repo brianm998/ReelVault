@@ -45,7 +45,21 @@ pub enum VideoRoomError {
     InternalError(String),
 }
 
-// gRPC conversion (when tonic is re-enabled)
-// impl From<VideoRoomError> for Status { ... }
+// gRPC conversion
+impl From<VideoRoomError> for tonic::Status {
+    fn from(err: VideoRoomError) -> Self {
+        match err {
+            VideoRoomError::VideoNotFound(_)
+            | VideoRoomError::TagNotFound(_)
+            | VideoRoomError::CollectionNotFound(_)
+            | VideoRoomError::FileNotFound(_) => tonic::Status::not_found(err.to_string()),
+            VideoRoomError::InvalidRequest(_) | VideoRoomError::InvalidPath(_) => {
+                tonic::Status::invalid_argument(err.to_string())
+            }
+            VideoRoomError::DuplicateEntry(_) => tonic::Status::already_exists(err.to_string()),
+            _ => tonic::Status::internal(err.to_string()),
+        }
+    }
+}
 
 pub type Result<T> = std::result::Result<T, VideoRoomError>;
