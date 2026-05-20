@@ -61,6 +61,9 @@ message ListVideosRequest {
   bool sort_ascending = 4;
   repeated string filter_tags = 5;
   string collection_id = 6;
+  // Filter to videos whose path is inside this directory (recursive).
+  // Empty means "all locations".
+  string location_path = 7;
 }
 
 message VideoSummary {

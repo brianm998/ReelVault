@@ -102,8 +102,9 @@ fun VideoRoomApp(
             errorMessage = "Failed to connect to VideoRoom backend on localhost:50051"
             showErrorDialog = true
         } else {
-            // Load initial videos
+            // Load initial videos and library locations
             gridViewModel.loadVideos()
+            gridViewModel.loadLibraryLocations()
         }
     }
 
@@ -244,7 +245,30 @@ fun VideoRoomApp(
                             .fillMaxSize()
                             .weight(1f)
                     ) {
-                        // Grid view (left side, 70%)
+                        // Library panel (far left, ~18%)
+                        val libraryLocations = gridViewModel.libraryLocations.collectAsState()
+                        val selectedLocation = gridViewModel.selectedLocationPath.collectAsState()
+                        com.videoroom.ui.components.LibraryPanel(
+                            locations = libraryLocations.value,
+                            selectedPath = selectedLocation.value,
+                            // "All Videos" count: sum of all per-location counts
+                            // (close enough — a video could in theory live outside
+                            // any registered location but that's not the common case).
+                            totalVideosAcrossLibrary = libraryLocations.value
+                                .sumOf { it.videoCount },
+                            onSelect = { path -> gridViewModel.setLocationFilter(path) },
+                            modifier = Modifier
+                                .weight(0.18f)
+                                .fillMaxHeight()
+                        )
+
+                        Divider(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(1.dp)
+                        )
+
+                        // Grid view (middle, ~52%)
                         GridScreen(
                             viewModel = gridViewModel,
                             onVideoSelect = { video ->
@@ -256,7 +280,7 @@ fun VideoRoomApp(
                                 detailViewModel.loadMetadata(video.id)
                             },
                             modifier = Modifier
-                                .weight(0.7f)
+                                .weight(0.52f)
                                 .fillMaxHeight()
                         )
 

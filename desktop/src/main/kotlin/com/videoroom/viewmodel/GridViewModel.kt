@@ -52,6 +52,15 @@ class GridViewModel(
     private var filterTags = emptyList<String>()
     private var collectionId: String? = null
     private var searchQuery = ""
+    /** Currently selected library location to filter by. Empty string = all. */
+    private var locationPathFilter: String = ""
+
+    // Library locations panel state
+    private val _libraryLocations = MutableStateFlow<List<com.videoroom.data.models.LibraryLocation>>(emptyList())
+    val libraryLocations: StateFlow<List<com.videoroom.data.models.LibraryLocation>> = _libraryLocations.asStateFlow()
+
+    private val _selectedLocationPath = MutableStateFlow("")  // "" = all locations
+    val selectedLocationPath: StateFlow<String> = _selectedLocationPath.asStateFlow()
 
     // Sort state exposed for the UI
     private val _currentSortField = MutableStateFlow(sortBy)
@@ -91,7 +100,8 @@ class GridViewModel(
                         sortBy = sortBy,
                         sortAscending = sortAscending,
                         filterTags = filterTags,
-                        collectionId = collectionId
+                        collectionId = collectionId,
+                        locationPath = locationPathFilter
                     )
                 }
 
@@ -100,7 +110,8 @@ class GridViewModel(
                 _hasMore.value = videosList.size < totalCount
                 _isLoading.value = false
 
-                logger.info("Loaded ${videosList.size} videos, total: $totalCount")
+                logger.info("Loaded ${videosList.size} videos, total: $totalCount" +
+                    if (locationPathFilter.isNotEmpty()) " (filtered to $locationPathFilter)" else "")
             } catch (e: Exception) {
                 _error.value = "Failed to load videos: ${e.message}"
                 _isLoading.value = false
@@ -132,7 +143,8 @@ class GridViewModel(
                         sortBy = sortBy,
                         sortAscending = sortAscending,
                         filterTags = filterTags,
-                        collectionId = collectionId
+                        collectionId = collectionId,
+                        locationPath = locationPathFilter
                     )
                 }
 
@@ -231,6 +243,30 @@ class GridViewModel(
         sortAscending = ascending
         _currentSortField.value = field
         _currentSortAscending.value = ascending
+        loadVideos()
+    }
+
+    /** Load the list of library locations from the backend (with per-directory counts). */
+    fun loadLibraryLocations() {
+        viewModelScope.launch {
+            try {
+                val locations = repository.listLibraryLocations()
+                _libraryLocations.value = locations
+                logger.info("Loaded ${locations.size} library locations")
+            } catch (e: Exception) {
+                logger.warn("Failed to load library locations", e)
+            }
+        }
+    }
+
+    /**
+     * Narrow the grid to videos within [path] (recursive). Pass an empty string
+     * to clear the filter and show all videos.
+     */
+    fun setLocationFilter(path: String) {
+        if (locationPathFilter == path) return
+        locationPathFilter = path
+        _selectedLocationPath.value = path
         loadVideos()
     }
 
@@ -483,8 +519,9 @@ class GridViewModel(
 
                 _scanStatus.value = null
                 _isLoading.value = false
-                // Refresh video list after scan
+                // Refresh video list and library panel counts after scan
                 loadVideos()
+                loadLibraryLocations()
             } catch (e: Exception) {
                 _scanResult.value = ScanResult(
                     success = false,

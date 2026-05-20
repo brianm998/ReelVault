@@ -651,12 +651,16 @@ impl Database {
     /// List videos as group representatives only. For each group, returns the
     /// preferred video (if set) or the first by filename. Ungrouped videos are
     /// returned individually.
+    ///
+    /// If [location_filter] is non-empty, only videos whose `path` starts with
+    /// it (treated as a directory prefix) are returned.
     pub fn list_videos_grouped(
         &self,
         limit: i64,
         offset: i64,
         sort_by: &str,
         ascending: bool,
+        location_filter: &str,
     ) -> Result<(Vec<VideoRecord>, i64)> {
         let conn = self.get_connection()?;
 
@@ -681,51 +685,89 @@ impl Database {
         // Representative selection:
         //   - If video is ungrouped: it represents itself
         //   - If grouped: use the group's preferred_video_id (falling back to itself if it IS that video)
-        // We achieve "one row per group" by selecting only videos where id equals
-        // the chosen representative.
         let representative_filter = "v.group_id IS NULL \
              OR v.id = (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id) \
              OR (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id) IS NULL \
                 AND v.id = (SELECT MIN(v2.id) FROM videos v2 WHERE v2.group_id = v.group_id)";
 
+        // Build the optional location-prefix filter. We match the directory plus
+        // a trailing slash to avoid spurious matches (so `/foo/bar` doesn't match
+        // `/foo/barbaz/...`).
+        let (location_clause, location_param) = if location_filter.is_empty() {
+            (String::new(), String::new())
+        } else {
+            let mut prefix = location_filter.to_string();
+            if !prefix.ends_with('/') {
+                prefix.push('/');
+            }
+            // Append SQL wildcard
+            (" AND v.path LIKE ?".to_string(), format!("{}%", prefix))
+        };
+
         let count_sql = format!(
-            "SELECT COUNT(*) FROM videos v WHERE ({})",
-            representative_filter
+            "SELECT COUNT(*) FROM videos v WHERE ({}){}",
+            representative_filter, location_clause
         );
-        let total: i64 = conn
-            .query_row(&count_sql, [], |row| row.get(0))
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        let total: i64 = if location_filter.is_empty() {
+            conn.query_row(&count_sql, [], |row| row.get(0))
+        } else {
+            conn.query_row(&count_sql, params![location_param], |row| row.get(0))
+        }
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
 
         let sql = format!(
             "SELECT v.id, v.path, v.filename, v.volume_id, v.hash, v.file_size_bytes, v.indexed_at, v.is_online
              FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
-             WHERE ({})
+             WHERE ({}){}
              ORDER BY {} LIMIT ? OFFSET ?",
-            representative_filter, order_by
+            representative_filter, location_clause, order_by
         );
 
         let mut stmt = conn
             .prepare(&sql)
             .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
 
-        let videos = stmt
-            .query_map(params![limit, offset], |row| {
-                Ok(VideoRecord {
-                    id: row.get(0)?,
-                    path: row.get(1)?,
-                    filename: row.get(2)?,
-                    volume_id: row.get(3)?,
-                    hash: row.get(4)?,
-                    file_size_bytes: row.get(5)?,
-                    indexed_at: row.get(6)?,
-                    is_online: row.get(7)?,
-                })
+        let row_mapper = |row: &rusqlite::Row| -> rusqlite::Result<VideoRecord> {
+            Ok(VideoRecord {
+                id: row.get(0)?,
+                path: row.get(1)?,
+                filename: row.get(2)?,
+                volume_id: row.get(3)?,
+                hash: row.get(4)?,
+                file_size_bytes: row.get(5)?,
+                indexed_at: row.get(6)?,
+                is_online: row.get(7)?,
             })
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
-            .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        };
+
+        let videos = if location_filter.is_empty() {
+            stmt.query_map(params![limit, offset], row_mapper)
+        } else {
+            stmt.query_map(params![location_param, limit, offset], row_mapper)
+        }
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+        .collect::<std::result::Result<Vec<_>, _>>()
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
 
         Ok((videos, total))
+    }
+
+    /// Count videos whose path starts with the given directory (recursive).
+    pub fn count_videos_in_path(&self, path: &str) -> Result<i64> {
+        let conn = self.get_connection()?;
+        let mut prefix = path.to_string();
+        if !prefix.ends_with('/') {
+            prefix.push('/');
+        }
+        let pattern = format!("{}%", prefix);
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM videos WHERE path LIKE ?",
+                params![pattern],
+                |row| row.get(0),
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(count)
     }
 
     /// Get the group_id for a video (None if ungrouped).

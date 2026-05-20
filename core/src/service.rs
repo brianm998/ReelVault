@@ -214,10 +214,23 @@ impl VideoRoomTrait for VideoRoomService {
         let limit = if req.limit <= 0 { 50 } else { req.limit as i64 };
         let offset = req.offset.max(0) as i64;
 
+        // Expand tilde in location filter if provided
+        let location_filter = if req.location_path.is_empty() {
+            String::new()
+        } else {
+            expand_tilde(&req.location_path)
+        };
+
         // Use grouped listing — returns one representative per group + ungrouped videos
         let (videos, total_count) = self
             .db
-            .list_videos_grouped(limit, offset, &req.sort_by, req.sort_ascending)
+            .list_videos_grouped(
+                limit,
+                offset,
+                &req.sort_by,
+                req.sort_ascending,
+                &location_filter,
+            )
             .map_err(Status::from)?;
 
         let video_summaries: Vec<VideoSummary> = videos
@@ -386,7 +399,7 @@ impl VideoRoomTrait for VideoRoomService {
                 path: l.path.clone(),
                 recursive: l.recursive,
                 enabled: l.enabled,
-                video_count: 0,
+                video_count: self.db.count_videos_in_path(&l.path).unwrap_or(0),
                 last_scanned: l.last_scanned.unwrap_or(0),
             })
             .collect();

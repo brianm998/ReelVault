@@ -119,7 +119,8 @@ class VideoRepository(
         sortBy: String = "name",
         sortAscending: Boolean = true,
         filterTags: List<String> = emptyList(),
-        collectionId: String? = null
+        collectionId: String? = null,
+        locationPath: String = ""
     ): Pair<List<VideoSummary>, Long> = withContext(Dispatchers.IO) {
         val s = stub ?: return@withContext Pair(emptyList(), 0L)
         try {
@@ -130,6 +131,7 @@ class VideoRepository(
                 .setSortAscending(sortAscending)
                 .addAllFilterTags(filterTags)
                 .setCollectionId(collectionId ?: "")
+                .setLocationPath(locationPath)
                 .build()
 
             val response = s.listVideos(request)
