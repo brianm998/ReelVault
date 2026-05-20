@@ -32,6 +32,25 @@ impl Database {
         conn.execute_batch(schema)
             .map_err(|e| VideoRoomError::DatabaseError(format!("Failed to initialize schema: {}", e)))?;
 
+        // Migration: add columns to existing tables. SQLite has no
+        // `ALTER TABLE ADD COLUMN IF NOT EXISTS`, so we try and ignore the
+        // "duplicate column" error.
+        let migrations: &[(&str, &str)] = &[
+            ("videos.group_id", "ALTER TABLE videos ADD COLUMN group_id TEXT"),
+            ("metadata.frame_count", "ALTER TABLE metadata ADD COLUMN frame_count INTEGER DEFAULT 0"),
+        ];
+        for (label, sql) in migrations {
+            match conn.execute(sql, []) {
+                Ok(_) => tracing::info!("Migration: added {}", label),
+                Err(e) => {
+                    let msg = e.to_string();
+                    if !msg.contains("duplicate column") {
+                        tracing::warn!("Migration for {} failed (likely already applied): {}", label, msg);
+                    }
+                }
+            }
+        }
+
         tracing::info!("Database schema initialized");
 
         Ok(())
@@ -496,6 +515,316 @@ impl Database {
 
         Ok(())
     }
+
+    // VIDEO GROUPS (Lightroom-style "stacks")
+
+    /// Create a new group, set members' group_id, and return the new group's ID.
+    pub fn create_group(
+        &self,
+        name: Option<&str>,
+        base_name: Option<&str>,
+        video_ids: &[String],
+        preferred_video_id: Option<&str>,
+    ) -> Result<String> {
+        if video_ids.is_empty() {
+            return Err(VideoRoomError::InvalidRequest("Group must contain at least one video".to_string()));
+        }
+        let group_id = Uuid::new_v4().to_string();
+        let preferred = preferred_video_id.unwrap_or(&video_ids[0]);
+        let conn = self.get_connection()?;
+
+        conn.execute(
+            "INSERT INTO video_groups (id, name, base_name, preferred_video_id) VALUES (?, ?, ?, ?)",
+            params![group_id, name, base_name, preferred],
+        )
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+
+        // Assign group_id to each video, clearing any existing group membership
+        for vid in video_ids {
+            conn.execute(
+                "UPDATE videos SET group_id = ? WHERE id = ?",
+                params![group_id, vid],
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        }
+
+        Ok(group_id)
+    }
+
+    /// Remove a video from its group. If the group becomes empty (or has one remaining member),
+    /// the group is deleted entirely.
+    pub fn ungroup_video(&self, video_id: &str) -> Result<()> {
+        let conn = self.get_connection()?;
+        let group_id: Option<String> = conn
+            .query_row(
+                "SELECT group_id FROM videos WHERE id = ?",
+                [video_id],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .flatten();
+
+        let Some(group_id) = group_id else {
+            return Ok(()); // Not in a group, nothing to do
+        };
+
+        conn.execute("UPDATE videos SET group_id = NULL WHERE id = ?", [video_id])
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+
+        // Count remaining members
+        let remaining: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM videos WHERE group_id = ?",
+                [&group_id],
+                |row| row.get(0),
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+
+        // If only one or zero members remain, dissolve the group entirely
+        if remaining <= 1 {
+            conn.execute("UPDATE videos SET group_id = NULL WHERE group_id = ?", [&group_id])
+                .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            conn.execute("DELETE FROM video_groups WHERE id = ?", [&group_id])
+                .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        }
+
+        Ok(())
+    }
+
+    pub fn set_group_preferred(&self, group_id: &str, video_id: &str) -> Result<()> {
+        let conn = self.get_connection()?;
+        conn.execute(
+            "UPDATE video_groups SET preferred_video_id = ? WHERE id = ?",
+            params![video_id, group_id],
+        )
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
+    pub fn get_group(&self, group_id: &str) -> Result<Option<VideoGroupRecord>> {
+        let conn = self.get_connection()?;
+        let result = conn
+            .query_row(
+                "SELECT id, name, base_name, preferred_video_id FROM video_groups WHERE id = ?",
+                [group_id],
+                |row| {
+                    Ok(VideoGroupRecord {
+                        id: row.get(0)?,
+                        name: row.get(1)?,
+                        base_name: row.get(2)?,
+                        preferred_video_id: row.get(3)?,
+                    })
+                },
+            )
+            .optional()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(result)
+    }
+
+    /// Get all member video IDs for a group.
+    pub fn list_group_member_ids(&self, group_id: &str) -> Result<Vec<String>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn
+            .prepare("SELECT id FROM videos WHERE group_id = ? ORDER BY filename")
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        let ids = stmt
+            .query_map([group_id], |row| row.get::<_, String>(0))
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(ids)
+    }
+
+    pub fn count_group_members(&self, group_id: &str) -> Result<i64> {
+        let conn = self.get_connection()?;
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM videos WHERE group_id = ?",
+                [group_id],
+                |row| row.get(0),
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(count)
+    }
+
+    /// List videos as group representatives only. For each group, returns the
+    /// preferred video (if set) or the first by filename. Ungrouped videos are
+    /// returned individually.
+    ///
+    /// If [location_filter] is non-empty, only videos whose `path` starts with
+    /// it (treated as a directory prefix) are returned.
+    pub fn list_videos_grouped(
+        &self,
+        limit: i64,
+        offset: i64,
+        sort_by: &str,
+        ascending: bool,
+        location_filter: &str,
+    ) -> Result<(Vec<VideoRecord>, i64)> {
+        let conn = self.get_connection()?;
+
+        // Build the ORDER BY clause (same logic as list_videos_sorted)
+        let direction = if ascending { "ASC" } else { "DESC" };
+        let order_by = match sort_by.to_lowercase().as_str() {
+            "name" | "filename" => format!("v.filename {}", direction),
+            "date_added" | "indexed_at" | "" => format!("v.indexed_at {}", direction),
+            "duration" | "duration_ms" => format!("COALESCE(m.duration_ms, 0) {}", direction),
+            "size" | "size_bytes" | "file_size_bytes" => format!("COALESCE(v.file_size_bytes, 0) {}", direction),
+            "resolution" | "width" | "height" => {
+                format!("(COALESCE(m.width, 0) * COALESCE(m.height, 0)) {}", direction)
+            }
+            "fps" => format!("COALESCE(m.fps, 0) {}", direction),
+            "codec" | "codec_video" => format!("COALESCE(m.codec_video, '') {}", direction),
+            "bitrate" => format!("COALESCE(m.bitrate, 0) {}", direction),
+            "camera" | "camera_model" => format!("COALESCE(m.camera_model, '') {}", direction),
+            "creation_date" | "shot_date" => format!("COALESCE(m.creation_date, 0) {}", direction),
+            _ => format!("v.filename {}", direction),
+        };
+
+        // Representative selection:
+        //   - If video is ungrouped: it represents itself
+        //   - If grouped: use the group's preferred_video_id (falling back to itself if it IS that video)
+        let representative_filter = "v.group_id IS NULL \
+             OR v.id = (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id) \
+             OR (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id) IS NULL \
+                AND v.id = (SELECT MIN(v2.id) FROM videos v2 WHERE v2.group_id = v.group_id)";
+
+        // Build the optional location-prefix filter. We match the directory plus
+        // a trailing slash to avoid spurious matches (so `/foo/bar` doesn't match
+        // `/foo/barbaz/...`).
+        let (location_clause, location_param) = if location_filter.is_empty() {
+            (String::new(), String::new())
+        } else {
+            let mut prefix = location_filter.to_string();
+            if !prefix.ends_with('/') {
+                prefix.push('/');
+            }
+            // Append SQL wildcard
+            (" AND v.path LIKE ?".to_string(), format!("{}%", prefix))
+        };
+
+        let count_sql = format!(
+            "SELECT COUNT(*) FROM videos v WHERE ({}){}",
+            representative_filter, location_clause
+        );
+        let total: i64 = if location_filter.is_empty() {
+            conn.query_row(&count_sql, [], |row| row.get(0))
+        } else {
+            conn.query_row(&count_sql, params![location_param], |row| row.get(0))
+        }
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+
+        let sql = format!(
+            "SELECT v.id, v.path, v.filename, v.volume_id, v.hash, v.file_size_bytes, v.indexed_at, v.is_online
+             FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
+             WHERE ({}){}
+             ORDER BY {} LIMIT ? OFFSET ?",
+            representative_filter, location_clause, order_by
+        );
+
+        let mut stmt = conn
+            .prepare(&sql)
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+
+        let row_mapper = |row: &rusqlite::Row| -> rusqlite::Result<VideoRecord> {
+            Ok(VideoRecord {
+                id: row.get(0)?,
+                path: row.get(1)?,
+                filename: row.get(2)?,
+                volume_id: row.get(3)?,
+                hash: row.get(4)?,
+                file_size_bytes: row.get(5)?,
+                indexed_at: row.get(6)?,
+                is_online: row.get(7)?,
+            })
+        };
+
+        let videos = if location_filter.is_empty() {
+            stmt.query_map(params![limit, offset], row_mapper)
+        } else {
+            stmt.query_map(params![location_param, limit, offset], row_mapper)
+        }
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+        .collect::<std::result::Result<Vec<_>, _>>()
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+
+        Ok((videos, total))
+    }
+
+    /// Count videos whose path starts with the given directory (recursive).
+    pub fn count_videos_in_path(&self, path: &str) -> Result<i64> {
+        let conn = self.get_connection()?;
+        let mut prefix = path.to_string();
+        if !prefix.ends_with('/') {
+            prefix.push('/');
+        }
+        let pattern = format!("{}%", prefix);
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM videos WHERE path LIKE ?",
+                params![pattern],
+                |row| row.get(0),
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(count)
+    }
+
+    /// Get the group_id for a video (None if ungrouped).
+    pub fn get_video_group_id(&self, video_id: &str) -> Result<Option<String>> {
+        let conn = self.get_connection()?;
+        let result: Option<String> = conn
+            .query_row(
+                "SELECT group_id FROM videos WHERE id = ?",
+                [video_id],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .flatten();
+        Ok(result)
+    }
+
+    /// Fetch all (video_id, filename, base_name_candidate, duration_ms, width, height, fps,
+    /// parent_dir, group_id) tuples — used by auto-grouping.
+    pub fn list_for_auto_grouping(&self) -> Result<Vec<AutoGroupCandidate>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn
+            .prepare(
+                "SELECT v.id, v.filename, v.path, v.group_id,
+                        COALESCE(m.duration_ms, 0), COALESCE(m.frame_count, 0),
+                        COALESCE(m.width, 0), COALESCE(m.height, 0),
+                        COALESCE(m.fps, 0)
+                 FROM videos v LEFT JOIN metadata m ON v.id = m.video_id",
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+
+        let rows = stmt
+            .query_map([], |row| {
+                let path: String = row.get(2)?;
+                let parent_dir = std::path::Path::new(&path)
+                    .parent()
+                    .and_then(|p| p.to_str())
+                    .unwrap_or("")
+                    .to_string();
+                Ok(AutoGroupCandidate {
+                    id: row.get(0)?,
+                    filename: row.get(1)?,
+                    parent_dir,
+                    group_id: row.get(3)?,
+                    duration_ms: row.get(4)?,
+                    frame_count: row.get(5)?,
+                    width: row.get(6)?,
+                    height: row.get(7)?,
+                    fps: row.get(8)?,
+                })
+            })
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+
+        Ok(rows)
+    }
 }
 
 // Data structures
@@ -534,4 +863,25 @@ pub struct LibraryLocationRecord {
     pub recursive: bool,
     pub enabled: bool,
     pub last_scanned: Option<i64>,
+}
+
+#[derive(Debug, Clone)]
+pub struct VideoGroupRecord {
+    pub id: String,
+    pub name: Option<String>,
+    pub base_name: Option<String>,
+    pub preferred_video_id: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct AutoGroupCandidate {
+    pub id: String,
+    pub filename: String,
+    pub parent_dir: String,
+    pub group_id: Option<String>,
+    pub duration_ms: i64,
+    pub frame_count: i64,
+    pub width: i32,
+    pub height: i32,
+    pub fps: f64,
 }

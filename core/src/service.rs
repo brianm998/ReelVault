@@ -152,6 +152,31 @@ impl VideoRoomService {
         let thumb_path = self.config.thumbnail_cache_path.join(format!("{}_medium.jpg", video_id));
         let has_thumbnail = thumb_path.exists();
 
+        // Group info
+        let group_id_opt = self.db.get_video_group_id(video_id).unwrap_or(None);
+        let (group_id, group_size, group_preferred_id, group_preferred_path) = match &group_id_opt {
+            Some(gid) => {
+                let size = self.db.count_group_members(gid).unwrap_or(1) as i32;
+                let preferred_id = self
+                    .db
+                    .get_group(gid)
+                    .ok()
+                    .flatten()
+                    .and_then(|g| g.preferred_video_id)
+                    .unwrap_or_else(|| video_id.to_string());
+                // Look up the path of the preferred video
+                let preferred_path = self
+                    .db
+                    .get_video(&preferred_id)
+                    .ok()
+                    .flatten()
+                    .map(|v| v.path)
+                    .unwrap_or_default();
+                (gid.clone(), size, preferred_id, preferred_path)
+            }
+            None => (String::new(), 1, String::new(), String::new()),
+        };
+
         VideoSummary {
             id: video_id.to_string(),
             filename: filename.to_string(),
@@ -167,6 +192,10 @@ impl VideoRoomService {
             creation_date: creation_date.unwrap_or(0),
             tags,
             has_thumbnail,
+            group_id,
+            group_size,
+            group_preferred_id,
+            group_preferred_path,
         }
     }
 }
@@ -185,9 +214,23 @@ impl VideoRoomTrait for VideoRoomService {
         let limit = if req.limit <= 0 { 50 } else { req.limit as i64 };
         let offset = req.offset.max(0) as i64;
 
+        // Expand tilde in location filter if provided
+        let location_filter = if req.location_path.is_empty() {
+            String::new()
+        } else {
+            expand_tilde(&req.location_path)
+        };
+
+        // Use grouped listing — returns one representative per group + ungrouped videos
         let (videos, total_count) = self
             .db
-            .list_videos_sorted(limit, offset, &req.sort_by, req.sort_ascending)
+            .list_videos_grouped(
+                limit,
+                offset,
+                &req.sort_by,
+                req.sort_ascending,
+                &location_filter,
+            )
             .map_err(Status::from)?;
 
         let video_summaries: Vec<VideoSummary> = videos
@@ -356,7 +399,7 @@ impl VideoRoomTrait for VideoRoomService {
                 path: l.path.clone(),
                 recursive: l.recursive,
                 enabled: l.enabled,
-                video_count: 0,
+                video_count: self.db.count_videos_in_path(&l.path).unwrap_or(0),
                 last_scanned: l.last_scanned.unwrap_or(0),
             })
             .collect();
@@ -376,6 +419,7 @@ impl VideoRoomTrait for VideoRoomService {
         let db = Arc::clone(&self.db);
         let cache_path = self.config.thumbnail_cache_path.clone();
         let location_path = req.location_path.clone();
+        let auto_group = req.auto_group;
 
         tokio::task::spawn_blocking(move || {
             let send_progress = |tx: &tokio::sync::mpsc::Sender<std::result::Result<ScanProgress, Status>>,
@@ -427,7 +471,27 @@ impl VideoRoomTrait for VideoRoomService {
                     &cache_path,
                     |progress| send_progress(tx, progress),
                 ) {
-                    Ok(_) => {}
+                    Ok(_) => {
+                        // Run auto-grouping after each successful scan if requested
+                        if auto_group {
+                            let opts = crate::grouping::AutoGroupOptions::default();
+                            match crate::grouping::auto_group(db.as_ref(), &opts) {
+                                Ok((groups, videos)) if groups > 0 => {
+                                    let msg = format!("Auto-grouped {} videos into {} groups", videos, groups);
+                                    tracing::info!("{}", msg);
+                                    let _ = tx.blocking_send(Ok(ScanProgress {
+                                        status: "grouping".to_string(),
+                                        videos_found: 0,
+                                        videos_indexed: videos as i64,
+                                        current_file: msg,
+                                        progress_percent: 100.0,
+                                    }));
+                                }
+                                Ok(_) => {} // No new groups
+                                Err(e) => tracing::warn!("Auto-grouping failed: {}", e),
+                            }
+                        }
+                    }
                     Err(e) => {
                         let msg = format!("Scan failed: {}", e);
                         tracing::error!("{}", msg);
@@ -681,6 +745,121 @@ impl VideoRoomTrait for VideoRoomService {
             success: true,
             message: "Video deleted".to_string(),
             error: String::new(),
+        }))
+    }
+
+    async fn list_group_members(
+        &self,
+        request: Request<ListGroupMembersRequest>,
+    ) -> std::result::Result<Response<ListGroupMembersResponse>, Status> {
+        let req = request.into_inner();
+        let member_ids = self.db.list_group_member_ids(&req.group_id).map_err(Status::from)?;
+
+        let mut members = Vec::with_capacity(member_ids.len());
+        for vid in &member_ids {
+            if let Ok(Some(video)) = self.db.get_video(vid) {
+                members.push(self.build_video_summary(
+                    &video.id,
+                    &video.filename,
+                    &video.path,
+                    video.file_size_bytes.unwrap_or(0),
+                    video.indexed_at,
+                ));
+            }
+        }
+
+        let preferred = self
+            .db
+            .get_group(&req.group_id)
+            .map_err(Status::from)?
+            .and_then(|g| g.preferred_video_id)
+            .unwrap_or_default();
+
+        Ok(Response::new(ListGroupMembersResponse {
+            members,
+            preferred_video_id: preferred,
+        }))
+    }
+
+    async fn create_group(
+        &self,
+        request: Request<CreateGroupRequest>,
+    ) -> std::result::Result<Response<GroupResponse>, Status> {
+        let req = request.into_inner();
+        let preferred = if req.preferred_video_id.is_empty() {
+            None
+        } else {
+            Some(req.preferred_video_id.as_str())
+        };
+        let name = if req.name.is_empty() { None } else { Some(req.name.as_str()) };
+
+        let group_id = self
+            .db
+            .create_group(name, None, &req.video_ids, preferred)
+            .map_err(Status::from)?;
+
+        let size = self.db.count_group_members(&group_id).unwrap_or(0) as i32;
+        let preferred_id = self
+            .db
+            .get_group(&group_id)
+            .map_err(Status::from)?
+            .and_then(|g| g.preferred_video_id)
+            .unwrap_or_default();
+
+        Ok(Response::new(GroupResponse {
+            id: group_id,
+            name: req.name,
+            size,
+            preferred_video_id: preferred_id,
+        }))
+    }
+
+    async fn ungroup_video(
+        &self,
+        request: Request<UngroupVideoRequest>,
+    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+        let req = request.into_inner();
+        self.db.ungroup_video(&req.video_id).map_err(Status::from)?;
+        Ok(Response::new(videoroom::Response {
+            success: true,
+            message: "Video ungrouped".to_string(),
+            error: String::new(),
+        }))
+    }
+
+    async fn set_group_preferred(
+        &self,
+        request: Request<SetGroupPreferredRequest>,
+    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+        let req = request.into_inner();
+        self.db
+            .set_group_preferred(&req.group_id, &req.video_id)
+            .map_err(Status::from)?;
+        Ok(Response::new(videoroom::Response {
+            success: true,
+            message: "Preferred video set".to_string(),
+            error: String::new(),
+        }))
+    }
+
+    async fn auto_group_videos(
+        &self,
+        request: Request<AutoGroupRequest>,
+    ) -> std::result::Result<Response<AutoGroupResponse>, Status> {
+        let req = request.into_inner();
+        let options = crate::grouping::AutoGroupOptions {
+            same_directory_only: req.same_directory_only,
+            match_duration: req.match_duration,
+            match_fps: req.match_fps,
+        };
+
+        let (groups_created, videos_grouped) = crate::grouping::auto_group(self.db.as_ref(), &options)
+            .map_err(Status::from)?;
+
+        Ok(Response::new(AutoGroupResponse {
+            groups_created,
+            videos_grouped,
+            message: format!("Created {} groups containing {} videos", groups_created, videos_grouped),
         }))
     }
 

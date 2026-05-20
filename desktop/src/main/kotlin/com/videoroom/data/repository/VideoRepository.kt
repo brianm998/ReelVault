@@ -72,7 +72,11 @@ class VideoRepository(
             indexedAt = proto.indexedAt,
             creationDate = proto.creationDate,
             tags = proto.tagsList.toList(),
-            hasThumbnail = proto.hasThumbnail
+            hasThumbnail = proto.hasThumbnail,
+            groupId = proto.groupId,
+            groupSize = proto.groupSize,
+            groupPreferredId = proto.groupPreferredId,
+            groupPreferredPath = proto.groupPreferredPath
         )
     }
 
@@ -115,7 +119,8 @@ class VideoRepository(
         sortBy: String = "name",
         sortAscending: Boolean = true,
         filterTags: List<String> = emptyList(),
-        collectionId: String? = null
+        collectionId: String? = null,
+        locationPath: String = ""
     ): Pair<List<VideoSummary>, Long> = withContext(Dispatchers.IO) {
         val s = stub ?: return@withContext Pair(emptyList(), 0L)
         try {
@@ -126,6 +131,7 @@ class VideoRepository(
                 .setSortAscending(sortAscending)
                 .addAllFilterTags(filterTags)
                 .setCollectionId(collectionId ?: "")
+                .setLocationPath(locationPath)
                 .build()
 
             val response = s.listVideos(request)
@@ -232,11 +238,12 @@ class VideoRepository(
         }
     }
 
-    fun scanLibrary(locationPath: String = ""): Flow<ScanProgress> {
+    fun scanLibrary(locationPath: String = "", autoGroup: Boolean = true): Flow<ScanProgress> {
         val s = stub ?: return flow { }
         val request = Videoroom.ScanLibraryRequest.newBuilder()
             .setLocationPath(locationPath)
             .setForceFullScan(false)
+            .setAutoGroup(autoGroup)
             .build()
 
         return s.scanLibrary(request).map { proto ->
@@ -355,6 +362,95 @@ class VideoRepository(
         } catch (e: Exception) {
             logger.error("Failed to add to collection: ${e.message}", e)
             false
+        }
+    }
+
+    data class GroupInfo(val id: String, val name: String, val size: Int, val preferredVideoId: String)
+
+    suspend fun createGroup(
+        videoIds: List<String>,
+        name: String = "",
+        preferredVideoId: String = ""
+    ): GroupInfo? = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext null
+        try {
+            val request = Videoroom.CreateGroupRequest.newBuilder()
+                .addAllVideoIds(videoIds)
+                .setName(name)
+                .setPreferredVideoId(preferredVideoId)
+                .build()
+            val response = s.createGroup(request)
+            GroupInfo(
+                id = response.id,
+                name = response.name,
+                size = response.size,
+                preferredVideoId = response.preferredVideoId
+            )
+        } catch (e: Exception) {
+            logger.error("Failed to create group: ${e.message}", e)
+            null
+        }
+    }
+
+    suspend fun listGroupMembers(groupId: String): Pair<List<VideoSummary>, String> = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext Pair(emptyList(), "")
+        try {
+            val request = Videoroom.ListGroupMembersRequest.newBuilder()
+                .setGroupId(groupId)
+                .build()
+            val response = s.listGroupMembers(request)
+            val members = response.membersList.map { protoToVideoSummary(it) }
+            Pair(members, response.preferredVideoId)
+        } catch (e: Exception) {
+            logger.error("Failed to list group members: ${e.message}", e)
+            Pair(emptyList(), "")
+        }
+    }
+
+    suspend fun setGroupPreferred(groupId: String, videoId: String): Boolean = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext false
+        try {
+            val request = Videoroom.SetGroupPreferredRequest.newBuilder()
+                .setGroupId(groupId)
+                .setVideoId(videoId)
+                .build()
+            s.setGroupPreferred(request).success
+        } catch (e: Exception) {
+            logger.error("Failed to set preferred video: ${e.message}", e)
+            false
+        }
+    }
+
+    suspend fun ungroupVideo(videoId: String): Boolean = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext false
+        try {
+            val request = Videoroom.UngroupVideoRequest.newBuilder()
+                .setVideoId(videoId)
+                .build()
+            s.ungroupVideo(request).success
+        } catch (e: Exception) {
+            logger.error("Failed to ungroup video: ${e.message}", e)
+            false
+        }
+    }
+
+    suspend fun autoGroup(
+        sameDirectoryOnly: Boolean = true,
+        matchDuration: Boolean = true,
+        matchFps: Boolean = true
+    ): Triple<Int, Int, String> = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext Triple(0, 0, "Not connected")
+        try {
+            val request = Videoroom.AutoGroupRequest.newBuilder()
+                .setSameDirectoryOnly(sameDirectoryOnly)
+                .setMatchDuration(matchDuration)
+                .setMatchFps(matchFps)
+                .build()
+            val response = s.autoGroupVideos(request)
+            Triple(response.groupsCreated, response.videosGrouped, response.message)
+        } catch (e: Exception) {
+            logger.error("Failed to auto-group: ${e.message}", e)
+            Triple(0, 0, "Error: ${e.message}")
         }
     }
 

@@ -22,6 +22,8 @@ fun DetailScreen(
     val isLoading = viewModel.isLoading.collectAsState()
     val error = viewModel.error.collectAsState()
     val notes = viewModel.notes.collectAsState()
+    val groupMembers = viewModel.groupMembers.collectAsState()
+    val groupPreferredId = viewModel.groupPreferredId.collectAsState()
 
     Box(modifier = modifier.fillMaxSize()) {
         if (metadata.value == null && !isLoading.value) {
@@ -155,6 +157,100 @@ fun DetailScreen(
                     }
                 }
 
+                // Group / Stack section
+                if (groupMembers.value.size > 1) {
+                    Spacer(modifier = Modifier.height(VideoRoomSpacing.Large))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Stack (${groupMembers.value.size})",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        TextButton(onClick = { viewModel.ungroupCurrent() }) {
+                            Text("Ungroup this", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                    Text(
+                        text = "Double-click opens the preferred variant. Click ⭐ to change preferred.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                                shape = MaterialTheme.shapes.small
+                            )
+                    ) {
+                        groupMembers.value.forEachIndexed { idx, member ->
+                            if (idx > 0) {
+                                HorizontalDivider(
+                                    color = MaterialTheme.colorScheme.outlineVariant
+                                )
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(VideoRoomSpacing.Small),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = member.filename,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = "${if (member.height > 0) "${member.height}p" else "?"} • ${member.codecVideo.ifEmpty { "?" }} • ${formatBytes(member.sizeBytes)}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                val isPreferred = member.id == groupPreferredId.value
+                                IconButton(
+                                    onClick = { viewModel.setGroupPreferred(member.id) },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isPreferred) Icons.Default.Star else Icons.Default.StarBorder,
+                                        contentDescription = if (isPreferred) "Preferred" else "Make preferred",
+                                        modifier = Modifier.size(18.dp),
+                                        tint = if (isPreferred) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.outline
+                                        }
+                                    )
+                                }
+                                IconButton(
+                                    onClick = {
+                                        try {
+                                            val file = java.io.File(member.path)
+                                            if (file.exists()) java.awt.Desktop.getDesktop().open(file)
+                                        } catch (_: Exception) {}
+                                    },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PlayArrow,
+                                        contentDescription = "Open",
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(VideoRoomSpacing.Large))
 
                 // Notes section
@@ -210,6 +306,15 @@ fun DetailScreen(
                 CircularProgressIndicator()
             }
         }
+    }
+}
+
+// Tiny helper for displaying file sizes in the stack row
+fun formatBytes(bytes: Long): String {
+    return when {
+        bytes >= 1024L * 1024L * 1024L -> "%.1f GB".format(bytes / (1024.0 * 1024.0 * 1024.0))
+        bytes >= 1024L * 1024L -> "%.0f MB".format(bytes / (1024.0 * 1024.0))
+        else -> "%.0f KB".format(bytes / 1024.0)
     }
 }
 

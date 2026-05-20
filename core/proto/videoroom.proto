@@ -35,6 +35,13 @@ service VideoRoom {
   rpc UpdateVideoNotes(UpdateNotesRequest) returns (Response);
   rpc DeleteVideo(DeleteVideoRequest) returns (Response);
 
+  // Groups (Lightroom-style "stacks")
+  rpc ListGroupMembers(ListGroupMembersRequest) returns (ListGroupMembersResponse);
+  rpc CreateGroup(CreateGroupRequest) returns (GroupResponse);
+  rpc UngroupVideo(UngroupVideoRequest) returns (Response);
+  rpc SetGroupPreferred(SetGroupPreferredRequest) returns (Response);
+  rpc AutoGroupVideos(AutoGroupRequest) returns (AutoGroupResponse);
+
   // Proxies
   rpc GenerateProxy(GenerateProxyRequest) returns (stream ProxyGenerationProgress);
   rpc ListProxies(ListProxiesRequest) returns (ListProxiesResponse);
@@ -54,6 +61,9 @@ message ListVideosRequest {
   bool sort_ascending = 4;
   repeated string filter_tags = 5;
   string collection_id = 6;
+  // Filter to videos whose path is inside this directory (recursive).
+  // Empty means "all locations".
+  string location_path = 7;
 }
 
 message VideoSummary {
@@ -71,6 +81,11 @@ message VideoSummary {
   int64 creation_date = 12;
   repeated string tags = 13;
   bool has_thumbnail = 14;
+  // Group info
+  string group_id = 15;           // Empty if not in a group
+  int32 group_size = 16;          // Number of videos in the group (1 if not grouped)
+  string group_preferred_id = 17; // Which video to open by default (e.g. on double-click)
+  string group_preferred_path = 18; // Direct path to preferred video for convenience
 }
 
 message ListVideosResponse {
@@ -182,6 +197,7 @@ message ListLocationsResponse {
 message ScanLibraryRequest {
   string location_path = 1;  // Optional: scan specific location
   bool force_full_scan = 2;
+  bool auto_group = 3;       // If true, auto-group similar variants after scanning
 }
 
 message ScanProgress {
@@ -344,6 +360,54 @@ message UpdateConfigRequest {
   int32 proxy_threshold_scale = 1;
   int32 max_concurrent_jobs = 2;
   bool enable_auto_tagging = 3;
+}
+
+// Groups
+
+message ListGroupMembersRequest {
+  string group_id = 1;
+}
+
+message ListGroupMembersResponse {
+  repeated VideoSummary members = 1;
+  string preferred_video_id = 2;
+}
+
+message CreateGroupRequest {
+  repeated string video_ids = 1;
+  string name = 2;
+  string preferred_video_id = 3;  // Optional - defaults to first
+}
+
+message GroupResponse {
+  string id = 1;
+  string name = 2;
+  int32 size = 3;
+  string preferred_video_id = 4;
+}
+
+message UngroupVideoRequest {
+  string video_id = 1;
+}
+
+message SetGroupPreferredRequest {
+  string group_id = 1;
+  string video_id = 2;
+}
+
+message AutoGroupRequest {
+  // If true, only group videos that share the same parent directory.
+  bool same_directory_only = 1;
+  // If true, require duration to match within 5%.
+  bool match_duration = 2;
+  // If true, require fps to be identical (rounded).
+  bool match_fps = 3;
+}
+
+message AutoGroupResponse {
+  int32 groups_created = 1;
+  int32 videos_grouped = 2;
+  string message = 3;
 }
 
 // Generic responses

@@ -108,6 +108,17 @@ impl MetadataExtractor {
         // Color space
         let color_space = video_stream.color_space.clone();
 
+        // Frame count from video stream (fall back to duration*fps if missing)
+        let frame_count: i64 = video_stream
+            .nb_frames
+            .unwrap_or_else(|| {
+                if fps > 0.0 {
+                    ((duration_ms as f64 / 1000.0) * fps).round() as i64
+                } else {
+                    0
+                }
+            });
+
         // Metadata JSON for future expansion
         let metadata_json = serde_json::to_string(probe_output)
             .unwrap_or_else(|_| "{}".to_string());
@@ -116,12 +127,13 @@ impl MetadataExtractor {
 
         conn.execute(
             "INSERT INTO metadata
-             (video_id, duration_ms, codec_video, codec_audio, width, height, fps, bitrate,
+             (video_id, duration_ms, frame_count, codec_video, codec_audio, width, height, fps, bitrate,
               color_space, hdr, audio_channels, audio_sample_rate, creation_date, camera_model,
               lens_model, metadata_json)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(video_id) DO UPDATE SET
              duration_ms=excluded.duration_ms,
+             frame_count=excluded.frame_count,
              codec_video=excluded.codec_video,
              codec_audio=excluded.codec_audio,
              width=excluded.width,
@@ -138,6 +150,7 @@ impl MetadataExtractor {
             rusqlite::params![
                 video_id,
                 duration_ms,
+                frame_count,
                 codec_video,
                 codec_audio,
                 width,
@@ -359,6 +372,8 @@ pub struct FFProbeStream {
     pub channels: Option<i32>,
     pub sample_rate: Option<String>,
     pub tags: Option<FFProbeTagMap>,
+    #[serde(default, deserialize_with = "deserialize_i64_from_str")]
+    pub nb_frames: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

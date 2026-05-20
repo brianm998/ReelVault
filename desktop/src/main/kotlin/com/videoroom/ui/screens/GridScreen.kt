@@ -27,11 +27,30 @@ fun GridScreen(
 ) {
     val videos = viewModel.videos.collectAsState()
     val selectedVideoId = viewModel.selectedVideoId.collectAsState()
+    val selectedVideoIds = viewModel.selectedVideoIds.collectAsState()
+    val anchorVideoId = viewModel.anchorVideoId.collectAsState()
     val isLoading = viewModel.isLoading.collectAsState()
     val hasMore = viewModel.hasMore.collectAsState()
     val totalCount = viewModel.totalCount.collectAsState()
     val error = viewModel.error.collectAsState()
     val thumbnails = viewModel.thumbnails.collectAsState()
+    val expandedGroupIds = viewModel.expandedGroupIds.collectAsState()
+    val expandedMembers = viewModel.expandedGroupMembers.collectAsState()
+    val shiftPressed = com.videoroom.LocalShiftPressed.current
+
+    // Build the rendered list by splicing expanded stack members in after each
+    // expanded representative. Recomputes only when an input changes.
+    val rendered: List<GridItem> = remember(
+        videos.value,
+        expandedGroupIds.value,
+        expandedMembers.value
+    ) {
+        buildRenderedList(
+            videos.value,
+            expandedGroupIds.value,
+            expandedMembers.value
+        )
+    }
 
     Column(modifier = modifier.fillMaxSize()) {
         // Status bar
@@ -104,11 +123,20 @@ fun GridScreen(
                     verticalArrangement = Arrangement.spacedBy(VideoRoomSpacing.Small)
                 ) {
                     items(
-                        count = videos.value.size,
-                        key = { index -> videos.value[index].id }
+                        count = rendered.size,
+                        // Key uses the video id + a child-row indicator so expanded
+                        // children get distinct keys from their representative.
+                        key = { index ->
+                            val item = rendered[index]
+                            if (item.isStackChild) "child:${item.video.id}" else item.video.id
+                        }
                     ) { index ->
-                        val video = videos.value[index]
-                        val isSelected = selectedVideoId.value == video.id
+                        val item = rendered[index]
+                        val video = item.video
+                        val isPrimary = selectedVideoId.value == video.id
+                        val isInMultiSelect = video.id in selectedVideoIds.value
+                        val isAnchor = anchorVideoId.value == video.id &&
+                                       selectedVideoIds.value.size > 1
 
                         // Trigger thumbnail load when card appears
                         LaunchedEffect(video.id) {
@@ -119,15 +147,45 @@ fun GridScreen(
 
                         VideoCard(
                             video = video,
-                            isSelected = isSelected,
+                            isSelected = isPrimary,
+                            isInMultiSelection = isInMultiSelect,
+                            isAnchor = isAnchor,
+                            isStackExpanded = item.isExpandedRepresentative,
+                            isStackChild = item.isStackChild,
+                            stackMemberPosition = item.memberPosition,
+                            stackMemberCount = item.memberCount,
                             thumbnailBytes = thumbnails.value[video.id],
-                            onClick = { onVideoSelect(video) },
-                            onDoubleClick = { viewModel.openVideoInExternal(video.path) },
+                            onClick = { shiftFromEvent, toggleFromEvent ->
+                                // Modifier-key state can come from either the pointer event
+                                // (preferred) or the Window-level fallback.
+                                val shift = shiftFromEvent || shiftPressed
+                                val toggle = toggleFromEvent
+                                when {
+                                    shift -> {
+                                        // Range-select from anchor to this video (inclusive)
+                                        // using the visual order of the rendered grid.
+                                        val anchorId = anchorVideoId.value ?: video.id
+                                        val rangeIds = computeVisualRange(rendered, anchorId, video.id)
+                                        viewModel.selectRange(video, rangeIds)
+                                    }
+                                    toggle -> viewModel.toggleVideoSelection(video)
+                                    else -> viewModel.selectVideo(video)
+                                }
+                                onVideoSelect(video)
+                            },
+                            onDoubleClick = { viewModel.openVideoInExternal(video.openPath) },
+                            onStackBadgeClick = {
+                                viewModel.toggleStackExpansion(video.groupId)
+                            },
                             modifier = Modifier.fillMaxWidth()
                         )
 
-                        // Load more when near the end
-                        if (index == videos.value.size - 5 && hasMore.value) {
+                        // Load more when near the end (only triggered by representatives,
+                        // not stack children — children are local and don't paginate).
+                        if (!item.isStackChild &&
+                            index == rendered.size - 5 &&
+                            hasMore.value
+                        ) {
                             LaunchedEffect(Unit) {
                                 viewModel.loadMore()
                             }
@@ -163,4 +221,105 @@ fun GridScreen(
             }
         }
     }
+}
+
+/**
+ * Compute the list of video IDs visually between [anchorId] and [targetId]
+ * (both inclusive) in the rendered grid order. If either ID isn't present in
+ * the rendered list (e.g. anchor was in a now-collapsed stack), falls back to
+ * just the target.
+ */
+internal fun computeVisualRange(
+    rendered: List<GridItem>,
+    anchorId: String,
+    targetId: String
+): List<String> {
+    val ids = rendered.map { it.video.id }
+    val anchorIdx = ids.indexOf(anchorId)
+    val targetIdx = ids.indexOf(targetId)
+    if (anchorIdx < 0 || targetIdx < 0) return listOf(targetId)
+    val (start, end) = if (anchorIdx <= targetIdx) anchorIdx to targetIdx else targetIdx to anchorIdx
+    return ids.subList(start, end + 1).toList()
+}
+
+/**
+ * One entry in the rendered grid. May be a regular ungrouped video, a stack
+ * representative (collapsed or expanded), or an expanded stack child.
+ */
+data class GridItem(
+    val video: VideoSummary,
+    /** Representative of a stack that is currently expanded inline. */
+    val isExpandedRepresentative: Boolean = false,
+    /** A non-representative stack member shown inline because the stack is expanded. */
+    val isStackChild: Boolean = false,
+    /** 1-based position within the stack (only meaningful inside an expanded stack). */
+    val memberPosition: Int = 0,
+    val memberCount: Int = 0
+)
+
+/**
+ * Splice the members of each expanded group into the grid right after its
+ * representative. Preserves order of [videos] (representatives), and orders
+ * stack members so the preferred one comes first.
+ */
+internal fun buildRenderedList(
+    videos: List<VideoSummary>,
+    expandedGroupIds: Set<String>,
+    membersByGroup: Map<String, List<VideoSummary>>
+): List<GridItem> {
+    val out = mutableListOf<GridItem>()
+    for (video in videos) {
+        val isExpanded = video.isInGroup && video.groupId in expandedGroupIds
+        if (!isExpanded) {
+            out += GridItem(video = video)
+            continue
+        }
+
+        // Stack is expanded — show the representative first, then non-representative
+        // members inline.
+        val allMembers = membersByGroup[video.groupId] ?: emptyList()
+        // Reorder so the preferred (= representative shown) comes first; preserve original
+        // order for the rest.
+        val reordered = if (allMembers.isEmpty()) {
+            emptyList()
+        } else {
+            val preferred = allMembers.firstOrNull { it.id == video.id }
+            val others = allMembers.filter { it.id != video.id }
+            listOfNotNull(preferred) + others
+        }
+        val total = reordered.size.coerceAtLeast(1)
+
+        if (reordered.isEmpty()) {
+            // Members not yet loaded — show just the representative with the expanded badge.
+            out += GridItem(
+                video = video,
+                isExpandedRepresentative = true,
+                memberPosition = 1,
+                memberCount = total
+            )
+        } else {
+            reordered.forEachIndexed { idx, member ->
+                val position = idx + 1
+                if (member.id == video.id) {
+                    // Representative — keep its full VideoSummary (with group_size etc.)
+                    out += GridItem(
+                        video = video,
+                        isExpandedRepresentative = true,
+                        memberPosition = position,
+                        memberCount = total
+                    )
+                } else {
+                    // Stack child. The members fetched via ListGroupMembers carry their
+                    // own group_id/group_size already.
+                    out += GridItem(
+                        video = member,
+                        isStackChild = true,
+                        memberPosition = position,
+                        memberCount = total
+                    )
+                }
+            }
+        }
+    }
+    return out
 }

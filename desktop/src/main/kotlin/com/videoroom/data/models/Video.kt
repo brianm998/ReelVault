@@ -18,8 +18,17 @@ data class VideoSummary(
     val indexedAt: Long,
     val creationDate: Long,
     val tags: List<String> = emptyList(),
-    val hasThumbnail: Boolean = false
+    val hasThumbnail: Boolean = false,
+    // Group (stack) info
+    val groupId: String = "",
+    val groupSize: Int = 1,
+    val groupPreferredId: String = "",
+    val groupPreferredPath: String = ""
 ) {
+    val isInGroup: Boolean get() = groupId.isNotEmpty() && groupSize > 1
+    /// Path that should be opened when user double-clicks; falls back to own path
+    val openPath: String get() = if (groupPreferredPath.isNotEmpty()) groupPreferredPath else path
+
     val resolution: String get() = "${width}x${height}"
     val durationFormatted: String get() {
         val seconds = durationMs / 1000

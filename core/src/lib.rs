@@ -6,5 +6,6 @@ pub mod indexing;
 pub mod config;
 pub mod error;
 pub mod service;
+pub mod grouping;
 
 pub use error::Result;

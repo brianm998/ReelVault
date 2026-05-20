@@ -23,6 +23,15 @@ class GridViewModel(
     private val _selectedVideoId = MutableStateFlow<String?>(null)
     val selectedVideoId: StateFlow<String?> = _selectedVideoId.asStateFlow()
 
+    // Multi-selection: ordered set of selected video IDs.
+    private val _selectedVideoIds = MutableStateFlow<List<String>>(emptyList())
+    val selectedVideoIds: StateFlow<List<String>> = _selectedVideoIds.asStateFlow()
+
+    // The "anchor" video — pivot point used for shift-click range selection.
+    // Set by a plain click or toggle-click; not changed by shift-click itself.
+    private val _anchorVideoId = MutableStateFlow<String?>(null)
+    val anchorVideoId: StateFlow<String?> = _anchorVideoId.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -43,6 +52,15 @@ class GridViewModel(
     private var filterTags = emptyList<String>()
     private var collectionId: String? = null
     private var searchQuery = ""
+    /** Currently selected library location to filter by. Empty string = all. */
+    private var locationPathFilter: String = ""
+
+    // Library locations panel state
+    private val _libraryLocations = MutableStateFlow<List<com.videoroom.data.models.LibraryLocation>>(emptyList())
+    val libraryLocations: StateFlow<List<com.videoroom.data.models.LibraryLocation>> = _libraryLocations.asStateFlow()
+
+    private val _selectedLocationPath = MutableStateFlow("")  // "" = all locations
+    val selectedLocationPath: StateFlow<String> = _selectedLocationPath.asStateFlow()
 
     // Sort state exposed for the UI
     private val _currentSortField = MutableStateFlow(sortBy)
@@ -64,6 +82,8 @@ class GridViewModel(
             _isLoading.value = true
             _error.value = null
             currentPage = 0
+            // Reset stack expansion — representatives may have shifted/changed.
+            collapseAllStacks()
 
             try {
                 val (videosList, totalCount) = if (searchQuery.isNotEmpty()) {
@@ -80,7 +100,8 @@ class GridViewModel(
                         sortBy = sortBy,
                         sortAscending = sortAscending,
                         filterTags = filterTags,
-                        collectionId = collectionId
+                        collectionId = collectionId,
+                        locationPath = locationPathFilter
                     )
                 }
 
@@ -89,7 +110,8 @@ class GridViewModel(
                 _hasMore.value = videosList.size < totalCount
                 _isLoading.value = false
 
-                logger.info("Loaded ${videosList.size} videos, total: $totalCount")
+                logger.info("Loaded ${videosList.size} videos, total: $totalCount" +
+                    if (locationPathFilter.isNotEmpty()) " (filtered to $locationPathFilter)" else "")
             } catch (e: Exception) {
                 _error.value = "Failed to load videos: ${e.message}"
                 _isLoading.value = false
@@ -121,7 +143,8 @@ class GridViewModel(
                         sortBy = sortBy,
                         sortAscending = sortAscending,
                         filterTags = filterTags,
-                        collectionId = collectionId
+                        collectionId = collectionId,
+                        locationPath = locationPathFilter
                     )
                 }
 
@@ -140,15 +163,68 @@ class GridViewModel(
         }
     }
 
+    /**
+     * Plain click: replace the selection with this single video. Also resets
+     * the range-selection anchor to this video.
+     */
     fun selectVideo(video: VideoSummary) {
+        _selectedVideoIds.value = listOf(video.id)
+        _anchorVideoId.value = video.id
         _selectedVideoId.value = video.id
         _selectedVideo.value = video
-        logger.info("Selected video: ${video.filename}")
+        logger.info("Replace-select: ${video.filename}")
+    }
+
+    /**
+     * Cmd/Ctrl click: toggle this video's membership in the selection. Sets
+     * a new anchor only when adding (not when removing).
+     */
+    fun toggleVideoSelection(video: VideoSummary) {
+        val current = _selectedVideoIds.value
+        if (video.id in current) {
+            _selectedVideoIds.value = current.filter { it != video.id }
+            // If we just removed the anchor, pick a new one (last remaining) or null.
+            if (_anchorVideoId.value == video.id) {
+                _anchorVideoId.value = _selectedVideoIds.value.lastOrNull()
+            }
+            logger.info("Toggle-off: ${video.filename}")
+        } else {
+            _selectedVideoIds.value = current + video.id
+            _anchorVideoId.value = video.id
+            logger.info("Toggle-on: ${video.filename}")
+        }
+        _selectedVideoId.value = video.id
+        _selectedVideo.value = video
+    }
+
+    /**
+     * Shift click: replace the selection with the range of videos from the
+     * existing anchor to [target] (inclusive). The caller computes [rangeIds]
+     * from whatever visual order the grid is using (which includes expanded
+     * stack children inline). The anchor is left unchanged so subsequent
+     * shift-clicks pivot from the same starting point.
+     */
+    fun selectRange(target: VideoSummary, rangeIds: List<String>) {
+        if (rangeIds.isEmpty()) {
+            selectVideo(target)
+            return
+        }
+        _selectedVideoIds.value = rangeIds
+        _selectedVideoId.value = target.id
+        _selectedVideo.value = target
+        // anchor intentionally not updated
+        logger.info("Range-select: ${rangeIds.size} videos, target=${target.filename}")
+    }
+
+    fun clearSelection() {
+        _selectedVideoId.value = null
+        _selectedVideo.value = null
+        _selectedVideoIds.value = emptyList()
+        _anchorVideoId.value = null
     }
 
     fun deselectVideo() {
-        _selectedVideoId.value = null
-        _selectedVideo.value = null
+        clearSelection()
         logger.info("Deselected video")
     }
 
@@ -167,6 +243,30 @@ class GridViewModel(
         sortAscending = ascending
         _currentSortField.value = field
         _currentSortAscending.value = ascending
+        loadVideos()
+    }
+
+    /** Load the list of library locations from the backend (with per-directory counts). */
+    fun loadLibraryLocations() {
+        viewModelScope.launch {
+            try {
+                val locations = repository.listLibraryLocations()
+                _libraryLocations.value = locations
+                logger.info("Loaded ${locations.size} library locations")
+            } catch (e: Exception) {
+                logger.warn("Failed to load library locations", e)
+            }
+        }
+    }
+
+    /**
+     * Narrow the grid to videos within [path] (recursive). Pass an empty string
+     * to clear the filter and show all videos.
+     */
+    fun setLocationFilter(path: String) {
+        if (locationPathFilter == path) return
+        locationPathFilter = path
+        _selectedLocationPath.value = path
         loadVideos()
     }
 
@@ -190,6 +290,51 @@ class GridViewModel(
     // Thumbnail cache: video_id -> bytes
     private val _thumbnails = MutableStateFlow<Map<String, ByteArray>>(emptyMap())
     val thumbnails: StateFlow<Map<String, ByteArray>> = _thumbnails.asStateFlow()
+
+    // Set of group IDs that are currently "open" (Lightroom-style stack expansion)
+    private val _expandedGroupIds = MutableStateFlow<Set<String>>(emptySet())
+    val expandedGroupIds: StateFlow<Set<String>> = _expandedGroupIds.asStateFlow()
+
+    // Cached members of currently-expanded groups: groupId -> ordered members
+    private val _expandedGroupMembers = MutableStateFlow<Map<String, List<VideoSummary>>>(emptyMap())
+    val expandedGroupMembers: StateFlow<Map<String, List<VideoSummary>>> = _expandedGroupMembers.asStateFlow()
+
+    /**
+     * Toggle whether the given group is expanded in the grid. On expand, fetches
+     * the group's members from the backend (cached for subsequent toggles).
+     */
+    fun toggleStackExpansion(groupId: String) {
+        if (groupId.isEmpty()) return
+        val currentlyExpanded = _expandedGroupIds.value
+        if (groupId in currentlyExpanded) {
+            // Collapse
+            _expandedGroupIds.value = currentlyExpanded - groupId
+            return
+        }
+
+        // Expand: fetch members if we don't have them cached yet
+        _expandedGroupIds.value = currentlyExpanded + groupId
+        if (_expandedGroupMembers.value.containsKey(groupId)) {
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val (members, _) = repository.listGroupMembers(groupId)
+                _expandedGroupMembers.value = _expandedGroupMembers.value + (groupId to members)
+                // Pre-load thumbnails for the new members
+                members.forEach { m ->
+                    if (m.hasThumbnail) loadThumbnail(m.id)
+                }
+            } catch (e: Exception) {
+                logger.warn("Failed to load members for group $groupId", e)
+            }
+        }
+    }
+
+    /** Collapse all expanded stacks (useful when sort/filter changes). */
+    private fun collapseAllStacks() {
+        _expandedGroupIds.value = emptySet()
+    }
 
     fun loadThumbnail(videoId: String) {
         if (_thumbnails.value.containsKey(videoId)) return
@@ -219,6 +364,80 @@ class GridViewModel(
         }
     }
 
+    /**
+     * Create a group from the currently multi-selected videos. The anchor
+     * (first clicked, or last toggle-clicked-on) is used as the "preferred"
+     * (default-open) one — falls back to the first selected if anchor is
+     * somehow missing.
+     */
+    fun groupSelectedVideos() {
+        val ids = _selectedVideoIds.value
+        if (ids.size < 2) {
+            _error.value = "Select at least 2 videos (shift+click or Cmd/Ctrl+click) to create a group"
+            return
+        }
+
+        val anchor = _anchorVideoId.value
+        val preferred = if (anchor != null && anchor in ids) anchor else ids.first()
+        viewModelScope.launch {
+            _isLoading.value = true
+            _scanStatus.value = "Creating group..."
+            try {
+                val group = repository.createGroup(ids, name = "", preferredVideoId = preferred)
+                if (group != null) {
+                    _scanResult.value = ScanResult(
+                        success = true,
+                        message = "Grouped ${ids.size} videos into a new stack",
+                        videosFound = ids.size,
+                        videosIndexed = ids.size
+                    )
+                    clearSelection()
+                    loadVideos()
+                } else {
+                    _error.value = "Failed to create group"
+                }
+            } catch (e: Exception) {
+                _error.value = "Group failed: ${e.message}"
+                logger.error("Failed to group selected", e)
+            } finally {
+                _scanStatus.value = null
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /** Keep auto-group available for the initial import path (not exposed as a button). */
+    fun autoGroupVideos(
+        sameDirectoryOnly: Boolean = true,
+        matchDuration: Boolean = true,
+        matchFps: Boolean = true
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _scanStatus.value = "Auto-grouping videos..."
+            try {
+                val (groups, videos, _) = repository.autoGroup(sameDirectoryOnly, matchDuration, matchFps)
+                _scanResult.value = ScanResult(
+                    success = true,
+                    message = if (groups == 0) {
+                        "No new groups created (no matching variants found)"
+                    } else {
+                        "Auto-grouped $videos videos into $groups stacks"
+                    },
+                    videosFound = videos,
+                    videosIndexed = videos
+                )
+                loadVideos()
+            } catch (e: Exception) {
+                _error.value = "Auto-group failed: ${e.message}"
+                logger.error("Failed to auto-group", e)
+            } finally {
+                _scanStatus.value = null
+                _isLoading.value = false
+            }
+        }
+    }
+
     private val _scanResult = MutableStateFlow<ScanResult?>(null)
     val scanResult: StateFlow<ScanResult?> = _scanResult.asStateFlow()
 
@@ -226,7 +445,11 @@ class GridViewModel(
         _scanResult.value = null
     }
 
-    fun addLibraryAndScan(path: String, recursive: Boolean = true) {
+    fun addLibraryAndScan(
+        path: String,
+        recursive: Boolean = true,
+        autoGroup: Boolean = true
+    ) {
         viewModelScope.launch {
             _isLoading.value = true
             _scanStatus.value = "Adding library location..."
@@ -253,7 +476,7 @@ class GridViewModel(
                 var lastVideosIndexed = 0
                 var errorMessage: String? = null
 
-                repository.scanLibrary(path).collect { progress ->
+                repository.scanLibrary(path, autoGroup).collect { progress ->
                     when (progress.status) {
                         "error" -> {
                             errorMessage = progress.currentFile
@@ -296,8 +519,9 @@ class GridViewModel(
 
                 _scanStatus.value = null
                 _isLoading.value = false
-                // Refresh video list after scan
+                // Refresh video list and library panel counts after scan
                 loadVideos()
+                loadLibraryLocations()
             } catch (e: Exception) {
                 _scanResult.value = ScanResult(
                     success = false,
