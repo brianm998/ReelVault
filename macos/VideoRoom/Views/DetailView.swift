@@ -143,32 +143,19 @@ struct MetadataItemView: View {
     }
 }
 
-// Simple flow layout - tags wrap to next line
 struct FlowLayout: View {
     let items: [String]
     var spacing: CGFloat = 8
 
     var body: some View {
-        VStack(alignment: .leading, spacing: spacing) {
-            var currentRow: [String] = []
-
+        HStack(spacing: spacing) {
             ForEach(items, id: \.self) { item in
-                if currentRow.isEmpty {
-                    currentRow.append(item)
-                } else {
-                    currentRow.append(item)
-                }
-            }
-
-            HStack(spacing: spacing) {
-                ForEach(items, id: \.self) { item in
-                    Text(item)
-                        .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.accentColor.opacity(0.2))
-                        .cornerRadius(4)
-                }
+                Text(item)
+                    .font(.caption)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.accentColor.opacity(0.2))
+                    .cornerRadius(4)
             }
         }
     }
