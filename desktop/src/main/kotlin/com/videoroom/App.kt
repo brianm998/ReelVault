@@ -42,6 +42,8 @@ fun main() = application {
     // VideoRoomApp registers its "group selected" action here, so the Window-
     // level key listener can invoke it on Cmd/Ctrl+G regardless of focus.
     val groupSelectedAction = remember { mutableStateOf<() -> Unit>({}) }
+    // Same pattern for the Tab key panel-toggle.
+    val togglePanelsAction = remember { mutableStateOf<() -> Unit>({}) }
 
     Window(
         onCloseRequest = ::exitApplication,
@@ -63,12 +65,21 @@ fun main() = application {
                 groupSelectedAction.value()
                 return@Window true // consume so default shortcuts don't also fire
             }
+            // Tab → toggle both side panels (Lightroom-style).
+            if (event.type == KeyEventType.KeyDown &&
+                event.key == Key.Tab &&
+                !event.isMetaPressed && !event.isCtrlPressed && !event.isAltPressed
+            ) {
+                togglePanelsAction.value()
+                return@Window true // consume so focus traversal doesn't also fire
+            }
             false
         }
     ) {
         CompositionLocalProvider(LocalShiftPressed provides shiftPressed) {
             VideoRoomApp(
-                onRegisterGroupAction = { groupSelectedAction.value = it }
+                onRegisterGroupAction = { groupSelectedAction.value = it },
+                onRegisterTogglePanelsAction = { togglePanelsAction.value = it }
             )
         }
     }
@@ -77,35 +88,59 @@ fun main() = application {
 @Composable
 fun VideoRoomApp(
     /** Called once to register the "group selected" action for the Cmd/Ctrl+G shortcut. */
-    onRegisterGroupAction: (() -> Unit) -> Unit = {}
+    onRegisterGroupAction: (() -> Unit) -> Unit = {},
+    /** Called once to register the "toggle panels" action for the Tab shortcut. */
+    onRegisterTogglePanelsAction: (() -> Unit) -> Unit = {}
 ) {
     var isDarkTheme by remember { mutableStateOf(true) }
     val repository = remember { VideoRepository.getInstance() }
     val gridViewModel = remember { GridViewModel(repository) }
     val detailViewModel = remember { DetailViewModel(repository) }
 
-    // Register the keyboard shortcut handler with the Window-level key listener.
+    // Side panel expansion state. Tab toggles both at once (Lightroom-style),
+    // and each panel also has its own chevron to collapse/expand individually.
+    var leftPanelExpanded by remember { mutableStateOf(true) }
+    var rightPanelExpanded by remember { mutableStateOf(true) }
+
+    // Thumbnail size controls the minimum column width for the adaptive grid.
+    // Smaller value → more columns when there's space; larger → fewer, bigger cards.
+    var thumbnailWidth by remember { mutableStateOf(220.dp) }
+
+    // Register the keyboard shortcut handlers with the Window-level key listener.
     LaunchedEffect(gridViewModel) {
         onRegisterGroupAction { gridViewModel.groupSelectedVideos() }
     }
+    LaunchedEffect(Unit) {
+        onRegisterTogglePanelsAction {
+            // If either is open, close both. If both are closed, open both.
+            val anyOpen = leftPanelExpanded || rightPanelExpanded
+            leftPanelExpanded = !anyOpen
+            rightPanelExpanded = !anyOpen
+        }
+    }
 
     val scope = rememberCoroutineScope()
-    var isConnected by remember { mutableStateOf(false) }
-    var showErrorDialog by remember { mutableStateOf(false) }
+    var connectionState by remember { mutableStateOf(ConnectionState.Connecting) }
     var errorMessage by remember { mutableStateOf("") }
 
-    LaunchedEffect(Unit) {
-        // Try to connect to backend
-        val connected = repository.connect()
-        isConnected = connected
-        if (!connected) {
-            errorMessage = "Failed to connect to VideoRoom backend on localhost:50051"
-            showErrorDialog = true
-        } else {
-            // Load initial videos and library locations
-            gridViewModel.loadVideos()
-            gridViewModel.loadLibraryLocations()
+    // Attempt to connect — kept in a separate function so it can be retried.
+    fun attemptConnect() {
+        scope.launch {
+            connectionState = ConnectionState.Connecting
+            val connected = repository.connect()
+            if (connected) {
+                connectionState = ConnectionState.Connected
+                gridViewModel.loadVideos()
+                gridViewModel.loadLibraryLocations()
+            } else {
+                errorMessage = "Failed to connect to VideoRoom backend on localhost:50051"
+                connectionState = ConnectionState.Failed
+            }
         }
+    }
+
+    LaunchedEffect(Unit) {
+        attemptConnect()
     }
 
     DisposableEffect(Unit) {
@@ -122,7 +157,7 @@ fun VideoRoomApp(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            if (isConnected) {
+            if (connectionState == ConnectionState.Connected) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     // Top bar
                     val currentSort = gridViewModel.currentSortField.collectAsState()
@@ -245,22 +280,30 @@ fun VideoRoomApp(
                             .fillMaxSize()
                             .weight(1f)
                     ) {
-                        // Library panel (far left, ~18%)
                         val libraryLocations = gridViewModel.libraryLocations.collectAsState()
                         val selectedLocation = gridViewModel.selectedLocationPath.collectAsState()
-                        com.videoroom.ui.components.LibraryPanel(
-                            locations = libraryLocations.value,
-                            selectedPath = selectedLocation.value,
-                            // "All Videos" count: sum of all per-location counts
-                            // (close enough — a video could in theory live outside
-                            // any registered location but that's not the common case).
-                            totalVideosAcrossLibrary = libraryLocations.value
-                                .sumOf { it.videoCount },
-                            onSelect = { path -> gridViewModel.setLocationFilter(path) },
-                            modifier = Modifier
-                                .weight(0.18f)
-                                .fillMaxHeight()
-                        )
+
+                        // Library panel — expanded view or collapsed strip
+                        if (leftPanelExpanded) {
+                            com.videoroom.ui.components.LibraryPanel(
+                                locations = libraryLocations.value,
+                                selectedPath = selectedLocation.value,
+                                totalVideosAcrossLibrary = libraryLocations.value
+                                    .sumOf { it.videoCount },
+                                onSelect = { path -> gridViewModel.setLocationFilter(path) },
+                                onCollapse = { leftPanelExpanded = false },
+                                modifier = Modifier
+                                    .weight(0.18f)
+                                    .fillMaxHeight()
+                            )
+                        } else {
+                            com.videoroom.ui.components.CollapsedPanelStrip(
+                                expandIconLeft = false,  // arrow points right (toward expand)
+                                tooltip = "Show library panel (Tab)",
+                                onClick = { leftPanelExpanded = true },
+                                modifier = Modifier.fillMaxHeight()
+                            )
+                        }
 
                         Divider(
                             modifier = Modifier
@@ -268,55 +311,89 @@ fun VideoRoomApp(
                                 .width(1.dp)
                         )
 
-                        // Grid view (middle, ~52%)
+                        // Grid view (middle) — fills remaining space
                         GridScreen(
                             viewModel = gridViewModel,
                             onVideoSelect = { video ->
-                                // GridScreen already updated the grid's selection
-                                // (potentially additive on shift+click). Here we
-                                // only sync the detail panel — don't reselect or
-                                // we'd clobber the multi-select state.
                                 detailViewModel.setCurrentVideo(video)
                                 detailViewModel.loadMetadata(video.id)
                             },
+                            thumbnailMinWidth = thumbnailWidth,
                             modifier = Modifier
-                                .weight(0.52f)
+                                .weight(1f)
                                 .fillMaxHeight()
                         )
 
-                        // Divider
                         Divider(
                             modifier = Modifier
                                 .fillMaxHeight()
                                 .width(1.dp)
                         )
 
-                        // Detail panel (right side, 30%)
-                        DetailScreen(
-                            viewModel = detailViewModel,
-                            modifier = Modifier
-                                .weight(0.3f)
-                                .fillMaxHeight()
-                        )
+                        // Detail panel — expanded view or collapsed strip
+                        if (rightPanelExpanded) {
+                            DetailScreen(
+                                viewModel = detailViewModel,
+                                onCollapse = { rightPanelExpanded = false },
+                                thumbnailWidth = thumbnailWidth,
+                                onThumbnailWidthChange = { thumbnailWidth = it },
+                                modifier = Modifier
+                                    .weight(0.18f)
+                                    .fillMaxHeight()
+                            )
+                        } else {
+                            com.videoroom.ui.components.CollapsedPanelStrip(
+                                expandIconLeft = true,  // arrow points left (toward expand)
+                                tooltip = "Show details panel (Tab)",
+                                onClick = { rightPanelExpanded = true },
+                                modifier = Modifier.fillMaxHeight()
+                            )
+                        }
                     }
                 }
+            } else if (connectionState == ConnectionState.Connecting) {
+                // Friendly loading screen while we attempt to reach the backend.
+                ConnectingScreen()
             } else {
-                // Connection error screen
-                ConnectionErrorScreen(errorMessage = errorMessage)
+                // Connection failed — error screen with retry.
+                ConnectionErrorScreen(
+                    errorMessage = errorMessage,
+                    onRetry = { attemptConnect() }
+                )
             }
         }
+    }
+}
 
-        // Error dialog
-        if (showErrorDialog && isConnected.not()) {
-            AlertDialog(
-                onDismissRequest = { showErrorDialog = false },
-                title = { Text("Connection Error") },
-                text = { Text(errorMessage) },
-                confirmButton = {
-                    Button(onClick = { showErrorDialog = false }) {
-                        Text("OK")
-                    }
-                }
+/** Three-state connection lifecycle for the startup flow. */
+private enum class ConnectionState { Connecting, Connected, Failed }
+
+@Composable
+fun ConnectingScreen() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(48.dp),
+                strokeWidth = 4.dp,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(VideoRoomSpacing.Large))
+            Text(
+                text = "Connecting to VideoRoom…",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
+            Text(
+                text = "Reaching out to the backend on localhost:50051",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -365,23 +442,41 @@ fun VideoRoomTopBar(
                     style = MaterialTheme.typography.headlineSmall
                 )
 
-                // Search bar
-                TextField(
+                // Search bar - use OutlinedTextField which has a more compact
+                // default height that fits inside the TopAppBar without
+                // clipping text.
+                OutlinedTextField(
                     value = searchQuery,
                     onValueChange = {
                         searchQuery = it
                         onSearch(it)
                     },
-                    placeholder = { Text("Search videos...") },
-                    modifier = Modifier
-                        .width(300.dp)
-                        .height(40.dp),
-                    singleLine = true,
-                    leadingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = "Search")
+                    placeholder = {
+                        Text(
+                            "Search videos...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     },
-                    colors = TextFieldDefaults.colors(
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                    modifier = Modifier.width(300.dp),
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodySmall.copy(
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = "Search",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    shape = MaterialTheme.shapes.small,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
                     )
                 )
 
@@ -604,7 +699,10 @@ fun AddLibraryDialog(
 }
 
 @Composable
-fun ConnectionErrorScreen(errorMessage: String) {
+fun ConnectionErrorScreen(
+    errorMessage: String,
+    onRetry: () -> Unit = {}
+) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -625,7 +723,8 @@ fun ConnectionErrorScreen(errorMessage: String) {
 
             Text(
                 text = "Connection Error",
-                style = MaterialTheme.typography.headlineMedium
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onBackground
             )
 
             Spacer(modifier = Modifier.height(VideoRoomSpacing.Medium))
@@ -640,7 +739,8 @@ fun ConnectionErrorScreen(errorMessage: String) {
 
             Text(
                 text = "Make sure the VideoRoom backend is running:",
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Text(
@@ -648,6 +748,18 @@ fun ConnectionErrorScreen(errorMessage: String) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )
+
+            Spacer(modifier = Modifier.height(VideoRoomSpacing.Large))
+
+            Button(onClick = onRetry) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
+                Text("Retry")
+            }
         }
     }
 }

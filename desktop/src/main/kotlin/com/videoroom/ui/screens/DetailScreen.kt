@@ -16,6 +16,10 @@ import com.videoroom.viewmodel.DetailViewModel
 @Composable
 fun DetailScreen(
     viewModel: DetailViewModel,
+    onCollapse: () -> Unit = {},
+    /** Current thumbnail min-width controlling adaptive grid column count. */
+    thumbnailWidth: androidx.compose.ui.unit.Dp = 220.dp,
+    onThumbnailWidthChange: (androidx.compose.ui.unit.Dp) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val metadata = viewModel.metadata
@@ -25,7 +29,78 @@ fun DetailScreen(
     val groupMembers = viewModel.groupMembers.collectAsState()
     val groupPreferredId = viewModel.groupPreferredId.collectAsState()
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize()) {
+        // Header with collapse chevron (mirrors the LibraryPanel's collapse button)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = VideoRoomSpacing.XSmall,
+                    end = VideoRoomSpacing.Medium,
+                    top = VideoRoomSpacing.Medium,
+                    bottom = VideoRoomSpacing.Small
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = onCollapse,
+                modifier = Modifier.size(24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = "Hide details panel (Tab)",
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                text = "DETAILS",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // Thumbnail-size slider — controls the adaptive grid's minimum card
+        // width. Wider min → fewer, larger cards. Narrower min → more, smaller.
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = VideoRoomSpacing.Medium,
+                    vertical = VideoRoomSpacing.XSmall
+                )
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Thumbnail size",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "${thumbnailWidth.value.toInt()}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Slider(
+                value = thumbnailWidth.value,
+                onValueChange = { onThumbnailWidthChange(it.dp) },
+                valueRange = 120f..400f,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = VideoRoomSpacing.Small),
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
+
+        Box(modifier = Modifier.fillMaxSize()) {
         if (metadata.value == null && !isLoading.value) {
             Column(
                 modifier = Modifier
@@ -306,7 +381,8 @@ fun DetailScreen(
                 CircularProgressIndicator()
             }
         }
-    }
+        }  // close inner Box (the original content container)
+    }  // close outer Column
 }
 
 // Tiny helper for displaying file sizes in the stack row

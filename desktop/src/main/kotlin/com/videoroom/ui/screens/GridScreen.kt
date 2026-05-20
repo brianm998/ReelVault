@@ -23,6 +23,8 @@ import com.videoroom.viewmodel.GridViewModel
 fun GridScreen(
     viewModel: GridViewModel,
     onVideoSelect: (VideoSummary) -> Unit,
+    /** Minimum width of each grid cell — also controls how many columns appear. */
+    thumbnailMinWidth: androidx.compose.ui.unit.Dp = 220.dp,
     modifier: Modifier = Modifier
 ) {
     val videos = viewModel.videos.collectAsState()
@@ -116,7 +118,9 @@ fun GridScreen(
                 }
             } else {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(4),
+                    // Adaptive: as many columns as fit at the given minimum
+                    // width. Cards expand from there to fill available space.
+                    columns = GridCells.Adaptive(minSize = thumbnailMinWidth),
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(VideoRoomSpacing.Small),
                     horizontalArrangement = Arrangement.spacedBy(VideoRoomSpacing.Small),

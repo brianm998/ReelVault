@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.VideoLibrary
@@ -29,6 +31,7 @@ fun LibraryPanel(
     selectedPath: String,
     totalVideosAcrossLibrary: Long,
     onSelect: (path: String) -> Unit,
+    onCollapse: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -36,17 +39,35 @@ fun LibraryPanel(
             .fillMaxHeight()
             .background(MaterialTheme.colorScheme.surface)
     ) {
-        Text(
-            text = "LIBRARY",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(
-                start = VideoRoomSpacing.Medium,
-                end = VideoRoomSpacing.Medium,
-                top = VideoRoomSpacing.Medium,
-                bottom = VideoRoomSpacing.Small
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = VideoRoomSpacing.Medium,
+                    end = VideoRoomSpacing.XSmall,
+                    top = VideoRoomSpacing.Medium,
+                    bottom = VideoRoomSpacing.Small
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "LIBRARY",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
             )
-        )
+            IconButton(
+                onClick = onCollapse,
+                modifier = Modifier.size(24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ChevronLeft,
+                    contentDescription = "Hide library panel (Tab)",
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             // "All videos" entry — clears the location filter
@@ -152,4 +173,37 @@ private fun LocationRow(
 private fun displayName(path: String): String {
     val trimmed = path.trimEnd('/')
     return trimmed.substringAfterLast('/', missingDelimiterValue = trimmed).ifEmpty { "/" }
+}
+
+/**
+ * Thin vertical strip used to represent a collapsed side panel. Clicking
+ * anywhere on it expands the panel.
+ *
+ * @param expandIconLeft If true, the chevron points left (used on the right
+ * panel's collapsed strip, where expanding pushes the panel leftward). If
+ * false, the chevron points right (left panel's collapsed strip).
+ */
+@Composable
+fun CollapsedPanelStrip(
+    expandIconLeft: Boolean,
+    tooltip: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .width(20.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+            .clickable(onClick = onClick),
+        verticalArrangement = Arrangement.Top,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(VideoRoomSpacing.Medium))
+        Icon(
+            imageVector = if (expandIconLeft) Icons.Default.ChevronLeft else Icons.Default.ChevronRight,
+            contentDescription = tooltip,
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
 }

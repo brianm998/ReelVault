@@ -117,17 +117,17 @@ fun VideoCard(
             .shiftAwareClickable(
                 onClick = onClick,
                 onDoubleClick = onDoubleClick
-            )
-            .height(220.dp),
+            ),
         color = cardBackground,
         shape = VideoRoomCornerRadius.Large
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Thumbnail or placeholder
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Thumbnail or placeholder — always 16:9 to match standard video
+            // aspect, regardless of card width.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.7f)
+                    .aspectRatio(16f / 9f)
                     .background(Color.Black),
                 contentAlignment = Alignment.Center
             ) {
@@ -259,11 +259,11 @@ fun VideoCard(
                 }
             }
 
-            // Info section
+            // Info section — fixed height so it doesn't scale with thumbnail
+            // width (keeps text readable at any card size).
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.3f)
                     .padding(VideoRoomSpacing.Small)
             ) {
                 // Filename
