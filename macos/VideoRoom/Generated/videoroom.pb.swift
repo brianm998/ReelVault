@@ -43,48 +43,120 @@ nonisolated struct Videoroom_ListVideosRequest: Sendable {
 
   var collectionID: String = String()
 
+  /// Filter to videos whose path is inside this directory (recursive).
+  /// Empty means "all locations".
+  var locationPath: String = String()
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
 }
 
-nonisolated struct Videoroom_VideoSummary: Sendable {
+nonisolated struct Videoroom_VideoSummary: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var id: String = String()
+  var id: String {
+    get {_storage._id}
+    set {_uniqueStorage()._id = newValue}
+  }
 
-  var filename: String = String()
+  var filename: String {
+    get {_storage._filename}
+    set {_uniqueStorage()._filename = newValue}
+  }
 
-  var path: String = String()
+  var path: String {
+    get {_storage._path}
+    set {_uniqueStorage()._path = newValue}
+  }
 
-  var durationMs: Int64 = 0
+  var durationMs: Int64 {
+    get {_storage._durationMs}
+    set {_uniqueStorage()._durationMs = newValue}
+  }
 
-  var width: Int32 = 0
+  var width: Int32 {
+    get {_storage._width}
+    set {_uniqueStorage()._width = newValue}
+  }
 
-  var height: Int32 = 0
+  var height: Int32 {
+    get {_storage._height}
+    set {_uniqueStorage()._height = newValue}
+  }
 
-  var codecVideo: String = String()
+  var codecVideo: String {
+    get {_storage._codecVideo}
+    set {_uniqueStorage()._codecVideo = newValue}
+  }
 
-  var codecAudio: String = String()
+  var codecAudio: String {
+    get {_storage._codecAudio}
+    set {_uniqueStorage()._codecAudio = newValue}
+  }
 
-  var fps: Double = 0
+  var fps: Double {
+    get {_storage._fps}
+    set {_uniqueStorage()._fps = newValue}
+  }
 
-  var sizeBytes: Int64 = 0
+  var sizeBytes: Int64 {
+    get {_storage._sizeBytes}
+    set {_uniqueStorage()._sizeBytes = newValue}
+  }
 
   /// Unix timestamp ms
-  var indexedAt: Int64 = 0
+  var indexedAt: Int64 {
+    get {_storage._indexedAt}
+    set {_uniqueStorage()._indexedAt = newValue}
+  }
 
-  var creationDate: Int64 = 0
+  var creationDate: Int64 {
+    get {_storage._creationDate}
+    set {_uniqueStorage()._creationDate = newValue}
+  }
 
-  var tags: [String] = []
+  var tags: [String] {
+    get {_storage._tags}
+    set {_uniqueStorage()._tags = newValue}
+  }
 
-  var hasThumbnail_p: Bool = false
+  var hasThumbnail_p: Bool {
+    get {_storage._hasThumbnail_p}
+    set {_uniqueStorage()._hasThumbnail_p = newValue}
+  }
+
+  /// Group info
+  var groupID: String {
+    get {_storage._groupID}
+    set {_uniqueStorage()._groupID = newValue}
+  }
+
+  /// Number of videos in the group (1 if not grouped)
+  var groupSize: Int32 {
+    get {_storage._groupSize}
+    set {_uniqueStorage()._groupSize = newValue}
+  }
+
+  /// Which video to open by default (e.g. on double-click)
+  var groupPreferredID: String {
+    get {_storage._groupPreferredID}
+    set {_uniqueStorage()._groupPreferredID = newValue}
+  }
+
+  /// Direct path to preferred video for convenience
+  var groupPreferredPath: String {
+    get {_storage._groupPreferredPath}
+    set {_uniqueStorage()._groupPreferredPath = newValue}
+  }
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 nonisolated struct Videoroom_ListVideosResponse: Sendable {
@@ -424,6 +496,9 @@ nonisolated struct Videoroom_ScanLibraryRequest: Sendable {
   var locationPath: String = String()
 
   var forceFullScan: Bool = false
+
+  /// If true, auto-group similar variants after scanning
+  var autoGroup: Bool = false
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -871,6 +946,128 @@ nonisolated struct Videoroom_UpdateConfigRequest: Sendable {
   init() {}
 }
 
+nonisolated struct Videoroom_ListGroupMembersRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var groupID: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Videoroom_ListGroupMembersResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var members: [Videoroom_VideoSummary] = []
+
+  var preferredVideoID: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Videoroom_CreateGroupRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var videoIds: [String] = []
+
+  var name: String = String()
+
+  /// Optional - defaults to first
+  var preferredVideoID: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Videoroom_GroupResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var id: String = String()
+
+  var name: String = String()
+
+  var size: Int32 = 0
+
+  var preferredVideoID: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Videoroom_UngroupVideoRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var videoID: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Videoroom_SetGroupPreferredRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var groupID: String = String()
+
+  var videoID: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Videoroom_AutoGroupRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// If true, only group videos that share the same parent directory.
+  var sameDirectoryOnly: Bool = false
+
+  /// If true, require duration to match within 5%.
+  var matchDuration: Bool = false
+
+  /// If true, require fps to be identical (rounded).
+  var matchFps: Bool = false
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Videoroom_AutoGroupResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var groupsCreated: Int32 = 0
+
+  var videosGrouped: Int32 = 0
+
+  var message: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
 nonisolated struct Videoroom_Response: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -893,7 +1090,7 @@ fileprivate nonisolated let _protobuf_package = "videoroom"
 
 nonisolated extension Videoroom_ListVideosRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ListVideosRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}limit\0\u{1}offset\0\u{3}sort_by\0\u{3}sort_ascending\0\u{3}filter_tags\0\u{3}collection_id\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}limit\0\u{1}offset\0\u{3}sort_by\0\u{3}sort_ascending\0\u{3}filter_tags\0\u{3}collection_id\0\u{3}location_path\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -907,6 +1104,7 @@ nonisolated extension Videoroom_ListVideosRequest: SwiftProtobuf.Message, SwiftP
       case 4: try { try decoder.decodeSingularBoolField(value: &self.sortAscending) }()
       case 5: try { try decoder.decodeRepeatedStringField(value: &self.filterTags) }()
       case 6: try { try decoder.decodeSingularStringField(value: &self.collectionID) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self.locationPath) }()
       default: break
       }
     }
@@ -931,6 +1129,9 @@ nonisolated extension Videoroom_ListVideosRequest: SwiftProtobuf.Message, SwiftP
     if !self.collectionID.isEmpty {
       try visitor.visitSingularStringField(value: self.collectionID, fieldNumber: 6)
     }
+    if !self.locationPath.isEmpty {
+      try visitor.visitSingularStringField(value: self.locationPath, fieldNumber: 7)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -941,6 +1142,7 @@ nonisolated extension Videoroom_ListVideosRequest: SwiftProtobuf.Message, SwiftP
     if lhs.sortAscending != rhs.sortAscending {return false}
     if lhs.filterTags != rhs.filterTags {return false}
     if lhs.collectionID != rhs.collectionID {return false}
+    if lhs.locationPath != rhs.locationPath {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -948,94 +1150,184 @@ nonisolated extension Videoroom_ListVideosRequest: SwiftProtobuf.Message, SwiftP
 
 nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".VideoSummary"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0")
+
+  fileprivate class _StorageClass {
+    var _id: String = String()
+    var _filename: String = String()
+    var _path: String = String()
+    var _durationMs: Int64 = 0
+    var _width: Int32 = 0
+    var _height: Int32 = 0
+    var _codecVideo: String = String()
+    var _codecAudio: String = String()
+    var _fps: Double = 0
+    var _sizeBytes: Int64 = 0
+    var _indexedAt: Int64 = 0
+    var _creationDate: Int64 = 0
+    var _tags: [String] = []
+    var _hasThumbnail_p: Bool = false
+    var _groupID: String = String()
+    var _groupSize: Int32 = 0
+    var _groupPreferredID: String = String()
+    var _groupPreferredPath: String = String()
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _id = source._id
+      _filename = source._filename
+      _path = source._path
+      _durationMs = source._durationMs
+      _width = source._width
+      _height = source._height
+      _codecVideo = source._codecVideo
+      _codecAudio = source._codecAudio
+      _fps = source._fps
+      _sizeBytes = source._sizeBytes
+      _indexedAt = source._indexedAt
+      _creationDate = source._creationDate
+      _tags = source._tags
+      _hasThumbnail_p = source._hasThumbnail_p
+      _groupID = source._groupID
+      _groupSize = source._groupSize
+      _groupPreferredID = source._groupPreferredID
+      _groupPreferredPath = source._groupPreferredPath
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.filename) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.path) }()
-      case 4: try { try decoder.decodeSingularInt64Field(value: &self.durationMs) }()
-      case 5: try { try decoder.decodeSingularInt32Field(value: &self.width) }()
-      case 6: try { try decoder.decodeSingularInt32Field(value: &self.height) }()
-      case 7: try { try decoder.decodeSingularStringField(value: &self.codecVideo) }()
-      case 8: try { try decoder.decodeSingularStringField(value: &self.codecAudio) }()
-      case 9: try { try decoder.decodeSingularDoubleField(value: &self.fps) }()
-      case 10: try { try decoder.decodeSingularInt64Field(value: &self.sizeBytes) }()
-      case 11: try { try decoder.decodeSingularInt64Field(value: &self.indexedAt) }()
-      case 12: try { try decoder.decodeSingularInt64Field(value: &self.creationDate) }()
-      case 13: try { try decoder.decodeRepeatedStringField(value: &self.tags) }()
-      case 14: try { try decoder.decodeSingularBoolField(value: &self.hasThumbnail_p) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularStringField(value: &_storage._id) }()
+        case 2: try { try decoder.decodeSingularStringField(value: &_storage._filename) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._path) }()
+        case 4: try { try decoder.decodeSingularInt64Field(value: &_storage._durationMs) }()
+        case 5: try { try decoder.decodeSingularInt32Field(value: &_storage._width) }()
+        case 6: try { try decoder.decodeSingularInt32Field(value: &_storage._height) }()
+        case 7: try { try decoder.decodeSingularStringField(value: &_storage._codecVideo) }()
+        case 8: try { try decoder.decodeSingularStringField(value: &_storage._codecAudio) }()
+        case 9: try { try decoder.decodeSingularDoubleField(value: &_storage._fps) }()
+        case 10: try { try decoder.decodeSingularInt64Field(value: &_storage._sizeBytes) }()
+        case 11: try { try decoder.decodeSingularInt64Field(value: &_storage._indexedAt) }()
+        case 12: try { try decoder.decodeSingularInt64Field(value: &_storage._creationDate) }()
+        case 13: try { try decoder.decodeRepeatedStringField(value: &_storage._tags) }()
+        case 14: try { try decoder.decodeSingularBoolField(value: &_storage._hasThumbnail_p) }()
+        case 15: try { try decoder.decodeSingularStringField(value: &_storage._groupID) }()
+        case 16: try { try decoder.decodeSingularInt32Field(value: &_storage._groupSize) }()
+        case 17: try { try decoder.decodeSingularStringField(value: &_storage._groupPreferredID) }()
+        case 18: try { try decoder.decodeSingularStringField(value: &_storage._groupPreferredPath) }()
+        default: break
+        }
       }
     }
   }
 
   func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.id.isEmpty {
-      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
-    }
-    if !self.filename.isEmpty {
-      try visitor.visitSingularStringField(value: self.filename, fieldNumber: 2)
-    }
-    if !self.path.isEmpty {
-      try visitor.visitSingularStringField(value: self.path, fieldNumber: 3)
-    }
-    if self.durationMs != 0 {
-      try visitor.visitSingularInt64Field(value: self.durationMs, fieldNumber: 4)
-    }
-    if self.width != 0 {
-      try visitor.visitSingularInt32Field(value: self.width, fieldNumber: 5)
-    }
-    if self.height != 0 {
-      try visitor.visitSingularInt32Field(value: self.height, fieldNumber: 6)
-    }
-    if !self.codecVideo.isEmpty {
-      try visitor.visitSingularStringField(value: self.codecVideo, fieldNumber: 7)
-    }
-    if !self.codecAudio.isEmpty {
-      try visitor.visitSingularStringField(value: self.codecAudio, fieldNumber: 8)
-    }
-    if self.fps.bitPattern != 0 {
-      try visitor.visitSingularDoubleField(value: self.fps, fieldNumber: 9)
-    }
-    if self.sizeBytes != 0 {
-      try visitor.visitSingularInt64Field(value: self.sizeBytes, fieldNumber: 10)
-    }
-    if self.indexedAt != 0 {
-      try visitor.visitSingularInt64Field(value: self.indexedAt, fieldNumber: 11)
-    }
-    if self.creationDate != 0 {
-      try visitor.visitSingularInt64Field(value: self.creationDate, fieldNumber: 12)
-    }
-    if !self.tags.isEmpty {
-      try visitor.visitRepeatedStringField(value: self.tags, fieldNumber: 13)
-    }
-    if self.hasThumbnail_p != false {
-      try visitor.visitSingularBoolField(value: self.hasThumbnail_p, fieldNumber: 14)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      if !_storage._id.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._id, fieldNumber: 1)
+      }
+      if !_storage._filename.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._filename, fieldNumber: 2)
+      }
+      if !_storage._path.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._path, fieldNumber: 3)
+      }
+      if _storage._durationMs != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._durationMs, fieldNumber: 4)
+      }
+      if _storage._width != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._width, fieldNumber: 5)
+      }
+      if _storage._height != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._height, fieldNumber: 6)
+      }
+      if !_storage._codecVideo.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._codecVideo, fieldNumber: 7)
+      }
+      if !_storage._codecAudio.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._codecAudio, fieldNumber: 8)
+      }
+      if _storage._fps.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._fps, fieldNumber: 9)
+      }
+      if _storage._sizeBytes != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._sizeBytes, fieldNumber: 10)
+      }
+      if _storage._indexedAt != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._indexedAt, fieldNumber: 11)
+      }
+      if _storage._creationDate != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._creationDate, fieldNumber: 12)
+      }
+      if !_storage._tags.isEmpty {
+        try visitor.visitRepeatedStringField(value: _storage._tags, fieldNumber: 13)
+      }
+      if _storage._hasThumbnail_p != false {
+        try visitor.visitSingularBoolField(value: _storage._hasThumbnail_p, fieldNumber: 14)
+      }
+      if !_storage._groupID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._groupID, fieldNumber: 15)
+      }
+      if _storage._groupSize != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._groupSize, fieldNumber: 16)
+      }
+      if !_storage._groupPreferredID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._groupPreferredID, fieldNumber: 17)
+      }
+      if !_storage._groupPreferredPath.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._groupPreferredPath, fieldNumber: 18)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   static func ==(lhs: Videoroom_VideoSummary, rhs: Videoroom_VideoSummary) -> Bool {
-    if lhs.id != rhs.id {return false}
-    if lhs.filename != rhs.filename {return false}
-    if lhs.path != rhs.path {return false}
-    if lhs.durationMs != rhs.durationMs {return false}
-    if lhs.width != rhs.width {return false}
-    if lhs.height != rhs.height {return false}
-    if lhs.codecVideo != rhs.codecVideo {return false}
-    if lhs.codecAudio != rhs.codecAudio {return false}
-    if lhs.fps != rhs.fps {return false}
-    if lhs.sizeBytes != rhs.sizeBytes {return false}
-    if lhs.indexedAt != rhs.indexedAt {return false}
-    if lhs.creationDate != rhs.creationDate {return false}
-    if lhs.tags != rhs.tags {return false}
-    if lhs.hasThumbnail_p != rhs.hasThumbnail_p {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._id != rhs_storage._id {return false}
+        if _storage._filename != rhs_storage._filename {return false}
+        if _storage._path != rhs_storage._path {return false}
+        if _storage._durationMs != rhs_storage._durationMs {return false}
+        if _storage._width != rhs_storage._width {return false}
+        if _storage._height != rhs_storage._height {return false}
+        if _storage._codecVideo != rhs_storage._codecVideo {return false}
+        if _storage._codecAudio != rhs_storage._codecAudio {return false}
+        if _storage._fps != rhs_storage._fps {return false}
+        if _storage._sizeBytes != rhs_storage._sizeBytes {return false}
+        if _storage._indexedAt != rhs_storage._indexedAt {return false}
+        if _storage._creationDate != rhs_storage._creationDate {return false}
+        if _storage._tags != rhs_storage._tags {return false}
+        if _storage._hasThumbnail_p != rhs_storage._hasThumbnail_p {return false}
+        if _storage._groupID != rhs_storage._groupID {return false}
+        if _storage._groupSize != rhs_storage._groupSize {return false}
+        if _storage._groupPreferredID != rhs_storage._groupPreferredID {return false}
+        if _storage._groupPreferredPath != rhs_storage._groupPreferredPath {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1712,7 +2004,7 @@ nonisolated extension Videoroom_ListLocationsResponse: SwiftProtobuf.Message, Sw
 
 nonisolated extension Videoroom_ScanLibraryRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ScanLibraryRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}location_path\0\u{3}force_full_scan\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}location_path\0\u{3}force_full_scan\0\u{3}auto_group\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1722,6 +2014,7 @@ nonisolated extension Videoroom_ScanLibraryRequest: SwiftProtobuf.Message, Swift
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.locationPath) }()
       case 2: try { try decoder.decodeSingularBoolField(value: &self.forceFullScan) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.autoGroup) }()
       default: break
       }
     }
@@ -1734,12 +2027,16 @@ nonisolated extension Videoroom_ScanLibraryRequest: SwiftProtobuf.Message, Swift
     if self.forceFullScan != false {
       try visitor.visitSingularBoolField(value: self.forceFullScan, fieldNumber: 2)
     }
+    if self.autoGroup != false {
+      try visitor.visitSingularBoolField(value: self.autoGroup, fieldNumber: 3)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   static func ==(lhs: Videoroom_ScanLibraryRequest, rhs: Videoroom_ScanLibraryRequest) -> Bool {
     if lhs.locationPath != rhs.locationPath {return false}
     if lhs.forceFullScan != rhs.forceFullScan {return false}
+    if lhs.autoGroup != rhs.autoGroup {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2795,6 +3092,301 @@ nonisolated extension Videoroom_UpdateConfigRequest: SwiftProtobuf.Message, Swif
     if lhs.proxyThresholdScale != rhs.proxyThresholdScale {return false}
     if lhs.maxConcurrentJobs != rhs.maxConcurrentJobs {return false}
     if lhs.enableAutoTagging != rhs.enableAutoTagging {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_ListGroupMembersRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".ListGroupMembersRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}group_id\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.groupID) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.groupID.isEmpty {
+      try visitor.visitSingularStringField(value: self.groupID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_ListGroupMembersRequest, rhs: Videoroom_ListGroupMembersRequest) -> Bool {
+    if lhs.groupID != rhs.groupID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_ListGroupMembersResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".ListGroupMembersResponse"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}members\0\u{3}preferred_video_id\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.members) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.preferredVideoID) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.members.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.members, fieldNumber: 1)
+    }
+    if !self.preferredVideoID.isEmpty {
+      try visitor.visitSingularStringField(value: self.preferredVideoID, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_ListGroupMembersResponse, rhs: Videoroom_ListGroupMembersResponse) -> Bool {
+    if lhs.members != rhs.members {return false}
+    if lhs.preferredVideoID != rhs.preferredVideoID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_CreateGroupRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".CreateGroupRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_ids\0\u{1}name\0\u{3}preferred_video_id\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedStringField(value: &self.videoIds) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.preferredVideoID) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.videoIds.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.videoIds, fieldNumber: 1)
+    }
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 2)
+    }
+    if !self.preferredVideoID.isEmpty {
+      try visitor.visitSingularStringField(value: self.preferredVideoID, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_CreateGroupRequest, rhs: Videoroom_CreateGroupRequest) -> Bool {
+    if lhs.videoIds != rhs.videoIds {return false}
+    if lhs.name != rhs.name {return false}
+    if lhs.preferredVideoID != rhs.preferredVideoID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_GroupResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".GroupResponse"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}size\0\u{3}preferred_video_id\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 3: try { try decoder.decodeSingularInt32Field(value: &self.size) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.preferredVideoID) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 2)
+    }
+    if self.size != 0 {
+      try visitor.visitSingularInt32Field(value: self.size, fieldNumber: 3)
+    }
+    if !self.preferredVideoID.isEmpty {
+      try visitor.visitSingularStringField(value: self.preferredVideoID, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_GroupResponse, rhs: Videoroom_GroupResponse) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.name != rhs.name {return false}
+    if lhs.size != rhs.size {return false}
+    if lhs.preferredVideoID != rhs.preferredVideoID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_UngroupVideoRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".UngroupVideoRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.videoID) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.videoID.isEmpty {
+      try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_UngroupVideoRequest, rhs: Videoroom_UngroupVideoRequest) -> Bool {
+    if lhs.videoID != rhs.videoID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_SetGroupPreferredRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".SetGroupPreferredRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}group_id\0\u{3}video_id\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.groupID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.videoID) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.groupID.isEmpty {
+      try visitor.visitSingularStringField(value: self.groupID, fieldNumber: 1)
+    }
+    if !self.videoID.isEmpty {
+      try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_SetGroupPreferredRequest, rhs: Videoroom_SetGroupPreferredRequest) -> Bool {
+    if lhs.groupID != rhs.groupID {return false}
+    if lhs.videoID != rhs.videoID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_AutoGroupRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".AutoGroupRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}same_directory_only\0\u{3}match_duration\0\u{3}match_fps\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBoolField(value: &self.sameDirectoryOnly) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.matchDuration) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.matchFps) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.sameDirectoryOnly != false {
+      try visitor.visitSingularBoolField(value: self.sameDirectoryOnly, fieldNumber: 1)
+    }
+    if self.matchDuration != false {
+      try visitor.visitSingularBoolField(value: self.matchDuration, fieldNumber: 2)
+    }
+    if self.matchFps != false {
+      try visitor.visitSingularBoolField(value: self.matchFps, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_AutoGroupRequest, rhs: Videoroom_AutoGroupRequest) -> Bool {
+    if lhs.sameDirectoryOnly != rhs.sameDirectoryOnly {return false}
+    if lhs.matchDuration != rhs.matchDuration {return false}
+    if lhs.matchFps != rhs.matchFps {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_AutoGroupResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".AutoGroupResponse"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}groups_created\0\u{3}videos_grouped\0\u{1}message\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt32Field(value: &self.groupsCreated) }()
+      case 2: try { try decoder.decodeSingularInt32Field(value: &self.videosGrouped) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.message) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.groupsCreated != 0 {
+      try visitor.visitSingularInt32Field(value: self.groupsCreated, fieldNumber: 1)
+    }
+    if self.videosGrouped != 0 {
+      try visitor.visitSingularInt32Field(value: self.videosGrouped, fieldNumber: 2)
+    }
+    if !self.message.isEmpty {
+      try visitor.visitSingularStringField(value: self.message, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_AutoGroupResponse, rhs: Videoroom_AutoGroupResponse) -> Bool {
+    if lhs.groupsCreated != rhs.groupsCreated {return false}
+    if lhs.videosGrouped != rhs.videosGrouped {return false}
+    if lhs.message != rhs.message {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -272,6 +272,66 @@ internal enum Videoroom_VideoRoom {
                 method: "DeleteVideo"
             )
         }
+        /// Namespace for "ListGroupMembers" metadata.
+        internal enum ListGroupMembers {
+            /// Request type for "ListGroupMembers".
+            internal typealias Input = Videoroom_ListGroupMembersRequest
+            /// Response type for "ListGroupMembers".
+            internal typealias Output = Videoroom_ListGroupMembersResponse
+            /// Descriptor for "ListGroupMembers".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "ListGroupMembers"
+            )
+        }
+        /// Namespace for "CreateGroup" metadata.
+        internal enum CreateGroup {
+            /// Request type for "CreateGroup".
+            internal typealias Input = Videoroom_CreateGroupRequest
+            /// Response type for "CreateGroup".
+            internal typealias Output = Videoroom_GroupResponse
+            /// Descriptor for "CreateGroup".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "CreateGroup"
+            )
+        }
+        /// Namespace for "UngroupVideo" metadata.
+        internal enum UngroupVideo {
+            /// Request type for "UngroupVideo".
+            internal typealias Input = Videoroom_UngroupVideoRequest
+            /// Response type for "UngroupVideo".
+            internal typealias Output = Videoroom_Response
+            /// Descriptor for "UngroupVideo".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "UngroupVideo"
+            )
+        }
+        /// Namespace for "SetGroupPreferred" metadata.
+        internal enum SetGroupPreferred {
+            /// Request type for "SetGroupPreferred".
+            internal typealias Input = Videoroom_SetGroupPreferredRequest
+            /// Response type for "SetGroupPreferred".
+            internal typealias Output = Videoroom_Response
+            /// Descriptor for "SetGroupPreferred".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "SetGroupPreferred"
+            )
+        }
+        /// Namespace for "AutoGroupVideos" metadata.
+        internal enum AutoGroupVideos {
+            /// Request type for "AutoGroupVideos".
+            internal typealias Input = Videoroom_AutoGroupRequest
+            /// Response type for "AutoGroupVideos".
+            internal typealias Output = Videoroom_AutoGroupResponse
+            /// Descriptor for "AutoGroupVideos".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "AutoGroupVideos"
+            )
+        }
         /// Namespace for "GenerateProxy" metadata.
         internal enum GenerateProxy {
             /// Request type for "GenerateProxy".
@@ -355,6 +415,11 @@ internal enum Videoroom_VideoRoom {
             RemoveFromCollection.descriptor,
             UpdateVideoNotes.descriptor,
             DeleteVideo.descriptor,
+            ListGroupMembers.descriptor,
+            CreateGroup.descriptor,
+            UngroupVideo.descriptor,
+            SetGroupPreferred.descriptor,
+            AutoGroupVideos.descriptor,
             GenerateProxy.descriptor,
             ListProxies.descriptor,
             GetStatus.descriptor,
@@ -800,6 +865,105 @@ extension Videoroom_VideoRoom {
             deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "ListGroupMembers" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Groups (Lightroom-style "stacks")
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_ListGroupMembersRequest` message.
+        ///   - serializer: A serializer for `Videoroom_ListGroupMembersRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_ListGroupMembersResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func listGroupMembers<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_ListGroupMembersRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_ListGroupMembersRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_ListGroupMembersResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_ListGroupMembersResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "CreateGroup" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_CreateGroupRequest` message.
+        ///   - serializer: A serializer for `Videoroom_CreateGroupRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_GroupResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func createGroup<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_CreateGroupRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_CreateGroupRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_GroupResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_GroupResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "UngroupVideo" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_UngroupVideoRequest` message.
+        ///   - serializer: A serializer for `Videoroom_UngroupVideoRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func ungroupVideo<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_UngroupVideoRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_UngroupVideoRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "SetGroupPreferred" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_SetGroupPreferredRequest` message.
+        ///   - serializer: A serializer for `Videoroom_SetGroupPreferredRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func setGroupPreferred<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_SetGroupPreferredRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_SetGroupPreferredRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "AutoGroupVideos" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_AutoGroupRequest` message.
+        ///   - serializer: A serializer for `Videoroom_AutoGroupRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_AutoGroupResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func autoGroupVideos<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_AutoGroupRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_AutoGroupRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_AutoGroupResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_AutoGroupResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
         /// Call the "GenerateProxy" method.
@@ -1572,6 +1736,160 @@ extension Videoroom_VideoRoom {
             )
         }
 
+        /// Call the "ListGroupMembers" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Groups (Lightroom-style "stacks")
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_ListGroupMembersRequest` message.
+        ///   - serializer: A serializer for `Videoroom_ListGroupMembersRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_ListGroupMembersResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func listGroupMembers<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_ListGroupMembersRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_ListGroupMembersRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_ListGroupMembersResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_ListGroupMembersResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.ListGroupMembers.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "CreateGroup" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_CreateGroupRequest` message.
+        ///   - serializer: A serializer for `Videoroom_CreateGroupRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_GroupResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func createGroup<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_CreateGroupRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_CreateGroupRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_GroupResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_GroupResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.CreateGroup.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "UngroupVideo" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_UngroupVideoRequest` message.
+        ///   - serializer: A serializer for `Videoroom_UngroupVideoRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func ungroupVideo<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_UngroupVideoRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_UngroupVideoRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.UngroupVideo.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "SetGroupPreferred" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_SetGroupPreferredRequest` message.
+        ///   - serializer: A serializer for `Videoroom_SetGroupPreferredRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func setGroupPreferred<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_SetGroupPreferredRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_SetGroupPreferredRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.SetGroupPreferred.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "AutoGroupVideos" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_AutoGroupRequest` message.
+        ///   - serializer: A serializer for `Videoroom_AutoGroupRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_AutoGroupResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func autoGroupVideos<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_AutoGroupRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_AutoGroupRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_AutoGroupResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_AutoGroupResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.AutoGroupVideos.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
         /// Call the "GenerateProxy" method.
         ///
         /// > Source IDL Documentation:
@@ -2269,6 +2587,135 @@ extension Videoroom_VideoRoom.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_DeleteVideoRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_Response>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ListGroupMembers" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Groups (Lightroom-style "stacks")
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_ListGroupMembersRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func listGroupMembers<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_ListGroupMembersRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_ListGroupMembersResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.listGroupMembers(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_ListGroupMembersRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_ListGroupMembersResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "CreateGroup" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_CreateGroupRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func createGroup<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_CreateGroupRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_GroupResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.createGroup(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_CreateGroupRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_GroupResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UngroupVideo" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_UngroupVideoRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func ungroupVideo<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_UngroupVideoRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.ungroupVideo(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_UngroupVideoRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_Response>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SetGroupPreferred" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_SetGroupPreferredRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func setGroupPreferred<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_SetGroupPreferredRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.setGroupPreferred(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_SetGroupPreferredRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_Response>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "AutoGroupVideos" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_AutoGroupRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func autoGroupVideos<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_AutoGroupRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_AutoGroupResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.autoGroupVideos(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_AutoGroupRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_AutoGroupResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -3028,6 +3475,155 @@ extension Videoroom_VideoRoom.ClientProtocol {
             metadata: metadata
         )
         return try await self.deleteVideo(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ListGroupMembers" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Groups (Lightroom-style "stacks")
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func listGroupMembers<Result>(
+        _ message: Videoroom_ListGroupMembersRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_ListGroupMembersResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_ListGroupMembersRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.listGroupMembers(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "CreateGroup" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func createGroup<Result>(
+        _ message: Videoroom_CreateGroupRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_GroupResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_CreateGroupRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.createGroup(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UngroupVideo" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func ungroupVideo<Result>(
+        _ message: Videoroom_UngroupVideoRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_UngroupVideoRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.ungroupVideo(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SetGroupPreferred" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func setGroupPreferred<Result>(
+        _ message: Videoroom_SetGroupPreferredRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_SetGroupPreferredRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.setGroupPreferred(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "AutoGroupVideos" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func autoGroupVideos<Result>(
+        _ message: Videoroom_AutoGroupRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_AutoGroupResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_AutoGroupRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.autoGroupVideos(
             request: request,
             options: options,
             onResponse: handleResponse
