@@ -1,7 +1,9 @@
 import SwiftUI
+import AppKit
 
 struct ConnectionErrorView: View {
     let errorMessage: String
+    var onRetry: () -> Void = {}
 
     var body: some View {
         VStack(spacing: 24) {
@@ -30,7 +32,7 @@ struct ConnectionErrorView: View {
                         .font(.system(.body, design: .monospaced))
                         .padding(12)
                         .background(Color(.controlBackgroundColor))
-                        .border(Color(.separatorColor), width: 1)
+                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color(.separatorColor)))
                         .cornerRadius(4)
 
                     Button(action: {
@@ -47,6 +49,16 @@ struct ConnectionErrorView: View {
                 }
             }
             .frame(maxWidth: 400)
+
+            Button {
+                onRetry()
+            } label: {
+                HStack {
+                    Image(systemName: "arrow.clockwise")
+                    Text("Retry")
+                }
+            }
+            .buttonStyle(.borderedProminent)
 
             Spacer()
         }

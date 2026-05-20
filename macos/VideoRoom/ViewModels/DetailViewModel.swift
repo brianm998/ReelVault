@@ -9,7 +9,66 @@ class DetailViewModel: ObservableObject {
     @Published var error: String?
     @Published var notes = ""
 
+    @Published var groupMembers: [VideoSummary] = []
+    @Published var groupPreferredId: String = ""
+
+    private var currentVideoSummary: VideoSummary?
     private let repository = VideoRepository.shared
+
+    /// Called by the grid when the user selects a video — drives the group/stack
+    /// section in addition to the regular metadata load.
+    func setCurrentVideo(_ video: VideoSummary) {
+        currentVideoSummary = video
+        if video.isInGroup {
+            loadGroupMembers(groupId: video.groupId)
+        } else {
+            groupMembers = []
+            groupPreferredId = ""
+        }
+    }
+
+    private func loadGroupMembers(groupId: String) {
+        Task {
+            do {
+                let (members, preferred) = try await repository.listGroupMembers(groupId: groupId)
+                groupMembers = members
+                groupPreferredId = preferred
+            } catch {
+                NSLog("Failed to load group members: \(error)")
+            }
+        }
+    }
+
+    func setGroupPreferred(videoId: String) {
+        guard let groupId = currentVideoSummary?.groupId, !groupId.isEmpty else { return }
+        Task {
+            do {
+                if try await repository.setGroupPreferred(groupId: groupId, videoId: videoId) {
+                    groupPreferredId = videoId
+                } else {
+                    error = "Failed to set preferred video"
+                }
+            } catch {
+                self.error = "Failed to set preferred: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    func ungroupCurrent() {
+        guard let videoId = metadata?.id else { return }
+        Task {
+            do {
+                if try await repository.ungroupVideo(videoId: videoId) {
+                    groupMembers = []
+                    groupPreferredId = ""
+                } else {
+                    error = "Failed to ungroup"
+                }
+            } catch {
+                self.error = "Failed to ungroup: \(error.localizedDescription)"
+            }
+        }
+    }
 
     func loadMetadata(videoId: String) {
         isLoading = true
@@ -17,32 +76,21 @@ class DetailViewModel: ObservableObject {
 
         Task {
             do {
-                let metadata = try await repository.getVideoMetadata(videoId: videoId)
-
-                await MainActor.run {
-                    self.metadata = metadata
-                    self.notes = metadata.notes
-                    self.isLoading = false
-                }
-
-                // Load thumbnail
+                let meta = try await repository.getVideoMetadata(videoId: videoId)
+                self.metadata = meta
+                self.notes = meta.notes
+                self.isLoading = false
                 await loadThumbnail(videoId: videoId)
             } catch {
-                await MainActor.run {
-                    self.error = "Failed to load metadata: \(error.localizedDescription)"
-                    self.isLoading = false
-                }
+                self.error = "Failed to load metadata: \(error.localizedDescription)"
+                self.isLoading = false
             }
         }
     }
 
     private func loadThumbnail(videoId: String) async {
         do {
-            let thumbnail = try await repository.getThumbnail(videoId: videoId)
-
-            await MainActor.run {
-                self.thumbnail = thumbnail
-            }
+            thumbnail = try await repository.getThumbnail(videoId: videoId, size: "large")
         } catch {
             NSLog("Failed to load thumbnail: \(error)")
         }
@@ -51,107 +99,25 @@ class DetailViewModel: ObservableObject {
     func updateNotes(_ newNotes: String) {
         notes = newNotes
         guard let videoId = metadata?.id else { return }
-
         Task {
             do {
-                let success = try await repository.updateVideoNotes(videoId: videoId, notes: newNotes)
-
-                await MainActor.run {
-                    if !success {
-                        self.error = "Failed to update notes"
-                    }
-                }
+                let ok = try await repository.updateVideoNotes(videoId: videoId, notes: newNotes)
+                if !ok { error = "Failed to update notes" }
             } catch {
-                await MainActor.run {
-                    self.error = "Failed to update notes: \(error.localizedDescription)"
-                }
+                self.error = "Failed to update notes: \(error.localizedDescription)"
             }
         }
     }
 
-    func addTag(_ tagId: String) {
-        guard let videoId = metadata?.id else { return }
-
-        Task {
-            do {
-                let success = try await repository.tagVideos(videoIds: [videoId], tagId: tagId)
-
-                if success {
-                    await MainActor.run {
-                        // Reload metadata to reflect changes
-                        self.loadMetadata(videoId: videoId)
-                    }
-                } else {
-                    await MainActor.run {
-                        self.error = "Failed to add tag"
-                    }
-                }
-            } catch {
-                await MainActor.run {
-                    self.error = "Failed to add tag: \(error.localizedDescription)"
-                }
-            }
-        }
-    }
-
-    func removeTag(_ tagId: String) {
-        guard let videoId = metadata?.id else { return }
-
-        Task {
-            do {
-                let success = try await repository.untagVideos(videoIds: [videoId], tagId: tagId)
-
-                if success {
-                    await MainActor.run {
-                        // Reload metadata to reflect changes
-                        self.loadMetadata(videoId: videoId)
-                    }
-                } else {
-                    await MainActor.run {
-                        self.error = "Failed to remove tag"
-                    }
-                }
-            } catch {
-                await MainActor.run {
-                    self.error = "Failed to remove tag: \(error.localizedDescription)"
-                }
-            }
-        }
-    }
-
-    func addToCollection(_ collectionId: String) {
-        guard let videoId = metadata?.id else { return }
-
-        Task {
-            do {
-                let success = try await repository.addToCollection(videoIds: [videoId], collectionId: collectionId)
-
-                if success {
-                    await MainActor.run {
-                        // Reload metadata to reflect changes
-                        self.loadMetadata(videoId: videoId)
-                    }
-                } else {
-                    await MainActor.run {
-                        self.error = "Failed to add to collection"
-                    }
-                }
-            } catch {
-                await MainActor.run {
-                    self.error = "Failed to add to collection: \(error.localizedDescription)"
-                }
-            }
-        }
-    }
-
-    func clearError() {
-        error = nil
-    }
+    func clearError() { error = nil }
 
     func clear() {
         metadata = nil
         thumbnail = nil
         notes = ""
         error = nil
+        groupMembers = []
+        groupPreferredId = ""
+        currentVideoSummary = nil
     }
 }

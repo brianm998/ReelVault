@@ -1,54 +1,57 @@
 import Foundation
 
-struct VideoSummary: Identifiable, Codable {
+struct VideoSummary: Identifiable, Hashable {
     let id: String
     let filename: String
+    let path: String
     let width: Int
     let height: Int
     let durationMs: Int
     let fps: Double
     let codecVideo: String
+    let codecAudio: String
     let bitrateKbps: Int
     let sizeBytes: Int
+    let indexedAt: Int64
+    let creationDate: Int64
+    let tags: [String]
+    let hasThumbnail: Bool
+    // Group info
+    let groupId: String
+    let groupSize: Int
+    let groupPreferredId: String
+    let groupPreferredPath: String
 
-    var resolution: String {
-        "\(width)×\(height)"
-    }
+    var isInGroup: Bool { !groupId.isEmpty && groupSize > 1 }
+    /// Path to open on double-click — preferred member if in a group, else this video.
+    var openPath: String { groupPreferredPath.isEmpty ? path : groupPreferredPath }
+
+    var resolution: String { "\(width)×\(height)" }
 
     var durationFormatted: String {
         let totalSeconds = durationMs / 1000
         let hours = totalSeconds / 3600
         let minutes = (totalSeconds % 3600) / 60
         let seconds = totalSeconds % 60
-
         if hours > 0 {
             return String(format: "%d:%02d:%02d", hours, minutes, seconds)
         }
         return String(format: "%d:%02d", minutes, seconds)
     }
 
-    var sizeMB: Double {
-        Double(sizeBytes) / (1024 * 1024)
-    }
-
     var sizeFormatted: String {
-        if sizeMB > 1024 {
-            return String(format: "%.2f GB", sizeMB / 1024)
+        let mb = Double(sizeBytes) / (1024 * 1024)
+        if mb > 1024 {
+            return String(format: "%.2f GB", mb / 1024)
         }
-        return String(format: "%.2f MB", sizeMB)
-    }
-
-    var bitrateFormatted: String {
-        if bitrateKbps > 1000 {
-            return String(format: "%.2f Mbps", Double(bitrateKbps) / 1000)
-        }
-        return "\(bitrateKbps) kbps"
+        return String(format: "%.2f MB", mb)
     }
 }
 
-struct VideoMetadata: Identifiable, Codable {
+struct VideoMetadata: Identifiable {
     let id: String
     let filename: String
+    let path: String
     let width: Int
     let height: Int
     let durationMs: Int
@@ -58,26 +61,26 @@ struct VideoMetadata: Identifiable, Codable {
     let bitrateKbps: Int
     let sizeBytes: Int
     let colorSpace: String
+    let hdr: Bool
     let audioChannels: Int
+    let audioSampleRate: Int
     let creationDate: Int64
     let cameraModel: String
     let lensModel: String
     let gpsLat: Double
     let gpsLon: Double
+    let gpsAltitude: Double
     let notes: String
     let tags: [String]
     let collections: [String]
 
-    var resolution: String {
-        "\(width)×\(height)"
-    }
+    var resolution: String { "\(width)×\(height)" }
 
     var durationFormatted: String {
         let totalSeconds = durationMs / 1000
         let hours = totalSeconds / 3600
         let minutes = (totalSeconds % 3600) / 60
         let seconds = totalSeconds % 60
-
         if hours > 0 {
             return String(format: "%d:%02d:%02d", hours, minutes, seconds)
         }
@@ -85,11 +88,11 @@ struct VideoMetadata: Identifiable, Codable {
     }
 
     var sizeFormatted: String {
-        let sizeMB = Double(sizeBytes) / (1024 * 1024)
-        if sizeMB > 1024 {
-            return String(format: "%.2f GB", sizeMB / 1024)
+        let mb = Double(sizeBytes) / (1024 * 1024)
+        if mb > 1024 {
+            return String(format: "%.2f GB", mb / 1024)
         }
-        return String(format: "%.2f MB", sizeMB)
+        return String(format: "%.2f MB", mb)
     }
 
     var bitrateFormatted: String {
@@ -100,30 +103,45 @@ struct VideoMetadata: Identifiable, Codable {
     }
 
     var creationDateFormatted: String {
-        if creationDate == 0 {
-            return "Unknown"
-        }
+        if creationDate == 0 { return "Unknown" }
         let date = Date(timeIntervalSince1970: TimeInterval(creationDate / 1000))
-        return date.formatted(date: .abbreviated, time: .omitted)
+        return date.formatted(date: .abbreviated, time: .shortened)
     }
 }
 
-struct Tag: Identifiable, Codable {
+struct Tag: Identifiable, Hashable {
     let id: String
     let name: String
     let color: String?
 }
 
-struct Collection: Identifiable, Codable {
+struct Collection: Identifiable, Hashable {
     let id: String
     let name: String
     let isSmart: Bool
-    let filterJson: String?
+    let videoCount: Int64
 }
 
-struct LibraryLocation: Identifiable, Codable {
-    let id: String
+struct LibraryLocation: Identifiable, Hashable {
+    var id: String { path }
     let path: String
     let recursive: Bool
     let enabled: Bool
+    let videoCount: Int64
+    let lastScanned: Int64
+}
+
+struct ScanProgress {
+    let status: String
+    let videosFound: Int
+    let videosIndexed: Int
+    let currentFile: String
+    let progressPercent: Double
+}
+
+struct GroupInfo {
+    let id: String
+    let name: String
+    let size: Int
+    let preferredVideoId: String
 }
