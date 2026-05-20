@@ -29,27 +29,65 @@ import org.slf4j.LoggerFactory
 
 private val logger = LoggerFactory.getLogger("VideoRoom")
 
+// Window-level shift key tracking. Updated by the Window's key listener and
+// read at click time by VideoCard / GridScreen.
+val LocalShiftPressed = compositionLocalOf { false }
+
 fun main() = application {
     val windowState = rememberWindowState(
         size = DpSize(width = 1400.dp, height = 900.dp)
     )
 
+    var shiftPressed by remember { mutableStateOf(false) }
+    // VideoRoomApp registers its "group selected" action here, so the Window-
+    // level key listener can invoke it on Cmd/Ctrl+G regardless of focus.
+    val groupSelectedAction = remember { mutableStateOf<() -> Unit>({}) }
+
     Window(
         onCloseRequest = ::exitApplication,
         state = windowState,
         title = "VideoRoom - Video Library Manager",
-        icon = null // TODO: Add app icon
+        icon = null, // TODO: Add app icon
+        // onPreviewKeyEvent fires BEFORE focused widgets consume the event,
+        // so it works even when the search TextField is focused.
+        onPreviewKeyEvent = { event ->
+            // Track shift state for the rest of the UI.
+            if (event.key == Key.ShiftLeft || event.key == Key.ShiftRight) {
+                shiftPressed = event.type == KeyEventType.KeyDown
+            }
+            // Cmd+G (macOS) / Ctrl+G (Windows/Linux) → group selected videos.
+            if (event.type == KeyEventType.KeyDown &&
+                event.key == Key.G &&
+                (event.isMetaPressed || event.isCtrlPressed)
+            ) {
+                groupSelectedAction.value()
+                return@Window true // consume so default shortcuts don't also fire
+            }
+            false
+        }
     ) {
-        VideoRoomApp()
+        CompositionLocalProvider(LocalShiftPressed provides shiftPressed) {
+            VideoRoomApp(
+                onRegisterGroupAction = { groupSelectedAction.value = it }
+            )
+        }
     }
 }
 
 @Composable
-fun VideoRoomApp() {
-    var isDarkTheme by remember { mutableStateOf(false) }
+fun VideoRoomApp(
+    /** Called once to register the "group selected" action for the Cmd/Ctrl+G shortcut. */
+    onRegisterGroupAction: (() -> Unit) -> Unit = {}
+) {
+    var isDarkTheme by remember { mutableStateOf(true) }
     val repository = remember { VideoRepository.getInstance() }
     val gridViewModel = remember { GridViewModel(repository) }
     val detailViewModel = remember { DetailViewModel(repository) }
+
+    // Register the keyboard shortcut handler with the Window-level key listener.
+    LaunchedEffect(gridViewModel) {
+        onRegisterGroupAction { gridViewModel.groupSelectedVideos() }
+    }
 
     val scope = rememberCoroutineScope()
     var isConnected by remember { mutableStateOf(false) }
@@ -88,11 +126,16 @@ fun VideoRoomApp() {
                     // Top bar
                     val currentSort = gridViewModel.currentSortField.collectAsState()
                     val sortAsc = gridViewModel.currentSortAscending.collectAsState()
+                    val selectedIds = gridViewModel.selectedVideoIds.collectAsState()
                     VideoRoomTopBar(
                         isDarkTheme = isDarkTheme,
                         onThemeToggle = { isDarkTheme = !isDarkTheme },
                         onSearch = { gridViewModel.setSearchQuery(it) },
-                        onAddLibrary = { path -> gridViewModel.addLibraryAndScan(path, true) },
+                        onAddLibrary = { path, autoGroup ->
+                            gridViewModel.addLibraryAndScan(path, true, autoGroup)
+                        },
+                        onGroupSelected = { gridViewModel.groupSelectedVideos() },
+                        selectedCount = selectedIds.value.size,
                         currentSort = currentSort.value,
                         sortAscending = sortAsc.value,
                         onSortChange = { field, ascending -> gridViewModel.setSort(field, ascending) }
@@ -205,8 +248,12 @@ fun VideoRoomApp() {
                         GridScreen(
                             viewModel = gridViewModel,
                             onVideoSelect = { video ->
+                                // GridScreen already updated the grid's selection
+                                // (potentially additive on shift+click). Here we
+                                // only sync the detail panel — don't reselect or
+                                // we'd clobber the multi-select state.
+                                detailViewModel.setCurrentVideo(video)
                                 detailViewModel.loadMetadata(video.id)
-                                gridViewModel.selectVideo(video)
                             },
                             modifier = Modifier
                                 .weight(0.7f)
@@ -256,7 +303,9 @@ fun VideoRoomTopBar(
     isDarkTheme: Boolean,
     onThemeToggle: () -> Unit,
     onSearch: (String) -> Unit,
-    onAddLibrary: (String) -> Unit,
+    onAddLibrary: (path: String, autoGroup: Boolean) -> Unit,
+    onGroupSelected: () -> Unit = {},
+    selectedCount: Int = 0,
     currentSort: String = "indexed_at",
     sortAscending: Boolean = false,
     onSortChange: (String, Boolean) -> Unit = { _, _ -> }
@@ -312,7 +361,7 @@ fun VideoRoomTopBar(
                     )
                 )
 
-                Row {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     // Sort menu
                     Box {
                         IconButton(onClick = { showSortMenu = true }) {
@@ -377,6 +426,45 @@ fun VideoRoomTopBar(
                         }
                     }
 
+                    // Group Selected button: enabled when 2+ videos are multi-selected.
+                    // Shows a small count badge to make the selection visible.
+                    Box {
+                        IconButton(
+                            onClick = onGroupSelected,
+                            enabled = selectedCount >= 2
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Layers,
+                                contentDescription = if (selectedCount >= 2) {
+                                    "Group $selectedCount selected videos"
+                                } else {
+                                    "Shift+click to select videos to group"
+                                },
+                                tint = if (selectedCount >= 2) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                }
+                            )
+                        }
+                        if (selectedCount > 0) {
+                            Surface(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = (-4).dp, y = 4.dp),
+                                shape = androidx.compose.foundation.shape.CircleShape,
+                                color = MaterialTheme.colorScheme.primary
+                            ) {
+                                Text(
+                                    text = selectedCount.toString(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                )
+                            }
+                        }
+                    }
+
                     // Add Library button
                     IconButton(onClick = { showAddLibraryDialog = true }) {
                         Icon(
@@ -409,8 +497,8 @@ fun VideoRoomTopBar(
     if (showAddLibraryDialog) {
         AddLibraryDialog(
             onDismiss = { showAddLibraryDialog = false },
-            onConfirm = { path ->
-                onAddLibrary(path)
+            onConfirm = { path, autoGroup ->
+                onAddLibrary(path, autoGroup)
                 showAddLibraryDialog = false
             }
         )
@@ -420,9 +508,10 @@ fun VideoRoomTopBar(
 @Composable
 fun AddLibraryDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
+    onConfirm: (path: String, autoGroup: Boolean) -> Unit
 ) {
     var path by remember { mutableStateOf("") }
+    var autoGroup by remember { mutableStateOf(true) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -431,7 +520,8 @@ fun AddLibraryDialog(
             Column {
                 Text(
                     text = "Enter the full path to a directory containing videos:",
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
                 TextField(
@@ -445,13 +535,37 @@ fun AddLibraryDialog(
                 Text(
                     text = "The directory will be scanned recursively for video files.",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                Spacer(modifier = Modifier.height(VideoRoomSpacing.Medium))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Checkbox(
+                        checked = autoGroup,
+                        onCheckedChange = { autoGroup = it }
+                    )
+                    Column {
+                        Text(
+                            text = "Auto-group similar variants",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Stack videos that share a base name, duration, and frame rate (e.g. multiple resolutions of the same source).",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
             Button(
-                onClick = { if (path.isNotBlank()) onConfirm(path.trim()) },
+                onClick = { if (path.isNotBlank()) onConfirm(path.trim(), autoGroup) },
                 enabled = path.isNotBlank()
             ) {
                 Text("Add & Scan")

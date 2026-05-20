@@ -22,8 +22,22 @@ CREATE TABLE IF NOT EXISTS videos (
   indexed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   created_at TIMESTAMP,
   modified_at TIMESTAMP,
-  is_online INTEGER DEFAULT 1
+  is_online INTEGER DEFAULT 1,
+  group_id TEXT
 );
+
+-- Video groups (Lightroom-style "stacks" of related variants)
+CREATE TABLE IF NOT EXISTS video_groups (
+  id TEXT PRIMARY KEY,
+  name TEXT,
+  base_name TEXT,
+  preferred_video_id TEXT,  -- which member to show / open by default
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(preferred_video_id) REFERENCES videos(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_videos_group_id ON videos(group_id);
+CREATE INDEX IF NOT EXISTS idx_video_groups_base_name ON video_groups(base_name);
 
 CREATE INDEX IF NOT EXISTS idx_videos_filename ON videos(filename);
 CREATE INDEX IF NOT EXISTS idx_videos_path ON videos(path);
@@ -34,6 +48,7 @@ CREATE INDEX IF NOT EXISTS idx_videos_indexed_at ON videos(indexed_at);
 CREATE TABLE IF NOT EXISTS metadata (
   video_id TEXT PRIMARY KEY,
   duration_ms INTEGER,
+  frame_count INTEGER DEFAULT 0,
   codec_video TEXT,
   codec_audio TEXT,
   width INTEGER,

@@ -31,6 +31,71 @@ class DetailViewModel(
     private val _notes = MutableStateFlow("")
     val notes: StateFlow<String> = _notes.asStateFlow()
 
+    // Group / stack info
+    private val _groupMembers = MutableStateFlow<List<com.videoroom.data.models.VideoSummary>>(emptyList())
+    val groupMembers: StateFlow<List<com.videoroom.data.models.VideoSummary>> = _groupMembers.asStateFlow()
+
+    private val _groupPreferredId = MutableStateFlow("")
+    val groupPreferredId: StateFlow<String> = _groupPreferredId.asStateFlow()
+
+    private var currentVideoSummary: com.videoroom.data.models.VideoSummary? = null
+
+    fun setCurrentVideo(video: com.videoroom.data.models.VideoSummary) {
+        currentVideoSummary = video
+        if (video.isInGroup) {
+            loadGroupMembers(video.groupId)
+        } else {
+            _groupMembers.value = emptyList()
+            _groupPreferredId.value = ""
+        }
+    }
+
+    private fun loadGroupMembers(groupId: String) {
+        viewModelScope.launch {
+            try {
+                val (members, preferred) = repository.listGroupMembers(groupId)
+                _groupMembers.value = members
+                _groupPreferredId.value = preferred
+            } catch (e: Exception) {
+                logger.warn("Failed to load group members for $groupId", e)
+            }
+        }
+    }
+
+    fun setGroupPreferred(videoId: String) {
+        val groupId = currentVideoSummary?.groupId ?: return
+        if (groupId.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                if (repository.setGroupPreferred(groupId, videoId)) {
+                    _groupPreferredId.value = videoId
+                    logger.info("Set preferred video to $videoId")
+                } else {
+                    _error.value = "Failed to set preferred video"
+                }
+            } catch (e: Exception) {
+                _error.value = "Failed to set preferred: ${e.message}"
+            }
+        }
+    }
+
+    fun ungroupCurrent() {
+        val videoId = _metadata.value?.id ?: return
+        viewModelScope.launch {
+            try {
+                if (repository.ungroupVideo(videoId)) {
+                    _groupMembers.value = emptyList()
+                    _groupPreferredId.value = ""
+                    logger.info("Ungrouped video $videoId")
+                } else {
+                    _error.value = "Failed to ungroup"
+                }
+            } catch (e: Exception) {
+                _error.value = "Failed to ungroup: ${e.message}"
+            }
+        }
+    }
+
     fun loadMetadata(videoId: String) {
         viewModelScope.launch {
             _isLoading.value = true
