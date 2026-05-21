@@ -62,6 +62,29 @@ class GridViewModel(
     private val _selectedLocationPath = MutableStateFlow("")  // "" = all locations
     val selectedLocationPath: StateFlow<String> = _selectedLocationPath.asStateFlow()
 
+    // Keywords (tags). `tags` is the full list of known tags with usage counts;
+    // `filterTagId` narrows the grid to a single tag (drives the `filterTags`
+    // list passed to listVideos).
+    private val _tags = MutableStateFlow<List<com.videoroom.data.models.Tag>>(emptyList())
+    val tags: StateFlow<List<com.videoroom.data.models.Tag>> = _tags.asStateFlow()
+
+    private val _filterTagId = MutableStateFlow("")  // "" = no tag filter
+    val filterTagId: StateFlow<String> = _filterTagId.asStateFlow()
+
+    // Top-bar dropdown filters. The empty string / 0 means "no filter (---)".
+    private val _filterCamera = MutableStateFlow("")
+    val filterCamera: StateFlow<String> = _filterCamera.asStateFlow()
+    private val _filterLens = MutableStateFlow("")
+    val filterLens: StateFlow<String> = _filterLens.asStateFlow()
+    private val _filterCodec = MutableStateFlow("")
+    val filterCodec: StateFlow<String> = _filterCodec.asStateFlow()
+    private val _filterCaptureYear = MutableStateFlow(0)
+    val filterCaptureYear: StateFlow<Int> = _filterCaptureYear.asStateFlow()
+
+    // Distinct values fetched from the backend to populate the dropdowns.
+    private val _filterOptions = MutableStateFlow(com.videoroom.data.models.FilterOptions())
+    val filterOptions: StateFlow<com.videoroom.data.models.FilterOptions> = _filterOptions.asStateFlow()
+
     // Sort state exposed for the UI
     private val _currentSortField = MutableStateFlow(sortBy)
     val currentSortField: StateFlow<String> = _currentSortField.asStateFlow()
@@ -101,7 +124,11 @@ class GridViewModel(
                         sortAscending = sortAscending,
                         filterTags = filterTags,
                         collectionId = collectionId,
-                        locationPath = locationPathFilter
+                        locationPath = locationPathFilter,
+                        filterCamera = _filterCamera.value,
+                        filterLens = _filterLens.value,
+                        filterCodec = _filterCodec.value,
+                        filterCaptureYear = _filterCaptureYear.value
                     )
                 }
 
@@ -144,7 +171,11 @@ class GridViewModel(
                         sortAscending = sortAscending,
                         filterTags = filterTags,
                         collectionId = collectionId,
-                        locationPath = locationPathFilter
+                        locationPath = locationPathFilter,
+                        filterCamera = _filterCamera.value,
+                        filterLens = _filterLens.value,
+                        filterCodec = _filterCodec.value,
+                        filterCaptureYear = _filterCaptureYear.value
                     )
                 }
 
@@ -270,6 +301,113 @@ class GridViewModel(
         loadVideos()
     }
 
+    /** Load (or refresh) the full list of keywords/tags with their usage counts. */
+    fun loadTags() {
+        viewModelScope.launch {
+            try {
+                _tags.value = repository.listTags().sortedBy { it.name.lowercase() }
+                logger.info("Loaded ${_tags.value.size} tags")
+            } catch (e: Exception) {
+                logger.warn("Failed to load tags", e)
+            }
+        }
+    }
+
+    /** Narrow the grid to videos tagged with [tagId]. Empty string clears the filter. */
+    fun setTagFilter(tagId: String) {
+        if (_filterTagId.value == tagId) return
+        _filterTagId.value = tagId
+        filterTags = if (tagId.isEmpty()) emptyList() else listOf(tagId)
+        loadVideos()
+    }
+
+    /** Refresh the distinct values for the top-bar dropdowns. */
+    fun loadFilterOptions() {
+        viewModelScope.launch {
+            try {
+                _filterOptions.value = repository.getFilterOptions()
+            } catch (e: Exception) {
+                logger.warn("Failed to load filter options", e)
+            }
+        }
+    }
+
+    fun setCameraFilter(value: String) {
+        if (_filterCamera.value == value) return
+        _filterCamera.value = value
+        loadVideos()
+    }
+    fun setLensFilter(value: String) {
+        if (_filterLens.value == value) return
+        _filterLens.value = value
+        loadVideos()
+    }
+    fun setCodecFilter(value: String) {
+        if (_filterCodec.value == value) return
+        _filterCodec.value = value
+        loadVideos()
+    }
+    fun setCaptureYearFilter(year: Int) {
+        if (_filterCaptureYear.value == year) return
+        _filterCaptureYear.value = year
+        loadVideos()
+    }
+
+    fun clearAllDropdownFilters() {
+        var changed = false
+        if (_filterCamera.value.isNotEmpty()) { _filterCamera.value = ""; changed = true }
+        if (_filterLens.value.isNotEmpty()) { _filterLens.value = ""; changed = true }
+        if (_filterCodec.value.isNotEmpty()) { _filterCodec.value = ""; changed = true }
+        if (_filterCaptureYear.value != 0) { _filterCaptureYear.value = 0; changed = true }
+        if (changed) loadVideos()
+    }
+
+    /**
+     * Apply [keyword] to every video in [videoIds]. If the tag doesn't exist yet
+     * it's created. Refreshes the tag list (for updated counts) and the
+     * detail-panel metadata afterwards.
+     */
+    fun applyKeyword(keyword: String, videoIds: List<String>, onComplete: () -> Unit = {}) {
+        val name = keyword.trim()
+        if (name.isEmpty() || videoIds.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                val tag = repository.createTag(name)
+                if (tag == null) {
+                    _error.value = "Failed to create/get tag '$name'"
+                    return@launch
+                }
+                if (!repository.tagVideos(videoIds, tag.id)) {
+                    _error.value = "Failed to apply '$name'"
+                    return@launch
+                }
+                loadTags()
+                onComplete()
+            } catch (e: Exception) {
+                _error.value = "Apply keyword failed: ${e.message}"
+                logger.error("applyKeyword failed", e)
+            }
+        }
+    }
+
+    /** Remove [tagId] from every video in [videoIds]. */
+    fun removeKeyword(tagId: String, videoIds: List<String>, onComplete: () -> Unit = {}) {
+        if (tagId.isEmpty() || videoIds.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                if (!repository.untagVideos(videoIds, tagId)) {
+                    _error.value = "Failed to remove tag"
+                    return@launch
+                }
+                loadTags()
+                onComplete()
+            } catch (e: Exception) {
+                _error.value = "Remove keyword failed: ${e.message}"
+                logger.error("removeKeyword failed", e)
+            }
+        }
+    }
+
     fun setFilterTags(tags: List<String>) {
         filterTags = tags
         loadVideos()
@@ -290,6 +428,15 @@ class GridViewModel(
     // Thumbnail cache: video_id -> bytes
     private val _thumbnails = MutableStateFlow<Map<String, ByteArray>>(emptyMap())
     val thumbnails: StateFlow<Map<String, ByteArray>> = _thumbnails.asStateFlow()
+
+    // Scrub-frame cache: video_id -> list of N frames (index 0..N-1).
+    // Loaded lazily on first hover over each card.
+    private val _scrubFrames = MutableStateFlow<Map<String, List<ByteArray?>>>(emptyMap())
+    val scrubFrames: StateFlow<Map<String, List<ByteArray?>>> = _scrubFrames.asStateFlow()
+
+    // Tracks which video IDs are currently being loaded so we don't fire
+    // duplicate requests if the user hovers in/out repeatedly.
+    private val scrubLoading = mutableSetOf<String>()
 
     // Set of group IDs that are currently "open" (Lightroom-style stack expansion)
     private val _expandedGroupIds = MutableStateFlow<Set<String>>(emptySet())
@@ -343,6 +490,23 @@ class GridViewModel(
             val data = repository.getThumbnail(videoId, "medium")
             if (data != null) {
                 _thumbnails.value = _thumbnails.value + (videoId to data)
+            }
+        }
+    }
+
+    /** Fetch (once per video) the scrub frames used by the hover preview. */
+    fun loadScrubFrames(videoId: String) {
+        if (_scrubFrames.value.containsKey(videoId)) return
+        if (videoId in scrubLoading) return
+        scrubLoading.add(videoId)
+        viewModelScope.launch {
+            try {
+                val frames = repository.getScrubFrames(videoId, count = 10)
+                if (frames.any { it != null }) {
+                    _scrubFrames.value = _scrubFrames.value + (videoId to frames)
+                }
+            } finally {
+                scrubLoading.remove(videoId)
             }
         }
     }
@@ -519,9 +683,12 @@ class GridViewModel(
 
                 _scanStatus.value = null
                 _isLoading.value = false
-                // Refresh video list and library panel counts after scan
+                // Refresh video list, library panel counts, and filter
+                // dropdown values after scan (new cameras / codecs may have
+                // appeared).
                 loadVideos()
                 loadLibraryLocations()
+                loadFilterOptions()
             } catch (e: Exception) {
                 _scanResult.value = ScanResult(
                     success = false,
@@ -546,5 +713,37 @@ class GridViewModel(
     fun onDestroy() {
         viewModelScope.cancel()
         logger.info("GridViewModel destroyed")
+    }
+
+    /**
+     * Wipe every piece of catalog-derived state so the UI doesn't leak data
+     * from the previously-mounted catalog. Called by App.kt right after
+     * [VideoRepository.closeCatalog]. Filter dropdowns, tags, library
+     * locations, thumbnails — everything goes back to the just-launched state.
+     */
+    fun clearState() {
+        _videos.value = emptyList()
+        _selectedVideoId.value = null
+        _selectedVideoIds.value = emptyList()
+        _anchorVideoId.value = null
+        _totalCount.value = 0
+        _hasMore.value = false
+        _isLoading.value = false
+        _error.value = null
+        _libraryLocations.value = emptyList()
+        _selectedLocationPath.value = ""
+        _tags.value = emptyList()
+        _filterTagId.value = ""
+        _filterCamera.value = ""
+        _filterLens.value = ""
+        _filterCodec.value = ""
+        _filterCaptureYear.value = 0
+        _filterOptions.value = com.videoroom.data.models.FilterOptions()
+        _thumbnails.value = emptyMap()
+        _scrubFrames.value = emptyMap()
+        _scanStatus.value = null
+        searchQuery = ""
+        currentPage = 0
+        collapseAllStacks()
     }
 }

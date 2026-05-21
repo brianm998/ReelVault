@@ -41,6 +41,10 @@ impl MetadataExtractor {
             ));
         }
 
+        // ffprobe is much lighter than ffmpeg but still counts against the
+        // concurrency budget — it does the same kind of network/disk I/O that
+        // can saturate a SAN if too many run at once.
+        let _permit = crate::concurrency::acquire_ffmpeg_permit();
         let output = Command::new("ffprobe")
             .args(&[
                 "-v",

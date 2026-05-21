@@ -22,8 +22,23 @@ class GridViewModel: ObservableObject {
     @Published var libraryLocations: [LibraryLocation] = []
     @Published var selectedLocationPath: String = ""  // "" = all
 
+    // Keywords / tag filter
+    @Published var tags: [Tag] = []
+    @Published var filterTagId: String = ""  // "" = no filter
+
+    // Top-bar dropdown filters and their distinct-value options.
+    @Published var filterCamera: String = ""
+    @Published var filterLens: String = ""
+    @Published var filterCodec: String = ""
+    @Published var filterCaptureYear: Int32 = 0
+    @Published var filterOptions = FilterOptions()
+
     // Thumbnails
     @Published var thumbnails: [String: NSImage] = [:]
+
+    // Scrub frames per video, loaded lazily on first hover.
+    @Published var scrubFrames: [String: [NSImage?]] = [:]
+    private var scrubLoading: Set<String> = []
 
     // Stack expansion
     @Published var expandedGroupIds: Set<String> = []
@@ -78,13 +93,19 @@ class GridViewModel: ObservableObject {
         isLoading = true
         error = nil
         do {
+            let filterTagIds = filterTagId.isEmpty ? [] : [filterTagId]
             let (results, total) = try await repository.listVideos(
                 limit: pageSize,
                 offset: Int32(currentPage * Int(pageSize)),
                 searchQuery: searchQuery,
                 sortBy: sortBy,
                 sortAscending: sortAscending,
-                locationPath: selectedLocationPath
+                locationPath: selectedLocationPath,
+                filterTagIds: filterTagIds,
+                filterCamera: filterCamera,
+                filterLens: filterLens,
+                filterCodec: filterCodec,
+                filterCaptureYear: filterCaptureYear
             )
             if replace {
                 videos = results
@@ -114,6 +135,101 @@ class GridViewModel: ObservableObject {
         reloadFromTop()
     }
 
+    // MARK: - Keywords / tags
+
+    func loadTags() {
+        Task {
+            do {
+                tags = try await repository.listTags().sorted { $0.name.lowercased() < $1.name.lowercased() }
+            } catch {
+                NSLog("Failed to load tags: \(error)")
+            }
+        }
+    }
+
+    func setTagFilter(_ tagId: String) {
+        guard filterTagId != tagId else { return }
+        filterTagId = tagId
+        reloadFromTop()
+    }
+
+    func loadFilterOptions() {
+        Task {
+            filterOptions = await repository.getFilterOptions()
+        }
+    }
+
+    func setCameraFilter(_ value: String) {
+        guard filterCamera != value else { return }
+        filterCamera = value
+        reloadFromTop()
+    }
+    func setLensFilter(_ value: String) {
+        guard filterLens != value else { return }
+        filterLens = value
+        reloadFromTop()
+    }
+    func setCodecFilter(_ value: String) {
+        guard filterCodec != value else { return }
+        filterCodec = value
+        reloadFromTop()
+    }
+    func setCaptureYearFilter(_ year: Int32) {
+        guard filterCaptureYear != year else { return }
+        filterCaptureYear = year
+        reloadFromTop()
+    }
+
+    func clearAllDropdownFilters() {
+        var changed = false
+        if !filterCamera.isEmpty { filterCamera = ""; changed = true }
+        if !filterLens.isEmpty { filterLens = ""; changed = true }
+        if !filterCodec.isEmpty { filterCodec = ""; changed = true }
+        if filterCaptureYear != 0 { filterCaptureYear = 0; changed = true }
+        if !filterTagId.isEmpty { filterTagId = ""; changed = true }
+        if changed { reloadFromTop() }
+    }
+
+    /// Apply [keyword] to all videos in [videoIds]. Creates the tag if it
+    /// doesn't exist. Refreshes the tag list (for new counts) and the
+    /// optional [onComplete] handler runs afterwards.
+    func applyKeyword(_ keyword: String, to videoIds: [String], onComplete: @escaping () -> Void = {}) {
+        let name = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, !videoIds.isEmpty else { return }
+        Task {
+            do {
+                guard let tag = try await repository.createTag(name: name) else {
+                    error = "Failed to create or find tag '\(name)'"
+                    return
+                }
+                if !(try await repository.tagVideos(videoIds: videoIds, tagId: tag.id)) {
+                    error = "Failed to apply '\(name)'"
+                    return
+                }
+                loadTags()
+                onComplete()
+            } catch {
+                self.error = "Apply keyword failed: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    func removeKeyword(tagId: String, from videoIds: [String], onComplete: @escaping () -> Void = {}) {
+        guard !tagId.isEmpty, !videoIds.isEmpty else { return }
+        Task {
+            do {
+                if !(try await repository.untagVideos(videoIds: videoIds, tagId: tagId)) {
+                    error = "Failed to remove tag"
+                    return
+                }
+                loadTags()
+                onComplete()
+            } catch {
+                self.error = "Remove keyword failed: \(error.localizedDescription)"
+            }
+        }
+    }
+
     // MARK: - Library locations
 
     func loadLibraryLocations() {
@@ -126,14 +242,14 @@ class GridViewModel: ObservableObject {
         }
     }
 
-    func addLibraryAndScan(path: String, autoGroup: Bool) {
+    func addLibraryAndScan(path: String, recursive: Bool = true, autoGroup: Bool = true) {
         Task {
             isLoading = true
             scanStatus = "Adding library location..."
             scanResult = nil
 
             do {
-                let (added, message) = try await repository.addLibraryLocation(path: path, recursive: true)
+                let (added, message) = try await repository.addLibraryLocation(path: path, recursive: recursive)
                 if !added {
                     scanResult = ScanResult(
                         success: false,
@@ -183,6 +299,7 @@ class GridViewModel: ObservableObject {
                 isLoading = false
                 reloadFromTop()
                 loadLibraryLocations()
+                loadFilterOptions()
             } catch {
                 scanResult = ScanResult(
                     success: false,
@@ -247,6 +364,29 @@ class GridViewModel: ObservableObject {
         }
     }
 
+    /// Lazy-load all scrub frames for a video on first hover. No-ops if already
+    /// loaded or in-flight.
+    func loadScrubFrames(videoId: String) {
+        if scrubFrames[videoId] != nil { return }
+        if scrubLoading.contains(videoId) { return }
+        scrubLoading.insert(videoId)
+        NSLog("[GridViewModel] loadScrubFrames begin video=%@", videoId)
+        Task {
+            defer { scrubLoading.remove(videoId) }
+            let frames = await repository.getScrubFrames(videoId: videoId, count: 10)
+            let nonNil = frames.filter { $0 != nil }.count
+            NSLog(
+                "[GridViewModel] loadScrubFrames done video=%@ got=%d/%d",
+                videoId,
+                nonNil,
+                frames.count
+            )
+            if nonNil > 0 {
+                scrubFrames[videoId] = frames
+            }
+        }
+    }
+
     // MARK: - Stack expansion
 
     func toggleStackExpansion(_ groupId: String) {
@@ -302,4 +442,36 @@ class GridViewModel: ObservableObject {
     }
 
     func clearError() { error = nil }
+
+    /// Wipe every piece of catalog-derived state so the UI doesn't leak data
+    /// from the previously-mounted catalog. Called by `ContentView` right
+    /// after `VideoRepository.closeCatalog()`.
+    func clearState() {
+        videos = []
+        selectedVideoId = nil
+        selectedVideoIds = []
+        anchorVideoId = nil
+        isLoading = false
+        error = nil
+        totalCount = 0
+        hasMore = false
+        searchQuery = ""
+        libraryLocations = []
+        selectedLocationPath = ""
+        tags = []
+        filterTagId = ""
+        filterCamera = ""
+        filterLens = ""
+        filterCodec = ""
+        filterCaptureYear = 0
+        filterOptions = FilterOptions()
+        thumbnails = [:]
+        scrubFrames = [:]
+        scrubLoading = []
+        expandedGroupIds = []
+        expandedGroupMembers = [:]
+        scanStatus = nil
+        scanResult = nil
+        currentPage = 0
+    }
 }

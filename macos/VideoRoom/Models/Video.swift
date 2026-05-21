@@ -113,6 +113,7 @@ struct Tag: Identifiable, Hashable {
     let id: String
     let name: String
     let color: String?
+    let videoCount: Int64
 }
 
 struct Collection: Identifiable, Hashable {
@@ -129,6 +130,28 @@ struct LibraryLocation: Identifiable, Hashable {
     let enabled: Bool
     let videoCount: Int64
     let lastScanned: Int64
+}
+
+/// Distinct values that can populate the top-bar filter dropdowns.
+struct FilterOptions: Equatable {
+    var cameras: [String] = []
+    var lenses: [String] = []
+    var codecs: [String] = []
+    var captureYears: [Int32] = []
+}
+
+/// Information about the catalog the backend currently has open. An empty
+/// `path` means the daemon is running but no SQLite file is mounted — the
+/// client must call `OpenCatalog` before issuing any other RPC.
+struct CatalogInfo: Equatable {
+    var path: String = ""
+    var name: String = ""
+    var videoCount: Int64 = 0
+    var openedAtMs: Int64 = 0
+
+    var isOpen: Bool { !path.isEmpty }
+
+    static let closed = CatalogInfo()
 }
 
 struct ScanProgress {

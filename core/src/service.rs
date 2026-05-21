@@ -23,11 +23,39 @@ pub use videoroom::video_room_server;
 pub struct VideoRoomService {
     db: Arc<Database>,
     config: Arc<Config>,
+    /// Unix millis at which the currently-open catalog was opened. Reset by
+    /// OpenCatalog. Used to expose `opened_at_ms` in `CatalogInfo`.
+    opened_at_ms: Arc<std::sync::RwLock<i64>>,
+    /// Per-video locks that prevent multiple concurrent get_thumbnail requests
+    /// from each kicking off a redundant scrub-frame generation pass for the
+    /// same video. Map entries hold an Arc<Mutex<()>> per video_id; the locks
+    /// live as long as there are interested tasks.
+    scrub_locks: Arc<tokio::sync::Mutex<std::collections::HashMap<String, Arc<tokio::sync::Mutex<()>>>>>,
 }
 
 impl VideoRoomService {
     pub fn new(db: Arc<Database>, config: Arc<Config>) -> Self {
-        VideoRoomService { db, config }
+        // If `db` was constructed with an already-open catalog, treat
+        // "now" as its open timestamp.
+        let initial_opened = if db.current_path().is_some() {
+            now_ms()
+        } else {
+            0
+        };
+        VideoRoomService {
+            db,
+            config,
+            opened_at_ms: Arc::new(std::sync::RwLock::new(initial_opened)),
+            scrub_locks: Arc::new(tokio::sync::Mutex::new(std::collections::HashMap::new())),
+        }
+    }
+
+    /// Get-or-insert the per-video lock used by scrub generation.
+    async fn scrub_lock_for(&self, video_id: &str) -> Arc<tokio::sync::Mutex<()>> {
+        let mut map = self.scrub_locks.lock().await;
+        map.entry(video_id.to_string())
+            .or_insert_with(|| Arc::new(tokio::sync::Mutex::new(())))
+            .clone()
     }
 
     pub fn into_server(self) -> VideoRoomServer<Self> {
@@ -221,6 +249,25 @@ impl VideoRoomTrait for VideoRoomService {
             expand_tilde(&req.location_path)
         };
 
+        // Resolve filter_tags — callers may pass either tag IDs (UUIDs) or
+        // human-readable tag names. We accept both: if the string is found as
+        // an existing tag name, we use that tag's ID; otherwise we pass the
+        // string through and let it match by ID directly.
+        let tag_ids: Vec<String> = req
+            .filter_tags
+            .iter()
+            .filter_map(|s| {
+                if s.is_empty() {
+                    return None;
+                }
+                if let Ok(Some(tag)) = self.db.get_tag_by_name(s) {
+                    Some(tag.id)
+                } else {
+                    Some(s.clone())
+                }
+            })
+            .collect();
+
         // Use grouped listing — returns one representative per group + ungrouped videos
         let (videos, total_count) = self
             .db
@@ -230,6 +277,11 @@ impl VideoRoomTrait for VideoRoomService {
                 &req.sort_by,
                 req.sort_ascending,
                 &location_filter,
+                &tag_ids,
+                &req.filter_camera,
+                &req.filter_lens,
+                &req.filter_codec,
+                req.filter_capture_year,
             )
             .map_err(Status::from)?;
 
@@ -299,12 +351,90 @@ impl VideoRoomTrait for VideoRoomService {
     ) -> std::result::Result<Response<Self::GetThumbnailStream>, Status> {
         let req = request.into_inner();
 
-        let thumbnail_data = ThumbnailGenerator::get_thumbnail(
+        let mut thumbnail_data = ThumbnailGenerator::get_thumbnail(
             &self.config.thumbnail_cache_path,
             &req.video_id,
             &req.size,
         )
         .map_err(Status::from)?;
+
+        // On-demand scrub frame generation. If a "scrub_N" frame is requested
+        // but doesn't exist yet (e.g. for libraries scanned before this feature
+        // existed), generate it now and return it. The work is deduplicated via
+        // a per-video Mutex so 10 simultaneous "scrub_0..9" requests for the
+        // same video share a single generation pass instead of starting 10.
+        // Concurrent ffmpeg invocations across all generation tasks are
+        // additionally bounded by the global ffmpeg semaphore.
+        if thumbnail_data.is_none() && req.size.starts_with("scrub_") {
+            let lock = self.scrub_lock_for(&req.video_id).await;
+            let _gen_guard = lock.lock().await;
+
+            // Double-check: another waiter may have finished generation while
+            // we were queued on the mutex.
+            thumbnail_data = ThumbnailGenerator::get_thumbnail(
+                &self.config.thumbnail_cache_path,
+                &req.video_id,
+                &req.size,
+            )
+            .map_err(Status::from)?;
+
+            if thumbnail_data.is_none() {
+                if let Ok(Some(video)) = self.db.get_video(&req.video_id) {
+                    let duration_secs = self
+                        .db
+                        .get_connection()
+                        .ok()
+                        .and_then(|c| {
+                            c.query_row(
+                                "SELECT duration_ms FROM metadata WHERE video_id = ?",
+                                [&req.video_id],
+                                |row| row.get::<_, i64>(0),
+                            )
+                            .ok()
+                        })
+                        .map(|ms| ms as f64 / 1000.0)
+                        .unwrap_or(0.0);
+
+                    if duration_secs > 0.0 {
+                        let cache = self.config.thumbnail_cache_path.clone();
+                        let path = video.path.clone();
+                        let video_id = req.video_id.clone();
+                        // Generate ALL scrub frames in one shot (next requests
+                        // for sibling indices hit the cache).
+                        let _ = tokio::task::spawn_blocking(move || {
+                            ThumbnailGenerator::generate_scrub_thumbnails(
+                                std::path::Path::new(&path),
+                                &video_id,
+                                &cache,
+                                duration_secs,
+                            )
+                        })
+                        .await;
+
+                        thumbnail_data = ThumbnailGenerator::get_thumbnail(
+                            &self.config.thumbnail_cache_path,
+                            &req.video_id,
+                            &req.size,
+                        )
+                        .map_err(Status::from)?;
+                    }
+                }
+            }
+
+            // Drop the guard before pruning the map. Use try_lock so we don't
+            // race with someone who just acquired it after us; if a waiter
+            // already took the lock we leave the entry in place for them.
+            drop(_gen_guard);
+            if Arc::strong_count(&lock) == 2 {
+                // Only our reference + the map's reference remain → safe to evict.
+                let mut map = self.scrub_locks.lock().await;
+                if let Some(existing) = map.get(&req.video_id) {
+                    if Arc::strong_count(existing) <= 2 {
+                        map.remove(&req.video_id);
+                    }
+                }
+            }
+        }
 
         let (tx, rx) = tokio::sync::mpsc::channel(4);
 
@@ -342,30 +472,19 @@ impl VideoRoomTrait for VideoRoomService {
             }));
         }
 
-        // If the path already exists as a library location, that's fine — treat as success
-        // so the user can click "Add" with the same path to trigger a re-scan.
-        match self.db.add_library_location(&expanded_path, req.recursive) {
-            Ok(_) => Ok(Response::new(LocationResponse {
-                success: true,
-                message: format!("Added library location: {}", expanded_path),
-            })),
-            Err(crate::error::VideoRoomError::DuplicateEntry(_)) => Ok(Response::new(LocationResponse {
-                success: true,
-                message: format!("Library location already exists: {}", expanded_path),
-            })),
-            Err(e) => {
-                // Other database errors that look like UNIQUE violations should also be tolerated
-                let msg = e.to_string();
-                if msg.contains("UNIQUE constraint") || msg.contains("already exists") {
-                    Ok(Response::new(LocationResponse {
-                        success: true,
-                        message: format!("Library location already exists: {}", expanded_path),
-                    }))
-                } else {
-                    Err(Status::from(e))
-                }
-            }
-        }
+        // The DB UPSERTs — if the path already exists, the recursive flag is
+        // updated in place. So this is idempotent and lets the user toggle
+        // recursive on/off by re-adding.
+        self.db
+            .add_library_location(&expanded_path, req.recursive)
+            .map_err(Status::from)?;
+
+        Ok(Response::new(LocationResponse {
+            success: true,
+            message: format!("Added library location: {} ({})",
+                expanded_path,
+                if req.recursive { "recursive" } else { "non-recursive" }),
+        }))
     }
 
     async fn remove_library_location(
@@ -515,7 +634,19 @@ impl VideoRoomTrait for VideoRoomService {
                 }
             } else {
                 let expanded = expand_tilde(&location_path);
-                scan_one(std::path::Path::new(&expanded), true, &tx);
+                // Honor the recursive flag stored on the library_location.
+                // Falls back to true if the path isn't a registered location
+                // (caller-driven ad-hoc scans).
+                let recursive = db
+                    .list_library_locations()
+                    .ok()
+                    .and_then(|locs| {
+                        locs.into_iter()
+                            .find(|l| expand_tilde(&l.path) == expanded)
+                            .map(|l| l.recursive)
+                    })
+                    .unwrap_or(true);
+                scan_one(std::path::Path::new(&expanded), recursive, &tx);
             }
         });
 
@@ -541,6 +672,18 @@ impl VideoRoomTrait for VideoRoomService {
     ) -> std::result::Result<Response<TagResponse>, Status> {
         let req = request.into_inner();
 
+        // If a tag with this name already exists, return its existing ID
+        // instead of failing. Makes the "type a new keyword" UX idempotent.
+        if let Ok(Some(existing)) = self.db.get_tag_by_name(&req.name) {
+            let video_count = self.db.count_videos_for_tag(&existing.id).unwrap_or(0);
+            return Ok(Response::new(TagResponse {
+                id: existing.id,
+                name: existing.name,
+                color: existing.color.unwrap_or_default(),
+                video_count,
+            }));
+        }
+
         let tag_id = self
             .db
             .create_tag(&req.name, if req.color.is_empty() { None } else { Some(&req.color) })
@@ -550,6 +693,7 @@ impl VideoRoomTrait for VideoRoomService {
             id: tag_id,
             name: req.name,
             color: req.color,
+            video_count: 0,
         }))
     }
 
@@ -580,6 +724,7 @@ impl VideoRoomTrait for VideoRoomService {
                 id: t.id.clone(),
                 name: t.name.clone(),
                 color: t.color.clone().unwrap_or_default(),
+                video_count: self.db.count_videos_for_tag(&t.id).unwrap_or(0),
             })
             .collect();
 
@@ -879,11 +1024,32 @@ impl VideoRoomTrait for VideoRoomService {
         Ok(Response::new(ListProxiesResponse { proxies: vec![] }))
     }
 
+    async fn get_filter_options(
+        &self,
+        _request: Request<GetFilterOptionsRequest>,
+    ) -> std::result::Result<Response<FilterOptions>, Status> {
+        let cameras = self.db.list_distinct_cameras().unwrap_or_default();
+        let lenses = self.db.list_distinct_lenses().unwrap_or_default();
+        let codecs = self.db.list_distinct_codecs().unwrap_or_default();
+        let years = self.db.list_distinct_capture_years().unwrap_or_default();
+        Ok(Response::new(FilterOptions {
+            cameras,
+            lenses,
+            codecs,
+            capture_years: years,
+        }))
+    }
+
     async fn get_status(
         &self,
         _request: Request<GetStatusRequest>,
     ) -> std::result::Result<Response<StatusResponse>, Status> {
-        let (_videos, total) = self.db.list_videos(1, 0).map_err(Status::from)?;
+        // GetStatus is the client's liveness probe — it must succeed whenever
+        // the daemon is running, *including* the "no catalog mounted yet"
+        // state right after `--no-catalog` startup. If we let the SQL error
+        // bubble up here the client would treat a perfectly healthy daemon
+        // as broken and refuse to render the OpenCatalog dialog.
+        let total = self.db.list_videos(1, 0).map(|(_, t)| t).unwrap_or(0);
 
         Ok(Response::new(StatusResponse {
             running: true,
@@ -930,6 +1096,86 @@ impl VideoRoomTrait for VideoRoomService {
             message: "Config updated".to_string(),
             error: String::new(),
         }))
+    }
+
+    async fn open_catalog(
+        &self,
+        request: Request<OpenCatalogRequest>,
+    ) -> std::result::Result<Response<CatalogInfo>, Status> {
+        let raw = request.into_inner().path;
+        let expanded = expand_tilde(&raw);
+        if expanded.trim().is_empty() {
+            return Err(Status::invalid_argument("catalog path is empty"));
+        }
+        let path = std::path::PathBuf::from(&expanded);
+        self.db
+            .set_path(&path)
+            .map_err(|e| Status::internal(format!("Failed to open catalog: {}", e)))?;
+        let opened = now_ms();
+        if let Ok(mut g) = self.opened_at_ms.write() {
+            *g = opened;
+        }
+        Ok(Response::new(catalog_info_from(self.db.as_ref(), opened)))
+    }
+
+    async fn close_catalog(
+        &self,
+        _request: Request<CloseCatalogRequest>,
+    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+        self.db.clear_path();
+        if let Ok(mut g) = self.opened_at_ms.write() {
+            *g = 0;
+        }
+        Ok(Response::new(videoroom::Response {
+            success: true,
+            message: "Catalog closed".to_string(),
+            error: String::new(),
+        }))
+    }
+
+    async fn get_current_catalog(
+        &self,
+        _request: Request<GetCurrentCatalogRequest>,
+    ) -> std::result::Result<Response<CatalogInfo>, Status> {
+        let opened = self.opened_at_ms.read().map(|g| *g).unwrap_or(0);
+        Ok(Response::new(catalog_info_from(self.db.as_ref(), opened)))
+    }
+}
+
+/// Current Unix time in milliseconds. Used to stamp `opened_at_ms` on
+/// CatalogInfo so clients can show "opened 5 minutes ago" if they care.
+fn now_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0)
+}
+
+/// Build a `CatalogInfo` proto from the current `db` state. Returns the
+/// "no catalog open" shape when the database hasn't been pointed at a file.
+fn catalog_info_from(db: &Database, opened_at_ms: i64) -> CatalogInfo {
+    let path = db.current_path();
+    match path {
+        Some(p) => {
+            let name = p
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("Untitled")
+                .to_string();
+            // best-effort video count; ignore errors so we never fail to
+            // return info just because the count query hiccupped.
+            let video_count = db
+                .list_videos(1, 0)
+                .map(|(_, total)| total)
+                .unwrap_or(0);
+            CatalogInfo {
+                path: p.to_string_lossy().into_owned(),
+                name,
+                video_count,
+                opened_at_ms,
+            }
+        }
+        None => CatalogInfo::default(),
     }
 }
 

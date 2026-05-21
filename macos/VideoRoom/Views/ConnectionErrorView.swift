@@ -46,6 +46,7 @@ struct ConnectionErrorView: View {
                             .font(.caption)
                     }
                     .buttonStyle(.bordered)
+                    .help("Copy the command to your clipboard so you can paste it into a terminal.")
                 }
             }
             .frame(maxWidth: 400)
@@ -59,6 +60,7 @@ struct ConnectionErrorView: View {
                 }
             }
             .buttonStyle(.borderedProminent)
+            .help("Try connecting to the VideoRoom backend daemon again. Make sure `videoroom-core` is running on localhost:50051.")
 
             Spacer()
         }

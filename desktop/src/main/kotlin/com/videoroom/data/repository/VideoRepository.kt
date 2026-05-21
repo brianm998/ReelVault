@@ -5,6 +5,8 @@ import com.videoroom.data.models.Collection as VideoCollection
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -18,14 +20,31 @@ import videoroom.VideoRoomGrpcKt
  */
 class VideoRepository(
     private val host: String = "localhost",
-    private val port: Int = 50051
+    /** Initial port; mutable so [connect] can target a freshly-spawned daemon. */
+    private var port: Int = 50051
 ) {
     private val logger = LoggerFactory.getLogger(VideoRepository::class.java)
 
     private var channel: ManagedChannel? = null
     private var stub: VideoRoomGrpcKt.VideoRoomCoroutineStub? = null
 
-    suspend fun connect(): Boolean = withContext(Dispatchers.IO) {
+    /** Port the repository is currently configured to talk to. */
+    val currentPort: Int get() = port
+
+    /**
+     * Try to connect to the daemon at the configured (or supplied) port.
+     * Returns `true` if the GetStatus probe succeeds; on failure the
+     * channel is torn down so the caller can retry on a different port.
+     *
+     * If [overridePort] is non-null, it both targets that port and updates
+     * the repository's notion of `port` for subsequent reconnects.
+     */
+    suspend fun connect(overridePort: Int? = null): Boolean = withContext(Dispatchers.IO) {
+        overridePort?.let { port = it }
+        // Tear down any stale channel before reconnecting.
+        try { channel?.shutdownNow() } catch (_: Exception) {}
+        channel = null
+        stub = null
         return@withContext try {
             channel = ManagedChannelBuilder.forAddress(host, port)
                 .usePlaintext()
@@ -38,7 +57,7 @@ class VideoRepository(
             logger.info("Connected to VideoRoom backend at $host:$port")
             true
         } catch (e: Exception) {
-            logger.error("Failed to connect to backend: ${e.message}", e)
+            logger.error("Failed to connect to backend on port $port: ${e.message}")
             channel?.shutdown()
             channel = null
             stub = null
@@ -120,7 +139,11 @@ class VideoRepository(
         sortAscending: Boolean = true,
         filterTags: List<String> = emptyList(),
         collectionId: String? = null,
-        locationPath: String = ""
+        locationPath: String = "",
+        filterCamera: String = "",
+        filterLens: String = "",
+        filterCodec: String = "",
+        filterCaptureYear: Int = 0
     ): Pair<List<VideoSummary>, Long> = withContext(Dispatchers.IO) {
         val s = stub ?: return@withContext Pair(emptyList(), 0L)
         try {
@@ -129,9 +152,13 @@ class VideoRepository(
                 .setOffset(offset)
                 .setSortBy(sortBy)
                 .setSortAscending(sortAscending)
-                .addAllFilterTags(filterTags)
+                .addAllFilterTags(filterTags)  // tag IDs or names; backend resolves
                 .setCollectionId(collectionId ?: "")
                 .setLocationPath(locationPath)
+                .setFilterCamera(filterCamera)
+                .setFilterLens(filterLens)
+                .setFilterCodec(filterCodec)
+                .setFilterCaptureYear(filterCaptureYear)
                 .build()
 
             val response = s.listVideos(request)
@@ -140,6 +167,22 @@ class VideoRepository(
         } catch (e: Exception) {
             logger.error("Failed to list videos: ${e.message}", e)
             Pair(emptyList(), 0L)
+        }
+    }
+
+    suspend fun getFilterOptions(): com.videoroom.data.models.FilterOptions = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext com.videoroom.data.models.FilterOptions()
+        try {
+            val response = s.getFilterOptions(Videoroom.GetFilterOptionsRequest.newBuilder().build())
+            com.videoroom.data.models.FilterOptions(
+                cameras = response.camerasList.toList(),
+                lenses = response.lensesList.toList(),
+                codecs = response.codecsList.toList(),
+                captureYears = response.captureYearsList.toList()
+            )
+        } catch (e: Exception) {
+            logger.error("Failed to get filter options: ${e.message}", e)
+            com.videoroom.data.models.FilterOptions()
         }
     }
 
@@ -179,6 +222,19 @@ class VideoRepository(
             null
         }
     }
+
+    /**
+     * Fetch the N evenly-spaced scrub frames for [videoId] in parallel.
+     * Returns a list of size [count] (some entries may be null if a particular
+     * frame failed to generate). Used by the grid's hover-scrub feature.
+     */
+    suspend fun getScrubFrames(videoId: String, count: Int = 10): List<ByteArray?> =
+        coroutineScope {
+            val deferred = (0 until count).map { i ->
+                async(Dispatchers.IO) { getThumbnail(videoId, "scrub_$i") }
+            }
+            deferred.map { it.await() }
+        }
 
     suspend fun getThumbnail(videoId: String, size: String = "medium"): ByteArray? = withContext(Dispatchers.IO) {
         val s = stub ?: return@withContext null
@@ -265,7 +321,12 @@ class VideoRepository(
                 .setColor(color)
                 .build()
             val response = s.createTag(request)
-            Tag(id = response.id, name = response.name, color = response.color)
+            Tag(
+                id = response.id,
+                name = response.name,
+                color = response.color,
+                videoCount = response.videoCount
+            )
         } catch (e: Exception) {
             logger.error("Failed to create tag: ${e.message}", e)
             null
@@ -277,7 +338,9 @@ class VideoRepository(
         try {
             val request = Videoroom.ListTagsRequest.newBuilder().build()
             val response = s.listTags(request)
-            response.tagsList.map { Tag(id = it.id, name = it.name, color = it.color) }
+            response.tagsList.map {
+                Tag(id = it.id, name = it.name, color = it.color, videoCount = it.videoCount)
+            }
         } catch (e: Exception) {
             logger.error("Failed to list tags: ${e.message}", e)
             emptyList()
@@ -465,6 +528,60 @@ class VideoRepository(
         } catch (e: Exception) {
             logger.error("Failed to update notes: ${e.message}", e)
             false
+        }
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // Catalog lifecycle
+    // ────────────────────────────────────────────────────────────────────
+
+    /**
+     * Ask the daemon to mount the SQLite catalog at [path]. Returns the
+     * resulting [CatalogInfo] on success, or `null` if the server rejected
+     * the request (e.g. malformed path).
+     */
+    suspend fun openCatalog(path: String): CatalogInfo? = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext null
+        try {
+            val req = Videoroom.OpenCatalogRequest.newBuilder().setPath(path).build()
+            val info = s.openCatalog(req)
+            CatalogInfo(
+                path = info.path,
+                name = info.name,
+                videoCount = info.videoCount,
+                openedAtMs = info.openedAtMs
+            )
+        } catch (e: Exception) {
+            logger.error("OpenCatalog failed: ${e.message}", e)
+            null
+        }
+    }
+
+    /** Ask the daemon to close its current catalog. Subsequent RPCs will fail until OpenCatalog is called. */
+    suspend fun closeCatalog(): Boolean = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext false
+        try {
+            s.closeCatalog(Videoroom.CloseCatalogRequest.newBuilder().build()).success
+        } catch (e: Exception) {
+            logger.error("CloseCatalog failed: ${e.message}", e)
+            false
+        }
+    }
+
+    /** Returns [CatalogInfo.Closed] when no catalog is open or the call fails. */
+    suspend fun getCurrentCatalog(): CatalogInfo = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext CatalogInfo.Closed
+        try {
+            val info = s.getCurrentCatalog(Videoroom.GetCurrentCatalogRequest.newBuilder().build())
+            CatalogInfo(
+                path = info.path,
+                name = info.name,
+                videoCount = info.videoCount,
+                openedAtMs = info.openedAtMs
+            )
+        } catch (e: Exception) {
+            logger.error("GetCurrentCatalog failed: ${e.message}", e)
+            CatalogInfo.Closed
         }
     }
 

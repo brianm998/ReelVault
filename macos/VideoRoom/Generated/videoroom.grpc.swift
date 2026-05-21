@@ -15,13 +15,13 @@ import GRPCProtobuf
 
 /// Namespace containing generated types for the "videoroom.VideoRoom" service.
 @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-internal enum Videoroom_VideoRoom {
+internal enum Videoroom_VideoRoom: Sendable {
     /// Service descriptor for the "videoroom.VideoRoom" service.
     internal static let descriptor = GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom")
     /// Namespace for method metadata.
-    internal enum Method {
+    internal enum Method: Sendable {
         /// Namespace for "ListVideos" metadata.
-        internal enum ListVideos {
+        internal enum ListVideos: Sendable {
             /// Request type for "ListVideos".
             internal typealias Input = Videoroom_ListVideosRequest
             /// Response type for "ListVideos".
@@ -33,7 +33,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "SearchVideos" metadata.
-        internal enum SearchVideos {
+        internal enum SearchVideos: Sendable {
             /// Request type for "SearchVideos".
             internal typealias Input = Videoroom_SearchRequest
             /// Response type for "SearchVideos".
@@ -45,7 +45,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "GetMetadata" metadata.
-        internal enum GetMetadata {
+        internal enum GetMetadata: Sendable {
             /// Request type for "GetMetadata".
             internal typealias Input = Videoroom_GetMetadataRequest
             /// Response type for "GetMetadata".
@@ -57,7 +57,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "GetThumbnail" metadata.
-        internal enum GetThumbnail {
+        internal enum GetThumbnail: Sendable {
             /// Request type for "GetThumbnail".
             internal typealias Input = Videoroom_GetThumbnailRequest
             /// Response type for "GetThumbnail".
@@ -69,7 +69,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "AddLibraryLocation" metadata.
-        internal enum AddLibraryLocation {
+        internal enum AddLibraryLocation: Sendable {
             /// Request type for "AddLibraryLocation".
             internal typealias Input = Videoroom_AddLocationRequest
             /// Response type for "AddLibraryLocation".
@@ -81,7 +81,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "RemoveLibraryLocation" metadata.
-        internal enum RemoveLibraryLocation {
+        internal enum RemoveLibraryLocation: Sendable {
             /// Request type for "RemoveLibraryLocation".
             internal typealias Input = Videoroom_RemoveLocationRequest
             /// Response type for "RemoveLibraryLocation".
@@ -93,7 +93,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "ListLibraryLocations" metadata.
-        internal enum ListLibraryLocations {
+        internal enum ListLibraryLocations: Sendable {
             /// Request type for "ListLibraryLocations".
             internal typealias Input = Videoroom_ListLocationsRequest
             /// Response type for "ListLibraryLocations".
@@ -105,7 +105,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "ScanLibrary" metadata.
-        internal enum ScanLibrary {
+        internal enum ScanLibrary: Sendable {
             /// Request type for "ScanLibrary".
             internal typealias Input = Videoroom_ScanLibraryRequest
             /// Response type for "ScanLibrary".
@@ -117,7 +117,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "GetScanStatus" metadata.
-        internal enum GetScanStatus {
+        internal enum GetScanStatus: Sendable {
             /// Request type for "GetScanStatus".
             internal typealias Input = Videoroom_GetScanStatusRequest
             /// Response type for "GetScanStatus".
@@ -129,7 +129,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "CreateTag" metadata.
-        internal enum CreateTag {
+        internal enum CreateTag: Sendable {
             /// Request type for "CreateTag".
             internal typealias Input = Videoroom_CreateTagRequest
             /// Response type for "CreateTag".
@@ -141,7 +141,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "DeleteTag" metadata.
-        internal enum DeleteTag {
+        internal enum DeleteTag: Sendable {
             /// Request type for "DeleteTag".
             internal typealias Input = Videoroom_DeleteTagRequest
             /// Response type for "DeleteTag".
@@ -153,7 +153,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "ListTags" metadata.
-        internal enum ListTags {
+        internal enum ListTags: Sendable {
             /// Request type for "ListTags".
             internal typealias Input = Videoroom_ListTagsRequest
             /// Response type for "ListTags".
@@ -165,7 +165,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "TagVideos" metadata.
-        internal enum TagVideos {
+        internal enum TagVideos: Sendable {
             /// Request type for "TagVideos".
             internal typealias Input = Videoroom_TagVideosRequest
             /// Response type for "TagVideos".
@@ -177,7 +177,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "UntagVideos" metadata.
-        internal enum UntagVideos {
+        internal enum UntagVideos: Sendable {
             /// Request type for "UntagVideos".
             internal typealias Input = Videoroom_UntagVideosRequest
             /// Response type for "UntagVideos".
@@ -189,7 +189,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "CreateCollection" metadata.
-        internal enum CreateCollection {
+        internal enum CreateCollection: Sendable {
             /// Request type for "CreateCollection".
             internal typealias Input = Videoroom_CreateCollectionRequest
             /// Response type for "CreateCollection".
@@ -201,7 +201,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "DeleteCollection" metadata.
-        internal enum DeleteCollection {
+        internal enum DeleteCollection: Sendable {
             /// Request type for "DeleteCollection".
             internal typealias Input = Videoroom_DeleteCollectionRequest
             /// Response type for "DeleteCollection".
@@ -213,7 +213,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "ListCollections" metadata.
-        internal enum ListCollections {
+        internal enum ListCollections: Sendable {
             /// Request type for "ListCollections".
             internal typealias Input = Videoroom_ListCollectionsRequest
             /// Response type for "ListCollections".
@@ -225,7 +225,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "AddToCollection" metadata.
-        internal enum AddToCollection {
+        internal enum AddToCollection: Sendable {
             /// Request type for "AddToCollection".
             internal typealias Input = Videoroom_AddToCollectionRequest
             /// Response type for "AddToCollection".
@@ -237,7 +237,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "RemoveFromCollection" metadata.
-        internal enum RemoveFromCollection {
+        internal enum RemoveFromCollection: Sendable {
             /// Request type for "RemoveFromCollection".
             internal typealias Input = Videoroom_RemoveFromCollectionRequest
             /// Response type for "RemoveFromCollection".
@@ -249,7 +249,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "UpdateVideoNotes" metadata.
-        internal enum UpdateVideoNotes {
+        internal enum UpdateVideoNotes: Sendable {
             /// Request type for "UpdateVideoNotes".
             internal typealias Input = Videoroom_UpdateNotesRequest
             /// Response type for "UpdateVideoNotes".
@@ -261,7 +261,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "DeleteVideo" metadata.
-        internal enum DeleteVideo {
+        internal enum DeleteVideo: Sendable {
             /// Request type for "DeleteVideo".
             internal typealias Input = Videoroom_DeleteVideoRequest
             /// Response type for "DeleteVideo".
@@ -273,7 +273,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "ListGroupMembers" metadata.
-        internal enum ListGroupMembers {
+        internal enum ListGroupMembers: Sendable {
             /// Request type for "ListGroupMembers".
             internal typealias Input = Videoroom_ListGroupMembersRequest
             /// Response type for "ListGroupMembers".
@@ -285,7 +285,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "CreateGroup" metadata.
-        internal enum CreateGroup {
+        internal enum CreateGroup: Sendable {
             /// Request type for "CreateGroup".
             internal typealias Input = Videoroom_CreateGroupRequest
             /// Response type for "CreateGroup".
@@ -297,7 +297,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "UngroupVideo" metadata.
-        internal enum UngroupVideo {
+        internal enum UngroupVideo: Sendable {
             /// Request type for "UngroupVideo".
             internal typealias Input = Videoroom_UngroupVideoRequest
             /// Response type for "UngroupVideo".
@@ -309,7 +309,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "SetGroupPreferred" metadata.
-        internal enum SetGroupPreferred {
+        internal enum SetGroupPreferred: Sendable {
             /// Request type for "SetGroupPreferred".
             internal typealias Input = Videoroom_SetGroupPreferredRequest
             /// Response type for "SetGroupPreferred".
@@ -321,7 +321,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "AutoGroupVideos" metadata.
-        internal enum AutoGroupVideos {
+        internal enum AutoGroupVideos: Sendable {
             /// Request type for "AutoGroupVideos".
             internal typealias Input = Videoroom_AutoGroupRequest
             /// Response type for "AutoGroupVideos".
@@ -333,7 +333,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "GenerateProxy" metadata.
-        internal enum GenerateProxy {
+        internal enum GenerateProxy: Sendable {
             /// Request type for "GenerateProxy".
             internal typealias Input = Videoroom_GenerateProxyRequest
             /// Response type for "GenerateProxy".
@@ -345,7 +345,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "ListProxies" metadata.
-        internal enum ListProxies {
+        internal enum ListProxies: Sendable {
             /// Request type for "ListProxies".
             internal typealias Input = Videoroom_ListProxiesRequest
             /// Response type for "ListProxies".
@@ -356,8 +356,20 @@ internal enum Videoroom_VideoRoom {
                 method: "ListProxies"
             )
         }
+        /// Namespace for "GetFilterOptions" metadata.
+        internal enum GetFilterOptions: Sendable {
+            /// Request type for "GetFilterOptions".
+            internal typealias Input = Videoroom_GetFilterOptionsRequest
+            /// Response type for "GetFilterOptions".
+            internal typealias Output = Videoroom_FilterOptions
+            /// Descriptor for "GetFilterOptions".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "GetFilterOptions"
+            )
+        }
         /// Namespace for "GetStatus" metadata.
-        internal enum GetStatus {
+        internal enum GetStatus: Sendable {
             /// Request type for "GetStatus".
             internal typealias Input = Videoroom_GetStatusRequest
             /// Response type for "GetStatus".
@@ -369,7 +381,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "GetConfig" metadata.
-        internal enum GetConfig {
+        internal enum GetConfig: Sendable {
             /// Request type for "GetConfig".
             internal typealias Input = Videoroom_GetConfigRequest
             /// Response type for "GetConfig".
@@ -381,7 +393,7 @@ internal enum Videoroom_VideoRoom {
             )
         }
         /// Namespace for "UpdateConfig" metadata.
-        internal enum UpdateConfig {
+        internal enum UpdateConfig: Sendable {
             /// Request type for "UpdateConfig".
             internal typealias Input = Videoroom_UpdateConfigRequest
             /// Response type for "UpdateConfig".
@@ -390,6 +402,42 @@ internal enum Videoroom_VideoRoom {
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
                 method: "UpdateConfig"
+            )
+        }
+        /// Namespace for "OpenCatalog" metadata.
+        internal enum OpenCatalog: Sendable {
+            /// Request type for "OpenCatalog".
+            internal typealias Input = Videoroom_OpenCatalogRequest
+            /// Response type for "OpenCatalog".
+            internal typealias Output = Videoroom_CatalogInfo
+            /// Descriptor for "OpenCatalog".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "OpenCatalog"
+            )
+        }
+        /// Namespace for "CloseCatalog" metadata.
+        internal enum CloseCatalog: Sendable {
+            /// Request type for "CloseCatalog".
+            internal typealias Input = Videoroom_CloseCatalogRequest
+            /// Response type for "CloseCatalog".
+            internal typealias Output = Videoroom_Response
+            /// Descriptor for "CloseCatalog".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "CloseCatalog"
+            )
+        }
+        /// Namespace for "GetCurrentCatalog" metadata.
+        internal enum GetCurrentCatalog: Sendable {
+            /// Request type for "GetCurrentCatalog".
+            internal typealias Input = Videoroom_GetCurrentCatalogRequest
+            /// Response type for "GetCurrentCatalog".
+            internal typealias Output = Videoroom_CatalogInfo
+            /// Descriptor for "GetCurrentCatalog".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "GetCurrentCatalog"
             )
         }
         /// Descriptors for all methods in the "videoroom.VideoRoom" service.
@@ -422,9 +470,13 @@ internal enum Videoroom_VideoRoom {
             AutoGroupVideos.descriptor,
             GenerateProxy.descriptor,
             ListProxies.descriptor,
+            GetFilterOptions.descriptor,
             GetStatus.descriptor,
             GetConfig.descriptor,
-            UpdateConfig.descriptor
+            UpdateConfig.descriptor,
+            OpenCatalog.descriptor,
+            CloseCatalog.descriptor,
+            GetCurrentCatalog.descriptor
         ]
     }
 }
@@ -433,6 +485,2902 @@ internal enum Videoroom_VideoRoom {
 extension GRPCCore.ServiceDescriptor {
     /// Service descriptor for the "videoroom.VideoRoom" service.
     internal static let videoroom_VideoRoom = GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom")
+}
+
+// MARK: videoroom.VideoRoom (server)
+
+@available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+extension Videoroom_VideoRoom {
+    /// Streaming variant of the service protocol for the "videoroom.VideoRoom" service.
+    ///
+    /// This protocol is the lowest-level of the service protocols generated for this service
+    /// giving you the most flexibility over the implementation of your service. This comes at
+    /// the cost of more verbose and less strict APIs. Each RPC requires you to implement it in
+    /// terms of a request stream and response stream. Where only a single request or response
+    /// message is expected, you are responsible for enforcing this invariant is maintained.
+    ///
+    /// Where possible, prefer using the stricter, less-verbose ``ServiceProtocol``
+    /// or ``SimpleServiceProtocol`` instead.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Core service definition
+    internal protocol StreamingServiceProtocol: GRPCCore.RegistrableRPCService {
+        /// Handle the "ListVideos" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Query operations
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_ListVideosRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_ListVideosResponse` messages.
+        func listVideos(
+            request: GRPCCore.StreamingServerRequest<Videoroom_ListVideosRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ListVideosResponse>
+
+        /// Handle the "SearchVideos" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_SearchRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_SearchResponse` messages.
+        func searchVideos(
+            request: GRPCCore.StreamingServerRequest<Videoroom_SearchRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_SearchResponse>
+
+        /// Handle the "GetMetadata" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_GetMetadataRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_VideoMetadata` messages.
+        func getMetadata(
+            request: GRPCCore.StreamingServerRequest<Videoroom_GetMetadataRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_VideoMetadata>
+
+        /// Handle the "GetThumbnail" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_GetThumbnailRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_ThumbnailChunk` messages.
+        func getThumbnail(
+            request: GRPCCore.StreamingServerRequest<Videoroom_GetThumbnailRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ThumbnailChunk>
+
+        /// Handle the "AddLibraryLocation" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Library management
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_AddLocationRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_LocationResponse` messages.
+        func addLibraryLocation(
+            request: GRPCCore.StreamingServerRequest<Videoroom_AddLocationRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_LocationResponse>
+
+        /// Handle the "RemoveLibraryLocation" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_RemoveLocationRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_LocationResponse` messages.
+        func removeLibraryLocation(
+            request: GRPCCore.StreamingServerRequest<Videoroom_RemoveLocationRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_LocationResponse>
+
+        /// Handle the "ListLibraryLocations" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_ListLocationsRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_ListLocationsResponse` messages.
+        func listLibraryLocations(
+            request: GRPCCore.StreamingServerRequest<Videoroom_ListLocationsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ListLocationsResponse>
+
+        /// Handle the "ScanLibrary" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_ScanLibraryRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_ScanProgress` messages.
+        func scanLibrary(
+            request: GRPCCore.StreamingServerRequest<Videoroom_ScanLibraryRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ScanProgress>
+
+        /// Handle the "GetScanStatus" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_GetScanStatusRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_ScanStatusResponse` messages.
+        func getScanStatus(
+            request: GRPCCore.StreamingServerRequest<Videoroom_GetScanStatusRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ScanStatusResponse>
+
+        /// Handle the "CreateTag" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Tags
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_CreateTagRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_TagResponse` messages.
+        func createTag(
+            request: GRPCCore.StreamingServerRequest<Videoroom_CreateTagRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_TagResponse>
+
+        /// Handle the "DeleteTag" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_DeleteTagRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func deleteTag(
+            request: GRPCCore.StreamingServerRequest<Videoroom_DeleteTagRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
+
+        /// Handle the "ListTags" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_ListTagsRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_ListTagsResponse` messages.
+        func listTags(
+            request: GRPCCore.StreamingServerRequest<Videoroom_ListTagsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ListTagsResponse>
+
+        /// Handle the "TagVideos" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_TagVideosRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func tagVideos(
+            request: GRPCCore.StreamingServerRequest<Videoroom_TagVideosRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
+
+        /// Handle the "UntagVideos" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_UntagVideosRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func untagVideos(
+            request: GRPCCore.StreamingServerRequest<Videoroom_UntagVideosRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
+
+        /// Handle the "CreateCollection" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Collections
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_CreateCollectionRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_CollectionResponse` messages.
+        func createCollection(
+            request: GRPCCore.StreamingServerRequest<Videoroom_CreateCollectionRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_CollectionResponse>
+
+        /// Handle the "DeleteCollection" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_DeleteCollectionRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func deleteCollection(
+            request: GRPCCore.StreamingServerRequest<Videoroom_DeleteCollectionRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
+
+        /// Handle the "ListCollections" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_ListCollectionsRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_ListCollectionsResponse` messages.
+        func listCollections(
+            request: GRPCCore.StreamingServerRequest<Videoroom_ListCollectionsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ListCollectionsResponse>
+
+        /// Handle the "AddToCollection" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_AddToCollectionRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func addToCollection(
+            request: GRPCCore.StreamingServerRequest<Videoroom_AddToCollectionRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
+
+        /// Handle the "RemoveFromCollection" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_RemoveFromCollectionRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func removeFromCollection(
+            request: GRPCCore.StreamingServerRequest<Videoroom_RemoveFromCollectionRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
+
+        /// Handle the "UpdateVideoNotes" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Video operations
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_UpdateNotesRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func updateVideoNotes(
+            request: GRPCCore.StreamingServerRequest<Videoroom_UpdateNotesRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
+
+        /// Handle the "DeleteVideo" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_DeleteVideoRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func deleteVideo(
+            request: GRPCCore.StreamingServerRequest<Videoroom_DeleteVideoRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
+
+        /// Handle the "ListGroupMembers" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Groups (Lightroom-style "stacks")
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_ListGroupMembersRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_ListGroupMembersResponse` messages.
+        func listGroupMembers(
+            request: GRPCCore.StreamingServerRequest<Videoroom_ListGroupMembersRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ListGroupMembersResponse>
+
+        /// Handle the "CreateGroup" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_CreateGroupRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_GroupResponse` messages.
+        func createGroup(
+            request: GRPCCore.StreamingServerRequest<Videoroom_CreateGroupRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_GroupResponse>
+
+        /// Handle the "UngroupVideo" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_UngroupVideoRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func ungroupVideo(
+            request: GRPCCore.StreamingServerRequest<Videoroom_UngroupVideoRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
+
+        /// Handle the "SetGroupPreferred" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_SetGroupPreferredRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func setGroupPreferred(
+            request: GRPCCore.StreamingServerRequest<Videoroom_SetGroupPreferredRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
+
+        /// Handle the "AutoGroupVideos" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_AutoGroupRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_AutoGroupResponse` messages.
+        func autoGroupVideos(
+            request: GRPCCore.StreamingServerRequest<Videoroom_AutoGroupRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_AutoGroupResponse>
+
+        /// Handle the "GenerateProxy" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Proxies
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_GenerateProxyRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_ProxyGenerationProgress` messages.
+        func generateProxy(
+            request: GRPCCore.StreamingServerRequest<Videoroom_GenerateProxyRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ProxyGenerationProgress>
+
+        /// Handle the "ListProxies" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_ListProxiesRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_ListProxiesResponse` messages.
+        func listProxies(
+            request: GRPCCore.StreamingServerRequest<Videoroom_ListProxiesRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ListProxiesResponse>
+
+        /// Handle the "GetFilterOptions" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Filter options (distinct values for the grid's dropdowns)
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_GetFilterOptionsRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_FilterOptions` messages.
+        func getFilterOptions(
+            request: GRPCCore.StreamingServerRequest<Videoroom_GetFilterOptionsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_FilterOptions>
+
+        /// Handle the "GetStatus" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > System
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_GetStatusRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_StatusResponse` messages.
+        func getStatus(
+            request: GRPCCore.StreamingServerRequest<Videoroom_GetStatusRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_StatusResponse>
+
+        /// Handle the "GetConfig" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_GetConfigRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_ConfigResponse` messages.
+        func getConfig(
+            request: GRPCCore.StreamingServerRequest<Videoroom_GetConfigRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ConfigResponse>
+
+        /// Handle the "UpdateConfig" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_UpdateConfigRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func updateConfig(
+            request: GRPCCore.StreamingServerRequest<Videoroom_UpdateConfigRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
+
+        /// Handle the "OpenCatalog" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Catalog lifecycle — the catalog is the SQLite file backing the daemon.
+        /// > Switching catalogs at runtime lets a single server process serve multiple
+        /// > libraries over its lifetime; the client treats each as a separate session.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_OpenCatalogRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_CatalogInfo` messages.
+        func openCatalog(
+            request: GRPCCore.StreamingServerRequest<Videoroom_OpenCatalogRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_CatalogInfo>
+
+        /// Handle the "CloseCatalog" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_CloseCatalogRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func closeCatalog(
+            request: GRPCCore.StreamingServerRequest<Videoroom_CloseCatalogRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
+
+        /// Handle the "GetCurrentCatalog" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_GetCurrentCatalogRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_CatalogInfo` messages.
+        func getCurrentCatalog(
+            request: GRPCCore.StreamingServerRequest<Videoroom_GetCurrentCatalogRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_CatalogInfo>
+    }
+
+    /// Service protocol for the "videoroom.VideoRoom" service.
+    ///
+    /// This protocol is higher level than ``StreamingServiceProtocol`` but lower level than
+    /// the ``SimpleServiceProtocol``, it provides access to request and response metadata and
+    /// trailing response metadata. If you don't need these then consider using
+    /// the ``SimpleServiceProtocol``. If you need fine grained control over your RPCs then
+    /// use ``StreamingServiceProtocol``.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Core service definition
+    internal protocol ServiceProtocol: Videoroom_VideoRoom.StreamingServiceProtocol {
+        /// Handle the "ListVideos" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Query operations
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_ListVideosRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_ListVideosResponse` message.
+        func listVideos(
+            request: GRPCCore.ServerRequest<Videoroom_ListVideosRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_ListVideosResponse>
+
+        /// Handle the "SearchVideos" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_SearchRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_SearchResponse` message.
+        func searchVideos(
+            request: GRPCCore.ServerRequest<Videoroom_SearchRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_SearchResponse>
+
+        /// Handle the "GetMetadata" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_GetMetadataRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_VideoMetadata` message.
+        func getMetadata(
+            request: GRPCCore.ServerRequest<Videoroom_GetMetadataRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_VideoMetadata>
+
+        /// Handle the "GetThumbnail" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_GetThumbnailRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_ThumbnailChunk` messages.
+        func getThumbnail(
+            request: GRPCCore.ServerRequest<Videoroom_GetThumbnailRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ThumbnailChunk>
+
+        /// Handle the "AddLibraryLocation" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Library management
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_AddLocationRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_LocationResponse` message.
+        func addLibraryLocation(
+            request: GRPCCore.ServerRequest<Videoroom_AddLocationRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_LocationResponse>
+
+        /// Handle the "RemoveLibraryLocation" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_RemoveLocationRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_LocationResponse` message.
+        func removeLibraryLocation(
+            request: GRPCCore.ServerRequest<Videoroom_RemoveLocationRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_LocationResponse>
+
+        /// Handle the "ListLibraryLocations" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_ListLocationsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_ListLocationsResponse` message.
+        func listLibraryLocations(
+            request: GRPCCore.ServerRequest<Videoroom_ListLocationsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_ListLocationsResponse>
+
+        /// Handle the "ScanLibrary" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_ScanLibraryRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_ScanProgress` messages.
+        func scanLibrary(
+            request: GRPCCore.ServerRequest<Videoroom_ScanLibraryRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ScanProgress>
+
+        /// Handle the "GetScanStatus" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_GetScanStatusRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_ScanStatusResponse` message.
+        func getScanStatus(
+            request: GRPCCore.ServerRequest<Videoroom_GetScanStatusRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_ScanStatusResponse>
+
+        /// Handle the "CreateTag" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Tags
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_CreateTagRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_TagResponse` message.
+        func createTag(
+            request: GRPCCore.ServerRequest<Videoroom_CreateTagRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_TagResponse>
+
+        /// Handle the "DeleteTag" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_DeleteTagRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func deleteTag(
+            request: GRPCCore.ServerRequest<Videoroom_DeleteTagRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
+
+        /// Handle the "ListTags" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_ListTagsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_ListTagsResponse` message.
+        func listTags(
+            request: GRPCCore.ServerRequest<Videoroom_ListTagsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_ListTagsResponse>
+
+        /// Handle the "TagVideos" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_TagVideosRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func tagVideos(
+            request: GRPCCore.ServerRequest<Videoroom_TagVideosRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
+
+        /// Handle the "UntagVideos" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_UntagVideosRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func untagVideos(
+            request: GRPCCore.ServerRequest<Videoroom_UntagVideosRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
+
+        /// Handle the "CreateCollection" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Collections
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_CreateCollectionRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_CollectionResponse` message.
+        func createCollection(
+            request: GRPCCore.ServerRequest<Videoroom_CreateCollectionRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_CollectionResponse>
+
+        /// Handle the "DeleteCollection" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_DeleteCollectionRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func deleteCollection(
+            request: GRPCCore.ServerRequest<Videoroom_DeleteCollectionRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
+
+        /// Handle the "ListCollections" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_ListCollectionsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_ListCollectionsResponse` message.
+        func listCollections(
+            request: GRPCCore.ServerRequest<Videoroom_ListCollectionsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_ListCollectionsResponse>
+
+        /// Handle the "AddToCollection" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_AddToCollectionRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func addToCollection(
+            request: GRPCCore.ServerRequest<Videoroom_AddToCollectionRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
+
+        /// Handle the "RemoveFromCollection" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_RemoveFromCollectionRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func removeFromCollection(
+            request: GRPCCore.ServerRequest<Videoroom_RemoveFromCollectionRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
+
+        /// Handle the "UpdateVideoNotes" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Video operations
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_UpdateNotesRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func updateVideoNotes(
+            request: GRPCCore.ServerRequest<Videoroom_UpdateNotesRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
+
+        /// Handle the "DeleteVideo" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_DeleteVideoRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func deleteVideo(
+            request: GRPCCore.ServerRequest<Videoroom_DeleteVideoRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
+
+        /// Handle the "ListGroupMembers" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Groups (Lightroom-style "stacks")
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_ListGroupMembersRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_ListGroupMembersResponse` message.
+        func listGroupMembers(
+            request: GRPCCore.ServerRequest<Videoroom_ListGroupMembersRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_ListGroupMembersResponse>
+
+        /// Handle the "CreateGroup" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_CreateGroupRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_GroupResponse` message.
+        func createGroup(
+            request: GRPCCore.ServerRequest<Videoroom_CreateGroupRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_GroupResponse>
+
+        /// Handle the "UngroupVideo" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_UngroupVideoRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func ungroupVideo(
+            request: GRPCCore.ServerRequest<Videoroom_UngroupVideoRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
+
+        /// Handle the "SetGroupPreferred" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_SetGroupPreferredRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func setGroupPreferred(
+            request: GRPCCore.ServerRequest<Videoroom_SetGroupPreferredRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
+
+        /// Handle the "AutoGroupVideos" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_AutoGroupRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_AutoGroupResponse` message.
+        func autoGroupVideos(
+            request: GRPCCore.ServerRequest<Videoroom_AutoGroupRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_AutoGroupResponse>
+
+        /// Handle the "GenerateProxy" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Proxies
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_GenerateProxyRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_ProxyGenerationProgress` messages.
+        func generateProxy(
+            request: GRPCCore.ServerRequest<Videoroom_GenerateProxyRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ProxyGenerationProgress>
+
+        /// Handle the "ListProxies" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_ListProxiesRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_ListProxiesResponse` message.
+        func listProxies(
+            request: GRPCCore.ServerRequest<Videoroom_ListProxiesRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_ListProxiesResponse>
+
+        /// Handle the "GetFilterOptions" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Filter options (distinct values for the grid's dropdowns)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_GetFilterOptionsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_FilterOptions` message.
+        func getFilterOptions(
+            request: GRPCCore.ServerRequest<Videoroom_GetFilterOptionsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_FilterOptions>
+
+        /// Handle the "GetStatus" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > System
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_GetStatusRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_StatusResponse` message.
+        func getStatus(
+            request: GRPCCore.ServerRequest<Videoroom_GetStatusRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_StatusResponse>
+
+        /// Handle the "GetConfig" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_GetConfigRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_ConfigResponse` message.
+        func getConfig(
+            request: GRPCCore.ServerRequest<Videoroom_GetConfigRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_ConfigResponse>
+
+        /// Handle the "UpdateConfig" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_UpdateConfigRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func updateConfig(
+            request: GRPCCore.ServerRequest<Videoroom_UpdateConfigRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
+
+        /// Handle the "OpenCatalog" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Catalog lifecycle — the catalog is the SQLite file backing the daemon.
+        /// > Switching catalogs at runtime lets a single server process serve multiple
+        /// > libraries over its lifetime; the client treats each as a separate session.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_OpenCatalogRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_CatalogInfo` message.
+        func openCatalog(
+            request: GRPCCore.ServerRequest<Videoroom_OpenCatalogRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_CatalogInfo>
+
+        /// Handle the "CloseCatalog" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_CloseCatalogRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func closeCatalog(
+            request: GRPCCore.ServerRequest<Videoroom_CloseCatalogRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
+
+        /// Handle the "GetCurrentCatalog" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_GetCurrentCatalogRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_CatalogInfo` message.
+        func getCurrentCatalog(
+            request: GRPCCore.ServerRequest<Videoroom_GetCurrentCatalogRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_CatalogInfo>
+    }
+
+    /// Simple service protocol for the "videoroom.VideoRoom" service.
+    ///
+    /// This is the highest level protocol for the service. The API is the easiest to use but
+    /// doesn't provide access to request or response metadata. If you need access to these
+    /// then use ``ServiceProtocol`` instead.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Core service definition
+    internal protocol SimpleServiceProtocol: Videoroom_VideoRoom.ServiceProtocol {
+        /// Handle the "ListVideos" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Query operations
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_ListVideosRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_ListVideosResponse` to respond with.
+        func listVideos(
+            request: Videoroom_ListVideosRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_ListVideosResponse
+
+        /// Handle the "SearchVideos" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_SearchRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_SearchResponse` to respond with.
+        func searchVideos(
+            request: Videoroom_SearchRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_SearchResponse
+
+        /// Handle the "GetMetadata" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_GetMetadataRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_VideoMetadata` to respond with.
+        func getMetadata(
+            request: Videoroom_GetMetadataRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_VideoMetadata
+
+        /// Handle the "GetThumbnail" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_GetThumbnailRequest` message.
+        ///   - response: A response stream of `Videoroom_ThumbnailChunk` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        func getThumbnail(
+            request: Videoroom_GetThumbnailRequest,
+            response: GRPCCore.RPCWriter<Videoroom_ThumbnailChunk>,
+            context: GRPCCore.ServerContext
+        ) async throws
+
+        /// Handle the "AddLibraryLocation" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Library management
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_AddLocationRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_LocationResponse` to respond with.
+        func addLibraryLocation(
+            request: Videoroom_AddLocationRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_LocationResponse
+
+        /// Handle the "RemoveLibraryLocation" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_RemoveLocationRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_LocationResponse` to respond with.
+        func removeLibraryLocation(
+            request: Videoroom_RemoveLocationRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_LocationResponse
+
+        /// Handle the "ListLibraryLocations" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_ListLocationsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_ListLocationsResponse` to respond with.
+        func listLibraryLocations(
+            request: Videoroom_ListLocationsRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_ListLocationsResponse
+
+        /// Handle the "ScanLibrary" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_ScanLibraryRequest` message.
+        ///   - response: A response stream of `Videoroom_ScanProgress` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        func scanLibrary(
+            request: Videoroom_ScanLibraryRequest,
+            response: GRPCCore.RPCWriter<Videoroom_ScanProgress>,
+            context: GRPCCore.ServerContext
+        ) async throws
+
+        /// Handle the "GetScanStatus" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_GetScanStatusRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_ScanStatusResponse` to respond with.
+        func getScanStatus(
+            request: Videoroom_GetScanStatusRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_ScanStatusResponse
+
+        /// Handle the "CreateTag" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Tags
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_CreateTagRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_TagResponse` to respond with.
+        func createTag(
+            request: Videoroom_CreateTagRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_TagResponse
+
+        /// Handle the "DeleteTag" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_DeleteTagRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func deleteTag(
+            request: Videoroom_DeleteTagRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
+
+        /// Handle the "ListTags" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_ListTagsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_ListTagsResponse` to respond with.
+        func listTags(
+            request: Videoroom_ListTagsRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_ListTagsResponse
+
+        /// Handle the "TagVideos" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_TagVideosRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func tagVideos(
+            request: Videoroom_TagVideosRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
+
+        /// Handle the "UntagVideos" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_UntagVideosRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func untagVideos(
+            request: Videoroom_UntagVideosRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
+
+        /// Handle the "CreateCollection" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Collections
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_CreateCollectionRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_CollectionResponse` to respond with.
+        func createCollection(
+            request: Videoroom_CreateCollectionRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_CollectionResponse
+
+        /// Handle the "DeleteCollection" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_DeleteCollectionRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func deleteCollection(
+            request: Videoroom_DeleteCollectionRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
+
+        /// Handle the "ListCollections" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_ListCollectionsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_ListCollectionsResponse` to respond with.
+        func listCollections(
+            request: Videoroom_ListCollectionsRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_ListCollectionsResponse
+
+        /// Handle the "AddToCollection" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_AddToCollectionRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func addToCollection(
+            request: Videoroom_AddToCollectionRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
+
+        /// Handle the "RemoveFromCollection" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_RemoveFromCollectionRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func removeFromCollection(
+            request: Videoroom_RemoveFromCollectionRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
+
+        /// Handle the "UpdateVideoNotes" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Video operations
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_UpdateNotesRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func updateVideoNotes(
+            request: Videoroom_UpdateNotesRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
+
+        /// Handle the "DeleteVideo" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_DeleteVideoRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func deleteVideo(
+            request: Videoroom_DeleteVideoRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
+
+        /// Handle the "ListGroupMembers" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Groups (Lightroom-style "stacks")
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_ListGroupMembersRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_ListGroupMembersResponse` to respond with.
+        func listGroupMembers(
+            request: Videoroom_ListGroupMembersRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_ListGroupMembersResponse
+
+        /// Handle the "CreateGroup" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_CreateGroupRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_GroupResponse` to respond with.
+        func createGroup(
+            request: Videoroom_CreateGroupRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_GroupResponse
+
+        /// Handle the "UngroupVideo" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_UngroupVideoRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func ungroupVideo(
+            request: Videoroom_UngroupVideoRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
+
+        /// Handle the "SetGroupPreferred" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_SetGroupPreferredRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func setGroupPreferred(
+            request: Videoroom_SetGroupPreferredRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
+
+        /// Handle the "AutoGroupVideos" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_AutoGroupRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_AutoGroupResponse` to respond with.
+        func autoGroupVideos(
+            request: Videoroom_AutoGroupRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_AutoGroupResponse
+
+        /// Handle the "GenerateProxy" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Proxies
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_GenerateProxyRequest` message.
+        ///   - response: A response stream of `Videoroom_ProxyGenerationProgress` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        func generateProxy(
+            request: Videoroom_GenerateProxyRequest,
+            response: GRPCCore.RPCWriter<Videoroom_ProxyGenerationProgress>,
+            context: GRPCCore.ServerContext
+        ) async throws
+
+        /// Handle the "ListProxies" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_ListProxiesRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_ListProxiesResponse` to respond with.
+        func listProxies(
+            request: Videoroom_ListProxiesRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_ListProxiesResponse
+
+        /// Handle the "GetFilterOptions" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Filter options (distinct values for the grid's dropdowns)
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_GetFilterOptionsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_FilterOptions` to respond with.
+        func getFilterOptions(
+            request: Videoroom_GetFilterOptionsRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_FilterOptions
+
+        /// Handle the "GetStatus" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > System
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_GetStatusRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_StatusResponse` to respond with.
+        func getStatus(
+            request: Videoroom_GetStatusRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_StatusResponse
+
+        /// Handle the "GetConfig" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_GetConfigRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_ConfigResponse` to respond with.
+        func getConfig(
+            request: Videoroom_GetConfigRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_ConfigResponse
+
+        /// Handle the "UpdateConfig" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_UpdateConfigRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func updateConfig(
+            request: Videoroom_UpdateConfigRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
+
+        /// Handle the "OpenCatalog" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Catalog lifecycle — the catalog is the SQLite file backing the daemon.
+        /// > Switching catalogs at runtime lets a single server process serve multiple
+        /// > libraries over its lifetime; the client treats each as a separate session.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_OpenCatalogRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_CatalogInfo` to respond with.
+        func openCatalog(
+            request: Videoroom_OpenCatalogRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_CatalogInfo
+
+        /// Handle the "CloseCatalog" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_CloseCatalogRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func closeCatalog(
+            request: Videoroom_CloseCatalogRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
+
+        /// Handle the "GetCurrentCatalog" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_GetCurrentCatalogRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_CatalogInfo` to respond with.
+        func getCurrentCatalog(
+            request: Videoroom_GetCurrentCatalogRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_CatalogInfo
+    }
+}
+
+// Default implementation of 'registerMethods(with:)'.
+@available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+extension Videoroom_VideoRoom.StreamingServiceProtocol {
+    internal func registerMethods<Transport>(with router: inout GRPCCore.RPCRouter<Transport>) where Transport: GRPCCore.ServerTransport {
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.ListVideos.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_ListVideosRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_ListVideosResponse>(),
+            handler: { request, context in
+                try await self.listVideos(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.SearchVideos.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_SearchRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_SearchResponse>(),
+            handler: { request, context in
+                try await self.searchVideos(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.GetMetadata.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_GetMetadataRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_VideoMetadata>(),
+            handler: { request, context in
+                try await self.getMetadata(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.GetThumbnail.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_GetThumbnailRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_ThumbnailChunk>(),
+            handler: { request, context in
+                try await self.getThumbnail(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.AddLibraryLocation.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_AddLocationRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_LocationResponse>(),
+            handler: { request, context in
+                try await self.addLibraryLocation(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.RemoveLibraryLocation.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_RemoveLocationRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_LocationResponse>(),
+            handler: { request, context in
+                try await self.removeLibraryLocation(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.ListLibraryLocations.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_ListLocationsRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_ListLocationsResponse>(),
+            handler: { request, context in
+                try await self.listLibraryLocations(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.ScanLibrary.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_ScanLibraryRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_ScanProgress>(),
+            handler: { request, context in
+                try await self.scanLibrary(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.GetScanStatus.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_GetScanStatusRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_ScanStatusResponse>(),
+            handler: { request, context in
+                try await self.getScanStatus(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.CreateTag.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_CreateTagRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_TagResponse>(),
+            handler: { request, context in
+                try await self.createTag(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.DeleteTag.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_DeleteTagRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.deleteTag(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.ListTags.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_ListTagsRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_ListTagsResponse>(),
+            handler: { request, context in
+                try await self.listTags(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.TagVideos.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_TagVideosRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.tagVideos(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.UntagVideos.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_UntagVideosRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.untagVideos(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.CreateCollection.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_CreateCollectionRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_CollectionResponse>(),
+            handler: { request, context in
+                try await self.createCollection(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.DeleteCollection.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_DeleteCollectionRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.deleteCollection(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.ListCollections.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_ListCollectionsRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_ListCollectionsResponse>(),
+            handler: { request, context in
+                try await self.listCollections(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.AddToCollection.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_AddToCollectionRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.addToCollection(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.RemoveFromCollection.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_RemoveFromCollectionRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.removeFromCollection(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.UpdateVideoNotes.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_UpdateNotesRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.updateVideoNotes(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.DeleteVideo.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_DeleteVideoRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.deleteVideo(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.ListGroupMembers.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_ListGroupMembersRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_ListGroupMembersResponse>(),
+            handler: { request, context in
+                try await self.listGroupMembers(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.CreateGroup.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_CreateGroupRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_GroupResponse>(),
+            handler: { request, context in
+                try await self.createGroup(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.UngroupVideo.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_UngroupVideoRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.ungroupVideo(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.SetGroupPreferred.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_SetGroupPreferredRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.setGroupPreferred(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.AutoGroupVideos.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_AutoGroupRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_AutoGroupResponse>(),
+            handler: { request, context in
+                try await self.autoGroupVideos(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.GenerateProxy.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_GenerateProxyRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_ProxyGenerationProgress>(),
+            handler: { request, context in
+                try await self.generateProxy(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.ListProxies.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_ListProxiesRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_ListProxiesResponse>(),
+            handler: { request, context in
+                try await self.listProxies(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.GetFilterOptions.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_GetFilterOptionsRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_FilterOptions>(),
+            handler: { request, context in
+                try await self.getFilterOptions(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.GetStatus.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_GetStatusRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_StatusResponse>(),
+            handler: { request, context in
+                try await self.getStatus(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.GetConfig.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_GetConfigRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_ConfigResponse>(),
+            handler: { request, context in
+                try await self.getConfig(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.UpdateConfig.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_UpdateConfigRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.updateConfig(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.OpenCatalog.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_OpenCatalogRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_CatalogInfo>(),
+            handler: { request, context in
+                try await self.openCatalog(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.CloseCatalog.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_CloseCatalogRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.closeCatalog(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.GetCurrentCatalog.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_GetCurrentCatalogRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_CatalogInfo>(),
+            handler: { request, context in
+                try await self.getCurrentCatalog(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+    }
+}
+
+// Default implementation of streaming methods from 'StreamingServiceProtocol'.
+@available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+extension Videoroom_VideoRoom.ServiceProtocol {
+    internal func listVideos(
+        request: GRPCCore.StreamingServerRequest<Videoroom_ListVideosRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ListVideosResponse> {
+        let response = try await self.listVideos(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func searchVideos(
+        request: GRPCCore.StreamingServerRequest<Videoroom_SearchRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_SearchResponse> {
+        let response = try await self.searchVideos(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func getMetadata(
+        request: GRPCCore.StreamingServerRequest<Videoroom_GetMetadataRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_VideoMetadata> {
+        let response = try await self.getMetadata(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func getThumbnail(
+        request: GRPCCore.StreamingServerRequest<Videoroom_GetThumbnailRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ThumbnailChunk> {
+        let response = try await self.getThumbnail(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return response
+    }
+
+    internal func addLibraryLocation(
+        request: GRPCCore.StreamingServerRequest<Videoroom_AddLocationRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_LocationResponse> {
+        let response = try await self.addLibraryLocation(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func removeLibraryLocation(
+        request: GRPCCore.StreamingServerRequest<Videoroom_RemoveLocationRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_LocationResponse> {
+        let response = try await self.removeLibraryLocation(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func listLibraryLocations(
+        request: GRPCCore.StreamingServerRequest<Videoroom_ListLocationsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ListLocationsResponse> {
+        let response = try await self.listLibraryLocations(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func scanLibrary(
+        request: GRPCCore.StreamingServerRequest<Videoroom_ScanLibraryRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ScanProgress> {
+        let response = try await self.scanLibrary(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return response
+    }
+
+    internal func getScanStatus(
+        request: GRPCCore.StreamingServerRequest<Videoroom_GetScanStatusRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ScanStatusResponse> {
+        let response = try await self.getScanStatus(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func createTag(
+        request: GRPCCore.StreamingServerRequest<Videoroom_CreateTagRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_TagResponse> {
+        let response = try await self.createTag(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func deleteTag(
+        request: GRPCCore.StreamingServerRequest<Videoroom_DeleteTagRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.deleteTag(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func listTags(
+        request: GRPCCore.StreamingServerRequest<Videoroom_ListTagsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ListTagsResponse> {
+        let response = try await self.listTags(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func tagVideos(
+        request: GRPCCore.StreamingServerRequest<Videoroom_TagVideosRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.tagVideos(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func untagVideos(
+        request: GRPCCore.StreamingServerRequest<Videoroom_UntagVideosRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.untagVideos(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func createCollection(
+        request: GRPCCore.StreamingServerRequest<Videoroom_CreateCollectionRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_CollectionResponse> {
+        let response = try await self.createCollection(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func deleteCollection(
+        request: GRPCCore.StreamingServerRequest<Videoroom_DeleteCollectionRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.deleteCollection(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func listCollections(
+        request: GRPCCore.StreamingServerRequest<Videoroom_ListCollectionsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ListCollectionsResponse> {
+        let response = try await self.listCollections(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func addToCollection(
+        request: GRPCCore.StreamingServerRequest<Videoroom_AddToCollectionRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.addToCollection(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func removeFromCollection(
+        request: GRPCCore.StreamingServerRequest<Videoroom_RemoveFromCollectionRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.removeFromCollection(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func updateVideoNotes(
+        request: GRPCCore.StreamingServerRequest<Videoroom_UpdateNotesRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.updateVideoNotes(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func deleteVideo(
+        request: GRPCCore.StreamingServerRequest<Videoroom_DeleteVideoRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.deleteVideo(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func listGroupMembers(
+        request: GRPCCore.StreamingServerRequest<Videoroom_ListGroupMembersRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ListGroupMembersResponse> {
+        let response = try await self.listGroupMembers(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func createGroup(
+        request: GRPCCore.StreamingServerRequest<Videoroom_CreateGroupRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_GroupResponse> {
+        let response = try await self.createGroup(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func ungroupVideo(
+        request: GRPCCore.StreamingServerRequest<Videoroom_UngroupVideoRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.ungroupVideo(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func setGroupPreferred(
+        request: GRPCCore.StreamingServerRequest<Videoroom_SetGroupPreferredRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.setGroupPreferred(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func autoGroupVideos(
+        request: GRPCCore.StreamingServerRequest<Videoroom_AutoGroupRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_AutoGroupResponse> {
+        let response = try await self.autoGroupVideos(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func generateProxy(
+        request: GRPCCore.StreamingServerRequest<Videoroom_GenerateProxyRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ProxyGenerationProgress> {
+        let response = try await self.generateProxy(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return response
+    }
+
+    internal func listProxies(
+        request: GRPCCore.StreamingServerRequest<Videoroom_ListProxiesRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ListProxiesResponse> {
+        let response = try await self.listProxies(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func getFilterOptions(
+        request: GRPCCore.StreamingServerRequest<Videoroom_GetFilterOptionsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_FilterOptions> {
+        let response = try await self.getFilterOptions(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func getStatus(
+        request: GRPCCore.StreamingServerRequest<Videoroom_GetStatusRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_StatusResponse> {
+        let response = try await self.getStatus(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func getConfig(
+        request: GRPCCore.StreamingServerRequest<Videoroom_GetConfigRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ConfigResponse> {
+        let response = try await self.getConfig(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func updateConfig(
+        request: GRPCCore.StreamingServerRequest<Videoroom_UpdateConfigRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.updateConfig(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func openCatalog(
+        request: GRPCCore.StreamingServerRequest<Videoroom_OpenCatalogRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_CatalogInfo> {
+        let response = try await self.openCatalog(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func closeCatalog(
+        request: GRPCCore.StreamingServerRequest<Videoroom_CloseCatalogRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.closeCatalog(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func getCurrentCatalog(
+        request: GRPCCore.StreamingServerRequest<Videoroom_GetCurrentCatalogRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_CatalogInfo> {
+        let response = try await self.getCurrentCatalog(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+}
+
+// Default implementation of methods from 'ServiceProtocol'.
+@available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+extension Videoroom_VideoRoom.SimpleServiceProtocol {
+    internal func listVideos(
+        request: GRPCCore.ServerRequest<Videoroom_ListVideosRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_ListVideosResponse> {
+        return GRPCCore.ServerResponse<Videoroom_ListVideosResponse>(
+            message: try await self.listVideos(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func searchVideos(
+        request: GRPCCore.ServerRequest<Videoroom_SearchRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_SearchResponse> {
+        return GRPCCore.ServerResponse<Videoroom_SearchResponse>(
+            message: try await self.searchVideos(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func getMetadata(
+        request: GRPCCore.ServerRequest<Videoroom_GetMetadataRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_VideoMetadata> {
+        return GRPCCore.ServerResponse<Videoroom_VideoMetadata>(
+            message: try await self.getMetadata(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func getThumbnail(
+        request: GRPCCore.ServerRequest<Videoroom_GetThumbnailRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ThumbnailChunk> {
+        return GRPCCore.StreamingServerResponse<Videoroom_ThumbnailChunk>(
+            metadata: [:],
+            producer: { writer in
+                try await self.getThumbnail(
+                    request: request.message,
+                    response: writer,
+                    context: context
+                )
+                return [:]
+            }
+        )
+    }
+
+    internal func addLibraryLocation(
+        request: GRPCCore.ServerRequest<Videoroom_AddLocationRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_LocationResponse> {
+        return GRPCCore.ServerResponse<Videoroom_LocationResponse>(
+            message: try await self.addLibraryLocation(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func removeLibraryLocation(
+        request: GRPCCore.ServerRequest<Videoroom_RemoveLocationRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_LocationResponse> {
+        return GRPCCore.ServerResponse<Videoroom_LocationResponse>(
+            message: try await self.removeLibraryLocation(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func listLibraryLocations(
+        request: GRPCCore.ServerRequest<Videoroom_ListLocationsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_ListLocationsResponse> {
+        return GRPCCore.ServerResponse<Videoroom_ListLocationsResponse>(
+            message: try await self.listLibraryLocations(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func scanLibrary(
+        request: GRPCCore.ServerRequest<Videoroom_ScanLibraryRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ScanProgress> {
+        return GRPCCore.StreamingServerResponse<Videoroom_ScanProgress>(
+            metadata: [:],
+            producer: { writer in
+                try await self.scanLibrary(
+                    request: request.message,
+                    response: writer,
+                    context: context
+                )
+                return [:]
+            }
+        )
+    }
+
+    internal func getScanStatus(
+        request: GRPCCore.ServerRequest<Videoroom_GetScanStatusRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_ScanStatusResponse> {
+        return GRPCCore.ServerResponse<Videoroom_ScanStatusResponse>(
+            message: try await self.getScanStatus(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func createTag(
+        request: GRPCCore.ServerRequest<Videoroom_CreateTagRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_TagResponse> {
+        return GRPCCore.ServerResponse<Videoroom_TagResponse>(
+            message: try await self.createTag(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func deleteTag(
+        request: GRPCCore.ServerRequest<Videoroom_DeleteTagRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.deleteTag(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func listTags(
+        request: GRPCCore.ServerRequest<Videoroom_ListTagsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_ListTagsResponse> {
+        return GRPCCore.ServerResponse<Videoroom_ListTagsResponse>(
+            message: try await self.listTags(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func tagVideos(
+        request: GRPCCore.ServerRequest<Videoroom_TagVideosRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.tagVideos(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func untagVideos(
+        request: GRPCCore.ServerRequest<Videoroom_UntagVideosRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.untagVideos(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func createCollection(
+        request: GRPCCore.ServerRequest<Videoroom_CreateCollectionRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_CollectionResponse> {
+        return GRPCCore.ServerResponse<Videoroom_CollectionResponse>(
+            message: try await self.createCollection(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func deleteCollection(
+        request: GRPCCore.ServerRequest<Videoroom_DeleteCollectionRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.deleteCollection(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func listCollections(
+        request: GRPCCore.ServerRequest<Videoroom_ListCollectionsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_ListCollectionsResponse> {
+        return GRPCCore.ServerResponse<Videoroom_ListCollectionsResponse>(
+            message: try await self.listCollections(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func addToCollection(
+        request: GRPCCore.ServerRequest<Videoroom_AddToCollectionRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.addToCollection(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func removeFromCollection(
+        request: GRPCCore.ServerRequest<Videoroom_RemoveFromCollectionRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.removeFromCollection(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func updateVideoNotes(
+        request: GRPCCore.ServerRequest<Videoroom_UpdateNotesRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.updateVideoNotes(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func deleteVideo(
+        request: GRPCCore.ServerRequest<Videoroom_DeleteVideoRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.deleteVideo(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func listGroupMembers(
+        request: GRPCCore.ServerRequest<Videoroom_ListGroupMembersRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_ListGroupMembersResponse> {
+        return GRPCCore.ServerResponse<Videoroom_ListGroupMembersResponse>(
+            message: try await self.listGroupMembers(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func createGroup(
+        request: GRPCCore.ServerRequest<Videoroom_CreateGroupRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_GroupResponse> {
+        return GRPCCore.ServerResponse<Videoroom_GroupResponse>(
+            message: try await self.createGroup(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func ungroupVideo(
+        request: GRPCCore.ServerRequest<Videoroom_UngroupVideoRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.ungroupVideo(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func setGroupPreferred(
+        request: GRPCCore.ServerRequest<Videoroom_SetGroupPreferredRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.setGroupPreferred(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func autoGroupVideos(
+        request: GRPCCore.ServerRequest<Videoroom_AutoGroupRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_AutoGroupResponse> {
+        return GRPCCore.ServerResponse<Videoroom_AutoGroupResponse>(
+            message: try await self.autoGroupVideos(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func generateProxy(
+        request: GRPCCore.ServerRequest<Videoroom_GenerateProxyRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ProxyGenerationProgress> {
+        return GRPCCore.StreamingServerResponse<Videoroom_ProxyGenerationProgress>(
+            metadata: [:],
+            producer: { writer in
+                try await self.generateProxy(
+                    request: request.message,
+                    response: writer,
+                    context: context
+                )
+                return [:]
+            }
+        )
+    }
+
+    internal func listProxies(
+        request: GRPCCore.ServerRequest<Videoroom_ListProxiesRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_ListProxiesResponse> {
+        return GRPCCore.ServerResponse<Videoroom_ListProxiesResponse>(
+            message: try await self.listProxies(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func getFilterOptions(
+        request: GRPCCore.ServerRequest<Videoroom_GetFilterOptionsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_FilterOptions> {
+        return GRPCCore.ServerResponse<Videoroom_FilterOptions>(
+            message: try await self.getFilterOptions(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func getStatus(
+        request: GRPCCore.ServerRequest<Videoroom_GetStatusRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_StatusResponse> {
+        return GRPCCore.ServerResponse<Videoroom_StatusResponse>(
+            message: try await self.getStatus(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func getConfig(
+        request: GRPCCore.ServerRequest<Videoroom_GetConfigRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_ConfigResponse> {
+        return GRPCCore.ServerResponse<Videoroom_ConfigResponse>(
+            message: try await self.getConfig(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func updateConfig(
+        request: GRPCCore.ServerRequest<Videoroom_UpdateConfigRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.updateConfig(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func openCatalog(
+        request: GRPCCore.ServerRequest<Videoroom_OpenCatalogRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_CatalogInfo> {
+        return GRPCCore.ServerResponse<Videoroom_CatalogInfo>(
+            message: try await self.openCatalog(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func closeCatalog(
+        request: GRPCCore.ServerRequest<Videoroom_CloseCatalogRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.closeCatalog(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func getCurrentCatalog(
+        request: GRPCCore.ServerRequest<Videoroom_GetCurrentCatalogRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_CatalogInfo> {
+        return GRPCCore.ServerResponse<Videoroom_CatalogInfo>(
+            message: try await self.getCurrentCatalog(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
 }
 
 // MARK: videoroom.VideoRoom (client)
@@ -1008,6 +3956,29 @@ extension Videoroom_VideoRoom {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_ListProxiesResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "GetFilterOptions" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Filter options (distinct values for the grid's dropdowns)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_GetFilterOptionsRequest` message.
+        ///   - serializer: A serializer for `Videoroom_GetFilterOptionsRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_FilterOptions` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func getFilterOptions<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_GetFilterOptionsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_GetFilterOptionsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_FilterOptions>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_FilterOptions>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
         /// Call the "GetStatus" method.
         ///
         /// > Source IDL Documentation:
@@ -1067,6 +4038,69 @@ extension Videoroom_VideoRoom {
             deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "OpenCatalog" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Catalog lifecycle — the catalog is the SQLite file backing the daemon.
+        /// > Switching catalogs at runtime lets a single server process serve multiple
+        /// > libraries over its lifetime; the client treats each as a separate session.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_OpenCatalogRequest` message.
+        ///   - serializer: A serializer for `Videoroom_OpenCatalogRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_CatalogInfo` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func openCatalog<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_OpenCatalogRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_OpenCatalogRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_CatalogInfo>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_CatalogInfo>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "CloseCatalog" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_CloseCatalogRequest` message.
+        ///   - serializer: A serializer for `Videoroom_CloseCatalogRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func closeCatalog<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_CloseCatalogRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_CloseCatalogRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "GetCurrentCatalog" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_GetCurrentCatalogRequest` message.
+        ///   - serializer: A serializer for `Videoroom_GetCurrentCatalogRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_CatalogInfo` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func getCurrentCatalog<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_GetCurrentCatalogRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_GetCurrentCatalogRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_CatalogInfo>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_CatalogInfo>) async throws -> Result
         ) async throws -> Result where Result: Sendable
     }
 
@@ -1952,6 +4986,40 @@ extension Videoroom_VideoRoom {
             )
         }
 
+        /// Call the "GetFilterOptions" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Filter options (distinct values for the grid's dropdowns)
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_GetFilterOptionsRequest` message.
+        ///   - serializer: A serializer for `Videoroom_GetFilterOptionsRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_FilterOptions` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func getFilterOptions<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_GetFilterOptionsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_GetFilterOptionsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_FilterOptions>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_FilterOptions>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.GetFilterOptions.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
         /// Call the "GetStatus" method.
         ///
         /// > Source IDL Documentation:
@@ -2039,6 +5107,102 @@ extension Videoroom_VideoRoom {
             try await self.client.unary(
                 request: request,
                 descriptor: Videoroom_VideoRoom.Method.UpdateConfig.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "OpenCatalog" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Catalog lifecycle — the catalog is the SQLite file backing the daemon.
+        /// > Switching catalogs at runtime lets a single server process serve multiple
+        /// > libraries over its lifetime; the client treats each as a separate session.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_OpenCatalogRequest` message.
+        ///   - serializer: A serializer for `Videoroom_OpenCatalogRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_CatalogInfo` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func openCatalog<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_OpenCatalogRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_OpenCatalogRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_CatalogInfo>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_CatalogInfo>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.OpenCatalog.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "CloseCatalog" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_CloseCatalogRequest` message.
+        ///   - serializer: A serializer for `Videoroom_CloseCatalogRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func closeCatalog<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_CloseCatalogRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_CloseCatalogRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.CloseCatalog.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "GetCurrentCatalog" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_GetCurrentCatalogRequest` message.
+        ///   - serializer: A serializer for `Videoroom_GetCurrentCatalogRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_CatalogInfo` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func getCurrentCatalog<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_GetCurrentCatalogRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_GetCurrentCatalogRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_CatalogInfo>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_CatalogInfo>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.GetCurrentCatalog.descriptor,
                 serializer: serializer,
                 deserializer: deserializer,
                 options: options,
@@ -2773,6 +5937,35 @@ extension Videoroom_VideoRoom.ClientProtocol {
         )
     }
 
+    /// Call the "GetFilterOptions" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Filter options (distinct values for the grid's dropdowns)
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_GetFilterOptionsRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func getFilterOptions<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_GetFilterOptionsRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_FilterOptions>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getFilterOptions(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_GetFilterOptionsRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_FilterOptions>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
     /// Call the "GetStatus" method.
     ///
     /// > Source IDL Documentation:
@@ -2847,6 +6040,87 @@ extension Videoroom_VideoRoom.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_UpdateConfigRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_Response>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "OpenCatalog" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Catalog lifecycle — the catalog is the SQLite file backing the daemon.
+    /// > Switching catalogs at runtime lets a single server process serve multiple
+    /// > libraries over its lifetime; the client treats each as a separate session.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_OpenCatalogRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func openCatalog<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_OpenCatalogRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_CatalogInfo>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.openCatalog(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_OpenCatalogRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_CatalogInfo>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "CloseCatalog" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_CloseCatalogRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func closeCatalog<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_CloseCatalogRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.closeCatalog(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_CloseCatalogRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_Response>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetCurrentCatalog" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_GetCurrentCatalogRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func getCurrentCatalog<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_GetCurrentCatalogRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_CatalogInfo>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getCurrentCatalog(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_GetCurrentCatalogRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_CatalogInfo>(),
             options: options,
             onResponse: handleResponse
         )
@@ -3690,6 +6964,39 @@ extension Videoroom_VideoRoom.ClientProtocol {
         )
     }
 
+    /// Call the "GetFilterOptions" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Filter options (distinct values for the grid's dropdowns)
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func getFilterOptions<Result>(
+        _ message: Videoroom_GetFilterOptionsRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_FilterOptions>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_GetFilterOptionsRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getFilterOptions(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
     /// Call the "GetStatus" method.
     ///
     /// > Source IDL Documentation:
@@ -3775,6 +7082,99 @@ extension Videoroom_VideoRoom.ClientProtocol {
             metadata: metadata
         )
         return try await self.updateConfig(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "OpenCatalog" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Catalog lifecycle — the catalog is the SQLite file backing the daemon.
+    /// > Switching catalogs at runtime lets a single server process serve multiple
+    /// > libraries over its lifetime; the client treats each as a separate session.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func openCatalog<Result>(
+        _ message: Videoroom_OpenCatalogRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_CatalogInfo>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_OpenCatalogRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.openCatalog(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "CloseCatalog" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func closeCatalog<Result>(
+        _ message: Videoroom_CloseCatalogRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_CloseCatalogRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.closeCatalog(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetCurrentCatalog" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func getCurrentCatalog<Result>(
+        _ message: Videoroom_GetCurrentCatalogRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_CatalogInfo>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_GetCurrentCatalogRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getCurrentCatalog(
             request: request,
             options: options,
             onResponse: handleResponse

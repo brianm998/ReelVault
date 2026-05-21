@@ -17,14 +17,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import com.videoroom.data.models.CatalogInfo
 import com.videoroom.data.repository.VideoRepository
+import com.videoroom.data.server.RecentCatalogs
+import com.videoroom.data.server.ServerLauncher
 import com.videoroom.ui.screens.GridScreen
 import com.videoroom.ui.screens.DetailScreen
+import com.videoroom.ui.screens.OpenCatalogDialog
 import com.videoroom.ui.theme.VideoRoomTheme
 import com.videoroom.ui.theme.VideoRoomSpacing
 import com.videoroom.viewmodel.GridViewModel
 import com.videoroom.viewmodel.DetailViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 
 private val logger = LoggerFactory.getLogger("VideoRoom")
@@ -44,11 +50,19 @@ fun main() = application {
     val groupSelectedAction = remember { mutableStateOf<() -> Unit>({}) }
     // Same pattern for the Tab key panel-toggle.
     val togglePanelsAction = remember { mutableStateOf<() -> Unit>({}) }
+    // Title reflects the currently-open catalog (lifted here so Window.title
+    // recomposes when the catalog changes).
+    var currentCatalog by remember { mutableStateOf(CatalogInfo.Closed) }
+    val windowTitle = if (currentCatalog.isOpen) {
+        "VideoRoom — ${currentCatalog.name}"
+    } else {
+        "VideoRoom"
+    }
 
     Window(
         onCloseRequest = ::exitApplication,
         state = windowState,
-        title = "VideoRoom - Video Library Manager",
+        title = windowTitle,
         icon = null, // TODO: Add app icon
         // onPreviewKeyEvent fires BEFORE focused widgets consume the event,
         // so it works even when the search TextField is focused.
@@ -79,7 +93,8 @@ fun main() = application {
         CompositionLocalProvider(LocalShiftPressed provides shiftPressed) {
             VideoRoomApp(
                 onRegisterGroupAction = { groupSelectedAction.value = it },
-                onRegisterTogglePanelsAction = { togglePanelsAction.value = it }
+                onRegisterTogglePanelsAction = { togglePanelsAction.value = it },
+                onCatalogChanged = { currentCatalog = it }
             )
         }
     }
@@ -90,12 +105,17 @@ fun VideoRoomApp(
     /** Called once to register the "group selected" action for the Cmd/Ctrl+G shortcut. */
     onRegisterGroupAction: (() -> Unit) -> Unit = {},
     /** Called once to register the "toggle panels" action for the Tab shortcut. */
-    onRegisterTogglePanelsAction: (() -> Unit) -> Unit = {}
+    onRegisterTogglePanelsAction: (() -> Unit) -> Unit = {},
+    /** Notified whenever the open-catalog state changes, so the parent can
+     *  update the Window title. */
+    onCatalogChanged: (CatalogInfo) -> Unit = {}
 ) {
     var isDarkTheme by remember { mutableStateOf(true) }
     val repository = remember { VideoRepository.getInstance() }
     val gridViewModel = remember { GridViewModel(repository) }
     val detailViewModel = remember { DetailViewModel(repository) }
+    val launcher = remember { ServerLauncher() }
+    val recents = remember { RecentCatalogs.Default }
 
     // Side panel expansion state. Tab toggles both at once (Lightroom-style),
     // and each panel also has its own chevron to collapse/expand individually.
@@ -105,6 +125,20 @@ fun VideoRoomApp(
     // Thumbnail size controls the minimum column width for the adaptive grid.
     // Smaller value → more columns when there's space; larger → fewer, bigger cards.
     var thumbnailWidth by remember { mutableStateOf(220.dp) }
+
+    // External editors preferences dialog visibility.
+    var showEditorsDialog by remember { mutableStateOf(false) }
+
+    // OpenCatalog dialog state. Shown automatically when the daemon has no
+    // catalog open, or when the user picks File → Open.
+    var showOpenCatalogDialog by remember { mutableStateOf(false) }
+    var openDialogIsStartup by remember { mutableStateOf(false) }
+
+    // Currently-open catalog from the server's perspective. Drives the title
+    // and the File menu's enable state.
+    var currentCatalog by remember { mutableStateOf(CatalogInfo.Closed) }
+    // Propagate changes up so the Window title can recompose.
+    LaunchedEffect(currentCatalog) { onCatalogChanged(currentCatalog) }
 
     // Register the keyboard shortcut handlers with the Window-level key listener.
     LaunchedEffect(gridViewModel) {
@@ -123,31 +157,112 @@ fun VideoRoomApp(
     var connectionState by remember { mutableStateOf(ConnectionState.Connecting) }
     var errorMessage by remember { mutableStateOf("") }
 
-    // Attempt to connect — kept in a separate function so it can be retried.
-    fun attemptConnect() {
+    /** Load library data after a successful catalog open. */
+    fun loadAfterCatalogOpened() {
+        gridViewModel.loadVideos()
+        gridViewModel.loadLibraryLocations()
+        gridViewModel.loadTags()
+        gridViewModel.loadFilterOptions()
+    }
+
+    /** Tell the daemon to switch to [path], persist it as a recent, refresh. */
+    fun openCatalog(path: String) {
         scope.launch {
-            connectionState = ConnectionState.Connecting
-            val connected = repository.connect()
-            if (connected) {
-                connectionState = ConnectionState.Connected
-                gridViewModel.loadVideos()
-                gridViewModel.loadLibraryLocations()
+            val info = repository.openCatalog(path)
+            if (info != null && info.isOpen) {
+                recents.touch(info.path)
+                currentCatalog = info
+                showOpenCatalogDialog = false
+                loadAfterCatalogOpened()
             } else {
-                errorMessage = "Failed to connect to VideoRoom backend on localhost:50051"
-                connectionState = ConnectionState.Failed
+                errorMessage = "Could not open catalog at $path"
+                // Re-open the dialog so the user can pick again.
+                showOpenCatalogDialog = true
             }
         }
     }
 
-    LaunchedEffect(Unit) {
-        attemptConnect()
+    /** Close the current catalog and prompt the user to open another. */
+    fun closeCatalog() {
+        scope.launch {
+            repository.closeCatalog()
+            currentCatalog = CatalogInfo.Closed
+            gridViewModel.clearState()
+            openDialogIsStartup = false
+            showOpenCatalogDialog = true
+        }
     }
+
+    /**
+     * Try to connect to the backend. The flow:
+     *   1. If a daemon is already listening on the default port, reuse it.
+     *   2. Otherwise spawn one with no catalog mounted yet.
+     *   3. Then ask the daemon what catalog it has open. If none, prompt.
+     *   4. If the daemon's existing catalog matches our recents-head, just go.
+     */
+    fun attemptConnect() {
+        scope.launch {
+            connectionState = ConnectionState.Connecting
+
+            // Step 1: probe the default port.
+            val defaultPort = 50051
+            val reachable = withContext(Dispatchers.IO) {
+                launcher.isReachable("127.0.0.1", defaultPort)
+            }
+
+            // Step 2: if not reachable, spawn our own daemon.
+            val port = if (reachable) {
+                defaultPort
+            } else {
+                val listening = withContext(Dispatchers.IO) {
+                    launcher.launch(preferredPort = defaultPort, dbPath = null)
+                }
+                if (listening == null) {
+                    errorMessage = "Couldn't start the VideoRoom backend. " +
+                        "Set VIDEOROOM_CORE_BIN or build core with `cargo build`."
+                    connectionState = ConnectionState.Failed
+                    return@launch
+                }
+                listening.port
+            }
+
+            val ok = repository.connect(overridePort = port)
+            if (!ok) {
+                errorMessage = "Connected to port $port but the daemon didn't respond"
+                connectionState = ConnectionState.Failed
+                return@launch
+            }
+            connectionState = ConnectionState.Connected
+
+            // Step 3: discover what catalog (if any) the daemon already has open.
+            val existing = repository.getCurrentCatalog()
+            if (existing.isOpen) {
+                currentCatalog = existing
+                recents.touch(existing.path)
+                loadAfterCatalogOpened()
+            } else {
+                // Step 4: nothing open — pick one. Use the most-recent if it
+                // still exists for one-click "resume", otherwise prompt.
+                val head = recents.list().firstOrNull { java.io.File(it).exists() }
+                if (head != null) {
+                    openCatalog(head)
+                } else {
+                    openDialogIsStartup = true
+                    showOpenCatalogDialog = true
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) { attemptConnect() }
 
     DisposableEffect(Unit) {
         onDispose {
             gridViewModel.onDestroy()
             detailViewModel.onDestroy()
             repository.disconnect()
+            // Shut down any daemon we spawned ourselves.
+            launcher.shutdown()
         }
     }
 
@@ -164,13 +279,24 @@ fun VideoRoomApp(
                     val sortAsc = gridViewModel.currentSortAscending.collectAsState()
                     val selectedIds = gridViewModel.selectedVideoIds.collectAsState()
                     VideoRoomTopBar(
+                        gridViewModel = gridViewModel,
                         isDarkTheme = isDarkTheme,
                         onThemeToggle = { isDarkTheme = !isDarkTheme },
                         onSearch = { gridViewModel.setSearchQuery(it) },
-                        onAddLibrary = { path, autoGroup ->
-                            gridViewModel.addLibraryAndScan(path, true, autoGroup)
+                        onAddLibrary = { path, recursive, autoGroup ->
+                            gridViewModel.addLibraryAndScan(path, recursive, autoGroup)
                         },
                         onGroupSelected = { gridViewModel.groupSelectedVideos() },
+                        onConfigureEditors = { showEditorsDialog = true },
+                        onOpenCatalog = {
+                            openDialogIsStartup = false
+                            showOpenCatalogDialog = true
+                        },
+                        onCloseCatalog = { closeCatalog() },
+                        onOpenRecent = { path -> openCatalog(path) },
+                        catalogIsOpen = currentCatalog.isOpen,
+                        catalogName = currentCatalog.name,
+                        recents = recents.list(),
                         selectedCount = selectedIds.value.size,
                         currentSort = currentSort.value,
                         sortAscending = sortAsc.value,
@@ -260,15 +386,17 @@ fun VideoRoomApp(
                                         }
                                     )
                                 }
-                                IconButton(
-                                    onClick = { gridViewModel.clearScanResult() },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Close,
-                                        contentDescription = "Dismiss",
-                                        modifier = Modifier.size(16.dp)
-                                    )
+                                com.videoroom.ui.components.Tooltip(text = "Dismiss this notification") {
+                                    IconButton(
+                                        onClick = { gridViewModel.clearScanResult() },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "Dismiss",
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -319,6 +447,7 @@ fun VideoRoomApp(
                                 detailViewModel.loadMetadata(video.id)
                             },
                             thumbnailMinWidth = thumbnailWidth,
+                            onConfigureEditors = { showEditorsDialog = true },
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
@@ -334,6 +463,7 @@ fun VideoRoomApp(
                         if (rightPanelExpanded) {
                             DetailScreen(
                                 viewModel = detailViewModel,
+                                gridViewModel = gridViewModel,
                                 onCollapse = { rightPanelExpanded = false },
                                 thumbnailWidth = thumbnailWidth,
                                 onThumbnailWidthChange = { thumbnailWidth = it },
@@ -350,6 +480,23 @@ fun VideoRoomApp(
                             )
                         }
                     }
+                }
+                // External editors preferences dialog
+                if (showEditorsDialog) {
+                    com.videoroom.ui.screens.ExternalEditorsDialog(
+                        onDismiss = { showEditorsDialog = false }
+                    )
+                }
+
+                // Open Catalog dialog — shown automatically when the daemon
+                // has no catalog mounted, or when the user picks File → Open.
+                if (showOpenCatalogDialog) {
+                    OpenCatalogDialog(
+                        onDismiss = { showOpenCatalogDialog = false },
+                        onPick = { openCatalog(it) },
+                        isStartup = openDialogIsStartup,
+                        recents = recents,
+                    )
                 }
             } else if (connectionState == ConnectionState.Connecting) {
                 // Friendly loading screen while we attempt to reach the backend.
@@ -401,11 +548,19 @@ fun ConnectingScreen() {
 
 @Composable
 fun VideoRoomTopBar(
+    gridViewModel: com.videoroom.viewmodel.GridViewModel,
     isDarkTheme: Boolean,
     onThemeToggle: () -> Unit,
     onSearch: (String) -> Unit,
-    onAddLibrary: (path: String, autoGroup: Boolean) -> Unit,
+    onAddLibrary: (path: String, recursive: Boolean, autoGroup: Boolean) -> Unit,
     onGroupSelected: () -> Unit = {},
+    onConfigureEditors: () -> Unit = {},
+    onOpenCatalog: () -> Unit = {},
+    onCloseCatalog: () -> Unit = {},
+    onOpenRecent: (String) -> Unit = {},
+    catalogIsOpen: Boolean = false,
+    catalogName: String = "",
+    recents: List<String> = emptyList(),
     selectedCount: Int = 0,
     currentSort: String = "indexed_at",
     sortAscending: Boolean = false,
@@ -414,6 +569,7 @@ fun VideoRoomTopBar(
     var searchQuery by remember { mutableStateOf("") }
     var showAddLibraryDialog by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
+    var showFileMenu by remember { mutableStateOf(false) }
 
     val sortOptions = listOf(
         "filename" to "Filename",
@@ -426,6 +582,8 @@ fun VideoRoomTopBar(
         "codec" to "Codec",
         "bitrate" to "Bitrate",
         "camera" to "Camera",
+        "lens" to "Lens",
+        "keyword" to "Keyword",
     )
 
     TopAppBar(
@@ -442,52 +600,142 @@ fun VideoRoomTopBar(
                     style = MaterialTheme.typography.headlineSmall
                 )
 
+                Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
+
+                // File menu — Open / Close / Open Recent.
+                Box {
+                    com.videoroom.ui.components.Tooltip(
+                        text = "Open a different catalog, close the current one, or pick from " +
+                            "recent catalogs."
+                    ) {
+                        OutlinedButton(
+                            onClick = { showFileMenu = true },
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LibraryBooks,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (catalogIsOpen) catalogName else "No catalog",
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1
+                            )
+                            Icon(
+                                imageVector = Icons.Default.ArrowDropDown,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                    DropdownMenu(expanded = showFileMenu, onDismissRequest = { showFileMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Open Catalog…") },
+                            onClick = { onOpenCatalog(); showFileMenu = false },
+                            leadingIcon = { Icon(Icons.Default.FolderOpen, contentDescription = null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Close Catalog") },
+                            onClick = { onCloseCatalog(); showFileMenu = false },
+                            enabled = catalogIsOpen,
+                            leadingIcon = { Icon(Icons.Default.Close, contentDescription = null) }
+                        )
+                        if (recents.isNotEmpty()) {
+                            HorizontalDivider()
+                            Text(
+                                text = "Recent",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(
+                                    horizontal = VideoRoomSpacing.Medium,
+                                    vertical = VideoRoomSpacing.XSmall
+                                )
+                            )
+                            recents.take(8).forEach { recent ->
+                                val name = java.io.File(recent)
+                                    .nameWithoutExtension
+                                    .ifEmpty { java.io.File(recent).name }
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text(name, style = MaterialTheme.typography.bodySmall)
+                                            Text(
+                                                recent,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.outline
+                                            )
+                                        }
+                                    },
+                                    onClick = { onOpenRecent(recent); showFileMenu = false }
+                                )
+                            }
+                        }
+                    }
+                }
+
                 // Search bar - use OutlinedTextField which has a more compact
                 // default height that fits inside the TopAppBar without
                 // clipping text.
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = {
-                        searchQuery = it
-                        onSearch(it)
-                    },
-                    placeholder = {
-                        Text(
-                            "Search videos...",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                com.videoroom.ui.components.Tooltip(
+                    text = "Search videos by filename, notes, or tag. Matches as you type."
+                ) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = {
+                            searchQuery = it
+                            onSearch(it)
+                        },
+                        placeholder = {
+                            Text(
+                                "Search videos...",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        modifier = Modifier.width(300.dp),
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodySmall.copy(
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = "Search",
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        shape = MaterialTheme.shapes.small,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
                         )
-                    },
-                    modifier = Modifier.width(300.dp),
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodySmall.copy(
-                        color = MaterialTheme.colorScheme.onSurface
-                    ),
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = "Search",
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    shape = MaterialTheme.shapes.small,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
                     )
-                )
+                }
+
+                Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
+
+                // Filter dropdowns — only visible fields with data appear.
+                FilterDropdowns(gridViewModel)
+
+                Spacer(modifier = Modifier.weight(1f))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // Sort menu
                     Box {
-                        IconButton(onClick = { showSortMenu = true }) {
-                            Icon(
-                                imageVector = Icons.Default.Sort,
-                                contentDescription = "Sort"
-                            )
+                        com.videoroom.ui.components.Tooltip(
+                            text = "Sort the video grid. Click the same field again to reverse direction."
+                        ) {
+                            IconButton(onClick = { showSortMenu = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.Sort,
+                                    contentDescription = "Sort"
+                                )
+                            }
                         }
                         DropdownMenu(
                             expanded = showSortMenu,
@@ -548,23 +796,31 @@ fun VideoRoomTopBar(
                     // Group Selected button: enabled when 2+ videos are multi-selected.
                     // Shows a small count badge to make the selection visible.
                     Box {
-                        IconButton(
-                            onClick = onGroupSelected,
-                            enabled = selectedCount >= 2
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Layers,
-                                contentDescription = if (selectedCount >= 2) {
-                                    "Group $selectedCount selected videos"
-                                } else {
-                                    "Shift+click to select videos to group"
-                                },
-                                tint = if (selectedCount >= 2) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                }
-                            )
+                        val groupTooltip = if (selectedCount >= 2) {
+                            "Stack the $selectedCount selected videos into a group (Cmd/Ctrl+G). " +
+                                "One representative will be shown in the grid; click the stack badge to expand."
+                        } else {
+                            "Shift-click or Cmd/Ctrl-click two or more videos in the grid to enable grouping."
+                        }
+                        com.videoroom.ui.components.Tooltip(text = groupTooltip) {
+                            IconButton(
+                                onClick = onGroupSelected,
+                                enabled = selectedCount >= 2
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Layers,
+                                    contentDescription = if (selectedCount >= 2) {
+                                        "Group $selectedCount selected videos"
+                                    } else {
+                                        "Shift+click to select videos to group"
+                                    },
+                                    tint = if (selectedCount >= 2) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                    }
+                                )
+                            }
                         }
                         if (selectedCount > 0) {
                             Surface(
@@ -584,24 +840,47 @@ fun VideoRoomTopBar(
                         }
                     }
 
+                    // External editors preferences
+                    com.videoroom.ui.components.Tooltip(
+                        text = "Configure which external video editors are available " +
+                            "in the right-click \"Open with\" menu. See free/paid status " +
+                            "and download links for each supported editor."
+                    ) {
+                        IconButton(onClick = onConfigureEditors) {
+                            Icon(
+                                imageVector = Icons.Default.Build,
+                                contentDescription = "External Editors"
+                            )
+                        }
+                    }
+
                     // Add Library button
-                    IconButton(onClick = { showAddLibraryDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Default.CreateNewFolder,
-                            contentDescription = "Add Library Location"
-                        )
+                    com.videoroom.ui.components.Tooltip(
+                        text = "Add a folder to your library. VideoRoom will scan it for videos " +
+                            "and extract their metadata in the background."
+                    ) {
+                        IconButton(onClick = { showAddLibraryDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.CreateNewFolder,
+                                contentDescription = "Add Library Location"
+                            )
+                        }
                     }
 
                     // Theme toggle
-                    IconButton(onClick = onThemeToggle) {
-                        Icon(
-                            imageVector = if (isDarkTheme) {
-                                Icons.Default.LightMode
-                            } else {
-                                Icons.Default.DarkMode
-                            },
-                            contentDescription = "Toggle theme"
-                        )
+                    com.videoroom.ui.components.Tooltip(
+                        text = if (isDarkTheme) "Switch to light theme" else "Switch to dark theme"
+                    ) {
+                        IconButton(onClick = onThemeToggle) {
+                            Icon(
+                                imageVector = if (isDarkTheme) {
+                                    Icons.Default.LightMode
+                                } else {
+                                    Icons.Default.DarkMode
+                                },
+                                contentDescription = "Toggle theme"
+                            )
+                        }
                     }
                 }
             }
@@ -616,20 +895,197 @@ fun VideoRoomTopBar(
     if (showAddLibraryDialog) {
         AddLibraryDialog(
             onDismiss = { showAddLibraryDialog = false },
-            onConfirm = { path, autoGroup ->
-                onAddLibrary(path, autoGroup)
+            onConfirm = { path, recursive, autoGroup ->
+                onAddLibrary(path, recursive, autoGroup)
                 showAddLibraryDialog = false
             }
         )
     }
 }
 
+/**
+ * Compact row of filter dropdowns shown to the right of the search field.
+ * Each dropdown is hidden when no data exists for its column. Selecting any
+ * value narrows the grid; "---" clears that filter.
+ */
+@Composable
+fun FilterDropdowns(gridViewModel: com.videoroom.viewmodel.GridViewModel) {
+    val options = gridViewModel.filterOptions.collectAsState().value
+    val camera = gridViewModel.filterCamera.collectAsState().value
+    val lens = gridViewModel.filterLens.collectAsState().value
+    val codec = gridViewModel.filterCodec.collectAsState().value
+    val year = gridViewModel.filterCaptureYear.collectAsState().value
+    val tagId = gridViewModel.filterTagId.collectAsState().value
+    val allTags = gridViewModel.tags.collectAsState().value
+    val anyFilterActive =
+        camera.isNotEmpty() || lens.isNotEmpty() || codec.isNotEmpty() ||
+            year != 0 || tagId.isNotEmpty()
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (options.cameras.isNotEmpty()) {
+            com.videoroom.ui.components.Tooltip(
+                text = "Show only videos captured with this camera model. " +
+                    "Pick \"---\" to clear."
+            ) {
+                FilterDropdown(
+                    label = "Camera",
+                    values = options.cameras,
+                    selected = camera,
+                    onSelect = { gridViewModel.setCameraFilter(it) }
+                )
+            }
+            Spacer(modifier = Modifier.width(VideoRoomSpacing.XSmall))
+        }
+        if (options.lenses.isNotEmpty()) {
+            com.videoroom.ui.components.Tooltip(
+                text = "Show only videos shot with this lens model. " +
+                    "Pick \"---\" to clear."
+            ) {
+                FilterDropdown(
+                    label = "Lens",
+                    values = options.lenses,
+                    selected = lens,
+                    onSelect = { gridViewModel.setLensFilter(it) }
+                )
+            }
+            Spacer(modifier = Modifier.width(VideoRoomSpacing.XSmall))
+        }
+        if (allTags.isNotEmpty()) {
+            com.videoroom.ui.components.Tooltip(
+                text = "Show only videos tagged with this keyword. " +
+                    "Pick \"---\" to clear."
+            ) {
+                FilterDropdown(
+                    label = "Keyword",
+                    // Tags use ID as the "value" but display name; build a map.
+                    values = allTags.map { it.name },
+                    selected = allTags.firstOrNull { it.id == tagId }?.name ?: "",
+                    onSelect = { name ->
+                        val matched = allTags.firstOrNull { it.name == name }
+                        gridViewModel.setTagFilter(matched?.id ?: "")
+                    }
+                )
+            }
+            Spacer(modifier = Modifier.width(VideoRoomSpacing.XSmall))
+        }
+        if (options.codecs.isNotEmpty()) {
+            com.videoroom.ui.components.Tooltip(
+                text = "Show only videos using this video codec (e.g. h264, hevc, prores). " +
+                    "Pick \"---\" to clear."
+            ) {
+                FilterDropdown(
+                    label = "Codec",
+                    values = options.codecs,
+                    selected = codec,
+                    onSelect = { gridViewModel.setCodecFilter(it) }
+                )
+            }
+            Spacer(modifier = Modifier.width(VideoRoomSpacing.XSmall))
+        }
+        if (options.captureYears.isNotEmpty()) {
+            com.videoroom.ui.components.Tooltip(
+                text = "Show only videos whose capture date falls in this year. " +
+                    "Pick \"---\" to clear."
+            ) {
+                FilterDropdown(
+                    label = "Year",
+                    values = options.captureYears.map { it.toString() },
+                    selected = if (year == 0) "" else year.toString(),
+                    onSelect = { gridViewModel.setCaptureYearFilter(it.toIntOrNull() ?: 0) }
+                )
+            }
+        }
+        if (anyFilterActive) {
+            Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
+            com.videoroom.ui.components.Tooltip(
+                text = "Clear all active filters (camera, lens, keyword, codec, year)."
+            ) {
+                TextButton(onClick = {
+                    gridViewModel.clearAllDropdownFilters()
+                    gridViewModel.setTagFilter("")
+                }) {
+                    Text("Clear", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * One compact dropdown. The current selection is shown on the button; "---"
+ * at the top of the menu clears the filter.
+ */
+@Composable
+fun FilterDropdown(
+    label: String,
+    values: List<String>,
+    selected: String,
+    onSelect: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val display = if (selected.isEmpty()) "---" else selected
+
+    Box {
+        OutlinedButton(
+            onClick = { expanded = true },
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Column(horizontalAlignment = Alignment.Start) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = display,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (selected.isEmpty()) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
+                    maxLines = 1
+                )
+            }
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("---") },
+                onClick = {
+                    onSelect("")
+                    expanded = false
+                }
+            )
+            HorizontalDivider()
+            values.forEach { value ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            value,
+                            color = if (value == selected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            }
+                        )
+                    },
+                    onClick = {
+                        onSelect(value)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun AddLibraryDialog(
     onDismiss: () -> Unit,
-    onConfirm: (path: String, autoGroup: Boolean) -> Unit
+    onConfirm: (path: String, recursive: Boolean, autoGroup: Boolean) -> Unit
 ) {
     var path by remember { mutableStateOf("") }
+    var recursive by remember { mutableStateOf(true) }
     var autoGroup by remember { mutableStateOf(true) }
 
     AlertDialog(
@@ -643,22 +1099,55 @@ fun AddLibraryDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
-                TextField(
-                    value = path,
-                    onValueChange = { path = it },
-                    placeholder = { Text("/Users/you/Videos") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
-                Text(
-                    text = "The directory will be scanned recursively for video files.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                com.videoroom.ui.components.Tooltip(
+                    text = "Full filesystem path to the folder containing your videos. " +
+                        "VideoRoom will scan it and index every supported video file it finds."
+                ) {
+                    TextField(
+                        value = path,
+                        onValueChange = { path = it },
+                        placeholder = { Text("/Users/you/Videos") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(VideoRoomSpacing.Medium))
 
+                com.videoroom.ui.components.Tooltip(
+                    text = "When on, VideoRoom walks into every subdirectory. " +
+                        "When off, only files directly inside the chosen folder are indexed."
+                ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Checkbox(
+                        checked = recursive,
+                        onCheckedChange = { recursive = it }
+                    )
+                    Column {
+                        Text(
+                            text = "Scan subdirectories",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "When off, only video files directly in this folder are indexed.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                }
+
+                Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
+
+                com.videoroom.ui.components.Tooltip(
+                    text = "When on, videos that share a base filename, duration, and frame rate " +
+                        "are automatically stacked together (e.g. 4K + 1080p exports of the same clip). " +
+                        "You can always group/ungroup manually later."
+                ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -680,19 +1169,27 @@ fun AddLibraryDialog(
                         )
                     }
                 }
+                }
             }
         },
         confirmButton = {
-            Button(
-                onClick = { if (path.isNotBlank()) onConfirm(path.trim(), autoGroup) },
-                enabled = path.isNotBlank()
+            com.videoroom.ui.components.Tooltip(
+                text = "Save this location and start scanning. Indexing runs in the background — " +
+                    "you can keep using VideoRoom while it works."
             ) {
-                Text("Add & Scan")
+                Button(
+                    onClick = { if (path.isNotBlank()) onConfirm(path.trim(), recursive, autoGroup) },
+                    enabled = path.isNotBlank()
+                ) {
+                    Text("Add & Scan")
+                }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+            com.videoroom.ui.components.Tooltip(text = "Close this dialog without adding the location.") {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
             }
         }
     )
@@ -751,14 +1248,19 @@ fun ConnectionErrorScreen(
 
             Spacer(modifier = Modifier.height(VideoRoomSpacing.Large))
 
-            Button(onClick = onRetry) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
-                Text("Retry")
+            com.videoroom.ui.components.Tooltip(
+                text = "Try connecting to the VideoRoom backend daemon again. " +
+                    "Make sure `videoroom-core` is running on localhost:50051."
+            ) {
+                Button(onClick = onRetry) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
+                    Text("Retry")
+                }
             }
         }
     }

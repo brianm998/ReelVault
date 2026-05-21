@@ -16,6 +16,7 @@ import com.videoroom.viewmodel.DetailViewModel
 @Composable
 fun DetailScreen(
     viewModel: DetailViewModel,
+    gridViewModel: com.videoroom.viewmodel.GridViewModel,
     onCollapse: () -> Unit = {},
     /** Current thumbnail min-width controlling adaptive grid column count. */
     thumbnailWidth: androidx.compose.ui.unit.Dp = 220.dp,
@@ -42,16 +43,20 @@ fun DetailScreen(
                 ),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(
-                onClick = onCollapse,
-                modifier = Modifier.size(24.dp)
+            com.videoroom.ui.components.Tooltip(
+                text = "Hide the details panel. Press Tab to toggle both side panels."
             ) {
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = "Hide details panel (Tab)",
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                IconButton(
+                    onClick = onCollapse,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = "Hide details panel (Tab)",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             Text(
                 text = "DETAILS",
@@ -87,12 +92,17 @@ fun DetailScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Slider(
-                value = thumbnailWidth.value,
-                onValueChange = { onThumbnailWidthChange(it.dp) },
-                valueRange = 120f..400f,
-                modifier = Modifier.fillMaxWidth()
-            )
+            com.videoroom.ui.components.Tooltip(
+                text = "Drag to resize thumbnails. The grid automatically adjusts " +
+                    "how many columns fit at this size."
+            ) {
+                Slider(
+                    value = thumbnailWidth.value,
+                    onValueChange = { onThumbnailWidthChange(it.dp) },
+                    valueRange = 120f..400f,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
 
         HorizontalDivider(
@@ -158,29 +168,8 @@ fun DetailScreen(
 
                 Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
 
-                // Open in external app button
-                Button(
-                    onClick = {
-                        val path = metadata.value!!.path
-                        try {
-                            val file = java.io.File(path)
-                            if (file.exists()) {
-                                java.awt.Desktop.getDesktop().open(file)
-                            }
-                        } catch (e: Exception) {
-                            // Ignore
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayCircle,
-                        contentDescription = "Open",
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
-                    Text("Open in External App")
-                }
+                // (Right-click any video card in the grid to open it with the
+                // default player or a configured external editor.)
 
                 Spacer(modifier = Modifier.height(VideoRoomSpacing.Medium))
 
@@ -245,8 +234,12 @@ fun DetailScreen(
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        TextButton(onClick = { viewModel.ungroupCurrent() }) {
-                            Text("Ungroup this", style = MaterialTheme.typography.labelSmall)
+                        com.videoroom.ui.components.Tooltip(
+                            text = "Remove this video from the stack. The other members stay grouped."
+                        ) {
+                            TextButton(onClick = { viewModel.ungroupCurrent() }) {
+                                Text("Ungroup this", style = MaterialTheme.typography.labelSmall)
+                            }
                         }
                     }
                     Text(
@@ -291,35 +284,49 @@ fun DetailScreen(
                                     )
                                 }
                                 val isPreferred = member.id == groupPreferredId.value
-                                IconButton(
-                                    onClick = { viewModel.setGroupPreferred(member.id) },
-                                    modifier = Modifier.size(28.dp)
+                                com.videoroom.ui.components.Tooltip(
+                                    text = if (isPreferred) {
+                                        "This is the preferred variant. It's the thumbnail shown " +
+                                            "in the grid and the file opened on double-click."
+                                    } else {
+                                        "Make this the preferred variant of the stack. " +
+                                            "The grid thumbnail and double-click action will switch to this file."
+                                    }
                                 ) {
-                                    Icon(
-                                        imageVector = if (isPreferred) Icons.Default.Star else Icons.Default.StarBorder,
-                                        contentDescription = if (isPreferred) "Preferred" else "Make preferred",
-                                        modifier = Modifier.size(18.dp),
-                                        tint = if (isPreferred) {
-                                            MaterialTheme.colorScheme.primary
-                                        } else {
-                                            MaterialTheme.colorScheme.outline
-                                        }
-                                    )
+                                    IconButton(
+                                        onClick = { viewModel.setGroupPreferred(member.id) },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isPreferred) Icons.Default.Star else Icons.Default.StarBorder,
+                                            contentDescription = if (isPreferred) "Preferred" else "Make preferred",
+                                            modifier = Modifier.size(18.dp),
+                                            tint = if (isPreferred) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.outline
+                                            }
+                                        )
+                                    }
                                 }
-                                IconButton(
-                                    onClick = {
-                                        try {
-                                            val file = java.io.File(member.path)
-                                            if (file.exists()) java.awt.Desktop.getDesktop().open(file)
-                                        } catch (_: Exception) {}
-                                    },
-                                    modifier = Modifier.size(28.dp)
+                                com.videoroom.ui.components.Tooltip(
+                                    text = "Open ${member.filename} in your system's default video player."
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.PlayArrow,
-                                        contentDescription = "Open",
-                                        modifier = Modifier.size(18.dp)
-                                    )
+                                    IconButton(
+                                        onClick = {
+                                            try {
+                                                val file = java.io.File(member.path)
+                                                if (file.exists()) java.awt.Desktop.getDesktop().open(file)
+                                            } catch (_: Exception) {}
+                                        },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.PlayArrow,
+                                            contentDescription = "Open",
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -334,43 +341,49 @@ fun DetailScreen(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                TextField(
-                    value = notes.value,
-                    onValueChange = { viewModel.updateNotes(it) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(80.dp),
-                    placeholder = { Text("Add notes...") },
-                    colors = TextFieldDefaults.colors(
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                com.videoroom.ui.components.Tooltip(
+                    text = "Free-form notes about this video. Saved automatically and " +
+                        "searchable from the top-bar search field."
+                ) {
+                    TextField(
+                        value = notes.value,
+                        onValueChange = { viewModel.updateNotes(it) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(80.dp),
+                        placeholder = { Text("Add notes...") },
+                        colors = TextFieldDefaults.colors(
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
                     )
-                )
+                }
 
                 Spacer(modifier = Modifier.height(VideoRoomSpacing.Large))
 
-                // Tags section
-                if (metadata.value!!.tags.isNotEmpty()) {
-                    Text(
-                        text = "Tags",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(VideoRoomSpacing.Small)
-                    ) {
-                        metadata.value!!.tags.forEach { tag ->
-                            AssistChip(
-                                onClick = { },
-                                label = { Text(tag) },
-                                trailingIcon = {
-                                    Icon(Icons.Default.Close, contentDescription = "Remove tag")
-                                }
-                            )
+                // Keywords / Tags section ---------------------------------
+                KeywordsSection(
+                    primaryVideoTags = metadata.value!!.tags,
+                    allTags = gridViewModel.tags.collectAsState().value,
+                    selectedVideoIds = gridViewModel.selectedVideoIds.collectAsState().value
+                        .ifEmpty { listOf(metadata.value!!.id) },
+                    activeFilterTagId = gridViewModel.filterTagId.collectAsState().value,
+                    onApplyKeyword = { name, ids ->
+                        gridViewModel.applyKeyword(name, ids) {
+                            // After tagging, reload the primary video's metadata
+                            // so its "Currently applied" chips refresh.
+                            metadata.value?.id?.let { id -> viewModel.loadMetadata(id) }
                         }
-                    }
-                }
+                    },
+                    onRemoveKeywordByName = { name, ids ->
+                        val tagId = gridViewModel.tags.value.firstOrNull { it.name == name }?.id
+                        if (tagId != null) {
+                            gridViewModel.removeKeyword(tagId, ids) {
+                                metadata.value?.id?.let { id -> viewModel.loadMetadata(id) }
+                            }
+                        }
+                    },
+                    onFilterByTag = { gridViewModel.setTagFilter(it) }
+                )
             }
         } else {
             // Loading
@@ -395,19 +408,43 @@ fun formatBytes(bytes: Long): String {
 }
 
 @Composable
-fun MetadataItem(label: String, value: String) {
-    Column(modifier = Modifier.padding(vertical = VideoRoomSpacing.Small)) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+fun MetadataItem(label: String, value: String, tooltip: String = "") {
+    val help = if (tooltip.isNotEmpty()) tooltip else defaultMetadataTooltip(label, value)
+    com.videoroom.ui.components.Tooltip(text = help) {
+        Column(modifier = Modifier.padding(vertical = VideoRoomSpacing.Small)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
+}
+
+/**
+ * Default help string for a metadata row, keyed off the label. Keeps the call
+ * sites tidy — most fields can just rely on the default phrasing.
+ */
+private fun defaultMetadataTooltip(label: String, value: String): String = when (label) {
+    "Resolution" -> "Image dimensions in pixels. Larger numbers = sharper picture."
+    "Duration" -> "Total playback length of this clip."
+    "FPS" -> "Frames per second — higher values mean smoother motion."
+    "Video Codec" -> "Compression format used to encode the video stream (e.g. h264, hevc, prores)."
+    "Audio Codec" -> "Compression format used for the audio track."
+    "Bitrate" -> "Average data rate. Higher generally means better quality at a given resolution."
+    "Size" -> "File size on disk."
+    "Color Space" -> "Color encoding standard (e.g. bt709 for HD, bt2020 for 4K HDR)."
+    "HDR" -> "High Dynamic Range content with extended brightness and color range."
+    "Camera" -> "Camera model recorded in the file's metadata (when available)."
+    "Lens" -> "Lens model recorded in the file's metadata."
+    "Captured" -> "Original recording date and time from the file's metadata."
+    "GPS" -> "Latitude and longitude where the video was recorded (when present)."
+    else -> "$label: $value"
 }
 
 @Composable
@@ -424,5 +461,199 @@ fun FlowRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         content()
+    }
+}
+
+/**
+ * Right-panel Keywords block:
+ *   * Text field at top — type a new keyword and press Enter to apply it to
+ *     every selected video (or just the primary video if none multi-selected).
+ *   * List of all known keywords with usage counts. Each row has:
+ *       - A `>` button on the left → set the grid filter to this tag.
+ *       - The keyword text → click to add this tag to the selected videos.
+ *         If the tag is already on the primary video it's shown with a check
+ *         and clicking it removes it from the selection instead.
+ */
+@Composable
+fun KeywordsSection(
+    primaryVideoTags: List<String>,
+    allTags: List<com.videoroom.data.models.Tag>,
+    selectedVideoIds: List<String>,
+    activeFilterTagId: String,
+    onApplyKeyword: (name: String, videoIds: List<String>) -> Unit,
+    onRemoveKeywordByName: (name: String, videoIds: List<String>) -> Unit,
+    onFilterByTag: (tagId: String) -> Unit
+) {
+    var newKeyword by remember { mutableStateOf("") }
+    val primaryTagSet = remember(primaryVideoTags) { primaryVideoTags.toSet() }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "Keywords",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+            if (activeFilterTagId.isNotEmpty()) {
+                com.videoroom.ui.components.Tooltip(
+                    text = "Stop filtering the grid by the currently selected keyword."
+                ) {
+                    TextButton(onClick = { onFilterByTag("") }) {
+                        Text("Clear filter", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
+        Text(
+            text = "Applies to ${selectedVideoIds.size} selected video" +
+                if (selectedVideoIds.size == 1) "" else "s",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
+
+        com.videoroom.ui.components.Tooltip(
+            text = "Type a new keyword and press Enter to apply it to all selected videos. " +
+                "If the keyword doesn't exist yet, it will be created."
+        ) {
+            TextField(
+                value = newKeyword,
+                onValueChange = { newKeyword = it },
+                placeholder = { Text("Add a keyword…", style = MaterialTheme.typography.bodySmall) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                    onDone = {
+                        if (newKeyword.isNotBlank()) {
+                            onApplyKeyword(newKeyword.trim(), selectedVideoIds)
+                            newKeyword = ""
+                        }
+                    }
+                ),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                ),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            )
+        }
+
+        Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
+
+        if (allTags.isEmpty()) {
+            Text(
+                text = "No keywords yet. Type one above and press Enter.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                allTags.forEach { tag ->
+                    val isOnVideo = tag.name in primaryTagSet
+                    val isActiveFilter = tag.id == activeFilterTagId
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // ">" filter button on the left
+                        com.videoroom.ui.components.Tooltip(
+                            text = if (isActiveFilter) {
+                                "Currently filtering the grid by '${tag.name}'. Click again to clear."
+                            } else {
+                                "Filter the grid to show only videos tagged '${tag.name}'."
+                            }
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    // Toggle: click an active filter to clear it.
+                                    onFilterByTag(if (isActiveFilter) "" else tag.id)
+                                },
+                                modifier = Modifier.size(22.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ChevronRight,
+                                    contentDescription = "Filter by ${tag.name}",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = if (isActiveFilter) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                )
+                            }
+                        }
+
+                        // Tag name + count, clickable to toggle on selection
+                        val rowTooltip = when {
+                            selectedVideoIds.isEmpty() -> {
+                                val plural = if (tag.videoCount == 1L) "" else "s"
+                                "'${tag.name}' is used on ${tag.videoCount} video$plural. " +
+                                    "Select a video to add or remove this keyword."
+                            }
+                            isOnVideo -> {
+                                val plural = if (selectedVideoIds.size == 1) "" else "s"
+                                "'${tag.name}' is on the current video. " +
+                                    "Click to remove it from the ${selectedVideoIds.size} selected video$plural."
+                            }
+                            else -> {
+                                val plural = if (selectedVideoIds.size == 1) "" else "s"
+                                "Click to apply '${tag.name}' to the ${selectedVideoIds.size} selected video$plural."
+                            }
+                        }
+                        com.videoroom.ui.components.Tooltip(text = rowTooltip) {
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable(enabled = selectedVideoIds.isNotEmpty()) {
+                                        if (isOnVideo) {
+                                            onRemoveKeywordByName(tag.name, selectedVideoIds)
+                                        } else {
+                                            onApplyKeyword(tag.name, selectedVideoIds)
+                                        }
+                                    }
+                                    .padding(vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                            if (isOnVideo) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Applied to current video",
+                                    modifier = Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                            } else {
+                                Spacer(modifier = Modifier.width(18.dp))
+                            }
+                            Text(
+                                text = tag.name,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (isActiveFilter) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
+                            Text(
+                                text = "(${tag.videoCount})",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

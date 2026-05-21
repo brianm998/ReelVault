@@ -7,5 +7,6 @@ pub mod config;
 pub mod error;
 pub mod service;
 pub mod grouping;
+pub mod concurrency;
 
 pub use error::Result;

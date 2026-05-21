@@ -47,6 +47,15 @@ nonisolated struct Videoroom_ListVideosRequest: Sendable {
   /// Empty means "all locations".
   var locationPath: String = String()
 
+  /// Exact-match filters from the top-bar dropdowns. Empty / 0 = no filter.
+  var filterCamera: String = String()
+
+  var filterLens: String = String()
+
+  var filterCodec: String = String()
+
+  var filterCaptureYear: Int32 = 0
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -580,6 +589,9 @@ nonisolated struct Videoroom_TagResponse: Sendable {
 
   var color: String = String()
 
+  /// How many videos currently have this tag
+  var videoCount: Int64 = 0
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -1068,6 +1080,93 @@ nonisolated struct Videoroom_AutoGroupResponse: Sendable {
   init() {}
 }
 
+nonisolated struct Videoroom_GetFilterOptionsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Videoroom_FilterOptions: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var cameras: [String] = []
+
+  var lenses: [String] = []
+
+  var codecs: [String] = []
+
+  var captureYears: [Int32] = []
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+/// Open / switch to the catalog file at `path`. If a catalog is currently
+/// open it's closed first. The file is created if it doesn't exist; the
+/// daemon initializes the schema on its first open.
+nonisolated struct Videoroom_OpenCatalogRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var path: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Videoroom_CloseCatalogRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Videoroom_GetCurrentCatalogRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+/// Information about the catalog the daemon currently has open. `path` is
+/// empty when no catalog is open — clients should treat that as a precondition
+/// failure for every other RPC.
+nonisolated struct Videoroom_CatalogInfo: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var path: String = String()
+
+  /// Display name (filename stem, e.g. "MyLibrary")
+  var name: String = String()
+
+  /// Total videos currently indexed
+  var videoCount: Int64 = 0
+
+  /// Unix ms at which this catalog was opened
+  var openedAtMs: Int64 = 0
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
 nonisolated struct Videoroom_Response: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -1090,7 +1189,7 @@ fileprivate nonisolated let _protobuf_package = "videoroom"
 
 nonisolated extension Videoroom_ListVideosRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ListVideosRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}limit\0\u{1}offset\0\u{3}sort_by\0\u{3}sort_ascending\0\u{3}filter_tags\0\u{3}collection_id\0\u{3}location_path\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}limit\0\u{1}offset\0\u{3}sort_by\0\u{3}sort_ascending\0\u{3}filter_tags\0\u{3}collection_id\0\u{3}location_path\0\u{3}filter_camera\0\u{3}filter_lens\0\u{3}filter_codec\0\u{3}filter_capture_year\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1105,6 +1204,10 @@ nonisolated extension Videoroom_ListVideosRequest: SwiftProtobuf.Message, SwiftP
       case 5: try { try decoder.decodeRepeatedStringField(value: &self.filterTags) }()
       case 6: try { try decoder.decodeSingularStringField(value: &self.collectionID) }()
       case 7: try { try decoder.decodeSingularStringField(value: &self.locationPath) }()
+      case 8: try { try decoder.decodeSingularStringField(value: &self.filterCamera) }()
+      case 9: try { try decoder.decodeSingularStringField(value: &self.filterLens) }()
+      case 10: try { try decoder.decodeSingularStringField(value: &self.filterCodec) }()
+      case 11: try { try decoder.decodeSingularInt32Field(value: &self.filterCaptureYear) }()
       default: break
       }
     }
@@ -1132,6 +1235,18 @@ nonisolated extension Videoroom_ListVideosRequest: SwiftProtobuf.Message, SwiftP
     if !self.locationPath.isEmpty {
       try visitor.visitSingularStringField(value: self.locationPath, fieldNumber: 7)
     }
+    if !self.filterCamera.isEmpty {
+      try visitor.visitSingularStringField(value: self.filterCamera, fieldNumber: 8)
+    }
+    if !self.filterLens.isEmpty {
+      try visitor.visitSingularStringField(value: self.filterLens, fieldNumber: 9)
+    }
+    if !self.filterCodec.isEmpty {
+      try visitor.visitSingularStringField(value: self.filterCodec, fieldNumber: 10)
+    }
+    if self.filterCaptureYear != 0 {
+      try visitor.visitSingularInt32Field(value: self.filterCaptureYear, fieldNumber: 11)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1143,6 +1258,10 @@ nonisolated extension Videoroom_ListVideosRequest: SwiftProtobuf.Message, SwiftP
     if lhs.filterTags != rhs.filterTags {return false}
     if lhs.collectionID != rhs.collectionID {return false}
     if lhs.locationPath != rhs.locationPath {return false}
+    if lhs.filterCamera != rhs.filterCamera {return false}
+    if lhs.filterLens != rhs.filterLens {return false}
+    if lhs.filterCodec != rhs.filterCodec {return false}
+    if lhs.filterCaptureYear != rhs.filterCaptureYear {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -2193,7 +2312,7 @@ nonisolated extension Videoroom_CreateTagRequest: SwiftProtobuf.Message, SwiftPr
 
 nonisolated extension Videoroom_TagResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".TagResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}color\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}color\0\u{3}video_count\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2204,6 +2323,7 @@ nonisolated extension Videoroom_TagResponse: SwiftProtobuf.Message, SwiftProtobu
       case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.color) }()
+      case 4: try { try decoder.decodeSingularInt64Field(value: &self.videoCount) }()
       default: break
       }
     }
@@ -2219,6 +2339,9 @@ nonisolated extension Videoroom_TagResponse: SwiftProtobuf.Message, SwiftProtobu
     if !self.color.isEmpty {
       try visitor.visitSingularStringField(value: self.color, fieldNumber: 3)
     }
+    if self.videoCount != 0 {
+      try visitor.visitSingularInt64Field(value: self.videoCount, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2226,6 +2349,7 @@ nonisolated extension Videoroom_TagResponse: SwiftProtobuf.Message, SwiftProtobu
     if lhs.id != rhs.id {return false}
     if lhs.name != rhs.name {return false}
     if lhs.color != rhs.color {return false}
+    if lhs.videoCount != rhs.videoCount {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3387,6 +3511,183 @@ nonisolated extension Videoroom_AutoGroupResponse: SwiftProtobuf.Message, SwiftP
     if lhs.groupsCreated != rhs.groupsCreated {return false}
     if lhs.videosGrouped != rhs.videosGrouped {return false}
     if lhs.message != rhs.message {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_GetFilterOptionsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".GetFilterOptionsRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_GetFilterOptionsRequest, rhs: Videoroom_GetFilterOptionsRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_FilterOptions: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".FilterOptions"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}cameras\0\u{1}lenses\0\u{1}codecs\0\u{3}capture_years\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedStringField(value: &self.cameras) }()
+      case 2: try { try decoder.decodeRepeatedStringField(value: &self.lenses) }()
+      case 3: try { try decoder.decodeRepeatedStringField(value: &self.codecs) }()
+      case 4: try { try decoder.decodeRepeatedInt32Field(value: &self.captureYears) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.cameras.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.cameras, fieldNumber: 1)
+    }
+    if !self.lenses.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.lenses, fieldNumber: 2)
+    }
+    if !self.codecs.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.codecs, fieldNumber: 3)
+    }
+    if !self.captureYears.isEmpty {
+      try visitor.visitPackedInt32Field(value: self.captureYears, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_FilterOptions, rhs: Videoroom_FilterOptions) -> Bool {
+    if lhs.cameras != rhs.cameras {return false}
+    if lhs.lenses != rhs.lenses {return false}
+    if lhs.codecs != rhs.codecs {return false}
+    if lhs.captureYears != rhs.captureYears {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_OpenCatalogRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".OpenCatalogRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.path) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.path.isEmpty {
+      try visitor.visitSingularStringField(value: self.path, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_OpenCatalogRequest, rhs: Videoroom_OpenCatalogRequest) -> Bool {
+    if lhs.path != rhs.path {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_CloseCatalogRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".CloseCatalogRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_CloseCatalogRequest, rhs: Videoroom_CloseCatalogRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_GetCurrentCatalogRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".GetCurrentCatalogRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_GetCurrentCatalogRequest, rhs: Videoroom_GetCurrentCatalogRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_CatalogInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".CatalogInfo"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{1}name\0\u{3}video_count\0\u{3}opened_at_ms\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.path) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self.videoCount) }()
+      case 4: try { try decoder.decodeSingularInt64Field(value: &self.openedAtMs) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.path.isEmpty {
+      try visitor.visitSingularStringField(value: self.path, fieldNumber: 1)
+    }
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 2)
+    }
+    if self.videoCount != 0 {
+      try visitor.visitSingularInt64Field(value: self.videoCount, fieldNumber: 3)
+    }
+    if self.openedAtMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.openedAtMs, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_CatalogInfo, rhs: Videoroom_CatalogInfo) -> Bool {
+    if lhs.path != rhs.path {return false}
+    if lhs.name != rhs.name {return false}
+    if lhs.videoCount != rhs.videoCount {return false}
+    if lhs.openedAtMs != rhs.openedAtMs {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

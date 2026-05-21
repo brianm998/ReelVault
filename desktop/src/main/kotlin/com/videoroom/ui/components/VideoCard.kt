@@ -22,13 +22,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.changedToDown
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isShiftPressed
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -49,6 +54,10 @@ fun VideoCard(
     stackMemberPosition: Int = 0,  // 1-based, only meaningful for stack children/representatives
     stackMemberCount: Int = 0,
     thumbnailBytes: ByteArray? = null,
+    /** Scrub-frame bytes (one per timeline position). When non-null and the
+     *  cursor is hovering, the displayed thumbnail is picked based on the X
+     *  position of the cursor over the card. */
+    scrubFrames: List<ByteArray?> = emptyList(),
     /**
      * [shiftPressed] and [togglePressed] are read directly from the pointer
      * event at click time. [togglePressed] is Cmd on macOS / Ctrl on
@@ -57,6 +66,9 @@ fun VideoCard(
     onClick: (shiftPressed: Boolean, togglePressed: Boolean) -> Unit = { _, _ -> },
     onDoubleClick: () -> Unit = {},
     onStackBadgeClick: () -> Unit = {},
+    /** Fired when the cursor enters the thumbnail area; used to lazily load
+     *  scrub frames the first time the user hovers this card. */
+    onHoverEnter: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -73,7 +85,80 @@ fun VideoCard(
         }
     }
 
+    // Decode scrub frames once per change. We pre-decode all frames into
+    // ImageBitmaps so swapping during scrub is allocation-free.
+    val scrubImages = remember(scrubFrames) {
+        scrubFrames.map { bytes ->
+            bytes?.let {
+                try {
+                    SkiaImage.makeFromEncoded(it).toComposeImageBitmap()
+                } catch (_: Exception) {
+                    null
+                }
+            }
+        }
+    }
+
+    // Hover state used to pick which scrub frame to show.
+    var hoverX by remember { mutableStateOf<Float?>(null) }
+    var thumbSize by remember { mutableStateOf(IntSize.Zero) }
+
+    // Choose which image to display: a scrub frame if we have one + position;
+    // otherwise the regular thumbnail.
+    val displayedImage = run {
+        val x = hoverX
+        val width = thumbSize.width
+        if (x != null && width > 0 && scrubImages.any { it != null }) {
+            val frac = (x / width).coerceIn(0f, 1f)
+            val idx = (frac * scrubImages.size).toInt().coerceIn(0, scrubImages.size - 1)
+            scrubImages[idx] ?: thumbnailImage
+        } else {
+            thumbnailImage
+        }
+    }
+
     val isInExpandedStack = isStackExpanded || isStackChild
+
+    // Rich tooltip text shown when the user hovers the card. Built once per
+    // change to the inputs so we don't allocate on every recomposition.
+    val cardTooltip = remember(video, isStackChild, isStackExpanded) {
+        buildString {
+            append(video.filename)
+            append('\n')
+            append(video.resolution)
+            append(" • ")
+            append(video.durationFormatted)
+            if (video.codecVideo.isNotEmpty()) {
+                append(" • ")
+                append(video.codecVideo)
+            }
+            if (video.fps > 0) {
+                append(" • ")
+                append(video.fps.toInt())
+                append(" fps")
+            }
+            append('\n')
+            append(
+                if (video.sizeMB >= 1024) {
+                    String.format("%.2f GB", video.sizeMB / 1024.0)
+                } else {
+                    String.format("%.1f MB", video.sizeMB)
+                }
+            )
+            if (video.isInGroup) {
+                append('\n')
+                if (isStackChild) {
+                    append("Member of a stack of ${video.groupSize} variants.")
+                } else if (isStackExpanded) {
+                    append("Stack of ${video.groupSize} (expanded). Click the stack badge to collapse.")
+                } else {
+                    append("Stack of ${video.groupSize}. Click the stack badge to expand.")
+                }
+            }
+            append('\n')
+            append("Click to select, Shift-click to multi-select, double-click to open.")
+        }
+    }
 
     // Border priority:
     //   anchor (multi-select anchor) > primary > multi-selection > hover > stack > default
@@ -104,6 +189,7 @@ fun VideoCard(
         MaterialTheme.colorScheme.surface
     }
 
+    Tooltip(text = cardTooltip) {
     Surface(
         modifier = modifier
             .clip(RectangleShape)
@@ -128,12 +214,26 @@ fun VideoCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(16f / 9f)
-                    .background(Color.Black),
+                    .background(Color.Black)
+                    .onSizeChanged { thumbSize = it }
+                    // Track cursor position over the thumbnail to drive
+                    // Lightroom-style scrubbing. The X coordinate is mapped
+                    // onto the scrub-frame array (0..N-1).
+                    .onPointerEvent(PointerEventType.Enter) {
+                        onHoverEnter()
+                        it.changes.firstOrNull()?.position?.let { p -> hoverX = p.x }
+                    }
+                    .onPointerEvent(PointerEventType.Move) {
+                        it.changes.firstOrNull()?.position?.let { p -> hoverX = p.x }
+                    }
+                    .onPointerEvent(PointerEventType.Exit) {
+                        hoverX = null
+                    },
                 contentAlignment = Alignment.Center
             ) {
-                if (thumbnailImage != null) {
+                if (displayedImage != null) {
                     Image(
-                        bitmap = thumbnailImage,
+                        bitmap = displayedImage,
                         contentDescription = video.filename,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -288,6 +388,7 @@ fun VideoCard(
                 )
             }
         }
+    }
     }
 }
 

@@ -1,5 +1,6 @@
-use crate::error::{Result, VideoRoomError};
+use crate::concurrency::acquire_ffmpeg_permit;
 use crate::db::Database;
+use crate::error::{Result, VideoRoomError};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use uuid::Uuid;
@@ -11,6 +12,11 @@ impl ThumbnailGenerator {
     pub const SMALL_WIDTH: i32 = 200;
     pub const MEDIUM_WIDTH: i32 = 400;
     pub const LARGE_WIDTH: i32 = 800;
+
+    /// Number of evenly-distributed frames generated per video for Lightroom-style
+    /// hover-scrubbing in the grid.
+    pub const SCRUB_FRAME_COUNT: usize = 10;
+    pub const SCRUB_WIDTH: i32 = 320;
 
     pub fn generate(
         _db: &Database,
@@ -68,6 +74,7 @@ impl ThumbnailGenerator {
             "0".to_string()
         };
 
+        let _permit = acquire_ffmpeg_permit();
         let output = Command::new("ffmpeg")
             .args(&[
                 "-v",
@@ -155,6 +162,92 @@ impl ThumbnailGenerator {
         for size in &["small", "medium", "large"] {
             let path = cache_dir.join(format!("{}_{}.jpg", video_id, size));
             let _ = std::fs::remove_file(path);
+        }
+        for i in 0..Self::SCRUB_FRAME_COUNT {
+            let path = cache_dir.join(format!("{}_scrub_{}.jpg", video_id, i));
+            let _ = std::fs::remove_file(path);
+        }
+        Ok(())
+    }
+
+    /// Generate evenly-spaced scrub frames (for the Lightroom-style hover
+    /// preview). Frames are sampled between 5% and 95% of the video duration
+    /// so the first and last samples don't land on black/leader frames.
+    ///
+    /// Frames are stored as `{video_id}_scrub_{0..N-1}.jpg` and served via the
+    /// same `get_thumbnail` endpoint using size = "scrub_N".
+    pub fn generate_scrub_thumbnails(
+        video_path: &Path,
+        video_id: &str,
+        cache_dir: &Path,
+        duration_secs: f64,
+    ) -> Result<()> {
+        if !Self::ffmpeg_available() {
+            return Err(VideoRoomError::FfmpegError(
+                "ffmpeg not found in PATH".to_string(),
+            ));
+        }
+        if duration_secs <= 0.5 {
+            // Too short to meaningfully scrub; skip.
+            return Ok(());
+        }
+
+        let count = Self::SCRUB_FRAME_COUNT;
+        for i in 0..count {
+            let output = cache_dir.join(format!("{}_scrub_{}.jpg", video_id, i));
+            if output.exists() {
+                continue;
+            }
+
+            // Distribute frames across 5%..95% of the video. With 10 frames,
+            // that gives positions at 5%, 15%, 25%, ..., 95%.
+            let pct = if count > 1 {
+                0.05 + (i as f64 / (count - 1) as f64) * 0.9
+            } else {
+                0.5
+            };
+            let seek_pos = duration_secs * pct;
+
+            // Single ffmpeg call: seek (fast input-side seek), extract one
+            // frame, scale, write JPEG. ~50–500ms per call typically. The
+            // permit is dropped at the end of the loop iteration, freeing
+            // a slot for another concurrent ffmpeg run.
+            let _permit = acquire_ffmpeg_permit();
+            let result = Command::new("ffmpeg")
+                .args(&[
+                    "-v",
+                    "error",
+                    "-ss",
+                    &format!("{:.3}", seek_pos),
+                    "-i",
+                    video_path.to_str().unwrap_or(""),
+                    "-frames:v",
+                    "1",
+                    "-vf",
+                    &format!("scale=min({}\\,iw):-1", Self::SCRUB_WIDTH),
+                    "-q:v",
+                    "6",
+                    "-y",
+                    output.to_str().unwrap_or(""),
+                ])
+                .output();
+
+            match result {
+                Ok(o) if o.status.success() => {}
+                Ok(o) => {
+                    let msg = String::from_utf8_lossy(&o.stderr);
+                    tracing::warn!(
+                        "Scrub frame {} for {} (t={:.3}s) failed: {}",
+                        i,
+                        video_id,
+                        seek_pos,
+                        msg
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!("ffmpeg invocation failed: {}", e);
+                }
+            }
         }
         Ok(())
     }

@@ -152,6 +152,22 @@ impl IndexingEngine {
             }
         }
 
+        // Generate scrub-frame previews (idempotent — skips already-existing).
+        // Done after the regular thumbnail so users see *something* in the grid
+        // even if scrub generation is mid-flight.
+        let first_scrub = thumbnail_cache.join(format!("{}_scrub_0.jpg", video_id));
+        if !first_scrub.exists() {
+            match ThumbnailGenerator::generate_scrub_thumbnails(
+                video_path,
+                &video_id,
+                thumbnail_cache,
+                duration_secs,
+            ) {
+                Ok(_) => tracing::debug!("Generated scrub frames for {}", video_id),
+                Err(e) => tracing::warn!("Failed to generate scrub frames for {}: {}", video_id, e),
+            }
+        }
+
         Ok(video_id)
     }
 

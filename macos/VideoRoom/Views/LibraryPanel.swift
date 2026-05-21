@@ -38,6 +38,7 @@ struct LibraryPanel: View {
                         sublabel: nil,
                         count: totalVideos,
                         isSelected: selectedPath.isEmpty,
+                        tooltip: "Show every video in your library, across all scanned folders.",
                         onClick: { onSelect("") }
                     )
 
@@ -54,6 +55,7 @@ struct LibraryPanel: View {
                             sublabel: loc.path,
                             count: loc.videoCount,
                             isSelected: loc.path == selectedPath,
+                            tooltip: "Show only videos from \(loc.path) (\(loc.videoCount) videos). Click \"All Videos\" above to clear.",
                             onClick: { onSelect(loc.path) }
                         )
                     }
@@ -77,6 +79,7 @@ private struct LocationRow: View {
     let sublabel: String?
     let count: Int64
     let isSelected: Bool
+    var tooltip: String = ""
     let onClick: () -> Void
 
     var body: some View {
@@ -110,6 +113,7 @@ private struct LocationRow: View {
             .background(isSelected ? Color.accentColor.opacity(0.18) : Color.clear)
         }
         .buttonStyle(.plain)
+        .help(tooltip)
     }
 }
 

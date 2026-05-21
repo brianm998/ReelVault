@@ -13,13 +13,27 @@ class VideoRepository: ObservableObject {
 
     @Published var isConnected = false
 
+    /// Host + port of the currently-active connection, or nil when offline.
+    /// Used by the launcher flow to decide whether a reconnect is needed.
+    private(set) var currentHost: String = "localhost"
+    private(set) var currentPort: Int = 50051
+
     private init() {}
 
     // MARK: - Connection lifecycle
 
+    /// Connect to the gRPC daemon at `host`:`port`. If the repository is
+    /// already connected to a different host:port, it tears that down first
+    /// so reconnecting to a freshly-spawned daemon "just works".
     func connect(host: String = "localhost", port: Int = 50051) async -> Bool {
+        // Re-use the existing connection if we're already pointed at the same
+        // endpoint.
+        if grpcClient != nil && isConnected && currentHost == host && currentPort == port {
+            return true
+        }
+        // Otherwise drop the previous connection.
         if grpcClient != nil {
-            return isConnected
+            await disconnect()
         }
 
         do {
@@ -30,6 +44,8 @@ class VideoRepository: ObservableObject {
             let client = GRPCClient(transport: transport)
             self.grpcClient = client
             self.serviceClient = Videoroom_VideoRoom.Client(wrapping: client)
+            self.currentHost = host
+            self.currentPort = port
 
             runTask = Task {
                 try? await client.runConnections()
@@ -68,6 +84,60 @@ class VideoRepository: ObservableObject {
         isConnected = false
     }
 
+    // MARK: - Catalog lifecycle
+
+    /// Ask the daemon to mount the SQLite catalog at `path`. Returns the
+    /// resulting [CatalogInfo] on success, or `nil` if the server rejected
+    /// the request.
+    func openCatalog(path: String) async -> CatalogInfo? {
+        guard let service = serviceClient else { return nil }
+        var req = Videoroom_OpenCatalogRequest()
+        req.path = path
+        do {
+            let info = try await service.openCatalog(req)
+            return CatalogInfo(
+                path: info.path,
+                name: info.name,
+                videoCount: info.videoCount,
+                openedAtMs: info.openedAtMs
+            )
+        } catch {
+            NSLog("OpenCatalog failed: \(error)")
+            return nil
+        }
+    }
+
+    /// Ask the daemon to drop its current catalog. Subsequent RPCs will
+    /// fail until `openCatalog` succeeds again.
+    @discardableResult
+    func closeCatalog() async -> Bool {
+        guard let service = serviceClient else { return false }
+        do {
+            let resp = try await service.closeCatalog(Videoroom_CloseCatalogRequest())
+            return resp.success
+        } catch {
+            NSLog("CloseCatalog failed: \(error)")
+            return false
+        }
+    }
+
+    /// Returns `.closed` when no catalog is open or the call fails.
+    func getCurrentCatalog() async -> CatalogInfo {
+        guard let service = serviceClient else { return .closed }
+        do {
+            let info = try await service.getCurrentCatalog(Videoroom_GetCurrentCatalogRequest())
+            return CatalogInfo(
+                path: info.path,
+                name: info.name,
+                videoCount: info.videoCount,
+                openedAtMs: info.openedAtMs
+            )
+        } catch {
+            NSLog("GetCurrentCatalog failed: \(error)")
+            return .closed
+        }
+    }
+
     // MARK: - Videos
 
     func listVideos(
@@ -76,7 +146,12 @@ class VideoRepository: ObservableObject {
         searchQuery: String = "",
         sortBy: String = "indexed_at",
         sortAscending: Bool = false,
-        locationPath: String = ""
+        locationPath: String = "",
+        filterTagIds: [String] = [],
+        filterCamera: String = "",
+        filterLens: String = "",
+        filterCodec: String = "",
+        filterCaptureYear: Int32 = 0
     ) async throws -> (videos: [VideoSummary], totalCount: Int64) {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
 
@@ -85,6 +160,7 @@ class VideoRepository: ObservableObject {
             request.query = searchQuery
             request.limit = limit
             request.offset = offset
+            request.filterTags = filterTagIds
             let response = try await client.searchVideos(request)
             return (response.videos.map(Self.makeSummary), response.totalCount)
         }
@@ -95,8 +171,73 @@ class VideoRepository: ObservableObject {
         request.sortBy = sortBy
         request.sortAscending = sortAscending
         request.locationPath = locationPath
+        request.filterTags = filterTagIds
+        request.filterCamera = filterCamera
+        request.filterLens = filterLens
+        request.filterCodec = filterCodec
+        request.filterCaptureYear = filterCaptureYear
         let response = try await client.listVideos(request)
         return (response.videos.map(Self.makeSummary), response.totalCount)
+    }
+
+    func getFilterOptions() async -> FilterOptions {
+        guard let client = serviceClient else { return FilterOptions() }
+        do {
+            let response = try await client.getFilterOptions(Videoroom_GetFilterOptionsRequest())
+            return FilterOptions(
+                cameras: response.cameras,
+                lenses: response.lenses,
+                codecs: response.codecs,
+                captureYears: response.captureYears
+            )
+        } catch {
+            NSLog("Failed to fetch filter options: \(error)")
+            return FilterOptions()
+        }
+    }
+
+    // MARK: - Tags / keywords
+
+    func listTags() async throws -> [Tag] {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        let response = try await client.listTags(Videoroom_ListTagsRequest())
+        return response.tags.map {
+            Tag(id: $0.id, name: $0.name, color: $0.color.isEmpty ? nil : $0.color, videoCount: $0.videoCount)
+        }
+    }
+
+    /// Create a new tag, or return the existing one if a tag with this name
+    /// already exists (the backend's create_tag is idempotent on name).
+    func createTag(name: String, color: String = "") async throws -> Tag? {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        var request = Videoroom_CreateTagRequest()
+        request.name = name
+        request.color = color
+        let response = try await client.createTag(request)
+        return Tag(
+            id: response.id,
+            name: response.name,
+            color: response.color.isEmpty ? nil : response.color,
+            videoCount: response.videoCount
+        )
+    }
+
+    func tagVideos(videoIds: [String], tagId: String) async throws -> Bool {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        var request = Videoroom_TagVideosRequest()
+        request.videoIds = videoIds
+        request.tagID = tagId
+        let response = try await client.tagVideos(request)
+        return response.success
+    }
+
+    func untagVideos(videoIds: [String], tagId: String) async throws -> Bool {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        var request = Videoroom_UntagVideosRequest()
+        request.videoIds = videoIds
+        request.tagID = tagId
+        let response = try await client.untagVideos(request)
+        return response.success
     }
 
     func getVideoMetadata(videoId: String) async throws -> VideoMetadata {
@@ -105,6 +246,24 @@ class VideoRepository: ObservableObject {
         request.videoID = videoId
         let proto = try await client.getMetadata(request)
         return Self.makeMetadata(proto)
+    }
+
+    /// Fetch all scrub frames for [videoId] in parallel. Returns an array
+    /// of [count] entries; individual entries may be nil if a frame failed.
+    func getScrubFrames(videoId: String, count: Int = 10) async -> [NSImage?] {
+        await withTaskGroup(of: (Int, NSImage?).self) { group in
+            for i in 0..<count {
+                group.addTask { [self] in
+                    let image = try? await self.getThumbnail(videoId: videoId, size: "scrub_\(i)")
+                    return (i, image)
+                }
+            }
+            var result: [NSImage?] = Array(repeating: nil, count: count)
+            for await (i, image) in group {
+                result[i] = image
+            }
+            return result
+        }
     }
 
     func getThumbnail(videoId: String, size: String = "medium") async throws -> NSImage? {
@@ -295,10 +454,15 @@ class VideoRepository: ObservableObject {
 
 private extension GRPCClient {
     /// Tiny no-op call to verify the backend is reachable during connect().
+    /// Uses `GetStatus` specifically because that RPC is guaranteed to
+    /// succeed even when the daemon has no catalog mounted yet — which is
+    /// the normal state right after `ServerLauncher` spawns it with
+    /// `--no-catalog`. Any RPC that touches SQL (e.g. `listLibraryLocations`)
+    /// would error here and the launcher would wrongly report the daemon
+    /// as unreachable.
     func getStatusPing() async throws {
-        // Just calling listLibraryLocations as a cheap, idempotent ping.
         let service = Videoroom_VideoRoom.Client(wrapping: self)
-        _ = try await service.listLibraryLocations(Videoroom_ListLocationsRequest())
+        _ = try await service.getStatus(Videoroom_GetStatusRequest())
     }
 }
 

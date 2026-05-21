@@ -3,7 +3,33 @@
     "allow": [
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(cargo build *)"
+      "Bash(cargo build *)",
+      "Bash(ls -lh /rp/tmp/ 2>/dev/null | head -50)",
+      "Bash(./target/release/videoroom-cli scan *)",
+      "Bash(rm -f \"/Users/brian/Library/Application Support/VideoRoom/catalog.db\"*)",
+      "Bash(rm -f \"/Users/brian/Library/Application Support/VideoRoom/catalog.db\"* && cargo build --bin videoroom-cli --release 2>&1 | grep -E \"error|warning: unused|Finished\")",
+      "Bash(rm -f \"/Users/brian/Library/Application Support/VideoRoom/catalog.db\"* && cargo build --bin videoroom-cli --release 2>&1 | grep -E \"error|Finished\")",
+      "Bash(./target/release/videoroom-cli list *)",
+      "Bash(./target/release/videoroom-cli meta *)",
+      "Bash(./gradlew build *)",
+      "Bash(gradle wrapper *)",
+      "Bash(swift build *)",
+      "Bash(ffprobe -version)",
+      "Bash(cargo run *)",
+      "Bash(./gradlew compileKotlin)",
+      "Bash(./gradlew compileKotlin --no-daemon)",
+      "Bash(./gradlew clean *)",
+      "Bash(protoc --swift_out=VideoRoom/Generated --grpc-swift_out=VideoRoom/Generated -I../core/proto ../core/proto/videoroom.proto)",
+      "Bash(perl -i -0pe 's/,\\\\n\\\\s+type: \\\\.\\(unary|serverStreaming|clientStreaming|bidirectionalStreaming\\)//g' VideoRoom/Generated/videoroom.grpc.swift)",
+      "Bash(grep -n \"thumbnailImage\\\\|Box\\(\\\\s*$\\\\|.aspectRatio\\(16f / 9f\\)\" /Users/brian/git/VideoRoom/desktop/src/main/kotlin/com/videoroom/ui/components/VideoCard.kt)",
+      "WebSearch",
+      "Bash(./target/debug/videoroom-core --help)",
+      "Bash(swift package *)",
+      "Bash(pkill -f videoroom-core)",
+      "Bash(./target/debug/videoroom-core --port 50051 --db-path /tmp/vr_test.db)",
+      "Bash(./target/debug/videoroom-core --port 50051 --db-path /tmp/vr_test2.db)",
+      "Bash(wait)",
+      "Bash(echo \"=== first ===\"; cat /tmp/vr_smoke3.log 2>/dev/null | head -15 *)"
     ]
   }
 }

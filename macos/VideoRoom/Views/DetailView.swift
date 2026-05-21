@@ -3,6 +3,7 @@ import AppKit
 
 struct DetailView: View {
     @ObservedObject var viewModel: DetailViewModel
+    @ObservedObject var gridViewModel: GridViewModel
     @Binding var thumbnailWidth: CGFloat
     let onCollapse: () -> Void
 
@@ -39,6 +40,7 @@ struct DetailView: View {
                         .foregroundColor(.secondary)
                 }
                 Slider(value: $thumbnailWidth, in: 120...400)
+                    .help("Drag to resize thumbnails. The grid automatically adjusts how many columns fit at this size.")
             }
             .padding(.horizontal, 12)
             .padding(.bottom, 8)
@@ -84,20 +86,8 @@ struct DetailView: View {
                 .font(.headline)
                 .lineLimit(2)
 
-            // Open externally
-            Button {
-                let url = URL(fileURLWithPath: metadata.path)
-                if FileManager.default.fileExists(atPath: url.path) {
-                    NSWorkspace.shared.open(url)
-                }
-            } label: {
-                HStack {
-                    Image(systemName: "play.circle.fill")
-                    Text("Open in External App")
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
+            // (Right-click any video in the grid to open it in the default
+            // player or a configured external editor.)
 
             Divider()
 
@@ -163,6 +153,7 @@ struct DetailView: View {
                     }
                     .buttonStyle(.borderless)
                     .controlSize(.small)
+                    .help("Remove this video from the stack. The other members stay grouped.")
                 }
                 Text("Double-click in the grid opens the preferred variant. Click ⭐ to change preferred.")
                     .font(.system(size: 10))
@@ -188,7 +179,9 @@ struct DetailView: View {
                                     .foregroundColor(isPreferred ? .accentColor : .secondary)
                             }
                             .buttonStyle(.plain)
-                            .help(isPreferred ? "Preferred" : "Make preferred")
+                            .help(isPreferred
+                                  ? "This is the preferred variant. It's the thumbnail shown in the grid and the file opened on double-click."
+                                  : "Make this the preferred variant of the stack. The grid thumbnail and double-click action will switch to this file.")
 
                             Button {
                                 let url = URL(fileURLWithPath: member.path)
@@ -199,7 +192,7 @@ struct DetailView: View {
                                 Image(systemName: "play.fill")
                             }
                             .buttonStyle(.plain)
-                            .help("Open")
+                            .help("Open \(member.filename) in your system's default video player.")
                         }
                         .padding(.vertical, 4)
                         .padding(.horizontal, 6)
@@ -225,16 +218,38 @@ struct DetailView: View {
                 .frame(height: 80)
                 .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color(.separatorColor)))
                 .cornerRadius(4)
+                .help("Free-form notes about this video. Saved automatically and searchable from the top-bar search field.")
             }
 
-            // Tags
-            if !metadata.tags.isEmpty {
-                Divider()
-                Text("Tags")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                FlowLayout(items: metadata.tags)
-            }
+            Divider()
+
+            // Keywords
+            KeywordsSection(
+                primaryVideoTags: metadata.tags,
+                allTags: gridViewModel.tags,
+                selectedVideoIds: gridViewModel.selectedVideoIds.isEmpty
+                    ? [metadata.id]
+                    : gridViewModel.selectedVideoIds,
+                activeFilterTagId: gridViewModel.filterTagId,
+                onApplyKeyword: { name, ids in
+                    gridViewModel.applyKeyword(name, to: ids) {
+                        // Reload primary's metadata so its applied-mark refreshes.
+                        if let id = viewModel.metadata?.id {
+                            viewModel.loadMetadata(videoId: id)
+                        }
+                    }
+                },
+                onRemoveKeywordByName: { name, ids in
+                    if let tagId = gridViewModel.tags.first(where: { $0.name == name })?.id {
+                        gridViewModel.removeKeyword(tagId: tagId, from: ids) {
+                            if let id = viewModel.metadata?.id {
+                                viewModel.loadMetadata(videoId: id)
+                            }
+                        }
+                    }
+                },
+                onFilterByTag: { gridViewModel.setTagFilter($0) }
+            )
         }
     }
 
@@ -265,6 +280,27 @@ struct MetadataItemView: View {
             Text(value)
                 .font(.body)
         }
+        .help(tooltipFor(label: label, value: value))
+    }
+
+    /// Friendly explanation of each metadata field, surfaced on hover.
+    private func tooltipFor(label: String, value: String) -> String {
+        switch label {
+        case "Resolution":  return "Image dimensions in pixels. Larger numbers = sharper picture."
+        case "Duration":    return "Total playback length of this clip."
+        case "FPS":         return "Frames per second — higher values mean smoother motion."
+        case "Video Codec": return "Compression format used to encode the video stream (e.g. h264, hevc, prores)."
+        case "Audio Codec": return "Compression format used for the audio track."
+        case "Bitrate":     return "Average data rate. Higher generally means better quality at a given resolution."
+        case "Size":        return "File size on disk."
+        case "Color Space": return "Color encoding standard (e.g. bt709 for HD, bt2020 for 4K HDR)."
+        case "HDR":         return "High Dynamic Range content with extended brightness and color range."
+        case "Camera":      return "Camera model recorded in the file's metadata (when available)."
+        case "Lens":        return "Lens model recorded in the file's metadata."
+        case "Captured":    return "Original recording date and time from the file's metadata."
+        case "GPS":         return "Latitude and longitude where the video was recorded (when present)."
+        default:            return "\(label): \(value)"
+        }
     }
 }
 
@@ -283,5 +319,134 @@ struct FlowLayout: View {
                     .cornerRadius(4)
             }
         }
+    }
+}
+
+/// Right-panel "Keywords" section.
+///
+///   * Text field at top — type a new keyword and press Return to apply it
+///     to every selected video.
+///   * List of known keywords with usage counts. Each row has a `>` chevron
+///     that sets the grid filter to that keyword, and a clickable name that
+///     toggles the keyword on the current selection.
+struct KeywordsSection: View {
+    let primaryVideoTags: [String]
+    let allTags: [Tag]
+    let selectedVideoIds: [String]
+    let activeFilterTagId: String
+    let onApplyKeyword: (_ name: String, _ videoIds: [String]) -> Void
+    let onRemoveKeywordByName: (_ name: String, _ videoIds: [String]) -> Void
+    let onFilterByTag: (_ tagId: String) -> Void
+
+    @State private var newKeyword: String = ""
+
+    private var primaryTagSet: Set<String> { Set(primaryVideoTags) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Keywords")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+                if !activeFilterTagId.isEmpty {
+                    Button("Clear filter") {
+                        onFilterByTag("")
+                    }
+                    .buttonStyle(.borderless)
+                    .controlSize(.small)
+                    .help("Stop filtering the grid by the currently selected keyword.")
+                }
+            }
+            Text("Applies to \(selectedVideoIds.count) selected video\(selectedVideoIds.count == 1 ? "" : "s")")
+                .font(.system(size: 10))
+                .foregroundColor(.secondary)
+
+            TextField("Add a keyword…", text: $newKeyword, onCommit: {
+                let trimmed = newKeyword.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty {
+                    onApplyKeyword(trimmed, selectedVideoIds)
+                    newKeyword = ""
+                }
+            })
+            .textFieldStyle(.roundedBorder)
+            .help("Type a new keyword and press Return to apply it to all selected videos. If the keyword doesn't exist yet, it will be created.")
+
+            if allTags.isEmpty {
+                Text("No keywords yet. Type one above and press Return.")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(allTags) { tag in
+                        keywordRow(tag)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func keywordRow(_ tag: Tag) -> some View {
+        let isOnVideo = primaryTagSet.contains(tag.name)
+        let isActiveFilter = tag.id == activeFilterTagId
+
+        HStack(spacing: 4) {
+            // ">" filter button on the left
+            Button {
+                onFilterByTag(isActiveFilter ? "" : tag.id)
+            } label: {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(isActiveFilter ? .accentColor : .secondary)
+                    .frame(width: 16, height: 16)
+            }
+            .buttonStyle(.plain)
+            .help(isActiveFilter
+                  ? "Currently filtering the grid by '\(tag.name)'. Click again to clear."
+                  : "Filter the grid to show only videos tagged '\(tag.name)'.")
+
+            // Click name to toggle on selection
+            Button {
+                if selectedVideoIds.isEmpty { return }
+                if isOnVideo {
+                    onRemoveKeywordByName(tag.name, selectedVideoIds)
+                } else {
+                    onApplyKeyword(tag.name, selectedVideoIds)
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: isOnVideo ? "checkmark" : "")
+                        .font(.system(size: 10))
+                        .foregroundColor(.accentColor)
+                        .frame(width: 12, alignment: .leading)
+                    Text(tag.name)
+                        .font(.system(size: 11))
+                        .foregroundColor(isActiveFilter ? .accentColor : .primary)
+                    Spacer()
+                    Text("(\(tag.videoCount))")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(selectedVideoIds.isEmpty)
+            .help(rowHelp(tag: tag, isOnVideo: isOnVideo))
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func rowHelp(tag: Tag, isOnVideo: Bool) -> String {
+        if selectedVideoIds.isEmpty {
+            let n = tag.videoCount
+            return "'\(tag.name)' is used on \(n) video\(n == 1 ? "" : "s"). Select a video to add or remove this keyword."
+        }
+        let n = selectedVideoIds.count
+        let plural = n == 1 ? "" : "s"
+        if isOnVideo {
+            return "'\(tag.name)' is on the current video. Click to remove it from the \(n) selected video\(plural)."
+        }
+        return "Click to apply '\(tag.name)' to the \(n) selected video\(plural)."
     }
 }

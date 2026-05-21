@@ -2,32 +2,96 @@ use crate::error::{Result, VideoRoomError};
 use chrono::{DateTime, Utc};
 use rusqlite::{params, Connection, OptionalExtension};
 use std::path::{Path, PathBuf};
+use std::sync::RwLock;
 use uuid::Uuid;
 
+/// SQLite catalog the daemon currently serves. The path is interior-mutable
+/// so the gRPC `OpenCatalog` / `CloseCatalog` RPCs can swap which file backs
+/// the server without restarting the process. `None` means "no catalog open"
+/// — every method that touches SQL returns
+/// [`VideoRoomError::DatabaseError`] in that state, and the service layer
+/// turns those into `FailedPrecondition` for the client.
 pub struct Database {
-    path: PathBuf,
+    path: RwLock<Option<PathBuf>>,
 }
 
 impl Database {
+    /// Build a `Database` that already points at `path`. Callers should still
+    /// invoke [`Database::initialize`] before serving traffic so the schema
+    /// is created.
     pub fn new(path: &Path) -> Result<Self> {
         Ok(Database {
-            path: path.to_path_buf(),
+            path: RwLock::new(Some(path.to_path_buf())),
         })
     }
 
+    /// Build a `Database` with no catalog selected yet. The first call to
+    /// [`Database::set_path`] will pick one and initialize its schema.
+    pub fn new_empty() -> Self {
+        Database {
+            path: RwLock::new(None),
+        }
+    }
+
+    /// Switch to a different SQLite file. The new file is created if it
+    /// doesn't exist and the schema/migrations run synchronously. On success
+    /// the internal path is updated atomically.
+    pub fn set_path(&self, new_path: &Path) -> Result<()> {
+        // Ensure parent directory exists.
+        if let Some(parent) = new_path.parent() {
+            if !parent.as_os_str().is_empty() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+        }
+        // Open + initialize before we swap so a bad path doesn't leave the
+        // daemon in a half-broken state.
+        let conn = Connection::open(new_path).map_err(|e| {
+            VideoRoomError::DatabaseError(format!("Failed to open database: {}", e))
+        })?;
+        Self::initialize_conn(&conn)?;
+        drop(conn);
+
+        let mut guard = self.path.write().map_err(|_| {
+            VideoRoomError::DatabaseError("Database path lock poisoned".to_string())
+        })?;
+        *guard = Some(new_path.to_path_buf());
+        tracing::info!("Catalog opened: {}", new_path.display());
+        Ok(())
+    }
+
+    /// Drop the current catalog so future SQL calls fail until a new
+    /// `set_path` succeeds.
+    pub fn clear_path(&self) {
+        if let Ok(mut guard) = self.path.write() {
+            if let Some(p) = guard.take() {
+                tracing::info!("Catalog closed: {}", p.display());
+            }
+        }
+    }
+
+    /// The path currently backing this database, if any.
+    pub fn current_path(&self) -> Option<PathBuf> {
+        self.path.read().ok().and_then(|g| g.clone())
+    }
+
+    /// Initialize the schema (and run migrations) for the currently selected
+    /// catalog. Kept async for API compatibility with [`main.rs`]; the actual
+    /// work is synchronous.
     pub async fn initialize(&self) -> Result<()> {
         let conn = self.get_connection()?;
+        Self::initialize_conn(&conn)?;
+        tracing::info!("Database schema initialized");
+        Ok(())
+    }
 
-        // Set WAL mode for better concurrency - must be before execute_batch
+    /// Schema setup + migrations on an already-open [`Connection`]. Used both
+    /// by [`Database::set_path`] (where we need this to run before swapping
+    /// paths) and by [`Database::initialize`].
+    fn initialize_conn(conn: &Connection) -> Result<()> {
         let _ = conn.pragma_update(None, "journal_mode", "WAL");
-
-        // Set synchronous mode for safety
         let _ = conn.pragma_update(None, "synchronous", "NORMAL");
-
-        // Enable foreign keys
         let _ = conn.pragma_update(None, "foreign_keys", "ON");
 
-        // Create schema from SQL file embedded at compile time
         let schema = include_str!("../schema.sql");
         conn.execute_batch(schema)
             .map_err(|e| VideoRoomError::DatabaseError(format!("Failed to initialize schema: {}", e)))?;
@@ -50,14 +114,19 @@ impl Database {
                 }
             }
         }
-
-        tracing::info!("Database schema initialized");
-
         Ok(())
     }
 
     pub fn get_connection(&self) -> Result<Connection> {
-        Connection::open(&self.path)
+        let path = self
+            .path
+            .read()
+            .map_err(|_| VideoRoomError::DatabaseError("Database path lock poisoned".to_string()))?
+            .clone()
+            .ok_or_else(|| {
+                VideoRoomError::DatabaseError("No catalog is currently open".to_string())
+            })?;
+        Connection::open(&path)
             .map_err(|e| VideoRoomError::DatabaseError(format!("Failed to open database: {}", e)))
     }
 
@@ -329,11 +398,18 @@ impl Database {
         Ok(())
     }
 
+    /// Return the *names* of tags applied to a video (joined through video_tags).
+    /// Used to populate the `tags` field on VideoSummary / VideoMetadata.
     pub fn get_video_tags(&self, video_id: &str) -> Result<Vec<String>> {
         let conn = self.get_connection()?;
 
         let mut stmt = conn
-            .prepare("SELECT tag_id FROM video_tags WHERE video_id = ?")
+            .prepare(
+                "SELECT t.name FROM video_tags vt
+                 JOIN tags t ON t.id = vt.tag_id
+                 WHERE vt.video_id = ?
+                 ORDER BY t.name",
+            )
             .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
 
         let tags = stmt
@@ -343,6 +419,39 @@ impl Database {
             .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
 
         Ok(tags)
+    }
+
+    /// Look up a tag by name (case-sensitive). Returns None if no such tag.
+    pub fn get_tag_by_name(&self, name: &str) -> Result<Option<TagRecord>> {
+        let conn = self.get_connection()?;
+        let result = conn
+            .query_row(
+                "SELECT id, name, color FROM tags WHERE name = ?",
+                [name],
+                |row| {
+                    Ok(TagRecord {
+                        id: row.get(0)?,
+                        name: row.get(1)?,
+                        color: row.get(2)?,
+                    })
+                },
+            )
+            .optional()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(result)
+    }
+
+    /// Count how many videos currently have the given tag.
+    pub fn count_videos_for_tag(&self, tag_id: &str) -> Result<i64> {
+        let conn = self.get_connection()?;
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM video_tags WHERE tag_id = ?",
+                [tag_id],
+                |row| row.get(0),
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(count)
     }
 
     // COLLECTION OPERATIONS
@@ -468,19 +577,24 @@ impl Database {
         let conn = self.get_connection()?;
         let location_id = Uuid::new_v4().to_string();
 
+        // UPSERT — if the path already exists, update its recursive flag.
+        // This lets the user re-add the same library with a different setting.
         conn.execute(
-            "INSERT INTO library_locations (id, path, recursive) VALUES (?, ?, ?)",
+            "INSERT INTO library_locations (id, path, recursive) VALUES (?, ?, ?)
+             ON CONFLICT(path) DO UPDATE SET recursive = excluded.recursive",
             params![&location_id, path, recursive as i32],
         )
-        .map_err(|e| {
-            if e.to_string().contains("UNIQUE constraint failed") {
-                VideoRoomError::DuplicateEntry(format!("Library location '{}' already exists", path))
-            } else {
-                VideoRoomError::DatabaseError(e.to_string())
-            }
-        })?;
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
 
-        Ok(location_id)
+        // Return the actual ID (may be the existing one if we just updated).
+        let id: String = conn
+            .query_row(
+                "SELECT id FROM library_locations WHERE path = ?",
+                [path],
+                |row| row.get(0),
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(id)
     }
 
     pub fn list_library_locations(&self) -> Result<Vec<LibraryLocationRecord>> {
@@ -652,8 +766,8 @@ impl Database {
     /// preferred video (if set) or the first by filename. Ungrouped videos are
     /// returned individually.
     ///
-    /// If [location_filter] is non-empty, only videos whose `path` starts with
-    /// it (treated as a directory prefix) are returned.
+    /// All filters AND together — a video must pass every non-empty filter to
+    /// be included. `filter_capture_year == 0` means "no year filter".
     pub fn list_videos_grouped(
         &self,
         limit: i64,
@@ -661,6 +775,11 @@ impl Database {
         sort_by: &str,
         ascending: bool,
         location_filter: &str,
+        filter_tag_ids: &[String],
+        filter_camera: &str,
+        filter_lens: &str,
+        filter_codec: &str,
+        filter_capture_year: i32,
     ) -> Result<(Vec<VideoRecord>, i64)> {
         let conn = self.get_connection()?;
 
@@ -678,7 +797,15 @@ impl Database {
             "codec" | "codec_video" => format!("COALESCE(m.codec_video, '') {}", direction),
             "bitrate" => format!("COALESCE(m.bitrate, 0) {}", direction),
             "camera" | "camera_model" => format!("COALESCE(m.camera_model, '') {}", direction),
-            "creation_date" | "shot_date" => format!("COALESCE(m.creation_date, 0) {}", direction),
+            "lens" | "lens_model" => format!("COALESCE(m.lens_model, '') {}", direction),
+            "creation_date" | "shot_date" | "capture_date" => format!("COALESCE(m.creation_date, 0) {}", direction),
+            // Sort by alphabetically-first keyword attached to the video.
+            "keyword" | "tag" => format!(
+                "COALESCE((SELECT MIN(t.name) FROM video_tags vt \
+                            JOIN tags t ON t.id = vt.tag_id \
+                            WHERE vt.video_id = v.id), '') {}",
+                direction
+            ),
             _ => format!("v.filename {}", direction),
         };
 
@@ -693,63 +820,205 @@ impl Database {
         // Build the optional location-prefix filter. We match the directory plus
         // a trailing slash to avoid spurious matches (so `/foo/bar` doesn't match
         // `/foo/barbaz/...`).
-        let (location_clause, location_param) = if location_filter.is_empty() {
-            (String::new(), String::new())
+        let location_param: Option<String> = if location_filter.is_empty() {
+            None
         } else {
             let mut prefix = location_filter.to_string();
             if !prefix.ends_with('/') {
                 prefix.push('/');
             }
-            // Append SQL wildcard
-            (" AND v.path LIKE ?".to_string(), format!("{}%", prefix))
+            Some(format!("{}%", prefix))
+        };
+        let location_clause = if location_param.is_some() {
+            " AND v.path LIKE ?"
+        } else {
+            ""
         };
 
-        let count_sql = format!(
-            "SELECT COUNT(*) FROM videos v WHERE ({}){}",
-            representative_filter, location_clause
-        );
-        let total: i64 = if location_filter.is_empty() {
-            conn.query_row(&count_sql, [], |row| row.get(0))
+        // Tag filter: a video must have ALL specified tag IDs. We dedup just in
+        // case the caller passes the same id twice.
+        let tag_ids: Vec<String> = {
+            let mut seen = std::collections::HashSet::new();
+            filter_tag_ids
+                .iter()
+                .filter(|id| !id.is_empty() && seen.insert((*id).clone()))
+                .cloned()
+                .collect()
+        };
+        let (tag_clause, tag_count_param) = if tag_ids.is_empty() {
+            (String::new(), 0i64)
         } else {
-            conn.query_row(&count_sql, params![location_param], |row| row.get(0))
-        }
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            let placeholders = std::iter::repeat("?")
+                .take(tag_ids.len())
+                .collect::<Vec<_>>()
+                .join(", ");
+            // EXISTS subquery — counts how many of the requested tags this
+            // video has and requires it to equal the requested count.
+            let clause = format!(
+                " AND (SELECT COUNT(DISTINCT vt.tag_id) FROM video_tags vt \
+                       WHERE vt.video_id = v.id AND vt.tag_id IN ({})) = ?",
+                placeholders
+            );
+            (clause, tag_ids.len() as i64)
+        };
 
+        // Per-field metadata filters. Each is appended only when set so the
+        // generated SQL stays clean.
+        let camera_clause = if filter_camera.is_empty() { "" } else { " AND m.camera_model = ?" };
+        let lens_clause = if filter_lens.is_empty() { "" } else { " AND m.lens_model = ?" };
+        let codec_clause = if filter_codec.is_empty() { "" } else { " AND m.codec_video = ?" };
+        // creation_date is stored as Unix-ms; we compute year via SQLite's
+        // strftime on the ISO conversion. SQLite epoch helpers expect seconds,
+        // so divide.
+        let year_clause = if filter_capture_year > 0 {
+            " AND CAST(strftime('%Y', m.creation_date / 1000, 'unixepoch') AS INTEGER) = ?"
+        } else {
+            ""
+        };
+
+        // Helper to bind all dynamic params in order:
+        // [location_param?, tag_id_1, tag_id_2, ..., tag_count?, camera?, lens?, codec?, year?]
+        let mut bind: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+        if let Some(p) = &location_param {
+            bind.push(Box::new(p.clone()));
+        }
+        if !tag_ids.is_empty() {
+            for id in &tag_ids {
+                bind.push(Box::new(id.clone()));
+            }
+            bind.push(Box::new(tag_count_param));
+        }
+        if !filter_camera.is_empty() {
+            bind.push(Box::new(filter_camera.to_string()));
+        }
+        if !filter_lens.is_empty() {
+            bind.push(Box::new(filter_lens.to_string()));
+        }
+        if !filter_codec.is_empty() {
+            bind.push(Box::new(filter_codec.to_string()));
+        }
+        if filter_capture_year > 0 {
+            bind.push(Box::new(filter_capture_year));
+        }
+
+        // ---- COUNT(*) ----
+        let count_sql = format!(
+            "SELECT COUNT(*) FROM videos v
+             LEFT JOIN metadata m ON v.id = m.video_id
+             WHERE ({}){}{}{}{}{}{}",
+            representative_filter,
+            location_clause,
+            tag_clause,
+            camera_clause,
+            lens_clause,
+            codec_clause,
+            year_clause
+        );
+        let count_params: Vec<&dyn rusqlite::ToSql> =
+            bind.iter().map(|b| b.as_ref() as &dyn rusqlite::ToSql).collect();
+        let total: i64 = conn
+            .query_row(&count_sql, count_params.as_slice(), |row| row.get(0))
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+
+        // ---- SELECT page ----
         let sql = format!(
             "SELECT v.id, v.path, v.filename, v.volume_id, v.hash, v.file_size_bytes, v.indexed_at, v.is_online
              FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
-             WHERE ({}){}
+             WHERE ({}){}{}{}{}{}{}
              ORDER BY {} LIMIT ? OFFSET ?",
-            representative_filter, location_clause, order_by
+            representative_filter,
+            location_clause,
+            tag_clause,
+            camera_clause,
+            lens_clause,
+            codec_clause,
+            year_clause,
+            order_by
         );
+
+        let mut bind_with_limit: Vec<Box<dyn rusqlite::ToSql>> = bind;
+        bind_with_limit.push(Box::new(limit));
+        bind_with_limit.push(Box::new(offset));
+        let query_params: Vec<&dyn rusqlite::ToSql> =
+            bind_with_limit.iter().map(|b| b.as_ref() as &dyn rusqlite::ToSql).collect();
 
         let mut stmt = conn
             .prepare(&sql)
             .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
 
-        let row_mapper = |row: &rusqlite::Row| -> rusqlite::Result<VideoRecord> {
-            Ok(VideoRecord {
-                id: row.get(0)?,
-                path: row.get(1)?,
-                filename: row.get(2)?,
-                volume_id: row.get(3)?,
-                hash: row.get(4)?,
-                file_size_bytes: row.get(5)?,
-                indexed_at: row.get(6)?,
-                is_online: row.get(7)?,
+        let videos = stmt
+            .query_map(query_params.as_slice(), |row| {
+                Ok(VideoRecord {
+                    id: row.get(0)?,
+                    path: row.get(1)?,
+                    filename: row.get(2)?,
+                    volume_id: row.get(3)?,
+                    hash: row.get(4)?,
+                    file_size_bytes: row.get(5)?,
+                    indexed_at: row.get(6)?,
+                    is_online: row.get(7)?,
+                })
             })
-        };
-
-        let videos = if location_filter.is_empty() {
-            stmt.query_map(params![limit, offset], row_mapper)
-        } else {
-            stmt.query_map(params![location_param, limit, offset], row_mapper)
-        }
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
-        .collect::<std::result::Result<Vec<_>, _>>()
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
 
         Ok((videos, total))
+    }
+
+    /// Distinct non-empty values for a single metadata column.
+    /// Used to populate the top-bar filter dropdowns.
+    fn list_distinct_metadata_strings(&self, column: &str) -> Result<Vec<String>> {
+        // The column name is hard-coded by callers (not user-supplied), so the
+        // format!-into-SQL here is safe.
+        let conn = self.get_connection()?;
+        let sql = format!(
+            "SELECT DISTINCT {col} FROM metadata
+             WHERE {col} IS NOT NULL AND {col} != ''
+             ORDER BY {col}",
+            col = column
+        );
+        let mut stmt = conn
+            .prepare(&sql)
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        let rows = stmt
+            .query_map([], |row| row.get::<_, String>(0))
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(rows)
+    }
+
+    pub fn list_distinct_cameras(&self) -> Result<Vec<String>> {
+        self.list_distinct_metadata_strings("camera_model")
+    }
+
+    pub fn list_distinct_lenses(&self) -> Result<Vec<String>> {
+        self.list_distinct_metadata_strings("lens_model")
+    }
+
+    pub fn list_distinct_codecs(&self) -> Result<Vec<String>> {
+        self.list_distinct_metadata_strings("codec_video")
+    }
+
+    /// Distinct years (4-digit Gregorian) that any video was captured in.
+    /// Returned in descending order so the dropdown shows recent years first.
+    pub fn list_distinct_capture_years(&self) -> Result<Vec<i32>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn
+            .prepare(
+                "SELECT DISTINCT CAST(strftime('%Y', creation_date / 1000, 'unixepoch') AS INTEGER) AS y
+                 FROM metadata
+                 WHERE creation_date IS NOT NULL AND creation_date > 0
+                 ORDER BY y DESC",
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        let rows = stmt
+            .query_map([], |row| row.get::<_, i32>(0))
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(rows)
     }
 
     /// Count videos whose path starts with the given directory (recursive).

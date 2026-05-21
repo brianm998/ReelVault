@@ -10,6 +10,10 @@ pub struct Config {
     pub max_concurrent_jobs: i32,
     pub enable_auto_tagging: bool,
     pub external_editors: Vec<ExternalEditor>,
+    /// Maximum number of concurrent ffmpeg/ffprobe processes the server will
+    /// run at once. Bounds disk/network bandwidth — important for SAN-backed
+    /// libraries. 0 disables the throttle. Default = 4.
+    pub max_concurrent_ffmpeg: i32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -23,7 +27,15 @@ pub struct ExternalEditor {
 
 impl Config {
     pub async fn load(db: &Database) -> Result<Self> {
-        let conn = db.get_connection()?;
+        // When the daemon was started with `--no-catalog` there's no DB to
+        // read settings from. Return an all-defaults Config so startup
+        // succeeds — the client can still open a catalog later and any
+        // per-catalog overrides will be picked up the first time we touch
+        // SQL after OpenCatalog.
+        let conn = match db.get_connection() {
+            Ok(c) => c,
+            Err(_) => return Ok(Self::defaults()),
+        };
 
         // Load from database with defaults
         let proxy_threshold = Self::get_config_value(&conn, "proxy_threshold_scale", "4")?
@@ -45,6 +57,17 @@ impl Config {
             .parse::<bool>()
             .unwrap_or(false);
 
+        // Default to the number of CPU cores on this machine. Stored as a
+        // string in the config table so we keep the existing get/set pattern.
+        let cpu_default = crate::concurrency::default_max_concurrent_ffmpeg() as i32;
+        let max_ffmpeg = Self::get_config_value(
+            &conn,
+            "max_concurrent_ffmpeg",
+            &cpu_default.to_string(),
+        )?
+            .parse::<i32>()
+            .unwrap_or(cpu_default);
+
         let editors_json = Self::get_config_value(&conn, "external_editors", "{}")?;
         let external_editors: Vec<ExternalEditor> = serde_json::from_str(&editors_json)
             .unwrap_or_else(|_| Vec::new());
@@ -58,6 +81,7 @@ impl Config {
             max_concurrent_jobs: max_jobs,
             enable_auto_tagging: auto_tagging,
             external_editors,
+            max_concurrent_ffmpeg: max_ffmpeg,
         })
     }
 
@@ -67,6 +91,7 @@ impl Config {
         Self::set_config_value(&conn, "proxy_threshold_scale", &self.proxy_threshold_scale.to_string())?;
         Self::set_config_value(&conn, "max_concurrent_jobs", &self.max_concurrent_jobs.to_string())?;
         Self::set_config_value(&conn, "enable_auto_tagging", &self.enable_auto_tagging.to_string())?;
+        Self::set_config_value(&conn, "max_concurrent_ffmpeg", &self.max_concurrent_ffmpeg.to_string())?;
 
         if let Ok(editors_json) = serde_json::to_string(&self.external_editors) {
             Self::set_config_value(&conn, "external_editors", &editors_json)?;
@@ -95,6 +120,21 @@ impl Config {
         )
         .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
         Ok(())
+    }
+
+    /// Build a Config with all-default values. Used when no catalog is open
+    /// yet (e.g. server started with `--no-catalog`). The thumbnail cache
+    /// path is platform-default and gets created on disk.
+    fn defaults() -> Self {
+        let cache = Self::default_cache_path().unwrap_or_else(|_| PathBuf::from("./cache"));
+        Config {
+            proxy_threshold_scale: 4,
+            thumbnail_cache_path: cache,
+            max_concurrent_jobs: 4,
+            enable_auto_tagging: false,
+            external_editors: Vec::new(),
+            max_concurrent_ffmpeg: crate::concurrency::default_max_concurrent_ffmpeg() as i32,
+        }
     }
 
     fn default_cache_path() -> Result<PathBuf> {

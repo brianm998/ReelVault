@@ -11,7 +11,7 @@ path = "src/lib.rs"
 # Async runtime
 tokio = { version = "1.35", features = ["full"] }
 tokio-util = "0.7"
-tokio-stream = "0.1"
+tokio-stream = { version = "0.1", features = ["net"] }
 
 # gRPC and serialization
 tonic = "0.11"

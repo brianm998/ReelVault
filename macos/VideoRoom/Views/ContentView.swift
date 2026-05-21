@@ -11,6 +11,13 @@ struct ContentView: View {
     @State private var rightPanelExpanded = true
     @State private var thumbnailWidth: CGFloat = 220
     @State private var showAddLibrarySheet = false
+    @State private var showEditorsSheet = false
+    @State private var showOpenCatalogSheet = false
+    @State private var openCatalogIsStartup = false
+    @State private var currentCatalog: CatalogInfo = .closed
+
+    @EnvironmentObject private var appState: AppState
+    @ObservedObject private var recents = RecentCatalogs.shared
 
     enum ConnectionState { case connecting, connected, failed }
 
@@ -45,9 +52,51 @@ struct ContentView: View {
             onGroupSelected: { gridViewModel.groupSelectedVideos() }
         ))
         .sheet(isPresented: $showAddLibrarySheet) {
-            AddLibraryDialog(isPresented: $showAddLibrarySheet) { path, autoGroup in
-                gridViewModel.addLibraryAndScan(path: path, autoGroup: autoGroup)
+            AddLibraryDialog(isPresented: $showAddLibrarySheet) { path, recursive, autoGroup in
+                gridViewModel.addLibraryAndScan(path: path, recursive: recursive, autoGroup: autoGroup)
             }
+        }
+        .sheet(isPresented: $showEditorsSheet) {
+            ExternalEditorsDialog(isPresented: $showEditorsSheet)
+        }
+        .sheet(isPresented: $showOpenCatalogSheet) {
+            OpenCatalogDialog(
+                isPresented: $showOpenCatalogSheet,
+                onPick: { path in
+                    showOpenCatalogSheet = false
+                    Task { await openCatalog(path: path) }
+                },
+                isStartup: openCatalogIsStartup
+            )
+        }
+        // Sync the recent list + current catalog name up to AppState so the
+        // File menu (which lives at App scope) sees current values.
+        .onAppear {
+            appState.recents = recents.list()
+            appState.currentCatalogName = currentCatalog.name
+        }
+        .onChange(of: recents.revision) { _, _ in
+            appState.recents = recents.list()
+        }
+        .onChange(of: currentCatalog.name) { _, newName in
+            appState.currentCatalogName = newName
+        }
+        // File menu actions wired in from app-scope commands.
+        .onChange(of: appState.openCatalogRequestToken) { _, _ in
+            openCatalogIsStartup = false
+            showOpenCatalogSheet = true
+        }
+        .onChange(of: appState.closeCatalogRequestToken) { _, _ in
+            Task { await closeCurrentCatalog() }
+        }
+        .onChange(of: appState.openRecentRequest.token) { _, _ in
+            let path = appState.openRecentRequest.path
+            if !path.isEmpty {
+                Task { await openCatalog(path: path) }
+            }
+        }
+        .onChange(of: appState.clearRecentsRequestToken) { _, _ in
+            for path in recents.list() { recents.remove(path) }
         }
     }
 
@@ -62,12 +111,24 @@ struct ContentView: View {
 
     private var topBar: some View {
         HStack(spacing: 12) {
-            Text("VideoRoom")
-                .font(.system(size: 18, weight: .semibold))
+            VStack(alignment: .leading, spacing: 0) {
+                Text("VideoRoom")
+                    .font(.system(size: 18, weight: .semibold))
+                if currentCatalog.isOpen {
+                    Text(currentCatalog.name)
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .help("Open catalog: \(currentCatalog.path)")
+                }
+            }
 
             TextField("Search videos…", text: $gridViewModel.searchQuery)
                 .textFieldStyle(.roundedBorder)
-                .frame(width: 300)
+                .frame(width: 240)
+                .help("Search videos by filename, notes, or tag. Matches as you type. Press Escape to clear focus.")
+
+            FilterDropdowns(vm: gridViewModel)
 
             Spacer()
 
@@ -83,12 +144,14 @@ struct ContentView: View {
                 sortMenuItem(label: "Codec",          key: "codec")
                 sortMenuItem(label: "Bitrate",        key: "bitrate")
                 sortMenuItem(label: "Camera",         key: "camera")
+                sortMenuItem(label: "Lens",           key: "lens")
+                sortMenuItem(label: "Keyword",        key: "keyword")
             } label: {
                 Image(systemName: "arrow.up.arrow.down")
             }
             .menuStyle(.borderlessButton)
             .frame(width: 30)
-            .help("Sort by…")
+            .help("Sort the video grid. Pick a field; choose the same field again to reverse direction.")
 
             // Group selected (enabled when 2+ selected)
             Button {
@@ -112,7 +175,18 @@ struct ContentView: View {
             }
             .buttonStyle(.borderless)
             .disabled(gridViewModel.selectedVideoIds.count < 2)
-            .help("Group selected videos (⌘G)")
+            .help(gridViewModel.selectedVideoIds.count >= 2
+                  ? "Stack the \(gridViewModel.selectedVideoIds.count) selected videos into a group (⌘G). One representative will be shown in the grid; click its stack badge to expand."
+                  : "Shift-click or ⌘-click two or more videos in the grid to enable grouping.")
+
+            // External Editors preferences
+            Button {
+                showEditorsSheet = true
+            } label: {
+                Image(systemName: "wrench.and.screwdriver")
+            }
+            .buttonStyle(.borderless)
+            .help("Configure which external video editors are available in the right-click \"Open with\" menu. See free/paid status and download links for each supported editor.")
 
             // Add Library
             Button {
@@ -121,7 +195,7 @@ struct ContentView: View {
                 Image(systemName: "folder.badge.plus")
             }
             .buttonStyle(.borderless)
-            .help("Add library location")
+            .help("Add a folder to your library. VideoRoom will scan it for videos and extract their metadata in the background.")
 
             // Dark mode toggle
             Button {
@@ -130,7 +204,7 @@ struct ContentView: View {
                 Image(systemName: isDarkMode ? "sun.max" : "moon")
             }
             .buttonStyle(.borderless)
-            .help("Toggle theme")
+            .help(isDarkMode ? "Switch to light theme" : "Switch to dark theme")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -191,6 +265,7 @@ struct ContentView: View {
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
+                .help("Dismiss this notification")
             }
             .padding(8)
             .background(
@@ -227,7 +302,8 @@ struct ContentView: View {
             GridView(
                 viewModel: gridViewModel,
                 detailViewModel: detailViewModel,
-                thumbnailMinWidth: thumbnailWidth
+                thumbnailMinWidth: thumbnailWidth,
+                onConfigureEditors: { showEditorsSheet = true }
             )
             .frame(maxWidth: .infinity)
 
@@ -237,6 +313,7 @@ struct ContentView: View {
             if rightPanelExpanded {
                 DetailView(
                     viewModel: detailViewModel,
+                    gridViewModel: gridViewModel,
                     thumbnailWidth: $thumbnailWidth,
                     onCollapse: { rightPanelExpanded = false }
                 )
@@ -251,17 +328,87 @@ struct ContentView: View {
         }
     }
 
+    /// Connect to the gRPC daemon. Flow:
+    ///   1. Probe localhost:50051. If something's there, reuse it.
+    ///   2. Otherwise spawn our own daemon via `ServerLauncher`.
+    ///   3. Once connected, ask the daemon what catalog it has open.
+    ///   4. If none, auto-open the most-recent if it still exists, else
+    ///      prompt the user with the OpenCatalog sheet.
     private func setupConnection() async {
         connectionState = .connecting
-        let connected = await VideoRepository.shared.connect()
-        if connected {
-            connectionState = .connected
-            gridViewModel.loadVideos()
-            gridViewModel.loadLibraryLocations()
+        let defaultPort = 50051
+        let launcher = ServerLauncher.shared
+
+        // Step 1: probe the default port.
+        let reachable = launcher.isReachable(host: "127.0.0.1", port: defaultPort)
+        let port: Int
+        if reachable {
+            port = defaultPort
         } else {
-            connectionError = "Failed to connect to VideoRoom backend on localhost:50051"
-            connectionState = .failed
+            // Step 2: spawn our own daemon.
+            guard let listening = await launcher.launch(preferredPort: defaultPort, dbPath: nil) else {
+                connectionError = "Couldn't start the VideoRoom backend. Set VIDEOROOM_CORE_BIN or build core with `cargo build`."
+                connectionState = .failed
+                return
+            }
+            port = listening.port
         }
+
+        let connected = await VideoRepository.shared.connect(host: "127.0.0.1", port: port)
+        guard connected else {
+            connectionError = "Connected to port \(port) but the daemon didn't respond"
+            connectionState = .failed
+            return
+        }
+        connectionState = .connected
+
+        // Step 3: ask the daemon what catalog is mounted.
+        let existing = await VideoRepository.shared.getCurrentCatalog()
+        if existing.isOpen {
+            currentCatalog = existing
+            recents.touch(existing.path)
+            loadAfterCatalogOpened()
+        } else {
+            // Step 4: nothing open. Auto-resume the most recent if it still
+            // exists, otherwise prompt the user.
+            if let head = recents.list().first(where: { FileManager.default.fileExists(atPath: $0) }) {
+                await openCatalog(path: head)
+            } else {
+                openCatalogIsStartup = true
+                showOpenCatalogSheet = true
+            }
+        }
+    }
+
+    /// Ask the daemon to switch to a new catalog and refresh the UI.
+    private func openCatalog(path: String) async {
+        guard let info = await VideoRepository.shared.openCatalog(path: path), info.isOpen else {
+            connectionError = "Could not open catalog at \(path)"
+            // Re-open the sheet so the user can pick again.
+            openCatalogIsStartup = false
+            showOpenCatalogSheet = true
+            return
+        }
+        currentCatalog = info
+        recents.touch(info.path)
+        loadAfterCatalogOpened()
+    }
+
+    /// Close the daemon's current catalog and prompt for another.
+    private func closeCurrentCatalog() async {
+        _ = await VideoRepository.shared.closeCatalog()
+        currentCatalog = .closed
+        gridViewModel.clearState()
+        openCatalogIsStartup = false
+        showOpenCatalogSheet = true
+    }
+
+    /// Load library data after a successful catalog open.
+    private func loadAfterCatalogOpened() {
+        gridViewModel.loadVideos()
+        gridViewModel.loadLibraryLocations()
+        gridViewModel.loadTags()
+        gridViewModel.loadFilterOptions()
     }
 }
 
@@ -376,6 +523,110 @@ struct GlobalKeyboardShortcuts: ViewModifier {
         if firstResponder.isKind(of: NSTextView.self) { return true }
         if firstResponder.isKind(of: NSTextField.self) { return true }
         return false
+    }
+}
+
+/// Compact row of filter dropdowns next to the search field. Each dropdown
+/// hides itself if there's no data for its column. "---" at the top of any
+/// dropdown clears that filter.
+struct FilterDropdowns: View {
+    @ObservedObject var vm: GridViewModel
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if !vm.filterOptions.cameras.isEmpty {
+                FilterMenu(
+                    label: "Camera",
+                    values: vm.filterOptions.cameras,
+                    selected: vm.filterCamera,
+                    onSelect: { vm.setCameraFilter($0) }
+                )
+                .help("Show only videos captured with this camera model. Pick \"---\" to clear.")
+            }
+            if !vm.filterOptions.lenses.isEmpty {
+                FilterMenu(
+                    label: "Lens",
+                    values: vm.filterOptions.lenses,
+                    selected: vm.filterLens,
+                    onSelect: { vm.setLensFilter($0) }
+                )
+                .help("Show only videos shot with this lens model. Pick \"---\" to clear.")
+            }
+            if !vm.tags.isEmpty {
+                FilterMenu(
+                    label: "Keyword",
+                    values: vm.tags.map { $0.name },
+                    selected: vm.tags.first(where: { $0.id == vm.filterTagId })?.name ?? "",
+                    onSelect: { name in
+                        let id = vm.tags.first(where: { $0.name == name })?.id ?? ""
+                        vm.setTagFilter(id)
+                    }
+                )
+                .help("Show only videos tagged with this keyword. Pick \"---\" to clear.")
+            }
+            if !vm.filterOptions.codecs.isEmpty {
+                FilterMenu(
+                    label: "Codec",
+                    values: vm.filterOptions.codecs,
+                    selected: vm.filterCodec,
+                    onSelect: { vm.setCodecFilter($0) }
+                )
+                .help("Show only videos using this video codec (e.g. h264, hevc, prores). Pick \"---\" to clear.")
+            }
+            if !vm.filterOptions.captureYears.isEmpty {
+                FilterMenu(
+                    label: "Year",
+                    values: vm.filterOptions.captureYears.map { String($0) },
+                    selected: vm.filterCaptureYear == 0 ? "" : String(vm.filterCaptureYear),
+                    onSelect: { vm.setCaptureYearFilter(Int32($0) ?? 0) }
+                )
+                .help("Show only videos whose capture date falls in this year. Pick \"---\" to clear.")
+            }
+            if anyActive {
+                Button("Clear") { vm.clearAllDropdownFilters() }
+                    .buttonStyle(.borderless)
+                    .controlSize(.small)
+                    .help("Clear all active filters (camera, lens, keyword, codec, year).")
+            }
+        }
+    }
+
+    private var anyActive: Bool {
+        !vm.filterCamera.isEmpty || !vm.filterLens.isEmpty || !vm.filterCodec.isEmpty
+            || vm.filterCaptureYear != 0 || !vm.filterTagId.isEmpty
+    }
+}
+
+/// One compact dropdown menu showing label + current selection (or "---").
+struct FilterMenu: View {
+    let label: String
+    let values: [String]
+    let selected: String
+    let onSelect: (String) -> Void
+
+    private var display: String { selected.isEmpty ? "---" : selected }
+
+    var body: some View {
+        Menu {
+            Button("---") { onSelect("") }
+            Divider()
+            ForEach(values, id: \.self) { v in
+                Button(v) { onSelect(v) }
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(label)
+                    .font(.system(size: 9))
+                    .foregroundColor(.secondary)
+                Text(display)
+                    .font(.system(size: 11))
+                    .foregroundColor(selected.isEmpty ? .primary : .accentColor)
+                    .lineLimit(1)
+            }
+            .frame(minWidth: 70, alignment: .leading)
+        }
+        .menuStyle(.borderlessButton)
+        .controlSize(.small)
     }
 }
 

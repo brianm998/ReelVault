@@ -46,10 +46,20 @@ service VideoRoom {
   rpc GenerateProxy(GenerateProxyRequest) returns (stream ProxyGenerationProgress);
   rpc ListProxies(ListProxiesRequest) returns (ListProxiesResponse);
 
+  // Filter options (distinct values for the grid's dropdowns)
+  rpc GetFilterOptions(GetFilterOptionsRequest) returns (FilterOptions);
+
   // System
   rpc GetStatus(GetStatusRequest) returns (StatusResponse);
   rpc GetConfig(GetConfigRequest) returns (ConfigResponse);
   rpc UpdateConfig(UpdateConfigRequest) returns (Response);
+
+  // Catalog lifecycle — the catalog is the SQLite file backing the daemon.
+  // Switching catalogs at runtime lets a single server process serve multiple
+  // libraries over its lifetime; the client treats each as a separate session.
+  rpc OpenCatalog(OpenCatalogRequest) returns (CatalogInfo);
+  rpc CloseCatalog(CloseCatalogRequest) returns (Response);
+  rpc GetCurrentCatalog(GetCurrentCatalogRequest) returns (CatalogInfo);
 }
 
 // Messages for queries
@@ -64,6 +74,11 @@ message ListVideosRequest {
   // Filter to videos whose path is inside this directory (recursive).
   // Empty means "all locations".
   string location_path = 7;
+  // Exact-match filters from the top-bar dropdowns. Empty / 0 = no filter.
+  string filter_camera = 8;
+  string filter_lens = 9;
+  string filter_codec = 10;
+  int32 filter_capture_year = 11;
 }
 
 message VideoSummary {
@@ -228,6 +243,7 @@ message TagResponse {
   string id = 1;
   string name = 2;
   string color = 3;
+  int64 video_count = 4;  // How many videos currently have this tag
 }
 
 message DeleteTagRequest {
@@ -408,6 +424,43 @@ message AutoGroupResponse {
   int32 groups_created = 1;
   int32 videos_grouped = 2;
   string message = 3;
+}
+
+// Filter dropdown options (distinct values present in the library).
+//
+// The client uses these to populate the dropdowns next to the search field.
+// Empty lists mean "no data for that field" and the client hides the dropdown.
+
+message GetFilterOptionsRequest {}
+
+message FilterOptions {
+  repeated string cameras = 1;
+  repeated string lenses = 2;
+  repeated string codecs = 3;
+  repeated int32 capture_years = 4;
+}
+
+// Catalog lifecycle
+
+// Open / switch to the catalog file at `path`. If a catalog is currently
+// open it's closed first. The file is created if it doesn't exist; the
+// daemon initializes the schema on its first open.
+message OpenCatalogRequest {
+  string path = 1;
+}
+
+message CloseCatalogRequest {}
+
+message GetCurrentCatalogRequest {}
+
+// Information about the catalog the daemon currently has open. `path` is
+// empty when no catalog is open — clients should treat that as a precondition
+// failure for every other RPC.
+message CatalogInfo {
+  string path = 1;
+  string name = 2;           // Display name (filename stem, e.g. "MyLibrary")
+  int64 video_count = 3;     // Total videos currently indexed
+  int64 opened_at_ms = 4;    // Unix ms at which this catalog was opened
 }
 
 // Generic responses

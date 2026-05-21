@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package com.videoroom.ui.screens
 
 import androidx.compose.foundation.*
@@ -14,6 +16,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.videoroom.data.editors.EditorRegistry
+import com.videoroom.data.editors.ExternalEditor
 import com.videoroom.data.models.VideoSummary
 import com.videoroom.ui.components.VideoCard
 import com.videoroom.ui.theme.VideoRoomSpacing
@@ -25,6 +29,8 @@ fun GridScreen(
     onVideoSelect: (VideoSummary) -> Unit,
     /** Minimum width of each grid cell — also controls how many columns appear. */
     thumbnailMinWidth: androidx.compose.ui.unit.Dp = 220.dp,
+    /** Opens the "External Editors" preferences dialog from the context menu. */
+    onConfigureEditors: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val videos = viewModel.videos.collectAsState()
@@ -36,6 +42,7 @@ fun GridScreen(
     val totalCount = viewModel.totalCount.collectAsState()
     val error = viewModel.error.collectAsState()
     val thumbnails = viewModel.thumbnails.collectAsState()
+    val scrubFrames = viewModel.scrubFrames.collectAsState()
     val expandedGroupIds = viewModel.expandedGroupIds.collectAsState()
     val expandedMembers = viewModel.expandedGroupMembers.collectAsState()
     val shiftPressed = com.videoroom.LocalShiftPressed.current
@@ -76,11 +83,13 @@ fun GridScreen(
                         color = MaterialTheme.colorScheme.onErrorContainer,
                         style = MaterialTheme.typography.bodySmall
                     )
-                    IconButton(
-                        onClick = { viewModel.clearError() },
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(Icons.Default.Close, contentDescription = "Dismiss")
+                    com.videoroom.ui.components.Tooltip(text = "Dismiss this error message") {
+                        IconButton(
+                            onClick = { viewModel.clearError() },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(Icons.Default.Close, contentDescription = "Dismiss")
+                        }
                     }
                 }
             }
@@ -149,40 +158,62 @@ fun GridScreen(
                             }
                         }
 
-                        VideoCard(
-                            video = video,
-                            isSelected = isPrimary,
-                            isInMultiSelection = isInMultiSelect,
-                            isAnchor = isAnchor,
-                            isStackExpanded = item.isExpandedRepresentative,
-                            isStackChild = item.isStackChild,
-                            stackMemberPosition = item.memberPosition,
-                            stackMemberCount = item.memberCount,
-                            thumbnailBytes = thumbnails.value[video.id],
-                            onClick = { shiftFromEvent, toggleFromEvent ->
-                                // Modifier-key state can come from either the pointer event
-                                // (preferred) or the Window-level fallback.
-                                val shift = shiftFromEvent || shiftPressed
-                                val toggle = toggleFromEvent
-                                when {
-                                    shift -> {
-                                        // Range-select from anchor to this video (inclusive)
-                                        // using the visual order of the rendered grid.
-                                        val anchorId = anchorVideoId.value ?: video.id
-                                        val rangeIds = computeVisualRange(rendered, anchorId, video.id)
-                                        viewModel.selectRange(video, rangeIds)
-                                    }
-                                    toggle -> viewModel.toggleVideoSelection(video)
-                                    else -> viewModel.selectVideo(video)
+                        ContextMenuArea(
+                            items = {
+                                // Compute the target file paths each time the menu opens
+                                // so it always reflects the latest selection. If the
+                                // right-clicked card is part of the current
+                                // multi-selection, operate on all selected videos;
+                                // otherwise operate on just this video.
+                                val multi = selectedVideoIds.value
+                                val targets = if (video.id in multi && multi.size > 1) {
+                                    videos.value.filter { it.id in multi }.map { it.openPath }
+                                } else {
+                                    listOf(video.openPath)
                                 }
-                                onVideoSelect(video)
-                            },
-                            onDoubleClick = { viewModel.openVideoInExternal(video.openPath) },
-                            onStackBadgeClick = {
-                                viewModel.toggleStackExpansion(video.groupId)
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                                buildVideoContextMenu(
+                                    targetFiles = targets,
+                                    onConfigureEditors = onConfigureEditors
+                                )
+                            }
+                        ) {
+                            VideoCard(
+                                video = video,
+                                isSelected = isPrimary,
+                                isInMultiSelection = isInMultiSelect,
+                                isAnchor = isAnchor,
+                                isStackExpanded = item.isExpandedRepresentative,
+                                isStackChild = item.isStackChild,
+                                stackMemberPosition = item.memberPosition,
+                                stackMemberCount = item.memberCount,
+                                thumbnailBytes = thumbnails.value[video.id],
+                                scrubFrames = scrubFrames.value[video.id] ?: emptyList(),
+                                onClick = { shiftFromEvent, toggleFromEvent ->
+                                    // Modifier-key state can come from either the pointer event
+                                    // (preferred) or the Window-level fallback.
+                                    val shift = shiftFromEvent || shiftPressed
+                                    val toggle = toggleFromEvent
+                                    when {
+                                        shift -> {
+                                            // Range-select from anchor to this video (inclusive)
+                                            // using the visual order of the rendered grid.
+                                            val anchorId = anchorVideoId.value ?: video.id
+                                            val rangeIds = computeVisualRange(rendered, anchorId, video.id)
+                                            viewModel.selectRange(video, rangeIds)
+                                        }
+                                        toggle -> viewModel.toggleVideoSelection(video)
+                                        else -> viewModel.selectVideo(video)
+                                    }
+                                    onVideoSelect(video)
+                                },
+                                onDoubleClick = { viewModel.openVideoInExternal(video.openPath) },
+                                onStackBadgeClick = {
+                                    viewModel.toggleStackExpansion(video.groupId)
+                                },
+                                onHoverEnter = { viewModel.loadScrubFrames(video.id) },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
 
                         // Load more when near the end (only triggered by representatives,
                         // not stack children — children are local and don't paginate).
@@ -244,6 +275,56 @@ internal fun computeVisualRange(
     if (anchorIdx < 0 || targetIdx < 0) return listOf(targetId)
     val (start, end) = if (anchorIdx <= targetIdx) anchorIdx to targetIdx else targetIdx to anchorIdx
     return ids.subList(start, end + 1).toList()
+}
+
+/**
+ * Build the context-menu items shown when the user right-clicks a video card.
+ * Targets the supplied [targetFiles] — when the right-clicked card is part of
+ * a multi-selection, this is every selected file; otherwise just the one card.
+ *
+ * Compose Desktop's [ContextMenuItem] doesn't support submenus, so we render a
+ * flat list. Disabled editors and editors that aren't installed are silently
+ * omitted — the "Configure External Editors…" entry at the bottom is the
+ * canonical way to enable more.
+ */
+internal fun buildVideoContextMenu(
+    targetFiles: List<String>,
+    onConfigureEditors: () -> Unit,
+): List<androidx.compose.foundation.ContextMenuItem> {
+    val items = mutableListOf<androidx.compose.foundation.ContextMenuItem>()
+    val registry = EditorRegistry.Default
+    val n = targetFiles.size
+    val plural = if (n == 1) "" else "s"
+
+    items += androidx.compose.foundation.ContextMenuItem(
+        label = if (n == 1) "Open with Default Player" else "Open $n videos with Default Player"
+    ) {
+        targetFiles.forEach { registry.openWithDefault(it) }
+    }
+
+    if (n == 1) {
+        items += androidx.compose.foundation.ContextMenuItem("Reveal in File Manager") {
+            registry.revealInFileManager(targetFiles.first())
+        }
+    }
+
+    // One entry per enabled+installed external editor.
+    val available = registry.availableEditors()
+    if (available.isNotEmpty()) {
+        available.forEach { (editor, _) ->
+            items += androidx.compose.foundation.ContextMenuItem(
+                label = "Open with ${editor.name}" + (if (n > 1 && editor.supportsFileArgs) " ($n video$plural)" else "")
+            ) {
+                registry.launch(editor, targetFiles)
+            }
+        }
+    }
+
+    items += androidx.compose.foundation.ContextMenuItem("Configure External Editors…") {
+        onConfigureEditors()
+    }
+
+    return items
 }
 
 /**

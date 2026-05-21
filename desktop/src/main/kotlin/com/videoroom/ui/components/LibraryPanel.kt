@@ -56,16 +56,18 @@ fun LibraryPanel(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f)
             )
-            IconButton(
-                onClick = onCollapse,
-                modifier = Modifier.size(24.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ChevronLeft,
-                    contentDescription = "Hide library panel (Tab)",
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            Tooltip(text = "Hide the library panel. Press Tab to toggle both side panels.") {
+                IconButton(
+                    onClick = onCollapse,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ChevronLeft,
+                        contentDescription = "Hide library panel (Tab)",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
 
@@ -77,6 +79,7 @@ fun LibraryPanel(
                     label = "All Videos",
                     count = totalVideosAcrossLibrary,
                     isSelected = selectedPath.isEmpty(),
+                    tooltip = "Show every video in your library, across all scanned folders.",
                     onClick = { onSelect("") }
                 )
             }
@@ -100,6 +103,8 @@ fun LibraryPanel(
                     sublabel = loc.path,
                     count = loc.videoCount,
                     isSelected = loc.path == selectedPath,
+                    tooltip = "Show only videos from ${loc.path} (${loc.videoCount} videos). " +
+                        "Click \"All Videos\" above to clear.",
                     onClick = { onSelect(loc.path) }
                 )
             }
@@ -114,6 +119,7 @@ private fun LocationRow(
     sublabel: String? = null,
     count: Long,
     isSelected: Boolean,
+    tooltip: String = "",
     onClick: () -> Unit
 ) {
     val bg = if (isSelected) {
@@ -126,6 +132,7 @@ private fun LocationRow(
     } else {
         MaterialTheme.colorScheme.onSurface
     }
+    Tooltip(text = tooltip) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -167,6 +174,7 @@ private fun LocationRow(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
+    }
 }
 
 /** Display name = last path segment (e.g. "/Users/me/Videos" → "Videos"). */
@@ -190,20 +198,22 @@ fun CollapsedPanelStrip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .width(20.dp)
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-            .clickable(onClick = onClick),
-        verticalArrangement = Arrangement.Top,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(modifier = Modifier.height(VideoRoomSpacing.Medium))
-        Icon(
-            imageVector = if (expandIconLeft) Icons.Default.ChevronLeft else Icons.Default.ChevronRight,
-            contentDescription = tooltip,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+    Tooltip(text = tooltip) {
+        Column(
+            modifier = modifier
+                .width(20.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                .clickable(onClick = onClick),
+            verticalArrangement = Arrangement.Top,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.height(VideoRoomSpacing.Medium))
+            Icon(
+                imageVector = if (expandIconLeft) Icons.Default.ChevronLeft else Icons.Default.ChevronRight,
+                contentDescription = tooltip,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }

@@ -108,7 +108,8 @@ data class VideoMetadata(
 data class Tag(
     val id: String,
     val name: String,
-    val color: String = ""
+    val color: String = "",
+    val videoCount: Long = 0
 )
 
 data class Collection(
@@ -126,3 +127,29 @@ data class LibraryLocation(
     val videoCount: Long = 0,
     val lastScanned: Long = 0
 )
+
+/** Distinct values that can populate the top-bar filter dropdowns. */
+data class FilterOptions(
+    val cameras: List<String> = emptyList(),
+    val lenses: List<String> = emptyList(),
+    val codecs: List<String> = emptyList(),
+    val captureYears: List<Int> = emptyList()
+)
+
+/**
+ * The catalog the backend currently has open. An [isOpen] of `false` means
+ * the daemon is running but no SQLite file is mounted yet; the client must
+ * call `OpenCatalog` before issuing any other RPC.
+ */
+data class CatalogInfo(
+    val path: String = "",
+    val name: String = "",
+    val videoCount: Long = 0,
+    val openedAtMs: Long = 0
+) {
+    val isOpen: Boolean get() = path.isNotEmpty()
+
+    companion object {
+        val Closed = CatalogInfo()
+    }
+}
