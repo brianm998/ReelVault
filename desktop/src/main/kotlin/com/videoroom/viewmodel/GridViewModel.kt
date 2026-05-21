@@ -885,7 +885,11 @@ class GridViewModel(
     fun addLibraryAndScan(
         path: String,
         recursive: Boolean = true,
-        autoGroup: Boolean = true
+        autoGroup: Boolean = true,
+        /** "MM-DD-YYYY" | "DD-MM-YYYY" | "YYYY-MM-DD" — empty disables. */
+        filenameDateFormat: String = "",
+        /** "anywhere" | "beginning" | "end" — only used when filenameDateFormat is set. */
+        filenameDatePosition: String = ""
     ) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -927,7 +931,12 @@ class GridViewModel(
                 var errorMessage: String? = null
                 var libraryRefreshTick = 0
 
-                repository.scanLibrary(path, autoGroup).collect { progress ->
+                repository.scanLibrary(
+                    locationPath = path,
+                    autoGroup = autoGroup,
+                    filenameDateFormat = filenameDateFormat,
+                    filenameDatePosition = filenameDatePosition
+                ).collect { progress ->
                     if (progress.status == "error") {
                         errorMessage = progress.currentFile
                         logger.warn("Scan error: ${progress.currentFile}")

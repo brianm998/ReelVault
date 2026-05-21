@@ -42,6 +42,11 @@ dependencies {
     // SDKs (paid). MIT-licensed, mature, used by tools like JOSM.
     implementation("org.jxmapviewer:jxmapviewer2:2.8")
 
+    // In-app video playback. VLCJ wraps libvlc, which must be installed on
+    // the host system (VLC.app on macOS, libvlc package on Linux, VLC for
+    // Windows). VLCJ itself only adds ~1MB of jars; no native code is bundled.
+    implementation("uk.co.caprica:vlcj:4.8.2")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
 }

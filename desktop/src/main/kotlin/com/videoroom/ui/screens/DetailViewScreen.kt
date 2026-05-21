@@ -1,0 +1,460 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 VideoRoom Contributors
+
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
+
+package com.videoroom.ui.screens
+
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
+import com.videoroom.data.models.VideoMetadata
+import com.videoroom.data.models.VideoSummary
+import com.videoroom.ui.components.ComposeVideoPlayer
+import com.videoroom.ui.theme.VideoRoomSpacing
+import com.videoroom.viewmodel.DetailViewModel
+import com.videoroom.viewmodel.GridViewModel
+import org.jetbrains.skia.Image as SkiaImage
+
+/** Three-state info overlay cycle, advanced by the 'i' key (Lightroom-style). */
+enum class InfoOverlayState { NONE, CAMERA, FILE }
+
+/**
+ * Single-video loupe view. Shows the selected video full-size with hover-scrub
+ * preview, a bottom playback/control bar, and a cycling info overlay.
+ *
+ * When the user hits "play" the screen loads VLCJ and switches from the static
+ * scrub-frame preview to live in-app playback. The scrubber and control bar
+ * stay visible.
+ */
+@Composable
+fun DetailViewScreen(
+    gridViewModel: GridViewModel,
+    detailViewModel: DetailViewModel,
+    /** Externally-controlled info overlay state, advanced by the 'i' shortcut in App.kt. */
+    infoOverlay: InfoOverlayState,
+    modifier: Modifier = Modifier
+) {
+    val selectedVideoId by gridViewModel.selectedVideoId.collectAsState()
+    val videos by gridViewModel.videos.collectAsState()
+    val scrubFramesMap by gridViewModel.scrubFrames.collectAsState()
+    val thumbnailsMap by gridViewModel.thumbnails.collectAsState()
+    val metadata = detailViewModel.metadata.value
+
+    val video: VideoSummary? = remember(selectedVideoId, videos) {
+        videos.firstOrNull { it.id == selectedVideoId }
+    }
+
+    // Configurable step size for ±N-frame buttons. Default 20.
+    var stepFrames by remember { mutableStateOf(20) }
+
+    if (video == null) {
+        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = Icons.Default.Movie,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.outline
+                )
+                Spacer(modifier = Modifier.height(VideoRoomSpacing.Medium))
+                Text(
+                    text = "Select a video in the grid to view it here.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
+                Text(
+                    text = "Press G to return to the grid.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        return
+    }
+
+    // Lazily load scrub frames for the current video (parity with grid hover).
+    LaunchedEffect(video.id) {
+        gridViewModel.loadScrubFrames(video.id)
+        if (video.hasThumbnail) {
+            gridViewModel.loadThumbnail(video.id)
+        }
+    }
+
+    // Player lifecycle: one player per selected video. Releasing on key change
+    // ensures we don't leak libvlc handles when the user pages through videos.
+    val player = remember(video.id) { ComposeVideoPlayer() }
+    DisposableEffect(video.id) {
+        onDispose { player.release() }
+    }
+
+    // Mode flag: "play" hasn't been pressed yet → show scrub thumbnail preview.
+    // After "play", VLCJ takes over the preview area.
+    var playbackStarted by remember(video.id) { mutableStateOf(false) }
+
+    Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            contentAlignment = Alignment.Center
+        ) {
+            if (playbackStarted && player.available) {
+                player.Surface(
+                    modifier = Modifier.fillMaxSize().background(Color.Black)
+                )
+            } else {
+                ScrubPreview(
+                    video = video,
+                    thumbnailBytes = thumbnailsMap[video.id],
+                    scrubFrames = scrubFramesMap[video.id] ?: emptyList(),
+                    modifier = Modifier.fillMaxSize().background(Color.Black)
+                )
+            }
+
+            // Cycling info overlay (top-left).
+            if (infoOverlay != InfoOverlayState.NONE) {
+                InfoOverlay(
+                    state = infoOverlay,
+                    video = video,
+                    metadata = metadata,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(VideoRoomSpacing.Medium)
+                )
+            }
+
+            // Show a "VLCJ not available" hint if the user tried to play but
+            // libvlc isn't installed.
+            if (playbackStarted && !player.available) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.7f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            modifier = Modifier.size(40.dp),
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
+                        Text(
+                            text = "In-app playback unavailable",
+                            color = Color.White,
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        Text(
+                            text = "VideoRoom needs libvlc — install VLC and restart.",
+                            color = Color.White.copy(alpha = 0.8f),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
+            }
+        }
+
+        ControlBar(
+            video = video,
+            player = player,
+            playbackStarted = playbackStarted,
+            stepFrames = stepFrames,
+            onStartPlayback = {
+                if (!playbackStarted) {
+                    playbackStarted = true
+                    if (player.available) {
+                        player.load(video.path, playImmediately = true)
+                    }
+                } else {
+                    player.togglePause()
+                }
+            },
+            onStepFramesChange = { stepFrames = it.coerceIn(1, 600) }
+        )
+    }
+}
+
+@Composable
+private fun ScrubPreview(
+    video: VideoSummary,
+    thumbnailBytes: ByteArray?,
+    scrubFrames: List<ByteArray?>,
+    modifier: Modifier = Modifier
+) {
+    val thumbnailImage = remember(thumbnailBytes) {
+        thumbnailBytes?.let {
+            try { SkiaImage.makeFromEncoded(it).toComposeImageBitmap() } catch (_: Exception) { null }
+        }
+    }
+    val scrubImages = remember(scrubFrames) {
+        scrubFrames.map { bytes ->
+            bytes?.let {
+                try { SkiaImage.makeFromEncoded(it).toComposeImageBitmap() } catch (_: Exception) { null }
+            }
+        }
+    }
+    var hoverX by remember { mutableStateOf<Float?>(null) }
+    var areaSize by remember { mutableStateOf(IntSize.Zero) }
+
+    val displayed = run {
+        val x = hoverX
+        val w = areaSize.width
+        if (x != null && w > 0 && scrubImages.any { it != null }) {
+            val frac = (x / w).coerceIn(0f, 1f)
+            val idx = (frac * scrubImages.size).toInt().coerceIn(0, scrubImages.size - 1)
+            scrubImages[idx] ?: thumbnailImage
+        } else thumbnailImage
+    }
+
+    Box(
+        modifier = modifier
+            .onSizeChanged { areaSize = it }
+            .onPointerEvent(PointerEventType.Enter) {
+                it.changes.firstOrNull()?.position?.let { p -> hoverX = p.x }
+            }
+            .onPointerEvent(PointerEventType.Move) {
+                it.changes.firstOrNull()?.position?.let { p -> hoverX = p.x }
+            }
+            .onPointerEvent(PointerEventType.Exit) { hoverX = null },
+        contentAlignment = Alignment.Center
+    ) {
+        if (displayed != null) {
+            Image(
+                bitmap = displayed,
+                contentDescription = video.filename,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Default.Movie,
+                contentDescription = null,
+                modifier = Modifier.size(96.dp),
+                tint = MaterialTheme.colorScheme.outline
+            )
+        }
+    }
+}
+
+@Composable
+private fun ControlBar(
+    video: VideoSummary,
+    player: ComposeVideoPlayer,
+    playbackStarted: Boolean,
+    stepFrames: Int,
+    onStartPlayback: () -> Unit,
+    onStepFramesChange: (Int) -> Unit
+) {
+    val currentMs by player.currentTimeMs
+    val lengthMs by player.lengthMs
+    val isPlaying by player.isPlaying
+    val fps = video.fps.takeIf { it > 0.0 } ?: 30.0
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = VideoRoomSpacing.Medium, vertical = VideoRoomSpacing.Small)
+    ) {
+        // Scrubber. Uses the player's length when known, otherwise falls back
+        // to the video's reported duration so the bar still renders before
+        // playback has been started.
+        val maxMs = if (lengthMs > 0) lengthMs else video.durationMs.coerceAtLeast(1L)
+        val displayedMs = if (lengthMs > 0) currentMs else 0L
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = formatTime(displayedMs),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.width(56.dp)
+            )
+            Slider(
+                value = displayedMs.toFloat(),
+                onValueChange = { v ->
+                    if (playbackStarted && player.available) {
+                        player.seek(v.toLong())
+                    }
+                },
+                valueRange = 0f..maxMs.toFloat(),
+                enabled = playbackStarted && player.available,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = formatTime(maxMs),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.width(56.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(VideoRoomSpacing.XSmall))
+
+        // Control buttons.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            com.videoroom.ui.components.Tooltip(text = "Step back $stepFrames frames") {
+                IconButton(
+                    onClick = { player.skipFrames(-stepFrames, fps) },
+                    enabled = playbackStarted && player.available
+                ) {
+                    Icon(Icons.Default.FastRewind, contentDescription = "Step back $stepFrames frames")
+                }
+            }
+            com.videoroom.ui.components.Tooltip(text = "Step back 1 frame") {
+                IconButton(
+                    onClick = { player.skipFrames(-1, fps) },
+                    enabled = playbackStarted && player.available
+                ) {
+                    Icon(Icons.Default.SkipPrevious, contentDescription = "Step back 1 frame")
+                }
+            }
+            com.videoroom.ui.components.Tooltip(
+                text = if (isPlaying) "Pause" else "Play in-app"
+            ) {
+                IconButton(onClick = onStartPlayback) {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isPlaying) "Pause" else "Play",
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+            }
+            com.videoroom.ui.components.Tooltip(text = "Step forward 1 frame") {
+                IconButton(
+                    onClick = { player.stepForwardOneFrame() },
+                    enabled = playbackStarted && player.available
+                ) {
+                    Icon(Icons.Default.SkipNext, contentDescription = "Step forward 1 frame")
+                }
+            }
+            com.videoroom.ui.components.Tooltip(text = "Step forward $stepFrames frames") {
+                IconButton(
+                    onClick = { player.skipFrames(stepFrames, fps) },
+                    enabled = playbackStarted && player.available
+                ) {
+                    Icon(Icons.Default.FastForward, contentDescription = "Step forward $stepFrames frames")
+                }
+            }
+
+            Spacer(modifier = Modifier.width(VideoRoomSpacing.Large))
+
+            // Configurable step size (default 20).
+            com.videoroom.ui.components.Tooltip(
+                text = "How many frames the \"step ±N\" buttons skip. Default 20."
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Step:",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.width(VideoRoomSpacing.XSmall))
+                    OutlinedButton(
+                        onClick = { onStepFramesChange(stepFrames - 5) },
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                        modifier = Modifier.height(28.dp)
+                    ) { Text("-5", style = MaterialTheme.typography.labelSmall) }
+                    Text(
+                        text = "$stepFrames",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(horizontal = VideoRoomSpacing.Small)
+                    )
+                    OutlinedButton(
+                        onClick = { onStepFramesChange(stepFrames + 5) },
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                        modifier = Modifier.height(28.dp)
+                    ) { Text("+5", style = MaterialTheme.typography.labelSmall) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InfoOverlay(
+    state: InfoOverlayState,
+    video: VideoSummary,
+    metadata: VideoMetadata?,
+    modifier: Modifier = Modifier
+) {
+    androidx.compose.material3.Surface(
+        modifier = modifier,
+        color = Color.Black.copy(alpha = 0.6f),
+        shape = MaterialTheme.shapes.small
+    ) {
+        Column(modifier = Modifier.padding(VideoRoomSpacing.Medium)) {
+            when (state) {
+                InfoOverlayState.NONE -> Unit
+                InfoOverlayState.CAMERA -> {
+                    val camera = metadata?.cameraModel?.ifEmpty { null } ?: "Camera: unknown"
+                    val lens = metadata?.lensModel?.ifEmpty { null } ?: "Lens: unknown"
+                    Text(
+                        text = camera,
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = lens,
+                        color = Color.White.copy(alpha = 0.85f),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                InfoOverlayState.FILE -> {
+                    val mp = if (video.width > 0 && video.height > 0) {
+                        String.format("%.1f MP", (video.width.toLong() * video.height.toLong()) / 1_000_000.0)
+                    } else "—"
+                    val captured = metadata?.creationDateFormatted?.takeIf { it != "Unknown" }
+                        ?: if (video.creationDate > 0) {
+                            java.time.format.DateTimeFormatter
+                                .ofPattern("yyyy-MM-dd HH:mm:ss")
+                                .withZone(java.time.ZoneId.systemDefault())
+                                .format(java.time.Instant.ofEpochMilli(video.creationDate))
+                        } else "Unknown"
+                    Text(
+                        text = video.filename,
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = "Captured: $captured",
+                        color = Color.White.copy(alpha = 0.85f),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        text = "${video.width} × ${video.height} ($mp)",
+                        color = Color.White.copy(alpha = 0.85f),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun formatTime(ms: Long): String {
+    val totalSec = (ms / 1000).coerceAtLeast(0L)
+    val h = totalSec / 3600
+    val m = (totalSec % 3600) / 60
+    val s = totalSec % 60
+    return if (h > 0) String.format("%d:%02d:%02d", h, m, s)
+    else String.format("%d:%02d", m, s)
+}

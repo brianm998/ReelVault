@@ -553,6 +553,10 @@ impl VideoRoomTrait for VideoRoomService {
         let cache_path = self.config.thumbnail_cache_path.clone();
         let location_path = req.location_path.clone();
         let auto_group = req.auto_group;
+        let filename_date_rule = crate::indexing::FilenameDateRule::from_proto(
+            &req.filename_date_format,
+            &req.filename_date_position,
+        );
 
         tokio::task::spawn_blocking(move || {
             let send_progress = |tx: &tokio::sync::mpsc::Sender<std::result::Result<ScanProgress, Status>>,
@@ -602,6 +606,7 @@ impl VideoRoomTrait for VideoRoomService {
                     scan_path,
                     recursive,
                     &cache_path,
+                    filename_date_rule,
                     |progress| send_progress(tx, progress),
                 ) {
                     Ok(_) => {

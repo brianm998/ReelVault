@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.unit.DpSize
@@ -26,6 +27,8 @@ import com.videoroom.data.server.RecentCatalogs
 import com.videoroom.data.server.ServerLauncher
 import com.videoroom.ui.screens.GridScreen
 import com.videoroom.ui.screens.DetailScreen
+import com.videoroom.ui.screens.DetailViewScreen
+import com.videoroom.ui.screens.InfoOverlayState
 import com.videoroom.ui.screens.OpenCatalogDialog
 import com.videoroom.ui.theme.VideoRoomTheme
 import com.videoroom.ui.theme.VideoRoomSpacing
@@ -41,6 +44,9 @@ private val logger = LoggerFactory.getLogger("VideoRoom")
 // Window-level shift key tracking. Updated by the Window's key listener and
 // read at click time by VideoCard / GridScreen.
 val LocalShiftPressed = compositionLocalOf { false }
+
+/** Top-level view mode for the central content area. */
+enum class ViewMode { GRID, DETAIL }
 
 fun main() = application {
     // Set the JVM-wide HTTP User-Agent before any networking happens. The
@@ -60,6 +66,10 @@ fun main() = application {
     )
 
     var shiftPressed by remember { mutableStateOf(false) }
+    // True when the top-bar search field has focus. Used to suppress
+    // single-key shortcuts ('g', 'd', 'i') so the user can still type those
+    // letters into the search box.
+    val searchFocused = remember { mutableStateOf(false) }
     // VideoRoomApp registers its "group selected" action here, so the Window-
     // level key listener can invoke it on Cmd/Ctrl+G regardless of focus.
     val groupSelectedAction = remember { mutableStateOf<() -> Unit>({}) }
@@ -69,6 +79,12 @@ fun main() = application {
     val selectAllAction = remember { mutableStateOf<() -> Unit>({}) }
     // …and for Cmd/Ctrl+D — "deselect everything".
     val deselectAllAction = remember { mutableStateOf<() -> Unit>({}) }
+    // Actions for plain 'g' (grid mode), 'd' (detail mode), 'i' (cycle info
+    // overlay). Bound via onPreviewKeyEvent so the search field's plain-key
+    // input still works via the `searchFocused` gate above.
+    val setGridModeAction = remember { mutableStateOf<() -> Unit>({}) }
+    val setDetailModeAction = remember { mutableStateOf<() -> Unit>({}) }
+    val cycleInfoOverlayAction = remember { mutableStateOf<() -> Unit>({}) }
     // Title reflects the currently-open catalog (lifted here so Window.title
     // recomposes when the catalog changes).
     var currentCatalog by remember { mutableStateOf(CatalogInfo.Closed) }
@@ -106,6 +122,20 @@ fun main() = application {
                 togglePanelsAction.value()
                 return@Window true // consume so focus traversal doesn't also fire
             }
+            // Single-letter shortcuts: only when no modifier is held AND the
+            // search field isn't focused (so the user can still type 'g', 'd',
+            // or 'i' in the search box).
+            if (event.type == KeyEventType.KeyDown &&
+                !event.isMetaPressed && !event.isCtrlPressed && !event.isAltPressed &&
+                !searchFocused.value
+            ) {
+                when (event.key) {
+                    Key.G -> { setGridModeAction.value(); return@Window true }
+                    Key.D -> { setDetailModeAction.value(); return@Window true }
+                    Key.I -> { cycleInfoOverlayAction.value(); return@Window true }
+                    else -> Unit
+                }
+            }
             false
         },
         // onKeyEvent fires AFTER focused widgets — so a focused TextField
@@ -141,6 +171,10 @@ fun main() = application {
                 onRegisterTogglePanelsAction = { togglePanelsAction.value = it },
                 onRegisterSelectAllAction = { selectAllAction.value = it },
                 onRegisterDeselectAllAction = { deselectAllAction.value = it },
+                onRegisterSetGridMode = { setGridModeAction.value = it },
+                onRegisterSetDetailMode = { setDetailModeAction.value = it },
+                onRegisterCycleInfoOverlay = { cycleInfoOverlayAction.value = it },
+                onSearchFocusChanged = { searchFocused.value = it },
                 onCatalogChanged = { currentCatalog = it }
             )
         }
@@ -159,6 +193,15 @@ fun VideoRoomApp(
     /** Called once to register the "deselect everything" action for the
      *  Cmd/Ctrl+D shortcut. */
     onRegisterDeselectAllAction: (() -> Unit) -> Unit = {},
+    /** Called once to register the "switch to grid" action for the 'g' shortcut. */
+    onRegisterSetGridMode: (() -> Unit) -> Unit = {},
+    /** Called once to register the "switch to detail" action for the 'd' shortcut. */
+    onRegisterSetDetailMode: (() -> Unit) -> Unit = {},
+    /** Called once to register the "cycle info overlay" action for the 'i' shortcut. */
+    onRegisterCycleInfoOverlay: (() -> Unit) -> Unit = {},
+    /** Reports search-field focus state to the Window so it can suppress
+     *  single-letter shortcuts while the user is typing. */
+    onSearchFocusChanged: (Boolean) -> Unit = {},
     /** Notified whenever the open-catalog state changes, so the parent can
      *  update the Window title. */
     onCatalogChanged: (CatalogInfo) -> Unit = {}
@@ -191,6 +234,18 @@ fun VideoRoomApp(
     var videoIdsForDatePicker by remember { mutableStateOf<List<String>?>(null) }
     var initialTimestampForPicker by remember { mutableStateOf<Long?>(null) }
 
+    // Add-library dialog visibility. Lifted here so both the top-bar
+    // "add folder" button and the sidebar's '+' button can open the same
+    // dialog.
+    var showAddLibraryDialog by remember { mutableStateOf(false) }
+
+    // Top-level view mode. GRID is the default catalog view; DETAIL is the
+    // single-video loupe with in-app playback.
+    var viewMode by remember { mutableStateOf(ViewMode.GRID) }
+
+    // Info overlay cycle in detail view ('i' key advances through states).
+    var infoOverlay by remember { mutableStateOf(InfoOverlayState.NONE) }
+
     // OpenCatalog dialog state. Shown automatically when the daemon has no
     // catalog open, or when the user picks File → Open.
     var showOpenCatalogDialog by remember { mutableStateOf(false) }
@@ -214,6 +269,17 @@ fun VideoRoomApp(
             val anyOpen = leftPanelExpanded || rightPanelExpanded
             leftPanelExpanded = !anyOpen
             rightPanelExpanded = !anyOpen
+        }
+    }
+    LaunchedEffect(Unit) {
+        onRegisterSetGridMode { viewMode = ViewMode.GRID }
+        onRegisterSetDetailMode { viewMode = ViewMode.DETAIL }
+        onRegisterCycleInfoOverlay {
+            infoOverlay = when (infoOverlay) {
+                InfoOverlayState.NONE -> InfoOverlayState.CAMERA
+                InfoOverlayState.CAMERA -> InfoOverlayState.FILE
+                InfoOverlayState.FILE -> InfoOverlayState.NONE
+            }
         }
     }
 
@@ -352,9 +418,10 @@ fun VideoRoomApp(
                         isDarkTheme = isDarkTheme,
                         onThemeToggle = { isDarkTheme = !isDarkTheme },
                         onSearch = { gridViewModel.setSearchQuery(it) },
-                        onAddLibrary = { path, recursive, autoGroup ->
-                            gridViewModel.addLibraryAndScan(path, recursive, autoGroup)
-                        },
+                        onRequestAddLibrary = { showAddLibraryDialog = true },
+                        viewMode = viewMode,
+                        onViewModeChange = { viewMode = it },
+                        onSearchFocusChanged = onSearchFocusChanged,
                         onGroupSelected = { gridViewModel.groupSelectedVideos() },
                         onConfigureEditors = { showEditorsDialog = true },
                         onOpenCatalog = {
@@ -573,6 +640,7 @@ fun VideoRoomApp(
                                 totalVideosAcrossLibrary = libraryLocations.value
                                     .sumOf { it.videoCount },
                                 onSelect = { path -> gridViewModel.setLocationFilter(path) },
+                                onAddLocation = { showAddLibraryDialog = true },
                                 onCollapse = { leftPanelExpanded = false },
                                 modifier = Modifier
                                     .weight(0.18f)
@@ -593,19 +661,29 @@ fun VideoRoomApp(
                                 .width(1.dp)
                         )
 
-                        // Grid view (middle) — fills remaining space
-                        GridScreen(
-                            viewModel = gridViewModel,
-                            onVideoSelect = { video ->
-                                detailViewModel.setCurrentVideo(video)
-                                detailViewModel.loadMetadata(video.id)
-                            },
-                            thumbnailMinWidth = thumbnailWidth,
-                            onConfigureEditors = { showEditorsDialog = true },
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                        )
+                        // Middle area — grid or single-video loupe.
+                        when (viewMode) {
+                            ViewMode.GRID -> GridScreen(
+                                viewModel = gridViewModel,
+                                onVideoSelect = { video ->
+                                    detailViewModel.setCurrentVideo(video)
+                                    detailViewModel.loadMetadata(video.id)
+                                },
+                                thumbnailMinWidth = thumbnailWidth,
+                                onConfigureEditors = { showEditorsDialog = true },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                            )
+                            ViewMode.DETAIL -> DetailViewScreen(
+                                gridViewModel = gridViewModel,
+                                detailViewModel = detailViewModel,
+                                infoOverlay = infoOverlay,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                            )
+                        }
 
                         Divider(
                             modifier = Modifier
@@ -733,6 +811,24 @@ fun VideoRoomApp(
                     )
                 }
 
+                // Add-library dialog — shared by the top-bar "add folder"
+                // button and the LIBRARY sidebar's '+' button.
+                if (showAddLibraryDialog) {
+                    AddLibraryDialog(
+                        onDismiss = { showAddLibraryDialog = false },
+                        onConfirm = { path, recursive, autoGroup, dateFormat, datePosition ->
+                            gridViewModel.addLibraryAndScan(
+                                path = path,
+                                recursive = recursive,
+                                autoGroup = autoGroup,
+                                filenameDateFormat = dateFormat,
+                                filenameDatePosition = datePosition
+                            )
+                            showAddLibraryDialog = false
+                        }
+                    )
+                }
+
                 // Open Catalog dialog — shown automatically when the daemon
                 // has no catalog mounted, or when the user picks File → Open.
                 if (showOpenCatalogDialog) {
@@ -797,7 +893,7 @@ fun VideoRoomTopBar(
     isDarkTheme: Boolean,
     onThemeToggle: () -> Unit,
     onSearch: (String) -> Unit,
-    onAddLibrary: (path: String, recursive: Boolean, autoGroup: Boolean) -> Unit,
+    onRequestAddLibrary: () -> Unit,
     onGroupSelected: () -> Unit = {},
     onConfigureEditors: () -> Unit = {},
     onOpenCatalog: () -> Unit = {},
@@ -811,10 +907,12 @@ fun VideoRoomTopBar(
     selectedCount: Int = 0,
     currentSort: String = "indexed_at",
     sortAscending: Boolean = false,
-    onSortChange: (String, Boolean) -> Unit = { _, _ -> }
+    onSortChange: (String, Boolean) -> Unit = { _, _ -> },
+    viewMode: ViewMode = ViewMode.GRID,
+    onViewModeChange: (ViewMode) -> Unit = {},
+    onSearchFocusChanged: (Boolean) -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var showAddLibraryDialog by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
     var showFileMenu by remember { mutableStateOf(false) }
 
@@ -922,6 +1020,15 @@ fun VideoRoomTopBar(
                     }
                 }
 
+                // Grid / Detail view-mode toggle. Mirrors the 'g' and 'd'
+                // keyboard shortcuts.
+                ViewModeToggle(
+                    current = viewMode,
+                    onChange = onViewModeChange
+                )
+
+                Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
+
                 // Search bar - use OutlinedTextField which has a more compact
                 // default height that fits inside the TopAppBar without
                 // clipping text.
@@ -941,7 +1048,9 @@ fun VideoRoomTopBar(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
-                        modifier = Modifier.width(300.dp),
+                        modifier = Modifier
+                            .width(300.dp)
+                            .onFocusChanged { onSearchFocusChanged(it.isFocused) },
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodySmall.copy(
                             color = MaterialTheme.colorScheme.onSurface
@@ -1126,7 +1235,7 @@ fun VideoRoomTopBar(
                         text = "Add a folder to your library. VideoRoom will scan it for videos " +
                             "and extract their metadata in the background."
                     ) {
-                        IconButton(onClick = { showAddLibraryDialog = true }) {
+                        IconButton(onClick = onRequestAddLibrary) {
                             Icon(
                                 imageVector = Icons.Default.CreateNewFolder,
                                 contentDescription = "Add Library Location"
@@ -1158,15 +1267,63 @@ fun VideoRoomTopBar(
             titleContentColor = MaterialTheme.colorScheme.onSurface
         )
     )
+}
 
-    if (showAddLibraryDialog) {
-        AddLibraryDialog(
-            onDismiss = { showAddLibraryDialog = false },
-            onConfirm = { path, recursive, autoGroup ->
-                onAddLibrary(path, recursive, autoGroup)
-                showAddLibraryDialog = false
+/**
+ * Two-segment Grid / Detail toggle. The active mode is filled; the other is
+ * outlined. Mirrors the 'g' (grid) and 'd' (detail) keyboard shortcuts.
+ */
+@Composable
+fun ViewModeToggle(
+    current: ViewMode,
+    onChange: (ViewMode) -> Unit
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        com.videoroom.ui.components.Tooltip(text = "Grid view — browse all videos as thumbnails (G)") {
+            val isGrid = current == ViewMode.GRID
+            if (isGrid) {
+                Button(
+                    onClick = { onChange(ViewMode.GRID) },
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Icon(Icons.Default.GridView, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Grid", style = MaterialTheme.typography.labelSmall)
+                }
+            } else {
+                OutlinedButton(
+                    onClick = { onChange(ViewMode.GRID) },
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Icon(Icons.Default.GridView, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Grid", style = MaterialTheme.typography.labelSmall)
+                }
             }
-        )
+        }
+        Spacer(modifier = Modifier.width(4.dp))
+        com.videoroom.ui.components.Tooltip(text = "Detail (loupe) view — play and inspect a single video (D)") {
+            val isDetail = current == ViewMode.DETAIL
+            if (isDetail) {
+                Button(
+                    onClick = { onChange(ViewMode.DETAIL) },
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Icon(Icons.Default.PlayCircleOutline, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Detail", style = MaterialTheme.typography.labelSmall)
+                }
+            } else {
+                OutlinedButton(
+                    onClick = { onChange(ViewMode.DETAIL) },
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Icon(Icons.Default.PlayCircleOutline, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Detail", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
     }
 }
 
@@ -1349,11 +1506,28 @@ fun FilterDropdown(
 @Composable
 fun AddLibraryDialog(
     onDismiss: () -> Unit,
-    onConfirm: (path: String, recursive: Boolean, autoGroup: Boolean) -> Unit
+    /**
+     * dateFormat: empty disables the filename-date feature. Non-empty values
+     * must be one of "MM-DD-YYYY", "DD-MM-YYYY", or "YYYY-MM-DD".
+     * datePosition: "anywhere" | "beginning" | "end" (only consulted when
+     * dateFormat is non-empty).
+     */
+    onConfirm: (
+        path: String,
+        recursive: Boolean,
+        autoGroup: Boolean,
+        dateFormat: String,
+        datePosition: String
+    ) -> Unit
 ) {
     var path by remember { mutableStateOf("") }
     var recursive by remember { mutableStateOf(true) }
     var autoGroup by remember { mutableStateOf(true) }
+    var inferDate by remember { mutableStateOf(false) }
+    var dateFormat by remember { mutableStateOf("YYYY-MM-DD") }
+    var datePosition by remember { mutableStateOf("anywhere") }
+    var dateFormatMenu by remember { mutableStateOf(false) }
+    var datePositionMenu by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1437,6 +1611,125 @@ fun AddLibraryDialog(
                     }
                 }
                 }
+
+                Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
+
+                // Filename-based capture date inference.
+                com.videoroom.ui.components.Tooltip(
+                    text = "When on, VideoRoom parses each video's filename for a date and " +
+                        "uses it as the capture date if the file itself doesn't already have one. " +
+                        "Useful for camera exports whose internal metadata lacks a capture time."
+                ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Checkbox(
+                        checked = inferDate,
+                        onCheckedChange = { inferDate = it }
+                    )
+                    Column {
+                        Text(
+                            text = "Infer capture date from filename",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Only applied when the file has no capture date in its metadata.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                }
+
+                if (inferDate) {
+                    Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(VideoRoomSpacing.Small),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Date format dropdown
+                        Box(modifier = Modifier.weight(1f)) {
+                            com.videoroom.ui.components.Tooltip(
+                                text = "Component ordering of the date as it appears in the filename. " +
+                                    "Separators (-, _, .) are matched automatically."
+                            ) {
+                                OutlinedButton(
+                                    onClick = { dateFormatMenu = true },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Column(modifier = Modifier.fillMaxWidth()) {
+                                        Text(
+                                            text = "Format",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            text = dateFormat,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
+                            }
+                            DropdownMenu(
+                                expanded = dateFormatMenu,
+                                onDismissRequest = { dateFormatMenu = false }
+                            ) {
+                                listOf("MM-DD-YYYY", "DD-MM-YYYY", "YYYY-MM-DD").forEach { fmt ->
+                                    DropdownMenuItem(
+                                        text = { Text(fmt) },
+                                        onClick = {
+                                            dateFormat = fmt
+                                            dateFormatMenu = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        // Position dropdown
+                        Box(modifier = Modifier.weight(1f)) {
+                            com.videoroom.ui.components.Tooltip(
+                                text = "Where the date must appear within the filename (without extension)."
+                            ) {
+                                OutlinedButton(
+                                    onClick = { datePositionMenu = true },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Column(modifier = Modifier.fillMaxWidth()) {
+                                        Text(
+                                            text = "Position",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            text = datePosition,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
+                            }
+                            DropdownMenu(
+                                expanded = datePositionMenu,
+                                onDismissRequest = { datePositionMenu = false }
+                            ) {
+                                listOf("anywhere", "beginning", "end").forEach { pos ->
+                                    DropdownMenuItem(
+                                        text = { Text(pos) },
+                                        onClick = {
+                                            datePosition = pos
+                                            datePositionMenu = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
@@ -1445,7 +1738,17 @@ fun AddLibraryDialog(
                     "you can keep using VideoRoom while it works."
             ) {
                 Button(
-                    onClick = { if (path.isNotBlank()) onConfirm(path.trim(), recursive, autoGroup) },
+                    onClick = {
+                        if (path.isNotBlank()) {
+                            onConfirm(
+                                path.trim(),
+                                recursive,
+                                autoGroup,
+                                if (inferDate) dateFormat else "",
+                                if (inferDate) datePosition else ""
+                            )
+                        }
+                    },
                     enabled = path.isNotBlank()
                 ) {
                     Text("Add & Scan")

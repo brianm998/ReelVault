@@ -307,12 +307,19 @@ class VideoRepository(
         }
     }
 
-    fun scanLibrary(locationPath: String = "", autoGroup: Boolean = true): Flow<ScanProgress> {
+    fun scanLibrary(
+        locationPath: String = "",
+        autoGroup: Boolean = true,
+        filenameDateFormat: String = "",
+        filenameDatePosition: String = ""
+    ): Flow<ScanProgress> {
         val s = stub ?: return flow { }
         val request = Videoroom.ScanLibraryRequest.newBuilder()
             .setLocationPath(locationPath)
             .setForceFullScan(false)
             .setAutoGroup(autoGroup)
+            .setFilenameDateFormat(filenameDateFormat)
+            .setFilenameDatePosition(filenameDatePosition)
             .build()
 
         return s.scanLibrary(request).map { proto ->

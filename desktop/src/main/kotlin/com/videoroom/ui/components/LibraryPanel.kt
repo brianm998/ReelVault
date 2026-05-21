@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Folder
@@ -34,6 +35,7 @@ fun LibraryPanel(
     selectedPath: String,
     totalVideosAcrossLibrary: Long,
     onSelect: (path: String) -> Unit,
+    onAddLocation: () -> Unit = {},
     onCollapse: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -46,13 +48,26 @@ fun LibraryPanel(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(
-                    start = VideoRoomSpacing.Medium,
+                    start = VideoRoomSpacing.XSmall,
                     end = VideoRoomSpacing.XSmall,
                     top = VideoRoomSpacing.Medium,
                     bottom = VideoRoomSpacing.Small
                 ),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Tooltip(text = "Add a folder to your library. Same as the \"add folder\" button in the top bar.") {
+                IconButton(
+                    onClick = onAddLocation,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add library location",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             Text(
                 text = "LIBRARY",
                 style = MaterialTheme.typography.labelSmall,
