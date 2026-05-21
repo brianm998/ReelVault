@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 VideoRoom Contributors
+
 package com.videoroom.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme

@@ -110,4 +110,21 @@ See CLAUDE.md for development guidelines.
 
 ## License
 
-(TBD)
+VideoRoom is free software, licensed under the **GNU General Public License,
+version 3 or (at your option) any later version**. The full license text
+lives in [`LICENSE`](LICENSE); a short copyright notice is in
+[`COPYRIGHT`](COPYRIGHT).
+
+Every source file carries an SPDX identifier so license-scanning tools
+(REUSE, FOSSology, GitHub's licensee detector, etc.) can identify the
+license programmatically:
+
+```
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 VideoRoom Contributors
+```
+
+If you distribute a modified version of VideoRoom — or any program that
+links against the Rust core as a library — the GPL requires you to make
+your source available under the same terms. See the LICENSE file for the
+full set of obligations.

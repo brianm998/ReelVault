@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 VideoRoom Contributors
+
 import Foundation
 
 /// Most-recently-opened catalog list. Persists to `UserDefaults` under the

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 VideoRoom Contributors
+
 use crate::error::{Result, VideoRoomError};
 use crate::db::Database;
 use serde::{Deserialize, Serialize, Deserializer};

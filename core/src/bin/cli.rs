@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 VideoRoom Contributors
+
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use std::time::Instant;

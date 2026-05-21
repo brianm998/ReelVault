@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 VideoRoom Contributors
+
 use anyhow::Result;
 use clap::Parser;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};

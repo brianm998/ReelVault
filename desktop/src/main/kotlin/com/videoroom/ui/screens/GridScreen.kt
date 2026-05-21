@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 VideoRoom Contributors
+
 @file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 
 package com.videoroom.ui.screens

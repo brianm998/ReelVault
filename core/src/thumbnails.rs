@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 VideoRoom Contributors
+
 use crate::concurrency::acquire_ffmpeg_permit;
 use crate::db::Database;
 use crate::error::{Result, VideoRoomError};

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 VideoRoom Contributors
+
 package com.videoroom.data.editors
 
 /** License tier displayed next to each editor in the configuration UI. */

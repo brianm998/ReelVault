@@ -29,7 +29,14 @@
       "Bash(./target/debug/videoroom-core --port 50051 --db-path /tmp/vr_test.db)",
       "Bash(./target/debug/videoroom-core --port 50051 --db-path /tmp/vr_test2.db)",
       "Bash(wait)",
-      "Bash(echo \"=== first ===\"; cat /tmp/vr_smoke3.log 2>/dev/null | head -15 *)"
+      "Bash(echo \"=== first ===\"; cat /tmp/vr_smoke3.log 2>/dev/null | head -15 *)",
+      "Bash(curl -sf https://www.gnu.org/licenses/gpl-3.0.txt -o /tmp/gpl-3.0.txt)",
+      "WebFetch(domain:www.gnu.org)",
+      "Bash(curl -v https://www.gnu.org/licenses/gpl-3.0.txt)",
+      "Bash(curl -sk https://www.gnu.org/licenses/gpl-3.0.txt -o /tmp/gpl-3.0.txt)",
+      "Bash(git config *)",
+      "Bash(chmod +x /tmp/add_spdx.sh)",
+      "Bash(/tmp/add_spdx.sh)"
     ]
   }
 }
