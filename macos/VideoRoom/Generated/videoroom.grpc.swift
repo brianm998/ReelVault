@@ -1,3 +1,9 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 VideoRoom Contributors
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 VideoRoom Contributors
+
 // DO NOT EDIT.
 // swift-format-ignore-file
 // swiftlint:disable all
@@ -440,6 +446,78 @@ internal enum Videoroom_VideoRoom: Sendable {
                 method: "GetCurrentCatalog"
             )
         }
+        /// Namespace for "UpdateVideoLocation" metadata.
+        internal enum UpdateVideoLocation: Sendable {
+            /// Request type for "UpdateVideoLocation".
+            internal typealias Input = Videoroom_UpdateVideoLocationRequest
+            /// Response type for "UpdateVideoLocation".
+            internal typealias Output = Videoroom_Response
+            /// Descriptor for "UpdateVideoLocation".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "UpdateVideoLocation"
+            )
+        }
+        /// Namespace for "ListVideosWithLocations" metadata.
+        internal enum ListVideosWithLocations: Sendable {
+            /// Request type for "ListVideosWithLocations".
+            internal typealias Input = Videoroom_ListVideosWithLocationsRequest
+            /// Response type for "ListVideosWithLocations".
+            internal typealias Output = Videoroom_VideoLocationsResponse
+            /// Descriptor for "ListVideosWithLocations".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "ListVideosWithLocations"
+            )
+        }
+        /// Namespace for "ListNamedLocations" metadata.
+        internal enum ListNamedLocations: Sendable {
+            /// Request type for "ListNamedLocations".
+            internal typealias Input = Videoroom_ListNamedLocationsRequest
+            /// Response type for "ListNamedLocations".
+            internal typealias Output = Videoroom_NamedLocationsResponse
+            /// Descriptor for "ListNamedLocations".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "ListNamedLocations"
+            )
+        }
+        /// Namespace for "UpsertNamedLocation" metadata.
+        internal enum UpsertNamedLocation: Sendable {
+            /// Request type for "UpsertNamedLocation".
+            internal typealias Input = Videoroom_UpsertNamedLocationRequest
+            /// Response type for "UpsertNamedLocation".
+            internal typealias Output = Videoroom_NamedLocationResponse
+            /// Descriptor for "UpsertNamedLocation".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "UpsertNamedLocation"
+            )
+        }
+        /// Namespace for "DeleteNamedLocation" metadata.
+        internal enum DeleteNamedLocation: Sendable {
+            /// Request type for "DeleteNamedLocation".
+            internal typealias Input = Videoroom_DeleteNamedLocationRequest
+            /// Response type for "DeleteNamedLocation".
+            internal typealias Output = Videoroom_Response
+            /// Descriptor for "DeleteNamedLocation".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "DeleteNamedLocation"
+            )
+        }
+        /// Namespace for "UpdateVideoCaptureDate" metadata.
+        internal enum UpdateVideoCaptureDate: Sendable {
+            /// Request type for "UpdateVideoCaptureDate".
+            internal typealias Input = Videoroom_UpdateVideoCaptureDateRequest
+            /// Response type for "UpdateVideoCaptureDate".
+            internal typealias Output = Videoroom_Response
+            /// Descriptor for "UpdateVideoCaptureDate".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "UpdateVideoCaptureDate"
+            )
+        }
         /// Descriptors for all methods in the "videoroom.VideoRoom" service.
         internal static let descriptors: [GRPCCore.MethodDescriptor] = [
             ListVideos.descriptor,
@@ -476,7 +554,13 @@ internal enum Videoroom_VideoRoom: Sendable {
             UpdateConfig.descriptor,
             OpenCatalog.descriptor,
             CloseCatalog.descriptor,
-            GetCurrentCatalog.descriptor
+            GetCurrentCatalog.descriptor,
+            UpdateVideoLocation.descriptor,
+            ListVideosWithLocations.descriptor,
+            ListNamedLocations.descriptor,
+            UpsertNamedLocation.descriptor,
+            DeleteNamedLocation.descriptor,
+            UpdateVideoCaptureDate.descriptor
         ]
     }
 }
@@ -1037,6 +1121,109 @@ extension Videoroom_VideoRoom {
             request: GRPCCore.StreamingServerRequest<Videoroom_GetCurrentCatalogRequest>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_CatalogInfo>
+
+        /// Handle the "UpdateVideoLocation" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Geolocation — set or correct the GPS coordinates for one or more videos,
+        /// > and enumerate every video that has known coordinates (for the global map).
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_UpdateVideoLocationRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func updateVideoLocation(
+            request: GRPCCore.StreamingServerRequest<Videoroom_UpdateVideoLocationRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
+
+        /// Handle the "ListVideosWithLocations" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_ListVideosWithLocationsRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_VideoLocationsResponse` messages.
+        func listVideosWithLocations(
+            request: GRPCCore.StreamingServerRequest<Videoroom_ListVideosWithLocationsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_VideoLocationsResponse>
+
+        /// Handle the "ListNamedLocations" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Named locations — user-defined names for specific lat/lon points (e.g.
+        /// > "Home", "Yosemite Valley Visitor Center"). Clients resolve any video's
+        /// > GPS into a name by proximity (default 250 m) using ListNamedLocations,
+        /// > then cache the result. Names are also written by the location picker.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_ListNamedLocationsRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_NamedLocationsResponse` messages.
+        func listNamedLocations(
+            request: GRPCCore.StreamingServerRequest<Videoroom_ListNamedLocationsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_NamedLocationsResponse>
+
+        /// Handle the "UpsertNamedLocation" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_UpsertNamedLocationRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_NamedLocationResponse` messages.
+        func upsertNamedLocation(
+            request: GRPCCore.StreamingServerRequest<Videoroom_UpsertNamedLocationRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_NamedLocationResponse>
+
+        /// Handle the "DeleteNamedLocation" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_DeleteNamedLocationRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func deleteNamedLocation(
+            request: GRPCCore.StreamingServerRequest<Videoroom_DeleteNamedLocationRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
+
+        /// Handle the "UpdateVideoCaptureDate" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Capture date/time — set or correct when a video was recorded. Mirrors
+        /// > UpdateVideoLocation: catalog is always updated; the file's metadata is
+        /// > touched (via ffmpeg's `-metadata creation_time=...`) only when the
+        /// > client asks for it.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_UpdateVideoCaptureDateRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func updateVideoCaptureDate(
+            request: GRPCCore.StreamingServerRequest<Videoroom_UpdateVideoCaptureDateRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
     }
 
     /// Service protocol for the "videoroom.VideoRoom" service.
@@ -1582,6 +1769,109 @@ extension Videoroom_VideoRoom {
             request: GRPCCore.ServerRequest<Videoroom_GetCurrentCatalogRequest>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.ServerResponse<Videoroom_CatalogInfo>
+
+        /// Handle the "UpdateVideoLocation" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Geolocation — set or correct the GPS coordinates for one or more videos,
+        /// > and enumerate every video that has known coordinates (for the global map).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_UpdateVideoLocationRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func updateVideoLocation(
+            request: GRPCCore.ServerRequest<Videoroom_UpdateVideoLocationRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
+
+        /// Handle the "ListVideosWithLocations" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_ListVideosWithLocationsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_VideoLocationsResponse` message.
+        func listVideosWithLocations(
+            request: GRPCCore.ServerRequest<Videoroom_ListVideosWithLocationsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_VideoLocationsResponse>
+
+        /// Handle the "ListNamedLocations" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Named locations — user-defined names for specific lat/lon points (e.g.
+        /// > "Home", "Yosemite Valley Visitor Center"). Clients resolve any video's
+        /// > GPS into a name by proximity (default 250 m) using ListNamedLocations,
+        /// > then cache the result. Names are also written by the location picker.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_ListNamedLocationsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_NamedLocationsResponse` message.
+        func listNamedLocations(
+            request: GRPCCore.ServerRequest<Videoroom_ListNamedLocationsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_NamedLocationsResponse>
+
+        /// Handle the "UpsertNamedLocation" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_UpsertNamedLocationRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_NamedLocationResponse` message.
+        func upsertNamedLocation(
+            request: GRPCCore.ServerRequest<Videoroom_UpsertNamedLocationRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_NamedLocationResponse>
+
+        /// Handle the "DeleteNamedLocation" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_DeleteNamedLocationRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func deleteNamedLocation(
+            request: GRPCCore.ServerRequest<Videoroom_DeleteNamedLocationRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
+
+        /// Handle the "UpdateVideoCaptureDate" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Capture date/time — set or correct when a video was recorded. Mirrors
+        /// > UpdateVideoLocation: catalog is always updated; the file's metadata is
+        /// > touched (via ffmpeg's `-metadata creation_time=...`) only when the
+        /// > client asks for it.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_UpdateVideoCaptureDateRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func updateVideoCaptureDate(
+            request: GRPCCore.ServerRequest<Videoroom_UpdateVideoCaptureDateRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
     }
 
     /// Simple service protocol for the "videoroom.VideoRoom" service.
@@ -2128,6 +2418,109 @@ extension Videoroom_VideoRoom {
             request: Videoroom_GetCurrentCatalogRequest,
             context: GRPCCore.ServerContext
         ) async throws -> Videoroom_CatalogInfo
+
+        /// Handle the "UpdateVideoLocation" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Geolocation — set or correct the GPS coordinates for one or more videos,
+        /// > and enumerate every video that has known coordinates (for the global map).
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_UpdateVideoLocationRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func updateVideoLocation(
+            request: Videoroom_UpdateVideoLocationRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
+
+        /// Handle the "ListVideosWithLocations" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_ListVideosWithLocationsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_VideoLocationsResponse` to respond with.
+        func listVideosWithLocations(
+            request: Videoroom_ListVideosWithLocationsRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_VideoLocationsResponse
+
+        /// Handle the "ListNamedLocations" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Named locations — user-defined names for specific lat/lon points (e.g.
+        /// > "Home", "Yosemite Valley Visitor Center"). Clients resolve any video's
+        /// > GPS into a name by proximity (default 250 m) using ListNamedLocations,
+        /// > then cache the result. Names are also written by the location picker.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_ListNamedLocationsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_NamedLocationsResponse` to respond with.
+        func listNamedLocations(
+            request: Videoroom_ListNamedLocationsRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_NamedLocationsResponse
+
+        /// Handle the "UpsertNamedLocation" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_UpsertNamedLocationRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_NamedLocationResponse` to respond with.
+        func upsertNamedLocation(
+            request: Videoroom_UpsertNamedLocationRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_NamedLocationResponse
+
+        /// Handle the "DeleteNamedLocation" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_DeleteNamedLocationRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func deleteNamedLocation(
+            request: Videoroom_DeleteNamedLocationRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
+
+        /// Handle the "UpdateVideoCaptureDate" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Capture date/time — set or correct when a video was recorded. Mirrors
+        /// > UpdateVideoLocation: catalog is always updated; the file's metadata is
+        /// > touched (via ffmpeg's `-metadata creation_time=...`) only when the
+        /// > client asks for it.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_UpdateVideoCaptureDateRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func updateVideoCaptureDate(
+            request: Videoroom_UpdateVideoCaptureDateRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
     }
 }
 
@@ -2520,6 +2913,72 @@ extension Videoroom_VideoRoom.StreamingServiceProtocol {
                 )
             }
         )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.UpdateVideoLocation.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_UpdateVideoLocationRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.updateVideoLocation(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.ListVideosWithLocations.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_ListVideosWithLocationsRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_VideoLocationsResponse>(),
+            handler: { request, context in
+                try await self.listVideosWithLocations(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.ListNamedLocations.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_ListNamedLocationsRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_NamedLocationsResponse>(),
+            handler: { request, context in
+                try await self.listNamedLocations(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.UpsertNamedLocation.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_UpsertNamedLocationRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_NamedLocationResponse>(),
+            handler: { request, context in
+                try await self.upsertNamedLocation(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.DeleteNamedLocation.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_DeleteNamedLocationRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.deleteNamedLocation(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.UpdateVideoCaptureDate.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_UpdateVideoCaptureDateRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.updateVideoCaptureDate(
+                    request: request,
+                    context: context
+                )
+            }
+        )
     }
 }
 
@@ -2905,6 +3364,72 @@ extension Videoroom_VideoRoom.ServiceProtocol {
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_CatalogInfo> {
         let response = try await self.getCurrentCatalog(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func updateVideoLocation(
+        request: GRPCCore.StreamingServerRequest<Videoroom_UpdateVideoLocationRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.updateVideoLocation(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func listVideosWithLocations(
+        request: GRPCCore.StreamingServerRequest<Videoroom_ListVideosWithLocationsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_VideoLocationsResponse> {
+        let response = try await self.listVideosWithLocations(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func listNamedLocations(
+        request: GRPCCore.StreamingServerRequest<Videoroom_ListNamedLocationsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_NamedLocationsResponse> {
+        let response = try await self.listNamedLocations(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func upsertNamedLocation(
+        request: GRPCCore.StreamingServerRequest<Videoroom_UpsertNamedLocationRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_NamedLocationResponse> {
+        let response = try await self.upsertNamedLocation(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func deleteNamedLocation(
+        request: GRPCCore.StreamingServerRequest<Videoroom_DeleteNamedLocationRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.deleteNamedLocation(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func updateVideoCaptureDate(
+        request: GRPCCore.StreamingServerRequest<Videoroom_UpdateVideoCaptureDateRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.updateVideoCaptureDate(
             request: GRPCCore.ServerRequest(stream: request),
             context: context
         )
@@ -3375,6 +3900,84 @@ extension Videoroom_VideoRoom.SimpleServiceProtocol {
     ) async throws -> GRPCCore.ServerResponse<Videoroom_CatalogInfo> {
         return GRPCCore.ServerResponse<Videoroom_CatalogInfo>(
             message: try await self.getCurrentCatalog(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func updateVideoLocation(
+        request: GRPCCore.ServerRequest<Videoroom_UpdateVideoLocationRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.updateVideoLocation(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func listVideosWithLocations(
+        request: GRPCCore.ServerRequest<Videoroom_ListVideosWithLocationsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_VideoLocationsResponse> {
+        return GRPCCore.ServerResponse<Videoroom_VideoLocationsResponse>(
+            message: try await self.listVideosWithLocations(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func listNamedLocations(
+        request: GRPCCore.ServerRequest<Videoroom_ListNamedLocationsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_NamedLocationsResponse> {
+        return GRPCCore.ServerResponse<Videoroom_NamedLocationsResponse>(
+            message: try await self.listNamedLocations(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func upsertNamedLocation(
+        request: GRPCCore.ServerRequest<Videoroom_UpsertNamedLocationRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_NamedLocationResponse> {
+        return GRPCCore.ServerResponse<Videoroom_NamedLocationResponse>(
+            message: try await self.upsertNamedLocation(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func deleteNamedLocation(
+        request: GRPCCore.ServerRequest<Videoroom_DeleteNamedLocationRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.deleteNamedLocation(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func updateVideoCaptureDate(
+        request: GRPCCore.ServerRequest<Videoroom_UpdateVideoCaptureDateRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.updateVideoCaptureDate(
                 request: request.message,
                 context: context
             ),
@@ -4101,6 +4704,139 @@ extension Videoroom_VideoRoom {
             deserializer: some GRPCCore.MessageDeserializer<Videoroom_CatalogInfo>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_CatalogInfo>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "UpdateVideoLocation" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Geolocation — set or correct the GPS coordinates for one or more videos,
+        /// > and enumerate every video that has known coordinates (for the global map).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_UpdateVideoLocationRequest` message.
+        ///   - serializer: A serializer for `Videoroom_UpdateVideoLocationRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func updateVideoLocation<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_UpdateVideoLocationRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_UpdateVideoLocationRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "ListVideosWithLocations" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_ListVideosWithLocationsRequest` message.
+        ///   - serializer: A serializer for `Videoroom_ListVideosWithLocationsRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_VideoLocationsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func listVideosWithLocations<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_ListVideosWithLocationsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_ListVideosWithLocationsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_VideoLocationsResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_VideoLocationsResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "ListNamedLocations" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Named locations — user-defined names for specific lat/lon points (e.g.
+        /// > "Home", "Yosemite Valley Visitor Center"). Clients resolve any video's
+        /// > GPS into a name by proximity (default 250 m) using ListNamedLocations,
+        /// > then cache the result. Names are also written by the location picker.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_ListNamedLocationsRequest` message.
+        ///   - serializer: A serializer for `Videoroom_ListNamedLocationsRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_NamedLocationsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func listNamedLocations<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_ListNamedLocationsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_ListNamedLocationsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_NamedLocationsResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_NamedLocationsResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "UpsertNamedLocation" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_UpsertNamedLocationRequest` message.
+        ///   - serializer: A serializer for `Videoroom_UpsertNamedLocationRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_NamedLocationResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func upsertNamedLocation<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_UpsertNamedLocationRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_UpsertNamedLocationRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_NamedLocationResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_NamedLocationResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "DeleteNamedLocation" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_DeleteNamedLocationRequest` message.
+        ///   - serializer: A serializer for `Videoroom_DeleteNamedLocationRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func deleteNamedLocation<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_DeleteNamedLocationRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_DeleteNamedLocationRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "UpdateVideoCaptureDate" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Capture date/time — set or correct when a video was recorded. Mirrors
+        /// > UpdateVideoLocation: catalog is always updated; the file's metadata is
+        /// > touched (via ffmpeg's `-metadata creation_time=...`) only when the
+        /// > client asks for it.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_UpdateVideoCaptureDateRequest` message.
+        ///   - serializer: A serializer for `Videoroom_UpdateVideoCaptureDateRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func updateVideoCaptureDate<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_UpdateVideoCaptureDateRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_UpdateVideoCaptureDateRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result
         ) async throws -> Result where Result: Sendable
     }
 
@@ -5209,6 +5945,205 @@ extension Videoroom_VideoRoom {
                 onResponse: handleResponse
             )
         }
+
+        /// Call the "UpdateVideoLocation" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Geolocation — set or correct the GPS coordinates for one or more videos,
+        /// > and enumerate every video that has known coordinates (for the global map).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_UpdateVideoLocationRequest` message.
+        ///   - serializer: A serializer for `Videoroom_UpdateVideoLocationRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func updateVideoLocation<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_UpdateVideoLocationRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_UpdateVideoLocationRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.UpdateVideoLocation.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "ListVideosWithLocations" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_ListVideosWithLocationsRequest` message.
+        ///   - serializer: A serializer for `Videoroom_ListVideosWithLocationsRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_VideoLocationsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func listVideosWithLocations<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_ListVideosWithLocationsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_ListVideosWithLocationsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_VideoLocationsResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_VideoLocationsResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.ListVideosWithLocations.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "ListNamedLocations" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Named locations — user-defined names for specific lat/lon points (e.g.
+        /// > "Home", "Yosemite Valley Visitor Center"). Clients resolve any video's
+        /// > GPS into a name by proximity (default 250 m) using ListNamedLocations,
+        /// > then cache the result. Names are also written by the location picker.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_ListNamedLocationsRequest` message.
+        ///   - serializer: A serializer for `Videoroom_ListNamedLocationsRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_NamedLocationsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func listNamedLocations<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_ListNamedLocationsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_ListNamedLocationsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_NamedLocationsResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_NamedLocationsResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.ListNamedLocations.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "UpsertNamedLocation" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_UpsertNamedLocationRequest` message.
+        ///   - serializer: A serializer for `Videoroom_UpsertNamedLocationRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_NamedLocationResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func upsertNamedLocation<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_UpsertNamedLocationRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_UpsertNamedLocationRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_NamedLocationResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_NamedLocationResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.UpsertNamedLocation.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "DeleteNamedLocation" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_DeleteNamedLocationRequest` message.
+        ///   - serializer: A serializer for `Videoroom_DeleteNamedLocationRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func deleteNamedLocation<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_DeleteNamedLocationRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_DeleteNamedLocationRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.DeleteNamedLocation.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "UpdateVideoCaptureDate" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Capture date/time — set or correct when a video was recorded. Mirrors
+        /// > UpdateVideoLocation: catalog is always updated; the file's metadata is
+        /// > touched (via ffmpeg's `-metadata creation_time=...`) only when the
+        /// > client asks for it.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_UpdateVideoCaptureDateRequest` message.
+        ///   - serializer: A serializer for `Videoroom_UpdateVideoCaptureDateRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func updateVideoCaptureDate<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_UpdateVideoCaptureDateRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_UpdateVideoCaptureDateRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.UpdateVideoCaptureDate.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
     }
 }
 
@@ -6121,6 +7056,175 @@ extension Videoroom_VideoRoom.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_GetCurrentCatalogRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_CatalogInfo>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateVideoLocation" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Geolocation — set or correct the GPS coordinates for one or more videos,
+    /// > and enumerate every video that has known coordinates (for the global map).
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_UpdateVideoLocationRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func updateVideoLocation<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_UpdateVideoLocationRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.updateVideoLocation(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_UpdateVideoLocationRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_Response>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ListVideosWithLocations" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_ListVideosWithLocationsRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func listVideosWithLocations<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_ListVideosWithLocationsRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_VideoLocationsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.listVideosWithLocations(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_ListVideosWithLocationsRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_VideoLocationsResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ListNamedLocations" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Named locations — user-defined names for specific lat/lon points (e.g.
+    /// > "Home", "Yosemite Valley Visitor Center"). Clients resolve any video's
+    /// > GPS into a name by proximity (default 250 m) using ListNamedLocations,
+    /// > then cache the result. Names are also written by the location picker.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_ListNamedLocationsRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func listNamedLocations<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_ListNamedLocationsRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_NamedLocationsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.listNamedLocations(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_ListNamedLocationsRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_NamedLocationsResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpsertNamedLocation" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_UpsertNamedLocationRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func upsertNamedLocation<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_UpsertNamedLocationRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_NamedLocationResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.upsertNamedLocation(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_UpsertNamedLocationRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_NamedLocationResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "DeleteNamedLocation" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_DeleteNamedLocationRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func deleteNamedLocation<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_DeleteNamedLocationRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.deleteNamedLocation(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_DeleteNamedLocationRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_Response>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateVideoCaptureDate" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Capture date/time — set or correct when a video was recorded. Mirrors
+    /// > UpdateVideoLocation: catalog is always updated; the file's metadata is
+    /// > touched (via ffmpeg's `-metadata creation_time=...`) only when the
+    /// > client asks for it.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_UpdateVideoCaptureDateRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func updateVideoCaptureDate<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_UpdateVideoCaptureDateRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.updateVideoCaptureDate(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_UpdateVideoCaptureDateRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_Response>(),
             options: options,
             onResponse: handleResponse
         )
@@ -7175,6 +8279,199 @@ extension Videoroom_VideoRoom.ClientProtocol {
             metadata: metadata
         )
         return try await self.getCurrentCatalog(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateVideoLocation" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Geolocation — set or correct the GPS coordinates for one or more videos,
+    /// > and enumerate every video that has known coordinates (for the global map).
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func updateVideoLocation<Result>(
+        _ message: Videoroom_UpdateVideoLocationRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_UpdateVideoLocationRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.updateVideoLocation(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ListVideosWithLocations" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func listVideosWithLocations<Result>(
+        _ message: Videoroom_ListVideosWithLocationsRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_VideoLocationsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_ListVideosWithLocationsRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.listVideosWithLocations(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ListNamedLocations" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Named locations — user-defined names for specific lat/lon points (e.g.
+    /// > "Home", "Yosemite Valley Visitor Center"). Clients resolve any video's
+    /// > GPS into a name by proximity (default 250 m) using ListNamedLocations,
+    /// > then cache the result. Names are also written by the location picker.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func listNamedLocations<Result>(
+        _ message: Videoroom_ListNamedLocationsRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_NamedLocationsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_ListNamedLocationsRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.listNamedLocations(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpsertNamedLocation" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func upsertNamedLocation<Result>(
+        _ message: Videoroom_UpsertNamedLocationRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_NamedLocationResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_UpsertNamedLocationRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.upsertNamedLocation(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "DeleteNamedLocation" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func deleteNamedLocation<Result>(
+        _ message: Videoroom_DeleteNamedLocationRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_DeleteNamedLocationRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.deleteNamedLocation(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateVideoCaptureDate" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Capture date/time — set or correct when a video was recorded. Mirrors
+    /// > UpdateVideoLocation: catalog is always updated; the file's metadata is
+    /// > touched (via ffmpeg's `-metadata creation_time=...`) only when the
+    /// > client asks for it.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func updateVideoCaptureDate<Result>(
+        _ message: Videoroom_UpdateVideoCaptureDateRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_UpdateVideoCaptureDateRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.updateVideoCaptureDate(
             request: request,
             options: options,
             onResponse: handleResponse

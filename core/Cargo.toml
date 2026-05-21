@@ -54,6 +54,13 @@ notify = "6.1"
 tempfile = "3.8"
 dirs = "5.0"
 
+# Data-parallel iteration — used by the scan-time metadata extraction to
+# overlap many FFprobe invocations. The FFmpeg semaphore in
+# `concurrency.rs` still bounds *external-process* concurrency; rayon just
+# lets us have enough in-flight work that the semaphore stays saturated
+# under SAN-bound IO latency.
+rayon = "1.10"
+
 # Process execution (for FFprobe)
 which = "5.0"
 serde_with = "3.4"

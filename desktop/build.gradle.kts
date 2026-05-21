@@ -36,6 +36,12 @@ dependencies {
     implementation("org.slf4j:slf4j-api:2.0.7")
     implementation("ch.qos.logback:logback-classic:1.4.11")
 
+    // Map rendering. JXMapViewer2 is a pure-Java OpenStreetMap viewer that
+    // we embed in Compose Desktop via `SwingPanel`. Chosen over a webview
+    // (Google Maps for desktop requires JS embedding) and over commercial
+    // SDKs (paid). MIT-licensed, mature, used by tools like JOSM.
+    implementation("org.jxmapviewer:jxmapviewer2:2.8")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
 }

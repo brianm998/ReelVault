@@ -24,6 +24,12 @@ fun DetailScreen(
     /** Current thumbnail min-width controlling adaptive grid column count. */
     thumbnailWidth: androidx.compose.ui.unit.Dp = 220.dp,
     onThumbnailWidthChange: (androidx.compose.ui.unit.Dp) -> Unit = {},
+    /** Opens the LocationPickerDialog for the given video IDs. `initial` is
+     *  pre-filled GPS coordinate (lat, lon) when one is already set. */
+    onEditLocation: (videoIds: List<String>, initial: Pair<Double, Double>?) -> Unit = { _, _ -> },
+    /** Opens the CaptureDateDialog for the given video IDs. `initialTs` is
+     *  the existing Unix-ms capture timestamp when one is set, else null. */
+    onEditCaptureDate: (videoIds: List<String>, initialTs: Long?) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val metadata = viewModel.metadata
@@ -196,9 +202,10 @@ fun DetailScreen(
                 }
 
                 // EXIF / Camera section
+                val hasGps = metadata.value!!.gpsLatitude != 0.0 || metadata.value!!.gpsLongitude != 0.0
                 val hasExif = metadata.value!!.cameraModel.isNotEmpty() ||
                               metadata.value!!.lensModel.isNotEmpty() ||
-                              metadata.value!!.gpsLatitude != 0.0 ||
+                              hasGps ||
                               metadata.value!!.creationDate > 0
                 if (hasExif) {
                     Spacer(modifier = Modifier.height(VideoRoomSpacing.Medium))
@@ -216,10 +223,109 @@ fun DetailScreen(
                     if (metadata.value!!.creationDate > 0) {
                         MetadataItem("Captured", metadata.value!!.creationDateFormatted)
                     }
-                    if (metadata.value!!.gpsLatitude != 0.0 || metadata.value!!.gpsLongitude != 0.0) {
-                        MetadataItem(
-                            "GPS",
-                            "${"%.4f".format(metadata.value!!.gpsLatitude)}, ${"%.4f".format(metadata.value!!.gpsLongitude)}"
+                    if (hasGps) {
+                        // Prefer a user-defined name when one is registered
+                        // within 250 m of these coordinates; the raw
+                        // lat/long collapses behind a disclosure so the
+                        // named view stays uncluttered. Mirrors the
+                        // LocationPickerView's "name-first" treatment.
+                        val matchedName = gridViewModel.nameForLocation(
+                            metadata.value!!.gpsLatitude,
+                            metadata.value!!.gpsLongitude,
+                        )
+                        if (matchedName != null) {
+                            NamedGpsRow(
+                                name = matchedName.name,
+                                latitude = metadata.value!!.gpsLatitude,
+                                longitude = metadata.value!!.gpsLongitude,
+                            )
+                        } else {
+                            MetadataItem(
+                                "GPS",
+                                "${"%.4f".format(metadata.value!!.gpsLatitude)}, ${"%.4f".format(metadata.value!!.gpsLongitude)}"
+                            )
+                        }
+                    }
+                }
+
+                // "Set / Edit location" button. Surfaced even when no EXIF
+                // exists at all so users can geotag a video that lacks GPS.
+                Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
+                com.videoroom.ui.components.Tooltip(
+                    text = if (hasGps) {
+                        "Replace the existing GPS coordinate via an interactive map."
+                    } else {
+                        "Open a map and pin where this video was captured. Applies " +
+                            "to every video currently selected, so you can geotag a " +
+                            "batch in one go."
+                    }
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            val selected = gridViewModel.selectedVideoIds.value
+                            val targets = if (selected.size > 1 && metadata.value!!.id in selected) {
+                                selected
+                            } else {
+                                listOf(metadata.value!!.id)
+                            }
+                            val initial = if (hasGps) {
+                                metadata.value!!.gpsLatitude to metadata.value!!.gpsLongitude
+                            } else null
+                            onEditLocation(targets, initial)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
+                        Text(
+                            if (hasGps) "Change location…"
+                            else "Set location…",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                }
+
+                // "Set / Change capture date" button. Same pattern as the
+                // location button: works on the multi-selection when the
+                // current video is part of it.
+                Spacer(modifier = Modifier.height(VideoRoomSpacing.XSmall))
+                val hasDate = metadata.value!!.creationDate > 0
+                com.videoroom.ui.components.Tooltip(
+                    text = if (hasDate) {
+                        "Replace this video's recorded date and time with a calendar pick."
+                    } else {
+                        "Pick the day (and optionally time) this video was captured. " +
+                            "Applies to every video currently selected, so you can " +
+                            "stamp a batch in one go."
+                    }
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            val selected = gridViewModel.selectedVideoIds.value
+                            val targets = if (selected.size > 1 && metadata.value!!.id in selected) {
+                                selected
+                            } else {
+                                listOf(metadata.value!!.id)
+                            }
+                            val initialTs = if (hasDate) metadata.value!!.creationDate else null
+                            onEditCaptureDate(targets, initialTs)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarMonth,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
+                        Text(
+                            if (hasDate) "Change capture date…"
+                            else "Set capture date…",
+                            style = MaterialTheme.typography.labelMedium
                         )
                     }
                 }
@@ -240,7 +346,18 @@ fun DetailScreen(
                         com.videoroom.ui.components.Tooltip(
                             text = "Remove this video from the stack. The other members stay grouped."
                         ) {
-                            TextButton(onClick = { viewModel.ungroupCurrent() }) {
+                            TextButton(onClick = {
+                                viewModel.ungroupCurrent { oldGroupId ->
+                                    // Refresh the grid's expanded-stack
+                                    // caches + representative
+                                    // groupId/groupSize so the card
+                                    // stops claiming to be a stack
+                                    // member. Without this hop the
+                                    // right panel updates but the grid
+                                    // keeps treating it as expandable.
+                                    gridViewModel.refreshAfterStackChange(oldGroupId)
+                                }
+                            }) {
                                 Text("Ungroup this", style = MaterialTheme.typography.labelSmall)
                             }
                         }
@@ -407,6 +524,61 @@ fun formatBytes(bytes: Long): String {
         bytes >= 1024L * 1024L * 1024L -> "%.1f GB".format(bytes / (1024.0 * 1024.0 * 1024.0))
         bytes >= 1024L * 1024L -> "%.0f MB".format(bytes / (1024.0 * 1024.0))
         else -> "%.0f KB".format(bytes / 1024.0)
+    }
+}
+
+/**
+ * GPS field with a user-defined name resolved from the catalog's
+ * named-locations table. Shows the name as the primary identity; the raw
+ * lat/long sits inside a collapsible disclosure so it's accessible but not
+ * visually noisy. Mirrors the [LocationPickerDialog]'s "name-first"
+ * treatment so the two surfaces feel consistent.
+ */
+@Composable
+fun NamedGpsRow(name: String, latitude: Double, longitude: Double) {
+    var expanded by remember { mutableStateOf(false) }
+    com.videoroom.ui.components.Tooltip(
+        text = "Named place at $latitude, $longitude. " +
+            "Click 'Show coordinates' to see the exact values."
+    ) {
+        Column(modifier = Modifier.padding(vertical = VideoRoomSpacing.Small)) {
+            Text(
+                text = "Location",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Place,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            TextButton(
+                onClick = { expanded = !expanded },
+                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
+            ) {
+                Text(
+                    text = if (expanded) "Hide coordinates" else "Show coordinates",
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
+            if (expanded) {
+                Text(
+                    text = "%.6f, %.6f".format(latitude, longitude),
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 

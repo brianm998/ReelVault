@@ -43,6 +43,18 @@ private val logger = LoggerFactory.getLogger("VideoRoom")
 val LocalShiftPressed = compositionLocalOf { false }
 
 fun main() = application {
+    // Set the JVM-wide HTTP User-Agent before any networking happens. The
+    // OpenStreetMap tile server (used by the map views) blocks Java's
+    // default `Java/<version>` UA, which is why JXMapViewer renders blank
+    // until this is set. Must happen before the first URLConnection;
+    // setting it here at the top of main() is the safest spot.
+    if (System.getProperty("http.agent").isNullOrEmpty()) {
+        System.setProperty(
+            "http.agent",
+            "VideoRoom/0.1 (+https://github.com/videoroom/videoroom)"
+        )
+    }
+
     val windowState = rememberWindowState(
         size = DpSize(width = 1400.dp, height = 900.dp)
     )
@@ -53,6 +65,10 @@ fun main() = application {
     val groupSelectedAction = remember { mutableStateOf<() -> Unit>({}) }
     // Same pattern for the Tab key panel-toggle.
     val togglePanelsAction = remember { mutableStateOf<() -> Unit>({}) }
+    // …and for Cmd/Ctrl+A — "select all currently-visible videos".
+    val selectAllAction = remember { mutableStateOf<() -> Unit>({}) }
+    // …and for Cmd/Ctrl+D — "deselect everything".
+    val deselectAllAction = remember { mutableStateOf<() -> Unit>({}) }
     // Title reflects the currently-open catalog (lifted here so Window.title
     // recomposes when the catalog changes).
     var currentCatalog by remember { mutableStateOf(CatalogInfo.Closed) }
@@ -91,12 +107,40 @@ fun main() = application {
                 return@Window true // consume so focus traversal doesn't also fire
             }
             false
+        },
+        // onKeyEvent fires AFTER focused widgets — so a focused TextField
+        // (search bar, notes, keyword input) can still handle Cmd/Ctrl+A as
+        // "select all text"; we only catch it when nothing else does.
+        onKeyEvent = { event ->
+            when {
+                event.type != KeyEventType.KeyDown -> false
+                event.key == Key.A &&
+                    (event.isMetaPressed || event.isCtrlPressed) &&
+                    !event.isShiftPressed && !event.isAltPressed -> {
+                    selectAllAction.value()
+                    true
+                }
+                // Cmd/Ctrl+D — deselect every selected video. Same
+                // post-process placement as Cmd+A so a focused TextField
+                // gets first crack (it doesn't actually use Cmd+D, but the
+                // policy is "Window-level shortcuts never steal from a
+                // focused widget").
+                event.key == Key.D &&
+                    (event.isMetaPressed || event.isCtrlPressed) &&
+                    !event.isShiftPressed && !event.isAltPressed -> {
+                    deselectAllAction.value()
+                    true
+                }
+                else -> false
+            }
         }
     ) {
         CompositionLocalProvider(LocalShiftPressed provides shiftPressed) {
             VideoRoomApp(
                 onRegisterGroupAction = { groupSelectedAction.value = it },
                 onRegisterTogglePanelsAction = { togglePanelsAction.value = it },
+                onRegisterSelectAllAction = { selectAllAction.value = it },
+                onRegisterDeselectAllAction = { deselectAllAction.value = it },
                 onCatalogChanged = { currentCatalog = it }
             )
         }
@@ -109,6 +153,12 @@ fun VideoRoomApp(
     onRegisterGroupAction: (() -> Unit) -> Unit = {},
     /** Called once to register the "toggle panels" action for the Tab shortcut. */
     onRegisterTogglePanelsAction: (() -> Unit) -> Unit = {},
+    /** Called once to register the "select all visible" action for the
+     *  Cmd/Ctrl+A shortcut. */
+    onRegisterSelectAllAction: (() -> Unit) -> Unit = {},
+    /** Called once to register the "deselect everything" action for the
+     *  Cmd/Ctrl+D shortcut. */
+    onRegisterDeselectAllAction: (() -> Unit) -> Unit = {},
     /** Notified whenever the open-catalog state changes, so the parent can
      *  update the Window title. */
     onCatalogChanged: (CatalogInfo) -> Unit = {}
@@ -131,6 +181,15 @@ fun VideoRoomApp(
 
     // External editors preferences dialog visibility.
     var showEditorsDialog by remember { mutableStateOf(false) }
+    // Global-map dialog visibility.
+    var showGlobalMap by remember { mutableStateOf(false) }
+    // Location-picker state. `videoIdsForLocationPicker` non-null means the
+    // dialog is open and operates on that set of video ids.
+    var videoIdsForLocationPicker by remember { mutableStateOf<List<String>?>(null) }
+    var initialLocationForPicker by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    // Capture-date picker state — same pattern as the location picker.
+    var videoIdsForDatePicker by remember { mutableStateOf<List<String>?>(null) }
+    var initialTimestampForPicker by remember { mutableStateOf<Long?>(null) }
 
     // OpenCatalog dialog state. Shown automatically when the daemon has no
     // catalog open, or when the user picks File → Open.
@@ -146,6 +205,8 @@ fun VideoRoomApp(
     // Register the keyboard shortcut handlers with the Window-level key listener.
     LaunchedEffect(gridViewModel) {
         onRegisterGroupAction { gridViewModel.groupSelectedVideos() }
+        onRegisterSelectAllAction { gridViewModel.selectAllVisible() }
+        onRegisterDeselectAllAction { gridViewModel.clearSelection() }
     }
     LaunchedEffect(Unit) {
         onRegisterTogglePanelsAction {
@@ -166,6 +227,11 @@ fun VideoRoomApp(
         gridViewModel.loadLibraryLocations()
         gridViewModel.loadTags()
         gridViewModel.loadFilterOptions()
+        // Pre-load both location-related data sources so the global-map
+        // and location-picker dialogs can open with the camera framed on
+        // real data, not the global-view fallback.
+        gridViewModel.loadVideoLocations()
+        gridViewModel.loadNamedLocations()
     }
 
     /** Tell the daemon to switch to [path], persist it as a recent, refresh. */
@@ -300,6 +366,19 @@ fun VideoRoomApp(
                         catalogIsOpen = currentCatalog.isOpen,
                         catalogName = currentCatalog.name,
                         recents = recents.list(),
+                        onShowGlobalMap = {
+                            // Await the loads before opening the dialog so
+                            // the map frames the centroid of real data
+                            // instead of (51.4769, 0) — Europe — when the
+                            // catalog's locations haven't arrived yet.
+                            // Pre-load on catalog open keeps this fast in
+                            // steady state.
+                            scope.launch {
+                                gridViewModel.loadVideoLocationsAsync()
+                                gridViewModel.loadNamedLocationsAsync()
+                                showGlobalMap = true
+                            }
+                        },
                         selectedCount = selectedIds.value.size,
                         currentSort = currentSort.value,
                         sortAscending = sortAsc.value,
@@ -405,6 +484,78 @@ fun VideoRoomApp(
                         }
                     }
 
+                    // Active location-filter banner — sits above the
+                    // panels so users always notice why the grid is
+                    // narrowed, and can clear the filter in one click.
+                    val activeFilter = gridViewModel.filterLocation.collectAsState().value
+                    val totalCountForBanner = gridViewModel.totalCount.collectAsState().value
+                    val namedLocsForBanner = gridViewModel.namedLocations.collectAsState().value
+                    if (activeFilter != null) {
+                        val (fLat, fLon, fRadius) = activeFilter
+                        val matched = remember(fLat, fLon, namedLocsForBanner) {
+                            com.videoroom.ui.screens.nearestNamedLocation(
+                                fLat, fLon, namedLocsForBanner)
+                        }
+                        val identity = matched?.name
+                            ?: "%.4f, %.4f".format(fLat, fLon)
+                        val radiusLabel = if (fRadius == kotlin.math.floor(fRadius))
+                            "%.0f".format(fRadius) else "%.1f".format(fRadius)
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = VideoRoomSpacing.Medium,
+                                             vertical = VideoRoomSpacing.Small),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = if (matched != null) Icons.Default.Place
+                                                  else Icons.Default.LocationOn,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
+                                Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Filtered to videos near $identity",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    )
+                                    Text(
+                                        text = "$totalCountForBanner match" +
+                                            (if (totalCountForBanner == 1L) "" else "es") +
+                                            " within $radiusLabel km",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                            .copy(alpha = 0.75f),
+                                    )
+                                }
+                                com.videoroom.ui.components.Tooltip(
+                                    text = "Clear the location filter and return to the full library."
+                                ) {
+                                    TextButton(
+                                        onClick = {
+                                            gridViewModel.setLocationFilter(null, null)
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Show all videos",
+                                             style = MaterialTheme.typography.labelMedium)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // Main content
                     Row(
                         modifier = Modifier
@@ -470,6 +621,24 @@ fun VideoRoomApp(
                                 onCollapse = { rightPanelExpanded = false },
                                 thumbnailWidth = thumbnailWidth,
                                 onThumbnailWidthChange = { thumbnailWidth = it },
+                                onEditLocation = { videoIds, initial ->
+                                    // Await before showing the dialog so
+                                    // its bbox-framing logic captures
+                                    // populated arrays. Without this, the
+                                    // dialog opens before the gRPC
+                                    // location data arrives and the map
+                                    // centers on Europe.
+                                    scope.launch {
+                                        gridViewModel.loadVideoLocationsAsync()
+                                        gridViewModel.loadNamedLocationsAsync()
+                                        videoIdsForLocationPicker = videoIds
+                                        initialLocationForPicker = initial
+                                    }
+                                },
+                                onEditCaptureDate = { videoIds, initialTs ->
+                                    videoIdsForDatePicker = videoIds
+                                    initialTimestampForPicker = initialTs
+                                },
                                 modifier = Modifier
                                     .weight(0.18f)
                                     .fillMaxHeight()
@@ -488,6 +657,79 @@ fun VideoRoomApp(
                 if (showEditorsDialog) {
                     com.videoroom.ui.screens.ExternalEditorsDialog(
                         onDismiss = { showEditorsDialog = false }
+                    )
+                }
+
+                // Global map dialog — shows every geotagged video.
+                if (showGlobalMap) {
+                    val locs = gridViewModel.videoLocations.collectAsState()
+                    com.videoroom.ui.screens.GlobalMapDialog(
+                        locations = locs.value,
+                        onDismiss = { showGlobalMap = false },
+                        onLocationPick = { lat, lon, radius ->
+                            gridViewModel.setLocationFilter(lat, lon, radius)
+                            showGlobalMap = false
+                        }
+                    )
+                }
+
+                // Location-picker dialog — set/replace GPS on one or more videos.
+                videoIdsForLocationPicker?.let { ids ->
+                    val knownLocations = gridViewModel.videoLocations.collectAsState()
+                    val namedPlaces = gridViewModel.namedLocations.collectAsState()
+                    com.videoroom.ui.screens.LocationPickerDialog(
+                        targetVideoIds = ids,
+                        initialLocation = initialLocationForPicker,
+                        existingLocations = knownLocations.value,
+                        namedLocations = namedPlaces.value,
+                        onDismiss = {
+                            videoIdsForLocationPicker = null
+                            initialLocationForPicker = null
+                        },
+                        onApply = { lat, lon, writeToFile, name ->
+                            // If the user typed (or kept) a name, upsert it
+                            // first so subsequent UI refreshes can resolve
+                            // the new GPS into a name immediately. Re-uses
+                            // an existing named-location's id when the
+                            // candidate is already within range of one.
+                            if (name != null) {
+                                val existing = com.videoroom.ui.screens.nearestNamedLocation(
+                                    lat, lon, namedPlaces.value
+                                )
+                                gridViewModel.saveNamedLocation(
+                                    id = existing?.id ?: "",
+                                    name = name,
+                                    latitude = lat,
+                                    longitude = lon,
+                                )
+                            }
+                            gridViewModel.setVideoLocations(ids, lat, lon, writeToFile) {
+                                // Refresh the detail panel's metadata so the
+                                // new GPS shows up immediately.
+                                ids.firstOrNull()?.let { detailViewModel.loadMetadata(it) }
+                            }
+                            videoIdsForLocationPicker = null
+                            initialLocationForPicker = null
+                        }
+                    )
+                }
+
+                // Capture-date picker — set/replace creation time.
+                videoIdsForDatePicker?.let { ids ->
+                    com.videoroom.ui.screens.CaptureDateDialog(
+                        targetVideoIds = ids,
+                        initialTimestampMs = initialTimestampForPicker,
+                        onDismiss = {
+                            videoIdsForDatePicker = null
+                            initialTimestampForPicker = null
+                        },
+                        onApply = { ts, writeToFile ->
+                            gridViewModel.setVideoCaptureDates(ids, ts, writeToFile) {
+                                ids.firstOrNull()?.let { detailViewModel.loadMetadata(it) }
+                            }
+                            videoIdsForDatePicker = null
+                            initialTimestampForPicker = null
+                        }
                     )
                 }
 
@@ -564,6 +806,8 @@ fun VideoRoomTopBar(
     catalogIsOpen: Boolean = false,
     catalogName: String = "",
     recents: List<String> = emptyList(),
+    /** Opens the global map dialog showing every geotagged video. */
+    onShowGlobalMap: () -> Unit = {},
     selectedCount: Int = 0,
     currentSort: String = "indexed_at",
     sortAscending: Boolean = false,
@@ -857,6 +1101,26 @@ fun VideoRoomTopBar(
                         }
                     }
 
+                    // World-map button
+                    com.videoroom.ui.components.Tooltip(
+                        text = "Show every geotagged video on a world map. " +
+                            "Click a pin to filter the grid to videos taken near " +
+                            "that location."
+                    ) {
+                        IconButton(onClick = onShowGlobalMap) {
+                            Icon(
+                                imageVector = Icons.Default.Map,
+                                contentDescription = "Map view"
+                            )
+                        }
+                    }
+
+                    // (The active location-filter affordance lives in a
+                    // full-width banner above the grid — see
+                    // `locationFilterBanner` in App.kt — rather than as a
+                    // tiny chip up here, so users actually notice why the
+                    // grid is narrowed.)
+
                     // Add Library button
                     com.videoroom.ui.components.Tooltip(
                         text = "Add a folder to your library. VideoRoom will scan it for videos " +
@@ -1104,14 +1368,14 @@ fun AddLibraryDialog(
                 Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
                 com.videoroom.ui.components.Tooltip(
                     text = "Full filesystem path to the folder containing your videos. " +
-                        "VideoRoom will scan it and index every supported video file it finds."
+                        "Press Tab to complete, type more to narrow the suggestions, or " +
+                        "pick a directory from the dropdown."
                 ) {
-                    TextField(
+                    com.videoroom.ui.components.PathCompletingTextField(
                         value = path,
                         onValueChange = { path = it },
-                        placeholder = { Text("/Users/you/Videos") },
+                        placeholder = "/Users/you/Videos",
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
                     )
                 }
 

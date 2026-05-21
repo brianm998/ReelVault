@@ -154,7 +154,9 @@ class VideoRepository: ObservableObject {
         filterCamera: String = "",
         filterLens: String = "",
         filterCodec: String = "",
-        filterCaptureYear: Int32 = 0
+        filterCaptureYear: Int32 = 0,
+        /// Proximity filter (latitude, longitude, radius_km). nil = disabled.
+        geoFilter: (latitude: Double, longitude: Double, radiusKm: Double)? = nil
     ) async throws -> (videos: [VideoSummary], totalCount: Int64) {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
 
@@ -179,8 +181,166 @@ class VideoRepository: ObservableObject {
         request.filterLens = filterLens
         request.filterCodec = filterCodec
         request.filterCaptureYear = filterCaptureYear
+        if let geo = geoFilter {
+            request.filterByLocation = true
+            request.filterLatitude = geo.latitude
+            request.filterLongitude = geo.longitude
+            request.filterRadiusKm = geo.radiusKm
+        }
         let response = try await client.listVideos(request)
         return (response.videos.map(Self.makeSummary), response.totalCount)
+    }
+
+    // MARK: - Geolocation
+
+    /// Set GPS coordinates on `videoId`. Optionally also embed them into the
+    /// underlying video file via the daemon's ffmpeg helper.
+    @discardableResult
+    func updateVideoLocation(
+        videoId: String,
+        latitude: Double,
+        longitude: Double,
+        altitude: Double = 0,
+        writeToFile: Bool = false
+    ) async -> Bool {
+        guard let client = serviceClient else { return false }
+        var req = Videoroom_UpdateVideoLocationRequest()
+        req.videoID = videoId
+        req.latitude = latitude
+        req.longitude = longitude
+        req.altitude = altitude
+        req.writeToFile = writeToFile
+        do {
+            let resp = try await client.updateVideoLocation(req)
+            return resp.success
+        } catch {
+            NSLog("UpdateVideoLocation failed: \(error)")
+            return false
+        }
+    }
+
+    /// Set the capture timestamp (Unix ms, UTC) on `videoId`. Optionally
+    /// also embeds `creation_time` into the file via the daemon's ffmpeg
+    /// helper.
+    @discardableResult
+    func updateVideoCaptureDate(
+        videoId: String,
+        timestampMs: Int64,
+        writeToFile: Bool = false
+    ) async -> Bool {
+        guard let client = serviceClient else { return false }
+        var req = Videoroom_UpdateVideoCaptureDateRequest()
+        req.videoID = videoId
+        req.timestampMs = timestampMs
+        req.writeToFile = writeToFile
+        do {
+            let resp = try await client.updateVideoCaptureDate(req)
+            return resp.success
+        } catch {
+            NSLog("UpdateVideoCaptureDate failed: \(error)")
+            return false
+        }
+    }
+
+    // MARK: - Named locations
+
+    /// List every user-named place in the catalog. Clients cache the result
+    /// and use [GridViewModel.nameForLocation] to resolve any (lat, lon)
+    /// into a name client-side.
+    func listNamedLocations() async -> [NamedLocation] {
+        guard let client = serviceClient else { return [] }
+        do {
+            let resp = try await client.listNamedLocations(
+                Videoroom_ListNamedLocationsRequest())
+            return resp.locations.map { proto in
+                NamedLocation(
+                    id: proto.id,
+                    name: proto.name,
+                    latitude: proto.latitude,
+                    longitude: proto.longitude,
+                    radiusMeters: proto.radiusM,
+                    createdAtMs: proto.createdAtMs,
+                    updatedAtMs: proto.updatedAtMs
+                )
+            }
+        } catch {
+            NSLog("ListNamedLocations failed: \(error)")
+            return []
+        }
+    }
+
+    /// Insert or update a named location. Pass an empty `id` to create a
+    /// new row; otherwise it updates the existing one. Returns the
+    /// persisted entity (with assigned id + timestamps) or nil on failure.
+    func upsertNamedLocation(
+        id: String,
+        name: String,
+        latitude: Double,
+        longitude: Double,
+        radiusMeters: Double = 250
+    ) async -> NamedLocation? {
+        guard let client = serviceClient else { return nil }
+        var req = Videoroom_UpsertNamedLocationRequest()
+        req.id = id
+        req.name = name
+        req.latitude = latitude
+        req.longitude = longitude
+        req.radiusM = radiusMeters
+        do {
+            let resp = try await client.upsertNamedLocation(req)
+            guard resp.success, resp.hasLocation else { return nil }
+            let p = resp.location
+            return NamedLocation(
+                id: p.id,
+                name: p.name,
+                latitude: p.latitude,
+                longitude: p.longitude,
+                radiusMeters: p.radiusM,
+                createdAtMs: p.createdAtMs,
+                updatedAtMs: p.updatedAtMs
+            )
+        } catch {
+            NSLog("UpsertNamedLocation failed: \(error)")
+            return nil
+        }
+    }
+
+    /// Delete a named location by id. Idempotent — deleting a missing id
+    /// is silently a success on the server side.
+    @discardableResult
+    func deleteNamedLocation(id: String) async -> Bool {
+        guard let client = serviceClient else { return false }
+        var req = Videoroom_DeleteNamedLocationRequest()
+        req.id = id
+        do {
+            let resp = try await client.deleteNamedLocation(req)
+            return resp.success
+        } catch {
+            NSLog("DeleteNamedLocation failed: \(error)")
+            return false
+        }
+    }
+
+    /// Every geotagged video in the catalog — used to populate the global map.
+    func listVideosWithLocations() async -> [VideoLocation] {
+        guard let client = serviceClient else { return [] }
+        do {
+            let resp = try await client.listVideosWithLocations(Videoroom_ListVideosWithLocationsRequest())
+            return resp.locations.map { proto in
+                VideoLocation(
+                    id: proto.id,
+                    filename: proto.filename,
+                    path: proto.path,
+                    latitude: proto.latitude,
+                    longitude: proto.longitude,
+                    altitude: proto.altitude,
+                    hasThumbnail: proto.hasThumbnail_p
+                )
+            }
+        } catch {
+            NSLog("ListVideosWithLocations failed: \(error)")
+            return []
+        }
     }
 
     func getFilterOptions() async -> FilterOptions {

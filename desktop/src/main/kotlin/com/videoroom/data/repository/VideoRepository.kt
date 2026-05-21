@@ -146,11 +146,14 @@ class VideoRepository(
         filterCamera: String = "",
         filterLens: String = "",
         filterCodec: String = "",
-        filterCaptureYear: Int = 0
+        filterCaptureYear: Int = 0,
+        /** Set non-null to filter to videos within `geoFilter.third` km of
+         *  (lat, lon). Used when the user taps a pin on the global map. */
+        geoFilter: Triple<Double, Double, Double>? = null,
     ): Pair<List<VideoSummary>, Long> = withContext(Dispatchers.IO) {
         val s = stub ?: return@withContext Pair(emptyList(), 0L)
         try {
-            val request = Videoroom.ListVideosRequest.newBuilder()
+            val builder = Videoroom.ListVideosRequest.newBuilder()
                 .setLimit(limit)
                 .setOffset(offset)
                 .setSortBy(sortBy)
@@ -162,7 +165,14 @@ class VideoRepository(
                 .setFilterLens(filterLens)
                 .setFilterCodec(filterCodec)
                 .setFilterCaptureYear(filterCaptureYear)
-                .build()
+            if (geoFilter != null) {
+                builder
+                    .setFilterByLocation(true)
+                    .setFilterLatitude(geoFilter.first)
+                    .setFilterLongitude(geoFilter.second)
+                    .setFilterRadiusKm(geoFilter.third)
+            }
+            val request = builder.build()
 
             val response = s.listVideos(request)
             val videos = response.videosList.map { protoToVideoSummary(it) }
@@ -531,6 +541,162 @@ class VideoRepository(
         } catch (e: Exception) {
             logger.error("Failed to update notes: ${e.message}", e)
             false
+        }
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // Geolocation
+    // ────────────────────────────────────────────────────────────────────
+
+    /** Set GPS coordinates on `videoId`. Optionally also embed them into
+     *  the video file via the daemon's ffmpeg helper. */
+    suspend fun updateVideoLocation(
+        videoId: String,
+        latitude: Double,
+        longitude: Double,
+        altitude: Double = 0.0,
+        writeToFile: Boolean = false,
+    ): Boolean = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext false
+        try {
+            val req = Videoroom.UpdateVideoLocationRequest.newBuilder()
+                .setVideoId(videoId)
+                .setLatitude(latitude)
+                .setLongitude(longitude)
+                .setAltitude(altitude)
+                .setWriteToFile(writeToFile)
+                .build()
+            s.updateVideoLocation(req).success
+        } catch (e: Exception) {
+            logger.error("UpdateVideoLocation failed: ${e.message}", e)
+            false
+        }
+    }
+
+    /** Set the capture timestamp (Unix ms, UTC) on `videoId`. Optionally
+     *  also embeds `creation_time` into the video file via the daemon's
+     *  ffmpeg helper. */
+    suspend fun updateVideoCaptureDate(
+        videoId: String,
+        timestampMs: Long,
+        writeToFile: Boolean = false,
+    ): Boolean = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext false
+        try {
+            val req = Videoroom.UpdateVideoCaptureDateRequest.newBuilder()
+                .setVideoId(videoId)
+                .setTimestampMs(timestampMs)
+                .setWriteToFile(writeToFile)
+                .build()
+            s.updateVideoCaptureDate(req).success
+        } catch (e: Exception) {
+            logger.error("UpdateVideoCaptureDate failed: ${e.message}", e)
+            false
+        }
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // Named locations
+    // ────────────────────────────────────────────────────────────────────
+
+    /** List every user-named place in the catalog. Clients cache the
+     *  result and use `GridViewModel.nameForLocation` to resolve any
+     *  (lat, lon) into a name client-side. */
+    suspend fun listNamedLocations(): List<com.videoroom.data.models.NamedLocation> = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext emptyList()
+        try {
+            val resp = s.listNamedLocations(
+                Videoroom.ListNamedLocationsRequest.newBuilder().build()
+            )
+            resp.locationsList.map { p ->
+                com.videoroom.data.models.NamedLocation(
+                    id = p.id,
+                    name = p.name,
+                    latitude = p.latitude,
+                    longitude = p.longitude,
+                    radiusMeters = p.radiusM,
+                    createdAtMs = p.createdAtMs,
+                    updatedAtMs = p.updatedAtMs,
+                )
+            }
+        } catch (e: Exception) {
+            logger.error("ListNamedLocations failed: ${e.message}", e)
+            emptyList()
+        }
+    }
+
+    /** Insert or update a named location. Pass an empty `id` to create a
+     *  new row; otherwise it updates. Returns the persisted entity (with
+     *  assigned id + timestamps) or null on failure. */
+    suspend fun upsertNamedLocation(
+        id: String,
+        name: String,
+        latitude: Double,
+        longitude: Double,
+        radiusMeters: Double = 250.0,
+    ): com.videoroom.data.models.NamedLocation? = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext null
+        try {
+            val req = Videoroom.UpsertNamedLocationRequest.newBuilder()
+                .setId(id)
+                .setName(name)
+                .setLatitude(latitude)
+                .setLongitude(longitude)
+                .setRadiusM(radiusMeters)
+                .build()
+            val resp = s.upsertNamedLocation(req)
+            if (!resp.success || !resp.hasLocation()) return@withContext null
+            val p = resp.location
+            com.videoroom.data.models.NamedLocation(
+                id = p.id,
+                name = p.name,
+                latitude = p.latitude,
+                longitude = p.longitude,
+                radiusMeters = p.radiusM,
+                createdAtMs = p.createdAtMs,
+                updatedAtMs = p.updatedAtMs,
+            )
+        } catch (e: Exception) {
+            logger.error("UpsertNamedLocation failed: ${e.message}", e)
+            null
+        }
+    }
+
+    /** Delete a named location by id. Idempotent on the server side. */
+    suspend fun deleteNamedLocation(id: String): Boolean = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext false
+        try {
+            val req = Videoroom.DeleteNamedLocationRequest.newBuilder()
+                .setId(id)
+                .build()
+            s.deleteNamedLocation(req).success
+        } catch (e: Exception) {
+            logger.error("DeleteNamedLocation failed: ${e.message}", e)
+            false
+        }
+    }
+
+    /** Every geotagged video in the catalog — used to populate the global map. */
+    suspend fun listVideosWithLocations(): List<com.videoroom.data.models.VideoLocation> = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext emptyList()
+        try {
+            val resp = s.listVideosWithLocations(
+                Videoroom.ListVideosWithLocationsRequest.newBuilder().build()
+            )
+            resp.locationsList.map { proto ->
+                com.videoroom.data.models.VideoLocation(
+                    id = proto.id,
+                    filename = proto.filename,
+                    path = proto.path,
+                    latitude = proto.latitude,
+                    longitude = proto.longitude,
+                    altitude = proto.altitude,
+                    hasThumbnail = proto.hasThumbnail,
+                )
+            }
+        } catch (e: Exception) {
+            logger.error("ListVideosWithLocations failed: ${e.message}", e)
+            emptyList()
         }
     }
 

@@ -3,6 +3,7 @@
 
 import SwiftUI
 import AppKit
+import CoreLocation
 
 struct ContentView: View {
     @StateObject private var gridViewModel = GridViewModel()
@@ -18,6 +19,13 @@ struct ContentView: View {
     @State private var showOpenCatalogSheet = false
     @State private var openCatalogIsStartup = false
     @State private var currentCatalog: CatalogInfo = .closed
+    @State private var showGlobalMapSheet = false
+    /// Non-nil → LocationPicker sheet is presenting for these video IDs.
+    @State private var locationPickerTargets: [String]? = nil
+    @State private var locationPickerInitial: CLLocationCoordinate2D? = nil
+    /// Non-nil → CaptureDate sheet is presenting for these video IDs.
+    @State private var datePickerTargets: [String]? = nil
+    @State private var datePickerInitial: Int64? = nil
 
     @EnvironmentObject private var appState: AppState
     @ObservedObject private var recents = RecentCatalogs.shared
@@ -52,7 +60,9 @@ struct ContentView: View {
                 leftPanelExpanded = !anyOpen
                 rightPanelExpanded = !anyOpen
             },
-            onGroupSelected: { gridViewModel.groupSelectedVideos() }
+            onGroupSelected: { gridViewModel.groupSelectedVideos() },
+            onSelectAll: { gridViewModel.selectAllVisible() },
+            onDeselectAll: { gridViewModel.clearSelection() }
         ))
         .sheet(isPresented: $showAddLibrarySheet) {
             AddLibraryDialog(isPresented: $showAddLibrarySheet) { path, recursive, autoGroup in
@@ -70,6 +80,90 @@ struct ContentView: View {
                     Task { await openCatalog(path: path) }
                 },
                 isStartup: openCatalogIsStartup
+            )
+        }
+        .sheet(isPresented: $showGlobalMapSheet) {
+            GlobalMapView(
+                locations: gridViewModel.videoLocations,
+                onDismiss: { showGlobalMapSheet = false },
+                onLocationPick: { lat, lon, radius in
+                    gridViewModel.setLocationFilter(latitude: lat, longitude: lon, radiusKm: radius)
+                    showGlobalMapSheet = false
+                }
+            )
+        }
+        .sheet(item: Binding(
+            get: { locationPickerTargets.map(LocationPickerTargets.init) },
+            set: { locationPickerTargets = $0?.ids }
+        )) { targets in
+            LocationPickerView(
+                targetVideoIds: targets.ids,
+                initialLocation: locationPickerInitial,
+                existingLocations: gridViewModel.videoLocations,
+                namedLocations: gridViewModel.namedLocations,
+                onCancel: {
+                    locationPickerTargets = nil
+                    locationPickerInitial = nil
+                },
+                onApply: { lat, lon, writeToFile, name in
+                    // If the user typed (or kept) a name, upsert it first
+                    // so subsequent UI refreshes can resolve the new GPS
+                    // into a name immediately. If the candidate matched an
+                    // existing named-location AND the user kept the same
+                    // name, we still re-upsert with that name + coord,
+                    // which the daemon handles as an idempotent update.
+                    if let n = name {
+                        let existing = LocationPickerView.nearestNamedLocation(
+                            to: CLLocationCoordinate2D(latitude: lat, longitude: lon),
+                            in: gridViewModel.namedLocations
+                        )
+                        gridViewModel.saveNamedLocation(
+                            id: existing?.id ?? "",
+                            name: n,
+                            latitude: lat,
+                            longitude: lon
+                        )
+                    }
+                    gridViewModel.setVideoLocations(
+                        videoIds: targets.ids,
+                        latitude: lat,
+                        longitude: lon,
+                        writeToFile: writeToFile
+                    ) {
+                        // Refresh detail panel so the new GPS shows up.
+                        if let first = targets.ids.first {
+                            detailViewModel.loadMetadata(videoId: first)
+                        }
+                    }
+                    locationPickerTargets = nil
+                    locationPickerInitial = nil
+                }
+            )
+        }
+        .sheet(item: Binding(
+            get: { datePickerTargets.map(LocationPickerTargets.init) },
+            set: { datePickerTargets = $0?.ids }
+        )) { targets in
+            CaptureDateView(
+                targetVideoIds: targets.ids,
+                initialTimestampMs: datePickerInitial,
+                onCancel: {
+                    datePickerTargets = nil
+                    datePickerInitial = nil
+                },
+                onApply: { ms, writeToFile in
+                    gridViewModel.setVideoCaptureDates(
+                        videoIds: targets.ids,
+                        timestampMs: ms,
+                        writeToFile: writeToFile
+                    ) {
+                        if let first = targets.ids.first {
+                            detailViewModel.loadMetadata(videoId: first)
+                        }
+                    }
+                    datePickerTargets = nil
+                    datePickerInitial = nil
+                }
             )
         }
         // Sync the recent list + current catalog name up to AppState so the
@@ -108,7 +202,59 @@ struct ContentView: View {
             topBar
             scanBanner
             scanResultBanner
+            locationFilterBanner
             mainContent
+        }
+    }
+
+    /// Prominent strip across the top of the grid that surfaces an active
+    /// proximity filter, so the user always knows why the grid is showing
+    /// a subset and can clear the filter in one click. Without this, the
+    /// transition from "tapped a pin on the map" to "now in a filtered
+    /// grid" is jarring — the result looks like the entire library
+    /// disappeared.
+    @ViewBuilder
+    private var locationFilterBanner: some View {
+        if let filter = gridViewModel.filterLocation {
+            // Resolve the coordinate into a name when one exists in the
+            // catalog's named-locations table; otherwise fall back to the
+            // raw lat/long. Mirrors the DetailView's name-first treatment.
+            let matched = gridViewModel.nameForLocation(
+                latitude: filter.latitude, longitude: filter.longitude)
+            let identity: String = matched?.name
+                ?? String(format: "%.4f, %.4f", filter.latitude, filter.longitude)
+            HStack(spacing: 8) {
+                Image(systemName: matched != nil ? "tag.fill" : "mappin.circle.fill")
+                    .foregroundColor(.accentColor)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Filtered to videos near \(identity)")
+                        .font(.callout)
+                    Text("\(gridViewModel.totalCount) match\(gridViewModel.totalCount == 1 ? "" : "es") within \(filter.radiusKm == floor(filter.radiusKm) ? String(format: "%.0f", filter.radiusKm) : String(format: "%.1f", filter.radiusKm)) km")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                Button {
+                    gridViewModel.setLocationFilter(latitude: nil, longitude: nil)
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "xmark.circle.fill")
+                        Text("Show all videos")
+                            .font(.caption)
+                    }
+                }
+                .buttonStyle(.borderless)
+                .help("Clear the location filter and return to the full library.")
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color.accentColor.opacity(0.15))
+            .overlay(
+                Rectangle()
+                    .fill(Color.accentColor)
+                    .frame(height: 2),
+                alignment: .bottom
+            )
         }
     }
 
@@ -190,6 +336,29 @@ struct ContentView: View {
             }
             .buttonStyle(.borderless)
             .help("Configure which external video editors are available in the right-click \"Open with\" menu. See free/paid status and download links for each supported editor.")
+
+            // World-map button — shows every geotagged video.
+            Button {
+                // Await the loads before the sheet appears so the map
+                // frames the centroid of real data instead of (25, 0) in
+                // the ocean. Typically instant thanks to the catalog-open
+                // pre-load; the worst case (cold catalog) is a few hundred
+                // ms of perceived button delay before the sheet animates in.
+                Task {
+                    await gridViewModel.loadVideoLocationsAsync()
+                    await gridViewModel.loadNamedLocationsAsync()
+                    showGlobalMapSheet = true
+                }
+            } label: {
+                Image(systemName: "map")
+            }
+            .buttonStyle(.borderless)
+            .help("Show every geotagged video on a world map. Click a pin to filter the grid to videos taken near that location.")
+
+            // (The active location-filter affordance lives in
+            // `locationFilterBanner` — a full-width strip above the grid —
+            // rather than as a tiny chip up here, so users actually notice
+            // why the grid is narrowed.)
 
             // Add Library
             Button {
@@ -318,7 +487,26 @@ struct ContentView: View {
                     viewModel: detailViewModel,
                     gridViewModel: gridViewModel,
                     thumbnailWidth: $thumbnailWidth,
-                    onCollapse: { rightPanelExpanded = false }
+                    onCollapse: { rightPanelExpanded = false },
+                    onEditLocation: { videoIds, initial in
+                        // Await before showing the sheet so the picker's
+                        // init captures populated arrays and frames the
+                        // bbox correctly. Without this, the sheet opens
+                        // before `videoLocations` arrives over gRPC and
+                        // the map centers on (25, 0) in the Atlantic.
+                        Task {
+                            await gridViewModel.loadVideoLocationsAsync()
+                            await gridViewModel.loadNamedLocationsAsync()
+                            locationPickerTargets = videoIds
+                            locationPickerInitial = initial.map {
+                                CLLocationCoordinate2D(latitude: $0.0, longitude: $0.1)
+                            }
+                        }
+                    },
+                    onEditCaptureDate: { videoIds, initialTs in
+                        datePickerTargets = videoIds
+                        datePickerInitial = initialTs
+                    }
                 )
                 .frame(width: 240)
             } else {
@@ -412,6 +600,11 @@ struct ContentView: View {
         gridViewModel.loadLibraryLocations()
         gridViewModel.loadTags()
         gridViewModel.loadFilterOptions()
+        // Pre-load both location-related data sources so the global-map
+        // and location-picker sheets can open with the camera framed on
+        // real data, not the (25, 0) global fallback.
+        gridViewModel.loadVideoLocations()
+        gridViewModel.loadNamedLocations()
     }
 }
 
@@ -446,6 +639,8 @@ enum ModifierSnapshot {
 struct GlobalKeyboardShortcuts: ViewModifier {
     let onTab: () -> Void
     let onGroupSelected: () -> Void
+    let onSelectAll: () -> Void
+    let onDeselectAll: () -> Void
 
     @State private var keyMonitor: Any?
     @State private var mouseMonitor: Any?
@@ -480,7 +675,7 @@ struct GlobalKeyboardShortcuts: ViewModifier {
         }
 
         guard keyMonitor == nil else { return }
-        // keyCodes: Tab = 48, G = 5, Escape = 53
+        // keyCodes: Tab = 48, G = 5, A = 0, D = 2, Escape = 53
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
 
@@ -510,6 +705,23 @@ struct GlobalKeyboardShortcuts: ViewModifier {
             // Cmd+G → group selected
             if event.keyCode == 5 && mods == .command {
                 onGroupSelected()
+                return nil
+            }
+
+            // Cmd+A → select all currently-visible videos. The
+            // `isEditingTextField` guard above means this only fires
+            // when no text field is focused — so Cmd+A in the search
+            // bar or notes field still selects the field's text as
+            // users expect.
+            if event.keyCode == 0 && mods == .command {
+                onSelectAll()
+                return nil
+            }
+
+            // Cmd+D → deselect every selected video. Same text-field
+            // policy: only fires when no field is focused.
+            if event.keyCode == 2 && mods == .command {
+                onDeselectAll()
                 return nil
             }
 
@@ -631,6 +843,14 @@ struct FilterMenu: View {
         .menuStyle(.borderlessButton)
         .controlSize(.small)
     }
+}
+
+/// Tiny `Identifiable` wrapper so `.sheet(item:)` can drive the LocationPicker
+/// off `[String]?` — SwiftUI requires a single hashable identity for the
+/// sheet item, and bare arrays aren't `Identifiable`.
+private struct LocationPickerTargets: Identifiable {
+    let ids: [String]
+    var id: String { ids.joined(separator: ",") }
 }
 
 #Preview {

@@ -271,6 +271,16 @@ impl VideoRoomTrait for VideoRoomService {
             })
             .collect();
 
+        // Optional geographic proximity filter — set when the user tapped a
+        // pin on the global map. Empty / zero values mean "no filter".
+        let geo_filter = if req.filter_by_location {
+            // Clamp radius to >= 0.01 km to keep the bounding box meaningful.
+            let r = req.filter_radius_km.max(0.01);
+            Some((req.filter_latitude, req.filter_longitude, r))
+        } else {
+            None
+        };
+
         // Use grouped listing — returns one representative per group + ungrouped videos
         let (videos, total_count) = self
             .db
@@ -285,6 +295,7 @@ impl VideoRoomTrait for VideoRoomService {
                 &req.filter_lens,
                 &req.filter_codec,
                 req.filter_capture_year,
+                geo_filter,
             )
             .map_err(Status::from)?;
 
@@ -1142,6 +1153,212 @@ impl VideoRoomTrait for VideoRoomService {
     ) -> std::result::Result<Response<CatalogInfo>, Status> {
         let opened = self.opened_at_ms.read().map(|g| *g).unwrap_or(0);
         Ok(Response::new(catalog_info_from(self.db.as_ref(), opened)))
+    }
+
+    async fn update_video_location(
+        &self,
+        request: Request<UpdateVideoLocationRequest>,
+    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+        let req = request.into_inner();
+        if req.video_id.is_empty() {
+            return Err(Status::invalid_argument("video_id is required"));
+        }
+        // Sanity-check the coordinates so we don't accept "the moon".
+        if !(-90.0..=90.0).contains(&req.latitude)
+            || !(-180.0..=180.0).contains(&req.longitude)
+        {
+            return Err(Status::invalid_argument(
+                "latitude must be -90..=90 and longitude must be -180..=180",
+            ));
+        }
+
+        // Update the catalog first — that's the source of truth for the UI.
+        self.db
+            .update_gps_coordinates(&req.video_id, req.latitude, req.longitude, req.altitude)
+            .map_err(Status::from)?;
+
+        // Best-effort write-back into the actual video file. Failure here is
+        // logged but does NOT fail the RPC — the catalog already reflects the
+        // new location and that's what matters for browsing.
+        let mut file_write_message = String::new();
+        if req.write_to_file {
+            if let Ok(Some(v)) = self.db.get_video(&req.video_id) {
+                match crate::metadata::MetadataExtractor::write_location_tag(
+                    &v.path,
+                    req.latitude,
+                    req.longitude,
+                    req.altitude,
+                ) {
+                    Ok(()) => {
+                        file_write_message = format!(" (embedded in {})", v.filename);
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "Failed to embed location into {}: {}", v.path, e
+                        );
+                        file_write_message =
+                            format!(" (catalog updated, but file write failed: {})", e);
+                    }
+                }
+            }
+        }
+
+        Ok(Response::new(videoroom::Response {
+            success: true,
+            message: format!(
+                "Location set to {:.6}, {:.6}{}",
+                req.latitude, req.longitude, file_write_message
+            ),
+            error: String::new(),
+        }))
+    }
+
+    async fn list_videos_with_locations(
+        &self,
+        _request: Request<ListVideosWithLocationsRequest>,
+    ) -> std::result::Result<Response<VideoLocationsResponse>, Status> {
+        let rows = self.db.list_videos_with_locations().map_err(Status::from)?;
+        let locations = rows
+            .into_iter()
+            .map(|r| VideoLocation {
+                id: r.id,
+                filename: r.filename,
+                path: r.path,
+                latitude: r.latitude,
+                longitude: r.longitude,
+                altitude: r.altitude,
+                has_thumbnail: r.has_thumbnail,
+            })
+            .collect();
+        Ok(Response::new(VideoLocationsResponse { locations }))
+    }
+
+    async fn update_video_capture_date(
+        &self,
+        request: Request<UpdateVideoCaptureDateRequest>,
+    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+        let req = request.into_inner();
+        if req.video_id.is_empty() {
+            return Err(Status::invalid_argument("video_id is required"));
+        }
+        // Plausible-timestamp guardrail: between 1970-01-01 and ~2100. Block
+        // 0 explicitly so a missing field doesn't silently zero out a row.
+        const MAX_TS: i64 = 4_102_444_800_000; // 2100-01-01T00:00:00Z
+        if req.timestamp_ms <= 0 || req.timestamp_ms > MAX_TS {
+            return Err(Status::invalid_argument(
+                "timestamp_ms must be a Unix-millisecond value between 1970 and 2100",
+            ));
+        }
+
+        self.db
+            .update_capture_date(&req.video_id, req.timestamp_ms)
+            .map_err(Status::from)?;
+
+        // Best-effort write-back into the file's container metadata.
+        let mut file_write_message = String::new();
+        if req.write_to_file {
+            if let Ok(Some(v)) = self.db.get_video(&req.video_id) {
+                match crate::metadata::MetadataExtractor::write_creation_time_tag(
+                    &v.path,
+                    req.timestamp_ms,
+                ) {
+                    Ok(()) => {
+                        file_write_message = format!(" (embedded in {})", v.filename);
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "Failed to embed creation_time into {}: {}", v.path, e
+                        );
+                        file_write_message =
+                            format!(" (catalog updated, but file write failed: {})", e);
+                    }
+                }
+            }
+        }
+
+        Ok(Response::new(videoroom::Response {
+            success: true,
+            message: format!("Capture date set{}", file_write_message),
+            error: String::new(),
+        }))
+    }
+
+    async fn list_named_locations(
+        &self,
+        _request: Request<ListNamedLocationsRequest>,
+    ) -> std::result::Result<Response<NamedLocationsResponse>, Status> {
+        let rows = self.db.list_named_locations().map_err(Status::from)?;
+        let locations = rows
+            .into_iter()
+            .map(|r| NamedLocation {
+                id: r.id,
+                name: r.name,
+                latitude: r.latitude,
+                longitude: r.longitude,
+                radius_m: r.radius_m,
+                created_at_ms: r.created_at_ms,
+                updated_at_ms: r.updated_at_ms,
+            })
+            .collect();
+        Ok(Response::new(NamedLocationsResponse { locations }))
+    }
+
+    async fn upsert_named_location(
+        &self,
+        request: Request<UpsertNamedLocationRequest>,
+    ) -> std::result::Result<Response<NamedLocationResponse>, Status> {
+        let req = request.into_inner();
+        let trimmed = req.name.trim();
+        if trimmed.is_empty() {
+            return Err(Status::invalid_argument("name must not be empty"));
+        }
+        if !(-90.0..=90.0).contains(&req.latitude)
+            || !(-180.0..=180.0).contains(&req.longitude)
+        {
+            return Err(Status::invalid_argument(
+                "latitude must be -90..=90 and longitude must be -180..=180",
+            ));
+        }
+        let saved = self
+            .db
+            .upsert_named_location(
+                &req.id,
+                trimmed,
+                req.latitude,
+                req.longitude,
+                req.radius_m,
+            )
+            .map_err(Status::from)?;
+        let proto = NamedLocation {
+            id: saved.id.clone(),
+            name: saved.name.clone(),
+            latitude: saved.latitude,
+            longitude: saved.longitude,
+            radius_m: saved.radius_m,
+            created_at_ms: saved.created_at_ms,
+            updated_at_ms: saved.updated_at_ms,
+        };
+        Ok(Response::new(NamedLocationResponse {
+            success: true,
+            message: format!("Named location '{}' saved", saved.name),
+            location: Some(proto),
+        }))
+    }
+
+    async fn delete_named_location(
+        &self,
+        request: Request<DeleteNamedLocationRequest>,
+    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+        let req = request.into_inner();
+        if req.id.is_empty() {
+            return Err(Status::invalid_argument("id is required"));
+        }
+        self.db.delete_named_location(&req.id).map_err(Status::from)?;
+        Ok(Response::new(videoroom::Response {
+            success: true,
+            message: "Named location deleted".into(),
+            error: String::new(),
+        }))
     }
 }
 

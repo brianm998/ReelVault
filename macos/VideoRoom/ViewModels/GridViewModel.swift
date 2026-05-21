@@ -36,6 +36,19 @@ class GridViewModel: ObservableObject {
     @Published var filterCaptureYear: Int32 = 0
     @Published var filterOptions = FilterOptions()
 
+    // Geographic proximity filter — set when the user taps a pin on the
+    // global map. nil = no proximity filter active.
+    @Published var filterLocation: GeoFilter? = nil
+
+    // Snapshot of every geotagged video, refreshed when the user opens
+    // the global map view.
+    @Published var videoLocations: [VideoLocation] = []
+
+    // Catalog's user-defined named places (e.g. "Home"). Refreshed by
+    // [loadNamedLocations]; used by [nameForLocation] to render named pins
+    // on the map and named GPS readouts in the detail panel.
+    @Published var namedLocations: [NamedLocation] = []
+
     // Thumbnails
     @Published var thumbnails: [String: NSImage] = [:]
 
@@ -97,6 +110,9 @@ class GridViewModel: ObservableObject {
         error = nil
         do {
             let filterTagIds = filterTagId.isEmpty ? [] : [filterTagId]
+            let geo: (latitude: Double, longitude: Double, radiusKm: Double)? = filterLocation.map {
+                (latitude: $0.latitude, longitude: $0.longitude, radiusKm: $0.radiusKm)
+            }
             let (results, total) = try await repository.listVideos(
                 limit: pageSize,
                 offset: Int32(currentPage * Int(pageSize)),
@@ -108,7 +124,8 @@ class GridViewModel: ObservableObject {
                 filterCamera: filterCamera,
                 filterLens: filterLens,
                 filterCodec: filterCodec,
-                filterCaptureYear: filterCaptureYear
+                filterCaptureYear: filterCaptureYear,
+                geoFilter: geo
             )
             if replace {
                 videos = results
@@ -265,36 +282,63 @@ class GridViewModel: ObservableObject {
                     return
                 }
 
+                // Surface the new location in the left panel right away
+                // — without this, the row only appears after the scan
+                // finishes, which can be minutes on a large folder.
+                loadLibraryLocations()
+
                 scanStatus = "Scanning..."
-                var lastFound = 0
-                var lastIndexed = 0
+                // We track the *max* values seen across all progress
+                // ticks: some scan phases emit zero-valued progress
+                // events (e.g. the "indexing_metadata" phase resets
+                // `videos_found` to the running count of the current
+                // pass, which can briefly read 0 before the daemon
+                // re-emits). Taking the max stops the final summary
+                // from claiming "0 videos found" when it actually
+                // indexed dozens.
+                var peakFound = 0
+                var peakIndexed = 0
                 var errorMessage: String?
+                var libraryRefreshTick = 0
 
                 for try await progress in repository.scanLibrary(locationPath: path, autoGroup: autoGroup) {
-                    switch progress.status {
-                    case "error":
+                    if progress.status == "error" {
                         errorMessage = progress.currentFile
-                    case "complete":
-                        lastFound = progress.videosFound
-                        lastIndexed = progress.videosIndexed
-                        scanStatus = "Complete: \(lastFound) found, \(lastIndexed) indexed"
-                    default:
-                        lastFound = progress.videosFound
-                        lastIndexed = progress.videosIndexed
-                        scanStatus = "\(progress.status): \(progress.videosIndexed)/\(progress.videosFound) - \(progress.currentFile)"
+                    } else {
+                        peakFound = max(peakFound, progress.videosFound)
+                        peakIndexed = max(peakIndexed, progress.videosIndexed)
+                        if progress.status == "complete" {
+                            scanStatus = "Complete: \(peakFound) found, \(peakIndexed) indexed"
+                        } else {
+                            scanStatus = "\(progress.status): \(peakIndexed)/\(peakFound) - \(progress.currentFile)"
+                        }
+                    }
+                    // Refresh the grid + library panel every ~12 progress
+                    // ticks so the user sees newly-indexed videos and the
+                    // location's video-count update as the scan progresses
+                    // instead of having to wait until the very end.
+                    libraryRefreshTick += 1
+                    if libraryRefreshTick % 12 == 0 {
+                        reloadFromTop()
+                        loadLibraryLocations()
                     }
                 }
 
                 if let errorMessage = errorMessage {
                     scanResult = ScanResult(success: false, message: errorMessage, videosFound: 0, videosIndexed: 0)
                 } else {
+                    // "No videos found" only makes sense when the scan
+                    // genuinely turned up zero — if we indexed anything,
+                    // the count was just lost to a transient progress
+                    // event and we should treat the scan as successful.
+                    let foundForReport = max(peakFound, peakIndexed)
                     scanResult = ScanResult(
                         success: true,
-                        message: lastFound == 0
+                        message: foundForReport == 0
                             ? "No videos found in \(path)"
-                            : "Scanned \(path): \(lastFound) videos found, \(lastIndexed) indexed",
-                        videosFound: lastFound,
-                        videosIndexed: lastIndexed
+                            : "Scanned \(path): \(foundForReport) videos found, \(peakIndexed) indexed",
+                        videosFound: foundForReport,
+                        videosIndexed: peakIndexed
                     )
                 }
 
@@ -392,6 +436,83 @@ class GridViewModel: ObservableObject {
 
     // MARK: - Stack expansion
 
+    /// Refresh every piece of UI state that depends on a stack's
+    /// membership: the cached expanded-stack member list, the grid's
+    /// representative entries (which carry `groupId` / `groupSize` for
+    /// each video), and — if the stack has collapsed to a single video —
+    /// the expanded-id set itself. Called after Ungroup This,
+    /// Remove-from-stack, or Unstack so the grid catches up with the
+    /// daemon's view of the world.
+    ///
+    /// `groupId` is the *old* group the video was a member of, even if
+    /// the ungroup made that group disappear. Pass an empty string when
+    /// the operation isn't tied to a specific group (e.g. a bulk
+    /// ungroup that's already cleared the local state itself).
+    /// Remove a single video from its stack and refresh the grid. Wired
+    /// from the right-click "Remove from stack" menu item.
+    func removeFromStack(videoId: String, groupId: String) {
+        guard !videoId.isEmpty else { return }
+        Task {
+            do {
+                if try await repository.ungroupVideo(videoId: videoId) {
+                    refreshAfterStackChange(groupId: groupId)
+                } else {
+                    error = "Failed to remove video from stack"
+                }
+            } catch {
+                self.error = "Failed to remove from stack: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    /// Disband an entire stack — ungroups every member, leaving each
+    /// video standalone. Wired from the right-click "Unstack" menu
+    /// item. We iterate via individual `UngroupVideo` calls rather than
+    /// a bulk RPC because the daemon doesn't currently expose one;
+    /// stacks are small (a handful of variants), so the chatter is
+    /// fine.
+    func unstackGroup(groupId: String) {
+        guard !groupId.isEmpty else { return }
+        Task {
+            do {
+                let (members, _) = try await repository.listGroupMembers(groupId: groupId)
+                for member in members {
+                    _ = try await repository.ungroupVideo(videoId: member.id)
+                }
+                refreshAfterStackChange(groupId: groupId)
+            } catch {
+                self.error = "Failed to unstack: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    func refreshAfterStackChange(groupId: String) {
+        if !groupId.isEmpty {
+            // Re-pull the member list for this group. If the daemon
+            // dissolved the group entirely (last member ungrouped), the
+            // call will return zero members and we'll drop it from the
+            // cache so the stack badge stops trying to expand it.
+            Task {
+                do {
+                    let (members, _) = try await repository.listGroupMembers(groupId: groupId)
+                    if members.count < 2 {
+                        expandedGroupMembers.removeValue(forKey: groupId)
+                        expandedGroupIds.remove(groupId)
+                    } else {
+                        expandedGroupMembers[groupId] = members
+                    }
+                } catch {
+                    // On error, fall back to dropping the cached entry
+                    // so subsequent expansions re-fetch fresh.
+                    expandedGroupMembers.removeValue(forKey: groupId)
+                }
+            }
+        }
+        // Reload the representative list so each video's `groupId` /
+        // `groupSize` reflects the post-ungroup reality.
+        reloadFromTop()
+    }
+
     func toggleStackExpansion(_ groupId: String) {
         guard !groupId.isEmpty else { return }
         if expandedGroupIds.contains(groupId) {
@@ -446,6 +567,29 @@ class GridViewModel: ObservableObject {
 
     func clearError() { error = nil }
 
+    /// Select every video currently visible in the grid: each loaded
+    /// representative plus, when its stack is expanded, all of its visible
+    /// members. Drives the ⌘A shortcut.
+    func selectAllVisible() {
+        var seen = Set<String>()
+        var ids: [String] = []
+        for v in videos {
+            if seen.insert(v.id).inserted {
+                ids.append(v.id)
+            }
+            if !v.groupId.isEmpty,
+               expandedGroupIds.contains(v.groupId),
+               let members = expandedGroupMembers[v.groupId] {
+                for m in members where seen.insert(m.id).inserted {
+                    ids.append(m.id)
+                }
+            }
+        }
+        selectedVideoIds = ids
+        selectedVideoId = ids.first
+        anchorVideoId = ids.first
+    }
+
     /// Wipe every piece of catalog-derived state so the UI doesn't leak data
     /// from the previously-mounted catalog. Called by `ContentView` right
     /// after `VideoRepository.closeCatalog()`.
@@ -476,5 +620,173 @@ class GridViewModel: ObservableObject {
         scanStatus = nil
         scanResult = nil
         currentPage = 0
+        filterLocation = nil
+        videoLocations = []
     }
+
+    // MARK: - Geolocation
+
+    /// Apply (or clear) the geographic proximity filter and reload the grid.
+    /// Called by the global-map view when the user taps a pin.
+    func setLocationFilter(latitude: Double?, longitude: Double?, radiusKm: Double = 1.0) {
+        if let lat = latitude, let lon = longitude {
+            filterLocation = GeoFilter(latitude: lat, longitude: lon, radiusKm: radiusKm)
+        } else {
+            filterLocation = nil
+        }
+        Task { await loadCurrentPage(replace: true) }
+    }
+
+    /// Refresh the list of geotagged videos used by the global-map view.
+    func loadVideoLocations() {
+        Task { await loadVideoLocationsAsync() }
+    }
+
+    /// Awaitable variant — callers that need the data populated *before*
+    /// they take a UI action (opening a sheet, framing a map) can `await`
+    /// this. Always reads from the daemon; relies on the catalog-open
+    /// pre-load to keep the call fast in steady state.
+    func loadVideoLocationsAsync() async {
+        videoLocations = await repository.listVideosWithLocations()
+    }
+
+    /// Refresh the catalog's named-location list. Called whenever a sheet
+    /// needs to display or resolve names — cheap (typically a few hundred
+    /// rows at most) so we never paginate.
+    func loadNamedLocations() {
+        Task { await loadNamedLocationsAsync() }
+    }
+
+    /// Awaitable variant of [loadNamedLocations].
+    func loadNamedLocationsAsync() async {
+        namedLocations = await repository.listNamedLocations()
+    }
+
+    /// Resolve a (lat, lon) into the nearest named place within its
+    /// `radiusMeters`, or nil if no entry is close enough. Linear scan —
+    /// the named-location list is small.
+    func nameForLocation(latitude: Double, longitude: Double) -> NamedLocation? {
+        guard !namedLocations.isEmpty else { return nil }
+        var best: (NamedLocation, Double)? = nil
+        for loc in namedLocations {
+            let d = Self.haversineMeters(
+                lat1: latitude, lon1: longitude,
+                lat2: loc.latitude, lon2: loc.longitude
+            )
+            if d <= loc.radiusMeters {
+                if best == nil || d < best!.1 { best = (loc, d) }
+            }
+        }
+        return best?.0
+    }
+
+    /// Upsert a named location on the daemon and (on success) merge the
+    /// returned row into the local cache so the UI sees it immediately
+    /// without a full reload.
+    func saveNamedLocation(
+        id: String,
+        name: String,
+        latitude: Double,
+        longitude: Double,
+        radiusMeters: Double = 250,
+        onComplete: @escaping (NamedLocation?) -> Void = { _ in }
+    ) {
+        Task {
+            let saved = await repository.upsertNamedLocation(
+                id: id, name: name,
+                latitude: latitude, longitude: longitude,
+                radiusMeters: radiusMeters
+            )
+            if let saved = saved {
+                // Replace-or-insert by id so repeat saves don't duplicate.
+                if let idx = namedLocations.firstIndex(where: { $0.id == saved.id }) {
+                    namedLocations[idx] = saved
+                } else {
+                    namedLocations.append(saved)
+                }
+                namedLocations.sort { $0.name.lowercased() < $1.name.lowercased() }
+            }
+            onComplete(saved)
+        }
+    }
+
+    /// Great-circle distance in meters. Standard haversine — accurate
+    /// enough for sub-kilometer resolution at any latitude we care about.
+    private static func haversineMeters(
+        lat1: Double, lon1: Double, lat2: Double, lon2: Double
+    ) -> Double {
+        let earthRadius = 6_371_000.0
+        let toRad = Double.pi / 180
+        let dLat = (lat2 - lat1) * toRad
+        let dLon = (lon2 - lon1) * toRad
+        let a = sin(dLat / 2) * sin(dLat / 2)
+            + cos(lat1 * toRad) * cos(lat2 * toRad)
+            * sin(dLon / 2) * sin(dLon / 2)
+        let c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        return earthRadius * c
+    }
+
+    /// Persist a new GPS location on every video in `videoIds`. After all
+    /// writes complete the grid and global-map are reloaded.
+    func setVideoLocations(
+        videoIds: [String],
+        latitude: Double,
+        longitude: Double,
+        writeToFile: Bool,
+        onComplete: @escaping () -> Void = {}
+    ) {
+        guard !videoIds.isEmpty else { return }
+        Task {
+            var ok = 0
+            for id in videoIds {
+                let success = await repository.updateVideoLocation(
+                    videoId: id,
+                    latitude: latitude,
+                    longitude: longitude,
+                    altitude: 0,
+                    writeToFile: writeToFile
+                )
+                if success { ok += 1 }
+            }
+            NSLog("Updated location on \(ok)/\(videoIds.count) video(s)")
+            videoLocations = await repository.listVideosWithLocations()
+            await loadCurrentPage(replace: true)
+            onComplete()
+        }
+    }
+
+    /// Persist a new capture timestamp (Unix ms, UTC) on every video in
+    /// `videoIds`. Reloads the grid + year-filter dropdown afterwards.
+    func setVideoCaptureDates(
+        videoIds: [String],
+        timestampMs: Int64,
+        writeToFile: Bool,
+        onComplete: @escaping () -> Void = {}
+    ) {
+        guard !videoIds.isEmpty else { return }
+        Task {
+            var ok = 0
+            for id in videoIds {
+                let success = await repository.updateVideoCaptureDate(
+                    videoId: id,
+                    timestampMs: timestampMs,
+                    writeToFile: writeToFile
+                )
+                if success { ok += 1 }
+            }
+            NSLog("Updated capture date on \(ok)/\(videoIds.count) video(s)")
+            filterOptions = await repository.getFilterOptions()
+            await loadCurrentPage(replace: true)
+            onComplete()
+        }
+    }
+}
+
+/// Proximity filter — kept as a named struct so SwiftUI can compare-and-redraw
+/// reliably, and so the parameter list of [GridViewModel] doesn't fan out a
+/// half-typed tuple everywhere.
+struct GeoFilter: Equatable {
+    let latitude: Double
+    let longitude: Double
+    let radiusKm: Double
 }

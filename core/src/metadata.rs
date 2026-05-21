@@ -189,6 +189,183 @@ impl MetadataExtractor {
             .unwrap_or(false)
     }
 
+    /// Embed an ISO 6709 `location` tag into a video file via ffmpeg. Uses
+    /// `-c copy` so streams are passed through without re-encoding — a few
+    /// hundred kilobytes get rewritten (the moov atom on MP4/MOV), nothing
+    /// expensive. We write to a sibling temp file and atomically rename
+    /// over the original so an interrupted run can't corrupt the source.
+    ///
+    /// `altitude` of 0 is encoded as "/" with no third component, which the
+    /// QuickTime/MP4 spec treats as "altitude unknown". Other readers
+    /// (Lightroom, Photos.app, etc.) all accept this form.
+    pub fn write_location_tag(
+        video_path: &str,
+        latitude: f64,
+        longitude: f64,
+        altitude: f64,
+    ) -> Result<()> {
+        if !Self::ffmpeg_available() {
+            return Err(VideoRoomError::MetadataExtractionFailed(
+                "ffmpeg not available on PATH; cannot embed location in file".to_string(),
+            ));
+        }
+
+        // ISO 6709 string: "±DD.DDDD±DDD.DDDD[±AAAA]/". The leading sign on
+        // each component is mandatory, hence the explicit `+`/`-` formatting.
+        let iso6709 = if altitude.abs() < f64::EPSILON {
+            format!("{:+.6}{:+.6}/", latitude, longitude)
+        } else {
+            format!("{:+.6}{:+.6}{:+.3}/", latitude, longitude, altitude)
+        };
+
+        let path = std::path::Path::new(video_path);
+        let dir = path
+            .parent()
+            .ok_or_else(|| VideoRoomError::MetadataExtractionFailed(
+                "video has no parent directory".to_string(),
+            ))?;
+        let ext = path
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or("mp4");
+        let temp_path = dir.join(format!(
+            ".videoroom-loc-{}.{}",
+            uuid::Uuid::new_v4(),
+            ext
+        ));
+
+        // Throttle the ffmpeg invocation like every other ffmpeg call.
+        let _permit = crate::concurrency::acquire_ffmpeg_permit();
+
+        let status = Command::new("ffmpeg")
+            .arg("-nostdin")
+            .arg("-loglevel").arg("error")
+            .arg("-y")
+            .arg("-i").arg(video_path)
+            .arg("-c").arg("copy")
+            .arg("-map_metadata").arg("0")
+            // QuickTime/MP4 location atom. ffmpeg also accepts
+            // `-metadata:s:v location=...` but the global form covers both
+            // container-level and stream-level placements correctly.
+            .arg("-metadata").arg(format!("location={}", iso6709))
+            .arg("-metadata").arg(format!("location-eng={}", iso6709))
+            .arg(&temp_path)
+            .status();
+
+        let ok = match status {
+            Ok(s) => s.success(),
+            Err(e) => {
+                let _ = std::fs::remove_file(&temp_path);
+                return Err(VideoRoomError::MetadataExtractionFailed(format!(
+                    "ffmpeg failed to spawn: {}", e
+                )));
+            }
+        };
+
+        if !ok {
+            let _ = std::fs::remove_file(&temp_path);
+            return Err(VideoRoomError::MetadataExtractionFailed(
+                "ffmpeg returned a non-zero exit code while writing location".to_string(),
+            ));
+        }
+
+        // Atomic-ish swap. rename(2) is atomic on the same filesystem,
+        // which is the common case (temp is a sibling of the original).
+        std::fs::rename(&temp_path, video_path).map_err(|e| {
+            // Try to clean the temp file up if the rename failed.
+            let _ = std::fs::remove_file(&temp_path);
+            VideoRoomError::MetadataExtractionFailed(format!(
+                "Failed to atomically replace {}: {}", video_path, e
+            ))
+        })?;
+
+        Ok(())
+    }
+
+    /// Embed an ISO 8601 `creation_time` tag into a video file via ffmpeg.
+    /// Same atomic temp-file dance as [`write_location_tag`] — streams are
+    /// stream-copied so the rewrite is fast and lossless. Accepts a Unix
+    /// millisecond timestamp; formatted as `YYYY-MM-DDTHH:MM:SS.sssZ`,
+    /// which is what QuickTime/MP4 readers expect (and ffprobe writes when
+    /// reading back).
+    pub fn write_creation_time_tag(video_path: &str, timestamp_ms: i64) -> Result<()> {
+        if !Self::ffmpeg_available() {
+            return Err(VideoRoomError::MetadataExtractionFailed(
+                "ffmpeg not available on PATH; cannot embed creation time in file".to_string(),
+            ));
+        }
+
+        // Chrono is already a dependency — use it for a robust UTC string.
+        let dt = chrono::DateTime::<chrono::Utc>::from_timestamp_millis(timestamp_ms)
+            .ok_or_else(|| VideoRoomError::MetadataExtractionFailed(
+                format!("timestamp_ms {} is out of range", timestamp_ms)
+            ))?;
+        let iso = dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
+
+        let path = std::path::Path::new(video_path);
+        let dir = path
+            .parent()
+            .ok_or_else(|| VideoRoomError::MetadataExtractionFailed(
+                "video has no parent directory".to_string(),
+            ))?;
+        let ext = path
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or("mp4");
+        let temp_path = dir.join(format!(
+            ".videoroom-date-{}.{}",
+            uuid::Uuid::new_v4(),
+            ext
+        ));
+
+        let _permit = crate::concurrency::acquire_ffmpeg_permit();
+
+        let status = Command::new("ffmpeg")
+            .arg("-nostdin")
+            .arg("-loglevel").arg("error")
+            .arg("-y")
+            .arg("-i").arg(video_path)
+            .arg("-c").arg("copy")
+            .arg("-map_metadata").arg("0")
+            .arg("-metadata").arg(format!("creation_time={}", iso))
+            .arg(&temp_path)
+            .status();
+
+        let ok = match status {
+            Ok(s) => s.success(),
+            Err(e) => {
+                let _ = std::fs::remove_file(&temp_path);
+                return Err(VideoRoomError::MetadataExtractionFailed(format!(
+                    "ffmpeg failed to spawn: {}", e
+                )));
+            }
+        };
+
+        if !ok {
+            let _ = std::fs::remove_file(&temp_path);
+            return Err(VideoRoomError::MetadataExtractionFailed(
+                "ffmpeg returned a non-zero exit code while writing creation_time".to_string(),
+            ));
+        }
+
+        std::fs::rename(&temp_path, video_path).map_err(|e| {
+            let _ = std::fs::remove_file(&temp_path);
+            VideoRoomError::MetadataExtractionFailed(format!(
+                "Failed to atomically replace {}: {}", video_path, e
+            ))
+        })?;
+
+        Ok(())
+    }
+
+    fn ffmpeg_available() -> bool {
+        Command::new("ffmpeg")
+            .arg("-version")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    }
+
     fn parse_probe_output(probe: &FFProbeOutput) -> Result<(&FFProbeStream, &FFProbeFormat)> {
         let format = &probe.format;
         let video_stream = probe

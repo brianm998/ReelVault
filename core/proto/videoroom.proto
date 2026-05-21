@@ -63,6 +63,25 @@ service VideoRoom {
   rpc OpenCatalog(OpenCatalogRequest) returns (CatalogInfo);
   rpc CloseCatalog(CloseCatalogRequest) returns (Response);
   rpc GetCurrentCatalog(GetCurrentCatalogRequest) returns (CatalogInfo);
+
+  // Geolocation — set or correct the GPS coordinates for one or more videos,
+  // and enumerate every video that has known coordinates (for the global map).
+  rpc UpdateVideoLocation(UpdateVideoLocationRequest) returns (Response);
+  rpc ListVideosWithLocations(ListVideosWithLocationsRequest) returns (VideoLocationsResponse);
+
+  // Named locations — user-defined names for specific lat/lon points (e.g.
+  // "Home", "Yosemite Valley Visitor Center"). Clients resolve any video's
+  // GPS into a name by proximity (default 250 m) using ListNamedLocations,
+  // then cache the result. Names are also written by the location picker.
+  rpc ListNamedLocations(ListNamedLocationsRequest) returns (NamedLocationsResponse);
+  rpc UpsertNamedLocation(UpsertNamedLocationRequest) returns (NamedLocationResponse);
+  rpc DeleteNamedLocation(DeleteNamedLocationRequest) returns (Response);
+
+  // Capture date/time — set or correct when a video was recorded. Mirrors
+  // UpdateVideoLocation: catalog is always updated; the file's metadata is
+  // touched (via ffmpeg's `-metadata creation_time=...`) only when the
+  // client asks for it.
+  rpc UpdateVideoCaptureDate(UpdateVideoCaptureDateRequest) returns (Response);
 }
 
 // Messages for queries
@@ -82,6 +101,14 @@ message ListVideosRequest {
   string filter_lens = 9;
   string filter_codec = 10;
   int32 filter_capture_year = 11;
+  // Geographic proximity filter — set `filter_by_location` true and provide
+  // lat/lon/radius_km to limit results to videos whose recorded coordinates
+  // fall within `filter_radius_km` of (filter_latitude, filter_longitude).
+  // Used when the user taps a pin on the global map.
+  bool filter_by_location = 12;
+  double filter_latitude = 13;
+  double filter_longitude = 14;
+  double filter_radius_km = 15;
 }
 
 message VideoSummary {
@@ -464,6 +491,93 @@ message CatalogInfo {
   string name = 2;           // Display name (filename stem, e.g. "MyLibrary")
   int64 video_count = 3;     // Total videos currently indexed
   int64 opened_at_ms = 4;    // Unix ms at which this catalog was opened
+}
+
+// Geolocation
+
+// Set or replace GPS coordinates on a single video. The catalog's metadata
+// row is updated atomically. If `write_to_file` is true the daemon also
+// writes the ISO 6709 `location` tag into the underlying video file via
+// ffmpeg's `-metadata location=...` (using `-c copy` so no re-encoding
+// happens). File mutation is opt-in because some users won't want VideoRoom
+// touching their original files.
+message UpdateVideoLocationRequest {
+  string video_id = 1;
+  double latitude = 2;
+  double longitude = 3;
+  double altitude = 4;       // 0 if unknown
+  bool write_to_file = 5;    // embed in the video file as well as the catalog
+}
+
+message ListVideosWithLocationsRequest {}
+
+// A geotagged video — the minimum a client needs to render a pin on the
+// global map and turn it into a grid filter when tapped.
+message VideoLocation {
+  string id = 1;
+  string filename = 2;
+  string path = 3;
+  double latitude = 4;
+  double longitude = 5;
+  double altitude = 6;
+  bool has_thumbnail = 7;
+}
+
+message VideoLocationsResponse {
+  repeated VideoLocation locations = 1;
+}
+
+// User-named place (e.g. "Home" → 37.7749, -122.4194). The clients fetch
+// every named location for the active catalog once on dialog open, then
+// resolve each video's GPS to a name client-side by picking the nearest
+// entry whose haversine distance is within `radius_m`.
+message NamedLocation {
+  string id = 1;
+  string name = 2;
+  double latitude = 3;
+  double longitude = 4;
+  double radius_m = 5;     // Resolution tolerance. Default 250 on new rows.
+  int64 created_at_ms = 6; // Unix milliseconds (UTC), 0 if unknown.
+  int64 updated_at_ms = 7;
+}
+
+message ListNamedLocationsRequest {}
+
+message NamedLocationsResponse {
+  repeated NamedLocation locations = 1;
+}
+
+// Insert or update a named location. If `id` is empty, a new row is created;
+// otherwise the existing row is updated. `radius_m <= 0` falls back to the
+// schema default (250 m).
+message UpsertNamedLocationRequest {
+  string id = 1;
+  string name = 2;
+  double latitude = 3;
+  double longitude = 4;
+  double radius_m = 5;
+}
+
+message NamedLocationResponse {
+  bool success = 1;
+  string message = 2;
+  NamedLocation location = 3;  // The persisted row (with assigned id, timestamps).
+}
+
+message DeleteNamedLocationRequest {
+  string id = 1;
+}
+
+// Capture date/time
+
+// Set or replace the capture time on a single video. `timestamp_ms` is
+// Unix milliseconds (UTC). If `write_to_file` is true the daemon embeds it
+// into the underlying video file's container metadata via ffmpeg's
+// `-metadata creation_time=...` (using `-c copy`, no re-encoding).
+message UpdateVideoCaptureDateRequest {
+  string video_id = 1;
+  int64 timestamp_ms = 2;
+  bool write_to_file = 3;
 }
 
 // Generic responses

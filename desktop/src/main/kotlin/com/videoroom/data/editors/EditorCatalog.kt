@@ -25,8 +25,14 @@ val EditorCatalog: List<ExternalEditor> = listOf(
         homepage = "https://www.blackmagicdesign.com/products/davinciresolve",
         platforms = setOf(MacOS, Windows, Linux),
         defaultPaths = mapOf(
+            // The free Resolve installer drops the bundle in
+            // `/Applications/DaVinci Resolve/` (subdirectory); the paid
+            // Studio variant uses a sibling subdirectory + bundle name.
+            // We check both, plus the legacy flat-Applications install
+            // some users have kept around.
             MacOS to listOf(
                 "/Applications/DaVinci Resolve/DaVinci Resolve.app",
+                "/Applications/DaVinci Resolve Studio/DaVinci Resolve Studio.app",
                 "/Applications/DaVinci Resolve.app"
             ),
             Windows to listOf(
@@ -48,7 +54,13 @@ val EditorCatalog: List<ExternalEditor> = listOf(
         homepage = "https://kdenlive.org",
         platforms = setOf(MacOS, Windows, Linux),
         defaultPaths = mapOf(
-            MacOS to listOf("/Applications/kdenlive.app"),
+            // Kdenlive's macOS bundle shipped as lowercase `kdenlive.app`
+            // in older releases and capitalised `Kdenlive.app` in newer
+            // ones (KDE's naming standardised). Probe both.
+            MacOS to listOf(
+                "/Applications/Kdenlive.app",
+                "/Applications/kdenlive.app"
+            ),
             Windows to listOf(
                 "C:\\Program Files\\kdenlive\\bin\\kdenlive.exe"
             ),
@@ -151,20 +163,34 @@ val EditorCatalog: List<ExternalEditor> = listOf(
         homepage = "https://www.adobe.com/products/premiere.html",
         platforms = setOf(MacOS, Windows),
         defaultPaths = mapOf(
+            // Adobe installs each Creative Cloud release in its own
+            // versioned folder — newest first so we find the user's
+            // current install before stumbling onto an older copy.
+            // 2025 + Beta added so people on the current shipping
+            // version + early-access channel are detected automatically.
             MacOS to listOf(
+                "/Applications/Adobe Premiere Pro 2025/Adobe Premiere Pro 2025.app",
+                "/Applications/Adobe Premiere Pro (Beta)/Adobe Premiere Pro (Beta).app",
                 "/Applications/Adobe Premiere Pro 2024/Adobe Premiere Pro 2024.app",
                 "/Applications/Adobe Premiere Pro 2023/Adobe Premiere Pro 2023.app",
                 "/Applications/Adobe Premiere Pro 2022/Adobe Premiere Pro 2022.app"
             ),
             Windows to listOf(
+                "C:\\Program Files\\Adobe\\Adobe Premiere Pro 2025\\Adobe Premiere Pro.exe",
                 "C:\\Program Files\\Adobe\\Adobe Premiere Pro 2024\\Adobe Premiere Pro.exe",
                 "C:\\Program Files\\Adobe\\Adobe Premiere Pro 2023\\Adobe Premiere Pro.exe",
                 "C:\\Program Files\\Adobe\\Adobe Premiere Pro 2022\\Adobe Premiere Pro.exe"
             ),
         ),
+        // Premiere accepts a media file via CLI only when it's already
+        // running and a project is open; otherwise the file is silently
+        // dropped on the Home screen. Cold launches take 30–90 s on
+        // most machines. Don't pass the file — let the user import via
+        // Media Browser once they're in the project they actually want.
         supportsFileArgs = false,
-        notes = "Project-based; Creative Cloud subscription required. VideoRoom " +
-            "launches Premiere; import the file via Media Browser."
+        notes = "Project-based; Creative Cloud subscription required. Cold launch " +
+            "can take a minute or more — VideoRoom just opens the app, import the " +
+            "file via the Media Browser inside Premiere."
     ),
     ExternalEditor(
         id = "final-cut-pro",
@@ -203,12 +229,18 @@ val EditorCatalog: List<ExternalEditor> = listOf(
         homepage = "https://filmora.wondershare.com",
         platforms = setOf(MacOS, Windows),
         defaultPaths = mapOf(
+            // Wondershare publishes Filmora with the version in the
+            // bundle name; newer first so we pick the current install.
+            // The unversioned bundle is what newer updaters use; the
+            // numbered variants are legacy installs that linger.
             MacOS to listOf(
                 "/Applications/Wondershare Filmora.app",
+                "/Applications/Wondershare Filmora 14.app",
                 "/Applications/Wondershare Filmora 13.app",
                 "/Applications/Wondershare Filmora 12.app"
             ),
             Windows to listOf(
+                "C:\\Program Files\\Wondershare\\Wondershare Filmora 14\\Filmora.exe",
                 "C:\\Program Files\\Wondershare\\Wondershare Filmora 13\\Filmora.exe",
                 "C:\\Program Files\\Wondershare\\Wondershare Filmora 12\\Filmora.exe"
             ),

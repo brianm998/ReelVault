@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 VideoRoom Contributors
+
 // DO NOT EDIT.
 // swift-format-ignore-file
 // swiftlint:disable all
@@ -7,6 +10,9 @@
 //
 // For information on using the generated types, please see the documentation:
 //   https://github.com/apple/swift-protobuf/
+
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 VideoRoom Contributors
 
 #if canImport(FoundationEssentials)
 import FoundationEssentials
@@ -55,6 +61,18 @@ nonisolated struct Videoroom_ListVideosRequest: Sendable {
   var filterCodec: String = String()
 
   var filterCaptureYear: Int32 = 0
+
+  /// Geographic proximity filter — set `filter_by_location` true and provide
+  /// lat/lon/radius_km to limit results to videos whose recorded coordinates
+  /// fall within `filter_radius_km` of (filter_latitude, filter_longitude).
+  /// Used when the user taps a pin on the global map.
+  var filterByLocation: Bool = false
+
+  var filterLatitude: Double = 0
+
+  var filterLongitude: Double = 0
+
+  var filterRadiusKm: Double = 0
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1167,6 +1185,215 @@ nonisolated struct Videoroom_CatalogInfo: Sendable {
   init() {}
 }
 
+/// Set or replace GPS coordinates on a single video. The catalog's metadata
+/// row is updated atomically. If `write_to_file` is true the daemon also
+/// writes the ISO 6709 `location` tag into the underlying video file via
+/// ffmpeg's `-metadata location=...` (using `-c copy` so no re-encoding
+/// happens). File mutation is opt-in because some users won't want VideoRoom
+/// touching their original files.
+nonisolated struct Videoroom_UpdateVideoLocationRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var videoID: String = String()
+
+  var latitude: Double = 0
+
+  var longitude: Double = 0
+
+  /// 0 if unknown
+  var altitude: Double = 0
+
+  /// embed in the video file as well as the catalog
+  var writeToFile: Bool = false
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Videoroom_ListVideosWithLocationsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+/// A geotagged video — the minimum a client needs to render a pin on the
+/// global map and turn it into a grid filter when tapped.
+nonisolated struct Videoroom_VideoLocation: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var id: String = String()
+
+  var filename: String = String()
+
+  var path: String = String()
+
+  var latitude: Double = 0
+
+  var longitude: Double = 0
+
+  var altitude: Double = 0
+
+  var hasThumbnail_p: Bool = false
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Videoroom_VideoLocationsResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var locations: [Videoroom_VideoLocation] = []
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+/// User-named place (e.g. "Home" → 37.7749, -122.4194). The clients fetch
+/// every named location for the active catalog once on dialog open, then
+/// resolve each video's GPS to a name client-side by picking the nearest
+/// entry whose haversine distance is within `radius_m`.
+nonisolated struct Videoroom_NamedLocation: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var id: String = String()
+
+  var name: String = String()
+
+  var latitude: Double = 0
+
+  var longitude: Double = 0
+
+  /// Resolution tolerance. Default 250 on new rows.
+  var radiusM: Double = 0
+
+  /// Unix milliseconds (UTC), 0 if unknown.
+  var createdAtMs: Int64 = 0
+
+  var updatedAtMs: Int64 = 0
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Videoroom_ListNamedLocationsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Videoroom_NamedLocationsResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var locations: [Videoroom_NamedLocation] = []
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+/// Insert or update a named location. If `id` is empty, a new row is created;
+/// otherwise the existing row is updated. `radius_m <= 0` falls back to the
+/// schema default (250 m).
+nonisolated struct Videoroom_UpsertNamedLocationRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var id: String = String()
+
+  var name: String = String()
+
+  var latitude: Double = 0
+
+  var longitude: Double = 0
+
+  var radiusM: Double = 0
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Videoroom_NamedLocationResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var success: Bool = false
+
+  var message: String = String()
+
+  /// The persisted row (with assigned id, timestamps).
+  var location: Videoroom_NamedLocation {
+    get {_location ?? Videoroom_NamedLocation()}
+    set {_location = newValue}
+  }
+  /// Returns true if `location` has been explicitly set.
+  var hasLocation: Bool {self._location != nil}
+  /// Clears the value of `location`. Subsequent reads from it will return its default value.
+  mutating func clearLocation() {self._location = nil}
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+
+  fileprivate var _location: Videoroom_NamedLocation? = nil
+}
+
+nonisolated struct Videoroom_DeleteNamedLocationRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var id: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+/// Set or replace the capture time on a single video. `timestamp_ms` is
+/// Unix milliseconds (UTC). If `write_to_file` is true the daemon embeds it
+/// into the underlying video file's container metadata via ffmpeg's
+/// `-metadata creation_time=...` (using `-c copy`, no re-encoding).
+nonisolated struct Videoroom_UpdateVideoCaptureDateRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var videoID: String = String()
+
+  var timestampMs: Int64 = 0
+
+  var writeToFile: Bool = false
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
 nonisolated struct Videoroom_Response: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -1189,7 +1416,7 @@ fileprivate nonisolated let _protobuf_package = "videoroom"
 
 nonisolated extension Videoroom_ListVideosRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ListVideosRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}limit\0\u{1}offset\0\u{3}sort_by\0\u{3}sort_ascending\0\u{3}filter_tags\0\u{3}collection_id\0\u{3}location_path\0\u{3}filter_camera\0\u{3}filter_lens\0\u{3}filter_codec\0\u{3}filter_capture_year\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}limit\0\u{1}offset\0\u{3}sort_by\0\u{3}sort_ascending\0\u{3}filter_tags\0\u{3}collection_id\0\u{3}location_path\0\u{3}filter_camera\0\u{3}filter_lens\0\u{3}filter_codec\0\u{3}filter_capture_year\0\u{3}filter_by_location\0\u{3}filter_latitude\0\u{3}filter_longitude\0\u{3}filter_radius_km\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1208,6 +1435,10 @@ nonisolated extension Videoroom_ListVideosRequest: SwiftProtobuf.Message, SwiftP
       case 9: try { try decoder.decodeSingularStringField(value: &self.filterLens) }()
       case 10: try { try decoder.decodeSingularStringField(value: &self.filterCodec) }()
       case 11: try { try decoder.decodeSingularInt32Field(value: &self.filterCaptureYear) }()
+      case 12: try { try decoder.decodeSingularBoolField(value: &self.filterByLocation) }()
+      case 13: try { try decoder.decodeSingularDoubleField(value: &self.filterLatitude) }()
+      case 14: try { try decoder.decodeSingularDoubleField(value: &self.filterLongitude) }()
+      case 15: try { try decoder.decodeSingularDoubleField(value: &self.filterRadiusKm) }()
       default: break
       }
     }
@@ -1247,6 +1478,18 @@ nonisolated extension Videoroom_ListVideosRequest: SwiftProtobuf.Message, SwiftP
     if self.filterCaptureYear != 0 {
       try visitor.visitSingularInt32Field(value: self.filterCaptureYear, fieldNumber: 11)
     }
+    if self.filterByLocation != false {
+      try visitor.visitSingularBoolField(value: self.filterByLocation, fieldNumber: 12)
+    }
+    if self.filterLatitude.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.filterLatitude, fieldNumber: 13)
+    }
+    if self.filterLongitude.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.filterLongitude, fieldNumber: 14)
+    }
+    if self.filterRadiusKm.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.filterRadiusKm, fieldNumber: 15)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1262,6 +1505,10 @@ nonisolated extension Videoroom_ListVideosRequest: SwiftProtobuf.Message, SwiftP
     if lhs.filterLens != rhs.filterLens {return false}
     if lhs.filterCodec != rhs.filterCodec {return false}
     if lhs.filterCaptureYear != rhs.filterCaptureYear {return false}
+    if lhs.filterByLocation != rhs.filterByLocation {return false}
+    if lhs.filterLatitude != rhs.filterLatitude {return false}
+    if lhs.filterLongitude != rhs.filterLongitude {return false}
+    if lhs.filterRadiusKm != rhs.filterRadiusKm {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3688,6 +3935,438 @@ nonisolated extension Videoroom_CatalogInfo: SwiftProtobuf.Message, SwiftProtobu
     if lhs.name != rhs.name {return false}
     if lhs.videoCount != rhs.videoCount {return false}
     if lhs.openedAtMs != rhs.openedAtMs {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_UpdateVideoLocationRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".UpdateVideoLocationRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{1}latitude\0\u{1}longitude\0\u{1}altitude\0\u{3}write_to_file\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.videoID) }()
+      case 2: try { try decoder.decodeSingularDoubleField(value: &self.latitude) }()
+      case 3: try { try decoder.decodeSingularDoubleField(value: &self.longitude) }()
+      case 4: try { try decoder.decodeSingularDoubleField(value: &self.altitude) }()
+      case 5: try { try decoder.decodeSingularBoolField(value: &self.writeToFile) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.videoID.isEmpty {
+      try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
+    }
+    if self.latitude.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.latitude, fieldNumber: 2)
+    }
+    if self.longitude.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.longitude, fieldNumber: 3)
+    }
+    if self.altitude.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.altitude, fieldNumber: 4)
+    }
+    if self.writeToFile != false {
+      try visitor.visitSingularBoolField(value: self.writeToFile, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_UpdateVideoLocationRequest, rhs: Videoroom_UpdateVideoLocationRequest) -> Bool {
+    if lhs.videoID != rhs.videoID {return false}
+    if lhs.latitude != rhs.latitude {return false}
+    if lhs.longitude != rhs.longitude {return false}
+    if lhs.altitude != rhs.altitude {return false}
+    if lhs.writeToFile != rhs.writeToFile {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_ListVideosWithLocationsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".ListVideosWithLocationsRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_ListVideosWithLocationsRequest, rhs: Videoroom_ListVideosWithLocationsRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_VideoLocation: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".VideoLocation"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{1}latitude\0\u{1}longitude\0\u{1}altitude\0\u{3}has_thumbnail\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.filename) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.path) }()
+      case 4: try { try decoder.decodeSingularDoubleField(value: &self.latitude) }()
+      case 5: try { try decoder.decodeSingularDoubleField(value: &self.longitude) }()
+      case 6: try { try decoder.decodeSingularDoubleField(value: &self.altitude) }()
+      case 7: try { try decoder.decodeSingularBoolField(value: &self.hasThumbnail_p) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    if !self.filename.isEmpty {
+      try visitor.visitSingularStringField(value: self.filename, fieldNumber: 2)
+    }
+    if !self.path.isEmpty {
+      try visitor.visitSingularStringField(value: self.path, fieldNumber: 3)
+    }
+    if self.latitude.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.latitude, fieldNumber: 4)
+    }
+    if self.longitude.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.longitude, fieldNumber: 5)
+    }
+    if self.altitude.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.altitude, fieldNumber: 6)
+    }
+    if self.hasThumbnail_p != false {
+      try visitor.visitSingularBoolField(value: self.hasThumbnail_p, fieldNumber: 7)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_VideoLocation, rhs: Videoroom_VideoLocation) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.filename != rhs.filename {return false}
+    if lhs.path != rhs.path {return false}
+    if lhs.latitude != rhs.latitude {return false}
+    if lhs.longitude != rhs.longitude {return false}
+    if lhs.altitude != rhs.altitude {return false}
+    if lhs.hasThumbnail_p != rhs.hasThumbnail_p {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_VideoLocationsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".VideoLocationsResponse"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}locations\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.locations) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.locations.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.locations, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_VideoLocationsResponse, rhs: Videoroom_VideoLocationsResponse) -> Bool {
+    if lhs.locations != rhs.locations {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_NamedLocation: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".NamedLocation"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}latitude\0\u{1}longitude\0\u{3}radius_m\0\u{3}created_at_ms\0\u{3}updated_at_ms\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 3: try { try decoder.decodeSingularDoubleField(value: &self.latitude) }()
+      case 4: try { try decoder.decodeSingularDoubleField(value: &self.longitude) }()
+      case 5: try { try decoder.decodeSingularDoubleField(value: &self.radiusM) }()
+      case 6: try { try decoder.decodeSingularInt64Field(value: &self.createdAtMs) }()
+      case 7: try { try decoder.decodeSingularInt64Field(value: &self.updatedAtMs) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 2)
+    }
+    if self.latitude.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.latitude, fieldNumber: 3)
+    }
+    if self.longitude.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.longitude, fieldNumber: 4)
+    }
+    if self.radiusM.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.radiusM, fieldNumber: 5)
+    }
+    if self.createdAtMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.createdAtMs, fieldNumber: 6)
+    }
+    if self.updatedAtMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.updatedAtMs, fieldNumber: 7)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_NamedLocation, rhs: Videoroom_NamedLocation) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.name != rhs.name {return false}
+    if lhs.latitude != rhs.latitude {return false}
+    if lhs.longitude != rhs.longitude {return false}
+    if lhs.radiusM != rhs.radiusM {return false}
+    if lhs.createdAtMs != rhs.createdAtMs {return false}
+    if lhs.updatedAtMs != rhs.updatedAtMs {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_ListNamedLocationsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".ListNamedLocationsRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_ListNamedLocationsRequest, rhs: Videoroom_ListNamedLocationsRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_NamedLocationsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".NamedLocationsResponse"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}locations\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.locations) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.locations.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.locations, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_NamedLocationsResponse, rhs: Videoroom_NamedLocationsResponse) -> Bool {
+    if lhs.locations != rhs.locations {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_UpsertNamedLocationRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".UpsertNamedLocationRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}latitude\0\u{1}longitude\0\u{3}radius_m\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 3: try { try decoder.decodeSingularDoubleField(value: &self.latitude) }()
+      case 4: try { try decoder.decodeSingularDoubleField(value: &self.longitude) }()
+      case 5: try { try decoder.decodeSingularDoubleField(value: &self.radiusM) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 2)
+    }
+    if self.latitude.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.latitude, fieldNumber: 3)
+    }
+    if self.longitude.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.longitude, fieldNumber: 4)
+    }
+    if self.radiusM.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.radiusM, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_UpsertNamedLocationRequest, rhs: Videoroom_UpsertNamedLocationRequest) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.name != rhs.name {return false}
+    if lhs.latitude != rhs.latitude {return false}
+    if lhs.longitude != rhs.longitude {return false}
+    if lhs.radiusM != rhs.radiusM {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_NamedLocationResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".NamedLocationResponse"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}success\0\u{1}message\0\u{1}location\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBoolField(value: &self.success) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.message) }()
+      case 3: try { try decoder.decodeSingularMessageField(value: &self._location) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if self.success != false {
+      try visitor.visitSingularBoolField(value: self.success, fieldNumber: 1)
+    }
+    if !self.message.isEmpty {
+      try visitor.visitSingularStringField(value: self.message, fieldNumber: 2)
+    }
+    try { if let v = self._location {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_NamedLocationResponse, rhs: Videoroom_NamedLocationResponse) -> Bool {
+    if lhs.success != rhs.success {return false}
+    if lhs.message != rhs.message {return false}
+    if lhs._location != rhs._location {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_DeleteNamedLocationRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".DeleteNamedLocationRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.id.isEmpty {
+      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_DeleteNamedLocationRequest, rhs: Videoroom_DeleteNamedLocationRequest) -> Bool {
+    if lhs.id != rhs.id {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_UpdateVideoCaptureDateRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".UpdateVideoCaptureDateRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{3}timestamp_ms\0\u{3}write_to_file\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.videoID) }()
+      case 2: try { try decoder.decodeSingularInt64Field(value: &self.timestampMs) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.writeToFile) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.videoID.isEmpty {
+      try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
+    }
+    if self.timestampMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.timestampMs, fieldNumber: 2)
+    }
+    if self.writeToFile != false {
+      try visitor.visitSingularBoolField(value: self.writeToFile, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_UpdateVideoCaptureDateRequest, rhs: Videoroom_UpdateVideoCaptureDateRequest) -> Bool {
+    if lhs.videoID != rhs.videoID {return false}
+    if lhs.timestampMs != rhs.timestampMs {return false}
+    if lhs.writeToFile != rhs.writeToFile {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -57,13 +57,22 @@ class DetailViewModel: ObservableObject {
         }
     }
 
-    func ungroupCurrent() {
+    /// Remove the currently-displayed video from its stack. `onComplete`
+    /// fires after the daemon call succeeds — callers wire it to
+    /// `GridViewModel.refreshAfterStackChange(groupId:)` so the grid's
+    /// representative + expanded-member caches catch up.
+    func ungroupCurrent(onComplete: ((_ groupId: String) -> Void)? = nil) {
         guard let videoId = metadata?.id else { return }
+        // Capture the *current* group id before we tell the daemon to
+        // drop it — `VideoMetadata` doesn't track groupId, so we read it
+        // from the `VideoSummary` we cached on selection.
+        let oldGroupId = currentVideoSummary?.groupId ?? ""
         Task {
             do {
                 if try await repository.ungroupVideo(videoId: videoId) {
                     groupMembers = []
                     groupPreferredId = ""
+                    onComplete?(oldGroupId)
                 } else {
                     error = "Failed to ungroup"
                 }

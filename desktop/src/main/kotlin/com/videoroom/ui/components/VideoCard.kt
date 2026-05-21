@@ -36,13 +36,17 @@ import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import com.videoroom.data.models.VideoSummary
 import com.videoroom.ui.theme.VideoRoomCornerRadius
 import com.videoroom.ui.theme.VideoRoomSpacing
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.skia.Image as SkiaImage
 
@@ -72,6 +76,11 @@ fun VideoCard(
     /** Fired when the cursor enters the thumbnail area; used to lazily load
      *  scrub frames the first time the user hovers this card. */
     onHoverEnter: () -> Unit = {},
+    /** When `true`, the stationary-tooltip popup is suppressed regardless
+     *  of dwell time — used by the caller to hide the popup while a
+     *  context menu is open (which would otherwise render the help
+     *  popup on top of the menu after the dwell elapsed). */
+    suppressTooltip: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -105,6 +114,35 @@ fun VideoCard(
     // Hover state used to pick which scrub frame to show.
     var hoverX by remember { mutableStateOf<Float?>(null) }
     var thumbSize by remember { mutableStateOf(IntSize.Zero) }
+
+    // Stationary-tooltip dwell. Every Enter/Move event bumps
+    // `motionTickMs` to the current clock; a LaunchedEffect keyed on that
+    // value waits [TOOLTIP_DWELL_MS] and then sets `tooltipVisible`.
+    // Each new motion cancels the in-flight effect (the LaunchedEffect
+    // restart-on-key behavior) and starts a fresh 2-second wait, so the
+    // popup only ever surfaces after the cursor has actually been still
+    // the full dwell. `motionTickMs = 0` means "no motion observed yet"
+    // (also used on Exit) and skips the timer entirely.
+    var motionTickMs by remember { mutableStateOf(0L) }
+    var tooltipVisible by remember { mutableStateOf(false) }
+    var lastPointerPos by remember { mutableStateOf<Offset?>(null) }
+    LaunchedEffect(motionTickMs, suppressTooltip) {
+        tooltipVisible = false
+        if (motionTickMs > 0L && !suppressTooltip) {
+            delay(TOOLTIP_DWELL_MS)
+            tooltipVisible = true
+        }
+    }
+    // While the context menu is open the parent flips `suppressTooltip`
+    // to true. Reset the motion clock too so that, once the menu closes,
+    // the tooltip stays hidden until the user actually moves the cursor
+    // again — otherwise a still-since-before-the-menu cursor would
+    // trigger the dwell as soon as the menu dismissed.
+    LaunchedEffect(suppressTooltip) {
+        if (suppressTooltip) {
+            motionTickMs = 0L
+        }
+    }
 
     // Choose which image to display: a scrub frame if we have one + position;
     // otherwise the regular thumbnail.
@@ -181,20 +219,57 @@ fun VideoCard(
         else -> 1.dp
     }
 
-    // Tint the card background when it's part of an expanded stack. We blend
-    // the primary color over the normal surface at a low alpha so it works in
-    // both light and dark themes.
-    val cardBackground = if (isInExpandedStack) {
-        MaterialTheme.colorScheme.primary
+    // Tint the card background to indicate state:
+    //   * Expanded stack — subtle primary tint so the group is cohesive.
+    //   * Hover — slightly brighter surface so the card the cursor is
+    //     over reads as "active" without dimming the thumbnail (the old
+    //     play-button overlay obscured the frame the user wanted to see).
+    val cardBackground = when {
+        isInExpandedStack -> MaterialTheme.colorScheme.primary
             .copy(alpha = 0.15f)
             .compositeOver(MaterialTheme.colorScheme.surface)
-    } else {
-        MaterialTheme.colorScheme.surface
+        isHovered -> Color.White
+            .copy(alpha = 0.07f)
+            .compositeOver(MaterialTheme.colorScheme.surface)
+        else -> MaterialTheme.colorScheme.surface
     }
 
-    Tooltip(text = cardTooltip) {
-    Surface(
+    // Custom stationary tooltip. We own timing end-to-end here rather
+    // than relying on Compose's TooltipArea, whose 500 ms hover gate
+    // interacts poorly with the suppression pattern (toggling its
+    // wrapping off/on cost the popup its hover state, so the help would
+    // almost never appear). The wrapping Box hosts both the card and a
+    // Popup that's rendered iff `tooltipVisible` flips to true after the
+    // dwell. Pointer events on the Box are passed through to children
+    // by default, so clicks/double-clicks and the inner thumbnail's own
+    // scrub-tracking continue to work.
+    Box(
         modifier = modifier
+            .onPointerEvent(PointerEventType.Enter) { event ->
+                val p = event.changes.firstOrNull()?.position
+                lastPointerPos = p
+                // Entry counts as motion — the user might immediately
+                // scrub, and we don't want a popup flashing over the
+                // first frame.
+                motionTickMs = System.currentTimeMillis()
+            }
+            .onPointerEvent(PointerEventType.Move) { event ->
+                val p = event.changes.firstOrNull()?.position
+                if (p != null && p != lastPointerPos) {
+                    lastPointerPos = p
+                    motionTickMs = System.currentTimeMillis()
+                }
+            }
+            .onPointerEvent(PointerEventType.Exit) {
+                lastPointerPos = null
+                // Reset to "no motion observed" so the dwell timer
+                // doesn't fire while the cursor is off the card.
+                motionTickMs = 0L
+                tooltipVisible = false
+            }
+    ) {
+    Surface(
+        modifier = Modifier
             .clip(RectangleShape)
             .border(
                 width = borderWidth,
@@ -225,9 +300,16 @@ fun VideoCard(
                     .onPointerEvent(PointerEventType.Enter) {
                         onHoverEnter()
                         it.changes.firstOrNull()?.position?.let { p -> hoverX = p.x }
+                        // Tooltip motion-tracking lives on the *outer*
+                        // wrapping Box (above) so it sees every move on
+                        // the whole card, not just the thumbnail. No
+                        // tooltip work to do here.
                     }
                     .onPointerEvent(PointerEventType.Move) {
-                        it.changes.firstOrNull()?.position?.let { p -> hoverX = p.x }
+                        val p = it.changes.firstOrNull()?.position
+                        if (p != null && hoverX != p.x) {
+                            hoverX = p.x
+                        }
                     }
                     .onPointerEvent(PointerEventType.Exit) {
                         hoverX = null
@@ -251,22 +333,10 @@ fun VideoCard(
                     )
                 }
 
-                // Hover play overlay
-                if (isHovered) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.4f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "Play (double-click)",
-                            modifier = Modifier.size(64.dp),
-                            tint = Color.White.copy(alpha = 0.9f)
-                        )
-                    }
-                }
+                // (Hover is now indicated by the card-cell background
+                // tint — see `cardBackground` above. No play-button
+                // overlay so the user can read the thumbnail unobscured
+                // even before they start scrubbing.)
 
                 // Resolution badge
                 Surface(
@@ -392,6 +462,33 @@ fun VideoCard(
             }
         }
     }
+
+        // Stationary-tooltip popup. Sits inside the wrapping Box so it
+        // shares the card's coordinate space; `Popup` itself doesn't
+        // intercept pointer events from the underlying card, so the
+        // user can keep moving the cursor and it'll dismiss naturally.
+        if (tooltipVisible && cardTooltip.isNotBlank()) {
+            Popup(
+                alignment = Alignment.BottomStart,
+                // Push it just below the card so it doesn't overlap the
+                // thumbnail content the user is scrubbing.
+                offset = IntOffset(0, 8),
+                properties = PopupProperties(focusable = false),
+            ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.inverseSurface,
+                    shape = MaterialTheme.shapes.small,
+                    shadowElevation = 4.dp,
+                ) {
+                    Text(
+                        text = cardTooltip,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.inverseOnSurface,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -435,3 +532,10 @@ private fun Modifier.shiftAwareClickable(
         }
     }
 }
+
+/// Time (ms) the cursor must sit motionless over a card before its help
+/// popup surfaces. Matches the macOS client's `tooltipDwell`. Two seconds
+/// is long enough that a user actively scrubbing — even with brief
+/// frame-inspecting pauses — won't trigger the popup, and short enough
+/// that an intentional rest to read the help feels responsive.
+private const val TOOLTIP_DWELL_MS = 2000L

@@ -5,7 +5,9 @@ use crate::db::Database;
 use crate::error::{Result, VideoRoomError};
 use crate::metadata::MetadataExtractor;
 use crate::thumbnails::ThumbnailGenerator;
+use rayon::prelude::*;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicI64, Ordering};
 use walkdir::WalkDir;
 
 const SUPPORTED_EXTENSIONS: &[&str] = &[
@@ -21,11 +23,8 @@ impl IndexingEngine {
         path: &Path,
         recursive: bool,
         thumbnail_cache: &Path,
-        on_progress: impl Fn(&ScanProgress),
+        on_progress: impl Fn(&ScanProgress) + Sync,
     ) -> Result<()> {
-        let mut videos_found = 0;
-        let mut videos_indexed = 0;
-
         tracing::info!("Starting scan of: {}", path.display());
 
         on_progress(&ScanProgress {
@@ -56,40 +55,75 @@ impl IndexingEngine {
             }
         }
 
-        videos_found = video_paths.len() as u32;
-
+        let videos_found = video_paths.len() as i64;
         tracing::info!("Found {} videos to index", videos_found);
 
-        // Second pass: index metadata
-        for (idx, video_path) in video_paths.iter().enumerate() {
+        // Second pass: extract metadata + generate thumbnails in parallel.
+        //
+        // SAN-backed scans are usually IO-bound, so a single in-flight
+        // FFprobe leaves the link mostly idle waiting on file-open and
+        // moov-atom seeks. Letting rayon dispatch many `index_video`
+        // calls at once keeps several IO requests outstanding,
+        // dramatically improving throughput on network storage. The
+        // FFmpeg semaphore in `concurrency.rs` still bounds external
+        // process count, so a 64-core box doesn't fork 64 ffprobes at
+        // once on a local SSD where that would just thrash.
+        //
+        // Database access from worker threads is safe because every
+        // call goes through `db.get_connection()` (which opens a new
+        // SQLite handle each time) and SQLite in WAL mode supports
+        // concurrent readers + single writer with row-level
+        // serialization.
+        let videos_indexed = AtomicI64::new(0);
+        let videos_started = AtomicI64::new(0);
+
+        video_paths.par_iter().for_each(|video_path| {
             let filename = video_path
                 .file_name()
                 .and_then(|n| n.to_str())
-                .unwrap_or("unknown");
+                .unwrap_or("unknown")
+                .to_string();
 
+            // Emit "starting this file" progress before we touch the
+            // file. We use a separate `videos_started` counter for the
+            // percent so the bar climbs as work is dispatched rather
+            // than waiting for each ffprobe to return — closer to user
+            // intuition on a parallel scan.
+            let started_idx = videos_started.fetch_add(1, Ordering::Relaxed);
             on_progress(&ScanProgress {
                 status: "indexing_metadata".to_string(),
-                videos_found: videos_found as i64,
-                videos_indexed: videos_indexed,
-                current_file: filename.to_string(),
-                progress_percent: (idx as f64 / videos_found as f64) * 100.0,
+                videos_found,
+                videos_indexed: videos_indexed.load(Ordering::Relaxed),
+                current_file: filename.clone(),
+                progress_percent: (started_idx as f64 / videos_found.max(1) as f64) * 100.0,
             });
 
             match Self::index_video(db, video_path, thumbnail_cache) {
                 Ok(_) => {
-                    videos_indexed += 1;
+                    let done = videos_indexed.fetch_add(1, Ordering::Relaxed) + 1;
                     tracing::debug!("Indexed: {}", filename);
+                    // Also emit a "finished this file" tick so the
+                    // client sees the indexed count climb steadily.
+                    on_progress(&ScanProgress {
+                        status: "indexing_metadata".to_string(),
+                        videos_found,
+                        videos_indexed: done,
+                        current_file: filename.clone(),
+                        progress_percent: (done as f64 / videos_found.max(1) as f64) * 100.0,
+                    });
                 }
                 Err(e) => {
                     tracing::warn!("Failed to index {}: {}", filename, e);
                 }
             }
-        }
+        });
+
+        let videos_indexed_final = videos_indexed.load(Ordering::Relaxed);
 
         on_progress(&ScanProgress {
             status: "complete".to_string(),
-            videos_found: videos_found as i64,
-            videos_indexed: videos_indexed,
+            videos_found,
+            videos_indexed: videos_indexed_final,
             current_file: String::new(),
             progress_percent: 100.0,
         });
@@ -97,7 +131,7 @@ impl IndexingEngine {
         tracing::info!(
             "Scan complete: {} videos found, {} indexed",
             videos_found,
-            videos_indexed
+            videos_indexed_final
         );
 
         Ok(())

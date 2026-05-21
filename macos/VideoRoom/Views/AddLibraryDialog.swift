@@ -24,10 +24,13 @@ struct AddLibraryDialog: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
 
-            HStack {
-                TextField("/Users/you/Videos", text: $path)
-                    .textFieldStyle(.roundedBorder)
-                    .help("Full filesystem path to the folder containing your videos. VideoRoom will scan it and index every supported video file it finds.")
+            HStack(alignment: .top) {
+                // PathCompletingField provides Tab-to-complete + inline
+                // grey ghost (after 5 chars) + a dropdown of matching
+                // child directories. The Choose… button remains for users
+                // who'd rather navigate to the folder with a file picker.
+                PathCompletingField(text: $path, placeholder: "/Users/you/Videos")
+                    .help("Full filesystem path to the folder containing your videos. Press Tab to complete, type more to narrow the suggestions, or pick from the dropdown.")
                 Button("Choose…") {
                     chooseDirectory()
                 }

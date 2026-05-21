@@ -88,6 +88,24 @@ class GridViewModel(
     private val _filterOptions = MutableStateFlow(com.videoroom.data.models.FilterOptions())
     val filterOptions: StateFlow<com.videoroom.data.models.FilterOptions> = _filterOptions.asStateFlow()
 
+    // Geographic proximity filter — set when the user taps a pin on the
+    // global map. Triple of (latitude, longitude, radius_km). Null = no
+    // proximity filter active.
+    private val _filterLocation = MutableStateFlow<Triple<Double, Double, Double>?>(null)
+    val filterLocation: StateFlow<Triple<Double, Double, Double>?> = _filterLocation.asStateFlow()
+
+    // Snapshot of every geotagged video, refreshed when the user opens the
+    // global map. Kept here (not in App.kt) so the open-map button can stay
+    // disabled when there's nothing to plot.
+    private val _videoLocations = MutableStateFlow<List<com.videoroom.data.models.VideoLocation>>(emptyList())
+    val videoLocations: StateFlow<List<com.videoroom.data.models.VideoLocation>> = _videoLocations.asStateFlow()
+
+    // Catalog's user-defined named places (e.g. "Home"). Refreshed by
+    // `loadNamedLocations`; used by `nameForLocation` to render named pins
+    // on the map and named GPS readouts in the detail panel.
+    private val _namedLocations = MutableStateFlow<List<com.videoroom.data.models.NamedLocation>>(emptyList())
+    val namedLocations: StateFlow<List<com.videoroom.data.models.NamedLocation>> = _namedLocations.asStateFlow()
+
     // Sort state exposed for the UI
     private val _currentSortField = MutableStateFlow(sortBy)
     val currentSortField: StateFlow<String> = _currentSortField.asStateFlow()
@@ -131,7 +149,8 @@ class GridViewModel(
                         filterCamera = _filterCamera.value,
                         filterLens = _filterLens.value,
                         filterCodec = _filterCodec.value,
-                        filterCaptureYear = _filterCaptureYear.value
+                        filterCaptureYear = _filterCaptureYear.value,
+                        geoFilter = _filterLocation.value,
                     )
                 }
 
@@ -178,7 +197,8 @@ class GridViewModel(
                         filterCamera = _filterCamera.value,
                         filterLens = _filterLens.value,
                         filterCodec = _filterCodec.value,
-                        filterCaptureYear = _filterCaptureYear.value
+                        filterCaptureYear = _filterCaptureYear.value,
+                        geoFilter = _filterLocation.value,
                     )
                 }
 
@@ -362,7 +382,176 @@ class GridViewModel(
         if (_filterLens.value.isNotEmpty()) { _filterLens.value = ""; changed = true }
         if (_filterCodec.value.isNotEmpty()) { _filterCodec.value = ""; changed = true }
         if (_filterCaptureYear.value != 0) { _filterCaptureYear.value = 0; changed = true }
+        if (_filterLocation.value != null) { _filterLocation.value = null; changed = true }
         if (changed) loadVideos()
+    }
+
+    /** Apply (or clear) the geographic proximity filter and reload the grid.
+     *  Called when the user taps a pin on the global map. */
+    fun setLocationFilter(latitude: Double?, longitude: Double?, radiusKm: Double = 1.0) {
+        _filterLocation.value = if (latitude != null && longitude != null) {
+            Triple(latitude, longitude, radiusKm)
+        } else null
+        loadVideos()
+    }
+
+    /** Refresh the list of geotagged videos (used by the global-map screen). */
+    fun loadVideoLocations() {
+        viewModelScope.launch { loadVideoLocationsAsync() }
+    }
+
+    /** Suspending variant — callers that need the data populated *before*
+     *  they take a UI action (opening a dialog, framing a map) can await
+     *  this. Always hits the daemon; relies on the catalog-open pre-load
+     *  to keep the call fast in steady state. */
+    suspend fun loadVideoLocationsAsync() {
+        try {
+            _videoLocations.value = repository.listVideosWithLocations()
+            logger.info("Loaded ${_videoLocations.value.size} geotagged videos")
+        } catch (e: Exception) {
+            logger.error("Failed to load video locations", e)
+        }
+    }
+
+    /** Refresh the catalog's named-location list. Cheap (a few hundred
+     *  rows at most for typical libraries) so we never paginate. */
+    fun loadNamedLocations() {
+        viewModelScope.launch { loadNamedLocationsAsync() }
+    }
+
+    /** Suspending variant of [loadNamedLocations]. */
+    suspend fun loadNamedLocationsAsync() {
+        try {
+            _namedLocations.value = repository.listNamedLocations()
+        } catch (e: Exception) {
+            logger.error("Failed to load named locations", e)
+        }
+    }
+
+    /** Resolve a (lat, lon) into the nearest named place within its
+     *  `radiusMeters`, or null if no entry is close enough. Linear scan —
+     *  the named-location list is small. */
+    fun nameForLocation(latitude: Double, longitude: Double): com.videoroom.data.models.NamedLocation? {
+        val list = _namedLocations.value
+        if (list.isEmpty()) return null
+        var bestLoc: com.videoroom.data.models.NamedLocation? = null
+        var bestDist = Double.MAX_VALUE
+        for (loc in list) {
+            val d = haversineMeters(latitude, longitude, loc.latitude, loc.longitude)
+            if (d <= loc.radiusMeters && d < bestDist) {
+                bestLoc = loc
+                bestDist = d
+            }
+        }
+        return bestLoc
+    }
+
+    /** Upsert a named location on the daemon and (on success) merge the
+     *  returned row into the local cache so the UI sees it immediately. */
+    fun saveNamedLocation(
+        id: String,
+        name: String,
+        latitude: Double,
+        longitude: Double,
+        radiusMeters: Double = 250.0,
+        onComplete: (com.videoroom.data.models.NamedLocation?) -> Unit = {},
+    ) {
+        viewModelScope.launch {
+            val saved = repository.upsertNamedLocation(id, name, latitude, longitude, radiusMeters)
+            if (saved != null) {
+                val current = _namedLocations.value.toMutableList()
+                val idx = current.indexOfFirst { it.id == saved.id }
+                if (idx >= 0) current[idx] = saved else current.add(saved)
+                current.sortBy { it.name.lowercase() }
+                _namedLocations.value = current
+            }
+            onComplete(saved)
+        }
+    }
+
+    /** Great-circle distance in meters between two (lat, lon) pairs.
+     *  Standard haversine — accurate enough for the sub-kilometer
+     *  resolution we need to resolve names. */
+    private fun haversineMeters(
+        lat1: Double, lon1: Double, lat2: Double, lon2: Double,
+    ): Double {
+        val earthRadius = 6_371_000.0
+        val toRad = Math.PI / 180.0
+        val dLat = (lat2 - lat1) * toRad
+        val dLon = (lon2 - lon1) * toRad
+        val a = kotlin.math.sin(dLat / 2) * kotlin.math.sin(dLat / 2) +
+            kotlin.math.cos(lat1 * toRad) * kotlin.math.cos(lat2 * toRad) *
+            kotlin.math.sin(dLon / 2) * kotlin.math.sin(dLon / 2)
+        val c = 2 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
+        return earthRadius * c
+    }
+
+    /**
+     * Select every video that's currently visible in the grid: each loaded
+     * representative plus, when its stack is expanded, all of its visible
+     * members. Mirrors what the user actually sees as cards. Drives the
+     * Cmd/Ctrl+A shortcut.
+     */
+    fun selectAllVisible() {
+        val ids = LinkedHashSet<String>()
+        val expandedIds = _expandedGroupIds.value
+        val members = _expandedGroupMembers.value
+        for (v in _videos.value) {
+            ids.add(v.id)
+            if (v.groupId.isNotEmpty() && v.groupId in expandedIds) {
+                members[v.groupId]?.forEach { ids.add(it.id) }
+            }
+        }
+        val list = ids.toList()
+        _selectedVideoIds.value = list
+        // Make sure the detail panel + anchor reflect the new selection.
+        _selectedVideoId.value = list.firstOrNull()
+        _anchorVideoId.value = list.firstOrNull()
+    }
+
+    /** Persist a new GPS location on every video in [videoIds]. After all
+     *  writes complete the grid is reloaded so EXIF + filter dropdowns
+     *  refresh. */
+    fun setVideoLocations(
+        videoIds: List<String>,
+        latitude: Double,
+        longitude: Double,
+        writeToFile: Boolean,
+        onComplete: () -> Unit = {},
+    ) {
+        if (videoIds.isEmpty()) return
+        viewModelScope.launch {
+            var ok = 0
+            for (id in videoIds) {
+                if (repository.updateVideoLocation(id, latitude, longitude, 0.0, writeToFile)) ok++
+            }
+            logger.info("Updated location on $ok/${videoIds.size} video(s)")
+            loadVideoLocations()
+            loadVideos()
+            onComplete()
+        }
+    }
+
+    /** Persist a new capture timestamp (Unix ms, UTC) on every video in
+     *  [videoIds]. Reloads the grid + filter options afterwards so the
+     *  year-filter dropdown picks up the new dates. */
+    fun setVideoCaptureDates(
+        videoIds: List<String>,
+        timestampMs: Long,
+        writeToFile: Boolean,
+        onComplete: () -> Unit = {},
+    ) {
+        if (videoIds.isEmpty()) return
+        viewModelScope.launch {
+            var ok = 0
+            for (id in videoIds) {
+                if (repository.updateVideoCaptureDate(id, timestampMs, writeToFile)) ok++
+            }
+            logger.info("Updated capture date on $ok/${videoIds.size} video(s)")
+            loadFilterOptions()
+            loadVideos()
+            onComplete()
+        }
     }
 
     /**
@@ -453,6 +642,87 @@ class GridViewModel(
      * Toggle whether the given group is expanded in the grid. On expand, fetches
      * the group's members from the backend (cached for subsequent toggles).
      */
+    /**
+     * Refresh every piece of UI state that depends on a stack's
+     * membership: the cached expanded-stack member list, the grid's
+     * representative entries (which carry `groupId` / `groupSize` for
+     * each video), and — if the stack has collapsed to a single video —
+     * the expanded-id set itself. Called after Ungroup This,
+     * Remove-from-stack, or Unstack so the grid catches up with the
+     * daemon's view of the world.
+     *
+     * `groupId` is the *old* group the video was a member of, even if
+     * the ungroup made that group disappear. Pass an empty string when
+     * the operation isn't tied to a specific group (e.g. a bulk
+     * ungroup that already cleared the local state itself).
+     */
+    /** Remove a single video from its stack and refresh the grid. Wired
+     *  from the right-click "Remove from stack" menu item. */
+    fun removeFromStack(videoId: String, groupId: String) {
+        if (videoId.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                if (repository.ungroupVideo(videoId)) {
+                    refreshAfterStackChange(groupId)
+                } else {
+                    _error.value = "Failed to remove video from stack"
+                }
+            } catch (e: Exception) {
+                _error.value = "Failed to remove from stack: ${e.message}"
+            }
+        }
+    }
+
+    /** Disband an entire stack — ungroups every member, leaving each
+     *  video standalone. Wired from the right-click "Unstack" menu
+     *  item. We iterate via individual `UngroupVideo` calls rather than
+     *  a bulk RPC because the daemon doesn't currently expose one;
+     *  stacks are small (a handful of variants), so the chatter is fine. */
+    fun unstackGroup(groupId: String) {
+        if (groupId.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                val (members, _) = repository.listGroupMembers(groupId)
+                for (member in members) {
+                    repository.ungroupVideo(member.id)
+                }
+                refreshAfterStackChange(groupId)
+            } catch (e: Exception) {
+                _error.value = "Failed to unstack: ${e.message}"
+            }
+        }
+    }
+
+    fun refreshAfterStackChange(groupId: String) {
+        if (groupId.isNotEmpty()) {
+            // Re-pull the member list for this group. If the daemon
+            // dissolved the group entirely (last member ungrouped), the
+            // call returns zero members and we drop it from the cache
+            // so the stack badge stops trying to expand it.
+            viewModelScope.launch {
+                try {
+                    val (members, _) = repository.listGroupMembers(groupId)
+                    if (members.size < 2) {
+                        _expandedGroupMembers.value = _expandedGroupMembers.value - groupId
+                        _expandedGroupIds.value = _expandedGroupIds.value - groupId
+                    } else {
+                        _expandedGroupMembers.value =
+                            _expandedGroupMembers.value + (groupId to members)
+                    }
+                } catch (e: Exception) {
+                    // On error, evict the cached entry so a subsequent
+                    // expansion re-fetches fresh data rather than
+                    // serving stale members.
+                    _expandedGroupMembers.value = _expandedGroupMembers.value - groupId
+                    logger.warn("Failed to refresh members for group $groupId", e)
+                }
+            }
+        }
+        // Reload the representative list so each video's `groupId` /
+        // `groupSize` reflects the post-ungroup reality.
+        loadVideos()
+    }
+
     fun toggleStackExpansion(groupId: String) {
         if (groupId.isEmpty()) return
         val currentlyExpanded = _expandedGroupIds.value
@@ -637,30 +907,49 @@ class GridViewModel(
                     return@launch
                 }
 
+                // Surface the new location in the left panel right away —
+                // without this, the row only appears after the scan
+                // finishes, which can be minutes on a large folder.
+                loadLibraryLocations()
+
                 // Trigger scan
                 _scanStatus.value = "Scanning..."
-                var lastVideosFound = 0
-                var lastVideosIndexed = 0
+                // We track the *max* values seen across all progress
+                // ticks: some scan phases emit zero-valued progress
+                // events (e.g. the "indexing_metadata" phase resets
+                // `videos_found` to the running count of the current
+                // pass, which can briefly read 0 before the daemon
+                // re-emits). Taking the max stops the final summary
+                // from claiming "0 videos found" when it actually
+                // indexed dozens.
+                var peakFound = 0
+                var peakIndexed = 0
                 var errorMessage: String? = null
+                var libraryRefreshTick = 0
 
                 repository.scanLibrary(path, autoGroup).collect { progress ->
-                    when (progress.status) {
-                        "error" -> {
-                            errorMessage = progress.currentFile
-                            logger.warn("Scan error: ${progress.currentFile}")
-                        }
-                        "complete" -> {
-                            lastVideosFound = progress.videosFound
-                            lastVideosIndexed = progress.videosIndexed
-                            _scanStatus.value = "Complete: $lastVideosFound found, $lastVideosIndexed indexed"
-                        }
-                        else -> {
-                            lastVideosFound = progress.videosFound
-                            lastVideosIndexed = progress.videosIndexed
-                            _scanStatus.value = "${progress.status}: ${progress.videosIndexed}/${progress.videosFound} - ${progress.currentFile}"
+                    if (progress.status == "error") {
+                        errorMessage = progress.currentFile
+                        logger.warn("Scan error: ${progress.currentFile}")
+                    } else {
+                        peakFound = maxOf(peakFound, progress.videosFound)
+                        peakIndexed = maxOf(peakIndexed, progress.videosIndexed)
+                        _scanStatus.value = if (progress.status == "complete") {
+                            "Complete: $peakFound found, $peakIndexed indexed"
+                        } else {
+                            "${progress.status}: $peakIndexed/$peakFound - ${progress.currentFile}"
                         }
                     }
                     logger.info("Scan progress: ${progress.status} | found: ${progress.videosFound} | indexed: ${progress.videosIndexed}")
+                    // Refresh the grid + library panel every ~12 progress
+                    // ticks so the user sees newly-indexed videos and the
+                    // location's video-count update as the scan
+                    // progresses instead of waiting until the very end.
+                    libraryRefreshTick += 1
+                    if (libraryRefreshTick % 12 == 0) {
+                        loadVideos()
+                        loadLibraryLocations()
+                    }
                 }
 
                 // Build final result
@@ -672,15 +961,20 @@ class GridViewModel(
                         videosIndexed = 0
                     )
                 } else {
+                    // "No videos found" only makes sense when the scan
+                    // genuinely turned up zero — if we indexed anything,
+                    // the count was just lost to a transient progress
+                    // event and we should treat the scan as successful.
+                    val foundForReport = maxOf(peakFound, peakIndexed)
                     ScanResult(
                         success = true,
-                        message = if (lastVideosFound == 0) {
+                        message = if (foundForReport == 0) {
                             "No videos found in $path"
                         } else {
-                            "Scanned $path: $lastVideosFound videos found, $lastVideosIndexed indexed"
+                            "Scanned $path: $foundForReport videos found, $peakIndexed indexed"
                         },
-                        videosFound = lastVideosFound,
-                        videosIndexed = lastVideosIndexed
+                        videosFound = foundForReport,
+                        videosIndexed = peakIndexed
                     )
                 }
 

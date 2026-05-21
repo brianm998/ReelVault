@@ -156,3 +156,37 @@ data class CatalogInfo(
         val Closed = CatalogInfo()
     }
 }
+
+/**
+ * A geotagged video — what the global-map view needs to render a pin. The
+ * backend's `ListVideosWithLocations` RPC returns one of these per video
+ * with known GPS.
+ */
+data class VideoLocation(
+    val id: String,
+    val filename: String,
+    val path: String,
+    val latitude: Double,
+    val longitude: Double,
+    val altitude: Double = 0.0,
+    val hasThumbnail: Boolean = false,
+)
+
+/**
+ * A user-defined named place (e.g. "Home", "Yosemite Valley Visitor
+ * Center"). The catalog stores a small list of these; clients resolve any
+ * video's GPS into a name by picking the nearest entry within
+ * [radiusMeters]. See `GridViewModel.nameForLocation`.
+ */
+data class NamedLocation(
+    val id: String,
+    val name: String,
+    val latitude: Double,
+    val longitude: Double,
+    /** Resolution tolerance in meters. Default 250 — overridable per-row
+     *  in the schema for future "Yellowstone-sized" entries. */
+    val radiusMeters: Double = 250.0,
+    /** Unix ms (UTC). 0 if unknown. */
+    val createdAtMs: Long = 0,
+    val updatedAtMs: Long = 0,
+)

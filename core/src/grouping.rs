@@ -32,59 +32,64 @@ fn stem(filename: &str) -> &str {
     }
 }
 
-/// Length of the longest common prefix (in characters, not bytes).
-fn longest_common_prefix_len(a: &str, b: &str) -> usize {
-    a.chars().zip(b.chars()).take_while(|(x, y)| x == y).count()
-}
-
-/// Levenshtein edit distance between two strings (character-based).
-fn levenshtein(a: &str, b: &str) -> usize {
-    let a_chars: Vec<char> = a.chars().collect();
-    let b_chars: Vec<char> = b.chars().collect();
-    if a_chars.is_empty() {
-        return b_chars.len();
-    }
-    if b_chars.is_empty() {
-        return a_chars.len();
-    }
-
-    let mut prev: Vec<usize> = (0..=b_chars.len()).collect();
-    let mut curr: Vec<usize> = vec![0; b_chars.len() + 1];
-
-    for i in 1..=a_chars.len() {
-        curr[0] = i;
-        for j in 1..=b_chars.len() {
-            let cost = if a_chars[i - 1] == b_chars[j - 1] { 0 } else { 1 };
-            curr[j] = std::cmp::min(
-                std::cmp::min(curr[j - 1] + 1, prev[j] + 1),
-                prev[j - 1] + cost,
-            );
+/// Extract the "name part" of a filename stem — everything before the codec
+/// metadata section. Typical pattern from professional cameras:
+///
+///     <date>-<camera>-<clip>[-<suffix>...]_<codec>_<rec>_<resolution>_…
+///
+/// Dates often embed underscores (e.g. `04_18_2026`), so we can't just split
+/// on the first `_`. Instead we look for an underscore followed by a letter
+/// — that's the canonical boundary between the dash-separated identifier
+/// section and the underscore-separated codec/resolution section.
+fn name_part(stem: &str) -> &str {
+    let bytes = stem.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'_' && i + 1 < bytes.len() {
+            let next = bytes[i + 1];
+            if next.is_ascii_alphabetic() {
+                return &stem[..i];
+            }
         }
-        std::mem::swap(&mut prev, &mut curr);
+        i += 1;
     }
-    prev[b_chars.len()]
+    stem
 }
 
-/// Similarity score in [0, 1]. 1.0 means identical, 0.0 means totally different.
-fn similarity(a: &str, b: &str) -> f64 {
-    let max_len = a.chars().count().max(b.chars().count());
-    if max_len == 0 {
-        return 1.0;
-    }
-    let dist = levenshtein(a, b);
-    1.0 - (dist as f64 / max_len as f64)
+/// Reduce a filename to its "canonical base" — the date+camera+clip prefix
+/// that all variants of one source clip share, with post-processing
+/// suffixes (`-aurora`, `-topaz`, etc.) stripped.
+///
+/// The heuristic: take the first three dash-separated tokens of the
+/// `name_part`. That's tuned for date-camera-clip naming conventions, but
+/// degrades gracefully for shorter names (returns the whole `name_part`).
+///
+/// Examples (with `04_18_2026` as the leading date token):
+///   * `04_18_2026-a7sii-1` → `04_18_2026-a7sii-1`
+///   * `04_18_2026-a7sii-1-aurora` → `04_18_2026-a7sii-1`
+///   * `04_18_2026-a7sii-1-aurora-topaz-star-v-0` → `04_18_2026-a7sii-1`
+fn canonical_base(filename: &str) -> String {
+    let name = name_part(stem(filename));
+    let tokens: Vec<&str> = name.split('-').collect();
+    let take = tokens.len().min(3);
+    tokens[..take].join("-")
 }
 
 /// Decide whether two videos belong in the same group.
 ///
 /// Rules (all must be satisfied):
-///   1. Same parent directory (if option enabled).
-///   2. Same fps (rounded) — different fps usually means different sources.
-///   3. Same frame count (with a tiny ±1 tolerance for off-by-one rounding).
-///      Falls back to duration similarity if frame_count is 0 for either video.
-///   4. Filenames share a long common prefix (at least `min_prefix` characters,
-///      where `min_prefix` is the larger of 8 chars or 25% of the shorter name).
-///   5. Filenames are sufficiently similar overall (Levenshtein similarity >= 0.5).
+///   1. Same parent directory (when `same_directory_only` is set).
+///   2. Same fps (rounded — different fps usually means different sources).
+///   3. Same frame count (with a tiny ±2 tolerance for off-by-one PTS
+///      jitter), with a duration-based fallback when frame counts are
+///      missing.
+///   4. Same canonical base name (date + camera + clip identifier),
+///      derived by stripping post-processing suffixes and codec metadata
+///      from the filename.
+///   5. Same camera model — when both EXIF camera fields are populated.
+///      Variants of the same clip should always come from the same
+///      camera; this catches naming collisions where two unrelated
+///      cameras happened to start with a similar date+number pattern.
 fn should_group_together(
     a: &AutoGroupCandidate,
     b: &AutoGroupCandidate,
@@ -101,7 +106,6 @@ fn should_group_together(
     // Frame count match (preferred) or duration fallback
     if a.frame_count > 0 && b.frame_count > 0 {
         let diff = (a.frame_count - b.frame_count).abs();
-        // Allow up to 2 frames difference for rounding/PTS jitter
         if diff > 2 {
             return false;
         }
@@ -116,22 +120,23 @@ fn should_group_together(
         }
     }
 
-    // Fuzzy filename match
-    let stem_a = stem(&a.filename);
-    let stem_b = stem(&b.filename);
-    let shorter = stem_a.chars().count().min(stem_b.chars().count());
-
-    // Require a long common prefix. Use a generous threshold so we catch
-    // variants of the same source even if they diverge later in the name.
-    let lcp = longest_common_prefix_len(stem_a, stem_b);
-    let min_prefix = std::cmp::max(8, shorter / 4);
-    if lcp < min_prefix {
+    // Canonical-base match: variants of the same source clip share
+    // <date>-<camera>-<clip>, ignoring post-processing suffixes
+    // (`-aurora`, `-topaz`, …) and the codec/resolution section.
+    let base_a = canonical_base(&a.filename);
+    let base_b = canonical_base(&b.filename);
+    if base_a.is_empty() || base_a != base_b {
         return false;
     }
 
-    // Overall similarity check - cheap insurance against
-    // very-different files that happen to share a prefix
-    if similarity(stem_a, stem_b) < 0.5 {
+    // Camera-model gate: when both videos carry EXIF camera info, refuse
+    // to group across distinct cameras. We don't *require* both to carry
+    // it (some pipelines strip EXIF on transcode), but when present it's
+    // an authoritative signal.
+    if !a.camera_model.is_empty()
+        && !b.camera_model.is_empty()
+        && a.camera_model != b.camera_model
+    {
         return false;
     }
 
@@ -175,29 +180,33 @@ pub fn auto_group(db: &Database, options: &AutoGroupOptions) -> Result<(i32, i32
         return Ok((0, 0));
     }
 
-    // Sort by filename so videos with shared prefixes end up adjacent. This both
-    // makes the result deterministic and lets us short-circuit comparisons.
-    candidates.sort_by(|a, b| {
-        a.parent_dir
-            .cmp(&b.parent_dir)
-            .then_with(|| a.filename.cmp(&b.filename))
+    // Pre-compute canonical base + sort by (parent_dir, base) so videos
+    // that would group together end up adjacent. Lets the O(n²) pairwise
+    // loop short-circuit early when the bases diverge.
+    let bases: Vec<String> = candidates.iter().map(|c| canonical_base(&c.filename)).collect();
+    let mut idxs: Vec<usize> = (0..candidates.len()).collect();
+    idxs.sort_by(|&i, &j| {
+        candidates[i]
+            .parent_dir
+            .cmp(&candidates[j].parent_dir)
+            .then_with(|| bases[i].cmp(&bases[j]))
+            .then_with(|| candidates[i].filename.cmp(&candidates[j].filename))
     });
+    let candidates: Vec<AutoGroupCandidate> = idxs.iter().map(|&i| candidates[i].clone()).collect();
+    let bases: Vec<String> = idxs.iter().map(|&i| bases[i].clone()).collect();
 
     let n = candidates.len();
     let mut uf = UnionFind::new(n);
 
-    // For each candidate, compare against subsequent ones until the prefix
-    // diverges so much we know no further matches are possible.
     for i in 0..n {
         for j in (i + 1)..n {
-            // Quick reject: if the parent directories differ in same_directory_only mode,
-            // and since the list is sorted by parent_dir, we can break out early.
+            // Once the parent dir or canonical base diverges in
+            // same-directory-only mode, no further matches are possible
+            // (we sorted by both).
             if options.same_directory_only && candidates[i].parent_dir != candidates[j].parent_dir {
                 break;
             }
-            // Bound the comparison: once filenames stop sharing a prefix entirely,
-            // there's no point continuing because the list is sorted.
-            if longest_common_prefix_len(&candidates[i].filename, &candidates[j].filename) == 0 {
+            if bases[i] != bases[j] {
                 break;
             }
             if should_group_together(&candidates[i], &candidates[j], options) {
@@ -221,24 +230,41 @@ pub fn auto_group(db: &Database, options: &AutoGroupOptions) -> Result<(i32, i32
         if members.len() < 2 {
             continue;
         }
-        // Pick the highest-resolution member as preferred. If tied, pick the largest
-        // frame count, then the first by filename.
+        // Preferred-leader selection. The user gets to open the
+        // most-recently-saved highest-resolution version of the source
+        // clip by default — typically the master export, not a 720p
+        // proxy. Tie-break order:
+        //   1. Highest pixel count (width × height).
+        //   2. Most recent modified-at timestamp.
+        //   3. Largest frame count (tiebreak that helps the rare
+        //      duration-fallback case where frame counts differ).
+        //   4. Filename — deterministic last-resort tiebreak.
         let preferred_idx = members
             .iter()
             .copied()
-            .max_by_key(|&i| {
-                let c = &candidates[i];
-                ((c.width as i64) * (c.height as i64), c.frame_count)
+            .max_by(|&i, &j| {
+                let a = &candidates[i];
+                let b = &candidates[j];
+                let pixels_a = (a.width as i64) * (a.height as i64);
+                let pixels_b = (b.width as i64) * (b.height as i64);
+                pixels_a
+                    .cmp(&pixels_b)
+                    .then(a.modified_at_ms.cmp(&b.modified_at_ms))
+                    .then(a.frame_count.cmp(&b.frame_count))
+                    .then_with(|| b.filename.cmp(&a.filename))
             })
             .unwrap();
 
         let preferred_id = candidates[preferred_idx].id.clone();
         let ids: Vec<String> = members.iter().map(|&i| candidates[i].id.clone()).collect();
 
-        // Use the longest common prefix of all members' filenames as the group name
-        let names: Vec<&str> = members.iter().map(|&i| candidates[i].filename.as_str()).collect();
-        let base = lcp_all(&names);
-        let base_trimmed = base.trim_end_matches(|c: char| !c.is_alphanumeric()).to_string();
+        // Group name = the canonical base shared by every member.
+        // Cleaner than the previous "longest common prefix" output,
+        // which would include trailing characters like
+        // `_ProRes-422_Rec.709F_` when every member shared codec info.
+        let base_trimmed = bases[members[0]]
+            .trim_end_matches(|c: char| !c.is_alphanumeric())
+            .to_string();
         let group_name = if base_trimmed.is_empty() { None } else { Some(base_trimmed) };
 
         db.create_group(
@@ -254,18 +280,49 @@ pub fn auto_group(db: &Database, options: &AutoGroupOptions) -> Result<(i32, i32
     Ok((groups_created, videos_grouped))
 }
 
-/// Longest common prefix of an arbitrary number of strings.
-fn lcp_all(strs: &[&str]) -> String {
-    if strs.is_empty() {
-        return String::new();
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn canonical_base_strips_codec_and_suffixes() {
+        // Bare base — already canonical.
+        assert_eq!(
+            canonical_base("04_18_2026-a7sii-1_ProRes-422_Rec.709F_2160p_30_MQ.mov"),
+            "04_18_2026-a7sii-1"
+        );
+        // Single suffix.
+        assert_eq!(
+            canonical_base("04_18_2026-a7sii-1-aurora_ProRes-422_Rec.709F_2160p_30_MQ.mov"),
+            "04_18_2026-a7sii-1"
+        );
+        // Multi-suffix chain.
+        assert_eq!(
+            canonical_base(
+                "04_18_2026-a7sii-1-aurora-topaz-star-v-0_10_8_ProRes-444_Rec.709F_OriRes_30_UHQ.mov"
+            ),
+            "04_18_2026-a7sii-1"
+        );
+        // Different camera token → different base.
+        assert_ne!(
+            canonical_base("04_18_2026-a9-1_ProRes-422_Rec.709F_2160p_30_MQ.mov"),
+            canonical_base("04_18_2026-a7sii-1_ProRes-422_Rec.709F_2160p_30_MQ.mov")
+        );
     }
-    let first = strs[0];
-    let mut end = first.chars().count();
-    for s in &strs[1..] {
-        end = end.min(longest_common_prefix_len(first, s));
-        if end == 0 {
-            return String::new();
-        }
+
+    #[test]
+    fn canonical_base_handles_short_names() {
+        // No dashes at all — `name_part` keeps the whole thing because
+        // the underscore is followed by digits (not a letter), so
+        // there's no codec boundary to cut on. The result is `IMG_1234`
+        // verbatim — and since each iPhone-style filename is unique,
+        // they auto-group alone, which is correct.
+        assert_eq!(canonical_base("IMG_1234.MOV"), "IMG_1234");
+        // Two dashes, codec section starts at `_ProRes` (underscore +
+        // letter) — return the dash-separated prefix.
+        assert_eq!(
+            canonical_base("vacation-paris_ProRes-422.mov"),
+            "vacation-paris"
+        );
     }
-    first.chars().take(end).collect()
 }

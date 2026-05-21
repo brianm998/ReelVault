@@ -198,6 +198,23 @@ struct GridView: View {
             }
         }
 
+        // Stack-membership actions. Only meaningful when the
+        // right-clicked card itself is part of a stack — even in a
+        // multi-selection, "Remove from stack" operates on the *one*
+        // card the user clicked (per the product spec), and "Unstack"
+        // disbands that card's whole stack.
+        if video.isInGroup {
+            Divider()
+            Button("Remove from stack") {
+                viewModel.removeFromStack(videoId: video.id, groupId: video.groupId)
+            }
+            .help("Pull just this video out of its stack — the other members stay grouped together.")
+            Button("Unstack") {
+                viewModel.unstackGroup(groupId: video.groupId)
+            }
+            .help("Disband this entire stack so each member becomes a standalone video.")
+        }
+
         Divider()
 
         Button("Configure External Editors…") {
@@ -287,9 +304,78 @@ struct VideoCardView: View {
     @State private var isHovered = false
     @State private var hoverX: CGFloat? = nil
     @State private var thumbnailWidth: CGFloat = 0
+    /// `true` when our custom card-tooltip popup is currently visible.
+    /// Toggled by the dwell timer below — never directly by hover.
+    @State private var tooltipVisible: Bool = false
+    /// The pending "show tooltip" task. Each cursor-motion event cancels
+    /// the in-flight task (if any) and schedules a fresh one, so
+    /// continuous scrubbing leaves the popup hidden indefinitely. When
+    /// the user stops moving, the most-recently-scheduled task fires
+    /// exactly 2 seconds later.
+    @State private var tooltipShowTask: DispatchWorkItem? = nil
+    /// Last cursor position seen in the card's outer `onContinuousHover`.
+    /// Used to ignore .active phases that re-fire without an actual move
+    /// (focus changes, window activation, etc.), which would otherwise
+    /// reset the dwell timer for free.
+    @State private var lastTooltipCursor: CGPoint? = nil
 
     private var video: VideoSummary { item.video }
     private var isInExpandedStack: Bool { item.isExpandedRepresentative || item.isStackChild }
+
+    /// Styled bubble that renders the rich help text. Sits in an
+    /// `.overlay` below the card; positioning is handled by the caller.
+    private var tooltipPopup: some View {
+        Text(cardHelp)
+            .font(.system(size: 11))
+            .foregroundColor(.primary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color(NSColor.controlBackgroundColor))
+                    .shadow(color: Color.black.opacity(0.25), radius: 6, x: 0, y: 2)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
+            )
+            // Cap the bubble at a comfortable reading width so very long
+            // filenames don't stretch it off the edge of the window.
+            .frame(maxWidth: 360, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// Cancel any pending tooltip-show task and hide the popup right now.
+    /// Called on every cursor-motion event over the card, and on
+    /// hover-exit — so the popup only ever surfaces after the cursor has
+    /// genuinely stopped moving for the full dwell period.
+    private func resetTooltipTimer() {
+        tooltipShowTask?.cancel()
+        tooltipShowTask = nil
+        tooltipVisible = false
+    }
+
+    /// Schedule the tooltip to appear `Self.tooltipDwell` seconds from
+    /// now. Re-armed on every motion event; the most recently scheduled
+    /// task is the one that fires, so continuous scrubbing never
+    /// produces a popup.
+    private func scheduleTooltipShow() {
+        resetTooltipTimer()
+        let task = DispatchWorkItem {
+            tooltipVisible = true
+        }
+        tooltipShowTask = task
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + VideoCardView.tooltipDwell,
+            execute: task
+        )
+    }
+
+    /// Dwell in seconds before the custom tooltip popup is allowed to
+    /// appear after the cursor stops moving. Two seconds matches the
+    /// product spec — long enough to absorb purposeful pauses mid-scrub,
+    /// short enough that an intentional rest surfaces the info quickly.
+    static let tooltipDwell: TimeInterval = 2.0
 
     /// Multi-line help text shown when the user hovers the card. Pulls together
     /// the most useful at-a-glance facts about this video so the user doesn't
@@ -341,7 +427,14 @@ struct VideoCardView: View {
                 .aspectRatio(16 / 9, contentMode: .fit)
                 .frame(maxWidth: .infinity)
 
-            // Info area — fixed height regardless of card width
+            // Info area — fixed height regardless of card width.
+            // Top inset is wider than the other three because SwiftUI's
+            // `Text` ascender sits very close to the top of the layout
+            // frame, so the filename reads as "touching" the thumbnail
+            // when padded uniformly. The Kotlin client doesn't see this
+            // because Material 3's Text adds extra built-in leading on
+            // top, so a uniform 8 dp inset already looks comfortable
+            // over there.
             VStack(alignment: .leading, spacing: 2) {
                 Text(video.filename)
                     .font(.system(size: 11))
@@ -352,16 +445,92 @@ struct VideoCardView: View {
                     .lineLimit(1)
                     .foregroundColor(.secondary)
             }
-            .padding(8)
+            .padding(EdgeInsets(top: 12, leading: 8, bottom: 8, trailing: 8))
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(cardBackground)
+        // Hover tint applied as a SwiftUI overlay so SwiftUI handles
+        // compositing in the correct appearance context — the previous
+        // pre-blended NSColor approach baked in the *light-mode* base
+        // colour, producing a near-white card in dark mode.
+        .overlay(Color.white.opacity(hoverOverlayAlpha))
         .overlay(
             RoundedRectangle(cornerRadius: 6)
                 .stroke(borderColor, lineWidth: borderWidth)
         )
         .cornerRadius(6)
-        .help(cardHelp)
+        // Custom popup tooltip — we own the timing end-to-end rather
+        // than relying on NSView's system tooltip, whose delay isn't
+        // tunable per-view and was either firing during scrubs or
+        // refusing to appear at all when we tried to suppress it. The
+        // overlay sits just below the card with .allowsHitTesting(false)
+        // so it doesn't steal clicks. Card-level onContinuousHover (next
+        // modifier) drives the visibility timer.
+        .overlay(alignment: .bottom) {
+            if tooltipVisible {
+                tooltipPopup
+                    .offset(y: 8)
+                    .allowsHitTesting(false)
+                    .transition(.opacity.animation(.easeIn(duration: 0.12)))
+            }
+        }
+        // Card-level motion tracking. Fires for moves anywhere on the
+        // card — over the thumbnail (where we map x → scrub frame) and
+        // over the info area below (which only contributes to the
+        // tooltip dwell timer, no scrubbing). This is the ONLY hover
+        // handler on the card; SwiftUI's `.onContinuousHover` doesn't
+        // propagate, so nesting another inside the thumbnail would
+        // swallow events from this one.
+        .onContinuousHover { phase in
+            switch phase {
+            case .active(let location):
+                if lastTooltipCursor != location {
+                    lastTooltipCursor = location
+                    scheduleTooltipShow()
+                }
+                // Map card-local cursor → scrub frame. The thumbnail
+                // occupies the top 16:9 region of the card. When the
+                // cursor is over that region, expose its x to the
+                // displayed-image picker; when it's below (info area)
+                // clear `hoverX` so the regular thumbnail re-appears.
+                let thumbHeight = thumbnailWidth * 9.0 / 16.0
+                let withinThumbnail = thumbnailWidth > 0
+                    && location.y >= 0
+                    && location.y <= thumbHeight
+                if withinThumbnail {
+                    // First entry into the thumbnail kicks off lazy
+                    // scrub-frame loading. `onHoverEnter` is idempotent
+                    // so calling it repeatedly is fine, but gating on
+                    // the previous nil keeps the log/Grpc call quieter.
+                    if hoverX == nil { onHoverEnter() }
+                    hoverX = location.x
+                } else {
+                    hoverX = nil
+                }
+            case .ended:
+                lastTooltipCursor = nil
+                resetTooltipTimer()
+                hoverX = nil
+            }
+        }
+        // While *any* AppKit menu is tracking the cursor — context
+        // menus, menu-bar menus, anything backed by NSMenu — kill the
+        // tooltip and cancel its pending show. The popup would render
+        // on top of the menu and was particularly noticeable when the
+        // user right-clicked, stayed still while reading the menu
+        // options, and the 2-second dwell elapsed.
+        //
+        // Notifications fire from any NSMenu in the app, so a single
+        // observer per card is enough. We deliberately don't *restart*
+        // the timer on `didEndTracking` — the user has to move the
+        // cursor again to re-arm, which matches the rest of the
+        // dwell semantics.
+        .onReceive(NotificationCenter.default.publisher(
+            for: NSMenu.didBeginTrackingNotification
+        )) { _ in
+            resetTooltipTimer()
+            lastTooltipCursor = nil
+        }
         .onHover { isHovered = $0 }
         // Order matters: the count:2 gesture is registered first so SwiftUI
         // gives it priority. A single click then waits briefly for a possible
@@ -389,6 +558,20 @@ struct VideoCardView: View {
             return Color.accentColor.opacity(0.13)
         }
         return Color(.controlBackgroundColor)
+    }
+
+    /// White overlay alpha used to indicate hover. Composed by SwiftUI on
+    /// top of `cardBackground` *at draw time*, so the dynamic
+    /// `controlBackgroundColor` resolves in the right appearance
+    /// (previous attempts pre-blended via `NSColor.blended(...)`, which
+    /// resolved the dynamic base color to its light-mode value off-screen
+    /// and produced an almost-pure-white card in dark mode).
+    ///
+    /// 0.05 matches the Kotlin client's hover tint — a small, even lift
+    /// that's noticeable enough to identify the hovered card without
+    /// blowing out the white filename caption in the info area.
+    private var hoverOverlayAlpha: Double {
+        isHovered && !isInExpandedStack ? 0.05 : 0
     }
 
     private var borderColor: Color {
@@ -430,19 +613,10 @@ struct VideoCardView: View {
                             .foregroundColor(.secondary)
                     }
                 }
-                .overlay {
-                    // Play-icon dim only when hovering but not yet scrubbing
-                    // (so the scrub frame remains clearly visible once the
-                    // user starts moving the cursor).
-                    if isHovered && hoverX == nil {
-                        ZStack {
-                            Color.black.opacity(0.4)
-                            Image(systemName: "play.fill")
-                                .font(.system(size: 32))
-                                .foregroundColor(.white.opacity(0.9))
-                        }
-                    }
-                }
+                // (Hover is now indicated by the card's background tint —
+                // see `cardBackground` above. No play-button overlay so
+                // the user can read the thumbnail unobscured even before
+                // they start scrubbing.)
                 .background(
                     GeometryReader { proxy in
                         Color.clear
@@ -453,28 +627,15 @@ struct VideoCardView: View {
                     }
                 )
                 .contentShape(Rectangle())
-                .onContinuousHover { phase in
-                    switch phase {
-                    case .active(let location):
-                        NSLog(
-                            "[VideoCardView] hover.active video=%@ x=%.1f width=%.1f scrubFrames=%d",
-                            video.id,
-                            location.x,
-                            thumbnailWidth,
-                            scrubFrames.count
-                        )
-                        // loadScrubFrames is idempotent (no-ops if loaded/in-flight)
-                        // so we can safely call it on every active phase. This
-                        // avoids the previous bug where checking `!isHovered`
-                        // here never fired because `.onHover` on the outer card
-                        // had already set `isHovered = true`.
-                        onHoverEnter()
-                        hoverX = location.x
-                    case .ended:
-                        NSLog("[VideoCardView] hover.ended video=%@", video.id)
-                        hoverX = nil
-                    }
-                }
+                // (Scrub tracking + tooltip motion tracking are handled
+                // together by the card-level `.onContinuousHover` further
+                // down. SwiftUI's hover modifiers don't propagate from
+                // outer→inner — having a hover handler here as well
+                // *swallowed* events from the outer one, causing the
+                // tooltip dwell timer to miss motion (and, when we moved
+                // tooltip motion to the outer handler, swallowed the
+                // events that used to drive scrubbing here). A single
+                // hover handler at the card level avoids both regressions.)
 
             // Stack/group badge — clickable, doesn't propagate to the card
             if video.isInGroup {

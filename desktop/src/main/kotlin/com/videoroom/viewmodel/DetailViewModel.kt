@@ -82,14 +82,23 @@ class DetailViewModel(
         }
     }
 
-    fun ungroupCurrent() {
+    /** Remove the currently-displayed video from its stack. `onComplete`
+     *  fires with the *old* group id after the daemon call succeeds —
+     *  callers wire it to `GridViewModel.refreshAfterStackChange` so the
+     *  grid's representative + expanded-member caches catch up. */
+    fun ungroupCurrent(onComplete: (oldGroupId: String) -> Unit = {}) {
         val videoId = _metadata.value?.id ?: return
+        // Capture the *current* group id before we tell the daemon to
+        // drop it — VideoMetadata doesn't carry groupId, so we read it
+        // off the VideoSummary we cached on selection.
+        val oldGroupId = currentVideoSummary?.groupId ?: ""
         viewModelScope.launch {
             try {
                 if (repository.ungroupVideo(videoId)) {
                     _groupMembers.value = emptyList()
                     _groupPreferredId.value = ""
                     logger.info("Ungrouped video $videoId")
+                    onComplete(oldGroupId)
                 } else {
                     _error.value = "Failed to ungroup"
                 }

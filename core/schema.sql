@@ -187,6 +187,30 @@ CREATE TRIGGER IF NOT EXISTS video_search_au AFTER UPDATE ON videos BEGIN
   INSERT INTO video_search(rowid, filename) VALUES (new.rowid, new.filename);
 END;
 
+-- User-named locations (e.g. "Yosemite Valley Visitor Center" → 37.7459, -119.5936).
+-- Independent table — no foreign key to videos — because a single named place
+-- typically covers many videos taken nearby, and the lat/lon → name lookup is
+-- a proximity search rather than a per-video join. The clients use a 250 m
+-- default match radius to resolve a video's GPS into a name.
+CREATE TABLE IF NOT EXISTS named_locations (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  latitude REAL NOT NULL,
+  longitude REAL NOT NULL,
+  -- Stored so future versions can offer larger custom radii ("Yellowstone")
+  -- without breaking older clients. Defaults to the protocol-wide 250 m.
+  radius_m REAL NOT NULL DEFAULT 250,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Bounding-box indexes — proximity lookups filter on lat ± dlat and
+-- lon ± dlon before computing the precise haversine, so these indexes turn
+-- the scan into a tight range query even on catalogs with thousands of
+-- named places.
+CREATE INDEX IF NOT EXISTS idx_named_locations_lat ON named_locations(latitude);
+CREATE INDEX IF NOT EXISTS idx_named_locations_lon ON named_locations(longitude);
+
 -- Scan jobs tracking
 CREATE TABLE IF NOT EXISTS scan_jobs (
   id TEXT PRIMARY KEY,

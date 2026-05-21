@@ -157,6 +157,35 @@ struct CatalogInfo: Equatable {
     static let closed = CatalogInfo()
 }
 
+/// A geotagged video — what the global-map view needs to render a pin.
+/// Returned by the daemon's `ListVideosWithLocations` RPC.
+struct VideoLocation: Identifiable, Equatable, Hashable {
+    let id: String
+    let filename: String
+    let path: String
+    let latitude: Double
+    let longitude: Double
+    let altitude: Double
+    let hasThumbnail: Bool
+}
+
+/// A user-defined named place (e.g. "Home", "Yosemite Valley Visitor
+/// Center"). The catalog stores a small list of these; clients resolve any
+/// video's GPS into a name by picking the nearest entry within
+/// `radiusMeters`. See [GridViewModel.nameForLocation].
+struct NamedLocation: Identifiable, Equatable, Hashable {
+    let id: String
+    let name: String
+    let latitude: Double
+    let longitude: Double
+    /// Resolution tolerance in meters. Default 250 — overridable per-row
+    /// in the schema for future "Yellowstone-sized" entries.
+    let radiusMeters: Double
+    /// Unix ms (UTC). 0 if unknown.
+    let createdAtMs: Int64
+    let updatedAtMs: Int64
+}
+
 struct ScanProgress {
     let status: String
     let videosFound: Int

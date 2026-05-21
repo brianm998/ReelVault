@@ -574,6 +574,230 @@ impl Database {
         Ok(result)
     }
 
+    // GPS / GEOLOCATION OPERATIONS
+
+    /// Write GPS coordinates onto a video's metadata row. Inserts a metadata
+    /// row if one doesn't exist (defensive — the indexer should have created
+    /// it already but we don't want a missing metadata row to silently drop
+    /// the user-supplied location). `altitude` of 0 means "unknown" but is
+    /// stored as 0 so we can distinguish "geotagged at sea level" from
+    /// "geotagged with no altitude info" using a separate column policy if
+    /// we ever want to.
+    pub fn update_gps_coordinates(
+        &self,
+        video_id: &str,
+        latitude: f64,
+        longitude: f64,
+        altitude: f64,
+    ) -> Result<()> {
+        let conn = self.get_connection()?;
+        let affected = conn
+            .execute(
+                "UPDATE metadata SET gps_latitude = ?, gps_longitude = ?, gps_altitude = ? \
+                 WHERE video_id = ?",
+                params![latitude, longitude, altitude, video_id],
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        if affected == 0 {
+            // No metadata row yet — insert a sparse one so the GPS sticks.
+            conn.execute(
+                "INSERT INTO metadata (video_id, gps_latitude, gps_longitude, gps_altitude) \
+                 VALUES (?, ?, ?, ?)",
+                params![video_id, latitude, longitude, altitude],
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        }
+        Ok(())
+    }
+
+    /// Set the capture timestamp on a video's metadata row. Same insert-if-
+    /// missing semantics as [`update_gps_coordinates`] so a video with no
+    /// metadata row yet (rare but possible) still picks up the user-supplied
+    /// timestamp. `timestamp_ms` is Unix millis, UTC.
+    pub fn update_capture_date(&self, video_id: &str, timestamp_ms: i64) -> Result<()> {
+        let conn = self.get_connection()?;
+        let affected = conn
+            .execute(
+                "UPDATE metadata SET creation_date = ? WHERE video_id = ?",
+                params![timestamp_ms, video_id],
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        if affected == 0 {
+            conn.execute(
+                "INSERT INTO metadata (video_id, creation_date) VALUES (?, ?)",
+                params![video_id, timestamp_ms],
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        }
+        Ok(())
+    }
+
+    /// Enumerate every video that has known GPS coordinates. Used by the
+    /// global-map view in both clients to render pins.
+    pub fn list_videos_with_locations(&self) -> Result<Vec<VideoLocationRecord>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn
+            .prepare(
+                "SELECT v.id, v.filename, v.path, \
+                        m.gps_latitude, m.gps_longitude, \
+                        COALESCE(m.gps_altitude, 0), \
+                        EXISTS(SELECT 1 FROM thumbnails t WHERE t.video_id = v.id) \
+                 FROM videos v \
+                 JOIN metadata m ON m.video_id = v.id \
+                 WHERE m.gps_latitude IS NOT NULL \
+                   AND m.gps_longitude IS NOT NULL \
+                   AND NOT (m.gps_latitude = 0 AND m.gps_longitude = 0)",
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+
+        let rows = stmt
+            .query_map([], |row| {
+                Ok(VideoLocationRecord {
+                    id: row.get(0)?,
+                    filename: row.get(1)?,
+                    path: row.get(2)?,
+                    latitude: row.get(3)?,
+                    longitude: row.get(4)?,
+                    altitude: row.get(5)?,
+                    has_thumbnail: row.get::<_, i64>(6)? != 0,
+                })
+            })
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+
+        let mut out = Vec::new();
+        for r in rows {
+            out.push(r.map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?);
+        }
+        Ok(out)
+    }
+
+    // NAMED-LOCATION OPERATIONS
+
+    /// List every named location in the catalog, ordered by name. The
+    /// clients fetch this once per dialog open and resolve each video's
+    /// GPS into a name client-side — the list is small (a few hundred at
+    /// most for typical libraries) so we don't bother with server-side
+    /// proximity queries.
+    pub fn list_named_locations(&self) -> Result<Vec<NamedLocationRecord>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn
+            .prepare(
+                "SELECT id, name, latitude, longitude, radius_m, \
+                        COALESCE(strftime('%s', created_at) * 1000, 0), \
+                        COALESCE(strftime('%s', updated_at) * 1000, 0) \
+                 FROM named_locations \
+                 ORDER BY name COLLATE NOCASE",
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+
+        let rows = stmt
+            .query_map([], |row| {
+                Ok(NamedLocationRecord {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    latitude: row.get(2)?,
+                    longitude: row.get(3)?,
+                    radius_m: row.get(4)?,
+                    created_at_ms: row.get::<_, i64>(5)?,
+                    updated_at_ms: row.get::<_, i64>(6)?,
+                })
+            })
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+
+        let mut out = Vec::new();
+        for r in rows {
+            out.push(r.map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?);
+        }
+        Ok(out)
+    }
+
+    /// Insert or update a named location. Pass an empty `id` to create a
+    /// new row (a UUID will be assigned); pass an existing `id` to update.
+    /// `radius_m <= 0` falls back to the default 250 m.
+    ///
+    /// Returns the persisted row so the caller can echo it back to the
+    /// client (clients need the assigned id and timestamps).
+    pub fn upsert_named_location(
+        &self,
+        id: &str,
+        name: &str,
+        latitude: f64,
+        longitude: f64,
+        radius_m: f64,
+    ) -> Result<NamedLocationRecord> {
+        if name.trim().is_empty() {
+            return Err(VideoRoomError::DatabaseError(
+                "name must not be empty".into(),
+            ));
+        }
+        let conn = self.get_connection()?;
+        let effective_radius = if radius_m > 0.0 { radius_m } else { 250.0 };
+        let resolved_id = if id.is_empty() {
+            let new_id = Uuid::new_v4().to_string();
+            conn.execute(
+                "INSERT INTO named_locations \
+                    (id, name, latitude, longitude, radius_m) \
+                 VALUES (?, ?, ?, ?, ?)",
+                params![&new_id, name.trim(), latitude, longitude, effective_radius],
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            new_id
+        } else {
+            let affected = conn
+                .execute(
+                    "UPDATE named_locations \
+                        SET name = ?, latitude = ?, longitude = ?, \
+                            radius_m = ?, updated_at = CURRENT_TIMESTAMP \
+                        WHERE id = ?",
+                    params![name.trim(), latitude, longitude, effective_radius, id],
+                )
+                .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            if affected == 0 {
+                // No existing row — treat as an insert with the caller-
+                // supplied id so the client's local cache stays consistent.
+                conn.execute(
+                    "INSERT INTO named_locations \
+                        (id, name, latitude, longitude, radius_m) \
+                     VALUES (?, ?, ?, ?, ?)",
+                    params![id, name.trim(), latitude, longitude, effective_radius],
+                )
+                .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            }
+            id.to_string()
+        };
+
+        // Re-read the row so the response carries the canonical timestamps
+        // the DB picked.
+        conn.query_row(
+            "SELECT id, name, latitude, longitude, radius_m, \
+                    COALESCE(strftime('%s', created_at) * 1000, 0), \
+                    COALESCE(strftime('%s', updated_at) * 1000, 0) \
+             FROM named_locations WHERE id = ?",
+            [&resolved_id],
+            |row| {
+                Ok(NamedLocationRecord {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    latitude: row.get(2)?,
+                    longitude: row.get(3)?,
+                    radius_m: row.get(4)?,
+                    created_at_ms: row.get::<_, i64>(5)?,
+                    updated_at_ms: row.get::<_, i64>(6)?,
+                })
+            },
+        )
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))
+    }
+
+    /// Delete a named location. Idempotent — deleting a missing id is a
+    /// no-op rather than an error, matching `delete_tag`'s behavior.
+    pub fn delete_named_location(&self, id: &str) -> Result<()> {
+        let conn = self.get_connection()?;
+        conn.execute("DELETE FROM named_locations WHERE id = ?", [id])
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
     // LIBRARY LOCATION OPERATIONS
 
     pub fn add_library_location(&self, path: &str, recursive: bool) -> Result<String> {
@@ -783,6 +1007,14 @@ impl Database {
         filter_lens: &str,
         filter_codec: &str,
         filter_capture_year: i32,
+        // Geographic proximity filter. When `Some`, restricts results to
+        // videos whose recorded GPS coordinates fall inside a bounding box
+        // computed from (latitude, longitude, radius_km). A bounding box is
+        // used instead of true Haversine because SQLite's math functions
+        // aren't guaranteed to be compiled in everywhere, and at radii
+        // < 100km the approximation differs by < 1% from a great-circle
+        // computation — well within "videos near this pin" tolerance.
+        filter_location: Option<(f64, f64, f64)>,
     ) -> Result<(Vec<VideoRecord>, i64)> {
         let conn = self.get_connection()?;
 
@@ -879,8 +1111,25 @@ impl Database {
             ""
         };
 
+        // Geo proximity bounding box. 1° latitude ≈ 111 km everywhere; 1°
+        // longitude ≈ 111·cos(lat) km, so longitude span widens near the
+        // equator and shrinks at the poles. We clamp the cos at 0.01 to
+        // avoid blowing up exactly at the pole.
+        let geo_bounds: Option<(f64, f64, f64, f64)> = filter_location.map(|(lat, lon, radius_km)| {
+            let lat_delta = (radius_km / 111.0).abs();
+            let cos_lat = lat.to_radians().cos().abs().max(0.01);
+            let lon_delta = (radius_km / (111.0 * cos_lat)).abs();
+            (lat - lat_delta, lat + lat_delta, lon - lon_delta, lon + lon_delta)
+        });
+        let geo_clause = if geo_bounds.is_some() {
+            " AND m.gps_latitude IS NOT NULL AND m.gps_longitude IS NOT NULL \
+             AND m.gps_latitude BETWEEN ? AND ? AND m.gps_longitude BETWEEN ? AND ?"
+        } else {
+            ""
+        };
+
         // Helper to bind all dynamic params in order:
-        // [location_param?, tag_id_1, tag_id_2, ..., tag_count?, camera?, lens?, codec?, year?]
+        // [location_param?, tag_id_1, tag_id_2, ..., tag_count?, camera?, lens?, codec?, year?, geo_min_lat?, geo_max_lat?, geo_min_lon?, geo_max_lon?]
         let mut bind: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
         if let Some(p) = &location_param {
             bind.push(Box::new(p.clone()));
@@ -903,19 +1152,26 @@ impl Database {
         if filter_capture_year > 0 {
             bind.push(Box::new(filter_capture_year));
         }
+        if let Some((min_lat, max_lat, min_lon, max_lon)) = geo_bounds {
+            bind.push(Box::new(min_lat));
+            bind.push(Box::new(max_lat));
+            bind.push(Box::new(min_lon));
+            bind.push(Box::new(max_lon));
+        }
 
         // ---- COUNT(*) ----
         let count_sql = format!(
             "SELECT COUNT(*) FROM videos v
              LEFT JOIN metadata m ON v.id = m.video_id
-             WHERE ({}){}{}{}{}{}{}",
+             WHERE ({}){}{}{}{}{}{}{}",
             representative_filter,
             location_clause,
             tag_clause,
             camera_clause,
             lens_clause,
             codec_clause,
-            year_clause
+            year_clause,
+            geo_clause
         );
         let count_params: Vec<&dyn rusqlite::ToSql> =
             bind.iter().map(|b| b.as_ref() as &dyn rusqlite::ToSql).collect();
@@ -927,7 +1183,7 @@ impl Database {
         let sql = format!(
             "SELECT v.id, v.path, v.filename, v.volume_id, v.hash, v.file_size_bytes, v.indexed_at, v.is_online
              FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
-             WHERE ({}){}{}{}{}{}{}
+             WHERE ({}){}{}{}{}{}{}{}
              ORDER BY {} LIMIT ? OFFSET ?",
             representative_filter,
             location_clause,
@@ -936,6 +1192,7 @@ impl Database {
             lens_clause,
             codec_clause,
             year_clause,
+            geo_clause,
             order_by
         );
 
@@ -1066,7 +1323,9 @@ impl Database {
                 "SELECT v.id, v.filename, v.path, v.group_id,
                         COALESCE(m.duration_ms, 0), COALESCE(m.frame_count, 0),
                         COALESCE(m.width, 0), COALESCE(m.height, 0),
-                        COALESCE(m.fps, 0)
+                        COALESCE(m.fps, 0),
+                        COALESCE(m.camera_model, ''),
+                        COALESCE(strftime('%s', v.modified_at) * 1000, 0)
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id",
             )
             .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
@@ -1089,6 +1348,8 @@ impl Database {
                     width: row.get(6)?,
                     height: row.get(7)?,
                     fps: row.get(8)?,
+                    camera_model: row.get(9)?,
+                    modified_at_ms: row.get(10)?,
                 })
             })
             .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
@@ -1137,6 +1398,33 @@ pub struct LibraryLocationRecord {
     pub last_scanned: Option<i64>,
 }
 
+/// A user-defined named place (e.g. "Home", "Yosemite Valley Visitor
+/// Center"). Clients resolve a video's GPS into one of these by picking
+/// the nearest entry within `radius_m`. The timestamps are Unix
+/// milliseconds (UTC); SQLite returns them as 0 when unset.
+#[derive(Debug, Clone)]
+pub struct NamedLocationRecord {
+    pub id: String,
+    pub name: String,
+    pub latitude: f64,
+    pub longitude: f64,
+    pub radius_m: f64,
+    pub created_at_ms: i64,
+    pub updated_at_ms: i64,
+}
+
+/// One geotagged video — what the global-map view needs to render a pin.
+#[derive(Debug, Clone)]
+pub struct VideoLocationRecord {
+    pub id: String,
+    pub filename: String,
+    pub path: String,
+    pub latitude: f64,
+    pub longitude: f64,
+    pub altitude: f64,
+    pub has_thumbnail: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct VideoGroupRecord {
     pub id: String,
@@ -1156,4 +1444,12 @@ pub struct AutoGroupCandidate {
     pub width: i32,
     pub height: i32,
     pub fps: f64,
+    /// Camera model from the file's EXIF (empty when unknown). Used by
+    /// the auto-grouper to refuse to mix variants from different cameras
+    /// even when the filenames happen to look similar.
+    pub camera_model: String,
+    /// File mtime in Unix-ms. Used by the auto-grouper to pick the most
+    /// recently written copy as the stack's preferred leader (ties
+    /// broken on resolution, see `grouping.rs`).
+    pub modified_at_ms: i64,
 }

@@ -9,6 +9,12 @@ struct DetailView: View {
     @ObservedObject var gridViewModel: GridViewModel
     @Binding var thumbnailWidth: CGFloat
     let onCollapse: () -> Void
+    /// Opens the LocationPicker sheet for the given video IDs. `initial`
+    /// is the existing (lat, lon) when one is already set, or nil.
+    var onEditLocation: (_ videoIds: [String], _ initial: (Double, Double)?) -> Void = { _, _ in }
+    /// Opens the CaptureDate sheet for the given video IDs. `initialTs` is
+    /// the existing Unix-ms capture timestamp when one is set, or nil.
+    var onEditCaptureDate: (_ videoIds: [String], _ initialTs: Int64?) -> Void = { _, _ in }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -115,10 +121,11 @@ struct DetailView: View {
             }
 
             // EXIF section
+            let hasGps = metadata.gpsLat != 0 || metadata.gpsLon != 0
             let hasExif = !metadata.cameraModel.isEmpty
                 || !metadata.lensModel.isEmpty
                 || metadata.creationDate > 0
-                || metadata.gpsLat != 0 || metadata.gpsLon != 0
+                || hasGps
             if hasExif {
                 Divider()
                 Text("EXIF")
@@ -134,14 +141,70 @@ struct DetailView: View {
                     if metadata.creationDate > 0 {
                         MetadataItemView(label: "Captured", value: metadata.creationDateFormatted)
                     }
-                    if metadata.gpsLat != 0 || metadata.gpsLon != 0 {
-                        MetadataItemView(
-                            label: "GPS",
-                            value: String(format: "%.4f, %.4f", metadata.gpsLat, metadata.gpsLon)
-                        )
+                    if hasGps {
+                        // Prefer a user-defined name when one is registered
+                        // within 250 m of these coordinates; the raw
+                        // lat/long collapses behind a disclosure twirl-down
+                        // so the named view stays uncluttered.
+                        let matchedName = gridViewModel.nameForLocation(
+                            latitude: metadata.gpsLat, longitude: metadata.gpsLon)
+                        if let name = matchedName {
+                            NamedGpsRow(
+                                name: name.name,
+                                latitude: metadata.gpsLat,
+                                longitude: metadata.gpsLon
+                            )
+                        } else {
+                            MetadataItemView(
+                                label: "GPS",
+                                value: String(format: "%.4f, %.4f",
+                                              metadata.gpsLat, metadata.gpsLon)
+                            )
+                        }
                     }
                 }
             }
+
+            // "Set / Edit location" button — surfaced even when no EXIF
+            // exists so the user can geotag a video that lacks GPS.
+            Button {
+                let selected = gridViewModel.selectedVideoIds
+                let targets: [String] = (selected.count > 1 && selected.contains(metadata.id))
+                    ? Array(selected) : [metadata.id]
+                let initial: (Double, Double)? = hasGps ? (metadata.gpsLat, metadata.gpsLon) : nil
+                onEditLocation(targets, initial)
+            } label: {
+                HStack {
+                    Image(systemName: "mappin.and.ellipse")
+                    Text(hasGps ? "Change location…" : "Set location…")
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .help(hasGps
+                  ? "Replace the existing GPS coordinate via an interactive map."
+                  : "Open a map and pin where this video was captured. Applies to every video currently selected.")
+
+            // "Set / Change capture date" button — works on the
+            // multi-selection just like the location button.
+            let hasDate = metadata.creationDate > 0
+            Button {
+                let selected = gridViewModel.selectedVideoIds
+                let targets: [String] = (selected.count > 1 && selected.contains(metadata.id))
+                    ? Array(selected) : [metadata.id]
+                let initialTs: Int64? = hasDate ? metadata.creationDate : nil
+                onEditCaptureDate(targets, initialTs)
+            } label: {
+                HStack {
+                    Image(systemName: "calendar")
+                    Text(hasDate ? "Change capture date…" : "Set capture date…")
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .help(hasDate
+                  ? "Replace this video's recorded date and time with a calendar pick."
+                  : "Pick the day (and optionally time) this video was captured. Applies to every video currently selected.")
 
             // Stack / group section
             if viewModel.groupMembers.count > 1 {
@@ -152,7 +215,15 @@ struct DetailView: View {
                         .foregroundColor(.secondary)
                     Spacer()
                     Button("Ungroup this") {
-                        viewModel.ungroupCurrent()
+                        viewModel.ungroupCurrent { groupId in
+                            // Refresh the grid's expanded-stack caches +
+                            // representative `groupId/groupSize` data so
+                            // the card stops claiming to be a stack
+                            // member. Without this hop, the right panel
+                            // updates but the grid keeps treating it as
+                            // expandable.
+                            gridViewModel.refreshAfterStackChange(groupId: groupId)
+                        }
                     }
                     .buttonStyle(.borderless)
                     .controlSize(.small)
@@ -304,6 +375,46 @@ struct MetadataItemView: View {
         case "GPS":         return "Latitude and longitude where the video was recorded (when present)."
         default:            return "\(label): \(value)"
         }
+    }
+}
+
+/// GPS field with a user-defined name resolved from the catalog's
+/// named-locations table. Shows the name as the primary identity; the raw
+/// lat/long sits inside a DisclosureGroup so it's accessible but not
+/// visually noisy. Mirrors the LocationPickerView's "name-first" treatment.
+struct NamedGpsRow: View {
+    let name: String
+    let latitude: Double
+    let longitude: Double
+    @State private var showCoords: Bool = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Location")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            HStack(spacing: 4) {
+                Image(systemName: "tag.fill")
+                    .font(.caption2)
+                    .foregroundColor(.accentColor)
+                Text(name)
+                    .font(.body)
+            }
+            DisclosureGroup(
+                isExpanded: $showCoords,
+                content: {
+                    Text(String(format: "%.6f, %.6f", latitude, longitude))
+                        .font(.caption.monospaced())
+                        .foregroundColor(.secondary)
+                },
+                label: {
+                    Text(showCoords ? "Hide coordinates" : "Show coordinates")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            )
+        }
+        .help("Named place at \(latitude), \(longitude). Twirl down to see exact coordinates.")
     }
 }
 

@@ -161,7 +161,19 @@ fun GridScreen(
                             }
                         }
 
+                        // Shared between ContextMenuArea (which writes
+                        // the open/closed status) and VideoCard (which
+                        // reads it to suppress its dwell tooltip while
+                        // the menu is up — otherwise the popup would
+                        // render on top of the menu after the 2-second
+                        // dwell elapsed).
+                        val contextMenuState = remember {
+                            androidx.compose.foundation.ContextMenuState()
+                        }
+                        val isContextMenuOpen = contextMenuState.status is
+                            androidx.compose.foundation.ContextMenuState.Status.Open
                         ContextMenuArea(
+                            state = contextMenuState,
                             items = {
                                 // Compute the target file paths each time the menu opens
                                 // so it always reflects the latest selection. If the
@@ -176,7 +188,20 @@ fun GridScreen(
                                 }
                                 buildVideoContextMenu(
                                     targetFiles = targets,
-                                    onConfigureEditors = onConfigureEditors
+                                    onConfigureEditors = onConfigureEditors,
+                                    // Stack actions are surfaced only when
+                                    // the right-clicked card itself is in a
+                                    // stack — even within a multi-selection,
+                                    // "Remove from stack" operates on this
+                                    // one card per the product spec.
+                                    stackVideoId = video.id.takeIf { video.isInGroup },
+                                    stackGroupId = video.groupId.takeIf { video.isInGroup },
+                                    onRemoveFromStack = { vid, gid ->
+                                        viewModel.removeFromStack(vid, gid)
+                                    },
+                                    onUnstack = { gid ->
+                                        viewModel.unstackGroup(gid)
+                                    },
                                 )
                             }
                         ) {
@@ -214,6 +239,7 @@ fun GridScreen(
                                     viewModel.toggleStackExpansion(video.groupId)
                                 },
                                 onHoverEnter = { viewModel.loadScrubFrames(video.id) },
+                                suppressTooltip = isContextMenuOpen,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -293,6 +319,13 @@ internal fun computeVisualRange(
 internal fun buildVideoContextMenu(
     targetFiles: List<String>,
     onConfigureEditors: () -> Unit,
+    /** Video ID of the right-clicked card *if* it sits in a stack — null
+     *  otherwise. Used to surface "Remove from stack" / "Unstack". */
+    stackVideoId: String? = null,
+    /** The right-clicked card's group ID, when it's in a stack. */
+    stackGroupId: String? = null,
+    onRemoveFromStack: (videoId: String, groupId: String) -> Unit = { _, _ -> },
+    onUnstack: (groupId: String) -> Unit = {},
 ): List<androidx.compose.foundation.ContextMenuItem> {
     val items = mutableListOf<androidx.compose.foundation.ContextMenuItem>()
     val registry = EditorRegistry.Default
@@ -320,6 +353,19 @@ internal fun buildVideoContextMenu(
             ) {
                 registry.launch(editor, targetFiles)
             }
+        }
+    }
+
+    // Stack-membership actions. Only when the right-clicked card sits
+    // in a stack — even with a multi-selection active, these operate on
+    // the *one* card the user clicked (per the product spec) and that
+    // card's group, never on the rest of the selection.
+    if (stackVideoId != null && !stackGroupId.isNullOrEmpty()) {
+        items += androidx.compose.foundation.ContextMenuItem("Remove from stack") {
+            onRemoveFromStack(stackVideoId, stackGroupId)
+        }
+        items += androidx.compose.foundation.ContextMenuItem("Unstack") {
+            onUnstack(stackGroupId)
         }
     }
 
