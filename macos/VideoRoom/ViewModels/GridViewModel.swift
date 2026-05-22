@@ -251,6 +251,7 @@ class GridViewModel: ObservableObject {
         watcherRefreshWorkItem?.cancel()
         let work = DispatchWorkItem { [weak self] in
             self?.loadVideos()
+            self?.loadLibraryLocations()
         }
         watcherRefreshWorkItem = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)

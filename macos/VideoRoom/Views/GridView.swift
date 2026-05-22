@@ -607,7 +607,7 @@ struct VideoCardView: View {
         .onTapGesture(count: 2) {
             onDoubleClick()
         }
-        .onTapGesture(count: 1) {
+        .simultaneousGesture(TapGesture().onEnded {
             // `TapGesture.modifiers(...)` is unreliable on macOS SwiftUI, and
             // `NSApp.currentEvent` at tap-recognition time reflects the mouse-UP
             // event — by which point the user may have already released the
@@ -619,7 +619,7 @@ struct VideoCardView: View {
             // as the toggle modifier.
             let toggle = mods.contains(.command) || mods.contains(.control)
             onClick(shift, toggle)
-        }
+        })
     }
 
     private var cardBackground: Color {
@@ -699,7 +699,7 @@ struct VideoCardView: View {
                 // bug where `.contentShape(Circle().size(…))` positions the
                 // hit region at the view's top-left corner, not its centre.
                 .overlay(alignment: .center) {
-                    if !isPlaying && isHovered && video.playableNatively {
+                    if !isPlaying && isHovered {
                         Button(action: onPlayClick) {
                             Image(systemName: "play.fill")
                                 .font(.system(size: 18))

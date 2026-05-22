@@ -515,7 +515,7 @@ struct ContentView: View {
 
     @ViewBuilder
     private var scanBanner: some View {
-        if let status = gridViewModel.scanStatus {
+        if let status = gridViewModel.scanStatus ?? gridViewModel.watcherBanner {
             HStack {
                 ProgressView().scaleEffect(0.6)
                 Text(status).font(.caption)
@@ -654,6 +654,14 @@ struct ContentView: View {
                     onClick: { rightPanelExpanded = true }
                 )
             }
+        }
+        .onKeyPress(.space) {
+            if gridViewModel.playingVideoId != nil {
+                gridViewModel.stopPlayback()
+            } else if let id = gridViewModel.selectedVideoId {
+                gridViewModel.playVideo(videoId: id)
+            }
+            return .handled
         }
     }
 

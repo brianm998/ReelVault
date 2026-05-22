@@ -294,6 +294,7 @@ class GridViewModel(
         watcherRefreshJob = viewModelScope.launch {
             delay(500)
             loadVideos()
+            loadLibraryLocations()
         }
     }
 

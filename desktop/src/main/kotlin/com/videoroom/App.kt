@@ -96,6 +96,8 @@ fun main() = application {
     val setGridModeAction = remember { mutableStateOf<() -> Unit>({}) }
     val setDetailModeAction = remember { mutableStateOf<() -> Unit>({}) }
     val cycleInfoOverlayAction = remember { mutableStateOf<() -> Unit>({}) }
+    // Space bar: toggle inline playback of the selected video.
+    val spacebarAction = remember { mutableStateOf<() -> Unit>({}) }
     // Title reflects the currently-open catalog (lifted here so Window.title
     // recomposes when the catalog changes).
     var currentCatalog by remember { mutableStateOf(CatalogInfo.Closed) }
@@ -144,6 +146,7 @@ fun main() = application {
                     Key.G -> { setGridModeAction.value(); return@Window true }
                     Key.D -> { setDetailModeAction.value(); return@Window true }
                     Key.I -> { cycleInfoOverlayAction.value(); return@Window true }
+                    Key.Spacebar -> { spacebarAction.value(); return@Window true }
                     else -> Unit
                 }
             }
@@ -217,6 +220,7 @@ fun main() = application {
                     onRegisterSetGridMode = { setGridModeAction.value = it },
                     onRegisterSetDetailMode = { setDetailModeAction.value = it },
                     onRegisterCycleInfoOverlay = { cycleInfoOverlayAction.value = it },
+                    onRegisterSpacebarAction = { spacebarAction.value = it },
                     onSearchFocusChanged = { searchFocused.value = it },
                     onCatalogChanged = { currentCatalog = it }
                 )
@@ -243,6 +247,8 @@ fun VideoRoomApp(
     onRegisterSetDetailMode: (() -> Unit) -> Unit = {},
     /** Called once to register the "cycle info overlay" action for the 'i' shortcut. */
     onRegisterCycleInfoOverlay: (() -> Unit) -> Unit = {},
+    /** Called once to register the space-bar play/pause action. */
+    onRegisterSpacebarAction: (() -> Unit) -> Unit = {},
     /** Reports search-field focus state to the Window so it can suppress
      *  single-letter shortcuts while the user is typing. */
     onSearchFocusChanged: (Boolean) -> Unit = {},
@@ -312,6 +318,19 @@ fun VideoRoomApp(
         onRegisterGroupAction { gridViewModel.groupSelectedVideos() }
         onRegisterSelectAllAction { gridViewModel.selectAllVisible() }
         onRegisterDeselectAllAction { gridViewModel.clearSelection() }
+        onRegisterSpacebarAction {
+            val playing = gridViewModel.playingVideoId.value
+            if (playing != null) {
+                // A video is playing — stop it
+                gridViewModel.stopPlayback()
+            } else {
+                // No video playing — play the primary selected video if there is one
+                val selectedId = gridViewModel.selectedVideoId.value
+                if (selectedId != null) {
+                    gridViewModel.playVideo(selectedId)
+                }
+            }
+        }
     }
     LaunchedEffect(Unit) {
         onRegisterTogglePanelsAction {
@@ -511,7 +530,9 @@ fun VideoRoomApp(
 
                     // Scan status banner (during scan)
                     val scanStatus = gridViewModel.scanStatus.collectAsState()
-                    if (scanStatus.value != null) {
+                    val watcherBanner = gridViewModel.watcherBanner.collectAsState()
+                    val effectiveScanText = scanStatus.value ?: watcherBanner.value
+                    if (effectiveScanText != null) {
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             color = MaterialTheme.colorScheme.primaryContainer
@@ -528,7 +549,7 @@ fun VideoRoomApp(
                                 )
                                 Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
                                 Text(
-                                    text = scanStatus.value ?: "",
+                                    text = effectiveScanText ?: "",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
@@ -1395,7 +1416,8 @@ fun VideoRoomTopBar(
                                 Text(
                                     "Live",
                                     fontSize = 11.sp,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }

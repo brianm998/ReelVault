@@ -82,16 +82,13 @@ fun GridScreen(
     var showVlcErrorDialog by remember { mutableStateOf(false) }
     if (showVlcErrorDialog) {
         val osName = System.getProperty("os.name") ?: ""
-        val installHint = when {
+        val url = when {
             osName.contains("Mac", ignoreCase = true) ->
-                "Install VLC from videolan.org, then restart VideoRoom.\n\n" +
-                "macOS: Download VLC.app and drag it to /Applications."
+                "https://www.videolan.org/vlc/download-macosx.html"
             osName.contains("Windows", ignoreCase = true) ->
-                "Install VLC from videolan.org, then restart VideoRoom."
+                "https://www.videolan.org/vlc/download-windows.html"
             else ->
-                "Install VLC with your package manager, e.g.:\n\n" +
-                "  sudo apt install vlc\n\n" +
-                "then restart VideoRoom."
+                "https://www.videolan.org/vlc/"
         }
         AlertDialog(
             onDismissRequest = { showVlcErrorDialog = false },
@@ -106,12 +103,20 @@ fun GridScreen(
             text = {
                 Text(
                     "Inline video playback requires VLC (libvlc) to be installed " +
-                    "on this machine.\n\n$installHint"
+                    "on this machine."
                 )
             },
             confirmButton = {
+                TextButton(onClick = {
+                    java.awt.Desktop.getDesktop().browse(java.net.URI(url))
+                    showVlcErrorDialog = false
+                }) {
+                    Text("Download VLC")
+                }
+            },
+            dismissButton = {
                 TextButton(onClick = { showVlcErrorDialog = false }) {
-                    Text("Got it")
+                    Text("Dismiss")
                 }
             }
         )
