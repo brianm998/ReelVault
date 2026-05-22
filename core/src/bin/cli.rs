@@ -193,6 +193,7 @@ async fn cmd_scan(
         path,
         recursive,
         &cache_path,
+        None,
         |progress| {
             if !progress.current_file.is_empty() {
                 println!(
@@ -575,6 +576,7 @@ async fn cmd_bench(db: &Database, path: &std::path::Path) -> anyhow::Result<()> 
         path,
         true,
         &cache_path,
+        None,
         |progress| {
             if progress.progress_percent > 0.0 && progress.progress_percent % 10.0 < 1.0 {
                 println!("  {:.0}% - {} videos found, {} indexed",

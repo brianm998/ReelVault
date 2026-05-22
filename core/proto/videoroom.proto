@@ -243,6 +243,18 @@ message ScanLibraryRequest {
   string location_path = 1;  // Optional: scan specific location
   bool force_full_scan = 2;
   bool auto_group = 3;       // If true, auto-group similar variants after scanning
+
+  // Filename-based capture-date inference. When `filename_date_format` is
+  // non-empty, the scanner attempts to parse a date from each video's filename
+  // and use it as the creation_date when ffprobe doesn't supply one.
+  //
+  // filename_date_format: "MM-DD-YYYY" | "DD-MM-YYYY" | "YYYY-MM-DD"
+  //   The expected ordering of components. Separators in the actual filename
+  //   may be `-`, `_`, `.`, or `/` (any non-digit character).
+  // filename_date_position: "anywhere" | "beginning" | "end"
+  //   Where in the filename (without extension) the date must appear.
+  string filename_date_format = 4;
+  string filename_date_position = 5;
 }
 
 message ScanProgress {
