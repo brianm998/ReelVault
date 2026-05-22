@@ -97,6 +97,13 @@ fun VideoCard(
     onPlayClick: () -> Unit = {},
     /** Fired when the user clicks the ✕ stop button on the inline player. */
     onStopPlayback: () -> Unit = {},
+    /**
+     * When `false` (VLC not installed), the play button is rendered with a
+     * disabled/dimmed appearance and clicking it fires [onPlayClick] so the
+     * caller can show an install-VLC modal immediately — without attempting
+     * to start the player. When `true` (default), normal play behavior.
+     */
+    playEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -358,15 +365,20 @@ fun VideoCard(
                     )
                 }
 
-                // Play-button overlay — visible on hover for playable cards
-                // when not already playing. Uses a consumed pointer gesture
-                // so the card's selection handler doesn't also fire.
-                if (!isPlayingInline && isHovered && video.playableNatively) {
+                // Play-button overlay — visible on hover when:
+                //   • VLC is installed  → shown only on natively-playable cards
+                //   • VLC not installed → shown on all cards (dimmed/disabled)
+                //     so the user gets immediate feedback about what's missing
+                //     rather than nothing happening on click.
+                if (!isPlayingInline && isHovered && (video.playableNatively || !playEnabled)) {
                     Box(
                         modifier = Modifier
                             .size(52.dp)
-                            .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50))
-                            .pointerInput(onPlayClick) {
+                            .background(
+                                Color.Black.copy(alpha = if (playEnabled) 0.55f else 0.35f),
+                                RoundedCornerShape(50)
+                            )
+                            .pointerInput(onPlayClick, playEnabled) {
                                 awaitEachGesture {
                                     val down = awaitFirstDown(requireUnconsumed = false)
                                     down.consume()
@@ -378,9 +390,10 @@ fun VideoCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "Play inline",
+                            contentDescription = if (playEnabled) "Play inline" else "VLC not installed",
                             modifier = Modifier.size(30.dp),
-                            tint = Color.White,
+                            // Dimmed when VLC is absent to signal the disabled state.
+                            tint = if (playEnabled) Color.White else Color.White.copy(alpha = 0.45f),
                         )
                     }
                 }

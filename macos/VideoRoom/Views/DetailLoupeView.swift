@@ -85,19 +85,21 @@ struct DetailLoupeView: View {
     @ViewBuilder
     private func content(for video: VideoSummary) -> some View {
         ZStack(alignment: .topLeading) {
-            // Preview area — AVKit player once playback has started for the
-            // current video, otherwise the static hover-scrub frame mosaic.
+            // Preview area — thumbnail/scrub is always shown; once playback
+            // has started the AVKit surface is layered on top. Because
+            // AVPlayerNSView has a transparent background the thumbnail
+            // remains visible until the first decoded frame arrives,
+            // eliminating the 3–8 second black gap between "play pressed"
+            // and "video appears".
+            ScrubPreview(
+                video: video,
+                thumbnail: gridViewModel.thumbnails[video.id],
+                scrubFrames: gridViewModel.scrubFrames[video.id] ?? [],
+                onHoverEnter: { gridViewModel.loadScrubFrames(videoId: video.id) }
+            )
             if playerVideoId == video.id, let player = player {
                 AVPlayerNSView(player: player)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.black)
-            } else {
-                ScrubPreview(
-                    video: video,
-                    thumbnail: gridViewModel.thumbnails[video.id],
-                    scrubFrames: gridViewModel.scrubFrames[video.id] ?? [],
-                    onHoverEnter: { gridViewModel.loadScrubFrames(videoId: video.id) }
-                )
             }
 
             // Cycling info overlay (top-left).

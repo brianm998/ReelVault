@@ -30,6 +30,11 @@ struct AVPlayerNSView: NSViewRepresentable {
         let view = AVPlayerView()
         view.player = player
         view.controlsStyle = .inline
+        // Make the AVPlayerView's backing CALayer transparent so whatever is
+        // stacked beneath it (thumbnail / ScrubPreview) shows through until
+        // the first video frame is decoded and composited.
+        view.wantsLayer = true
+        view.layer?.backgroundColor = .clear
         return view
     }
 

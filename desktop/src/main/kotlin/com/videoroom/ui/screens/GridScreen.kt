@@ -52,6 +52,11 @@ fun GridScreen(
     val shiftPressed = com.videoroom.LocalShiftPressed.current
     val playingVideoId = viewModel.playingVideoId.collectAsState()
 
+    // Fast startup check: NativeDiscovery inspects filesystem paths only —
+    // no JNI or player init — so this is safe to evaluate on the Compose
+    // thread. The result is cached in ComposeVideoPlayer.isLibVlcAvailable.
+    val vlcAvailable = remember { ComposeVideoPlayer.isLibVlcAvailable }
+
     // Single VLCJ player instance shared by all cards. Only one card plays
     // at a time; swapping is handled by loading a new path into this player.
     val inlinePlayer = remember { ComposeVideoPlayer() }
@@ -281,11 +286,13 @@ fun GridScreen(
                                 scrubFrames = scrubFrames.value[video.id] ?: emptyList(),
                                 isPlayingInline = playingVideoId.value == video.id,
                                 inlinePlayer = inlinePlayer,
+                                playEnabled = vlcAvailable,
                                 onPlayClick = {
                                     when {
-                                        // Gate first: if libvlc isn't present, tell the
-                                        // user before entering any "playing" state so we
-                                        // never show a blank/red card for a missing player.
+                                        // Startup check (fast path): NativeDiscovery said no
+                                        // libvlc before we even tried to build a player.
+                                        !vlcAvailable          -> showVlcErrorDialog = true
+                                        // Instance check (fallback): player built but init failed.
                                         !inlinePlayer.available -> showVlcErrorDialog = true
                                         video.playableNatively  -> viewModel.playVideo(video.id)
                                         // Oversize video — open the proxy picker

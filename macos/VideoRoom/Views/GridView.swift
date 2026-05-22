@@ -98,12 +98,7 @@ struct GridView: View {
                             viewModel.loadScrubFrames(videoId: item.video.id)
                         },
                         onPlayClick: {
-                            if item.video.playableNatively {
-                                viewModel.playVideo(videoId: item.video.id)
-                            } else {
-                                // Oversize — open the proxy-creation picker
-                                viewModel.requestCreateProxy(videoId: item.video.id)
-                            }
+                            viewModel.playVideo(videoId: item.video.id)
                         },
                         onStopPlayback: {
                             viewModel.stopPlayback()
@@ -670,6 +665,24 @@ struct VideoCardView: View {
             //   * apply `.onContinuousHover` directly on the rendered content.
             Rectangle()
                 .fill(Color.black)
+                // Thumbnail / scrub-frame layer — always shown so the image
+                // stays visible while the AVPlayer initializes and its first
+                // frame is still being decoded (prevents a black flash).
+                .overlay {
+                    if let image = displayedImage {
+                        Image(nsImage: image)
+                            .resizable()
+                            .scaledToFill()
+                            .clipped()
+                    } else {
+                        Image(systemName: "film")
+                            .font(.system(size: 32))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                // Player surface — layered on top of the thumbnail. AVPlayerNSView
+                // has a transparent CALayer so the thumbnail shows through until
+                // the first decoded frame composites over it.
                 .overlay {
                     if isPlaying, let player = avPlayer {
                         // Live inline playback — AVPlayerNSView wraps AVPlayerView
@@ -679,15 +692,6 @@ struct VideoCardView: View {
                         AVPlayerNSView(player: player)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .clipped()
-                    } else if let image = displayedImage {
-                        Image(nsImage: image)
-                            .resizable()
-                            .scaledToFill()
-                            .clipped()
-                    } else {
-                        Image(systemName: "film")
-                            .font(.system(size: 32))
-                            .foregroundColor(.secondary)
                     }
                 }
                 // Play button — `.overlay(alignment: .center)` places the

@@ -7,6 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.SwingPanel
 import org.slf4j.LoggerFactory
+import uk.co.caprica.vlcj.factory.discovery.NativeDiscovery
 import uk.co.caprica.vlcj.player.base.MediaPlayer
 import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter
 import uk.co.caprica.vlcj.player.component.EmbeddedMediaPlayerComponent
@@ -215,5 +216,28 @@ class ComposeVideoPlayer {
             modifier = modifier,
             background = androidx.compose.ui.graphics.Color.Black
         )
+    }
+
+    companion object {
+        /**
+         * Fast startup check: calls [NativeDiscovery.discover] (path-search
+         * only, no heavy initialisation) on first access and caches the result.
+         *
+         * This runs synchronously on whichever thread first reads the property.
+         * In practice that's the Compose main thread during the very first
+         * composition of [GridScreen], which is safe because [NativeDiscovery]
+         * only inspects filesystem paths (no JNI, no player init).
+         *
+         * Callers use this to decide whether to show a disabled play button
+         * and an immediate error dialog, without waiting for a
+         * [ComposeVideoPlayer] instance to be constructed and fail.
+         */
+        val isLibVlcAvailable: Boolean by lazy {
+            try {
+                NativeDiscovery().discover()
+            } catch (_: Throwable) {
+                false
+            }
+        }
     }
 }
