@@ -42,6 +42,9 @@ struct ContentView: View {
     @State private var infoOverlay: InfoOverlayState = .none
     /// Non-nil while the "Remove library location?" confirmation alert is shown.
     @State private var locationToRemove: LibraryLocation? = nil
+    /// Monotonically-incrementing token passed to DetailLoupeView. Each
+    /// increment triggers a play/pause toggle inside the loupe.
+    @State private var detailPlayToggle: Int = 0
 
     @EnvironmentObject private var appState: AppState
     @ObservedObject private var recents = RecentCatalogs.shared
@@ -90,6 +93,22 @@ struct ContentView: View {
                     case .file: return .none
                     }
                 }()
+            },
+            onSpaceBar: {
+                switch viewMode {
+                case .grid:
+                    // Only respond when exactly one video is selected so we
+                    // don't accidentally start playback during multi-select.
+                    if gridViewModel.playingVideoId != nil {
+                        gridViewModel.stopPlayback()
+                    } else if let id = gridViewModel.selectedVideoId,
+                              gridViewModel.selectedVideoIds.count <= 1 {
+                        gridViewModel.playVideoPreferProxy(videoId: id)
+                    }
+                case .detail:
+                    // Delegate to DetailLoupeView via the toggle token.
+                    detailPlayToggle += 1
+                }
             }
         ))
         .sheet(isPresented: $showAddLibrarySheet) {
@@ -612,7 +631,8 @@ struct ContentView: View {
                 DetailLoupeView(
                     gridViewModel: gridViewModel,
                     detailViewModel: detailViewModel,
-                    infoOverlay: infoOverlay
+                    infoOverlay: infoOverlay,
+                    playToggle: detailPlayToggle
                 )
                 .frame(maxWidth: .infinity)
             }
@@ -654,14 +674,6 @@ struct ContentView: View {
                     onClick: { rightPanelExpanded = true }
                 )
             }
-        }
-        .onKeyPress(.space) {
-            if gridViewModel.playingVideoId != nil {
-                gridViewModel.stopPlayback()
-            } else if let id = gridViewModel.selectedVideoId {
-                gridViewModel.playVideo(videoId: id)
-            }
-            return .handled
         }
     }
 
@@ -799,6 +811,8 @@ struct GlobalKeyboardShortcuts: ViewModifier {
     let onSetDetailMode: () -> Void
     /// Plain 'i' — cycle the info overlay through none → camera → file → none.
     let onCycleInfoOverlay: () -> Void
+    /// Space bar — toggle inline playback (grid) or play/pause (detail).
+    let onSpaceBar: () -> Void
 
     @State private var keyMonitor: Any?
     @State private var mouseMonitor: Any?
@@ -886,11 +900,15 @@ struct GlobalKeyboardShortcuts: ViewModifier {
             // Plain single-letter shortcuts (no modifiers). The
             // isEditingTextField guard above keeps these from firing
             // while the user is typing in the search box, notes, etc.
-            //   G (keyCode 5) → grid mode
-            //   D (keyCode 2) → detail mode
+            //   Space (keyCode 49) → toggle inline playback
+            //   G (keyCode 5)  → grid mode
+            //   D (keyCode 2)  → detail mode
             //   I (keyCode 34) → cycle info overlay
             if mods.isEmpty {
                 switch event.keyCode {
+                case 49:
+                    onSpaceBar()
+                    return nil
                 case 5:
                     onSetGridMode()
                     return nil

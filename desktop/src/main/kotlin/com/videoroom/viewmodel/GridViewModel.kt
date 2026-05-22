@@ -278,14 +278,50 @@ class GridViewModel(
     private val _playingVideoId = MutableStateFlow<String?>(null)
     val playingVideoId: StateFlow<String?> = _playingVideoId.asStateFlow()
 
+    /**
+     * Override filesystem path for the playing card — set to a proxy path
+     * when the video is oversize. null → use [VideoSummary.openPath].
+     */
+    private val _playingVideoPath = MutableStateFlow<String?>(null)
+    val playingVideoPath: StateFlow<String?> = _playingVideoPath.asStateFlow()
+
     /** Begin inline playback for [videoId]. Replaces any previously playing card. */
     fun playVideo(videoId: String) {
+        _playingVideoPath.value = null
         _playingVideoId.value = videoId
+    }
+
+    /**
+     * Like [playVideo], but first looks for a lower-resolution proxy for
+     * oversize videos. If the video is not natively playable but has at
+     * least one proxy, fetches the proxy list and picks the smallest one
+     * (last in the list, which is sorted descending by pixel count).
+     * Sets [playingVideoPath] before [playingVideoId] so the card picks
+     * up the right URL on its first composition.
+     */
+    fun playVideoPreferProxy(videoId: String) {
+        val video = _videos.value.find { it.id == videoId }
+        if (video == null || video.playableNatively || video.proxyCount == 0) {
+            _playingVideoPath.value = null
+            _playingVideoId.value = videoId
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val proxies = repository.listProxies(videoId)
+                // listProxies returns sorted desc by pixel count; last = smallest.
+                _playingVideoPath.value = proxies.lastOrNull()?.path
+            } catch (_: Exception) {
+                _playingVideoPath.value = null
+            }
+            _playingVideoId.value = videoId
+        }
     }
 
     /** Stop inline playback and return the card to thumbnail mode. */
     fun stopPlayback() {
         _playingVideoId.value = null
+        _playingVideoPath.value = null
     }
 
     /** Coalesces a burst of watcher events into a single `loadVideos()`. */

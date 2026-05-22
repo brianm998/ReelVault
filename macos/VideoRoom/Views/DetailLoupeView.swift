@@ -22,6 +22,11 @@ struct DetailLoupeView: View {
     @ObservedObject var gridViewModel: GridViewModel
     @ObservedObject var detailViewModel: DetailViewModel
     let infoOverlay: InfoOverlayState
+    /// Incremented by ContentView each time the user presses space bar
+    /// while in detail mode. The `.onChange` below translates each
+    /// increment into a play/pause toggle so we don't need to expose
+    /// internal player state upward.
+    var playToggle: Int = 0
 
     /// Configurable step size for the ±N-frame buttons. Default 20.
     @State private var stepFrames: Int = 20
@@ -60,6 +65,12 @@ struct DetailLoupeView: View {
             // Selection changed → tear down any in-flight playback so the
             // next "play" press starts fresh on the new video.
             teardownPlayer()
+        }
+        .onChange(of: playToggle) { _, _ in
+            // Space bar from ContentView: toggle play/pause if a video is selected.
+            if let v = video {
+                onPlayPause(for: v)
+            }
         }
         .onDisappear { teardownPlayer() }
     }

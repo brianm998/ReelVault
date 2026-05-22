@@ -85,6 +85,8 @@ struct GridView: View {
                         isInMultiSelection: viewModel.selectedVideoIds.contains(item.video.id),
                         isAnchor: viewModel.anchorVideoId == item.video.id && viewModel.selectedVideoIds.count > 1,
                         isPlaying: viewModel.playingVideoId == item.video.id,
+                        playPath: viewModel.playingVideoId == item.video.id
+                            ? viewModel.playingVideoPath : nil,
                         onClick: { shift, toggle in
                             handleClick(item: item, rendered: rendered, shift: shift, toggle: toggle)
                         },
@@ -321,6 +323,8 @@ struct VideoCardView: View {
     let isAnchor: Bool
     /// `true` when this card is the currently active inline player.
     let isPlaying: Bool
+    /// Override URL for inline playback (proxy path). nil → `video.openPath`.
+    let playPath: String?
     let onClick: (_ shift: Bool, _ toggle: Bool) -> Void
     let onDoubleClick: () -> Void
     let onStackBadgeClick: () -> Void
@@ -572,7 +576,7 @@ struct VideoCardView: View {
         // creation to ensure the player doesn't silently stall.
         .onChange(of: isPlaying) { _, playing in
             if playing {
-                let url = URL(fileURLWithPath: video.openPath)
+                let url = URL(fileURLWithPath: playPath ?? video.openPath)
                 let player = AVPlayer(url: url)
                 // Disable stalling guard so short-form clips start instantly.
                 player.automaticallyWaitsToMinimizeStalling = false
@@ -589,7 +593,7 @@ struct VideoCardView: View {
         // it sees `isPlaying` as true from the very start).
         .onAppear {
             if isPlaying && avPlayer == nil {
-                let url = URL(fileURLWithPath: video.openPath)
+                let url = URL(fileURLWithPath: playPath ?? video.openPath)
                 let player = AVPlayer(url: url)
                 player.automaticallyWaitsToMinimizeStalling = false
                 player.play()

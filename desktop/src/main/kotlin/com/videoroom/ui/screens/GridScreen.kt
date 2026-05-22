@@ -62,10 +62,16 @@ fun GridScreen(
     val inlinePlayer = remember { ComposeVideoPlayer() }
     DisposableEffect(Unit) { onDispose { inlinePlayer.release() } }
 
+    val playingVideoPath = viewModel.playingVideoPath.collectAsState()
+
     // Start playback whenever playingVideoId changes to a non-null value.
+    // Use the proxy override path when set (oversize videos), otherwise
+    // fall back to the video's own openPath.
     LaunchedEffect(playingVideoId.value) {
         val id = playingVideoId.value ?: return@LaunchedEffect
-        val path = videos.value.find { it.id == id }?.openPath ?: return@LaunchedEffect
+        val path = playingVideoPath.value
+            ?: videos.value.find { it.id == id }?.openPath
+            ?: return@LaunchedEffect
         inlinePlayer.load(path, playImmediately = true)
     }
 

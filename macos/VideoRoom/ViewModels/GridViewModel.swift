@@ -231,16 +231,50 @@ class GridViewModel: ObservableObject {
 
     /// ID of the video currently playing inline in the grid, or nil.
     @Published var playingVideoId: String? = nil
+    /// Filesystem path to play — set to a proxy path when the video is
+    /// oversize and a proxy exists. nil means "use video.openPath".
+    @Published var playingVideoPath: String? = nil
 
     /// Begin inline playback for the given video. Replaces any currently
     /// playing card.
     func playVideo(videoId: String) {
+        playingVideoPath = nil
         playingVideoId = videoId
+    }
+
+    /// Like `playVideo`, but first checks for a lower-resolution proxy.
+    /// If the video is oversize (`!playableNatively`) and has at least one
+    /// proxy, fetches the proxy list and picks the smallest one so inline
+    /// playback stays smooth. Sets `playingVideoPath` before
+    /// `playingVideoId` so the card gets the right URL on its first render.
+    func playVideoPreferProxy(videoId: String) {
+        guard let video = videos.first(where: { $0.id == videoId }) else {
+            playVideo(videoId: videoId)
+            return
+        }
+        if video.playableNatively || !video.hasProxies {
+            // Already fits under the playback ceiling, or no proxy exists.
+            playingVideoPath = nil
+            playingVideoId = videoId
+            return
+        }
+        // Oversize with proxies: fetch them asynchronously, then start playback.
+        // (listProxies returns sorted descending by pixel count; .last = smallest.)
+        Task { @MainActor in
+            do {
+                let proxies = try await repository.listProxies(videoId: videoId)
+                playingVideoPath = proxies.last?.path
+            } catch {
+                playingVideoPath = nil
+            }
+            playingVideoId = videoId
+        }
     }
 
     /// Stop inline playback and return the card to thumbnail mode.
     func stopPlayback() {
         playingVideoId = nil
+        playingVideoPath = nil
     }
 
     /// Coalesce a flurry of watcher events into a single grid reload. Fires

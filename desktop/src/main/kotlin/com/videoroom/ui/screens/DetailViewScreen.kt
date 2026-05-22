@@ -47,6 +47,13 @@ fun DetailViewScreen(
     detailViewModel: DetailViewModel,
     /** Externally-controlled info overlay state, advanced by the 'i' shortcut in App.kt. */
     infoOverlay: InfoOverlayState,
+    /**
+     * Monotonically-incrementing token from App.kt. Each increment (fired by
+     * the space bar) triggers a play/pause toggle — start playback if not yet
+     * started, or toggle pause if already playing. 0 on first composition →
+     * no action taken on initial render.
+     */
+    playToggle: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val selectedVideoId by gridViewModel.selectedVideoId.collectAsState()
@@ -106,6 +113,20 @@ fun DetailViewScreen(
     // Mode flag: "play" hasn't been pressed yet → show scrub thumbnail preview.
     // After "play", VLCJ takes over the preview area.
     var playbackStarted by remember(video.id) { mutableStateOf(false) }
+
+    // Space bar handler: each increment of playToggle fires a play/pause.
+    // Skip the initial composition (playToggle == 0) to avoid auto-playing
+    // when the screen first mounts.
+    LaunchedEffect(playToggle) {
+        if (playToggle == 0) return@LaunchedEffect
+        if (!player.available) return@LaunchedEffect
+        if (playbackStarted) {
+            player.togglePause()
+        } else {
+            player.load(video.path, playImmediately = true)
+            playbackStarted = true
+        }
+    }
 
     Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Box(

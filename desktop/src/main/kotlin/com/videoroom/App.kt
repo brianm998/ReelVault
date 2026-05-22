@@ -302,6 +302,10 @@ fun VideoRoomApp(
     // Info overlay cycle in detail view ('i' key advances through states).
     var infoOverlay by remember { mutableStateOf(InfoOverlayState.NONE) }
 
+    // Space bar in detail mode: each increment triggers a play/pause inside
+    // DetailViewScreen without exposing its internal player state upward.
+    var detailPlayToggle by remember { mutableStateOf(0) }
+
     // OpenCatalog dialog state. Shown automatically when the daemon has no
     // catalog open, or when the user picks File → Open.
     var showOpenCatalogDialog by remember { mutableStateOf(false) }
@@ -319,15 +323,26 @@ fun VideoRoomApp(
         onRegisterSelectAllAction { gridViewModel.selectAllVisible() }
         onRegisterDeselectAllAction { gridViewModel.clearSelection() }
         onRegisterSpacebarAction {
-            val playing = gridViewModel.playingVideoId.value
-            if (playing != null) {
-                // A video is playing — stop it
-                gridViewModel.stopPlayback()
-            } else {
-                // No video playing — play the primary selected video if there is one
-                val selectedId = gridViewModel.selectedVideoId.value
-                if (selectedId != null) {
-                    gridViewModel.playVideo(selectedId)
+            when (viewMode) {
+                ViewMode.DETAIL -> {
+                    // Delegate to DetailViewScreen via the toggle token.
+                    detailPlayToggle++
+                }
+                ViewMode.GRID -> {
+                    val playing = gridViewModel.playingVideoId.value
+                    if (playing != null) {
+                        // A video is playing — stop it.
+                        gridViewModel.stopPlayback()
+                    } else {
+                        // Start playing the selected video (prefer proxy for oversize).
+                        // Only trigger when exactly one video is selected so we don't
+                        // accidentally start playback during multi-select.
+                        val selectedId = gridViewModel.selectedVideoId.value
+                        val selCount = gridViewModel.selectedVideoIds.value.size
+                        if (selectedId != null && selCount <= 1) {
+                            gridViewModel.playVideoPreferProxy(selectedId)
+                        }
+                    }
                 }
             }
         }
@@ -801,6 +816,7 @@ fun VideoRoomApp(
                                 gridViewModel = gridViewModel,
                                 detailViewModel = detailViewModel,
                                 infoOverlay = infoOverlay,
+                                playToggle = detailPlayToggle,
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxHeight()
