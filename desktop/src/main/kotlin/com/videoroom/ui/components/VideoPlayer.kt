@@ -130,6 +130,18 @@ class ComposeVideoPlayer {
         SwingUtilities.invokeLater { c.mediaPlayer().controls().play() }
     }
 
+    /**
+     * Stop playback entirely (resets the playhead to 0). VLCJ's `stop()`
+     * doesn't always emit a paused/stopped event on every platform, so we
+     * also nudge our own state flags to keep the UI in sync.
+     */
+    fun stop() {
+        val c = component ?: return
+        SwingUtilities.invokeLater { c.mediaPlayer().controls().stop() }
+        isPlaying.value = false
+        currentTimeMs.value = 0L
+    }
+
     /** Step forward exactly one frame (libvlc supports this natively). */
     fun stepForwardOneFrame() {
         val c = component ?: return

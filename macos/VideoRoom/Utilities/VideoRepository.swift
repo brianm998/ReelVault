@@ -483,7 +483,9 @@ class VideoRepository: ObservableObject {
     /// Streaming scan — yields progress events as the backend works through the library.
     func scanLibrary(
         locationPath: String = "",
-        autoGroup: Bool = true
+        autoGroup: Bool = true,
+        filenameDateFormat: String = "",
+        filenameDatePosition: String = ""
     ) -> AsyncThrowingStream<ScanProgress, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
@@ -494,6 +496,8 @@ class VideoRepository: ObservableObject {
                 var request = Videoroom_ScanLibraryRequest()
                 request.locationPath = locationPath
                 request.autoGroup = autoGroup
+                request.filenameDateFormat = filenameDateFormat
+                request.filenameDatePosition = filenameDatePosition
 
                 do {
                     try await client.scanLibrary(request) { response in

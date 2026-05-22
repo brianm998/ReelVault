@@ -161,9 +161,16 @@ fun DetailViewScreen(
                     if (player.available) {
                         player.load(video.path, playImmediately = true)
                     }
+                    // If libvlc isn't available, playbackStarted is still set
+                    // so the "VLCJ unavailable" overlay shows; the Stop button
+                    // remains enabled so the user can return to the preview.
                 } else {
                     player.togglePause()
                 }
+            },
+            onStopPlayback = {
+                player.stop()
+                playbackStarted = false
             },
             onStepFramesChange = { stepFrames = it.coerceIn(1, 600) }
         )
@@ -239,6 +246,7 @@ private fun ControlBar(
     playbackStarted: Boolean,
     stepFrames: Int,
     onStartPlayback: () -> Unit,
+    onStopPlayback: () -> Unit,
     onStepFramesChange: (Int) -> Unit
 ) {
     val currentMs by player.currentTimeMs
@@ -315,6 +323,19 @@ private fun ControlBar(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                         contentDescription = if (isPlaying) "Pause" else "Play",
                         modifier = Modifier.size(40.dp)
+                    )
+                }
+            }
+            com.videoroom.ui.components.Tooltip(
+                text = "Stop and return to the hover-scrub thumbnail preview"
+            ) {
+                IconButton(
+                    onClick = onStopPlayback,
+                    enabled = playbackStarted
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Stop,
+                        contentDescription = "Stop"
                     )
                 }
             }

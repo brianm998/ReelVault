@@ -36,11 +36,16 @@ struct ContentView: View {
     /// Non-nil → CaptureDate sheet is presenting for these video IDs.
     @State private var datePickerTargets: [String]? = nil
     @State private var datePickerInitial: Int64? = nil
+    /// Top-level view mode: the catalog grid vs. the single-video loupe.
+    @State private var viewMode: ViewMode = .grid
+    /// 'i'-cycling info overlay state — only meaningful in detail mode.
+    @State private var infoOverlay: InfoOverlayState = .none
 
     @EnvironmentObject private var appState: AppState
     @ObservedObject private var recents = RecentCatalogs.shared
 
     enum ConnectionState { case connecting, connected, failed }
+    enum ViewMode { case grid, detail }
 
     var body: some View {
         Group {
@@ -72,11 +77,28 @@ struct ContentView: View {
             },
             onGroupSelected: { gridViewModel.groupSelectedVideos() },
             onSelectAll: { gridViewModel.selectAllVisible() },
-            onDeselectAll: { gridViewModel.clearSelection() }
+            onDeselectAll: { gridViewModel.clearSelection() },
+            onSetGridMode: { viewMode = .grid },
+            onSetDetailMode: { viewMode = .detail },
+            onCycleInfoOverlay: {
+                infoOverlay = {
+                    switch infoOverlay {
+                    case .none: return .camera
+                    case .camera: return .file
+                    case .file: return .none
+                    }
+                }()
+            }
         ))
         .sheet(isPresented: $showAddLibrarySheet) {
-            AddLibraryDialog(isPresented: $showAddLibrarySheet) { path, recursive, autoGroup in
-                gridViewModel.addLibraryAndScan(path: path, recursive: recursive, autoGroup: autoGroup)
+            AddLibraryDialog(isPresented: $showAddLibrarySheet) { path, recursive, autoGroup, dateFormat, datePosition in
+                gridViewModel.addLibraryAndScan(
+                    path: path,
+                    recursive: recursive,
+                    autoGroup: autoGroup,
+                    filenameDateFormat: dateFormat,
+                    filenameDatePosition: datePosition
+                )
             }
         }
         .sheet(isPresented: $showWatchSettingsSheet) {
@@ -306,6 +328,17 @@ struct ContentView: View {
                         .help("Open catalog: \(currentCatalog.path)")
                 }
             }
+
+            // Grid / Detail view-mode toggle. Mirrors the 'G' and 'D'
+            // keyboard shortcuts.
+            Picker("", selection: $viewMode) {
+                Image(systemName: "square.grid.2x2").tag(ViewMode.grid)
+                Image(systemName: "play.rectangle").tag(ViewMode.detail)
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 90)
+            .labelsHidden()
+            .help("Switch between Grid (G) and Detail (D) views.")
 
             TextField("Search videos…", text: $gridViewModel.searchQuery)
                 .textFieldStyle(.roundedBorder)
@@ -544,14 +577,24 @@ struct ContentView: View {
 
             Divider()
 
-            // Middle — grid, fills remaining space
-            GridView(
-                viewModel: gridViewModel,
-                detailViewModel: detailViewModel,
-                thumbnailMinWidth: thumbnailWidth,
-                onConfigureEditors: { showEditorsSheet = true }
-            )
-            .frame(maxWidth: .infinity)
+            // Middle area — grid (browse) or detail (single-video loupe).
+            switch viewMode {
+            case .grid:
+                GridView(
+                    viewModel: gridViewModel,
+                    detailViewModel: detailViewModel,
+                    thumbnailMinWidth: thumbnailWidth,
+                    onConfigureEditors: { showEditorsSheet = true }
+                )
+                .frame(maxWidth: .infinity)
+            case .detail:
+                DetailLoupeView(
+                    gridViewModel: gridViewModel,
+                    detailViewModel: detailViewModel,
+                    infoOverlay: infoOverlay
+                )
+                .frame(maxWidth: .infinity)
+            }
 
             Divider()
 
@@ -721,6 +764,12 @@ struct GlobalKeyboardShortcuts: ViewModifier {
     let onGroupSelected: () -> Void
     let onSelectAll: () -> Void
     let onDeselectAll: () -> Void
+    /// Plain 'g' — switch to grid view mode.
+    let onSetGridMode: () -> Void
+    /// Plain 'd' — switch to detail (loupe) view mode.
+    let onSetDetailMode: () -> Void
+    /// Plain 'i' — cycle the info overlay through none → camera → file → none.
+    let onCycleInfoOverlay: () -> Void
 
     @State private var keyMonitor: Any?
     @State private var mouseMonitor: Any?
@@ -803,6 +852,28 @@ struct GlobalKeyboardShortcuts: ViewModifier {
             if event.keyCode == 2 && mods == .command {
                 onDeselectAll()
                 return nil
+            }
+
+            // Plain single-letter shortcuts (no modifiers). The
+            // isEditingTextField guard above keeps these from firing
+            // while the user is typing in the search box, notes, etc.
+            //   G (keyCode 5) → grid mode
+            //   D (keyCode 2) → detail mode
+            //   I (keyCode 34) → cycle info overlay
+            if mods.isEmpty {
+                switch event.keyCode {
+                case 5:
+                    onSetGridMode()
+                    return nil
+                case 2:
+                    onSetDetailMode()
+                    return nil
+                case 34:
+                    onCycleInfoOverlay()
+                    return nil
+                default:
+                    break
+                }
             }
 
             return event

@@ -9,11 +9,23 @@ import AppKit
 /// and whether to auto-group variants.
 struct AddLibraryDialog: View {
     @Binding var isPresented: Bool
-    let onConfirm: (_ path: String, _ recursive: Bool, _ autoGroup: Bool) -> Void
+    /// `dateFormat` is empty when the filename-date feature is off. When non-
+    /// empty it is one of "MM-DD-YYYY" / "DD-MM-YYYY" / "YYYY-MM-DD"; in that
+    /// case `datePosition` is one of "anywhere" / "beginning" / "end".
+    let onConfirm: (
+        _ path: String,
+        _ recursive: Bool,
+        _ autoGroup: Bool,
+        _ dateFormat: String,
+        _ datePosition: String
+    ) -> Void
 
     @State private var path: String = ""
     @State private var recursive: Bool = true
     @State private var autoGroup: Bool = true
+    @State private var inferDate: Bool = false
+    @State private var dateFormat: String = "YYYY-MM-DD"
+    @State private var datePosition: String = "anywhere"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -59,6 +71,46 @@ struct AddLibraryDialog: View {
             }
             .help("When on, videos that share a base filename, duration, and frame rate are automatically stacked together (e.g. 4K + 1080p exports of the same clip). You can always group/ungroup manually later.")
 
+            Toggle(isOn: $inferDate) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Infer capture date from filename")
+                        .font(.body)
+                    Text("Only applied when the file has no capture date in its metadata.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .help("When on, VideoRoom parses each video's filename for a date and uses it as the capture date if the file itself doesn't already have one. Useful for camera exports whose internal metadata lacks a capture time.")
+
+            if inferDate {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Format")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Picker("", selection: $dateFormat) {
+                            Text("YYYY-MM-DD").tag("YYYY-MM-DD")
+                            Text("MM-DD-YYYY").tag("MM-DD-YYYY")
+                            Text("DD-MM-YYYY").tag("DD-MM-YYYY")
+                        }
+                        .labelsHidden()
+                        .help("Component ordering of the date as it appears in the filename. Separators (-, _, .) are matched automatically.")
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Position")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Picker("", selection: $datePosition) {
+                            Text("anywhere").tag("anywhere")
+                            Text("beginning").tag("beginning")
+                            Text("end").tag("end")
+                        }
+                        .labelsHidden()
+                        .help("Where the date must appear within the filename (without extension).")
+                    }
+                }
+            }
+
             HStack {
                 Spacer()
                 Button("Cancel") {
@@ -68,8 +120,15 @@ struct AddLibraryDialog: View {
                 .help("Close this dialog without adding the location.")
 
                 Button("Add & Scan") {
-                    if !path.trimmingCharacters(in: .whitespaces).isEmpty {
-                        onConfirm(path.trimmingCharacters(in: .whitespaces), recursive, autoGroup)
+                    let trimmed = path.trimmingCharacters(in: .whitespaces)
+                    if !trimmed.isEmpty {
+                        onConfirm(
+                            trimmed,
+                            recursive,
+                            autoGroup,
+                            inferDate ? dateFormat : "",
+                            inferDate ? datePosition : ""
+                        )
                         isPresented = false
                     }
                 }

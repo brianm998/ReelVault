@@ -62,6 +62,14 @@ fun main() = application {
         )
     }
 
+    // Enable Compose Desktop's interop blending so Compose overlays (the
+    // detail-view info dialog and bottom control bar) draw cleanly on top of
+    // the VLCJ video SwingPanel. Without this, on macOS in particular the
+    // Swing surface can z-order above Compose and obscure controls — or, in
+    // older Compose builds, suppress its own paint and produce a black box.
+    // Must be set before the first Window is created.
+    System.setProperty("compose.interop.blending", "true")
+
     val windowState = rememberWindowState(
         size = DpSize(width = 1400.dp, height = 900.dp)
     )
