@@ -517,6 +517,117 @@ class VideoRepository: ObservableObject {
         }
     }
 
+    // MARK: - Proxies
+
+    /// One proxy of a parent video. Bundles enough info for the detail
+    /// panel's proxy sub-list (filename, path, resolution, size) plus
+    /// the auto-detection metadata so the UI can show a "🤖
+    /// auto-detected" affordance.
+    struct ProxyInfo: Identifiable, Hashable {
+        let id: String
+        let filename: String
+        let path: String
+        let sizeBytes: Int64
+        let width: Int
+        let height: Int
+        let confidence: Double
+        let autoDetected: Bool
+    }
+
+    /// List every lower-resolution proxy of `videoId`. Sorted descending
+    /// by pixel count so the highest-resolution proxy is first.
+    func listProxies(videoId: String) async throws -> [ProxyInfo] {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        var request = Videoroom_ListProxiesRequest()
+        request.videoID = videoId
+        let response = try await client.listProxies(request)
+        return response.proxies.map {
+            ProxyInfo(
+                id: $0.id,
+                filename: $0.filename,
+                path: $0.path,
+                sizeBytes: $0.sizeBytes,
+                width: Int($0.width),
+                height: Int($0.height),
+                confidence: $0.confidence,
+                autoDetected: $0.autoDetected
+            )
+        }
+    }
+
+    /// Kick off a proxy-generation job. `targetHeight` 0 means "use the
+    /// server's configured default" (typically 720 px).
+    ///
+    /// Yields one `ProxyGenerationProgress`-shaped `(status, percent,
+    /// message, proxyVideoId)` tuple per server event. The final event
+    /// has status="complete" and `proxyVideoId` set to the newly-created
+    /// video row.
+    func generateProxy(
+        videoId: String,
+        targetHeight: Int = 0,
+        outputPath: String = ""
+    ) -> AsyncThrowingStream<(status: String, percent: Double, message: String, proxyVideoId: String), Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                guard let client = serviceClient else {
+                    continuation.finish(throwing: RepositoryError.notConnected)
+                    return
+                }
+                var request = Videoroom_GenerateProxyRequest()
+                request.videoID = videoId
+                request.targetHeight = Int32(targetHeight)
+                request.outputPath = outputPath
+                do {
+                    try await client.generateProxy(request) { response in
+                        for try await proto in response.messages {
+                            continuation.yield((
+                                status: proto.status,
+                                percent: proto.progressPercent,
+                                message: proto.message,
+                                proxyVideoId: proto.proxyVideoID
+                            ))
+                        }
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    /// Manually mark `proxyId` as a proxy for `originalId`. Pass an
+    /// empty `originalId` to un-mark.
+    @discardableResult
+    func setProxyOf(proxyId: String, originalId: String) async -> Bool {
+        guard let client = serviceClient else { return false }
+        var request = Videoroom_SetProxyOfRequest()
+        request.proxyID = proxyId
+        request.originalID = originalId
+        do {
+            _ = try await client.setProxyOf(request)
+            return true
+        } catch {
+            NSLog("setProxyOf failed: \(error)")
+            return false
+        }
+    }
+
+    /// Re-run the auto-detector. Useful from the menu after a manual
+    /// scan or after thumbnails are regenerated; idempotent.
+    @discardableResult
+    func detectProxies() async -> (pairsCompared: Int, proxiesMarked: Int) {
+        guard let client = serviceClient else { return (0, 0) }
+        do {
+            let response = try await client.detectProxies(Videoroom_DetectProxiesRequest())
+            return (Int(response.pairsCompared), Int(response.proxiesMarked))
+        } catch {
+            NSLog("detectProxies failed: \(error)")
+            return (0, 0)
+        }
+    }
+
     // MARK: - Real-time catalog events
 
     /// Open a server-streamed `SubscribeCatalogEvents` and translate each
@@ -674,7 +785,10 @@ class VideoRepository: ObservableObject {
             groupId: p.groupID,
             groupSize: Int(p.groupSize),
             groupPreferredId: p.groupPreferredID,
-            groupPreferredPath: p.groupPreferredPath
+            groupPreferredPath: p.groupPreferredPath,
+            proxyCount: Int(p.proxyCount),
+            proxyOf: p.proxyOf,
+            playableNatively: p.playableNatively
         )
     }
 

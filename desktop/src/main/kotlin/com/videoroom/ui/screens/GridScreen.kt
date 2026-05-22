@@ -202,6 +202,11 @@ fun GridScreen(
                                     onUnstack = { gid ->
                                         viewModel.unstackGroup(gid)
                                     },
+                                    // Don't offer "Create proxy" on cards
+                                    // that are themselves proxies — chaining
+                                    // proxy-of-a-proxy makes no sense.
+                                    proxyableVideoId = video.id.takeIf { !video.isProxy },
+                                    onCreateProxy = { vid -> viewModel.requestCreateProxy(vid) },
                                 )
                             }
                         ) {
@@ -326,6 +331,11 @@ internal fun buildVideoContextMenu(
     stackGroupId: String? = null,
     onRemoveFromStack: (videoId: String, groupId: String) -> Unit = { _, _ -> },
     onUnstack: (groupId: String) -> Unit = {},
+    /** Video ID of the right-clicked card *if* "Create proxy" should be
+     *  offered (i.e. the card isn't itself a proxy). Null suppresses the
+     *  menu entry. */
+    proxyableVideoId: String? = null,
+    onCreateProxy: (videoId: String) -> Unit = {},
 ): List<androidx.compose.foundation.ContextMenuItem> {
     val items = mutableListOf<androidx.compose.foundation.ContextMenuItem>()
     val registry = EditorRegistry.Default
@@ -366,6 +376,15 @@ internal fun buildVideoContextMenu(
         }
         items += androidx.compose.foundation.ContextMenuItem("Unstack") {
             onUnstack(stackGroupId)
+        }
+    }
+
+    // Proxy creation. Not offered on cards that are themselves proxies
+    // (chaining proxy-of-a-proxy makes no sense; the user should pick
+    // the original instead).
+    if (proxyableVideoId != null) {
+        items += androidx.compose.foundation.ContextMenuItem("Create proxy…") {
+            onCreateProxy(proxyableVideoId)
         }
     }
 

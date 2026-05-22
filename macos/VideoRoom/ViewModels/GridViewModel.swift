@@ -168,6 +168,59 @@ class GridViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Proxy management
+
+    /// Surfaces the "Create proxy" sheet for `videoId`. The actual sheet
+    /// is hosted by ContentView; we just publish the request via this
+    /// `@Published` property and clear it once acknowledged.
+    @Published var proxyCreationVideoId: String?
+    /// Sticky banner during proxy generation. Set to "Generating
+    /// 720p proxy…" while the stream runs; cleared on completion.
+    @Published var proxyCreationStatus: String?
+
+    /// Called by the grid's right-click menu. Kicks off proxy
+    /// generation immediately at the server's configured default
+    /// height (typically 720 px). A future iteration will surface a
+    /// sheet first so the user can pick the resolution; for now the
+    /// banner reports progress and the "Live" subscription will
+    /// refresh the source card with the new proxy badge.
+    func requestCreateProxy(videoId: String) {
+        proxyCreationVideoId = videoId
+        // 0 = use server default (`proxy_target_height` from Config).
+        startProxyCreation(videoId: videoId, targetHeight: 0)
+    }
+
+    /// Kick off proxy generation against the server. Awaits the stream
+    /// to completion and refreshes the grid so the new proxy badge
+    /// appears on the source. Surfaces progress through
+    /// `proxyCreationStatus`.
+    func startProxyCreation(videoId: String, targetHeight: Int) {
+        proxyCreationStatus = "Generating \(targetHeight)p proxy…"
+        Task {
+            let stream = repository.generateProxy(
+                videoId: videoId,
+                targetHeight: targetHeight
+            )
+            do {
+                for try await event in stream {
+                    if !event.message.isEmpty {
+                        proxyCreationStatus = event.message
+                    }
+                    if event.status == "complete" {
+                        proxyCreationStatus = nil
+                        // Refresh so the proxy badge shows up on the
+                        // source card.
+                        loadVideos()
+                    } else if event.status == "error" {
+                        proxyCreationStatus = "Proxy failed: \(event.message)"
+                    }
+                }
+            } catch {
+                proxyCreationStatus = "Proxy failed: \(error.localizedDescription)"
+            }
+        }
+    }
+
     /// Coalesce a flurry of watcher events into a single grid reload. Fires
     /// 500 ms after the last event in the burst — typical SAN-drop scenario
     /// is 5–20 file events in <1 s, so this collapses them into one

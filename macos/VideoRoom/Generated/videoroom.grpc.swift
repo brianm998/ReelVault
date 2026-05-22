@@ -359,6 +359,30 @@ internal enum Videoroom_VideoRoom: Sendable {
                 method: "ListProxies"
             )
         }
+        /// Namespace for "SetProxyOf" metadata.
+        internal enum SetProxyOf: Sendable {
+            /// Request type for "SetProxyOf".
+            internal typealias Input = Videoroom_SetProxyOfRequest
+            /// Response type for "SetProxyOf".
+            internal typealias Output = Videoroom_Response
+            /// Descriptor for "SetProxyOf".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "SetProxyOf"
+            )
+        }
+        /// Namespace for "DetectProxies" metadata.
+        internal enum DetectProxies: Sendable {
+            /// Request type for "DetectProxies".
+            internal typealias Input = Videoroom_DetectProxiesRequest
+            /// Response type for "DetectProxies".
+            internal typealias Output = Videoroom_DetectProxiesResponse
+            /// Descriptor for "DetectProxies".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "DetectProxies"
+            )
+        }
         /// Namespace for "GetFilterOptions" metadata.
         internal enum GetFilterOptions: Sendable {
             /// Request type for "GetFilterOptions".
@@ -581,6 +605,8 @@ internal enum Videoroom_VideoRoom: Sendable {
             AutoGroupVideos.descriptor,
             GenerateProxy.descriptor,
             ListProxies.descriptor,
+            SetProxyOf.descriptor,
+            DetectProxies.descriptor,
             GetFilterOptions.descriptor,
             GetStatus.descriptor,
             GetConfig.descriptor,
@@ -1045,6 +1071,34 @@ extension Videoroom_VideoRoom {
             request: GRPCCore.StreamingServerRequest<Videoroom_ListProxiesRequest>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ListProxiesResponse>
+
+        /// Handle the "SetProxyOf" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_SetProxyOfRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func setProxyOf(
+            request: GRPCCore.StreamingServerRequest<Videoroom_SetProxyOfRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
+
+        /// Handle the "DetectProxies" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_DetectProxiesRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_DetectProxiesResponse` messages.
+        func detectProxies(
+            request: GRPCCore.StreamingServerRequest<Videoroom_DetectProxiesRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_DetectProxiesResponse>
 
         /// Handle the "GetFilterOptions" method.
         ///
@@ -1753,6 +1807,34 @@ extension Videoroom_VideoRoom {
             request: GRPCCore.ServerRequest<Videoroom_ListProxiesRequest>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.ServerResponse<Videoroom_ListProxiesResponse>
+
+        /// Handle the "SetProxyOf" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_SetProxyOfRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func setProxyOf(
+            request: GRPCCore.ServerRequest<Videoroom_SetProxyOfRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
+
+        /// Handle the "DetectProxies" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_DetectProxiesRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_DetectProxiesResponse` message.
+        func detectProxies(
+            request: GRPCCore.ServerRequest<Videoroom_DetectProxiesRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_DetectProxiesResponse>
 
         /// Handle the "GetFilterOptions" method.
         ///
@@ -2463,6 +2545,34 @@ extension Videoroom_VideoRoom {
             context: GRPCCore.ServerContext
         ) async throws -> Videoroom_ListProxiesResponse
 
+        /// Handle the "SetProxyOf" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_SetProxyOfRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func setProxyOf(
+            request: Videoroom_SetProxyOfRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
+
+        /// Handle the "DetectProxies" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_DetectProxiesRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_DetectProxiesResponse` to respond with.
+        func detectProxies(
+            request: Videoroom_DetectProxiesRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_DetectProxiesResponse
+
         /// Handle the "GetFilterOptions" method.
         ///
         /// > Source IDL Documentation:
@@ -3054,6 +3164,28 @@ extension Videoroom_VideoRoom.StreamingServiceProtocol {
             }
         )
         router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.SetProxyOf.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_SetProxyOfRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.setProxyOf(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.DetectProxies.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_DetectProxiesRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_DetectProxiesResponse>(),
+            handler: { request, context in
+                try await self.detectProxies(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
             forMethod: Videoroom_VideoRoom.Method.GetFilterOptions.descriptor,
             deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_GetFilterOptionsRequest>(),
             serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_FilterOptions>(),
@@ -3537,6 +3669,28 @@ extension Videoroom_VideoRoom.ServiceProtocol {
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ListProxiesResponse> {
         let response = try await self.listProxies(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func setProxyOf(
+        request: GRPCCore.StreamingServerRequest<Videoroom_SetProxyOfRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.setProxyOf(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func detectProxies(
+        request: GRPCCore.StreamingServerRequest<Videoroom_DetectProxiesRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_DetectProxiesResponse> {
+        let response = try await self.detectProxies(
             request: GRPCCore.ServerRequest(stream: request),
             context: context
         )
@@ -4092,6 +4246,32 @@ extension Videoroom_VideoRoom.SimpleServiceProtocol {
     ) async throws -> GRPCCore.ServerResponse<Videoroom_ListProxiesResponse> {
         return GRPCCore.ServerResponse<Videoroom_ListProxiesResponse>(
             message: try await self.listProxies(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func setProxyOf(
+        request: GRPCCore.ServerRequest<Videoroom_SetProxyOfRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.setProxyOf(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func detectProxies(
+        request: GRPCCore.ServerRequest<Videoroom_DetectProxiesRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_DetectProxiesResponse> {
+        return GRPCCore.ServerResponse<Videoroom_DetectProxiesResponse>(
+            message: try await self.detectProxies(
                 request: request.message,
                 context: context
             ),
@@ -4883,6 +5063,44 @@ extension Videoroom_VideoRoom {
             deserializer: some GRPCCore.MessageDeserializer<Videoroom_ListProxiesResponse>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_ListProxiesResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "SetProxyOf" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_SetProxyOfRequest` message.
+        ///   - serializer: A serializer for `Videoroom_SetProxyOfRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func setProxyOf<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_SetProxyOfRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_SetProxyOfRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "DetectProxies" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_DetectProxiesRequest` message.
+        ///   - serializer: A serializer for `Videoroom_DetectProxiesRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_DetectProxiesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func detectProxies<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_DetectProxiesRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_DetectProxiesRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_DetectProxiesResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_DetectProxiesResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
         /// Call the "GetFilterOptions" method.
@@ -6116,6 +6334,66 @@ extension Videoroom_VideoRoom {
             try await self.client.unary(
                 request: request,
                 descriptor: Videoroom_VideoRoom.Method.ListProxies.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "SetProxyOf" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_SetProxyOfRequest` message.
+        ///   - serializer: A serializer for `Videoroom_SetProxyOfRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func setProxyOf<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_SetProxyOfRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_SetProxyOfRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.SetProxyOf.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "DetectProxies" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_DetectProxiesRequest` message.
+        ///   - serializer: A serializer for `Videoroom_DetectProxiesRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_DetectProxiesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func detectProxies<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_DetectProxiesRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_DetectProxiesRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_DetectProxiesResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_DetectProxiesResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.DetectProxies.descriptor,
                 serializer: serializer,
                 deserializer: deserializer,
                 options: options,
@@ -7374,6 +7652,56 @@ extension Videoroom_VideoRoom.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_ListProxiesRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_ListProxiesResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SetProxyOf" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_SetProxyOfRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func setProxyOf<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_SetProxyOfRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.setProxyOf(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_SetProxyOfRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_Response>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "DetectProxies" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_DetectProxiesRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func detectProxies<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_DetectProxiesRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_DetectProxiesResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.detectProxies(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_DetectProxiesRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_DetectProxiesResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -8660,6 +8988,64 @@ extension Videoroom_VideoRoom.ClientProtocol {
             metadata: metadata
         )
         return try await self.listProxies(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SetProxyOf" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func setProxyOf<Result>(
+        _ message: Videoroom_SetProxyOfRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_SetProxyOfRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.setProxyOf(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "DetectProxies" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func detectProxies<Result>(
+        _ message: Videoroom_DetectProxiesRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_DetectProxiesResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_DetectProxiesRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.detectProxies(
             request: request,
             options: options,
             onResponse: handleResponse

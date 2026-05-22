@@ -24,8 +24,20 @@ struct VideoSummary: Identifiable, Hashable {
     let groupSize: Int
     let groupPreferredId: String
     let groupPreferredPath: String
+    // Proxy info. `proxyCount` drives the small "P×N" badge on the
+    // card — non-zero means this video has lower-resolution proxies the
+    // user can fall back to for inline playback. `proxyOf` non-empty
+    // means *this* video is itself a proxy of another row; the grid
+    // hides such rows behind their source unless the user clicks
+    // "show proxies". `playableNatively` is the server's verdict on
+    // whether the video fits under the configured max-native-height.
+    let proxyCount: Int
+    let proxyOf: String
+    let playableNatively: Bool
 
     var isInGroup: Bool { !groupId.isEmpty && groupSize > 1 }
+    var hasProxies: Bool { proxyCount > 0 }
+    var isProxy: Bool { !proxyOf.isEmpty }
     /// Path to open on double-click — preferred member if in a group, else this video.
     var openPath: String { groupPreferredPath.isEmpty ? path : groupPreferredPath }
 

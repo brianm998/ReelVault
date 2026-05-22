@@ -98,7 +98,10 @@ class VideoRepository(
             groupId = proto.groupId,
             groupSize = proto.groupSize,
             groupPreferredId = proto.groupPreferredId,
-            groupPreferredPath = proto.groupPreferredPath
+            groupPreferredPath = proto.groupPreferredPath,
+            proxyCount = proto.proxyCount,
+            proxyOf = proto.proxyOf,
+            playableNatively = proto.playableNatively
         )
     }
 
@@ -330,6 +333,104 @@ class VideoRepository(
                 currentFile = proto.currentFile,
                 progressPercent = proto.progressPercent
             )
+        }
+    }
+
+    // --- Proxies ---
+
+    /** Compact view of one proxy video — what the detail-panel sub-list
+     *  needs to render the entry (filename, path, resolution, size) plus
+     *  the auto-detection metadata so the UI can show a small
+     *  "auto-detected" indicator. */
+    data class ProxyInfo(
+        val id: String,
+        val filename: String,
+        val path: String,
+        val sizeBytes: Long,
+        val width: Int,
+        val height: Int,
+        val confidence: Double,
+        val autoDetected: Boolean,
+    )
+
+    suspend fun listProxies(videoId: String): List<ProxyInfo> = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext emptyList()
+        try {
+            val request = Videoroom.ListProxiesRequest.newBuilder()
+                .setVideoId(videoId)
+                .build()
+            s.listProxies(request).proxiesList.map {
+                ProxyInfo(
+                    id = it.id,
+                    filename = it.filename,
+                    path = it.path,
+                    sizeBytes = it.sizeBytes,
+                    width = it.width,
+                    height = it.height,
+                    confidence = it.confidence,
+                    autoDetected = it.autoDetected,
+                )
+            }
+        } catch (e: Exception) {
+            logger.warn("listProxies failed", e)
+            emptyList()
+        }
+    }
+
+    /** Server-streamed proxy-creation progress. Use targetHeight=0 to
+     *  defer to the daemon's configured default. */
+    data class ProxyProgress(
+        val status: String,
+        val progressPercent: Double,
+        val message: String,
+        val proxyVideoId: String,
+    )
+
+    fun generateProxy(
+        videoId: String,
+        targetHeight: Int = 0,
+        outputPath: String = "",
+    ): Flow<ProxyProgress> {
+        val s = stub ?: return flow { }
+        val request = Videoroom.GenerateProxyRequest.newBuilder()
+            .setVideoId(videoId)
+            .setTargetHeight(targetHeight)
+            .setOutputPath(outputPath)
+            .build()
+        return s.generateProxy(request).map {
+            ProxyProgress(
+                status = it.status,
+                progressPercent = it.progressPercent,
+                message = it.message,
+                proxyVideoId = it.proxyVideoId,
+            )
+        }
+    }
+
+    suspend fun setProxyOf(proxyId: String, originalId: String): Boolean = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext false
+        try {
+            val request = Videoroom.SetProxyOfRequest.newBuilder()
+                .setProxyId(proxyId)
+                .setOriginalId(originalId)
+                .build()
+            s.setProxyOf(request)
+            true
+        } catch (e: Exception) {
+            logger.warn("setProxyOf failed", e)
+            false
+        }
+    }
+
+    /** Re-run the auto-detector. Returns (pairsCompared, proxiesMarked). */
+    suspend fun detectProxies(): Pair<Int, Int> = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext (0 to 0)
+        try {
+            val response = s.detectProxies(Videoroom.DetectProxiesRequest.newBuilder().build())
+            response.pairsCompared to response.proxiesMarked
+        } catch (e: Exception) {
+            logger.warn("detectProxies failed", e)
+            (0 to 0)
         }
     }
 

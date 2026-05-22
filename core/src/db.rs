@@ -105,6 +105,18 @@ impl Database {
         let migrations: &[(&str, &str)] = &[
             ("videos.group_id", "ALTER TABLE videos ADD COLUMN group_id TEXT"),
             ("metadata.frame_count", "ALTER TABLE metadata ADD COLUMN frame_count INTEGER DEFAULT 0"),
+            // Proxy relation. `proxy_of` is the video this row is a
+            // lower-resolution stand-in for; `proxy_confidence` is the
+            // thumbnail-similarity score (0..=1) we used when
+            // auto-detecting; `proxy_auto_detected` is true if VideoRoom
+            // inferred the link (false if the user marked it manually
+            // or VideoRoom *generated* the proxy file via
+            // `GenerateProxy`). Indexed for fast "list proxies of X"
+            // lookups.
+            ("videos.proxy_of", "ALTER TABLE videos ADD COLUMN proxy_of TEXT"),
+            ("videos.proxy_confidence", "ALTER TABLE videos ADD COLUMN proxy_confidence REAL"),
+            ("videos.proxy_auto_detected", "ALTER TABLE videos ADD COLUMN proxy_auto_detected INTEGER DEFAULT 0"),
+            ("idx_videos_proxy_of", "CREATE INDEX IF NOT EXISTS idx_videos_proxy_of ON videos(proxy_of)"),
         ];
         for (label, sql) in migrations {
             match conn.execute(sql, []) {
@@ -1314,6 +1326,134 @@ impl Database {
         Ok(result)
     }
 
+    // --- Proxy relationships ---
+
+    /// Mark `proxy_id` as a proxy for `original_id`. `confidence` is the
+    /// thumb-similarity score (or 1.0 for VideoRoom-generated proxies).
+    /// `auto_detected` distinguishes "scanner inferred this" (true) from
+    /// "user told us / we generated it" (false) so a future "show only
+    /// auto-detected proxies" UI is possible without schema changes.
+    pub fn set_proxy_of(
+        &self,
+        proxy_id: &str,
+        original_id: &str,
+        confidence: f64,
+        auto_detected: bool,
+    ) -> Result<()> {
+        let conn = self.get_connection()?;
+        conn.execute(
+            "UPDATE videos
+             SET proxy_of = ?, proxy_confidence = ?, proxy_auto_detected = ?
+             WHERE id = ?",
+            params![original_id, confidence, auto_detected as i32, proxy_id],
+        )
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
+    /// List every proxy of `video_id`. Returns the proxy rows + their
+    /// confidence + auto-detected flag, sorted by descending pixel count
+    /// so the highest-res proxy comes first.
+    pub fn list_proxies(&self, video_id: &str) -> Result<Vec<ProxyRecord>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn
+            .prepare(
+                "SELECT v.id, v.filename, v.path, v.file_size_bytes,
+                        COALESCE(m.width, 0), COALESCE(m.height, 0),
+                        v.proxy_confidence, COALESCE(v.proxy_auto_detected, 0)
+                 FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
+                 WHERE v.proxy_of = ?
+                 ORDER BY (COALESCE(m.width,0) * COALESCE(m.height,0)) DESC",
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        let rows = stmt
+            .query_map([video_id], |row| {
+                Ok(ProxyRecord {
+                    id: row.get(0)?,
+                    filename: row.get(1)?,
+                    path: row.get(2)?,
+                    file_size_bytes: row.get(3)?,
+                    width: row.get(4)?,
+                    height: row.get(5)?,
+                    proxy_confidence: row.get::<_, Option<f64>>(6)?.unwrap_or(0.0),
+                    auto_detected: row.get::<_, i32>(7)? != 0,
+                })
+            })
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(rows)
+    }
+
+    /// What is this video a proxy for, if anything?
+    pub fn get_proxy_target(&self, video_id: &str) -> Result<Option<String>> {
+        let conn = self.get_connection()?;
+        let result: Option<String> = conn
+            .query_row(
+                "SELECT proxy_of FROM videos WHERE id = ?",
+                [video_id],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .flatten();
+        Ok(result)
+    }
+
+    /// Clear the proxy_of pointer for a video (e.g. user un-marks it).
+    pub fn clear_proxy_of(&self, video_id: &str) -> Result<()> {
+        let conn = self.get_connection()?;
+        conn.execute(
+            "UPDATE videos
+             SET proxy_of = NULL, proxy_confidence = NULL, proxy_auto_detected = 0
+             WHERE id = ?",
+            [video_id],
+        )
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
+    /// Candidate rows used by the proxy auto-detector. One row per video
+    /// — bundles the thumbnail-comparable bits with the EXIF gates.
+    pub fn list_for_proxy_detection(&self) -> Result<Vec<ProxyDetectCandidate>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn
+            .prepare(
+                "SELECT v.id, v.filename, v.path,
+                        COALESCE(m.width, 0), COALESCE(m.height, 0),
+                        COALESCE(m.fps, 0), COALESCE(m.frame_count, 0),
+                        COALESCE(m.camera_model, ''),
+                        v.proxy_of
+                 FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
+                 WHERE v.proxy_of IS NULL",
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        let rows = stmt
+            .query_map([], |row| {
+                let path: String = row.get(2)?;
+                let parent_dir = std::path::Path::new(&path)
+                    .parent()
+                    .and_then(|p| p.to_str())
+                    .unwrap_or("")
+                    .to_string();
+                Ok(ProxyDetectCandidate {
+                    id: row.get(0)?,
+                    filename: row.get(1)?,
+                    path,
+                    parent_dir,
+                    width: row.get(3)?,
+                    height: row.get(4)?,
+                    fps: row.get(5)?,
+                    frame_count: row.get(6)?,
+                    camera_model: row.get(7)?,
+                })
+            })
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(rows)
+    }
+
     /// Fetch all (video_id, filename, base_name_candidate, duration_ms, width, height, fps,
     /// parent_dir, group_id) tuples — used by auto-grouping.
     pub fn list_for_auto_grouping(&self) -> Result<Vec<AutoGroupCandidate>> {
@@ -1431,6 +1571,40 @@ pub struct VideoGroupRecord {
     pub name: Option<String>,
     pub base_name: Option<String>,
     pub preferred_video_id: Option<String>,
+}
+
+/// One row returned by [`Database::list_proxies`]. Bundles enough info
+/// for the client to render a "proxies of this video" sub-list: filename,
+/// path, resolution, on-disk size, plus the auto-detection metadata.
+#[derive(Debug, Clone)]
+pub struct ProxyRecord {
+    pub id: String,
+    pub filename: String,
+    pub path: String,
+    pub file_size_bytes: Option<i64>,
+    pub width: i32,
+    pub height: i32,
+    /// dHash similarity at detection time (1.0 for user-marked or
+    /// VideoRoom-generated proxies; ~0.9–1.0 for auto-detected).
+    pub proxy_confidence: f64,
+    pub auto_detected: bool,
+}
+
+/// Candidate row used by the proxy auto-detector. Only videos that
+/// aren't *already* marked as proxies appear here, because a proxy of a
+/// proxy makes no sense (the auto-detector instead pivots through the
+/// original).
+#[derive(Debug, Clone)]
+pub struct ProxyDetectCandidate {
+    pub id: String,
+    pub filename: String,
+    pub path: String,
+    pub parent_dir: String,
+    pub width: i32,
+    pub height: i32,
+    pub fps: f64,
+    pub frame_count: i64,
+    pub camera_model: String,
 }
 
 #[derive(Debug, Clone)]

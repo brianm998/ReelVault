@@ -18,6 +18,15 @@ pub struct Config {
     /// libraries. 0 disables the throttle. Default = 4.
     pub max_concurrent_ffmpeg: i32,
 
+    // --- Proxy playback / generation ---
+    /// Largest video height (px) we'll attempt to play natively in-grid.
+    /// Anything taller is shown with a "too large to play here" marker
+    /// and the user is offered to make a proxy. Default = 2160 (4K UHD).
+    pub max_native_playback_height: i32,
+    /// Default height (px) used by `GenerateProxy` when the caller passes
+    /// 0. Default = 720.
+    pub proxy_target_height: i32,
+
     // --- Real-time library watching ---
     /// Master switch — when false, no watcher is started and the rest of the
     /// `watch_*` fields are ignored. Default = true.
@@ -92,6 +101,15 @@ impl Config {
         let external_editors: Vec<ExternalEditor> = serde_json::from_str(&editors_json)
             .unwrap_or_else(|_| Vec::new());
 
+        let max_native_playback_height = Self::get_config_value(&conn, "max_native_playback_height", "2160")?
+            .parse::<i32>()
+            .unwrap_or(2160)
+            .max(0);
+        let proxy_target_height = Self::get_config_value(&conn, "proxy_target_height", "720")?
+            .parse::<i32>()
+            .unwrap_or(720)
+            .max(144);
+
         let watch_enabled = Self::get_config_value(&conn, "watch_enabled", "true")?
             .parse::<bool>()
             .unwrap_or(true);
@@ -114,6 +132,8 @@ impl Config {
             enable_auto_tagging: auto_tagging,
             external_editors,
             max_concurrent_ffmpeg: max_ffmpeg,
+            max_native_playback_height,
+            proxy_target_height,
             watch_enabled,
             watch_write_settle_ms,
             watch_poll_interval_ms,
@@ -127,6 +147,8 @@ impl Config {
         Self::set_config_value(&conn, "max_concurrent_jobs", &self.max_concurrent_jobs.to_string())?;
         Self::set_config_value(&conn, "enable_auto_tagging", &self.enable_auto_tagging.to_string())?;
         Self::set_config_value(&conn, "max_concurrent_ffmpeg", &self.max_concurrent_ffmpeg.to_string())?;
+        Self::set_config_value(&conn, "max_native_playback_height", &self.max_native_playback_height.to_string())?;
+        Self::set_config_value(&conn, "proxy_target_height", &self.proxy_target_height.to_string())?;
         Self::set_config_value(&conn, "watch_enabled", &self.watch_enabled.to_string())?;
         Self::set_config_value(&conn, "watch_write_settle_ms", &self.watch_write_settle_ms.to_string())?;
         Self::set_config_value(&conn, "watch_poll_interval_ms", &self.watch_poll_interval_ms.to_string())?;
@@ -172,6 +194,8 @@ impl Config {
             enable_auto_tagging: false,
             external_editors: Vec::new(),
             max_concurrent_ffmpeg: crate::concurrency::default_max_concurrent_ffmpeg() as i32,
+            max_native_playback_height: 2160,
+            proxy_target_height: 720,
             watch_enabled: true,
             watch_write_settle_ms: 5000,
             watch_poll_interval_ms: 30000,

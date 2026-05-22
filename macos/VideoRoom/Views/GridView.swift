@@ -215,6 +215,21 @@ struct GridView: View {
             .help("Disband this entire stack so each member becomes a standalone video.")
         }
 
+        // Proxy actions. "Create proxy" is offered on every video; for
+        // videos that wouldn't otherwise fit under the configured
+        // native-playback ceiling we surface it more prominently in the
+        // detail panel too. The user is prompted on the resulting sheet
+        // for the target resolution.
+        Divider()
+        if !video.isProxy {
+            Button("Create proxy…") {
+                viewModel.requestCreateProxy(videoId: video.id)
+            }
+            .help(video.playableNatively
+                ? "Create a lower-resolution version of this video, saved alongside it. Useful for moving the source to slower storage while keeping fast inline playback in VideoRoom."
+                : "This video is above the inline-playback ceiling. Create a lower-resolution proxy so VideoRoom can play it without falling back to an external editor.")
+        }
+
         Divider()
 
         Button("Configure External Editors…") {
@@ -648,6 +663,25 @@ struct VideoCardView: View {
                           : "Expand this stack to see all \(video.groupSize) variants inline.")
             }
 
+            // Proxy badge — sibling to the stack badge but placed on the
+            // bottom-left so it doesn't collide. Tooltip explains that
+            // the user has lower-resolution variants available for
+            // inline playback. Non-interactive for now — the right
+            // panel's proxy section is where management happens.
+            if video.hasProxies {
+                VStack {
+                    Spacer()
+                    HStack {
+                        proxyBadge
+                            .padding(6)
+                            .help(video.playableNatively
+                                ? "This video has \(video.proxyCount) lower-resolution proxy/proxies. They can be played inline if the original is too large to load smoothly."
+                                : "This video is above your inline-playback ceiling (\(video.height) px). \(video.proxyCount) proxy/proxies available.")
+                        Spacer()
+                    }
+                }
+            }
+
             // Resolution + duration badges (top-right and bottom-right)
             VStack {
                 HStack {
@@ -675,6 +709,24 @@ struct VideoCardView: View {
         .padding(.horizontal, 5)
         .padding(.vertical, 2)
         .background(stackBadgeColor)
+        .cornerRadius(4)
+    }
+
+    /// "P×N" pill shown bottom-left on cards with one or more proxies.
+    /// Teal-ish color to visually distinguish from the stack badge
+    /// (which uses the accent color) — proxies and stacks are
+    /// orthogonal concepts so they shouldn't read as the same thing.
+    private var proxyBadge: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "rectangle.compress.vertical")
+                .font(.system(size: 10))
+            Text("P×\(video.proxyCount)")
+                .font(.system(size: 10, weight: .medium))
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 5)
+        .padding(.vertical, 2)
+        .background(Color(red: 0.25, green: 0.55, blue: 0.55))
         .cornerRadius(4)
     }
 

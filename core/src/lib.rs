@@ -12,5 +12,7 @@ pub mod service;
 pub mod grouping;
 pub mod concurrency;
 pub mod watcher;
+pub mod imagehash;
+pub mod proxies;
 
 pub use error::Result;

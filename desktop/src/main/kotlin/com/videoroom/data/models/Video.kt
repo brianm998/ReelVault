@@ -26,9 +26,19 @@ data class VideoSummary(
     val groupId: String = "",
     val groupSize: Int = 1,
     val groupPreferredId: String = "",
-    val groupPreferredPath: String = ""
+    val groupPreferredPath: String = "",
+    // Proxy info. `proxyCount` drives the small "P×N" badge on the
+    // card; `proxyOf` non-empty marks this row as a proxy of another
+    // video (the grid hides such rows under their source unless
+    // expanded); `playableNatively` is the server's verdict on whether
+    // this video fits under the configured max-native-height.
+    val proxyCount: Int = 0,
+    val proxyOf: String = "",
+    val playableNatively: Boolean = true,
 ) {
     val isInGroup: Boolean get() = groupId.isNotEmpty() && groupSize > 1
+    val hasProxies: Boolean get() = proxyCount > 0
+    val isProxy: Boolean get() = proxyOf.isNotEmpty()
     /// Path that should be opened when user double-clicks; falls back to own path
     val openPath: String get() = if (groupPreferredPath.isNotEmpty()) groupPreferredPath else path
 

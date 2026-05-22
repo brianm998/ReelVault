@@ -48,6 +48,8 @@ service VideoRoom {
   // Proxies
   rpc GenerateProxy(GenerateProxyRequest) returns (stream ProxyGenerationProgress);
   rpc ListProxies(ListProxiesRequest) returns (ListProxiesResponse);
+  rpc SetProxyOf(SetProxyOfRequest) returns (Response);
+  rpc DetectProxies(DetectProxiesRequest) returns (DetectProxiesResponse);
 
   // Filter options (distinct values for the grid's dropdowns)
   rpc GetFilterOptions(GetFilterOptionsRequest) returns (FilterOptions);
@@ -148,6 +150,17 @@ message VideoSummary {
   int32 group_size = 16;          // Number of videos in the group (1 if not grouped)
   string group_preferred_id = 17; // Which video to open by default (e.g. on double-click)
   string group_preferred_path = 18; // Direct path to preferred video for convenience
+  // Proxy info. `proxy_count` = how many lower-resolution variants of
+  // this clip exist in the catalog; the grid renders a small badge when
+  // > 0. `proxy_of` = the source video's id when this row is itself a
+  // proxy; the grid hides proxies under their source unless the user
+  // clicks "show proxies" on the source card. `playable_natively` = the
+  // server's verdict that this video fits under the user-configured
+  // `max_native_playback_height` — surfaced so the client can render
+  // "create a proxy" affordances without re-fetching ConfigResponse.
+  int32 proxy_count = 19;
+  string proxy_of = 20;
+  bool playable_natively = 21;
 }
 
 message ListVideosResponse {
@@ -376,13 +389,22 @@ message DeleteVideoRequest {
 
 message GenerateProxyRequest {
   string video_id = 1;
-  double scale = 2;  // 0.5 for half resolution
+  // Target proxy height in pixels (e.g. 720, 1080). Width is computed
+  // from the source's aspect ratio. If 0, the daemon uses the configured
+  // `proxy_target_height` setting (default 720).
+  int32 target_height = 2;
+  // Optional override for the proxy output path. Empty = use the
+  // suggested path beside the source (`<stem>_proxy_<H>p.<ext>`).
+  string output_path = 3;
 }
 
 message ProxyGenerationProgress {
-  string status = 1;  // "started", "extracting_frames", "encoding", "complete"
+  string status = 1;  // "started", "encoding", "indexing", "complete", "error"
   double progress_percent = 2;
   string message = 3;
+  // Set on the final "complete" message: the new proxy's video_id, so
+  // the client can refresh the source video's metadata to show it.
+  string proxy_video_id = 4;
 }
 
 message ListProxiesRequest {
@@ -390,14 +412,36 @@ message ListProxiesRequest {
 }
 
 message ProxyInfo {
-  string id = 1;
-  double resolution_scale = 2;
+  string id = 1;             // The proxy's video_id.
+  string filename = 2;
   string path = 3;
   int64 size_bytes = 4;
+  int32 width = 5;
+  int32 height = 6;
+  // Thumbnail-similarity confidence at detection time. 1.0 for proxies
+  // that VideoRoom generated itself or that the user marked manually.
+  double confidence = 7;
+  bool auto_detected = 8;    // True if VideoRoom inferred this link.
 }
 
 message ListProxiesResponse {
   repeated ProxyInfo proxies = 1;
+}
+
+// Set or clear a manual proxy_of pointer. Used by the right-panel
+// "This is a proxy of …" picker. `original_id` empty = clear the link.
+message SetProxyOfRequest {
+  string proxy_id = 1;
+  string original_id = 2;   // Empty to un-mark.
+}
+
+// Sweep the catalog for thumbnail-similar pairs and mark proxies. Idempotent.
+message DetectProxiesRequest {}
+
+message DetectProxiesResponse {
+  int32 pairs_compared = 1;
+  int32 proxies_marked = 2;
+  string message = 3;
 }
 
 // System / Config
@@ -421,6 +465,12 @@ message ConfigResponse {
   int32 max_concurrent_jobs = 3;
   bool enable_auto_tagging = 4;
   repeated ExternalEditor external_editors = 5;
+  // Largest height (in pixels) we'll attempt to play natively in-grid.
+  // Videos taller than this are marked "too large to play here" and the
+  // user is offered the option to make a proxy. Default 2160 (4K).
+  int32 max_native_playback_height = 6;
+  // Default height (px) for newly-generated proxies. Default 720.
+  int32 proxy_target_height = 7;
 }
 
 message ExternalEditor {
@@ -435,6 +485,8 @@ message UpdateConfigRequest {
   int32 proxy_threshold_scale = 1;
   int32 max_concurrent_jobs = 2;
   bool enable_auto_tagging = 3;
+  int32 max_native_playback_height = 4;
+  int32 proxy_target_height = 5;
 }
 
 // Groups

@@ -176,6 +176,29 @@ nonisolated struct Videoroom_VideoSummary: @unchecked Sendable {
     set {_uniqueStorage()._groupPreferredPath = newValue}
   }
 
+  /// Proxy info. `proxy_count` = how many lower-resolution variants of
+  /// this clip exist in the catalog; the grid renders a small badge when
+  /// > 0. `proxy_of` = the source video's id when this row is itself a
+  /// proxy; the grid hides proxies under their source unless the user
+  /// clicks "show proxies" on the source card. `playable_natively` = the
+  /// server's verdict that this video fits under the user-configured
+  /// `max_native_playback_height` — surfaced so the client can render
+  /// "create a proxy" affordances without re-fetching ConfigResponse.
+  var proxyCount: Int32 {
+    get {_storage._proxyCount}
+    set {_uniqueStorage()._proxyCount = newValue}
+  }
+
+  var proxyOf: String {
+    get {_storage._proxyOf}
+    set {_uniqueStorage()._proxyOf = newValue}
+  }
+
+  var playableNatively: Bool {
+    get {_storage._playableNatively}
+    set {_uniqueStorage()._playableNatively = newValue}
+  }
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -820,8 +843,14 @@ nonisolated struct Videoroom_GenerateProxyRequest: Sendable {
 
   var videoID: String = String()
 
-  /// 0.5 for half resolution
-  var scale: Double = 0
+  /// Target proxy height in pixels (e.g. 720, 1080). Width is computed
+  /// from the source's aspect ratio. If 0, the daemon uses the configured
+  /// `proxy_target_height` setting (default 720).
+  var targetHeight: Int32 = 0
+
+  /// Optional override for the proxy output path. Empty = use the
+  /// suggested path beside the source (`<stem>_proxy_<H>p.<ext>`).
+  var outputPath: String = String()
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -833,12 +862,16 @@ nonisolated struct Videoroom_ProxyGenerationProgress: Sendable {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  /// "started", "extracting_frames", "encoding", "complete"
+  /// "started", "encoding", "indexing", "complete", "error"
   var status: String = String()
 
   var progressPercent: Double = 0
 
   var message: String = String()
+
+  /// Set on the final "complete" message: the new proxy's video_id, so
+  /// the client can refresh the source video's metadata to show it.
+  var proxyVideoID: String = String()
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -862,13 +895,25 @@ nonisolated struct Videoroom_ProxyInfo: Sendable {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
+  /// The proxy's video_id.
   var id: String = String()
 
-  var resolutionScale: Double = 0
+  var filename: String = String()
 
   var path: String = String()
 
   var sizeBytes: Int64 = 0
+
+  var width: Int32 = 0
+
+  var height: Int32 = 0
+
+  /// Thumbnail-similarity confidence at detection time. 1.0 for proxies
+  /// that VideoRoom generated itself or that the user marked manually.
+  var confidence: Double = 0
+
+  /// True if VideoRoom inferred this link.
+  var autoDetected: Bool = false
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -881,6 +926,50 @@ nonisolated struct Videoroom_ListProxiesResponse: Sendable {
   // methods supported on all messages.
 
   var proxies: [Videoroom_ProxyInfo] = []
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+/// Set or clear a manual proxy_of pointer. Used by the right-panel
+/// "This is a proxy of …" picker. `original_id` empty = clear the link.
+nonisolated struct Videoroom_SetProxyOfRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var proxyID: String = String()
+
+  /// Empty to un-mark.
+  var originalID: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+/// Sweep the catalog for thumbnail-similar pairs and mark proxies. Idempotent.
+nonisolated struct Videoroom_DetectProxiesRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Videoroom_DetectProxiesResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var pairsCompared: Int32 = 0
+
+  var proxiesMarked: Int32 = 0
+
+  var message: String = String()
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -945,6 +1034,14 @@ nonisolated struct Videoroom_ConfigResponse: Sendable {
 
   var externalEditors: [Videoroom_ExternalEditor] = []
 
+  /// Largest height (in pixels) we'll attempt to play natively in-grid.
+  /// Videos taller than this are marked "too large to play here" and the
+  /// user is offered the option to make a proxy. Default 2160 (4K).
+  var maxNativePlaybackHeight: Int32 = 0
+
+  /// Default height (px) for newly-generated proxies. Default 720.
+  var proxyTargetHeight: Int32 = 0
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -980,6 +1077,10 @@ nonisolated struct Videoroom_UpdateConfigRequest: Sendable {
   var maxConcurrentJobs: Int32 = 0
 
   var enableAutoTagging: Bool = false
+
+  var maxNativePlaybackHeight: Int32 = 0
+
+  var proxyTargetHeight: Int32 = 0
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1672,7 +1773,7 @@ nonisolated extension Videoroom_ListVideosRequest: SwiftProtobuf.Message, SwiftP
 
 nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".VideoSummary"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0\u{3}proxy_count\0\u{3}proxy_of\0\u{3}playable_natively\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -1693,6 +1794,9 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
     var _groupSize: Int32 = 0
     var _groupPreferredID: String = String()
     var _groupPreferredPath: String = String()
+    var _proxyCount: Int32 = 0
+    var _proxyOf: String = String()
+    var _playableNatively: Bool = false
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1721,6 +1825,9 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
       _groupSize = source._groupSize
       _groupPreferredID = source._groupPreferredID
       _groupPreferredPath = source._groupPreferredPath
+      _proxyCount = source._proxyCount
+      _proxyOf = source._proxyOf
+      _playableNatively = source._playableNatively
     }
   }
 
@@ -1757,6 +1864,9 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
         case 16: try { try decoder.decodeSingularInt32Field(value: &_storage._groupSize) }()
         case 17: try { try decoder.decodeSingularStringField(value: &_storage._groupPreferredID) }()
         case 18: try { try decoder.decodeSingularStringField(value: &_storage._groupPreferredPath) }()
+        case 19: try { try decoder.decodeSingularInt32Field(value: &_storage._proxyCount) }()
+        case 20: try { try decoder.decodeSingularStringField(value: &_storage._proxyOf) }()
+        case 21: try { try decoder.decodeSingularBoolField(value: &_storage._playableNatively) }()
         default: break
         }
       }
@@ -1819,6 +1929,15 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
       if !_storage._groupPreferredPath.isEmpty {
         try visitor.visitSingularStringField(value: _storage._groupPreferredPath, fieldNumber: 18)
       }
+      if _storage._proxyCount != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._proxyCount, fieldNumber: 19)
+      }
+      if !_storage._proxyOf.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._proxyOf, fieldNumber: 20)
+      }
+      if _storage._playableNatively != false {
+        try visitor.visitSingularBoolField(value: _storage._playableNatively, fieldNumber: 21)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1846,6 +1965,9 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
         if _storage._groupSize != rhs_storage._groupSize {return false}
         if _storage._groupPreferredID != rhs_storage._groupPreferredID {return false}
         if _storage._groupPreferredPath != rhs_storage._groupPreferredPath {return false}
+        if _storage._proxyCount != rhs_storage._proxyCount {return false}
+        if _storage._proxyOf != rhs_storage._proxyOf {return false}
+        if _storage._playableNatively != rhs_storage._playableNatively {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -3223,7 +3345,7 @@ nonisolated extension Videoroom_DeleteVideoRequest: SwiftProtobuf.Message, Swift
 
 nonisolated extension Videoroom_GenerateProxyRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".GenerateProxyRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{1}scale\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{3}target_height\0\u{3}output_path\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3232,7 +3354,8 @@ nonisolated extension Videoroom_GenerateProxyRequest: SwiftProtobuf.Message, Swi
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.videoID) }()
-      case 2: try { try decoder.decodeSingularDoubleField(value: &self.scale) }()
+      case 2: try { try decoder.decodeSingularInt32Field(value: &self.targetHeight) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.outputPath) }()
       default: break
       }
     }
@@ -3242,15 +3365,19 @@ nonisolated extension Videoroom_GenerateProxyRequest: SwiftProtobuf.Message, Swi
     if !self.videoID.isEmpty {
       try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
     }
-    if self.scale.bitPattern != 0 {
-      try visitor.visitSingularDoubleField(value: self.scale, fieldNumber: 2)
+    if self.targetHeight != 0 {
+      try visitor.visitSingularInt32Field(value: self.targetHeight, fieldNumber: 2)
+    }
+    if !self.outputPath.isEmpty {
+      try visitor.visitSingularStringField(value: self.outputPath, fieldNumber: 3)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   static func ==(lhs: Videoroom_GenerateProxyRequest, rhs: Videoroom_GenerateProxyRequest) -> Bool {
     if lhs.videoID != rhs.videoID {return false}
-    if lhs.scale != rhs.scale {return false}
+    if lhs.targetHeight != rhs.targetHeight {return false}
+    if lhs.outputPath != rhs.outputPath {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3258,7 +3385,7 @@ nonisolated extension Videoroom_GenerateProxyRequest: SwiftProtobuf.Message, Swi
 
 nonisolated extension Videoroom_ProxyGenerationProgress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ProxyGenerationProgress"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}status\0\u{3}progress_percent\0\u{1}message\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}status\0\u{3}progress_percent\0\u{1}message\0\u{3}proxy_video_id\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3269,6 +3396,7 @@ nonisolated extension Videoroom_ProxyGenerationProgress: SwiftProtobuf.Message, 
       case 1: try { try decoder.decodeSingularStringField(value: &self.status) }()
       case 2: try { try decoder.decodeSingularDoubleField(value: &self.progressPercent) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.message) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.proxyVideoID) }()
       default: break
       }
     }
@@ -3284,6 +3412,9 @@ nonisolated extension Videoroom_ProxyGenerationProgress: SwiftProtobuf.Message, 
     if !self.message.isEmpty {
       try visitor.visitSingularStringField(value: self.message, fieldNumber: 3)
     }
+    if !self.proxyVideoID.isEmpty {
+      try visitor.visitSingularStringField(value: self.proxyVideoID, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3291,6 +3422,7 @@ nonisolated extension Videoroom_ProxyGenerationProgress: SwiftProtobuf.Message, 
     if lhs.status != rhs.status {return false}
     if lhs.progressPercent != rhs.progressPercent {return false}
     if lhs.message != rhs.message {return false}
+    if lhs.proxyVideoID != rhs.proxyVideoID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3328,7 +3460,7 @@ nonisolated extension Videoroom_ListProxiesRequest: SwiftProtobuf.Message, Swift
 
 nonisolated extension Videoroom_ProxyInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ProxyInfo"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{3}resolution_scale\0\u{1}path\0\u{3}size_bytes\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{1}width\0\u{1}height\0\u{1}confidence\0\u{3}auto_detected\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3337,9 +3469,13 @@ nonisolated extension Videoroom_ProxyInfo: SwiftProtobuf.Message, SwiftProtobuf.
       // enabled. https://github.com/apple/swift-protobuf/issues/1034
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
-      case 2: try { try decoder.decodeSingularDoubleField(value: &self.resolutionScale) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.filename) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.path) }()
       case 4: try { try decoder.decodeSingularInt64Field(value: &self.sizeBytes) }()
+      case 5: try { try decoder.decodeSingularInt32Field(value: &self.width) }()
+      case 6: try { try decoder.decodeSingularInt32Field(value: &self.height) }()
+      case 7: try { try decoder.decodeSingularDoubleField(value: &self.confidence) }()
+      case 8: try { try decoder.decodeSingularBoolField(value: &self.autoDetected) }()
       default: break
       }
     }
@@ -3349,8 +3485,8 @@ nonisolated extension Videoroom_ProxyInfo: SwiftProtobuf.Message, SwiftProtobuf.
     if !self.id.isEmpty {
       try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
     }
-    if self.resolutionScale.bitPattern != 0 {
-      try visitor.visitSingularDoubleField(value: self.resolutionScale, fieldNumber: 2)
+    if !self.filename.isEmpty {
+      try visitor.visitSingularStringField(value: self.filename, fieldNumber: 2)
     }
     if !self.path.isEmpty {
       try visitor.visitSingularStringField(value: self.path, fieldNumber: 3)
@@ -3358,14 +3494,30 @@ nonisolated extension Videoroom_ProxyInfo: SwiftProtobuf.Message, SwiftProtobuf.
     if self.sizeBytes != 0 {
       try visitor.visitSingularInt64Field(value: self.sizeBytes, fieldNumber: 4)
     }
+    if self.width != 0 {
+      try visitor.visitSingularInt32Field(value: self.width, fieldNumber: 5)
+    }
+    if self.height != 0 {
+      try visitor.visitSingularInt32Field(value: self.height, fieldNumber: 6)
+    }
+    if self.confidence.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.confidence, fieldNumber: 7)
+    }
+    if self.autoDetected != false {
+      try visitor.visitSingularBoolField(value: self.autoDetected, fieldNumber: 8)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   static func ==(lhs: Videoroom_ProxyInfo, rhs: Videoroom_ProxyInfo) -> Bool {
     if lhs.id != rhs.id {return false}
-    if lhs.resolutionScale != rhs.resolutionScale {return false}
+    if lhs.filename != rhs.filename {return false}
     if lhs.path != rhs.path {return false}
     if lhs.sizeBytes != rhs.sizeBytes {return false}
+    if lhs.width != rhs.width {return false}
+    if lhs.height != rhs.height {return false}
+    if lhs.confidence != rhs.confidence {return false}
+    if lhs.autoDetected != rhs.autoDetected {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3396,6 +3548,100 @@ nonisolated extension Videoroom_ListProxiesResponse: SwiftProtobuf.Message, Swif
 
   static func ==(lhs: Videoroom_ListProxiesResponse, rhs: Videoroom_ListProxiesResponse) -> Bool {
     if lhs.proxies != rhs.proxies {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_SetProxyOfRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".SetProxyOfRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}proxy_id\0\u{3}original_id\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.proxyID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.originalID) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.proxyID.isEmpty {
+      try visitor.visitSingularStringField(value: self.proxyID, fieldNumber: 1)
+    }
+    if !self.originalID.isEmpty {
+      try visitor.visitSingularStringField(value: self.originalID, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_SetProxyOfRequest, rhs: Videoroom_SetProxyOfRequest) -> Bool {
+    if lhs.proxyID != rhs.proxyID {return false}
+    if lhs.originalID != rhs.originalID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_DetectProxiesRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".DetectProxiesRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_DetectProxiesRequest, rhs: Videoroom_DetectProxiesRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_DetectProxiesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".DetectProxiesResponse"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pairs_compared\0\u{3}proxies_marked\0\u{1}message\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt32Field(value: &self.pairsCompared) }()
+      case 2: try { try decoder.decodeSingularInt32Field(value: &self.proxiesMarked) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.message) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.pairsCompared != 0 {
+      try visitor.visitSingularInt32Field(value: self.pairsCompared, fieldNumber: 1)
+    }
+    if self.proxiesMarked != 0 {
+      try visitor.visitSingularInt32Field(value: self.proxiesMarked, fieldNumber: 2)
+    }
+    if !self.message.isEmpty {
+      try visitor.visitSingularStringField(value: self.message, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_DetectProxiesResponse, rhs: Videoroom_DetectProxiesResponse) -> Bool {
+    if lhs.pairsCompared != rhs.pairsCompared {return false}
+    if lhs.proxiesMarked != rhs.proxiesMarked {return false}
+    if lhs.message != rhs.message {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3496,7 +3742,7 @@ nonisolated extension Videoroom_GetConfigRequest: SwiftProtobuf.Message, SwiftPr
 
 nonisolated extension Videoroom_ConfigResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ConfigResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}proxy_threshold_scale\0\u{3}thumbnail_cache_path\0\u{3}max_concurrent_jobs\0\u{3}enable_auto_tagging\0\u{3}external_editors\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}proxy_threshold_scale\0\u{3}thumbnail_cache_path\0\u{3}max_concurrent_jobs\0\u{3}enable_auto_tagging\0\u{3}external_editors\0\u{3}max_native_playback_height\0\u{3}proxy_target_height\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3509,6 +3755,8 @@ nonisolated extension Videoroom_ConfigResponse: SwiftProtobuf.Message, SwiftProt
       case 3: try { try decoder.decodeSingularInt32Field(value: &self.maxConcurrentJobs) }()
       case 4: try { try decoder.decodeSingularBoolField(value: &self.enableAutoTagging) }()
       case 5: try { try decoder.decodeRepeatedMessageField(value: &self.externalEditors) }()
+      case 6: try { try decoder.decodeSingularInt32Field(value: &self.maxNativePlaybackHeight) }()
+      case 7: try { try decoder.decodeSingularInt32Field(value: &self.proxyTargetHeight) }()
       default: break
       }
     }
@@ -3530,6 +3778,12 @@ nonisolated extension Videoroom_ConfigResponse: SwiftProtobuf.Message, SwiftProt
     if !self.externalEditors.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.externalEditors, fieldNumber: 5)
     }
+    if self.maxNativePlaybackHeight != 0 {
+      try visitor.visitSingularInt32Field(value: self.maxNativePlaybackHeight, fieldNumber: 6)
+    }
+    if self.proxyTargetHeight != 0 {
+      try visitor.visitSingularInt32Field(value: self.proxyTargetHeight, fieldNumber: 7)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3539,6 +3793,8 @@ nonisolated extension Videoroom_ConfigResponse: SwiftProtobuf.Message, SwiftProt
     if lhs.maxConcurrentJobs != rhs.maxConcurrentJobs {return false}
     if lhs.enableAutoTagging != rhs.enableAutoTagging {return false}
     if lhs.externalEditors != rhs.externalEditors {return false}
+    if lhs.maxNativePlaybackHeight != rhs.maxNativePlaybackHeight {return false}
+    if lhs.proxyTargetHeight != rhs.proxyTargetHeight {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3596,7 +3852,7 @@ nonisolated extension Videoroom_ExternalEditor: SwiftProtobuf.Message, SwiftProt
 
 nonisolated extension Videoroom_UpdateConfigRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".UpdateConfigRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}proxy_threshold_scale\0\u{3}max_concurrent_jobs\0\u{3}enable_auto_tagging\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}proxy_threshold_scale\0\u{3}max_concurrent_jobs\0\u{3}enable_auto_tagging\0\u{3}max_native_playback_height\0\u{3}proxy_target_height\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3607,6 +3863,8 @@ nonisolated extension Videoroom_UpdateConfigRequest: SwiftProtobuf.Message, Swif
       case 1: try { try decoder.decodeSingularInt32Field(value: &self.proxyThresholdScale) }()
       case 2: try { try decoder.decodeSingularInt32Field(value: &self.maxConcurrentJobs) }()
       case 3: try { try decoder.decodeSingularBoolField(value: &self.enableAutoTagging) }()
+      case 4: try { try decoder.decodeSingularInt32Field(value: &self.maxNativePlaybackHeight) }()
+      case 5: try { try decoder.decodeSingularInt32Field(value: &self.proxyTargetHeight) }()
       default: break
       }
     }
@@ -3622,6 +3880,12 @@ nonisolated extension Videoroom_UpdateConfigRequest: SwiftProtobuf.Message, Swif
     if self.enableAutoTagging != false {
       try visitor.visitSingularBoolField(value: self.enableAutoTagging, fieldNumber: 3)
     }
+    if self.maxNativePlaybackHeight != 0 {
+      try visitor.visitSingularInt32Field(value: self.maxNativePlaybackHeight, fieldNumber: 4)
+    }
+    if self.proxyTargetHeight != 0 {
+      try visitor.visitSingularInt32Field(value: self.proxyTargetHeight, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3629,6 +3893,8 @@ nonisolated extension Videoroom_UpdateConfigRequest: SwiftProtobuf.Message, Swif
     if lhs.proxyThresholdScale != rhs.proxyThresholdScale {return false}
     if lhs.maxConcurrentJobs != rhs.maxConcurrentJobs {return false}
     if lhs.enableAutoTagging != rhs.enableAutoTagging {return false}
+    if lhs.maxNativePlaybackHeight != rhs.maxNativePlaybackHeight {return false}
+    if lhs.proxyTargetHeight != rhs.proxyTargetHeight {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

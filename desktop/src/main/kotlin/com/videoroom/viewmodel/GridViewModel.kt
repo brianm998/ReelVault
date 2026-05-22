@@ -215,6 +215,42 @@ class GridViewModel(
         }
     }
 
+    // --- Proxy management ---
+
+    /** Sticky banner during proxy generation. Cleared on completion. */
+    private val _proxyCreationStatus = MutableStateFlow<String?>(null)
+    val proxyCreationStatus: StateFlow<String?> = _proxyCreationStatus.asStateFlow()
+
+    /**
+     * Kick off proxy generation against the server. Defaults to the
+     * server's configured `proxy_target_height` (typically 720 px) so
+     * the user only needs one click; a future iteration will surface a
+     * sheet first for picking the resolution.
+     */
+    fun requestCreateProxy(videoId: String, targetHeight: Int = 0) {
+        viewModelScope.launch {
+            _proxyCreationStatus.value = "Generating proxy…"
+            try {
+                repository.generateProxy(videoId = videoId, targetHeight = targetHeight)
+                    .collect { event ->
+                        if (event.message.isNotBlank()) {
+                            _proxyCreationStatus.value = event.message
+                        }
+                        if (event.status == "complete") {
+                            _proxyCreationStatus.value = null
+                            // Refresh so the new proxy badge appears.
+                            loadVideos()
+                        } else if (event.status == "error") {
+                            _proxyCreationStatus.value = "Proxy failed: ${event.message}"
+                        }
+                    }
+            } catch (e: Exception) {
+                logger.warn("Proxy generation failed", e)
+                _proxyCreationStatus.value = "Proxy failed: ${e.message ?: e.javaClass.simpleName}"
+            }
+        }
+    }
+
     /** Coalesces a burst of watcher events into a single `loadVideos()`. */
     private fun scheduleWatcherRefresh() {
         watcherRefreshJob?.cancel()

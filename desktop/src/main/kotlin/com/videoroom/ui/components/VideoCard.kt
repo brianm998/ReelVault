@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.PictureInPicture
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -407,6 +408,40 @@ fun VideoCard(
                                 },
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                    }
+                }
+
+                // Proxy badge — bottom-left, distinct teal color from the
+                // stack badge (which uses the primary color) since
+                // proxies and stacks are orthogonal concepts.
+                if (video.hasProxies) {
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(VideoRoomSpacing.Small),
+                        color = Color(0xFF408888),
+                        shape = MaterialTheme.shapes.small,
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(
+                                horizontal = VideoRoomSpacing.Small,
+                                vertical = 2.dp,
+                            ),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PictureInPicture,
+                                contentDescription = "Has proxies",
+                                modifier = Modifier.size(12.dp),
+                                tint = Color.White,
+                            )
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Text(
+                                text = "P×${video.proxyCount}",
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall,
                             )
                         }
                     }

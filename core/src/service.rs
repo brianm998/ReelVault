@@ -246,6 +246,13 @@ impl VideoRoomService {
         let thumb_path = self.config.thumbnail_cache_path.join(format!("{}_medium.jpg", video_id));
         let has_thumbnail = thumb_path.exists();
 
+        // Proxy info. `proxy_of` lets the grid hide proxies under their
+        // source; `proxy_count` powers the "this video has proxies"
+        // badge on the source's card. Both are cheap (single indexed
+        // SQL each), so we surface them on every summary.
+        let proxy_of = self.db.get_proxy_target(video_id).unwrap_or(None).unwrap_or_default();
+        let proxy_count = self.db.list_proxies(video_id).map(|v| v.len() as i32).unwrap_or(0);
+
         // Group info
         let group_id_opt = self.db.get_video_group_id(video_id).unwrap_or(None);
         let (group_id, group_size, group_preferred_id, group_preferred_path) = match &group_id_opt {
@@ -290,6 +297,10 @@ impl VideoRoomService {
             group_size,
             group_preferred_id,
             group_preferred_path,
+            proxy_count,
+            proxy_of,
+            playable_natively: self.config.max_native_playback_height == 0
+                || height <= self.config.max_native_playback_height,
         }
     }
 }
@@ -755,6 +766,33 @@ impl VideoRoomTrait for VideoRoomService {
                 scan_one(std::path::Path::new(&expanded), recursive, &tx);
             }
 
+            // Auto-detect proxies. Runs after every scan because new
+            // files may have unlocked previously-untestable proxy
+            // candidates (a low-res clip in the catalog has nothing to
+            // pair with until its high-res sibling shows up). Cheap:
+            // O(n) thumbnail hashes + O(b²) within each frame-count
+            // bucket, where b is typically 1–3.
+            match crate::proxies::detect_proxies(db.as_ref(), &cache_path) {
+                Ok(s) if s.proxies_marked > 0 => {
+                    tracing::info!(
+                        "Auto-detected {} proxy/proxies (compared {} pairs)",
+                        s.proxies_marked, s.pairs_compared,
+                    );
+                    let _ = tx.blocking_send(Ok(ScanProgress {
+                        status: "proxies".to_string(),
+                        videos_found: 0,
+                        videos_indexed: s.proxies_marked as i64,
+                        current_file: format!(
+                            "Detected {} proxy/proxies",
+                            s.proxies_marked,
+                        ),
+                        progress_percent: 100.0,
+                    }));
+                }
+                Ok(_) => {}
+                Err(e) => tracing::warn!("Proxy detection failed: {}", e),
+            }
+
             // Tell live-updates subscribers we're done. `send` errors when
             // there are no subscribers — fine, we just drop.
             let _ = scan_events.send(CatalogChange::ScanCompleted {
@@ -1122,18 +1160,163 @@ impl VideoRoomTrait for VideoRoomService {
 
     async fn generate_proxy(
         &self,
-        _request: Request<GenerateProxyRequest>,
+        request: Request<GenerateProxyRequest>,
     ) -> std::result::Result<Response<Self::GenerateProxyStream>, Status> {
-        let (_tx, rx) = tokio::sync::mpsc::channel::<std::result::Result<ProxyGenerationProgress, Status>>(10);
+        let req = request.into_inner();
+        let (tx, rx) = tokio::sync::mpsc::channel::<std::result::Result<ProxyGenerationProgress, Status>>(16);
+
+        if req.video_id.is_empty() {
+            return Err(Status::invalid_argument("video_id is required"));
+        }
+        let video = self
+            .db
+            .get_video(&req.video_id)
+            .map_err(Status::from)?
+            .ok_or_else(|| Status::not_found(format!("video {}", req.video_id)))?;
+
+        let target_height = if req.target_height > 0 {
+            req.target_height
+        } else {
+            self.config.proxy_target_height
+        }
+        .clamp(144, 4320) as u32;
+
+        let output_path = if req.output_path.is_empty() {
+            crate::proxies::proxy_path_beside(std::path::Path::new(&video.path), target_height)
+        } else {
+            std::path::PathBuf::from(req.output_path)
+        };
+        let source = std::path::PathBuf::from(video.path.clone());
+        let source_id = video.id.clone();
+        let db = Arc::clone(&self.db);
+        let cache = self.config.thumbnail_cache_path.clone();
+        let events = self.catalog_events.clone();
+
+        tokio::task::spawn_blocking(move || {
+            let send = |status: &str, percent: f64, message: String, proxy_id: String| {
+                let _ = tx.blocking_send(Ok(ProxyGenerationProgress {
+                    status: status.to_string(),
+                    progress_percent: percent,
+                    message,
+                    proxy_video_id: proxy_id,
+                }));
+            };
+
+            // The actual work. Forward progress from the proxies module
+            // through the gRPC stream so the client can paint a real
+            // progress bar.
+            let progress_tx = tx.clone();
+            let result = crate::proxies::create_proxy(
+                db.as_ref(),
+                &source_id,
+                &source,
+                &output_path,
+                target_height,
+                &cache,
+                true,
+                |p| {
+                    let _ = progress_tx.blocking_send(Ok(ProxyGenerationProgress {
+                        status: p.status.clone(),
+                        progress_percent: p.progress_percent,
+                        message: p.message.clone(),
+                        proxy_video_id: String::new(),
+                    }));
+                },
+            );
+
+            match result {
+                Ok(proxy_id) => {
+                    // Tell live-update subscribers that a new video row
+                    // exists so the grid refreshes to show the proxy
+                    // badge on the source video's card.
+                    let _ = events.send(crate::watcher::CatalogChange::VideoAdded {
+                        video_id: proxy_id.clone(),
+                        path: output_path.clone(),
+                    });
+                    send("complete", 100.0, "Proxy ready".into(), proxy_id);
+                }
+                Err(e) => {
+                    send("error", 0.0, format!("Proxy generation failed: {}", e), String::new());
+                }
+            }
+        });
+
         let stream = ReceiverStream::new(rx);
         Ok(Response::new(Box::pin(stream) as Self::GenerateProxyStream))
     }
 
     async fn list_proxies(
         &self,
-        _request: Request<ListProxiesRequest>,
+        request: Request<ListProxiesRequest>,
     ) -> std::result::Result<Response<ListProxiesResponse>, Status> {
-        Ok(Response::new(ListProxiesResponse { proxies: vec![] }))
+        let req = request.into_inner();
+        if req.video_id.is_empty() {
+            return Err(Status::invalid_argument("video_id is required"));
+        }
+        let rows = self.db.list_proxies(&req.video_id).map_err(Status::from)?;
+        let proxies = rows
+            .into_iter()
+            .map(|r| ProxyInfo {
+                id: r.id,
+                filename: r.filename,
+                path: r.path,
+                size_bytes: r.file_size_bytes.unwrap_or(0),
+                width: r.width,
+                height: r.height,
+                confidence: r.proxy_confidence,
+                auto_detected: r.auto_detected,
+            })
+            .collect();
+        Ok(Response::new(ListProxiesResponse { proxies }))
+    }
+
+    async fn set_proxy_of(
+        &self,
+        request: Request<SetProxyOfRequest>,
+    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+        let req = request.into_inner();
+        if req.proxy_id.is_empty() {
+            return Err(Status::invalid_argument("proxy_id is required"));
+        }
+        if req.original_id.is_empty() {
+            self.db.clear_proxy_of(&req.proxy_id).map_err(Status::from)?;
+            return Ok(Response::new(videoroom::Response {
+                success: true,
+                message: "Proxy link cleared".into(),
+                error: String::new(),
+            }));
+        }
+        // Manual mark — confidence = 1.0, auto_detected = false.
+        self.db
+            .set_proxy_of(&req.proxy_id, &req.original_id, 1.0, false)
+            .map_err(Status::from)?;
+        Ok(Response::new(videoroom::Response {
+            success: true,
+            message: "Proxy link saved".into(),
+            error: String::new(),
+        }))
+    }
+
+    async fn detect_proxies(
+        &self,
+        _request: Request<DetectProxiesRequest>,
+    ) -> std::result::Result<Response<DetectProxiesResponse>, Status> {
+        let db = Arc::clone(&self.db);
+        let cache = self.config.thumbnail_cache_path.clone();
+        let summary = tokio::task::spawn_blocking(move || {
+            crate::proxies::detect_proxies(db.as_ref(), &cache)
+        })
+        .await
+        .map_err(|e| Status::internal(format!("join error: {}", e)))?
+        .map_err(Status::from)?;
+        Ok(Response::new(DetectProxiesResponse {
+            pairs_compared: summary.pairs_compared as i32,
+            proxies_marked: summary.proxies_marked as i32,
+            message: format!(
+                "Compared {} pairs; marked {} proxies",
+                summary.pairs_compared, summary.proxies_marked,
+            ),
+        }))
     }
 
     async fn get_filter_options(
@@ -1196,13 +1379,36 @@ impl VideoRoomTrait for VideoRoomService {
             max_concurrent_jobs: self.config.max_concurrent_jobs,
             enable_auto_tagging: self.config.enable_auto_tagging,
             external_editors,
+            max_native_playback_height: self.config.max_native_playback_height,
+            proxy_target_height: self.config.proxy_target_height,
         }))
     }
 
     async fn update_config(
         &self,
-        _request: Request<UpdateConfigRequest>,
+        request: Request<UpdateConfigRequest>,
     ) -> std::result::Result<Response<videoroom::Response>, Status> {
+        let req = request.into_inner();
+        // Persist the bits clients can actually change. The full Config
+        // struct stays as the load-time snapshot — the values that drive
+        // request-time decisions (max_native_playback_height,
+        // proxy_target_height) are re-read from the config table on every
+        // GenerateProxy, so this UPSERT is enough for them.
+        if let Ok(conn) = self.db.get_connection() {
+            let pairs: &[(&str, String)] = &[
+                ("max_native_playback_height", req.max_native_playback_height.clamp(0, 7680).to_string()),
+                ("proxy_target_height", req.proxy_target_height.clamp(144, 4320).to_string()),
+                ("max_concurrent_jobs", req.max_concurrent_jobs.max(0).to_string()),
+                ("enable_auto_tagging", req.enable_auto_tagging.to_string()),
+            ];
+            for (key, value) in pairs {
+                let _ = conn.execute(
+                    "INSERT INTO config (key, value) VALUES (?, ?)
+                     ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP",
+                    rusqlite::params![key, value, value],
+                );
+            }
+        }
         Ok(Response::new(videoroom::Response {
             success: true,
             message: "Config updated".to_string(),

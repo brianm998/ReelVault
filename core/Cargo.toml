@@ -54,6 +54,13 @@ notify = "6.1"
 tempfile = "3.8"
 dirs = "5.0"
 
+# Image hashing for proxy auto-detection. We use the `image` crate's
+# JPEG decoder + a hand-rolled 64-bit dHash (resize to 9×8, then bit-pack
+# per-row sign comparisons). No heavy ML dependency; the dHash literature
+# shows it's robust enough to identify "same shot at different
+# resolution" with ~95 % accuracy on photographic content.
+image = { version = "0.24", default-features = false, features = ["jpeg", "png"] }
+
 # Data-parallel iteration — used by the scan-time metadata extraction to
 # overlap many FFprobe invocations. The FFmpeg semaphore in
 # `concurrency.rs` still bounds *external-process* concurrency; rayon just
