@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.videoroom.data.models.VideoMetadata
 import com.videoroom.data.models.VideoSummary
 import com.videoroom.ui.components.ComposeVideoPlayer
+import com.videoroom.ui.components.VlcUnavailableOverlay
 import com.videoroom.ui.theme.VideoRoomSpacing
 import com.videoroom.viewmodel.DetailViewModel
 import com.videoroom.viewmodel.GridViewModel
@@ -138,35 +139,14 @@ fun DetailViewScreen(
                 )
             }
 
-            // Show a "VLCJ not available" hint if the user tried to play but
-            // libvlc isn't installed.
-            if (playbackStarted && !player.available) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.7f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = null,
-                            modifier = Modifier.size(40.dp),
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                        Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
-                        Text(
-                            text = "In-app playback unavailable",
-                            color = Color.White,
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                        Text(
-                            text = "VideoRoom needs libvlc — install VLC and restart.",
-                            color = Color.White.copy(alpha = 0.8f),
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-                }
+            // "VLC not installed" or "VLC found but video surface is black"
+            // overlay. VlcUnavailableOverlay handles both cases: immediate
+            // display when player.available is false (libvlc not found), and
+            // a 3-second health-check timer when available is true but
+            // renderingHealthy stays false (black-surface failure on macOS
+            // Compose Desktop + CoreVideo conflict).
+            if (playbackStarted) {
+                VlcUnavailableOverlay(player = player.takeIf { it.available })
             }
         }
 

@@ -530,6 +530,7 @@ struct ContentView: View {
                     selectedPath: gridViewModel.selectedLocationPath,
                     totalVideos: gridViewModel.libraryLocations.reduce(0) { $0 + $1.videoCount },
                     onSelect: { gridViewModel.setLocationFilter($0) },
+                    onAddLibrary: { showAddLibrarySheet = true },
                     onCollapse: { leftPanelExpanded = false }
                 )
                 .frame(width: 240)

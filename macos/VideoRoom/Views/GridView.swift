@@ -571,18 +571,34 @@ struct VideoCardView: View {
             lastTooltipCursor = nil
         }
         .onHover { isHovered = $0 }
-        // AVPlayer lifecycle — create / tear down whenever the inline-play
-        // flag changes. We use the file path from `video.openPath`, which is
-        // always an absolute filesystem path (no scheme prefix needed by
-        // URL(fileURLWithPath:)).
+        // AVPlayer lifecycle. `.onChange` fires *after* the first render
+        // in which `isPlaying` is already true, so `avPlayer` would be nil
+        // on that render (showing nothing). We also explicitly play() after
+        // creation to ensure the player doesn't silently stall.
         .onChange(of: isPlaying) { _, playing in
             if playing {
                 let url = URL(fileURLWithPath: video.openPath)
-                avPlayer = AVPlayer(url: url)
-                avPlayer?.play()
+                let player = AVPlayer(url: url)
+                // Disable stalling guard so short-form clips start instantly.
+                player.automaticallyWaitsToMinimizeStalling = false
+                player.play()
+                avPlayer = player
             } else {
                 avPlayer?.pause()
                 avPlayer = nil
+            }
+        }
+        // Eagerly create the player when the card first appears in
+        // a playing state (e.g. after a grid re-render while another
+        // card is playing — this card's `.onChange` won't fire because
+        // it sees `isPlaying` as true from the very start).
+        .onAppear {
+            if isPlaying && avPlayer == nil {
+                let url = URL(fileURLWithPath: video.openPath)
+                let player = AVPlayer(url: url)
+                player.automaticallyWaitsToMinimizeStalling = false
+                player.play()
+                avPlayer = player
             }
         }
         // Order matters: the count:2 gesture is registered first so SwiftUI
@@ -656,10 +672,13 @@ struct VideoCardView: View {
                 .fill(Color.black)
                 .overlay {
                     if isPlaying, let player = avPlayer {
-                        // Live inline playback — AVKit VideoPlayer with
-                        // system controls. Fill + clip to match 16:9 card.
+                        // Live inline playback — AVKit VideoPlayer.
+                        // VideoPlayer manages its own aspect ratio via the
+                        // underlying AVPlayerLayer; we fill our bounds and
+                        // clip. `.ignoresSafeArea()` is required on macOS to
+                        // prevent AVPlayerViewController from adding insets.
                         VideoPlayer(player: player)
-                            .aspectRatio(contentMode: .fill)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .clipped()
                     } else if let image = displayedImage {
                         Image(nsImage: image)
@@ -696,43 +715,41 @@ struct VideoCardView: View {
                 // events that used to drive scrubbing here). A single
                 // hover handler at the card level avoids both regressions.)
 
-            // Play-button overlay — visible on hover for playable cards
-            // when not already playing inline.
+            // Play-button overlay — centered, exactly the circle is
+            // hit-testable. The transparent fill behind is non-interactive
+            // so card selection still works when clicking anywhere else.
             if !isPlaying && isHovered && video.playableNatively {
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Button(action: onPlayClick) {
-                            Image(systemName: "play.fill")
-                                .font(.system(size: 18))
-                                .foregroundColor(.white)
-                                .frame(width: 44, height: 44)
-                                .background(Color.black.opacity(0.55))
-                                .clipShape(Circle())
-                        }
-                        .buttonStyle(.plain)
-                        Spacer()
-                    }
-                    Spacer()
+                Button(action: onPlayClick) {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(.white)
+                        .frame(width: 44, height: 44)
+                        .background(Color.black.opacity(0.55))
+                        .clipShape(Circle())
                 }
+                .buttonStyle(.plain)
+                // Expand the layout frame to fill the ZStack so SwiftUI
+                // places the content at the center, then restrict hit-
+                // testing to just the circle so card selection works
+                // on any surrounding area.
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                .contentShape(Circle().size(CGSize(width: 44, height: 44)))
             }
 
-            // Stop button — top-trailing corner, shown while playing.
+            // Stop button — top-trailing, exactly the circle is hit-testable.
             if isPlaying {
-                HStack {
-                    Spacer()
-                    Button(action: onStopPlayback) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.white)
-                            .frame(width: 22, height: 22)
-                            .background(Color.black.opacity(0.65))
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .padding(5)
+                Button(action: onStopPlayback) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(width: 22, height: 22)
+                        .background(Color.black.opacity(0.65))
+                        .clipShape(Circle())
                 }
+                .buttonStyle(.plain)
+                .contentShape(Circle().size(CGSize(width: 22, height: 22)))
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .padding(5)
             }
 
             // Stack/group badge — clickable, doesn't propagate to the card

@@ -335,27 +335,12 @@ fun VideoCard(
                 if (isPlayingInline && inlinePlayer?.available == true) {
                     // Live video surface — replaces thumbnail while playing.
                     inlinePlayer.Surface(modifier = Modifier.fillMaxSize())
+                    // Health-check overlay: if libvlc renders nothing (black
+                    // surface) for > 3 s, show install instructions over it.
+                    VlcUnavailableOverlay(player = inlinePlayer)
                 } else if (isPlayingInline) {
-                    // Player requested but libvlc isn't available.
-                    Box(
-                        modifier = Modifier.fillMaxSize().background(Color.Black),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = null,
-                                modifier = Modifier.size(32.dp),
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "VLC not installed",
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        }
-                    }
+                    // libvlc not found — show install instructions immediately.
+                    VlcUnavailableOverlay()
                 } else if (displayedImage != null) {
                     Image(
                         bitmap = displayedImage,

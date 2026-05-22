@@ -11,16 +11,24 @@ struct LibraryPanel: View {
     let selectedPath: String
     let totalVideos: Int64
     let onSelect: (String) -> Void
+    let onAddLibrary: () -> Void
     let onCollapse: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header row with collapse chevron
-            HStack {
+            // Header row: label · add-folder button · collapse chevron
+            HStack(spacing: 4) {
                 Text("LIBRARY")
                     .font(.caption)
                     .foregroundColor(.secondary)
                 Spacer()
+                Button(action: onAddLibrary) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Add a folder to your library")
                 Button(action: onCollapse) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 12, weight: .semibold))
