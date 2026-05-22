@@ -10,8 +10,9 @@ import org.slf4j.LoggerFactory
 import uk.co.caprica.vlcj.player.base.MediaPlayer
 import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter
 import uk.co.caprica.vlcj.player.component.EmbeddedMediaPlayerComponent
+import java.awt.BorderLayout
 import java.awt.Color
-import javax.swing.JComponent
+import javax.swing.JPanel
 import javax.swing.SwingUtilities
 
 /**
@@ -46,6 +47,14 @@ class ComposeVideoPlayer {
     private var component: EmbeddedMediaPlayerComponent? = null
     private var initFailure: Throwable? = null
 
+    /**
+     * JPanel wrapper that hosts the AWT Canvas returned by
+     * `videoSurfaceComponent()`. SwingPanel requires a JComponent; Canvas
+     * extends java.awt.Component (not JComponent), so wrapping it in a
+     * BorderLayout JPanel is the correct bridge.
+     */
+    private var surfacePanel: JPanel? = null
+
     /** Most-recent currentTime in ms, updated by the time-changed event. */
     val currentTimeMs = mutableStateOf(0L)
     /** Total length in ms (0 until the media is parsed). */
@@ -67,7 +76,15 @@ class ComposeVideoPlayer {
         val initBlock: () -> Unit = {
             try {
                 component = EmbeddedMediaPlayerComponent().also { c ->
-                    c.videoSurfaceComponent().background = Color.BLACK
+                    val canvas = c.videoSurfaceComponent()
+                    canvas.background = Color.BLACK
+                    // Wrap the AWT Canvas in a JPanel so SwingPanel (which
+                    // requires a JComponent) can host it. The panel is kept
+                    // as `surfacePanel` and reused across recompositions.
+                    surfacePanel = JPanel(BorderLayout()).apply {
+                        background = Color.BLACK
+                        add(canvas, BorderLayout.CENTER)
+                    }
                     c.mediaPlayer().events().addMediaPlayerEventListener(object : MediaPlayerEventAdapter() {
                         override fun playing(mp: MediaPlayer) {
                             isPlaying.value = true
@@ -181,21 +198,20 @@ class ComposeVideoPlayer {
     /**
      * Compose surface for the player.
      *
-     * Passes `videoSurfaceComponent()` to SwingPanel — that is the actual
-     * AWT canvas that libvlc renders into (on macOS: a CALayer-backed view;
-     * on Linux: an X11 drawable). Passing the containing JPanel used to
-     * produce a black surface because the native rendering context was
-     * attached to the inner canvas, not the outer panel.
+     * Uses `surfacePanel` — a JPanel that wraps the AWT Canvas returned by
+     * `videoSurfaceComponent()`. We cannot pass the Canvas directly because
+     * SwingPanel requires a JComponent and Canvas only extends Component.
+     * The panel is created once on the EDT during init and reused here, so
+     * repeated recompositions don't add/remove the canvas from its parent.
      *
      * When the component was not created (libvlc missing) this is a no-op;
      * callers must check [available] and show a fallback.
      */
     @Composable
     fun Surface(modifier: Modifier = Modifier) {
-        val c = component ?: return
-        val surfaceComponent: JComponent = c.videoSurfaceComponent() as JComponent
+        val panel = surfacePanel ?: return
         SwingPanel(
-            factory = { surfaceComponent },
+            factory = { panel },
             modifier = modifier,
             background = androidx.compose.ui.graphics.Color.Black
         )

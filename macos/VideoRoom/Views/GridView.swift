@@ -672,11 +672,8 @@ struct VideoCardView: View {
                 .fill(Color.black)
                 .overlay {
                     if isPlaying, let player = avPlayer {
-                        // Live inline playback — AVKit VideoPlayer.
-                        // VideoPlayer manages its own aspect ratio via the
-                        // underlying AVPlayerLayer; we fill our bounds and
-                        // clip. `.ignoresSafeArea()` is required on macOS to
-                        // prevent AVPlayerViewController from adding insets.
+                        // Live inline playback — AVKit VideoPlayer fills our
+                        // 16:9 frame. VideoPlayer manages its own player layer.
                         VideoPlayer(player: player)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .clipped()
@@ -691,10 +688,42 @@ struct VideoCardView: View {
                             .foregroundColor(.secondary)
                     }
                 }
-                // (Hover is now indicated by the card's background tint —
-                // see `cardBackground` above. No play-button overlay so
-                // the user can read the thumbnail unobscured even before
-                // they start scrubbing.)
+                // Play button — `.overlay(alignment: .center)` places the
+                // Button at the exact visual centre of the Rectangle and
+                // its hit area is the button's own natural size (44×44 circle).
+                // Clicks outside the circle pass through to the card's tap
+                // gesture. Using a separate overlay (not a ZStack child with
+                // .frame(maxWidth:.infinity)) avoids the hit-area-at-origin
+                // bug where `.contentShape(Circle().size(…))` positions the
+                // hit region at the view's top-left corner, not its centre.
+                .overlay(alignment: .center) {
+                    if !isPlaying && isHovered && video.playableNatively {
+                        Button(action: onPlayClick) {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 18))
+                                .foregroundColor(.white)
+                                .frame(width: 44, height: 44)
+                                .background(Color.black.opacity(0.55))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                // Stop button — top-trailing corner while playing.
+                .overlay(alignment: .topTrailing) {
+                    if isPlaying {
+                        Button(action: onStopPlayback) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(width: 22, height: 22)
+                                .background(Color.black.opacity(0.65))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .padding(5)
+                    }
+                }
                 .background(
                     GeometryReader { proxy in
                         Color.clear
@@ -707,50 +736,9 @@ struct VideoCardView: View {
                 .contentShape(Rectangle())
                 // (Scrub tracking + tooltip motion tracking are handled
                 // together by the card-level `.onContinuousHover` further
-                // down. SwiftUI's hover modifiers don't propagate from
-                // outer→inner — having a hover handler here as well
-                // *swallowed* events from the outer one, causing the
-                // tooltip dwell timer to miss motion (and, when we moved
-                // tooltip motion to the outer handler, swallowed the
-                // events that used to drive scrubbing here). A single
-                // hover handler at the card level avoids both regressions.)
-
-            // Play-button overlay — centered, exactly the circle is
-            // hit-testable. The transparent fill behind is non-interactive
-            // so card selection still works when clicking anywhere else.
-            if !isPlaying && isHovered && video.playableNatively {
-                Button(action: onPlayClick) {
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 18))
-                        .foregroundColor(.white)
-                        .frame(width: 44, height: 44)
-                        .background(Color.black.opacity(0.55))
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
-                // Expand the layout frame to fill the ZStack so SwiftUI
-                // places the content at the center, then restrict hit-
-                // testing to just the circle so card selection works
-                // on any surrounding area.
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                .contentShape(Circle().size(CGSize(width: 44, height: 44)))
-            }
-
-            // Stop button — top-trailing, exactly the circle is hit-testable.
-            if isPlaying {
-                Button(action: onStopPlayback) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.white)
-                        .frame(width: 22, height: 22)
-                        .background(Color.black.opacity(0.65))
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .contentShape(Circle().size(CGSize(width: 22, height: 22)))
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                .padding(5)
-            }
+                // down. A single hover handler at the card level avoids
+                // the event-swallowing that happened when a second handler
+                // was nested inside the thumbnail.)
 
             // Stack/group badge — clickable, doesn't propagate to the card
             if video.isInGroup {
