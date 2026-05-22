@@ -672,9 +672,11 @@ struct VideoCardView: View {
                 .fill(Color.black)
                 .overlay {
                     if isPlaying, let player = avPlayer {
-                        // Live inline playback — AVKit VideoPlayer fills our
-                        // 16:9 frame. VideoPlayer manages its own player layer.
-                        VideoPlayer(player: player)
+                        // Live inline playback — AVPlayerNSView wraps AVPlayerView
+                        // directly rather than going through SwiftUI's VideoPlayer,
+                        // which crashes on some macOS configs when its private
+                        // VideoPlayerView subclass can't be demangled at launch.
+                        AVPlayerNSView(player: player)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .clipped()
                     } else if let image = displayedImage {

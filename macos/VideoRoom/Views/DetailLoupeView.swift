@@ -88,7 +88,7 @@ struct DetailLoupeView: View {
             // Preview area — AVKit player once playback has started for the
             // current video, otherwise the static hover-scrub frame mosaic.
             if playerVideoId == video.id, let player = player {
-                VideoPlayer(player: player)
+                AVPlayerNSView(player: player)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color.black)
             } else {

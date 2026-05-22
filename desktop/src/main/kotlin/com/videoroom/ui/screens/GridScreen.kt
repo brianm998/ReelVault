@@ -78,6 +78,45 @@ fun GridScreen(
         )
     }
 
+    // Show when the user taps play but libvlc isn't installed.
+    var showVlcErrorDialog by remember { mutableStateOf(false) }
+    if (showVlcErrorDialog) {
+        val osName = System.getProperty("os.name") ?: ""
+        val installHint = when {
+            osName.contains("Mac", ignoreCase = true) ->
+                "Install VLC from videolan.org, then restart VideoRoom.\n\n" +
+                "macOS: Download VLC.app and drag it to /Applications."
+            osName.contains("Windows", ignoreCase = true) ->
+                "Install VLC from videolan.org, then restart VideoRoom."
+            else ->
+                "Install VLC with your package manager, e.g.:\n\n" +
+                "  sudo apt install vlc\n\n" +
+                "then restart VideoRoom."
+        }
+        AlertDialog(
+            onDismissRequest = { showVlcErrorDialog = false },
+            icon = {
+                Icon(
+                    Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { Text("VLC not installed") },
+            text = {
+                Text(
+                    "Inline video playback requires VLC (libvlc) to be installed " +
+                    "on this machine.\n\n$installHint"
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showVlcErrorDialog = false }) {
+                    Text("Got it")
+                }
+            }
+        )
+    }
+
     Column(modifier = modifier.fillMaxSize()) {
         // Status bar
         if (error.value != null) {
@@ -238,11 +277,14 @@ fun GridScreen(
                                 isPlayingInline = playingVideoId.value == video.id,
                                 inlinePlayer = inlinePlayer,
                                 onPlayClick = {
-                                    if (video.playableNatively) {
-                                        viewModel.playVideo(video.id)
-                                    } else {
+                                    when {
+                                        // Gate first: if libvlc isn't present, tell the
+                                        // user before entering any "playing" state so we
+                                        // never show a blank/red card for a missing player.
+                                        !inlinePlayer.available -> showVlcErrorDialog = true
+                                        video.playableNatively  -> viewModel.playVideo(video.id)
                                         // Oversize video — open the proxy picker
-                                        viewModel.requestCreateProxy(video.id)
+                                        else -> viewModel.requestCreateProxy(video.id)
                                     }
                                 },
                                 onStopPlayback = { viewModel.stopPlayback() },
