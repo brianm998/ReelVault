@@ -17,7 +17,16 @@ struct ContentView: View {
     @State private var showAddLibrarySheet = false
     @State private var showEditorsSheet = false
     @State private var showWatchSettingsSheet = false
+    @State private var showPlaybackSettingsSheet = false
     @State private var showOpenCatalogSheet = false
+    // Wrapper that gives the proxy-picker sheet an Identifiable item
+    // to bind to (sheet(item:) requires that). We don't need a real
+    // model here — the video summary is enough to derive everything
+    // the dialog renders.
+    private struct ProxyTarget: Identifiable {
+        let video: VideoSummary
+        var id: String { video.id }
+    }
     @State private var openCatalogIsStartup = false
     @State private var currentCatalog: CatalogInfo = .closed
     @State private var showGlobalMapSheet = false
@@ -72,6 +81,28 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showWatchSettingsSheet) {
             WatchSettingsDialog(isPresented: $showWatchSettingsSheet)
+        }
+        .sheet(isPresented: $showPlaybackSettingsSheet) {
+            PlaybackSettingsDialog(isPresented: $showPlaybackSettingsSheet)
+        }
+        // Proxy creation picker. Observes `proxyCreationVideoId` on the
+        // grid view-model — non-nil means "user just clicked Create
+        // proxy on a card, show the resolution picker". Confirm calls
+        // back into the view-model to start the job; cancel clears
+        // the request.
+        .sheet(item: Binding<ProxyTarget?>(
+            get: { gridViewModel.proxyCreationVideoId.flatMap { id in
+                gridViewModel.videos.first(where: { $0.id == id }).map { ProxyTarget(video: $0) }
+            } },
+            set: { _ in /* dismissals handled explicitly below */ }
+        )) { target in
+            ProxyResolutionDialog(
+                sourceVideo: target.video,
+                onConfirm: { height in
+                    gridViewModel.startProxyCreation(videoId: target.video.id, targetHeight: height)
+                },
+                onCancel: { gridViewModel.cancelProxyCreation() }
+            )
         }
         .sheet(isPresented: $showEditorsSheet) {
             ExternalEditorsDialog(isPresented: $showEditorsSheet)
@@ -340,6 +371,18 @@ struct ContentView: View {
             }
             .buttonStyle(.borderless)
             .help("Configure which external video editors are available in the right-click \"Open with\" menu. See free/paid status and download links for each supported editor.")
+
+            // Playback + proxy resolution preferences. Distinct from
+            // the watcher settings (separate concept) and from the
+            // external-editors picker. Surfaces as a play/rectangle
+            // icon so it visually reads as "playback".
+            Button {
+                showPlaybackSettingsSheet = true
+            } label: {
+                Image(systemName: "play.rectangle")
+            }
+            .buttonStyle(.borderless)
+            .help("Set the inline-playback ceiling and the default proxy resolution. Videos taller than the ceiling get a \"Too large to play here\" marker and offer a one-click proxy.")
 
             // Live-updates pill — shows whether the server's file watcher
             // is active and offers a one-click entry into its settings.

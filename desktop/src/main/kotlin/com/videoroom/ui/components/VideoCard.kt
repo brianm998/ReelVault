@@ -13,10 +13,11 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.PictureInPicture
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -44,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.videoroom.data.models.VideoSummary
 import com.videoroom.ui.theme.VideoRoomCornerRadius
 import com.videoroom.ui.theme.VideoRoomSpacing
@@ -82,6 +84,19 @@ fun VideoCard(
      *  context menu is open (which would otherwise render the help
      *  popup on top of the menu after the dwell elapsed). */
     suppressTooltip: Boolean = false,
+    /** `true` when this card is the one currently playing inline. The
+     *  thumbnail is replaced with [inlinePlayer]'s video surface. */
+    isPlayingInline: Boolean = false,
+    /** The shared grid-level VLCJ player. Non-null; the same instance is
+     *  passed to all cards but only rendered in the one where
+     *  [isPlayingInline] is true. */
+    inlinePlayer: ComposeVideoPlayer? = null,
+    /** Fired when the user clicks the play button overlay on a playable
+     *  card. For oversize cards this still fires so the caller can open
+     *  the proxy-creation dialog instead. */
+    onPlayClick: () -> Unit = {},
+    /** Fired when the user clicks the ✕ stop button on the inline player. */
+    onStopPlayback: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -317,7 +332,31 @@ fun VideoCard(
                     },
                 contentAlignment = Alignment.Center
             ) {
-                if (displayedImage != null) {
+                if (isPlayingInline && inlinePlayer?.available == true) {
+                    // Live video surface — replaces thumbnail while playing.
+                    inlinePlayer.Surface(modifier = Modifier.fillMaxSize())
+                } else if (isPlayingInline) {
+                    // Player requested but libvlc isn't available.
+                    Box(
+                        modifier = Modifier.fillMaxSize().background(Color.Black),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = null,
+                                modifier = Modifier.size(32.dp),
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "VLC not installed",
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                    }
+                } else if (displayedImage != null) {
                     Image(
                         bitmap = displayedImage,
                         contentDescription = video.filename,
@@ -332,6 +371,60 @@ fun VideoCard(
                         modifier = Modifier.size(48.dp),
                         tint = MaterialTheme.colorScheme.outline
                     )
+                }
+
+                // Play-button overlay — visible on hover for playable cards
+                // when not already playing. Uses a consumed pointer gesture
+                // so the card's selection handler doesn't also fire.
+                if (!isPlayingInline && isHovered && video.playableNatively) {
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50))
+                            .pointerInput(onPlayClick) {
+                                awaitEachGesture {
+                                    val down = awaitFirstDown(requireUnconsumed = false)
+                                    down.consume()
+                                    val up = waitForUpOrCancellation()
+                                    if (up != null) { up.consume(); onPlayClick() }
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = "Play inline",
+                            modifier = Modifier.size(30.dp),
+                            tint = Color.White,
+                        )
+                    }
+                }
+
+                // Stop button — top-end, overlaid on the live player.
+                if (isPlayingInline) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(4.dp)
+                            .size(28.dp)
+                            .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(50))
+                            .pointerInput(onStopPlayback) {
+                                awaitEachGesture {
+                                    val down = awaitFirstDown(requireUnconsumed = false)
+                                    down.consume()
+                                    val up = waitForUpOrCancellation()
+                                    if (up != null) { up.consume(); onStopPlayback() }
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Stop playback",
+                            modifier = Modifier.size(16.dp),
+                            tint = Color.White,
+                        )
+                    }
                 }
 
                 // (Hover is now indicated by the card-cell background
@@ -444,6 +537,33 @@ fun VideoCard(
                                 style = MaterialTheme.typography.labelSmall,
                             )
                         }
+                    }
+                }
+
+                // "Too large to play here" marker — bottom-center.
+                // Shown when the server's `playable_natively` is false
+                // (video height exceeds the configured
+                // max_native_playback_height). Click handler is wired
+                // in GridScreen via the card's context menu and the
+                // dedicated "Create proxy" button; the badge itself is
+                // informational so multi-click selection still works.
+                if (!video.playableNatively) {
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(VideoRoomSpacing.Small),
+                        color = Color(0xFFB8722E).copy(alpha = 0.9f),
+                        shape = MaterialTheme.shapes.small,
+                    ) {
+                        Text(
+                            text = "Too large to play here",
+                            modifier = Modifier.padding(
+                                horizontal = VideoRoomSpacing.Small,
+                                vertical = 2.dp,
+                            ),
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelSmall,
+                        )
                     }
                 }
 

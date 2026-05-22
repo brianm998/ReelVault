@@ -517,6 +517,63 @@ class VideoRepository: ObservableObject {
         }
     }
 
+    // MARK: - Server config
+
+    /// Subset of `ConfigResponse` the macOS client currently surfaces.
+    /// Extended as new fields are exposed.
+    struct ServerConfig: Equatable {
+        let maxNativePlaybackHeight: Int
+        let proxyTargetHeight: Int
+        let maxConcurrentJobs: Int
+        let enableAutoTagging: Bool
+    }
+
+    /// Read the daemon's current config. Returns nil on transport
+    /// failure so the Preferences UI never has to handle a partial
+    /// state — it shows a spinner instead and re-tries on save.
+    func getConfig() async -> ServerConfig? {
+        guard let client = serviceClient else { return nil }
+        do {
+            let response = try await client.getConfig(Videoroom_GetConfigRequest())
+            return ServerConfig(
+                maxNativePlaybackHeight: Int(response.maxNativePlaybackHeight),
+                proxyTargetHeight: Int(response.proxyTargetHeight),
+                maxConcurrentJobs: Int(response.maxConcurrentJobs),
+                enableAutoTagging: response.enableAutoTagging,
+            )
+        } catch {
+            NSLog("getConfig failed: \(error)")
+            return nil
+        }
+    }
+
+    /// Push updated config to the daemon. All parameters are optional;
+    /// unspecified values are sent as 0 / false which the server
+    /// preserves only when the corresponding clamp doesn't reject them.
+    /// (The server treats negative / out-of-range values as "use the
+    /// existing config".)
+    @discardableResult
+    func updateConfig(
+        maxNativePlaybackHeight: Int? = nil,
+        proxyTargetHeight: Int? = nil,
+        maxConcurrentJobs: Int? = nil,
+        enableAutoTagging: Bool? = nil
+    ) async -> Bool {
+        guard let client = serviceClient else { return false }
+        var request = Videoroom_UpdateConfigRequest()
+        if let h = maxNativePlaybackHeight { request.maxNativePlaybackHeight = Int32(h) }
+        if let h = proxyTargetHeight { request.proxyTargetHeight = Int32(h) }
+        if let n = maxConcurrentJobs { request.maxConcurrentJobs = Int32(n) }
+        if let b = enableAutoTagging { request.enableAutoTagging = b }
+        do {
+            _ = try await client.updateConfig(request)
+            return true
+        } catch {
+            NSLog("updateConfig failed: \(error)")
+            return false
+        }
+    }
+
     // MARK: - Proxies
 
     /// One proxy of a parent video. Bundles enough info for the detail

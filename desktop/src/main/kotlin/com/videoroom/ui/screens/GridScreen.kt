@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.videoroom.data.editors.EditorRegistry
 import com.videoroom.data.editors.ExternalEditor
 import com.videoroom.data.models.VideoSummary
+import com.videoroom.ui.components.ComposeVideoPlayer
 import com.videoroom.ui.components.VideoCard
 import com.videoroom.ui.theme.VideoRoomSpacing
 import com.videoroom.viewmodel.GridViewModel
@@ -49,6 +50,19 @@ fun GridScreen(
     val expandedGroupIds = viewModel.expandedGroupIds.collectAsState()
     val expandedMembers = viewModel.expandedGroupMembers.collectAsState()
     val shiftPressed = com.videoroom.LocalShiftPressed.current
+    val playingVideoId = viewModel.playingVideoId.collectAsState()
+
+    // Single VLCJ player instance shared by all cards. Only one card plays
+    // at a time; swapping is handled by loading a new path into this player.
+    val inlinePlayer = remember { ComposeVideoPlayer() }
+    DisposableEffect(Unit) { onDispose { inlinePlayer.release() } }
+
+    // Start playback whenever playingVideoId changes to a non-null value.
+    LaunchedEffect(playingVideoId.value) {
+        val id = playingVideoId.value ?: return@LaunchedEffect
+        val path = videos.value.find { it.id == id }?.openPath ?: return@LaunchedEffect
+        inlinePlayer.load(path, playImmediately = true)
+    }
 
     // Build the rendered list by splicing expanded stack members in after each
     // expanded representative. Recomputes only when an input changes.
@@ -221,6 +235,17 @@ fun GridScreen(
                                 stackMemberCount = item.memberCount,
                                 thumbnailBytes = thumbnails.value[video.id],
                                 scrubFrames = scrubFrames.value[video.id] ?: emptyList(),
+                                isPlayingInline = playingVideoId.value == video.id,
+                                inlinePlayer = inlinePlayer,
+                                onPlayClick = {
+                                    if (video.playableNatively) {
+                                        viewModel.playVideo(video.id)
+                                    } else {
+                                        // Oversize video — open the proxy picker
+                                        viewModel.requestCreateProxy(video.id)
+                                    }
+                                },
+                                onStopPlayback = { viewModel.stopPlayback() },
                                 onClick = { shiftFromEvent, toggleFromEvent ->
                                     // Modifier-key state can come from either the pointer event
                                     // (preferred) or the Window-level fallback.

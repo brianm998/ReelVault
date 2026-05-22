@@ -3,6 +3,7 @@
 
 import SwiftUI
 import AppKit
+import AVKit
 
 /// One entry in the rendered grid — either a regular video, a stack
 /// representative (collapsed or expanded), or a stack child shown inline.
@@ -83,6 +84,7 @@ struct GridView: View {
                         isPrimarySelected: viewModel.selectedVideoId == item.video.id,
                         isInMultiSelection: viewModel.selectedVideoIds.contains(item.video.id),
                         isAnchor: viewModel.anchorVideoId == item.video.id && viewModel.selectedVideoIds.count > 1,
+                        isPlaying: viewModel.playingVideoId == item.video.id,
                         onClick: { shift, toggle in
                             handleClick(item: item, rendered: rendered, shift: shift, toggle: toggle)
                         },
@@ -94,6 +96,17 @@ struct GridView: View {
                         },
                         onHoverEnter: {
                             viewModel.loadScrubFrames(videoId: item.video.id)
+                        },
+                        onPlayClick: {
+                            if item.video.playableNatively {
+                                viewModel.playVideo(videoId: item.video.id)
+                            } else {
+                                // Oversize — open the proxy-creation picker
+                                viewModel.requestCreateProxy(videoId: item.video.id)
+                            }
+                        },
+                        onStopPlayback: {
+                            viewModel.stopPlayback()
                         }
                     )
                     .contextMenu {
@@ -311,10 +324,21 @@ struct VideoCardView: View {
     let isPrimarySelected: Bool
     let isInMultiSelection: Bool
     let isAnchor: Bool
+    /// `true` when this card is the currently active inline player.
+    let isPlaying: Bool
     let onClick: (_ shift: Bool, _ toggle: Bool) -> Void
     let onDoubleClick: () -> Void
     let onStackBadgeClick: () -> Void
     let onHoverEnter: () -> Void
+    /// Fired when the play-button overlay is clicked on a `playableNatively`
+    /// card (or when the user taps the affordance on an oversize card).
+    let onPlayClick: () -> Void
+    /// Fired when the ✕ stop button on the inline player is tapped.
+    let onStopPlayback: () -> Void
+
+    /// AVPlayer kept alive for the lifetime of this view instance. Created
+    /// on first play, released when `isPlaying` goes false.
+    @State private var avPlayer: AVPlayer? = nil
 
     @State private var isHovered = false
     @State private var hoverX: CGFloat? = nil
@@ -547,6 +571,20 @@ struct VideoCardView: View {
             lastTooltipCursor = nil
         }
         .onHover { isHovered = $0 }
+        // AVPlayer lifecycle — create / tear down whenever the inline-play
+        // flag changes. We use the file path from `video.openPath`, which is
+        // always an absolute filesystem path (no scheme prefix needed by
+        // URL(fileURLWithPath:)).
+        .onChange(of: isPlaying) { _, playing in
+            if playing {
+                let url = URL(fileURLWithPath: video.openPath)
+                avPlayer = AVPlayer(url: url)
+                avPlayer?.play()
+            } else {
+                avPlayer?.pause()
+                avPlayer = nil
+            }
+        }
         // Order matters: the count:2 gesture is registered first so SwiftUI
         // gives it priority. A single click then waits briefly for a possible
         // second click before firing the count:1 handler.
@@ -617,7 +655,13 @@ struct VideoCardView: View {
             Rectangle()
                 .fill(Color.black)
                 .overlay {
-                    if let image = displayedImage {
+                    if isPlaying, let player = avPlayer {
+                        // Live inline playback — AVKit VideoPlayer with
+                        // system controls. Fill + clip to match 16:9 card.
+                        VideoPlayer(player: player)
+                            .aspectRatio(contentMode: .fill)
+                            .clipped()
+                    } else if let image = displayedImage {
                         Image(nsImage: image)
                             .resizable()
                             .scaledToFill()
@@ -651,6 +695,45 @@ struct VideoCardView: View {
                 // tooltip motion to the outer handler, swallowed the
                 // events that used to drive scrubbing here). A single
                 // hover handler at the card level avoids both regressions.)
+
+            // Play-button overlay — visible on hover for playable cards
+            // when not already playing inline.
+            if !isPlaying && isHovered && video.playableNatively {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button(action: onPlayClick) {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 18))
+                                .foregroundColor(.white)
+                                .frame(width: 44, height: 44)
+                                .background(Color.black.opacity(0.55))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        Spacer()
+                    }
+                    Spacer()
+                }
+            }
+
+            // Stop button — top-trailing corner, shown while playing.
+            if isPlaying {
+                HStack {
+                    Spacer()
+                    Button(action: onStopPlayback) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 22, height: 22)
+                            .background(Color.black.opacity(0.65))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(5)
+                }
+            }
 
             // Stack/group badge — clickable, doesn't propagate to the card
             if video.isInGroup {
@@ -695,6 +778,30 @@ struct VideoCardView: View {
                 }
             }
             .padding(6)
+
+            // "Too large to play here" marker — bottom-center.
+            // Shown when the server's `playableNatively` is false (video
+            // height exceeds the configured max-native-playback-height).
+            // Informational; the actual "create a proxy" affordance is
+            // in the context menu so it doesn't interfere with the
+            // grid's multi-select behavior.
+            if !video.playableNatively {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Text("Too large to play here")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color(red: 0.72, green: 0.45, blue: 0.18).opacity(0.9))
+                            .cornerRadius(4)
+                        Spacer()
+                    }
+                    .padding(.bottom, 28) // sit above the duration badge
+                }
+            }
         }
     }
 

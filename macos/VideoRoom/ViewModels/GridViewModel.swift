@@ -178,24 +178,30 @@ class GridViewModel: ObservableObject {
     /// 720p proxy…" while the stream runs; cleared on completion.
     @Published var proxyCreationStatus: String?
 
-    /// Called by the grid's right-click menu. Kicks off proxy
-    /// generation immediately at the server's configured default
-    /// height (typically 720 px). A future iteration will surface a
-    /// sheet first so the user can pick the resolution; for now the
-    /// banner reports progress and the "Live" subscription will
-    /// refresh the source card with the new proxy badge.
+    /// Called by the grid's right-click menu. Just publishes the
+    /// request — the sheet hosted by ContentView observes
+    /// `proxyCreationVideoId` and presents a resolution picker; once
+    /// the user confirms, it calls `startProxyCreation`.
     func requestCreateProxy(videoId: String) {
         proxyCreationVideoId = videoId
-        // 0 = use server default (`proxy_target_height` from Config).
-        startProxyCreation(videoId: videoId, targetHeight: 0)
+    }
+
+    /// Dismiss the proxy picker without starting a job. Bound to the
+    /// sheet's Cancel button.
+    func cancelProxyCreation() {
+        proxyCreationVideoId = nil
     }
 
     /// Kick off proxy generation against the server. Awaits the stream
     /// to completion and refreshes the grid so the new proxy badge
     /// appears on the source. Surfaces progress through
-    /// `proxyCreationStatus`.
+    /// `proxyCreationStatus`. Also clears `proxyCreationVideoId` so
+    /// the picker sheet dismisses.
     func startProxyCreation(videoId: String, targetHeight: Int) {
-        proxyCreationStatus = "Generating \(targetHeight)p proxy…"
+        proxyCreationStatus = targetHeight > 0
+            ? "Generating \(targetHeight)p proxy…"
+            : "Generating proxy at server default…"
+        proxyCreationVideoId = nil
         Task {
             let stream = repository.generateProxy(
                 videoId: videoId,
@@ -219,6 +225,22 @@ class GridViewModel: ObservableObject {
                 proxyCreationStatus = "Proxy failed: \(error.localizedDescription)"
             }
         }
+    }
+
+    // MARK: - Inline grid playback
+
+    /// ID of the video currently playing inline in the grid, or nil.
+    @Published var playingVideoId: String? = nil
+
+    /// Begin inline playback for the given video. Replaces any currently
+    /// playing card.
+    func playVideo(videoId: String) {
+        playingVideoId = videoId
+    }
+
+    /// Stop inline playback and return the card to thumbnail mode.
+    func stopPlayback() {
+        playingVideoId = nil
     }
 
     /// Coalesce a flurry of watcher events into a single grid reload. Fires

@@ -227,6 +227,8 @@ fun VideoRoomApp(
     var showEditorsDialog by remember { mutableStateOf(false) }
     // Live-updates / file-watcher settings dialog visibility.
     var showWatchSettingsDialog by remember { mutableStateOf(false) }
+    // Inline-playback / proxy-resolution preferences dialog visibility.
+    var showPlaybackSettingsDialog by remember { mutableStateOf(false) }
     // Global-map dialog visibility.
     var showGlobalMap by remember { mutableStateOf(false) }
     // Location-picker state. `videoIdsForLocationPicker` non-null means the
@@ -754,6 +756,39 @@ fun VideoRoomApp(
                         repository = repository,
                         onDismiss = { showWatchSettingsDialog = false }
                     )
+                }
+
+                // Playback + proxy resolution preferences dialog
+                if (showPlaybackSettingsDialog) {
+                    com.videoroom.ui.screens.PlaybackSettingsDialog(
+                        repository = repository,
+                        onDismiss = { showPlaybackSettingsDialog = false }
+                    )
+                }
+
+                // Proxy resolution picker. Observes the grid view-model:
+                // a non-null `proxyCreationVideoId` means the user just
+                // clicked Create proxy on a card. Look up the matching
+                // VideoSummary so the dialog can show filename + greys
+                // out presets larger than the source.
+                val proxyTargetId = gridViewModel.proxyCreationVideoId.collectAsState().value
+                val visibleVideos = gridViewModel.videos.collectAsState().value
+                if (proxyTargetId != null) {
+                    val source = visibleVideos.firstOrNull { it.id == proxyTargetId }
+                    if (source != null) {
+                        com.videoroom.ui.screens.ProxyResolutionDialog(
+                            sourceVideo = source,
+                            onConfirm = { h ->
+                                gridViewModel.startProxyCreation(proxyTargetId, h)
+                            },
+                            onCancel = { gridViewModel.cancelProxyCreation() },
+                        )
+                    } else {
+                        // The video disappeared from the visible page
+                        // (e.g. user scrolled past it) — just dismiss
+                        // the request instead of showing an empty dialog.
+                        LaunchedEffect(proxyTargetId) { gridViewModel.cancelProxyCreation() }
+                    }
                 }
 
                 // Global map dialog — shows every geotagged video.

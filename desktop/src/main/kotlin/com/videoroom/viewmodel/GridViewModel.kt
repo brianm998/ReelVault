@@ -221,15 +221,36 @@ class GridViewModel(
     private val _proxyCreationStatus = MutableStateFlow<String?>(null)
     val proxyCreationStatus: StateFlow<String?> = _proxyCreationStatus.asStateFlow()
 
+    /** Set to the video the user wants to create a proxy of. App.kt
+     *  hosts a sheet that observes this state and shows the resolution
+     *  picker; user confirmation calls `startProxyCreation`. */
+    private val _proxyCreationVideoId = MutableStateFlow<String?>(null)
+    val proxyCreationVideoId: StateFlow<String?> = _proxyCreationVideoId.asStateFlow()
+
+    /** Called by the grid's right-click menu. Just publishes the
+     *  request — the picker sheet picks up `proxyCreationVideoId` and
+     *  asks the user for a target resolution. */
+    fun requestCreateProxy(videoId: String) {
+        _proxyCreationVideoId.value = videoId
+    }
+
+    /** Dismiss the picker without starting a job. */
+    fun cancelProxyCreation() {
+        _proxyCreationVideoId.value = null
+    }
+
     /**
-     * Kick off proxy generation against the server. Defaults to the
-     * server's configured `proxy_target_height` (typically 720 px) so
-     * the user only needs one click; a future iteration will surface a
-     * sheet first for picking the resolution.
+     * Kick off proxy generation. Awaits the stream to completion and
+     * refreshes the grid so the new proxy badge appears on the source.
+     * Clears `proxyCreationVideoId` so the picker dismisses.
      */
-    fun requestCreateProxy(videoId: String, targetHeight: Int = 0) {
+    fun startProxyCreation(videoId: String, targetHeight: Int) {
+        _proxyCreationVideoId.value = null
+        _proxyCreationStatus.value = if (targetHeight > 0)
+            "Generating ${targetHeight}p proxy…"
+        else
+            "Generating proxy at server default…"
         viewModelScope.launch {
-            _proxyCreationStatus.value = "Generating proxy…"
             try {
                 repository.generateProxy(videoId = videoId, targetHeight = targetHeight)
                     .collect { event ->
@@ -249,6 +270,22 @@ class GridViewModel(
                 _proxyCreationStatus.value = "Proxy failed: ${e.message ?: e.javaClass.simpleName}"
             }
         }
+    }
+
+    // --- Inline grid playback ---
+
+    /** ID of the video that is currently playing inline in the grid, or null. */
+    private val _playingVideoId = MutableStateFlow<String?>(null)
+    val playingVideoId: StateFlow<String?> = _playingVideoId.asStateFlow()
+
+    /** Begin inline playback for [videoId]. Replaces any previously playing card. */
+    fun playVideo(videoId: String) {
+        _playingVideoId.value = videoId
+    }
+
+    /** Stop inline playback and return the card to thumbnail mode. */
+    fun stopPlayback() {
+        _playingVideoId.value = null
     }
 
     /** Coalesces a burst of watcher events into a single `loadVideos()`. */

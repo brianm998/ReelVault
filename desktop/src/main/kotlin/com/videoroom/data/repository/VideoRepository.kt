@@ -336,6 +336,55 @@ class VideoRepository(
         }
     }
 
+    // --- Server config ---
+
+    /** Subset of `ConfigResponse` the Kotlin client currently
+     *  surfaces. Extended as new fields are exposed. */
+    data class ServerConfig(
+        val maxNativePlaybackHeight: Int,
+        val proxyTargetHeight: Int,
+        val maxConcurrentJobs: Int,
+        val enableAutoTagging: Boolean,
+    )
+
+    suspend fun getConfig(): ServerConfig? = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext null
+        try {
+            val response = s.getConfig(Videoroom.GetConfigRequest.newBuilder().build())
+            ServerConfig(
+                maxNativePlaybackHeight = response.maxNativePlaybackHeight,
+                proxyTargetHeight = response.proxyTargetHeight,
+                maxConcurrentJobs = response.maxConcurrentJobs,
+                enableAutoTagging = response.enableAutoTagging,
+            )
+        } catch (e: Exception) {
+            logger.warn("getConfig failed", e)
+            null
+        }
+    }
+
+    /** Push updated config to the daemon. Server clamps to ranges. */
+    suspend fun updateConfig(
+        maxNativePlaybackHeight: Int? = null,
+        proxyTargetHeight: Int? = null,
+        maxConcurrentJobs: Int? = null,
+        enableAutoTagging: Boolean? = null,
+    ): Boolean = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext false
+        try {
+            val builder = Videoroom.UpdateConfigRequest.newBuilder()
+            maxNativePlaybackHeight?.let { builder.maxNativePlaybackHeight = it }
+            proxyTargetHeight?.let { builder.proxyTargetHeight = it }
+            maxConcurrentJobs?.let { builder.maxConcurrentJobs = it }
+            enableAutoTagging?.let { builder.enableAutoTagging = it }
+            s.updateConfig(builder.build())
+            true
+        } catch (e: Exception) {
+            logger.warn("updateConfig failed", e)
+            false
+        }
+    }
+
     // --- Proxies ---
 
     /** Compact view of one proxy video — what the detail-panel sub-list
