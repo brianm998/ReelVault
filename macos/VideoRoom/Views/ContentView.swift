@@ -40,6 +40,8 @@ struct ContentView: View {
     @State private var viewMode: ViewMode = .grid
     /// 'i'-cycling info overlay state — only meaningful in detail mode.
     @State private var infoOverlay: InfoOverlayState = .none
+    /// Non-nil while the "Remove library location?" confirmation alert is shown.
+    @State private var locationToRemove: LibraryLocation? = nil
 
     @EnvironmentObject private var appState: AppState
     @ObservedObject private var recents = RecentCatalogs.shared
@@ -564,8 +566,27 @@ struct ContentView: View {
                     totalVideos: gridViewModel.libraryLocations.reduce(0) { $0 + $1.videoCount },
                     onSelect: { gridViewModel.setLocationFilter($0) },
                     onAddLibrary: { showAddLibrarySheet = true },
+                    onRemoveLocation: { locationToRemove = $0 },
                     onCollapse: { leftPanelExpanded = false }
                 )
+                .alert(
+                    "Remove library location?",
+                    isPresented: Binding(
+                        get: { locationToRemove != nil },
+                        set: { if !$0 { locationToRemove = nil } }
+                    ),
+                    presenting: locationToRemove
+                ) { loc in
+                    Button("Remove", role: .destructive) {
+                        gridViewModel.removeLibraryLocation(path: loc.path)
+                        locationToRemove = nil
+                    }
+                    Button("Cancel", role: .cancel) { locationToRemove = nil }
+                } message: { loc in
+                    let n = loc.videoCount
+                    let word = n == 1 ? "video" : "videos"
+                    Text("\(n) \(word) from \"\(loc.path)\" will be removed from your catalog. The files on disk will not be deleted.")
+                }
                 .frame(width: 240)
             } else {
                 CollapsedPanelStrip(

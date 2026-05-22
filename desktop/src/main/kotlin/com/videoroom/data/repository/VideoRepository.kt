@@ -310,6 +310,25 @@ class VideoRepository(
         }
     }
 
+    /**
+     * Remove a library location and all its indexed videos from the catalog.
+     * The video FILES on disk are not touched. Returns true on success.
+     */
+    suspend fun removeLibraryLocation(path: String): Boolean = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext false
+        try {
+            val request = Videoroom.RemoveLocationRequest.newBuilder()
+                .setPath(path)
+                .build()
+            val response = s.removeLibraryLocation(request)
+            if (!response.success) logger.warn("removeLibraryLocation($path): ${response.message}")
+            response.success
+        } catch (e: Exception) {
+            logger.error("Failed to remove library location $path: ${e.message}", e)
+            false
+        }
+    }
+
     fun scanLibrary(
         locationPath: String = "",
         autoGroup: Boolean = true,

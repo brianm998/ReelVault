@@ -587,7 +587,7 @@ impl VideoRoomTrait for VideoRoomService {
     ) -> std::result::Result<Response<LocationResponse>, Status> {
         let req = request.into_inner();
 
-        self.db
+        let deleted = self.db
             .remove_library_location(&req.path)
             .map_err(Status::from)?;
 
@@ -597,7 +597,10 @@ impl VideoRoomTrait for VideoRoomService {
 
         Ok(Response::new(LocationResponse {
             success: true,
-            message: format!("Removed library location: {}", req.path),
+            message: format!(
+                "Removed library location '{}' and {} video(s) from the catalog.",
+                req.path, deleted
+            ),
         }))
     }
 

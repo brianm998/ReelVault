@@ -272,6 +272,8 @@ fun VideoRoomApp(
     var showWatchSettingsDialog by remember { mutableStateOf(false) }
     // Inline-playback / proxy-resolution preferences dialog visibility.
     var showPlaybackSettingsDialog by remember { mutableStateOf(false) }
+    // Library removal confirmation. Non-null while the "Are you sure?" dialog is shown.
+    var pendingRemoveLocation by remember { mutableStateOf<com.videoroom.data.models.LibraryLocation?>(null) }
     // Global-map dialog visibility.
     var showGlobalMap by remember { mutableStateOf(false) }
     // Location-picker state. `videoIdsForLocationPicker` non-null means the
@@ -696,11 +698,55 @@ fun VideoRoomApp(
                                     .sumOf { it.videoCount },
                                 onSelect = { path -> gridViewModel.setLocationFilter(path) },
                                 onAddLocation = { showAddLibraryDialog = true },
+                                onRemoveLocation = { loc -> pendingRemoveLocation = loc },
                                 onCollapse = { leftPanelExpanded = false },
                                 modifier = Modifier
                                     .weight(0.18f)
                                     .fillMaxHeight()
                             )
+
+                            // Remove-library confirmation dialog
+                            pendingRemoveLocation?.let { loc ->
+                                val videoWord = if (loc.videoCount == 1L) "video" else "videos"
+                                AlertDialog(
+                                    onDismissRequest = { pendingRemoveLocation = null },
+                                    icon = {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    },
+                                    title = { Text("Remove library location?") },
+                                    text = {
+                                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            Text("\"${loc.path}\"")
+                                            Text(
+                                                "${loc.videoCount} $videoWord from this folder will be removed " +
+                                                "from your catalog. The video files on disk will not be deleted.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    },
+                                    confirmButton = {
+                                        Button(
+                                            onClick = {
+                                                gridViewModel.removeLibraryLocation(loc.path)
+                                                pendingRemoveLocation = null
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.error
+                                            )
+                                        ) { Text("Remove") }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { pendingRemoveLocation = null }) {
+                                            Text("Cancel")
+                                        }
+                                    }
+                                )
+                            }
                         } else {
                             com.videoroom.ui.components.CollapsedPanelStrip(
                                 expandIconLeft = false,  // arrow points right (toward expand)
@@ -1673,6 +1719,19 @@ fun AddLibraryDialog(
     var datePosition by remember { mutableStateOf("anywhere") }
     var dateFormatMenu by remember { mutableStateOf(false) }
     var datePositionMenu by remember { mutableStateOf(false) }
+    var alwaysApplySettings by remember { mutableStateOf(false) }
+
+    // Pre-populate with saved defaults (if any were saved with "always apply").
+    val prefs = remember {
+        java.util.prefs.Preferences.userRoot().node("com/videoroom/scanDefaults")
+    }
+    LaunchedEffect(Unit) {
+        if (prefs.getBoolean("hasSavedDefaults", false)) {
+            inferDate = prefs.getBoolean("inferDate", false)
+            dateFormat = prefs.get("dateFormat", "YYYY-MM-DD")
+            datePosition = prefs.get("datePosition", "anywhere")
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1790,33 +1849,32 @@ fun AddLibraryDialog(
 
                 if (inferDate) {
                     Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
+                    // Date format — full-width selector row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(VideoRoomSpacing.Small),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Date format dropdown
+                        // Format selector
                         Box(modifier = Modifier.weight(1f)) {
-                            com.videoroom.ui.components.Tooltip(
-                                text = "Component ordering of the date as it appears in the filename. " +
-                                    "Separators (-, _, .) are matched automatically."
+                            OutlinedButton(
+                                onClick = { dateFormatMenu = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
                             ) {
-                                OutlinedButton(
-                                    onClick = { dateFormatMenu = true },
+                                Column(
                                     modifier = Modifier.fillMaxWidth(),
-                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                    horizontalAlignment = Alignment.Start
                                 ) {
-                                    Column(modifier = Modifier.fillMaxWidth()) {
-                                        Text(
-                                            text = "Format",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Text(
-                                            text = dateFormat,
-                                            style = MaterialTheme.typography.bodySmall
-                                        )
-                                    }
+                                    Text(
+                                        text = "Date format",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = dateFormat,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
                                 }
                             }
                             DropdownMenu(
@@ -1826,85 +1884,125 @@ fun AddLibraryDialog(
                                 listOf("MM-DD-YYYY", "DD-MM-YYYY", "YYYY-MM-DD").forEach { fmt ->
                                     DropdownMenuItem(
                                         text = { Text(fmt) },
-                                        onClick = {
-                                            dateFormat = fmt
-                                            dateFormatMenu = false
-                                        }
+                                        onClick = { dateFormat = fmt; dateFormatMenu = false }
                                     )
                                 }
                             }
                         }
 
-                        // Position dropdown
+                        // Position selector — larger tap target, clearly labelled
                         Box(modifier = Modifier.weight(1f)) {
-                            com.videoroom.ui.components.Tooltip(
-                                text = "Where the date must appear within the filename (without extension)."
+                            OutlinedButton(
+                                onClick = { datePositionMenu = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
                             ) {
-                                OutlinedButton(
-                                    onClick = { datePositionMenu = true },
+                                Column(
                                     modifier = Modifier.fillMaxWidth(),
-                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                    horizontalAlignment = Alignment.Start
                                 ) {
-                                    Column(modifier = Modifier.fillMaxWidth()) {
-                                        Text(
-                                            text = "Position",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Text(
-                                            text = datePosition,
-                                            style = MaterialTheme.typography.bodySmall
-                                        )
-                                    }
+                                    Text(
+                                        text = "Date position",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = datePosition,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
                                 }
                             }
                             DropdownMenu(
                                 expanded = datePositionMenu,
                                 onDismissRequest = { datePositionMenu = false }
                             ) {
-                                listOf("anywhere", "beginning", "end").forEach { pos ->
+                                listOf(
+                                    "anywhere" to "Anywhere in filename",
+                                    "beginning" to "Beginning of filename",
+                                    "end" to "End of filename"
+                                ).forEach { (value, label) ->
                                     DropdownMenuItem(
-                                        text = { Text(pos) },
-                                        onClick = {
-                                            datePosition = pos
-                                            datePositionMenu = false
-                                        }
+                                        text = {
+                                            Column {
+                                                Text(label, style = MaterialTheme.typography.bodySmall)
+                                                if (value == datePosition) {
+                                                    Text(
+                                                        "✓",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
+                                            }
+                                        },
+                                        onClick = { datePosition = value; datePositionMenu = false }
                                     )
                                 }
                             }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
+
+                    // "Always apply" — persist these date settings as the default
+                    // for future imports (both manual and automatic via file watcher).
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Checkbox(
+                            checked = alwaysApplySettings,
+                            onCheckedChange = { alwaysApplySettings = it }
+                        )
+                        Column {
+                            Text(
+                                text = "Always apply these settings",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Pre-fills this dialog and applies the same date rule when the " +
+                                    "file watcher auto-indexes new files.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
             }
         },
         confirmButton = {
-            com.videoroom.ui.components.Tooltip(
-                text = "Save this location and start scanning. Indexing runs in the background — " +
-                    "you can keep using VideoRoom while it works."
-            ) {
-                Button(
-                    onClick = {
-                        if (path.isNotBlank()) {
-                            onConfirm(
-                                path.trim(),
-                                recursive,
-                                autoGroup,
-                                if (inferDate) dateFormat else "",
-                                if (inferDate) datePosition else ""
-                            )
+            Button(
+                onClick = {
+                    if (path.isNotBlank()) {
+                        // Persist date-rule defaults when "always apply" is ticked.
+                        if (alwaysApplySettings && inferDate) {
+                            prefs.putBoolean("hasSavedDefaults", true)
+                            prefs.putBoolean("inferDate", true)
+                            prefs.put("dateFormat", dateFormat)
+                            prefs.put("datePosition", datePosition)
+                        } else if (alwaysApplySettings && !inferDate) {
+                            // User explicitly said "always apply" with date OFF —
+                            // remember that preference too.
+                            prefs.putBoolean("hasSavedDefaults", true)
+                            prefs.putBoolean("inferDate", false)
                         }
-                    },
-                    enabled = path.isNotBlank()
-                ) {
-                    Text("Add & Scan")
-                }
+                        onConfirm(
+                            path.trim(),
+                            recursive,
+                            autoGroup,
+                            if (inferDate) dateFormat else "",
+                            if (inferDate) datePosition else ""
+                        )
+                    }
+                },
+                enabled = path.isNotBlank()
+            ) {
+                Text("Add & Scan")
             }
         },
         dismissButton = {
-            com.videoroom.ui.components.Tooltip(text = "Close this dialog without adding the location.") {
-                TextButton(onClick = onDismiss) {
-                    Text("Cancel")
-                }
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
             }
         }
     )

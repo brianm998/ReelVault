@@ -431,6 +431,27 @@ class GridViewModel: ObservableObject {
         }
     }
 
+    /// Remove a library location and all its indexed videos from the catalog.
+    /// The video files on disk are not touched.
+    func removeLibraryLocation(path: String) {
+        Task {
+            do {
+                let success = try await repository.removeLibraryLocation(path: path)
+                if success {
+                    if selectedLocationPath == path { setLocationFilter("") }
+                    loadLibraryLocations()
+                    loadVideos()
+                } else {
+                    await MainActor.run { self.error = "Failed to remove library location" }
+                }
+            } catch {
+                await MainActor.run {
+                    self.error = "Failed to remove library location: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
     func addLibraryAndScan(
         path: String,
         recursive: Bool = true,

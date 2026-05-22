@@ -3,8 +3,7 @@
 
 package com.videoroom.ui.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.VideoLibrary
@@ -36,6 +36,8 @@ fun LibraryPanel(
     totalVideosAcrossLibrary: Long,
     onSelect: (path: String) -> Unit,
     onAddLocation: () -> Unit = {},
+    /** Called when the user confirms removal of a library location. */
+    onRemoveLocation: ((LibraryLocation) -> Unit)? = null,
     onCollapse: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -115,16 +117,28 @@ fun LibraryPanel(
             }
 
             items(locations, key = { it.path }) { loc ->
-                LocationRow(
-                    icon = if (loc.path == selectedPath) Icons.Default.FolderOpen else Icons.Default.Folder,
-                    label = displayName(loc.path),
-                    sublabel = loc.path,
-                    count = loc.videoCount,
-                    isSelected = loc.path == selectedPath,
-                    tooltip = "Show only videos from ${loc.path} (${loc.videoCount} videos). " +
-                        "Click \"All Videos\" above to clear.",
-                    onClick = { onSelect(loc.path) }
-                )
+                ContextMenuArea(
+                    items = {
+                        buildList {
+                            if (onRemoveLocation != null) {
+                                add(ContextMenuItem("Remove from library…") {
+                                    onRemoveLocation(loc)
+                                })
+                            }
+                        }
+                    }
+                ) {
+                    LocationRow(
+                        icon = if (loc.path == selectedPath) Icons.Default.FolderOpen else Icons.Default.Folder,
+                        label = displayName(loc.path),
+                        sublabel = loc.path,
+                        count = loc.videoCount,
+                        isSelected = loc.path == selectedPath,
+                        tooltip = "Show only videos from ${loc.path} (${loc.videoCount} videos). " +
+                            "Right-click to remove from library.",
+                        onClick = { onSelect(loc.path) }
+                    )
+                }
             }
         }
     }

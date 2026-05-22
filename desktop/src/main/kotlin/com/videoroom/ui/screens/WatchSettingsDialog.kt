@@ -49,8 +49,14 @@ fun WatchSettingsDialog(
 
     LaunchedEffect(Unit) {
         loading = true
-        settings = repository.getWatchSettings()
-        loading = false
+        try {
+            settings = repository.getWatchSettings()
+        } catch (e: Exception) {
+            // getWatchSettings failed — continue with defaults so the
+            // buttons are enabled and the user can at least save/cancel.
+        } finally {
+            loading = false
+        }
     }
 
     AlertDialog(
@@ -165,9 +171,15 @@ fun WatchSettingsDialog(
                 onClick = {
                     scope.launch {
                         saving = true
-                        repository.updateWatchSettings(settings)
-                        saving = false
-                        onDismiss()
+                        try {
+                            repository.updateWatchSettings(settings)
+                            onDismiss()
+                        } catch (_: Exception) {
+                            // Save failed — leave dialog open so the user
+                            // can try again or cancel.
+                        } finally {
+                            saving = false
+                        }
                     }
                 },
                 enabled = !loading && !saving,
@@ -176,7 +188,7 @@ fun WatchSettingsDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss, enabled = !saving) { Text("Cancel") }
         },
     )
 }

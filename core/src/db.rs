@@ -860,13 +860,22 @@ impl Database {
         Ok(locations)
     }
 
-    pub fn remove_library_location(&self, path: &str) -> Result<()> {
+    pub fn remove_library_location(&self, path: &str) -> Result<usize> {
         let conn = self.get_connection()?;
+
+        // Delete all videos whose path lives inside this library root.
+        // Use a path prefix with a trailing slash so "/home/user/Videos"
+        // doesn't accidentally match "/home/user/Videos2".
+        let prefix = format!("{}/", path.trim_end_matches('/'));
+        let deleted = conn.execute(
+            "DELETE FROM videos WHERE path LIKE ? || '%'",
+            [&prefix],
+        ).map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
 
         conn.execute("DELETE FROM library_locations WHERE path = ?", [path])
             .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
 
-        Ok(())
+        Ok(deleted)
     }
 
     // VIDEO GROUPS (Lightroom-style "stacks")

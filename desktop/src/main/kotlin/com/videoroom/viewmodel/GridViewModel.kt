@@ -490,6 +490,30 @@ class GridViewModel(
     }
 
     /**
+     * Remove a library location from the catalog. All videos indexed from that
+     * location are also removed from the catalog (the files on disk are safe).
+     * Clears the location filter if it was pointing at the removed path.
+     */
+    fun removeLibraryLocation(path: String) {
+        viewModelScope.launch {
+            try {
+                val success = repository.removeLibraryLocation(path)
+                if (success) {
+                    if (locationPathFilter == path) setLocationFilter("")
+                    loadLibraryLocations()
+                    loadVideos()
+                    logger.info("Removed library location: $path")
+                } else {
+                    _error.value = "Failed to remove library location"
+                }
+            } catch (e: Exception) {
+                _error.value = "Failed to remove library location: ${e.message}"
+                logger.error("Failed to remove library location", e)
+            }
+        }
+    }
+
+    /**
      * Narrow the grid to videos within [path] (recursive). Pass an empty string
      * to clear the filter and show all videos.
      */

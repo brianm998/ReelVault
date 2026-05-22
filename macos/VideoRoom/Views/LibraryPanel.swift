@@ -12,6 +12,9 @@ struct LibraryPanel: View {
     let totalVideos: Int64
     let onSelect: (String) -> Void
     let onAddLibrary: () -> Void
+    /// Called when the user chooses "Remove from library" for a location.
+    /// The caller is responsible for showing a confirmation alert.
+    var onRemoveLocation: ((LibraryLocation) -> Void)? = nil
     let onCollapse: () -> Void
 
     var body: some View {
@@ -41,37 +44,62 @@ struct LibraryPanel: View {
             .padding(.top, 12)
             .padding(.bottom, 8)
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
+            // Use a List so we get native swipe-to-delete and the built-in
+            // context-menu affordance without extra hit-testing work.
+            List {
+                LocationRow(
+                    systemImage: "film.stack",
+                    label: "All Videos",
+                    sublabel: nil,
+                    count: totalVideos,
+                    isSelected: selectedPath.isEmpty,
+                    tooltip: "Show every video in your library, across all scanned folders.",
+                    onClick: { onSelect("") }
+                )
+                .listRowInsets(EdgeInsets())
+
+                if !locations.isEmpty {
+                    Divider()
+                        .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
+                        .listRowSeparator(.hidden)
+                }
+
+                ForEach(locations) { loc in
                     LocationRow(
-                        systemImage: "film.stack",
-                        label: "All Videos",
-                        sublabel: nil,
-                        count: totalVideos,
-                        isSelected: selectedPath.isEmpty,
-                        tooltip: "Show every video in your library, across all scanned folders.",
-                        onClick: { onSelect("") }
+                        systemImage: loc.path == selectedPath ? "folder.fill" : "folder",
+                        label: Self.displayName(loc.path),
+                        sublabel: loc.path,
+                        count: loc.videoCount,
+                        isSelected: loc.path == selectedPath,
+                        tooltip: "Show only videos from \(loc.path) (\(loc.videoCount) videos).\nRight-click or swipe left to remove.",
+                        onClick: { onSelect(loc.path) }
                     )
-
-                    if !locations.isEmpty {
-                        Divider()
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
+                    .listRowInsets(EdgeInsets())
+                    // Swipe-left reveals the destructive Remove action.
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        if let remove = onRemoveLocation {
+                            Button(role: .destructive) {
+                                remove(loc)
+                            } label: {
+                                Label("Remove", systemImage: "trash")
+                            }
+                        }
                     }
-
-                    ForEach(locations) { loc in
-                        LocationRow(
-                            systemImage: loc.path == selectedPath ? "folder.fill" : "folder",
-                            label: Self.displayName(loc.path),
-                            sublabel: loc.path,
-                            count: loc.videoCount,
-                            isSelected: loc.path == selectedPath,
-                            tooltip: "Show only videos from \(loc.path) (\(loc.videoCount) videos). Click \"All Videos\" above to clear.",
-                            onClick: { onSelect(loc.path) }
-                        )
+                    // Right-click context menu.
+                    .contextMenu {
+                        if let remove = onRemoveLocation {
+                            Button(role: .destructive) {
+                                remove(loc)
+                            } label: {
+                                Label("Remove from Library…", systemImage: "trash")
+                            }
+                        }
                     }
                 }
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background(Color(.controlBackgroundColor))
         }
         .frame(maxHeight: .infinity)
         .background(Color(.controlBackgroundColor))

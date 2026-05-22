@@ -480,6 +480,16 @@ class VideoRepository: ObservableObject {
         return (response.success, response.message)
     }
 
+    /// Remove a library location and all its indexed videos from the catalog.
+    /// The video files on disk are not touched. Returns true on success.
+    func removeLibraryLocation(path: String) async throws -> Bool {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        var request = Videoroom_RemoveLocationRequest()
+        request.path = path
+        let response = try await client.removeLibraryLocation(request)
+        return response.success
+    }
+
     /// Streaming scan — yields progress events as the backend works through the library.
     func scanLibrary(
         locationPath: String = "",
