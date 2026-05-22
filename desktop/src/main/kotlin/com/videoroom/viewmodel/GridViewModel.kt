@@ -351,20 +351,28 @@ class GridViewModel(
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
-            currentPage++
+
+            // Snapshot the offset *before* the first suspension point.
+            // Using the actual list size (not currentPage * pageSize) means
+            // that even if a concurrent loadVideos() resets currentPage = 0
+            // while this coroutine is suspended at the gRPC call, we still
+            // fetch the correct next page — preventing the duplicate-key
+            // crash that occurred when currentPage was reset mid-flight.
+            val offset = _videos.value.size
+            currentPage = offset / pageSize  // keep counter in sync
 
             try {
                 val (newVideos, totalCount) = if (searchQuery.isNotEmpty()) {
                     repository.searchVideos(
                         query = searchQuery,
                         limit = pageSize,
-                        offset = currentPage * pageSize,
+                        offset = offset,
                         filterTags = filterTags
                     )
                 } else {
                     repository.listVideos(
                         limit = pageSize,
-                        offset = currentPage * pageSize,
+                        offset = offset,
                         sortBy = sortBy,
                         sortAscending = sortAscending,
                         filterTags = filterTags,
@@ -378,16 +386,20 @@ class GridViewModel(
                     )
                 }
 
-                _videos.value = _videos.value + newVideos
+                // Deduplicate as a belt-and-suspenders guard: if loadVideos()
+                // ran and refreshed the list while this coroutine was
+                // suspended, the append could otherwise create duplicate IDs.
+                val existing = _videos.value
+                val merged = existing + newVideos.filter { n -> existing.none { it.id == n.id } }
+                _videos.value = merged
                 _totalCount.value = totalCount
-                _hasMore.value = (_videos.value.size) < totalCount
+                _hasMore.value = merged.size < totalCount
                 _isLoading.value = false
 
-                logger.info("Loaded more videos, total now: ${_videos.value.size}/$totalCount")
+                logger.info("Loaded more videos, total now: ${merged.size}/$totalCount")
             } catch (e: Exception) {
                 _error.value = "Failed to load more videos: ${e.message}"
                 _isLoading.value = false
-                currentPage-- // Revert page increment on error
                 logger.error("Failed to load more videos", e)
             }
         }
