@@ -19,12 +19,8 @@ struct LibraryPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header row: label · add-folder button · collapse chevron
+            // Header row: add-folder button · label · collapse chevron
             HStack(spacing: 4) {
-                Text("LIBRARY")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Spacer()
                 Button(action: onAddLibrary) {
                     Image(systemName: "plus")
                         .font(.system(size: 12, weight: .semibold))
@@ -32,6 +28,10 @@ struct LibraryPanel: View {
                 }
                 .buttonStyle(.plain)
                 .help("Add a folder to your library")
+                Text("LIBRARY")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
                 Button(action: onCollapse) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 12, weight: .semibold))
