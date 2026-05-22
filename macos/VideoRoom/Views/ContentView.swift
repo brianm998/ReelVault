@@ -16,6 +16,7 @@ struct ContentView: View {
     @State private var thumbnailWidth: CGFloat = 220
     @State private var showAddLibrarySheet = false
     @State private var showEditorsSheet = false
+    @State private var showWatchSettingsSheet = false
     @State private var showOpenCatalogSheet = false
     @State private var openCatalogIsStartup = false
     @State private var currentCatalog: CatalogInfo = .closed
@@ -68,6 +69,9 @@ struct ContentView: View {
             AddLibraryDialog(isPresented: $showAddLibrarySheet) { path, recursive, autoGroup in
                 gridViewModel.addLibraryAndScan(path: path, recursive: recursive, autoGroup: autoGroup)
             }
+        }
+        .sheet(isPresented: $showWatchSettingsSheet) {
+            WatchSettingsDialog(isPresented: $showWatchSettingsSheet)
         }
         .sheet(isPresented: $showEditorsSheet) {
             ExternalEditorsDialog(isPresented: $showEditorsSheet)
@@ -337,6 +341,32 @@ struct ContentView: View {
             .buttonStyle(.borderless)
             .help("Configure which external video editors are available in the right-click \"Open with\" menu. See free/paid status and download links for each supported editor.")
 
+            // Live-updates pill — shows whether the server's file watcher
+            // is active and offers a one-click entry into its settings.
+            // Green dot = live; grey dot = paused. Tooltip explains both
+            // states without surfacing the underlying RPC names.
+            Button {
+                showWatchSettingsSheet = true
+            } label: {
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(gridViewModel.liveUpdatesEnabled ? Color.green : Color.gray)
+                        .frame(width: 8, height: 8)
+                    Text("Live")
+                        .font(.system(size: 11, weight: .medium))
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.secondary.opacity(0.4), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.borderless)
+            .help(gridViewModel.liveUpdatesEnabled
+                  ? "Live updates are on — VideoRoom is watching your libraries for new and changed files and will add them automatically. Click to adjust."
+                  : "Live updates are off. Click to turn them on or adjust the watcher settings.")
+
             // World-map button — shows every geotagged video.
             Button {
                 // Await the loads before the sheet appears so the map
@@ -587,6 +617,7 @@ struct ContentView: View {
 
     /// Close the daemon's current catalog and prompt for another.
     private func closeCurrentCatalog() async {
+        gridViewModel.stopCatalogEventStream()
         _ = await VideoRepository.shared.closeCatalog()
         currentCatalog = .closed
         gridViewModel.clearState()
@@ -605,6 +636,11 @@ struct ContentView: View {
         // real data, not the (25, 0) global fallback.
         gridViewModel.loadVideoLocations()
         gridViewModel.loadNamedLocations()
+        // Open the long-lived CatalogEvents subscription so the grid
+        // refreshes when the server's file-watcher picks up new footage.
+        // Cheap if live updates are disabled — the server just sends a
+        // single WATCHER_DISABLED greeting and idles the stream.
+        gridViewModel.startCatalogEventStream()
     }
 }
 

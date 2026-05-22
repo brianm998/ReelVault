@@ -333,6 +333,83 @@ class VideoRepository(
         }
     }
 
+    // --- Real-time catalog events ---
+
+    /**
+     * Open a long-lived server-streamed [CatalogEvent] subscription.
+     *
+     * Returns a cold [Flow] that, when collected, opens the gRPC stream
+     * and emits one [CatalogEvent] per server event. The first emission
+     * is always a `WATCHER_STARTED` or `WATCHER_DISABLED` greeting so
+     * the UI can render its "live updates" indicator without an extra
+     * RPC round-trip.
+     *
+     * The flow ends cleanly when the underlying gRPC stream finishes;
+     * the view-model is expected to launch a coroutine that loops over
+     * the flow and reconnects with backoff if it ends.
+     */
+    fun subscribeCatalogEvents(): Flow<CatalogEvent> {
+        val s = stub ?: return flow { }
+        val request = Videoroom.SubscribeCatalogEventsRequest.newBuilder().build()
+        return s.subscribeCatalogEvents(request).map { proto ->
+            CatalogEvent(
+                kind = when (proto.kind) {
+                    Videoroom.CatalogEvent.Kind.VIDEO_ADDED -> CatalogEventKind.VideoAdded
+                    Videoroom.CatalogEvent.Kind.VIDEO_MODIFIED -> CatalogEventKind.VideoModified
+                    Videoroom.CatalogEvent.Kind.VIDEO_REMOVED -> CatalogEventKind.VideoRemoved
+                    Videoroom.CatalogEvent.Kind.WATCHER_STARTED -> CatalogEventKind.WatcherStarted
+                    Videoroom.CatalogEvent.Kind.WATCHER_DISABLED -> CatalogEventKind.WatcherDisabled
+                    Videoroom.CatalogEvent.Kind.SCAN_STARTED -> CatalogEventKind.ScanStarted
+                    Videoroom.CatalogEvent.Kind.SCAN_COMPLETED -> CatalogEventKind.ScanCompleted
+                    else -> CatalogEventKind.Unknown
+                },
+                videoId = proto.videoId,
+                path = proto.path,
+                atMs = proto.atMs,
+                message = proto.message,
+            )
+        }
+    }
+
+    /** Read the daemon's current watcher knobs. Returns
+     *  [WatchSettings.Default] on any error so the Preferences UI never
+     *  has to handle a missing-value case. */
+    suspend fun getWatchSettings(): WatchSettings = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext WatchSettings.Default
+        try {
+            val response = s.getWatchSettings(
+                Videoroom.GetWatchSettingsRequest.newBuilder().build()
+            )
+            WatchSettings(
+                enabled = response.enabled,
+                writeSettleMs = response.writeSettleMs,
+                pollIntervalMs = response.pollIntervalMs,
+            )
+        } catch (e: Exception) {
+            logger.warn("getWatchSettings failed", e)
+            WatchSettings.Default
+        }
+    }
+
+    /** Push new watcher settings to the daemon. The server clamps to
+     *  sensible ranges; we let it. Side effect on the daemon: the
+     *  watcher is restarted with the new values. */
+    suspend fun updateWatchSettings(settings: WatchSettings): Boolean = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext false
+        try {
+            val request = Videoroom.WatchSettings.newBuilder()
+                .setEnabled(settings.enabled)
+                .setWriteSettleMs(settings.writeSettleMs)
+                .setPollIntervalMs(settings.pollIntervalMs)
+                .build()
+            s.updateWatchSettings(request)
+            true
+        } catch (e: Exception) {
+            logger.warn("updateWatchSettings failed", e)
+            false
+        }
+    }
+
     suspend fun createTag(name: String, color: String = ""): Tag? = withContext(Dispatchers.IO) {
         val s = stub ?: return@withContext null
         try {

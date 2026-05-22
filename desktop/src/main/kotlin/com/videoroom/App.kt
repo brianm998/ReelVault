@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
@@ -224,6 +225,8 @@ fun VideoRoomApp(
 
     // External editors preferences dialog visibility.
     var showEditorsDialog by remember { mutableStateOf(false) }
+    // Live-updates / file-watcher settings dialog visibility.
+    var showWatchSettingsDialog by remember { mutableStateOf(false) }
     // Global-map dialog visibility.
     var showGlobalMap by remember { mutableStateOf(false) }
     // Location-picker state. `videoIdsForLocationPicker` non-null means the
@@ -298,6 +301,11 @@ fun VideoRoomApp(
         // real data, not the global-view fallback.
         gridViewModel.loadVideoLocations()
         gridViewModel.loadNamedLocations()
+        // Open the long-lived CatalogEvents subscription so the grid
+        // refreshes when the server's file-watcher picks up new footage.
+        // Cheap if live updates are disabled — the server sends a single
+        // WATCHER_DISABLED greeting and idles the stream.
+        gridViewModel.startCatalogEventStream()
     }
 
     /** Tell the daemon to switch to [path], persist it as a recent, refresh. */
@@ -320,6 +328,7 @@ fun VideoRoomApp(
     /** Close the current catalog and prompt the user to open another. */
     fun closeCatalog() {
         scope.launch {
+            gridViewModel.stopCatalogEventStream()
             repository.closeCatalog()
             currentCatalog = CatalogInfo.Closed
             gridViewModel.clearState()
@@ -424,6 +433,7 @@ fun VideoRoomApp(
                         onSearchFocusChanged = onSearchFocusChanged,
                         onGroupSelected = { gridViewModel.groupSelectedVideos() },
                         onConfigureEditors = { showEditorsDialog = true },
+                        onConfigureWatcher = { showWatchSettingsDialog = true },
                         onOpenCatalog = {
                             openDialogIsStartup = false
                             showOpenCatalogDialog = true
@@ -738,6 +748,14 @@ fun VideoRoomApp(
                     )
                 }
 
+                // Live-updates / watcher preferences dialog
+                if (showWatchSettingsDialog) {
+                    com.videoroom.ui.screens.WatchSettingsDialog(
+                        repository = repository,
+                        onDismiss = { showWatchSettingsDialog = false }
+                    )
+                }
+
                 // Global map dialog — shows every geotagged video.
                 if (showGlobalMap) {
                     val locs = gridViewModel.videoLocations.collectAsState()
@@ -896,6 +914,8 @@ fun VideoRoomTopBar(
     onRequestAddLibrary: () -> Unit,
     onGroupSelected: () -> Unit = {},
     onConfigureEditors: () -> Unit = {},
+    /** Opens the watcher (live-updates) preferences dialog. */
+    onConfigureWatcher: () -> Unit = {},
     onOpenCatalog: () -> Unit = {},
     onCloseCatalog: () -> Unit = {},
     onOpenRecent: (String) -> Unit = {},
@@ -1207,6 +1227,53 @@ fun VideoRoomTopBar(
                                 imageVector = Icons.Default.Build,
                                 contentDescription = "External Editors"
                             )
+                        }
+                    }
+
+                    // Live-updates pill. Green dot = watcher active; grey
+                    // dot = paused. Clicking opens the watch-settings
+                    // dialog. Same visual language as the macOS client.
+                    val liveOn = gridViewModel.liveUpdatesEnabled.collectAsState().value
+                    com.videoroom.ui.components.Tooltip(
+                        text = if (liveOn)
+                            "Live updates are on — VideoRoom is watching your libraries " +
+                                "for new and changed files and will add them automatically. " +
+                                "Click to adjust."
+                        else
+                            "Live updates are off. Click to turn them on or adjust the " +
+                                "watcher settings."
+                    ) {
+                        Surface(
+                            onClick = onConfigureWatcher,
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                            color = androidx.compose.ui.graphics.Color.Transparent,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                androidx.compose.material3.MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                            ),
+                            modifier = Modifier.height(24.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                androidx.compose.foundation.Canvas(
+                                    modifier = Modifier.size(8.dp)
+                                ) {
+                                    drawCircle(
+                                        color = if (liveOn)
+                                            androidx.compose.ui.graphics.Color(0xFF34C759)
+                                        else
+                                            androidx.compose.ui.graphics.Color.Gray
+                                    )
+                                }
+                                Text(
+                                    "Live",
+                                    fontSize = 11.sp,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                                )
+                            }
                         }
                     }
 

@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 VideoRoom Contributors
-
 // DO NOT EDIT.
 // swift-format-ignore-file
 // swiftlint:disable all
@@ -526,6 +523,19 @@ nonisolated struct Videoroom_ScanLibraryRequest: Sendable {
 
   /// If true, auto-group similar variants after scanning
   var autoGroup: Bool = false
+
+  /// Filename-based capture-date inference. When `filename_date_format` is
+  /// non-empty, the scanner attempts to parse a date from each video's filename
+  /// and use it as the creation_date when ffprobe doesn't supply one.
+  ///
+  /// filename_date_format: "MM-DD-YYYY" | "DD-MM-YYYY" | "YYYY-MM-DD"
+  ///   The expected ordering of components. Separators in the actual filename
+  ///   may be `-`, `_`, `.`, or `/` (any non-digit character).
+  /// filename_date_position: "anywhere" | "beginning" | "end"
+  ///   Where in the filename (without extension) the date must appear.
+  var filenameDateFormat: String = String()
+
+  var filenameDatePosition: String = String()
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -1388,6 +1398,152 @@ nonisolated struct Videoroom_UpdateVideoCaptureDateRequest: Sendable {
   var timestampMs: Int64 = 0
 
   var writeToFile: Bool = false
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Videoroom_SubscribeCatalogEventsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+/// A single change observed by the server's file watcher. `video_id` is set
+/// when the event refers to a specific video row; for watcher-lifecycle
+/// events (`WATCHER_STARTED`, `WATCHER_DISABLED`) it's empty and the client
+/// just updates its "live updates" indicator.
+nonisolated struct Videoroom_CatalogEvent: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var kind: Videoroom_CatalogEvent.Kind = .unspecified
+
+  /// Empty for watcher-lifecycle events.
+  var videoID: String = String()
+
+  /// The file that triggered the event (best-effort).
+  var path: String = String()
+
+  /// Server-side Unix milliseconds.
+  var atMs: Int64 = 0
+
+  /// Optional human-readable note. For SCAN_* events, the user-facing
+  /// location path; for VIDEO_REMOVED, the prior filename so the client
+  /// can display a meaningful toast.
+  var message: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  nonisolated enum Kind: SwiftProtobuf.Enum, Swift.CaseIterable {
+    typealias RawValue = Int
+    case unspecified // = 0
+
+    /// A new video was indexed.
+    case videoAdded // = 1
+
+    /// An existing video's file changed on disk.
+    case videoModified // = 2
+
+    /// A file disappeared; the video is now offline.
+    case videoRemoved // = 3
+
+    /// Sent once on subscription when the watcher is active.
+    case watcherStarted // = 4
+
+    /// Sent once on subscription if watch_enabled = false.
+    case watcherDisabled // = 5
+
+    /// A user-driven ScanLibrary just kicked off.
+    case scanStarted // = 6
+
+    /// A user-driven ScanLibrary just finished.
+    case scanCompleted // = 7
+    case UNRECOGNIZED(Int)
+
+    init() {
+      self = .unspecified
+    }
+
+    init?(rawValue: Int) {
+      switch rawValue {
+      case 0: self = .unspecified
+      case 1: self = .videoAdded
+      case 2: self = .videoModified
+      case 3: self = .videoRemoved
+      case 4: self = .watcherStarted
+      case 5: self = .watcherDisabled
+      case 6: self = .scanStarted
+      case 7: self = .scanCompleted
+      default: self = .UNRECOGNIZED(rawValue)
+      }
+    }
+
+    var rawValue: Int {
+      switch self {
+      case .unspecified: return 0
+      case .videoAdded: return 1
+      case .videoModified: return 2
+      case .videoRemoved: return 3
+      case .watcherStarted: return 4
+      case .watcherDisabled: return 5
+      case .scanStarted: return 6
+      case .scanCompleted: return 7
+      case .UNRECOGNIZED(let i): return i
+      }
+    }
+
+    // The compiler won't synthesize support with the UNRECOGNIZED case.
+    static let allCases: [Videoroom_CatalogEvent.Kind] = [
+      .unspecified,
+      .videoAdded,
+      .videoModified,
+      .videoRemoved,
+      .watcherStarted,
+      .watcherDisabled,
+      .scanStarted,
+      .scanCompleted,
+    ]
+
+  }
+
+  init() {}
+}
+
+nonisolated struct Videoroom_GetWatchSettingsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Videoroom_WatchSettings: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Master switch. When false the daemon does not start a watcher and
+  /// never publishes VIDEO_ADDED/MODIFIED/REMOVED for un-prompted disk
+  /// changes — clients fall back to manual ScanLibrary.
+  var enabled: Bool = false
+
+  /// Milliseconds a file's size must hold constant before the watcher
+  /// believes the writer is done. Default 5000 ms.
+  var writeSettleMs: Int64 = 0
+
+  /// Fallback poll interval (ms) used on paths where FSEvents / inotify
+  /// can't deliver events (NFS / SMB / SAN). 0 disables the poll
+  /// fallback entirely. Default 30 000 ms.
+  var pollIntervalMs: Int64 = 0
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2370,7 +2526,7 @@ nonisolated extension Videoroom_ListLocationsResponse: SwiftProtobuf.Message, Sw
 
 nonisolated extension Videoroom_ScanLibraryRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ScanLibraryRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}location_path\0\u{3}force_full_scan\0\u{3}auto_group\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}location_path\0\u{3}force_full_scan\0\u{3}auto_group\0\u{3}filename_date_format\0\u{3}filename_date_position\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2381,6 +2537,8 @@ nonisolated extension Videoroom_ScanLibraryRequest: SwiftProtobuf.Message, Swift
       case 1: try { try decoder.decodeSingularStringField(value: &self.locationPath) }()
       case 2: try { try decoder.decodeSingularBoolField(value: &self.forceFullScan) }()
       case 3: try { try decoder.decodeSingularBoolField(value: &self.autoGroup) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self.filenameDateFormat) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.filenameDatePosition) }()
       default: break
       }
     }
@@ -2396,6 +2554,12 @@ nonisolated extension Videoroom_ScanLibraryRequest: SwiftProtobuf.Message, Swift
     if self.autoGroup != false {
       try visitor.visitSingularBoolField(value: self.autoGroup, fieldNumber: 3)
     }
+    if !self.filenameDateFormat.isEmpty {
+      try visitor.visitSingularStringField(value: self.filenameDateFormat, fieldNumber: 4)
+    }
+    if !self.filenameDatePosition.isEmpty {
+      try visitor.visitSingularStringField(value: self.filenameDatePosition, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2403,6 +2567,8 @@ nonisolated extension Videoroom_ScanLibraryRequest: SwiftProtobuf.Message, Swift
     if lhs.locationPath != rhs.locationPath {return false}
     if lhs.forceFullScan != rhs.forceFullScan {return false}
     if lhs.autoGroup != rhs.autoGroup {return false}
+    if lhs.filenameDateFormat != rhs.filenameDateFormat {return false}
+    if lhs.filenameDatePosition != rhs.filenameDatePosition {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -4367,6 +4533,138 @@ nonisolated extension Videoroom_UpdateVideoCaptureDateRequest: SwiftProtobuf.Mes
     if lhs.videoID != rhs.videoID {return false}
     if lhs.timestampMs != rhs.timestampMs {return false}
     if lhs.writeToFile != rhs.writeToFile {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_SubscribeCatalogEventsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".SubscribeCatalogEventsRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_SubscribeCatalogEventsRequest, rhs: Videoroom_SubscribeCatalogEventsRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_CatalogEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".CatalogEvent"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{3}video_id\0\u{1}path\0\u{3}at_ms\0\u{1}message\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularEnumField(value: &self.kind) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.videoID) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.path) }()
+      case 4: try { try decoder.decodeSingularInt64Field(value: &self.atMs) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.message) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.kind != .unspecified {
+      try visitor.visitSingularEnumField(value: self.kind, fieldNumber: 1)
+    }
+    if !self.videoID.isEmpty {
+      try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 2)
+    }
+    if !self.path.isEmpty {
+      try visitor.visitSingularStringField(value: self.path, fieldNumber: 3)
+    }
+    if self.atMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.atMs, fieldNumber: 4)
+    }
+    if !self.message.isEmpty {
+      try visitor.visitSingularStringField(value: self.message, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_CatalogEvent, rhs: Videoroom_CatalogEvent) -> Bool {
+    if lhs.kind != rhs.kind {return false}
+    if lhs.videoID != rhs.videoID {return false}
+    if lhs.path != rhs.path {return false}
+    if lhs.atMs != rhs.atMs {return false}
+    if lhs.message != rhs.message {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_CatalogEvent.Kind: SwiftProtobuf._ProtoNameProviding {
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0KIND_UNSPECIFIED\0\u{1}VIDEO_ADDED\0\u{1}VIDEO_MODIFIED\0\u{1}VIDEO_REMOVED\0\u{1}WATCHER_STARTED\0\u{1}WATCHER_DISABLED\0\u{1}SCAN_STARTED\0\u{1}SCAN_COMPLETED\0")
+}
+
+nonisolated extension Videoroom_GetWatchSettingsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".GetWatchSettingsRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_GetWatchSettingsRequest, rhs: Videoroom_GetWatchSettingsRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_WatchSettings: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".WatchSettings"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}enabled\0\u{3}write_settle_ms\0\u{3}poll_interval_ms\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBoolField(value: &self.enabled) }()
+      case 2: try { try decoder.decodeSingularInt64Field(value: &self.writeSettleMs) }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self.pollIntervalMs) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.enabled != false {
+      try visitor.visitSingularBoolField(value: self.enabled, fieldNumber: 1)
+    }
+    if self.writeSettleMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.writeSettleMs, fieldNumber: 2)
+    }
+    if self.pollIntervalMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.pollIntervalMs, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_WatchSettings, rhs: Videoroom_WatchSettings) -> Bool {
+    if lhs.enabled != rhs.enabled {return false}
+    if lhs.writeSettleMs != rhs.writeSettleMs {return false}
+    if lhs.pollIntervalMs != rhs.pollIntervalMs {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

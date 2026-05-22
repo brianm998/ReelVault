@@ -10,10 +10,32 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicI64, Ordering};
 use walkdir::WalkDir;
 
-const SUPPORTED_EXTENSIONS: &[&str] = &[
+pub const SUPPORTED_EXTENSIONS: &[&str] = &[
     "mp4", "mov", "mkv", "avi", "webm", "mxf", "mpeg", "ts",
     "m2ts", "mts", "flv", "wmv", "asf", "rm", "rmvb", "3gp", "3g2",
 ];
+
+/// Whether a single-file scan resulted in a brand-new row or a refresh of
+/// an existing one. Used by the file watcher to emit the right
+/// `CatalogEvent` variant. Comparison is by-path: if a videos row already
+/// matched the path on disk, we treat it as a modification regardless of
+/// whether ffprobe extracted different bytes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScanFileOutcome {
+    /// The file wasn't in the catalog. A new row was inserted.
+    Added,
+    /// A row existed for this path; metadata was re-extracted in place.
+    Modified,
+}
+
+/// Lowercased file extension check, used by the watcher to filter notify
+/// events before queueing them.
+pub fn is_supported_video_extension(path: &Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map(|s| SUPPORTED_EXTENSIONS.contains(&s.to_lowercase().as_str()))
+        .unwrap_or(false)
+}
 
 /// How a date should be located inside a filename. Used as a hint when
 /// inferring capture_date from the filename for clips that lack EXIF dates.
@@ -225,7 +247,17 @@ impl IndexingEngine {
         Ok(())
     }
 
-    fn index_video(
+    /// The outcome of a single-file index/refresh, used by the file watcher
+    /// to publish the right `CatalogEvent` to subscribed clients.
+    ///
+    /// `Added` means we just inserted a new video row. `Modified` means we
+    /// re-extracted metadata on an existing row (because the file changed on
+    /// disk). The watcher decides which to emit based on whether the catalog
+    /// already had a row for the path.
+    ///
+    /// Returned by `scan_single_file` alongside the video ID so the caller
+    /// can include both in the event payload.
+    pub fn index_video(
         db: &Database,
         video_path: &Path,
         thumbnail_cache: &Path,
@@ -312,6 +344,74 @@ impl IndexingEngine {
         }
 
         Ok(video_id)
+    }
+
+    /// Index (or re-index) one specific file. Used by the file watcher when
+    /// a single path settles. Returns the video_id and whether the row was
+    /// freshly inserted vs. updated in place.
+    ///
+    /// Behavior matches a single iteration of `scan_directory`'s inner loop:
+    /// the file must have a supported extension, ffprobe must succeed, and
+    /// the path is UPSERTed. Thumbnails are generated if missing.
+    pub fn scan_single_file(
+        db: &Database,
+        video_path: &Path,
+        thumbnail_cache: &Path,
+        filename_date: Option<FilenameDateRule>,
+    ) -> Result<(String, ScanFileOutcome)> {
+        // Extension gate. The watcher already filters by extension before
+        // calling us, but cheap to repeat — we'd rather reject a stray
+        // `.txt` here than blow up inside ffprobe.
+        let ext_ok = video_path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|s| SUPPORTED_EXTENSIONS.contains(&s.to_lowercase().as_str()))
+            .unwrap_or(false);
+        if !ext_ok {
+            return Err(VideoRoomError::InvalidPath(format!(
+                "unsupported extension: {}",
+                video_path.display()
+            )));
+        }
+
+        // Detect new-vs-update *before* we touch the DB. After
+        // `index_video` runs, the row exists no matter what — and we want
+        // the caller to know which gRPC event to publish.
+        let existed = db
+            .get_video_by_path(video_path.to_str().unwrap_or(""))
+            .ok()
+            .flatten()
+            .is_some();
+
+        let video_id = Self::index_video(db, video_path, thumbnail_cache, filename_date)?;
+        let outcome = if existed {
+            ScanFileOutcome::Modified
+        } else {
+            ScanFileOutcome::Added
+        };
+        Ok((video_id, outcome))
+    }
+
+    /// Mark a path as removed from disk. Soft-delete: we set
+    /// `is_online = false` rather than deleting the video row, so tags,
+    /// notes, collection memberships, and the user's catalog history
+    /// survive a temporarily-unplugged drive.
+    ///
+    /// Returns the video_id if a matching row existed (so the watcher can
+    /// publish a `VideoRemoved` event), or None if the path wasn't in the
+    /// catalog (a delete for a file we never indexed — silently ignored).
+    pub fn mark_offline(db: &Database, video_path: &Path) -> Result<Option<String>> {
+        if let Ok(Some(video)) = db.get_video_by_path(video_path.to_str().unwrap_or("")) {
+            let conn = db.get_connection()?;
+            conn.execute(
+                "UPDATE videos SET is_online = 0 WHERE id = ?",
+                rusqlite::params![&video.id],
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            Ok(Some(video.id))
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn update_online_status(db: &Database, path: &Path, is_online: bool) -> Result<()> {

@@ -7,8 +7,10 @@ use crate::error::{Result, VideoRoomError};
 use crate::indexing::IndexingEngine;
 use crate::search::SearchEngine;
 use crate::thumbnails::ThumbnailGenerator;
+use crate::watcher::{CatalogChange, LibraryWatcher};
 use std::pin::Pin;
 use std::sync::Arc;
+use tokio::sync::broadcast;
 use tokio_stream::Stream;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
@@ -34,6 +36,32 @@ pub struct VideoRoomService {
     /// same video. Map entries hold an Arc<Mutex<()>> per video_id; the locks
     /// live as long as there are interested tasks.
     scrub_locks: Arc<tokio::sync::Mutex<std::collections::HashMap<String, Arc<tokio::sync::Mutex<()>>>>>,
+    /// Broadcast bus for live `CatalogEvent`s. The watcher publishes
+    /// `CatalogChange`s here as it observes disk activity; the
+    /// `SubscribeCatalogEvents` RPC opens a `Receiver` per connected client.
+    /// Capacity = 256: a burst larger than this lags slow subscribers (they
+    /// see `Lagged(n)` and reconnect), which is the right tradeoff vs.
+    /// growing memory if a client stalls.
+    catalog_events: broadcast::Sender<CatalogChange>,
+    /// The active watcher. Reset on `UpdateWatchSettings` or on
+    /// `AddLibraryLocation` / `RemoveLibraryLocation`. `None` when the user
+    /// has disabled live updates (config.watch_enabled = false).
+    watcher: Arc<tokio::sync::Mutex<Option<LibraryWatcher>>>,
+    /// Current watch settings — mutable via `UpdateWatchSettings`.
+    /// Persisted to the config table on save. Separate from `Config`
+    /// (which is immutable after load) so we don't have to clone it
+    /// just to change three integers.
+    watch_settings: Arc<tokio::sync::RwLock<WatchSettingsCurrent>>,
+}
+
+/// Snapshot of the watcher knobs. Live in a RwLock so the gRPC handlers
+/// can mutate them on UpdateWatchSettings without rebuilding the whole
+/// `Config`.
+#[derive(Debug, Clone, Copy)]
+pub struct WatchSettingsCurrent {
+    pub enabled: bool,
+    pub write_settle_ms: i64,
+    pub poll_interval_ms: i64,
 }
 
 impl VideoRoomService {
@@ -45,11 +73,46 @@ impl VideoRoomService {
         } else {
             0
         };
-        VideoRoomService {
+        let (catalog_tx, _) = broadcast::channel::<CatalogChange>(256);
+
+        let watch_settings = WatchSettingsCurrent {
+            enabled: config.watch_enabled,
+            write_settle_ms: config.watch_write_settle_ms,
+            poll_interval_ms: config.watch_poll_interval_ms,
+        };
+
+        let service = VideoRoomService {
             db,
-            config,
+            config: Arc::clone(&config),
             opened_at_ms: Arc::new(std::sync::RwLock::new(initial_opened)),
             scrub_locks: Arc::new(tokio::sync::Mutex::new(std::collections::HashMap::new())),
+            catalog_events: catalog_tx,
+            watcher: Arc::new(tokio::sync::Mutex::new(None)),
+            watch_settings: Arc::new(tokio::sync::RwLock::new(watch_settings)),
+        };
+
+        // Boot the watcher if config says so and a catalog is open.
+        // Done on a Tokio task so `new` stays synchronous.
+        if config.watch_enabled && service.db.current_path().is_some() {
+            let svc = service.clone_for_watcher();
+            tokio::spawn(async move {
+                svc.restart_watcher().await;
+            });
+        }
+
+        service
+    }
+
+    /// Light handle used by `tokio::spawn`-ed helpers that need to restart
+    /// the watcher (after AddLibraryLocation, UpdateWatchSettings, etc.).
+    /// Clones the Arcs only — not a deep copy.
+    fn clone_for_watcher(&self) -> ServiceWatcherHandle {
+        ServiceWatcherHandle {
+            db: Arc::clone(&self.db),
+            config: Arc::clone(&self.config),
+            catalog_events: self.catalog_events.clone(),
+            watcher: Arc::clone(&self.watcher),
+            watch_settings: Arc::clone(&self.watch_settings),
         }
     }
 
@@ -493,6 +556,12 @@ impl VideoRoomTrait for VideoRoomService {
             .add_library_location(&expanded_path, req.recursive)
             .map_err(Status::from)?;
 
+        // Pick up the new location in the running watcher. Restart is
+        // simpler than splicing a single path in — and we already drop
+        // the old watcher cleanly in `restart_watcher`.
+        let handle = self.clone_for_watcher();
+        tokio::spawn(async move { handle.restart_watcher().await });
+
         Ok(Response::new(LocationResponse {
             success: true,
             message: format!("Added library location: {} ({})",
@@ -510,6 +579,10 @@ impl VideoRoomTrait for VideoRoomService {
         self.db
             .remove_library_location(&req.path)
             .map_err(Status::from)?;
+
+        // Drop this path from the watcher.
+        let handle = self.clone_for_watcher();
+        tokio::spawn(async move { handle.restart_watcher().await });
 
         Ok(Response::new(LocationResponse {
             success: true,
@@ -557,6 +630,20 @@ impl VideoRoomTrait for VideoRoomService {
             &req.filename_date_format,
             &req.filename_date_position,
         );
+
+        // Tell live-updates subscribers that an explicit scan is starting,
+        // and again when it finishes. The watcher would also pick up new
+        // files via FSEvents, but emitting these synthesized events lets
+        // clients show a banner even before any video-level events fire.
+        let scan_path_for_event = if location_path.is_empty() {
+            "all libraries".to_string()
+        } else {
+            location_path.clone()
+        };
+        let _ = self.catalog_events.send(CatalogChange::ScanStarted {
+            path: scan_path_for_event.clone(),
+        });
+        let scan_events = self.catalog_events.clone();
 
         tokio::task::spawn_blocking(move || {
             let send_progress = |tx: &tokio::sync::mpsc::Sender<std::result::Result<ScanProgress, Status>>,
@@ -667,6 +754,12 @@ impl VideoRoomTrait for VideoRoomService {
                     .unwrap_or(true);
                 scan_one(std::path::Path::new(&expanded), recursive, &tx);
             }
+
+            // Tell live-updates subscribers we're done. `send` errors when
+            // there are no subscribers — fine, we just drop.
+            let _ = scan_events.send(CatalogChange::ScanCompleted {
+                path: scan_path_for_event,
+            });
         });
 
         let stream = ReceiverStream::new(rx);
@@ -1134,6 +1227,12 @@ impl VideoRoomTrait for VideoRoomService {
         if let Ok(mut g) = self.opened_at_ms.write() {
             *g = opened;
         }
+
+        // A different catalog means a different set of library locations.
+        // Restart the watcher so it observes those instead of the old set.
+        let handle = self.clone_for_watcher();
+        tokio::spawn(async move { handle.restart_watcher().await });
+
         Ok(Response::new(catalog_info_from(self.db.as_ref(), opened)))
     }
 
@@ -1144,6 +1243,12 @@ impl VideoRoomTrait for VideoRoomService {
         self.db.clear_path();
         if let Ok(mut g) = self.opened_at_ms.write() {
             *g = 0;
+        }
+        // Tear down the watcher — it was tied to the closed catalog's
+        // library locations. A subsequent OpenCatalog will rebuild it.
+        {
+            let mut guard = self.watcher.lock().await;
+            *guard = None;
         }
         Ok(Response::new(videoroom::Response {
             success: true,
@@ -1365,6 +1470,141 @@ impl VideoRoomTrait for VideoRoomService {
             error: String::new(),
         }))
     }
+
+    type SubscribeCatalogEventsStream =
+        Pin<Box<dyn Stream<Item = std::result::Result<CatalogEvent, Status>> + Send>>;
+
+    async fn subscribe_catalog_events(
+        &self,
+        _request: Request<SubscribeCatalogEventsRequest>,
+    ) -> std::result::Result<Response<Self::SubscribeCatalogEventsStream>, Status> {
+        let mut rx = self.catalog_events.subscribe();
+        let (tx, out_rx) = tokio::sync::mpsc::channel::<std::result::Result<CatalogEvent, Status>>(64);
+
+        // Greet new subscribers with the current watcher state so the
+        // client can render its "live updates: on/off" indicator without
+        // a separate GetWatchSettings round-trip.
+        let settings = *self.watch_settings.read().await;
+        let greeting_kind = if settings.enabled {
+            videoroom::catalog_event::Kind::WatcherStarted as i32
+        } else {
+            videoroom::catalog_event::Kind::WatcherDisabled as i32
+        };
+        let _ = tx
+            .send(Ok(CatalogEvent {
+                kind: greeting_kind,
+                video_id: String::new(),
+                path: String::new(),
+                at_ms: now_ms(),
+                message: String::new(),
+            }))
+            .await;
+
+        // Pump broadcast → mpsc. On `Lagged` we let the client know with
+        // a synthetic event so it can do a full re-list; on `Closed` we
+        // end the stream.
+        tokio::spawn(async move {
+            loop {
+                match rx.recv().await {
+                    Ok(change) => {
+                        let event = change_to_event(&change);
+                        if tx.send(Ok(event)).await.is_err() {
+                            break;
+                        }
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                        let _ = tx
+                            .send(Ok(CatalogEvent {
+                                kind: videoroom::catalog_event::Kind::ScanCompleted as i32,
+                                video_id: String::new(),
+                                path: String::new(),
+                                at_ms: now_ms(),
+                                message: format!(
+                                    "watcher event stream lagged {} events — please refresh",
+                                    n
+                                ),
+                            }))
+                            .await;
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                }
+            }
+        });
+
+        let stream = ReceiverStream::new(out_rx);
+        Ok(Response::new(
+            Box::pin(stream) as Self::SubscribeCatalogEventsStream
+        ))
+    }
+
+    async fn get_watch_settings(
+        &self,
+        _request: Request<GetWatchSettingsRequest>,
+    ) -> std::result::Result<Response<WatchSettings>, Status> {
+        let s = *self.watch_settings.read().await;
+        Ok(Response::new(WatchSettings {
+            enabled: s.enabled,
+            write_settle_ms: s.write_settle_ms,
+            poll_interval_ms: s.poll_interval_ms,
+        }))
+    }
+
+    async fn update_watch_settings(
+        &self,
+        request: Request<WatchSettings>,
+    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+        let req = request.into_inner();
+
+        // Guard against absurd values that would either make the
+        // watcher useless (settle == 0 → indexes half-written files) or
+        // hammer the SAN (poll == 1ms). The clients clamp too, but the
+        // server is the source of truth.
+        let settle = req.write_settle_ms.clamp(0, 10 * 60 * 1000);
+        let poll = req.poll_interval_ms.clamp(0, 24 * 60 * 60 * 1000);
+
+        {
+            let mut guard = self.watch_settings.write().await;
+            guard.enabled = req.enabled;
+            guard.write_settle_ms = settle;
+            guard.poll_interval_ms = poll;
+        }
+
+        // Persist to the config table so the new settings survive
+        // restarts. Best-effort — failure to write doesn't fail the RPC,
+        // we already have the in-memory values doing the right thing.
+        if let Ok(conn) = self.db.get_connection() {
+            let _ = conn.execute(
+                "INSERT INTO config (key, value) VALUES (?, ?)
+                 ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP",
+                rusqlite::params!["watch_enabled", req.enabled.to_string(), req.enabled.to_string()],
+            );
+            let _ = conn.execute(
+                "INSERT INTO config (key, value) VALUES (?, ?)
+                 ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP",
+                rusqlite::params!["watch_write_settle_ms", settle.to_string(), settle.to_string()],
+            );
+            let _ = conn.execute(
+                "INSERT INTO config (key, value) VALUES (?, ?)
+                 ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP",
+                rusqlite::params!["watch_poll_interval_ms", poll.to_string(), poll.to_string()],
+            );
+        }
+
+        // Restart the watcher with the new knobs. If `enabled` flipped
+        // from true→false this tears it down; false→true builds a fresh
+        // one. settle/poll changes also just re-build.
+        let handle = self.clone_for_watcher();
+        tokio::spawn(async move { handle.restart_watcher().await });
+
+        Ok(Response::new(videoroom::Response {
+            success: true,
+            message: format!(
+                "Watch settings updated (enabled={}, settle={}ms, poll={}ms)",
+                req.enabled, settle, poll
+            ),
+            error: String::new(),
+        }))
+    }
 }
 
 /// Current Unix time in milliseconds. Used to stamp `opened_at_ms` on
@@ -1412,4 +1652,125 @@ fn expand_tilde(path: &str) -> String {
         }
     }
     path.to_string()
+}
+
+/// Cheap clone-able bundle of the watcher-related Arcs. Lets us
+/// `tokio::spawn` watcher work from RPC handlers without moving `self`.
+#[derive(Clone)]
+struct ServiceWatcherHandle {
+    db: Arc<Database>,
+    config: Arc<Config>,
+    catalog_events: broadcast::Sender<CatalogChange>,
+    watcher: Arc<tokio::sync::Mutex<Option<LibraryWatcher>>>,
+    watch_settings: Arc<tokio::sync::RwLock<WatchSettingsCurrent>>,
+}
+
+impl ServiceWatcherHandle {
+    /// Tear down any existing watcher and (if `enabled` and a catalog is
+    /// open with at least one library location) start a new one with the
+    /// current settings. Idempotent — calling twice in a row is fine.
+    async fn restart_watcher(self) {
+        // Drop any existing watcher first. Its Drop impl sends Shutdown
+        // and joins the thread, so by the time `take()` returns, the old
+        // watcher is gone — no notify handler races on the way in.
+        {
+            let mut guard = self.watcher.lock().await;
+            *guard = None;
+        }
+
+        let settings = *self.watch_settings.read().await;
+        if !settings.enabled {
+            tracing::info!("Watcher disabled in settings — not starting.");
+            return;
+        }
+        if self.db.current_path().is_none() {
+            tracing::debug!("No catalog open — skipping watcher start.");
+            return;
+        }
+
+        let locations = match self.db.list_library_locations() {
+            Ok(l) => l,
+            Err(e) => {
+                tracing::warn!("Could not list library_locations for watcher: {}", e);
+                return;
+            }
+        };
+        let initial_paths: Vec<(std::path::PathBuf, bool)> = locations
+            .into_iter()
+            .filter(|l| l.enabled)
+            .map(|l| {
+                let expanded = expand_tilde(&l.path);
+                (std::path::PathBuf::from(expanded), l.recursive)
+            })
+            .collect();
+
+        if initial_paths.is_empty() {
+            tracing::info!("No library locations registered — watcher idle.");
+            return;
+        }
+
+        match LibraryWatcher::start(
+            Arc::clone(&self.db),
+            self.config.thumbnail_cache_path.clone(),
+            self.catalog_events.clone(),
+            settings.write_settle_ms.max(0) as u64,
+            settings.poll_interval_ms.max(0) as u64,
+            initial_paths,
+        ) {
+            Ok(w) => {
+                let mut guard = self.watcher.lock().await;
+                *guard = Some(w);
+            }
+            Err(e) => {
+                tracing::warn!("Failed to start watcher: {}", e);
+            }
+        }
+    }
+}
+
+/// Convert a watcher `CatalogChange` into a wire-level proto `CatalogEvent`.
+fn change_to_event(change: &CatalogChange) -> videoroom::CatalogEvent {
+    use videoroom::catalog_event::Kind;
+    let at_ms = now_ms();
+    match change {
+        CatalogChange::VideoAdded { video_id, path } => videoroom::CatalogEvent {
+            kind: Kind::VideoAdded as i32,
+            video_id: video_id.clone(),
+            path: path.to_string_lossy().into_owned(),
+            at_ms,
+            message: String::new(),
+        },
+        CatalogChange::VideoModified { video_id, path } => videoroom::CatalogEvent {
+            kind: Kind::VideoModified as i32,
+            video_id: video_id.clone(),
+            path: path.to_string_lossy().into_owned(),
+            at_ms,
+            message: String::new(),
+        },
+        CatalogChange::VideoRemoved { video_id, path } => videoroom::CatalogEvent {
+            kind: Kind::VideoRemoved as i32,
+            video_id: video_id.clone().unwrap_or_default(),
+            path: path.to_string_lossy().into_owned(),
+            at_ms,
+            message: path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .map(str::to_string)
+                .unwrap_or_default(),
+        },
+        CatalogChange::ScanStarted { path } => videoroom::CatalogEvent {
+            kind: Kind::ScanStarted as i32,
+            video_id: String::new(),
+            path: path.clone(),
+            at_ms,
+            message: String::new(),
+        },
+        CatalogChange::ScanCompleted { path } => videoroom::CatalogEvent {
+            kind: Kind::ScanCompleted as i32,
+            video_id: String::new(),
+            path: path.clone(),
+            at_ms,
+            message: String::new(),
+        },
+    }
 }

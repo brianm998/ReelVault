@@ -200,3 +200,39 @@ struct GroupInfo {
     let size: Int
     let preferredVideoId: String
 }
+
+// MARK: - Real-time catalog events
+
+/// Mirror of the proto `CatalogEvent.Kind` so view-model code can switch
+/// on a domain enum instead of an int32. Adding cases is non-breaking
+/// because the repository falls back to `.unknown` for anything new the
+/// server might emit.
+enum CatalogEventKind {
+    case unknown
+    case videoAdded
+    case videoModified
+    case videoRemoved
+    case watcherStarted
+    case watcherDisabled
+    case scanStarted
+    case scanCompleted
+}
+
+struct CatalogEvent: Equatable {
+    let kind: CatalogEventKind
+    let videoId: String     // Empty for watcher-/scan-lifecycle events.
+    let path: String        // The file that triggered it (best-effort).
+    let atMs: Int64         // Server-side Unix milliseconds.
+    let message: String     // Human-readable (filename for VideoRemoved, etc.)
+}
+
+/// Watcher knobs that govern the real-time scanner. Round-trip via
+/// `GetWatchSettings` / `UpdateWatchSettings` to surface in the Preferences
+/// dialog.
+struct WatchSettings: Equatable {
+    var enabled: Bool
+    var writeSettleMs: Int64
+    var pollIntervalMs: Int64
+
+    static let `default` = WatchSettings(enabled: true, writeSettleMs: 5000, pollIntervalMs: 30000)
+}

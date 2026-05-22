@@ -117,8 +117,111 @@ class GridViewModel(
     private val _selectedVideo = mutableStateOf<VideoSummary?>(null)
     val selectedVideo: State<VideoSummary?> = _selectedVideo
 
+    // --- Real-time updates ---
+
+    /**
+     * Reflects the most-recent live-updates state we heard about from the
+     * server (initial value matches the protocol default; updated after
+     * the first `CatalogEvent` arrives). Drives the toolbar's "live"
+     * indicator.
+     */
+    private val _liveUpdatesEnabled = MutableStateFlow(true)
+    val liveUpdatesEnabled: StateFlow<Boolean> = _liveUpdatesEnabled.asStateFlow()
+
+    /**
+     * Sticky banner set by `SCAN_STARTED` and cleared by `SCAN_COMPLETED`.
+     * Distinct from per-user scan progress so the watcher can light up the
+     * banner without colliding with `addLibraryAndScan`'s own reporter.
+     */
+    private val _watcherBanner = MutableStateFlow<String?>(null)
+    val watcherBanner: StateFlow<String?> = _watcherBanner.asStateFlow()
+
+    /**
+     * Coroutine job owning the open `subscribeCatalogEvents` collection.
+     * Cancelled on `stopCatalogEventStream()`; replaced if the stream
+     * drops and we reconnect.
+     */
+    private var catalogEventsJob: Job? = null
+
+    /**
+     * Coalesces a flurry of file-level watcher events into a single grid
+     * reload. Typical SAN-drop generates 5–20 events in <1 s; this
+     * collapses them into one `loadVideos()` call.
+     */
+    private var watcherRefreshJob: Job? = null
+
     init {
         logger.info("GridViewModel created")
+    }
+
+    // --- Live updates ---
+
+    /**
+     * Open (or re-open) the long-lived `SubscribeCatalogEvents` stream
+     * against the daemon. Idempotent — calling twice cancels the prior
+     * job and starts a fresh one. Reconnects with a 2 s backoff if the
+     * stream ends while live updates are still enabled.
+     */
+    fun startCatalogEventStream() {
+        catalogEventsJob?.cancel()
+        catalogEventsJob = viewModelScope.launch {
+            try {
+                repository.subscribeCatalogEvents().collect { event ->
+                    handleCatalogEvent(event)
+                }
+            } catch (e: Exception) {
+                logger.warn("Catalog events stream ended", e)
+            }
+            // Stream ended: reconnect after a short backoff if we're
+            // still expecting live updates.
+            if (isActive && _liveUpdatesEnabled.value) {
+                delay(2_000)
+                if (isActive) startCatalogEventStream()
+            }
+        }
+    }
+
+    fun stopCatalogEventStream() {
+        catalogEventsJob?.cancel()
+        catalogEventsJob = null
+        watcherRefreshJob?.cancel()
+        watcherRefreshJob = null
+    }
+
+    /**
+     * React to one [com.videoroom.data.models.CatalogEvent]: drives the
+     * live-updates indicator, the watcher banner, and a debounced grid
+     * refresh when video rows actually change.
+     */
+    private fun handleCatalogEvent(event: com.videoroom.data.models.CatalogEvent) {
+        when (event.kind) {
+            com.videoroom.data.models.CatalogEventKind.WatcherStarted ->
+                _liveUpdatesEnabled.value = true
+            com.videoroom.data.models.CatalogEventKind.WatcherDisabled ->
+                _liveUpdatesEnabled.value = false
+            com.videoroom.data.models.CatalogEventKind.ScanStarted -> {
+                val target = if (event.path.isBlank()) "library" else event.path.substringAfterLast('/')
+                _watcherBanner.value = "Scanning $target…"
+            }
+            com.videoroom.data.models.CatalogEventKind.ScanCompleted -> {
+                _watcherBanner.value = null
+                scheduleWatcherRefresh()
+            }
+            com.videoroom.data.models.CatalogEventKind.VideoAdded,
+            com.videoroom.data.models.CatalogEventKind.VideoModified,
+            com.videoroom.data.models.CatalogEventKind.VideoRemoved ->
+                scheduleWatcherRefresh()
+            com.videoroom.data.models.CatalogEventKind.Unknown -> { /* future kinds */ }
+        }
+    }
+
+    /** Coalesces a burst of watcher events into a single `loadVideos()`. */
+    private fun scheduleWatcherRefresh() {
+        watcherRefreshJob?.cancel()
+        watcherRefreshJob = viewModelScope.launch {
+            delay(500)
+            loadVideos()
+        }
     }
 
     fun loadVideos() {

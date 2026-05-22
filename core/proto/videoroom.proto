@@ -82,6 +82,23 @@ service VideoRoom {
   // touched (via ffmpeg's `-metadata creation_time=...`) only when the
   // client asks for it.
   rpc UpdateVideoCaptureDate(UpdateVideoCaptureDateRequest) returns (Response);
+
+  // Live catalog change events. Subscribe once on connect to receive a
+  // never-ending stream of `CatalogEvent`s as the daemon's file watcher
+  // adds, modifies, or removes videos in the background. The client uses
+  // this to refresh its grid without re-polling ListVideos. The first
+  // event after subscribing is always `WATCHER_STARTED` (or
+  // `WATCHER_DISABLED` if the user turned the watcher off), which lets
+  // clients display a "live updates: on/off" affordance without an extra
+  // round-trip.
+  rpc SubscribeCatalogEvents(SubscribeCatalogEventsRequest) returns (stream CatalogEvent);
+
+  // Watcher settings — surface the three knobs (enabled, write-settle
+  // ms, poll-fallback ms) that govern real-time scanning. Updates take
+  // effect immediately; the server restarts its watcher with the new
+  // settings on UpdateWatchSettings.
+  rpc GetWatchSettings(GetWatchSettingsRequest) returns (WatchSettings);
+  rpc UpdateWatchSettings(WatchSettings) returns (Response);
 }
 
 // Messages for queries
@@ -590,6 +607,53 @@ message UpdateVideoCaptureDateRequest {
   string video_id = 1;
   int64 timestamp_ms = 2;
   bool write_to_file = 3;
+}
+
+// --- Real-time catalog events (server → client) ---
+
+message SubscribeCatalogEventsRequest {}
+
+// A single change observed by the server's file watcher. `video_id` is set
+// when the event refers to a specific video row; for watcher-lifecycle
+// events (`WATCHER_STARTED`, `WATCHER_DISABLED`) it's empty and the client
+// just updates its "live updates" indicator.
+message CatalogEvent {
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    VIDEO_ADDED = 1;         // A new video was indexed.
+    VIDEO_MODIFIED = 2;      // An existing video's file changed on disk.
+    VIDEO_REMOVED = 3;       // A file disappeared; the video is now offline.
+    WATCHER_STARTED = 4;     // Sent once on subscription when the watcher is active.
+    WATCHER_DISABLED = 5;    // Sent once on subscription if watch_enabled = false.
+    SCAN_STARTED = 6;        // A user-driven ScanLibrary just kicked off.
+    SCAN_COMPLETED = 7;      // A user-driven ScanLibrary just finished.
+  }
+  Kind kind = 1;
+  string video_id = 2;       // Empty for watcher-lifecycle events.
+  string path = 3;           // The file that triggered the event (best-effort).
+  int64 at_ms = 4;           // Server-side Unix milliseconds.
+  // Optional human-readable note. For SCAN_* events, the user-facing
+  // location path; for VIDEO_REMOVED, the prior filename so the client
+  // can display a meaningful toast.
+  string message = 5;
+}
+
+// --- Watch settings (client ↔ server) ---
+
+message GetWatchSettingsRequest {}
+
+message WatchSettings {
+  // Master switch. When false the daemon does not start a watcher and
+  // never publishes VIDEO_ADDED/MODIFIED/REMOVED for un-prompted disk
+  // changes — clients fall back to manual ScanLibrary.
+  bool enabled = 1;
+  // Milliseconds a file's size must hold constant before the watcher
+  // believes the writer is done. Default 5000 ms.
+  int64 write_settle_ms = 2;
+  // Fallback poll interval (ms) used on paths where FSEvents / inotify
+  // can't deliver events (NFS / SMB / SAN). 0 disables the poll
+  // fallback entirely. Default 30 000 ms.
+  int64 poll_interval_ms = 3;
 }
 
 // Generic responses

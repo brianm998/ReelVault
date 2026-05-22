@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 VideoRoom Contributors
 
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 VideoRoom Contributors
-
 // DO NOT EDIT.
 // swift-format-ignore-file
 // swiftlint:disable all
@@ -518,6 +515,42 @@ internal enum Videoroom_VideoRoom: Sendable {
                 method: "UpdateVideoCaptureDate"
             )
         }
+        /// Namespace for "SubscribeCatalogEvents" metadata.
+        internal enum SubscribeCatalogEvents: Sendable {
+            /// Request type for "SubscribeCatalogEvents".
+            internal typealias Input = Videoroom_SubscribeCatalogEventsRequest
+            /// Response type for "SubscribeCatalogEvents".
+            internal typealias Output = Videoroom_CatalogEvent
+            /// Descriptor for "SubscribeCatalogEvents".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "SubscribeCatalogEvents"
+            )
+        }
+        /// Namespace for "GetWatchSettings" metadata.
+        internal enum GetWatchSettings: Sendable {
+            /// Request type for "GetWatchSettings".
+            internal typealias Input = Videoroom_GetWatchSettingsRequest
+            /// Response type for "GetWatchSettings".
+            internal typealias Output = Videoroom_WatchSettings
+            /// Descriptor for "GetWatchSettings".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "GetWatchSettings"
+            )
+        }
+        /// Namespace for "UpdateWatchSettings" metadata.
+        internal enum UpdateWatchSettings: Sendable {
+            /// Request type for "UpdateWatchSettings".
+            internal typealias Input = Videoroom_WatchSettings
+            /// Response type for "UpdateWatchSettings".
+            internal typealias Output = Videoroom_Response
+            /// Descriptor for "UpdateWatchSettings".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "UpdateWatchSettings"
+            )
+        }
         /// Descriptors for all methods in the "videoroom.VideoRoom" service.
         internal static let descriptors: [GRPCCore.MethodDescriptor] = [
             ListVideos.descriptor,
@@ -560,7 +593,10 @@ internal enum Videoroom_VideoRoom: Sendable {
             ListNamedLocations.descriptor,
             UpsertNamedLocation.descriptor,
             DeleteNamedLocation.descriptor,
-            UpdateVideoCaptureDate.descriptor
+            UpdateVideoCaptureDate.descriptor,
+            SubscribeCatalogEvents.descriptor,
+            GetWatchSettings.descriptor,
+            UpdateWatchSettings.descriptor
         ]
     }
 }
@@ -1224,6 +1260,66 @@ extension Videoroom_VideoRoom {
             request: GRPCCore.StreamingServerRequest<Videoroom_UpdateVideoCaptureDateRequest>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
+
+        /// Handle the "SubscribeCatalogEvents" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Live catalog change events. Subscribe once on connect to receive a
+        /// > never-ending stream of `CatalogEvent`s as the daemon's file watcher
+        /// > adds, modifies, or removes videos in the background. The client uses
+        /// > this to refresh its grid without re-polling ListVideos. The first
+        /// > event after subscribing is always `WATCHER_STARTED` (or
+        /// > `WATCHER_DISABLED` if the user turned the watcher off), which lets
+        /// > clients display a "live updates: on/off" affordance without an extra
+        /// > round-trip.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_SubscribeCatalogEventsRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_CatalogEvent` messages.
+        func subscribeCatalogEvents(
+            request: GRPCCore.StreamingServerRequest<Videoroom_SubscribeCatalogEventsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_CatalogEvent>
+
+        /// Handle the "GetWatchSettings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Watcher settings — surface the three knobs (enabled, write-settle
+        /// > ms, poll-fallback ms) that govern real-time scanning. Updates take
+        /// > effect immediately; the server restarts its watcher with the new
+        /// > settings on UpdateWatchSettings.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_GetWatchSettingsRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_WatchSettings` messages.
+        func getWatchSettings(
+            request: GRPCCore.StreamingServerRequest<Videoroom_GetWatchSettingsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_WatchSettings>
+
+        /// Handle the "UpdateWatchSettings" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_WatchSettings` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func updateWatchSettings(
+            request: GRPCCore.StreamingServerRequest<Videoroom_WatchSettings>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
     }
 
     /// Service protocol for the "videoroom.VideoRoom" service.
@@ -1870,6 +1966,66 @@ extension Videoroom_VideoRoom {
         /// - Returns: A response containing a single `Videoroom_Response` message.
         func updateVideoCaptureDate(
             request: GRPCCore.ServerRequest<Videoroom_UpdateVideoCaptureDateRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
+
+        /// Handle the "SubscribeCatalogEvents" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Live catalog change events. Subscribe once on connect to receive a
+        /// > never-ending stream of `CatalogEvent`s as the daemon's file watcher
+        /// > adds, modifies, or removes videos in the background. The client uses
+        /// > this to refresh its grid without re-polling ListVideos. The first
+        /// > event after subscribing is always `WATCHER_STARTED` (or
+        /// > `WATCHER_DISABLED` if the user turned the watcher off), which lets
+        /// > clients display a "live updates: on/off" affordance without an extra
+        /// > round-trip.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_SubscribeCatalogEventsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_CatalogEvent` messages.
+        func subscribeCatalogEvents(
+            request: GRPCCore.ServerRequest<Videoroom_SubscribeCatalogEventsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_CatalogEvent>
+
+        /// Handle the "GetWatchSettings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Watcher settings — surface the three knobs (enabled, write-settle
+        /// > ms, poll-fallback ms) that govern real-time scanning. Updates take
+        /// > effect immediately; the server restarts its watcher with the new
+        /// > settings on UpdateWatchSettings.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_GetWatchSettingsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_WatchSettings` message.
+        func getWatchSettings(
+            request: GRPCCore.ServerRequest<Videoroom_GetWatchSettingsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_WatchSettings>
+
+        /// Handle the "UpdateWatchSettings" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_WatchSettings` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func updateWatchSettings(
+            request: GRPCCore.ServerRequest<Videoroom_WatchSettings>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
     }
@@ -2521,6 +2677,67 @@ extension Videoroom_VideoRoom {
             request: Videoroom_UpdateVideoCaptureDateRequest,
             context: GRPCCore.ServerContext
         ) async throws -> Videoroom_Response
+
+        /// Handle the "SubscribeCatalogEvents" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Live catalog change events. Subscribe once on connect to receive a
+        /// > never-ending stream of `CatalogEvent`s as the daemon's file watcher
+        /// > adds, modifies, or removes videos in the background. The client uses
+        /// > this to refresh its grid without re-polling ListVideos. The first
+        /// > event after subscribing is always `WATCHER_STARTED` (or
+        /// > `WATCHER_DISABLED` if the user turned the watcher off), which lets
+        /// > clients display a "live updates: on/off" affordance without an extra
+        /// > round-trip.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_SubscribeCatalogEventsRequest` message.
+        ///   - response: A response stream of `Videoroom_CatalogEvent` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        func subscribeCatalogEvents(
+            request: Videoroom_SubscribeCatalogEventsRequest,
+            response: GRPCCore.RPCWriter<Videoroom_CatalogEvent>,
+            context: GRPCCore.ServerContext
+        ) async throws
+
+        /// Handle the "GetWatchSettings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Watcher settings — surface the three knobs (enabled, write-settle
+        /// > ms, poll-fallback ms) that govern real-time scanning. Updates take
+        /// > effect immediately; the server restarts its watcher with the new
+        /// > settings on UpdateWatchSettings.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_GetWatchSettingsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_WatchSettings` to respond with.
+        func getWatchSettings(
+            request: Videoroom_GetWatchSettingsRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_WatchSettings
+
+        /// Handle the "UpdateWatchSettings" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_WatchSettings` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func updateWatchSettings(
+            request: Videoroom_WatchSettings,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
     }
 }
 
@@ -2979,6 +3196,39 @@ extension Videoroom_VideoRoom.StreamingServiceProtocol {
                 )
             }
         )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.SubscribeCatalogEvents.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_SubscribeCatalogEventsRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_CatalogEvent>(),
+            handler: { request, context in
+                try await self.subscribeCatalogEvents(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.GetWatchSettings.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_GetWatchSettingsRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_WatchSettings>(),
+            handler: { request, context in
+                try await self.getWatchSettings(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.UpdateWatchSettings.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_WatchSettings>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.updateWatchSettings(
+                    request: request,
+                    context: context
+                )
+            }
+        )
     }
 }
 
@@ -3430,6 +3680,39 @@ extension Videoroom_VideoRoom.ServiceProtocol {
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
         let response = try await self.updateVideoCaptureDate(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func subscribeCatalogEvents(
+        request: GRPCCore.StreamingServerRequest<Videoroom_SubscribeCatalogEventsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_CatalogEvent> {
+        let response = try await self.subscribeCatalogEvents(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return response
+    }
+
+    internal func getWatchSettings(
+        request: GRPCCore.StreamingServerRequest<Videoroom_GetWatchSettingsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_WatchSettings> {
+        let response = try await self.getWatchSettings(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func updateWatchSettings(
+        request: GRPCCore.StreamingServerRequest<Videoroom_WatchSettings>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.updateWatchSettings(
             request: GRPCCore.ServerRequest(stream: request),
             context: context
         )
@@ -3978,6 +4261,49 @@ extension Videoroom_VideoRoom.SimpleServiceProtocol {
     ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
         return GRPCCore.ServerResponse<Videoroom_Response>(
             message: try await self.updateVideoCaptureDate(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func subscribeCatalogEvents(
+        request: GRPCCore.ServerRequest<Videoroom_SubscribeCatalogEventsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_CatalogEvent> {
+        return GRPCCore.StreamingServerResponse<Videoroom_CatalogEvent>(
+            metadata: [:],
+            producer: { writer in
+                try await self.subscribeCatalogEvents(
+                    request: request.message,
+                    response: writer,
+                    context: context
+                )
+                return [:]
+            }
+        )
+    }
+
+    internal func getWatchSettings(
+        request: GRPCCore.ServerRequest<Videoroom_GetWatchSettingsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_WatchSettings> {
+        return GRPCCore.ServerResponse<Videoroom_WatchSettings>(
+            message: try await self.getWatchSettings(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func updateWatchSettings(
+        request: GRPCCore.ServerRequest<Videoroom_WatchSettings>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.updateWatchSettings(
                 request: request.message,
                 context: context
             ),
@@ -4834,6 +5160,81 @@ extension Videoroom_VideoRoom {
         func updateVideoCaptureDate<Result>(
             request: GRPCCore.ClientRequest<Videoroom_UpdateVideoCaptureDateRequest>,
             serializer: some GRPCCore.MessageSerializer<Videoroom_UpdateVideoCaptureDateRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "SubscribeCatalogEvents" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Live catalog change events. Subscribe once on connect to receive a
+        /// > never-ending stream of `CatalogEvent`s as the daemon's file watcher
+        /// > adds, modifies, or removes videos in the background. The client uses
+        /// > this to refresh its grid without re-polling ListVideos. The first
+        /// > event after subscribing is always `WATCHER_STARTED` (or
+        /// > `WATCHER_DISABLED` if the user turned the watcher off), which lets
+        /// > clients display a "live updates: on/off" affordance without an extra
+        /// > round-trip.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_SubscribeCatalogEventsRequest` message.
+        ///   - serializer: A serializer for `Videoroom_SubscribeCatalogEventsRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_CatalogEvent` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func subscribeCatalogEvents<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_SubscribeCatalogEventsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_SubscribeCatalogEventsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_CatalogEvent>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Videoroom_CatalogEvent>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "GetWatchSettings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Watcher settings — surface the three knobs (enabled, write-settle
+        /// > ms, poll-fallback ms) that govern real-time scanning. Updates take
+        /// > effect immediately; the server restarts its watcher with the new
+        /// > settings on UpdateWatchSettings.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_GetWatchSettingsRequest` message.
+        ///   - serializer: A serializer for `Videoroom_GetWatchSettingsRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_WatchSettings` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func getWatchSettings<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_GetWatchSettingsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_GetWatchSettingsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_WatchSettings>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_WatchSettings>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "UpdateWatchSettings" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_WatchSettings` message.
+        ///   - serializer: A serializer for `Videoroom_WatchSettings` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func updateWatchSettings<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_WatchSettings>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_WatchSettings>,
             deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result
@@ -6144,6 +6545,112 @@ extension Videoroom_VideoRoom {
                 onResponse: handleResponse
             )
         }
+
+        /// Call the "SubscribeCatalogEvents" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Live catalog change events. Subscribe once on connect to receive a
+        /// > never-ending stream of `CatalogEvent`s as the daemon's file watcher
+        /// > adds, modifies, or removes videos in the background. The client uses
+        /// > this to refresh its grid without re-polling ListVideos. The first
+        /// > event after subscribing is always `WATCHER_STARTED` (or
+        /// > `WATCHER_DISABLED` if the user turned the watcher off), which lets
+        /// > clients display a "live updates: on/off" affordance without an extra
+        /// > round-trip.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_SubscribeCatalogEventsRequest` message.
+        ///   - serializer: A serializer for `Videoroom_SubscribeCatalogEventsRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_CatalogEvent` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func subscribeCatalogEvents<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_SubscribeCatalogEventsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_SubscribeCatalogEventsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_CatalogEvent>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Videoroom_CatalogEvent>) async throws -> Result
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.serverStreaming(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.SubscribeCatalogEvents.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "GetWatchSettings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Watcher settings — surface the three knobs (enabled, write-settle
+        /// > ms, poll-fallback ms) that govern real-time scanning. Updates take
+        /// > effect immediately; the server restarts its watcher with the new
+        /// > settings on UpdateWatchSettings.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_GetWatchSettingsRequest` message.
+        ///   - serializer: A serializer for `Videoroom_GetWatchSettingsRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_WatchSettings` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func getWatchSettings<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_GetWatchSettingsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_GetWatchSettingsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_WatchSettings>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_WatchSettings>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.GetWatchSettings.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "UpdateWatchSettings" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_WatchSettings` message.
+        ///   - serializer: A serializer for `Videoroom_WatchSettings` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func updateWatchSettings<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_WatchSettings>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_WatchSettings>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.UpdateWatchSettings.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
     }
 }
 
@@ -7224,6 +7731,97 @@ extension Videoroom_VideoRoom.ClientProtocol {
         try await self.updateVideoCaptureDate(
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_UpdateVideoCaptureDateRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_Response>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SubscribeCatalogEvents" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Live catalog change events. Subscribe once on connect to receive a
+    /// > never-ending stream of `CatalogEvent`s as the daemon's file watcher
+    /// > adds, modifies, or removes videos in the background. The client uses
+    /// > this to refresh its grid without re-polling ListVideos. The first
+    /// > event after subscribing is always `WATCHER_STARTED` (or
+    /// > `WATCHER_DISABLED` if the user turned the watcher off), which lets
+    /// > clients display a "live updates: on/off" affordance without an extra
+    /// > round-trip.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_SubscribeCatalogEventsRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func subscribeCatalogEvents<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_SubscribeCatalogEventsRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Videoroom_CatalogEvent>) async throws -> Result
+    ) async throws -> Result where Result: Sendable {
+        try await self.subscribeCatalogEvents(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_SubscribeCatalogEventsRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_CatalogEvent>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetWatchSettings" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Watcher settings — surface the three knobs (enabled, write-settle
+    /// > ms, poll-fallback ms) that govern real-time scanning. Updates take
+    /// > effect immediately; the server restarts its watcher with the new
+    /// > settings on UpdateWatchSettings.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_GetWatchSettingsRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func getWatchSettings<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_GetWatchSettingsRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_WatchSettings>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getWatchSettings(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_GetWatchSettingsRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_WatchSettings>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateWatchSettings" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_WatchSettings` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func updateWatchSettings<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_WatchSettings>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.updateWatchSettings(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_WatchSettings>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_Response>(),
             options: options,
             onResponse: handleResponse
@@ -8472,6 +9070,109 @@ extension Videoroom_VideoRoom.ClientProtocol {
             metadata: metadata
         )
         return try await self.updateVideoCaptureDate(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SubscribeCatalogEvents" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Live catalog change events. Subscribe once on connect to receive a
+    /// > never-ending stream of `CatalogEvent`s as the daemon's file watcher
+    /// > adds, modifies, or removes videos in the background. The client uses
+    /// > this to refresh its grid without re-polling ListVideos. The first
+    /// > event after subscribing is always `WATCHER_STARTED` (or
+    /// > `WATCHER_DISABLED` if the user turned the watcher off), which lets
+    /// > clients display a "live updates: on/off" affordance without an extra
+    /// > round-trip.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func subscribeCatalogEvents<Result>(
+        _ message: Videoroom_SubscribeCatalogEventsRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Videoroom_CatalogEvent>) async throws -> Result
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_SubscribeCatalogEventsRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.subscribeCatalogEvents(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetWatchSettings" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Watcher settings — surface the three knobs (enabled, write-settle
+    /// > ms, poll-fallback ms) that govern real-time scanning. Updates take
+    /// > effect immediately; the server restarts its watcher with the new
+    /// > settings on UpdateWatchSettings.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func getWatchSettings<Result>(
+        _ message: Videoroom_GetWatchSettingsRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_WatchSettings>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_GetWatchSettingsRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getWatchSettings(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateWatchSettings" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func updateWatchSettings<Result>(
+        _ message: Videoroom_WatchSettings,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_WatchSettings>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.updateWatchSettings(
             request: request,
             options: options,
             onResponse: handleResponse

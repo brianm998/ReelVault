@@ -17,6 +17,23 @@ pub struct Config {
     /// run at once. Bounds disk/network bandwidth — important for SAN-backed
     /// libraries. 0 disables the throttle. Default = 4.
     pub max_concurrent_ffmpeg: i32,
+
+    // --- Real-time library watching ---
+    /// Master switch — when false, no watcher is started and the rest of the
+    /// `watch_*` fields are ignored. Default = true.
+    pub watch_enabled: bool,
+    /// How long a file's `size` must remain unchanged before the watcher
+    /// believes the writer is finished and triggers a single-file scan.
+    /// Bumps prevent the watcher from indexing a half-written recording
+    /// from OBS, ffmpeg, a network upload, etc. Default = 5000 ms.
+    pub watch_write_settle_ms: i64,
+    /// Fallback poll interval used when the OS-level watcher can't deliver
+    /// events for a given path (most commonly NFS / SMB / SAN mounts where
+    /// FSEvents/inotify see nothing). On those paths the watcher does a
+    /// shallow `readdir` every `watch_poll_interval_ms` and folds any new
+    /// or changed files into the same settle queue. Set to 0 to disable
+    /// the poll fallback entirely. Default = 30 000 ms (30 s).
+    pub watch_poll_interval_ms: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -75,6 +92,18 @@ impl Config {
         let external_editors: Vec<ExternalEditor> = serde_json::from_str(&editors_json)
             .unwrap_or_else(|_| Vec::new());
 
+        let watch_enabled = Self::get_config_value(&conn, "watch_enabled", "true")?
+            .parse::<bool>()
+            .unwrap_or(true);
+        let watch_write_settle_ms = Self::get_config_value(&conn, "watch_write_settle_ms", "5000")?
+            .parse::<i64>()
+            .unwrap_or(5000)
+            .max(0);
+        let watch_poll_interval_ms = Self::get_config_value(&conn, "watch_poll_interval_ms", "30000")?
+            .parse::<i64>()
+            .unwrap_or(30000)
+            .max(0);
+
         std::fs::create_dir_all(&thumbnail_cache_path)
             .map_err(|e| VideoRoomError::ConfigError(format!("Failed to create cache directory: {}", e)))?;
 
@@ -85,6 +114,9 @@ impl Config {
             enable_auto_tagging: auto_tagging,
             external_editors,
             max_concurrent_ffmpeg: max_ffmpeg,
+            watch_enabled,
+            watch_write_settle_ms,
+            watch_poll_interval_ms,
         })
     }
 
@@ -95,6 +127,9 @@ impl Config {
         Self::set_config_value(&conn, "max_concurrent_jobs", &self.max_concurrent_jobs.to_string())?;
         Self::set_config_value(&conn, "enable_auto_tagging", &self.enable_auto_tagging.to_string())?;
         Self::set_config_value(&conn, "max_concurrent_ffmpeg", &self.max_concurrent_ffmpeg.to_string())?;
+        Self::set_config_value(&conn, "watch_enabled", &self.watch_enabled.to_string())?;
+        Self::set_config_value(&conn, "watch_write_settle_ms", &self.watch_write_settle_ms.to_string())?;
+        Self::set_config_value(&conn, "watch_poll_interval_ms", &self.watch_poll_interval_ms.to_string())?;
 
         if let Ok(editors_json) = serde_json::to_string(&self.external_editors) {
             Self::set_config_value(&conn, "external_editors", &editors_json)?;
@@ -137,6 +172,9 @@ impl Config {
             enable_auto_tagging: false,
             external_editors: Vec::new(),
             max_concurrent_ffmpeg: crate::concurrency::default_max_concurrent_ffmpeg() as i32,
+            watch_enabled: true,
+            watch_write_settle_ms: 5000,
+            watch_poll_interval_ms: 30000,
         }
     }
 

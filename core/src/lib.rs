@@ -11,5 +11,6 @@ pub mod error;
 pub mod service;
 pub mod grouping;
 pub mod concurrency;
+pub mod watcher;
 
 pub use error::Result;

@@ -64,6 +64,31 @@ class GridViewModel: ObservableObject {
     @Published var scanStatus: String?
     @Published var scanResult: ScanResult?
 
+    // Real-time updates from the server's file watcher.
+    //
+    // `liveUpdatesEnabled` reflects the most recent state we heard about
+    // (initial value matches the server default; updated on the first
+    // event after `startCatalogEventStream` connects). The toolbar uses
+    // it to render the "live" indicator.
+    @Published var liveUpdatesEnabled: Bool = true
+    /// Best-effort sticky banner — "Scanning …" — set by SCAN_STARTED and
+    /// cleared by SCAN_COMPLETED. Distinct from `scanStatus` (which is
+    /// driven by the user's own `addLibraryAndScan` flow) so the watcher
+    /// can light up the banner without colliding with that progress
+    /// reporter.
+    @Published var watcherBanner: String?
+
+    /// AsyncStream task owning the open `SubscribeCatalogEvents` connection.
+    /// Cancelled in `stopCatalogEventStream()`; replaced if the stream
+    /// drops and we reconnect.
+    private var catalogEventsTask: Task<Void, Never>?
+
+    /// Debounce timer for refreshing the grid after a burst of watcher
+    /// events. We get one event per file; refreshing the entire grid for
+    /// each event would thrash. A 500 ms window collapses bursts into a
+    /// single reload.
+    private var watcherRefreshWorkItem: DispatchWorkItem?
+
     struct ScanResult: Equatable {
         let success: Bool
         let message: String
@@ -85,6 +110,75 @@ class GridViewModel: ObservableObject {
             .sink { [weak self] _ in
                 self?.reloadFromTop()
             }
+    }
+
+    // MARK: - Live updates
+
+    /// Open (or re-open) the long-lived `SubscribeCatalogEvents` stream
+    /// against the daemon. Idempotent — calling twice cancels the prior
+    /// task and starts a fresh one. Cancellation happens automatically
+    /// when the grid view-model is deallocated (deinit can't be async, so
+    /// we rely on the task's own cleanup path).
+    func startCatalogEventStream() {
+        catalogEventsTask?.cancel()
+        catalogEventsTask = Task { [weak self] in
+            guard let self else { return }
+            let stream = await self.repository.subscribeCatalogEvents()
+            for await event in stream {
+                if Task.isCancelled { break }
+                await self.handleCatalogEvent(event)
+            }
+            // Stream ended. If we still have a catalog open and the user
+            // hasn't disabled live updates, retry once after a short
+            // backoff — handles transient gRPC disconnects gracefully.
+            if !Task.isCancelled && self.liveUpdatesEnabled {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                if !Task.isCancelled {
+                    self.startCatalogEventStream()
+                }
+            }
+        }
+    }
+
+    func stopCatalogEventStream() {
+        catalogEventsTask?.cancel()
+        catalogEventsTask = nil
+    }
+
+    /// Reacts to one `CatalogEvent`. Drives the live-updates indicator,
+    /// the watcher banner, and a debounced grid refresh when video rows
+    /// change.
+    @MainActor
+    private func handleCatalogEvent(_ event: CatalogEvent) {
+        switch event.kind {
+        case .watcherStarted:
+            liveUpdatesEnabled = true
+        case .watcherDisabled:
+            liveUpdatesEnabled = false
+        case .scanStarted:
+            let target = event.path.isEmpty ? "library" : (event.path as NSString).lastPathComponent
+            watcherBanner = "Scanning \(target)…"
+        case .scanCompleted:
+            watcherBanner = nil
+            scheduleWatcherRefresh()
+        case .videoAdded, .videoModified, .videoRemoved:
+            scheduleWatcherRefresh()
+        case .unknown:
+            break
+        }
+    }
+
+    /// Coalesce a flurry of watcher events into a single grid reload. Fires
+    /// 500 ms after the last event in the burst — typical SAN-drop scenario
+    /// is 5–20 file events in <1 s, so this collapses them into one
+    /// `loadVideos()` call.
+    private func scheduleWatcherRefresh() {
+        watcherRefreshWorkItem?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            self?.loadVideos()
+        }
+        watcherRefreshWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)
     }
 
     // MARK: - Loading

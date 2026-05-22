@@ -517,6 +517,99 @@ class VideoRepository: ObservableObject {
         }
     }
 
+    // MARK: - Real-time catalog events
+
+    /// Open a server-streamed `SubscribeCatalogEvents` and translate each
+    /// proto `CatalogEvent` into a Swift `CatalogEvent` for the view-model
+    /// layer. The first emission is always a `.watcherStarted` or
+    /// `.watcherDisabled` greeting so the UI can paint the live-updates
+    /// indicator without an extra round-trip.
+    ///
+    /// Returns an `AsyncStream` that finishes (cleanly) when the task is
+    /// cancelled or the server tears down the stream. Callers should
+    /// own a `Task` that loops over it and is cancelled before the
+    /// repository disconnects.
+    func subscribeCatalogEvents() -> AsyncStream<CatalogEvent> {
+        AsyncStream { continuation in
+            let task = Task {
+                guard let client = serviceClient else {
+                    continuation.finish()
+                    return
+                }
+                let request = Videoroom_SubscribeCatalogEventsRequest()
+                do {
+                    try await client.subscribeCatalogEvents(request) { response in
+                        for try await proto in response.messages {
+                            let kind: CatalogEventKind
+                            switch proto.kind {
+                            case .videoAdded: kind = .videoAdded
+                            case .videoModified: kind = .videoModified
+                            case .videoRemoved: kind = .videoRemoved
+                            case .watcherStarted: kind = .watcherStarted
+                            case .watcherDisabled: kind = .watcherDisabled
+                            case .scanStarted: kind = .scanStarted
+                            case .scanCompleted: kind = .scanCompleted
+                            default: kind = .unknown
+                            }
+                            continuation.yield(CatalogEvent(
+                                kind: kind,
+                                videoId: proto.videoID,
+                                path: proto.path,
+                                atMs: proto.atMs,
+                                message: proto.message
+                            ))
+                        }
+                    }
+                } catch {
+                    // Stream ended (server closed, network blip, or task
+                    // cancellation). The view-model treats any finish as
+                    // "live updates dropped" and may attempt a reconnect.
+                    NSLog("subscribeCatalogEvents stream ended: \(error)")
+                }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    /// Read the daemon's current watcher knobs. Returns the protocol-default
+    /// (`WatchSettings.default`) on any error so the Preferences UI never
+    /// has to handle a missing-value case.
+    func getWatchSettings() async -> WatchSettings {
+        guard let client = serviceClient else { return .default }
+        do {
+            let response = try await client.getWatchSettings(Videoroom_GetWatchSettingsRequest())
+            return WatchSettings(
+                enabled: response.enabled,
+                writeSettleMs: response.writeSettleMs,
+                pollIntervalMs: response.pollIntervalMs
+            )
+        } catch {
+            NSLog("getWatchSettings failed: \(error)")
+            return .default
+        }
+    }
+
+    /// Push new watcher settings to the daemon. The server clamps values
+    /// to sensible ranges; the UI clamps too but this is the source of
+    /// truth. Side effect on the daemon: the watcher is restarted with
+    /// the new values.
+    @discardableResult
+    func updateWatchSettings(_ settings: WatchSettings) async -> Bool {
+        guard let client = serviceClient else { return false }
+        var request = Videoroom_WatchSettings()
+        request.enabled = settings.enabled
+        request.writeSettleMs = settings.writeSettleMs
+        request.pollIntervalMs = settings.pollIntervalMs
+        do {
+            _ = try await client.updateWatchSettings(request)
+            return true
+        } catch {
+            NSLog("updateWatchSettings failed: \(error)")
+            return false
+        }
+    }
+
     // MARK: - Groups (Lightroom-style stacks)
 
     func listGroupMembers(groupId: String) async throws -> (members: [VideoSummary], preferredId: String) {

@@ -190,3 +190,48 @@ data class NamedLocation(
     val createdAtMs: Long = 0,
     val updatedAtMs: Long = 0,
 )
+
+// --- Real-time catalog events ---
+
+/**
+ * Mirror of proto `CatalogEvent.Kind`. View-model code switches on this
+ * domain enum instead of the int32 wire value so adding kinds to the
+ * proto is non-breaking (unknown values map to [Unknown]).
+ */
+enum class CatalogEventKind {
+    Unknown,
+    VideoAdded,
+    VideoModified,
+    VideoRemoved,
+    WatcherStarted,
+    WatcherDisabled,
+    ScanStarted,
+    ScanCompleted,
+}
+
+data class CatalogEvent(
+    val kind: CatalogEventKind,
+    /** Empty for watcher-/scan-lifecycle events. */
+    val videoId: String,
+    /** The file that triggered the event (best-effort). */
+    val path: String,
+    /** Server-side Unix milliseconds. */
+    val atMs: Long,
+    /** Human-readable note (filename for VideoRemoved, etc.). */
+    val message: String,
+)
+
+/**
+ * Watcher knobs that govern the real-time scanner. Round-trip via
+ * `GetWatchSettings` / `UpdateWatchSettings` to surface in the Preferences
+ * dialog.
+ */
+data class WatchSettings(
+    val enabled: Boolean,
+    val writeSettleMs: Long,
+    val pollIntervalMs: Long,
+) {
+    companion object {
+        val Default = WatchSettings(enabled = true, writeSettleMs = 5_000, pollIntervalMs = 30_000)
+    }
+}
