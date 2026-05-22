@@ -26,6 +26,14 @@ struct AddLibraryDialog: View {
     @State private var inferDate: Bool = false
     @State private var dateFormat: String = "YYYY-MM-DD"
     @State private var datePosition: String = "anywhere"
+    @State private var alwaysApply: Bool = false
+
+    // UserDefaults keys for saved scan defaults.
+    private static let ud = UserDefaults.standard
+    private static let kHasSaved   = "videoroom.scanDefaults.hasSavedDefaults"
+    private static let kInferDate  = "videoroom.scanDefaults.inferDate"
+    private static let kDateFormat = "videoroom.scanDefaults.dateFormat"
+    private static let kDatePos    = "videoroom.scanDefaults.datePosition"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -101,14 +109,21 @@ struct AddLibraryDialog: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                         Picker("", selection: $datePosition) {
-                            Text("anywhere").tag("anywhere")
-                            Text("beginning").tag("beginning")
-                            Text("end").tag("end")
+                            Text("Anywhere in filename").tag("anywhere")
+                            Text("At the beginning").tag("beginning")
+                            Text("At the end").tag("end")
                         }
                         .labelsHidden()
                         .help("Where the date must appear within the filename (without extension).")
                     }
                 }
+
+                Toggle(isOn: $alwaysApply) {
+                    Text("Always apply these settings")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .help("Remember these date-inference settings and pre-fill them the next time you add a library location.")
             }
 
             HStack {
@@ -122,6 +137,13 @@ struct AddLibraryDialog: View {
                 Button("Add & Scan") {
                     let trimmed = path.trimmingCharacters(in: .whitespaces)
                     if !trimmed.isEmpty {
+                        // Persist date-inference defaults when requested.
+                        if alwaysApply {
+                            Self.ud.set(true,        forKey: Self.kHasSaved)
+                            Self.ud.set(inferDate,   forKey: Self.kInferDate)
+                            Self.ud.set(dateFormat,  forKey: Self.kDateFormat)
+                            Self.ud.set(datePosition, forKey: Self.kDatePos)
+                        }
                         onConfirm(
                             trimmed,
                             recursive,
@@ -139,6 +161,15 @@ struct AddLibraryDialog: View {
         }
         .padding(20)
         .frame(width: 480)
+        .onAppear {
+            // Restore saved date-inference defaults (if the user previously
+            // checked "Always apply these settings").
+            if Self.ud.bool(forKey: Self.kHasSaved) {
+                inferDate    = Self.ud.bool(forKey: Self.kInferDate)
+                dateFormat   = Self.ud.string(forKey: Self.kDateFormat) ?? "YYYY-MM-DD"
+                datePosition = Self.ud.string(forKey: Self.kDatePos)    ?? "anywhere"
+            }
+        }
     }
 
     private func chooseDirectory() {
