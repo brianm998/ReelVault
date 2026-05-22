@@ -431,7 +431,15 @@ class GridViewModel: ObservableObject {
         }
     }
 
-    func addLibraryAndScan(path: String, recursive: Bool = true, autoGroup: Bool = true) {
+    func addLibraryAndScan(
+        path: String,
+        recursive: Bool = true,
+        autoGroup: Bool = true,
+        /// "MM-DD-YYYY" | "DD-MM-YYYY" | "YYYY-MM-DD" — empty disables.
+        filenameDateFormat: String = "",
+        /// "anywhere" | "beginning" | "end" — only consulted when format is non-empty.
+        filenameDatePosition: String = ""
+    ) {
         Task {
             isLoading = true
             scanStatus = "Adding library location..."
@@ -470,7 +478,12 @@ class GridViewModel: ObservableObject {
                 var errorMessage: String?
                 var libraryRefreshTick = 0
 
-                for try await progress in repository.scanLibrary(locationPath: path, autoGroup: autoGroup) {
+                for try await progress in repository.scanLibrary(
+                    locationPath: path,
+                    autoGroup: autoGroup,
+                    filenameDateFormat: filenameDateFormat,
+                    filenameDatePosition: filenameDatePosition
+                ) {
                     if progress.status == "error" {
                         errorMessage = progress.currentFile
                     } else {
