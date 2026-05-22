@@ -13,6 +13,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
@@ -174,18 +176,51 @@ fun main() = application {
             }
         }
     ) {
-        CompositionLocalProvider(LocalShiftPressed provides shiftPressed) {
-            VideoRoomApp(
-                onRegisterGroupAction = { groupSelectedAction.value = it },
-                onRegisterTogglePanelsAction = { togglePanelsAction.value = it },
-                onRegisterSelectAllAction = { selectAllAction.value = it },
-                onRegisterDeselectAllAction = { deselectAllAction.value = it },
-                onRegisterSetGridMode = { setGridModeAction.value = it },
-                onRegisterSetDetailMode = { setDetailModeAction.value = it },
-                onRegisterCycleInfoOverlay = { cycleInfoOverlayAction.value = it },
-                onSearchFocusChanged = { searchFocused.value = it },
-                onCatalogChanged = { currentCatalog = it }
-            )
+        // Guarantee a valid Compose focus target at all times.
+        //
+        // Problem: AWT fires a keyTyped event for every key press, independent
+        // of whether the paired keyPressed event was "consumed" by Compose's
+        // onPreviewKeyEvent handler. Compose converts keyTyped into an internal
+        // KeyDown event and routes it through FocusOwnerImpl.dispatchKeyEvent.
+        // When a recomposition is in flight at that instant (common during a
+        // library scan, because gRPC progress events arrive on the EDT and
+        // trigger rapid UI updates), no composable may hold focus yet.
+        // FocusOwnerImpl throws IllegalStateException("Event can't be processed
+        // because we do not have an active focus target"), which on JDK 17+
+        // propagates all the way up EventDispatchThread.pumpEvents and kills
+        // the EDT — crashing the app.
+        //
+        // Fix: this invisible Box is focusable and claims focus exactly once
+        // at window launch. Child composables (search bar, text fields, etc.)
+        // can still take focus normally; when they release it the Box holds it
+        // again as a neutral fallback. The focus system's invariant is never
+        // violated regardless of recomposition timing.
+        val rootFocus = remember { FocusRequester() }
+        LaunchedEffect(Unit) {
+            // requestFocus() must run after the first composition pass so the
+            // node is actually attached to the owner. LaunchedEffect(Unit)
+            // fires after the first frame — exactly the right moment.
+            rootFocus.requestFocus()
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .focusRequester(rootFocus)
+                .focusable()
+        ) {
+            CompositionLocalProvider(LocalShiftPressed provides shiftPressed) {
+                VideoRoomApp(
+                    onRegisterGroupAction = { groupSelectedAction.value = it },
+                    onRegisterTogglePanelsAction = { togglePanelsAction.value = it },
+                    onRegisterSelectAllAction = { selectAllAction.value = it },
+                    onRegisterDeselectAllAction = { deselectAllAction.value = it },
+                    onRegisterSetGridMode = { setGridModeAction.value = it },
+                    onRegisterSetDetailMode = { setDetailModeAction.value = it },
+                    onRegisterCycleInfoOverlay = { cycleInfoOverlayAction.value = it },
+                    onSearchFocusChanged = { searchFocused.value = it },
+                    onCatalogChanged = { currentCatalog = it }
+                )
+            }
         }
     }
 }
