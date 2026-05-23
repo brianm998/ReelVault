@@ -501,6 +501,145 @@ fun DetailScreen(
                     }
                 }
 
+                // Proxies section — shown whenever the catalog has any
+                // proxies attached to this video. Listing here mirrors
+                // the stack section above so the user can scan
+                // alternates without leaving the inspector.
+                //
+                // In Detail (loupe) mode each row is clickable: it
+                // tells DetailViewModel to swap the player to that
+                // proxy. In Grid/List mode rows are read-only because
+                // the inline player always picks the smallest proxy
+                // automatically (per the product spec).
+                val proxies = viewModel.proxies.collectAsState()
+                val selectedProxyId = viewModel.selectedProxyId.collectAsState()
+                val currentSummary = viewModel.currentSummary.collectAsState()
+                if (proxies.value.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(VideoRoomSpacing.Large))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "Proxies (${proxies.value.size})",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+
+                    // Surface the "master too large to play here" notice
+                    // right next to the proxy list — the proxies are
+                    // precisely the way the user can still play this
+                    // clip without launching an external editor.
+                    val summary = currentSummary.value
+                    if (summary != null && !summary.playableNatively) {
+                        Spacer(modifier = Modifier.height(VideoRoomSpacing.XSmall))
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            shape = MaterialTheme.shapes.small,
+                        ) {
+                            Text(
+                                text = if (viewMode == ViewMode.DETAIL) {
+                                    "The original is above the inline-playback ceiling. " +
+                                        "Pick a proxy below to play it here."
+                                } else {
+                                    "The original is above the inline-playback ceiling. " +
+                                        "Open Detail view to play a proxy in-app."
+                                },
+                                modifier = Modifier.padding(VideoRoomSpacing.Small),
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                                shape = MaterialTheme.shapes.small,
+                            )
+                    ) {
+                        proxies.value.forEachIndexed { idx, proxy ->
+                            if (idx > 0) {
+                                HorizontalDivider(
+                                    color = MaterialTheme.colorScheme.outlineVariant,
+                                )
+                            }
+                            val isSelected = proxy.id == selectedProxyId.value
+                            val rowModifier = if (viewMode == ViewMode.DETAIL) {
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        // Toggle: clicking the already-selected
+                                        // proxy reverts to the master.
+                                        viewModel.setSelectedProxy(
+                                            if (isSelected) null else proxy.id,
+                                        )
+                                    }
+                                    .background(
+                                        if (isSelected) {
+                                            MaterialTheme.colorScheme.primaryContainer
+                                        } else {
+                                            androidx.compose.ui.graphics.Color.Transparent
+                                        }
+                                    )
+                                    .padding(VideoRoomSpacing.Small)
+                            } else {
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(VideoRoomSpacing.Small)
+                            }
+                            Row(
+                                modifier = rowModifier,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = proxy.filename,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    Text(
+                                        text = "${if (proxy.height > 0) "${proxy.height}p" else "?"} • ${formatBytes(proxy.sizeBytes)}" +
+                                            if (proxy.autoDetected) " • auto-detected" else "",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                if (viewMode == ViewMode.DETAIL) {
+                                    com.videoroom.ui.components.Tooltip(
+                                        text = if (isSelected) {
+                                            "Currently playing this proxy. Click to revert to the original."
+                                        } else {
+                                            "Play this proxy in the detail view instead of the original."
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isSelected) Icons.Default.PlayCircle else Icons.Default.PlayCircleOutline,
+                                            contentDescription = if (isSelected) "Playing" else "Play this proxy",
+                                            modifier = Modifier.size(20.dp),
+                                            tint = if (isSelected) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.outline
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(VideoRoomSpacing.Large))
 
                 // Notes section

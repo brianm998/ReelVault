@@ -381,11 +381,15 @@ fun VideoCard(
                 }
 
                 // Play-button overlay — visible on hover when:
-                //   • VLC is installed  → shown only on natively-playable cards
-                //   • VLC not installed → shown on all cards (dimmed/disabled)
-                //     so the user gets immediate feedback about what's missing
+                //   • VLC installed + master natively playable → show normally
+                //   • VLC installed + master too large BUT a proxy exists
+                //     → show normally; the click handler routes through
+                //       playVideoPreferProxy and loads the smallest proxy
+                //   • VLC not installed → show dimmed on every card so the
+                //     user gets immediate feedback about what's missing
                 //     rather than nothing happening on click.
-                if (!isPlayingInline && isHovered && (video.playableNatively || !playEnabled)) {
+                val canPlayInline = video.playableNatively || video.hasProxies
+                if (!isPlayingInline && isHovered && (canPlayInline || !playEnabled)) {
                     Box(
                         modifier = Modifier
                             .size(52.dp)
@@ -556,11 +560,12 @@ fun VideoCard(
                 // "Too large to play here" marker — bottom-center.
                 // Shown when the server's `playable_natively` is false
                 // (video height exceeds the configured
-                // max_native_playback_height). Click handler is wired
-                // in GridScreen via the card's context menu and the
-                // dedicated "Create proxy" button; the badge itself is
-                // informational so multi-click selection still works.
-                if (!video.playableNatively) {
+                // max_native_playback_height) AND no proxy exists. When
+                // a proxy is available we hide the warning because the
+                // play button will quietly route through the smallest
+                // proxy — there's no "can't play this" state for the
+                // user to know about.
+                if (!video.playableNatively && !video.hasProxies) {
                     Surface(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)

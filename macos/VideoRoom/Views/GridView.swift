@@ -813,11 +813,12 @@ struct VideoCardView: View {
 
             // "Too large to play here" marker — bottom-center.
             // Shown when the server's `playableNatively` is false (video
-            // height exceeds the configured max-native-playback-height).
-            // Informational; the actual "create a proxy" affordance is
-            // in the context menu so it doesn't interfere with the
-            // grid's multi-select behavior.
-            if !video.playableNatively {
+            // height exceeds the configured max-native-playback-height)
+            // AND no proxy exists. When a proxy is available the play
+            // button quietly routes through the smallest proxy, so
+            // there's no "can't play this" state for the user to know
+            // about.
+            if !video.playableNatively && !video.hasProxies {
                 VStack {
                     Spacer()
                     HStack {

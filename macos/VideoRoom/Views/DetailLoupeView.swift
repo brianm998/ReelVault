@@ -66,6 +66,18 @@ struct DetailLoupeView: View {
             // next "play" press starts fresh on the new video.
             teardownPlayer()
         }
+        .onChange(of: detailViewModel.selectedProxyId) { _, _ in
+            // The user picked a different proxy (or reverted to master)
+            // in the right panel. Drop the AVPlayer so the next play
+            // press loads the new URL. If playback was already active,
+            // restart it on the new URL immediately so the swap feels
+            // direct rather than requiring a manual play press.
+            let wasPlaying = isPlaying
+            teardownPlayer()
+            if wasPlaying, let v = video {
+                onPlayPause(for: v)
+            }
+        }
         .onChange(of: playToggle) { _, _ in
             // Space bar from ContentView: toggle play/pause if a video is selected.
             if let v = video {
@@ -73,6 +85,13 @@ struct DetailLoupeView: View {
             }
         }
         .onDisappear { teardownPlayer() }
+    }
+
+    /// Resolve which on-disk path the player should load right now:
+    /// explicit proxy pick (right panel) > unplayable-master fallback
+    /// to the smallest proxy > the master path itself.
+    private func effectivePath(for video: VideoSummary) -> String {
+        detailViewModel.playbackPath(for: video) ?? video.path
     }
 
     // MARK: - Empty / placeholder
@@ -118,6 +137,37 @@ struct DetailLoupeView: View {
                 InfoOverlayView(state: infoOverlay, video: video, metadata: metadata)
                     .padding(12)
             }
+
+            // Proxy-playback banner (top-right). Visible whenever the
+            // player is loading a proxy instead of the master — either
+            // because the master is too large to play inline (auto
+            // fallback) or because the user explicitly picked a proxy
+            // in the right panel. Reassures the user that yes, this is
+            // playable, and tells them which file they're seeing.
+            let effective = effectivePath(for: video)
+            if effective != video.path {
+                let activeProxy = detailViewModel.proxies.first(where: { $0.path == effective })
+                HStack {
+                    Spacer()
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(detailViewModel.selectedProxyId != nil
+                             ? "Playing selected proxy"
+                             : "Original too large — playing proxy")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.white)
+                        if let proxy = activeProxy {
+                            Text("\(proxy.filename) • \(proxy.height)p")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white.opacity(0.85))
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+                    .background(Color(red: 0.16, green: 0.53, blue: 0.53).opacity(0.85))
+                    .cornerRadius(4)
+                }
+                .padding(12)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -141,9 +191,11 @@ struct DetailLoupeView: View {
 
     private func onPlayPause(for video: VideoSummary) {
         if playerVideoId != video.id {
-            // First play for this video: build a fresh AVPlayer.
+            // First play for this video: build a fresh AVPlayer pointing
+            // at whichever file is selected (master, picked proxy, or
+            // the unplayable-master fallback).
             teardownPlayer()
-            let url = URL(fileURLWithPath: video.path)
+            let url = URL(fileURLWithPath: effectivePath(for: video))
             let p = AVPlayer(url: url)
             attachObservers(to: p)
             player = p
@@ -168,7 +220,7 @@ struct DetailLoupeView: View {
         // the user can step before they ever press play.
         if playerVideoId != video.id {
             teardownPlayer()
-            let url = URL(fileURLWithPath: video.path)
+            let url = URL(fileURLWithPath: effectivePath(for: video))
             let p = AVPlayer(url: url)
             attachObservers(to: p)
             player = p

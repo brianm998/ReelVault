@@ -15,19 +15,81 @@ class DetailViewModel: ObservableObject {
     @Published var groupMembers: [VideoSummary] = []
     @Published var groupPreferredId: String = ""
 
-    private var currentVideoSummary: VideoSummary?
+    /// Proxies attached to the currently-selected video. Sorted by
+    /// pixel count descending (server contract). UI sites can read
+    /// `.last` for the smallest proxy (used by inline grid/list
+    /// playback) or `.first` for the largest.
+    @Published var proxies: [VideoRepository.ProxyInfo] = []
+
+    /// ID of the proxy the user explicitly picked for full-screen
+    /// detail-view playback. `nil` means "play the master" (with the
+    /// implicit unplayable-master → smallest-proxy fallback applied by
+    /// `playbackPath(for:)`).
+    @Published var selectedProxyId: String?
+
+    /// The summary backing the currently-selected card. Exposed so the
+    /// right panel's proxy section can decide whether to render itself
+    /// (keys off `hasProxies` and `playableNatively`, neither of which
+    /// is carried by `VideoMetadata`).
+    @Published var currentSummary: VideoSummary?
+
+    private var currentVideoSummary: VideoSummary? { currentSummary }
     private let repository = VideoRepository.shared
 
     /// Called by the grid when the user selects a video — drives the group/stack
     /// section in addition to the regular metadata load.
     func setCurrentVideo(_ video: VideoSummary) {
-        currentVideoSummary = video
+        currentSummary = video
         if video.isInGroup {
             loadGroupMembers(groupId: video.groupId)
         } else {
             groupMembers = []
             groupPreferredId = ""
         }
+        // Reset proxy selection on each new video, then lazily load the
+        // proxy list when the summary advertises any. Servers send
+        // `proxyCount == 0` for most rows, so the conditional saves a
+        // round trip on the common case.
+        selectedProxyId = nil
+        if video.hasProxies {
+            loadProxies(videoId: video.id)
+        } else {
+            proxies = []
+        }
+    }
+
+    private func loadProxies(videoId: String) {
+        Task {
+            do {
+                proxies = try await repository.listProxies(videoId: videoId)
+            } catch {
+                NSLog("Failed to load proxies for \(videoId): \(error)")
+                proxies = []
+            }
+        }
+    }
+
+    /// User picked a specific proxy in the detail-view right panel.
+    /// Pass `nil` to revert to playing the master.
+    func setSelectedProxy(_ proxyId: String?) {
+        selectedProxyId = proxyId
+    }
+
+    /// The on-disk path that the detail-view player should load, based
+    /// on the current proxy selection and the master's playability:
+    ///   * User explicitly picked a proxy → that proxy's path.
+    ///   * Master is not natively playable AND a proxy exists →
+    ///     smallest proxy's path.
+    ///   * Otherwise → nil; the caller falls back to the master path.
+    func playbackPath(for video: VideoSummary) -> String? {
+        if let picked = selectedProxyId,
+           let row = proxies.first(where: { $0.id == picked }) {
+            return row.path
+        }
+        if !video.playableNatively, let smallest = proxies.last {
+            return smallest.path
+        }
+        return nil
     }
 
     private func loadGroupMembers(groupId: String) {
@@ -130,6 +192,8 @@ class DetailViewModel: ObservableObject {
         error = nil
         groupMembers = []
         groupPreferredId = ""
-        currentVideoSummary = nil
+        currentSummary = nil
+        proxies = []
+        selectedProxyId = nil
     }
 }
