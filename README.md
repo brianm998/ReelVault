@@ -117,7 +117,6 @@ NSWorkspace-driven editor launches.
 - [ ] Real-time file watching (re-index when the underlying folder changes).
 - [ ] Smart collections (saved searches with live filter rules).
 - [ ] Proxy video generation for 8K+ footage.
-- [ ] Speech transcription / on-screen OCR / face detection.
 - [ ] GitHub-based auto-update.
 - [ ] CI/CD release pipeline producing signed installers per platform.
 - [ ] Bundling the daemon binary inside the client app bundles (today the
