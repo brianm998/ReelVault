@@ -111,77 +111,27 @@ class ComposeVideoPlayer {
     @Volatile private var scratchWidth = 0
     @Volatile private var scratchHeight = 0
 
-    init {
-        logger.info("ComposeVideoPlayer init: jvm={} ({}), os={} {} ({}), thread={}, edt={}",
-            System.getProperty("java.version"),
-            System.getProperty("java.vendor"),
-            System.getProperty("os.name"),
-            System.getProperty("os.version"),
-            System.getProperty("os.arch"),
-            Thread.currentThread().name,
-            SwingUtilities.isEventDispatchThread()
-        )
-        // CallbackMediaPlayerComponent doesn't host an AWT heavyweight Canvas
-        // so technically EDT initialisation isn't strictly required — but
-        // libvlc's lifecycle is still simpler to reason about when init,
-        // play, and stop all happen on the same thread, so we keep the EDT
-        // dispatch for parity with the embedded path.
-        val initBlock: () -> Unit = {
-            try {
-                val args = buildLibvlcArgs()
-                logger.info("Creating MediaPlayerFactory with args: {}", args.joinToString(" "))
-                val f = MediaPlayerFactory(*args)
-                factory = f
-                // Pipe libvlc's own logs through SLF4J so we can see what
-                // libvlc thinks is going wrong with codec selection, module
-                // loading, etc.
-                nativeLog = f.application().newLog().apply {
-                    setLevel(LogLevel.DEBUG)
-                    addLogListener { level, module, _, _, _, _, _, message ->
-                        val tag = module ?: "?"
-                        when (level) {
-                            LogLevel.ERROR -> libvlcLogger.error("[{}] {}", tag, message)
-                            LogLevel.WARNING -> libvlcLogger.warn("[{}] {}", tag, message)
-                            LogLevel.NOTICE -> libvlcLogger.info("[{}] {}", tag, message)
-                            LogLevel.DEBUG -> libvlcLogger.debug("[{}] {}", tag, message)
-                            else -> libvlcLogger.info("[{}] {}", tag, message)
-                        }
-                    }
-                }
-                // CallbackMediaPlayerComponent(factory, fullScreenStrategy,
-                //   inputEvents, lockBuffers, renderCallback,
-                //   bufferFormatCallback, videoSurfaceComponent).
-                //
-                // lockBuffers=true: vlcj acquires a JNA lock around buffer
-                // access during the libvlc lock/unlock callbacks. Doesn't
-                // affect whether callbacks fire, just synchronisation.
-                val c = CallbackMediaPlayerComponent(
-                    f, null, null, true,
-                    renderCallback, bufferFormatCallback, null
-                )
-                attachEventListeners(c)
-                component = c
-                logger.info("ComposeVideoPlayer ready (libvlc {}, callback rendering)",
-                    try { f.application().version() } catch (_: Throwable) { "<unknown>" })
-            } catch (t: Throwable) {
-                logger.error("VLCJ player init failed — is libvlc installed?  " +
-                    "macOS: install VLC.app from videolan.org. " +
-                    "Linux: sudo apt install vlc.", t)
-                initFailure = t
-            }
-        }
+    /**
+     * Counts frames so we can log the first one (proves the callback is
+     * actually firing) without spamming on every subsequent frame.
+     */
+    @Volatile private var frameCount = 0L
 
-        if (SwingUtilities.isEventDispatchThread()) {
-            initBlock()
-        } else {
-            try {
-                SwingUtilities.invokeAndWait(initBlock)
-            } catch (t: Throwable) {
-                logger.error("Could not initialize VLCJ on EDT", t)
-                initFailure = t
-            }
-        }
-    }
+    // ─────────────────────────────────────────────────────────────────────
+    // CALLBACK ORDERING IS LOAD-BEARING.
+    //
+    // Both callbacks MUST be declared *before* the `init` block. Kotlin
+    // initialises fields and runs init blocks in source order. The init
+    // block constructs CallbackMediaPlayerComponent and passes these two
+    // callbacks in. If they're declared after init, they're null at the
+    // point of construction — and vlcj silently substitutes its own
+    // defaults (DefaultBufferFormatCallback returning RV32, and
+    // DefaultRenderCallback that paints into a hidden Swing component),
+    // so our callbacks never fire and the user sees a black surface even
+    // though libvlc reports videoOutput count=1 and runs to completion.
+    //
+    // Keep these two declarations above `init`.
+    // ─────────────────────────────────────────────────────────────────────
 
     /** libvlc tells us its decided buffer format here (and we tell it ours). */
     private val bufferFormatCallback = object : BufferFormatCallback {
@@ -200,15 +150,9 @@ class ComposeVideoPlayer {
         }
 
         override fun allocatedBuffers(buffers: Array<out ByteBuffer>) {
-            logger.debug("BufferFormatCallback.allocatedBuffers: {} buffer(s)", buffers.size)
+            logger.info("BufferFormatCallback.allocatedBuffers: {} buffer(s)", buffers.size)
         }
     }
-
-    /**
-     * Counts frames so we can log the first one (proves the callback is
-     * actually firing) without spamming on every subsequent frame.
-     */
-    @Volatile private var frameCount = 0L
 
     /**
      * One call per decoded frame. Runs on libvlc's display thread.
@@ -256,6 +200,84 @@ class ComposeVideoPlayer {
                 }
             } catch (t: Throwable) {
                 logger.error("Exception in renderCallback (frame {})", frameCount, t)
+            }
+        }
+    }
+
+    init {
+        logger.info("ComposeVideoPlayer init: jvm={} ({}), os={} {} ({}), thread={}, edt={}",
+            System.getProperty("java.version"),
+            System.getProperty("java.vendor"),
+            System.getProperty("os.name"),
+            System.getProperty("os.version"),
+            System.getProperty("os.arch"),
+            Thread.currentThread().name,
+            SwingUtilities.isEventDispatchThread()
+        )
+        // CallbackMediaPlayerComponent doesn't host an AWT heavyweight Canvas
+        // so technically EDT initialisation isn't strictly required — but
+        // libvlc's lifecycle is still simpler to reason about when init,
+        // play, and stop all happen on the same thread, so we keep the EDT
+        // dispatch for parity with the embedded path.
+        val initBlock: () -> Unit = {
+            try {
+                val args = buildLibvlcArgs()
+                logger.info("Creating MediaPlayerFactory with args: {}", args.joinToString(" "))
+                val f = MediaPlayerFactory(*args)
+                factory = f
+                // Pipe libvlc's own logs through SLF4J so we can see what
+                // libvlc thinks is going wrong with codec selection, module
+                // loading, etc.
+                nativeLog = f.application().newLog().apply {
+                    setLevel(LogLevel.DEBUG)
+                    addLogListener { level, module, _, _, _, _, _, message ->
+                        val tag = module ?: "?"
+                        when (level) {
+                            LogLevel.ERROR -> libvlcLogger.error("[{}] {}", tag, message)
+                            LogLevel.WARNING -> libvlcLogger.warn("[{}] {}", tag, message)
+                            LogLevel.NOTICE -> libvlcLogger.info("[{}] {}", tag, message)
+                            LogLevel.DEBUG -> libvlcLogger.debug("[{}] {}", tag, message)
+                            else -> libvlcLogger.info("[{}] {}", tag, message)
+                        }
+                    }
+                }
+                // CallbackMediaPlayerComponent(factory, fullScreenStrategy,
+                //   inputEvents, lockBuffers, renderCallback,
+                //   bufferFormatCallback, videoSurfaceComponent).
+                //
+                // lockBuffers=true: vlcj acquires a JNA lock around buffer
+                // access during the libvlc lock/unlock callbacks. Doesn't
+                // affect whether callbacks fire, just synchronisation.
+                //
+                // CRITICAL: renderCallback and bufferFormatCallback are
+                // initialised *above* this init block; passing nulls here
+                // makes vlcj silently fall back to its own defaults and
+                // our callbacks never fire. See the big comment block
+                // above their declarations.
+                val c = CallbackMediaPlayerComponent(
+                    f, null, null, true,
+                    renderCallback, bufferFormatCallback, null
+                )
+                attachEventListeners(c)
+                component = c
+                logger.info("ComposeVideoPlayer ready (libvlc {}, callback rendering)",
+                    try { f.application().version() } catch (_: Throwable) { "<unknown>" })
+            } catch (t: Throwable) {
+                logger.error("VLCJ player init failed — is libvlc installed?  " +
+                    "macOS: install VLC.app from videolan.org. " +
+                    "Linux: sudo apt install vlc.", t)
+                initFailure = t
+            }
+        }
+
+        if (SwingUtilities.isEventDispatchThread()) {
+            initBlock()
+        } else {
+            try {
+                SwingUtilities.invokeAndWait(initBlock)
+            } catch (t: Throwable) {
+                logger.error("Could not initialize VLCJ on EDT", t)
+                initFailure = t
             }
         }
     }
