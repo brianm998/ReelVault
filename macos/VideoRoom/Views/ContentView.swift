@@ -795,6 +795,10 @@ struct ConnectingView: View {
 /// tap handler reads it.
 enum ModifierSnapshot {
     nonisolated(unsafe) static var lastMouseDownModifiers: NSEvent.ModifierFlags = []
+    /// Number of rapid clicks in the most-recent mouse-down burst (1 for single-click, 2 for double-click, etc.).
+    /// Captured in the mouse-down monitor so the tap handler can distinguish single vs double without relying on
+    /// SwiftUI's `.onTapGesture(count: 2)`, which introduces a recognition delay that blocks child Button actions.
+    nonisolated(unsafe) static var lastMouseDownClickCount: Int = 1
 }
 
 /// Installs an app-level NSEvent monitor that captures Tab and Cmd+G regardless
@@ -842,6 +846,7 @@ struct GlobalKeyboardShortcuts: ViewModifier {
                 matching: [.leftMouseDown, .rightMouseDown]
             ) { event in
                 ModifierSnapshot.lastMouseDownModifiers = event.modifierFlags
+                ModifierSnapshot.lastMouseDownClickCount = event.clickCount
                 return event  // never consume; SwiftUI still needs the event
             }
         }

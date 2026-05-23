@@ -297,11 +297,17 @@ fun GridScreen(
                                     when {
                                         // Startup check (fast path): NativeDiscovery said no
                                         // libvlc before we even tried to build a player.
-                                        !vlcAvailable          -> showVlcErrorDialog = true
+                                        !vlcAvailable           -> showVlcErrorDialog = true
                                         // Instance check (fallback): player built but init failed.
                                         !inlinePlayer.available -> showVlcErrorDialog = true
+                                        // Natively playable — play directly.
                                         video.playableNatively  -> viewModel.playVideo(video.id)
-                                        // Oversize video — open the proxy picker
+                                        // Oversize but at least one proxy is available — use the
+                                        // smallest one automatically (playVideoPreferProxy picks
+                                        // `proxies.last()` which is lowest-res from the
+                                        // descending-by-pixel-count list returned by the server).
+                                        video.proxyCount > 0    -> viewModel.playVideoPreferProxy(video.id)
+                                        // Oversize and no proxy — offer to create one.
                                         else -> viewModel.requestCreateProxy(video.id)
                                     }
                                 },

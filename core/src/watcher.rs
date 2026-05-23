@@ -41,6 +41,16 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tokio::sync::broadcast;
 
+/// Files that have failed indexing (e.g. "moov atom not found"), keyed by
+/// path with the file size at the time of failure.
+///
+/// While a path is in this map *with the same size*, the poll fallback will
+/// not re-queue it — avoiding the WARN-every-30-seconds spam for in-progress
+/// exports. When the file's size changes (the write completes), the entry is
+/// evicted and normal retry resumes. Notify-driven events (genuine
+/// OS-level Modify) also clear the entry unconditionally.
+type FailedFiles = Arc<Mutex<HashMap<PathBuf, u64>>>;
+
 /// Domain-level change event emitted by the watcher. The gRPC service
 /// converts this to the proto `CatalogEvent` before sending to clients.
 ///
@@ -162,6 +172,11 @@ fn run_watcher(
     let pending: Arc<Mutex<HashMap<PathBuf, PendingFile>>> = Arc::new(Mutex::new(HashMap::new()));
     let pending_clone = Arc::clone(&pending);
 
+    // Tracks files whose last index attempt failed. While the file's size is
+    // unchanged the poll fallback will not re-queue it, suppressing the
+    // repeated WARN for in-progress or corrupt files.
+    let failed_files: FailedFiles = Arc::new(Mutex::new(HashMap::new()));
+
     // Channel between the notify callback thread and the main loop.
     let (notify_tx, notify_rx) = std_mpsc::channel::<notify::Result<notify::Event>>();
 
@@ -233,7 +248,9 @@ fn run_watcher(
         // 2) Drain notify events into the pending map.
         loop {
             match notify_rx.try_recv() {
-                Ok(Ok(event)) => handle_notify_event(event, &pending_clone, &db, &events),
+                Ok(Ok(event)) => {
+                    handle_notify_event(event, &pending_clone, &db, &events, &failed_files);
+                }
                 Ok(Err(e)) => {
                     tracing::debug!("notify error: {}", e);
                 }
@@ -243,11 +260,11 @@ fn run_watcher(
         }
 
         // 3) Sweep the pending map for settled files.
-        sweep_pending(&pending_clone, settle_ms, &db, &thumbnail_cache, &events);
+        sweep_pending(&pending_clone, settle_ms, &db, &thumbnail_cache, &events, &failed_files);
 
         // 4) Poll fallback (NFS / SMB / SAN that doesn't deliver events).
         if poll_ms > 0 && last_poll.elapsed().as_millis() as u64 >= poll_ms {
-            poll_paths(&watched_paths, &pending_clone, &db);
+            poll_paths(&watched_paths, &pending_clone, &db, &failed_files);
             last_poll = Instant::now();
         }
 
@@ -291,6 +308,7 @@ fn handle_notify_event(
     pending: &Arc<Mutex<HashMap<PathBuf, PendingFile>>>,
     db: &Arc<Database>,
     events: &broadcast::Sender<CatalogChange>,
+    failed_files: &FailedFiles,
 ) {
     for path in event.paths {
         // Quick reject: we don't care about directories or non-video files.
@@ -300,6 +318,9 @@ fn handle_notify_event(
 
         match event.kind {
             EventKind::Create(_) | EventKind::Modify(_) => {
+                // A real OS event means the file changed — clear any previous
+                // failure record so the settle+index cycle runs fresh.
+                failed_files.lock().ok().map(|mut m| m.remove(&path));
                 queue_pending(pending, &path);
             }
             EventKind::Remove(_) => {
@@ -359,6 +380,7 @@ fn sweep_pending(
     db: &Arc<Database>,
     thumbnail_cache: &Path,
     events: &broadcast::Sender<CatalogChange>,
+    failed_files: &FailedFiles,
 ) {
     if settle_ms == 0 {
         // settle disabled — treat every entry as ready immediately.
@@ -410,7 +432,31 @@ fn sweep_pending(
                 let _ = events.send(CatalogChange::VideoModified { video_id, path });
             }
             Err(e) => {
-                tracing::warn!("Watcher failed to index {}: {}", path.display(), e);
+                let size_now = current_file_size(&path).unwrap_or(0);
+                // Only log WARN the *first* time we fail at this size.
+                // Subsequent poll cycles at the same size are silently
+                // suppressed (the file is likely an in-progress export).
+                let first_failure = failed_files
+                    .lock()
+                    .map(|mut m| {
+                        let prev = m.insert(path.clone(), size_now);
+                        prev.map_or(true, |prev_size| prev_size != size_now)
+                    })
+                    .unwrap_or(true);
+                if first_failure {
+                    tracing::warn!(
+                        "Watcher failed to index {} (size {}B, will retry when size changes): {}",
+                        path.display(),
+                        size_now,
+                        e,
+                    );
+                } else {
+                    tracing::debug!(
+                        "Watcher: skipping retry for {} (same size {}B, still failing)",
+                        path.display(),
+                        size_now,
+                    );
+                }
             }
         }
     }
@@ -429,6 +475,7 @@ fn poll_paths(
     watched_paths: &[(PathBuf, bool)],
     pending: &Arc<Mutex<HashMap<PathBuf, PendingFile>>>,
     db: &Arc<Database>,
+    failed_files: &FailedFiles,
 ) {
     for (root, recursive) in watched_paths {
         if !root.exists() {
@@ -459,9 +506,30 @@ fn poll_paths(
                 None => true, // new file
                 Some(v) => v.file_size_bytes.unwrap_or(-1) as u64 != size_now,
             };
-            if interesting {
-                queue_pending(pending, p);
+            if !interesting {
+                continue;
             }
+
+            // Suppress re-queueing files that previously failed at this exact
+            // size (e.g. an in-progress export whose moov atom isn't written
+            // yet). If the size has grown since the last failure, evict the
+            // entry and let the normal retry path fire.
+            let skip = failed_files
+                .lock()
+                .map(|mut m| match m.get(p) {
+                    Some(&failed_size) if failed_size == size_now => true,
+                    Some(_) => {
+                        m.remove(p); // size changed → file may now be healthy
+                        false
+                    }
+                    None => false,
+                })
+                .unwrap_or(false);
+            if skip {
+                continue;
+            }
+
+            queue_pending(pending, p);
         }
     }
 }

@@ -14,12 +14,11 @@
 //!    member is marked as a proxy of the higher-resolution one
 //!    (`videos.proxy_of` set).
 //!
-//!    Why those gates? Same-camera/same-fps/same-frame-count is a
-//!    strong "this is literally the same recording" signal — even a
-//!    re-encode preserves all three. Thumbnails then disambiguate
-//!    between two different clips that happened to share those
-//!    properties (e.g. two takes back-to-back from the same camera
-//!    where the user happened to stop at the same frame).
+//!    Why those gates? Same-fps/same-frame-count is a strong "this is
+//!    literally the same recording" signal — even a re-encode preserves
+//!    both. Pixel-level thumbnail comparison then disambiguates between
+//!    two clips that happened to share those properties (e.g. two
+//!    similar-duration takes from the same camera at the same fps).
 //!
 //! 2. **On-demand creation** ([`create_proxy`]). When the client asks
 //!    for a proxy at a specific height, we invoke ffmpeg with
@@ -29,21 +28,24 @@
 //!    indexed and linked as a proxy of the source.
 //!
 //! Aspect-ratio note: a user might export a 16:9 source as a 4:3
-//! proxy with letterboxing. The image hash already strips uniform
-//! dark borders before computing, so the comparison works even when
-//! aspect ratios differ. (The frame_count gate is what really catches
-//! it — letterboxed transcodes have the same frame count as the
+//! proxy with letterboxing. The thumbnail comparison scales both images
+//! to the same dimensions before subtracting, so the comparison works
+//! even when aspect ratios differ. (The frame_count gate is what really
+//! catches it — letterboxed transcodes have the same frame count as the
 //! source.)
 
 use crate::db::{Database, ProxyDetectCandidate};
 use crate::error::Result;
-use crate::imagehash::{self, DHash};
+use crate::imagehash;
 use std::path::{Path, PathBuf};
 
 /// Threshold below which we refuse to call two videos "the same shot".
-/// 0.9 = at most 6 differing bits out of 64 in the dHash. Empirically
-/// the sweet spot for "same clip, different resolution" pairs while
-/// rejecting "similar clip" pairs.
+///
+/// With pixel-MAD similarity, a true proxy pair (same clip, different
+/// resolution) typically scores 0.97+. 0.9 gives comfortable headroom
+/// for codec artefacts, slight colour-grade differences, and aspect-ratio
+/// squish from 3:2→16:9 exports while still rejecting visually-similar
+/// but distinct shots.
 pub const PROXY_SIMILARITY_THRESHOLD: f64 = 0.9;
 
 /// How many of the 10 scrub frames must exist on disk for us to trust
@@ -71,60 +73,209 @@ pub fn detect_proxies(db: &Database, thumbnail_cache: &Path) -> Result<DetectSum
         return Ok(DetectSummary::default());
     }
 
-    // Bucket by (parent_dir, camera, fps_rounded, frame_count). Only
-    // pairs in the same bucket can possibly be proxies of each other.
+    // Two bucketing strategies, chosen per-video:
+    //
+    // • **Grouped** (`group_id IS NOT NULL`): use the group ID as the sole
+    //   bucket key. Auto-grouping already validated that members share the
+    //   same clip identity (date + camera + frame count + name prefix), so
+    //   every member is a genuine proxy candidate for every other member.
+    //   The frame-count gate is intentionally kept loose for ungrouped videos
+    //   but would fire incorrectly on grouped videos when the directory also
+    //   contains other clips of different duration — the A7R III 1858-frame
+    //   anchor blocked all 11_30_2024-a9-1 2103-frame candidates even though
+    //   those files form a perfect proxy triplet among themselves.
+    //
+    // • **Ungrouped** (`group_id IS NULL`): fall back to `(parent_dir,
+    //   fps_rounded)`. The frame-count gate inside the loop then filters out
+    //   clips of genuinely different durations that share the directory.
+    //
+    // camera_model and frame_count are intentionally excluded from both
+    // bucket keys for the same reasons as before (EXIF stripping, codec
+    // container rounding differences).
     use std::collections::HashMap;
-    let mut buckets: HashMap<(String, String, i64, i64), Vec<ProxyDetectCandidate>> = HashMap::new();
+    let mut buckets: HashMap<(String, i64), Vec<ProxyDetectCandidate>> = HashMap::new();
     for c in candidates {
-        if c.frame_count <= 0 || c.width == 0 || c.height == 0 {
-            // Without a frame count we can't be confident enough; skip.
-            continue;
+        if c.width == 0 || c.height == 0 {
+            tracing::debug!(
+                skip_reason = "no resolution metadata",
+                filename = %c.filename,
+                "proxy detection: skipping candidate",
+            );
+            continue; // no resolution metadata yet; skip
         }
-        let key = (
-            c.parent_dir.clone(),
-            c.camera_model.clone(),
-            c.fps.round() as i64,
-            c.frame_count,
-        );
+        let key = match &c.group_id {
+            // Group ID used as bucket — the leading "g:" prefix avoids any
+            // collision with a directory path that starts with a UUID.
+            Some(gid) => (format!("g:{}", gid), 0i64),
+            // Ungrouped: same directory + same fps bucket as before.
+            None => (c.parent_dir.clone(), c.fps.round() as i64),
+        };
         buckets.entry(key).or_default().push(c);
+    }
+
+    tracing::debug!(
+        bucket_count = buckets.len(),
+        "proxy detection: formed buckets",
+    );
+    for ((dir, fps), members) in &buckets {
+        tracing::debug!(
+            dir = %dir,
+            fps = fps,
+            count = members.len(),
+            members = %members.iter().map(|m| m.filename.as_str()).collect::<Vec<_>>().join(", "),
+            "proxy detection: bucket",
+        );
     }
 
     let mut summary = DetectSummary::default();
 
-    for (_, mut members) in buckets {
+    for ((bucket_dir, bucket_fps), mut members) in buckets {
         if members.len() < 2 {
             continue;
         }
-        // Sort by descending pixel count so the highest-res candidate is
-        // the "anchor"; lower-res members get checked against it.
-        members.sort_by_key(|m| -((m.width as i64) * (m.height as i64)));
+        // Sort by (descending pixel count, descending file size).
+        // When two files have the same pixel dimensions (e.g. ProRes-444 UHQ
+        // and ProRes-422 MQ both at 3840×2160), the larger file — the heavier
+        // codec — becomes the anchor / master, and the smaller one is the proxy.
+        members.sort_by_key(|m| {
+            let pixels = (m.width as i64) * (m.height as i64);
+            (-(pixels), -(m.file_size_bytes))
+        });
 
-        // Cache hashes so we don't rehash the anchor for every comparison.
-        let mut hash_cache: HashMap<String, ThumbHashes> =
-            HashMap::with_capacity(members.len());
+        let mut img_cache: HashMap<String, ThumbImages> = HashMap::with_capacity(members.len());
 
         let anchor = members[0].clone();
-        let anchor_hashes = thumb_hashes_for(thumbnail_cache, &anchor.id);
-        hash_cache.insert(anchor.id.clone(), anchor_hashes.clone());
+        tracing::debug!(
+            dir = %bucket_dir,
+            fps = bucket_fps,
+            anchor = %anchor.filename,
+            anchor_res = %format!("{}×{}", anchor.width, anchor.height),
+            anchor_fc = anchor.frame_count,
+            candidates = members.len() - 1,
+            "proxy detection: processing bucket",
+        );
+        let anchor_imgs = thumb_images_for(thumbnail_cache, &anchor.id);
+        img_cache.insert(anchor.id.clone(), anchor_imgs.clone());
 
         for candidate in members.iter().skip(1) {
             // Skip already-tagged rows in case detect_proxies is called
             // mid-scan and we picked them up before the upsert landed.
             if db.get_proxy_target(&candidate.id).ok().flatten().is_some() {
+                tracing::debug!(
+                    skip_reason = "already tagged",
+                    filename = %candidate.filename,
+                    anchor = %anchor.filename,
+                    "proxy detection: skipping candidate",
+                );
                 continue;
             }
-            // Same-resolution variants aren't "proxies" — they're more
-            // likely auto-grouped duplicates. Bail.
-            if candidate.width == anchor.width && candidate.height == anchor.height {
+
+            // ── Frame-count gate (with tolerance) ──────────────────────────
+            // Allow ±5% OR ±10 frames (same tolerance the auto-grouper uses).
+            // Videos differing more than this are genuinely different shots.
+            if anchor.frame_count > 0 && candidate.frame_count > 0 {
+                let max_fc = anchor.frame_count.max(candidate.frame_count);
+                let fc_tol = (max_fc / 20).max(10); // 5% or 10 frames
+                let fc_diff = (anchor.frame_count - candidate.frame_count).abs();
+                if fc_diff > fc_tol {
+                    tracing::debug!(
+                        skip_reason = "frame count mismatch",
+                        filename = %candidate.filename,
+                        anchor = %anchor.filename,
+                        anchor_fc = anchor.frame_count,
+                        candidate_fc = candidate.frame_count,
+                        diff = fc_diff,
+                        tolerance = fc_tol,
+                        "proxy detection: skipping candidate",
+                    );
+                    continue;
+                }
+            }
+
+            // ── Same-resolution gate (reworked) ────────────────────────────
+            // Pure duplicates at the same resolution belong in a stack, not a
+            // proxy relationship. HOWEVER: a same-resolution file with a much
+            // smaller file size is a *codec proxy* — e.g. ProRes-444 UHQ master
+            // (heavy) vs ProRes-422 MQ at the same dimensions (~4× smaller).
+            // The lighter file is still useful as a playback proxy when the
+            // machine can't decode the master in real time.
+            // Gate: require ≥ 2.5× file-size ratio; below that it's close
+            // enough to a re-encode that stacking is the right relationship.
+            let same_res = candidate.width == anchor.width
+                && candidate.height == anchor.height;
+            if same_res {
+                let size_ratio = if candidate.file_size_bytes > 0 && anchor.file_size_bytes > 0 {
+                    anchor.file_size_bytes as f64 / candidate.file_size_bytes as f64
+                } else {
+                    1.0
+                };
+                if size_ratio < 2.5 {
+                    tracing::debug!(
+                        skip_reason = "same resolution, size ratio too low for codec-proxy",
+                        filename = %candidate.filename,
+                        anchor = %anchor.filename,
+                        res = %format!("{}×{}", candidate.width, candidate.height),
+                        size_ratio = %format!("{:.2}×", size_ratio),
+                        "proxy detection: skipping candidate",
+                    );
+                    continue; // Similar size → stack member, not proxy
+                }
+                // Large size difference at same resolution → codec proxy candidate.
+            }
+
+            // ── Camera-model gate ──────────────────────────────────────────
+            // Reject only when *both* sides carry non-empty, non-matching EXIF.
+            if !anchor.camera_model.is_empty()
+                && !candidate.camera_model.is_empty()
+                && anchor.camera_model != candidate.camera_model
+            {
+                tracing::debug!(
+                    skip_reason = "camera model mismatch",
+                    filename = %candidate.filename,
+                    anchor = %anchor.filename,
+                    anchor_camera = %anchor.camera_model,
+                    candidate_camera = %candidate.camera_model,
+                    "proxy detection: skipping candidate",
+                );
                 continue;
             }
-            let cand_hashes = hash_cache
+
+            let cand_imgs = img_cache
                 .entry(candidate.id.clone())
-                .or_insert_with(|| thumb_hashes_for(thumbnail_cache, &candidate.id))
+                .or_insert_with(|| thumb_images_for(thumbnail_cache, &candidate.id))
                 .clone();
 
             summary.pairs_compared += 1;
-            let conf = compare_thumb_sets(&anchor_hashes, &cand_hashes);
+            let conf = compare_thumb_sets(&anchor_imgs, &cand_imgs);
+
+            // Always log at DEBUG so a verbose run shows every comparison.
+            tracing::debug!(
+                proxy_a = %anchor.filename,
+                proxy_b = %candidate.filename,
+                res_a = %format!("{}×{}", anchor.width, anchor.height),
+                res_b = %format!("{}×{}", candidate.width, candidate.height),
+                size_a_mb = anchor.file_size_bytes / 1_048_576,
+                size_b_mb = candidate.file_size_bytes / 1_048_576,
+                fc_a = anchor.frame_count,
+                fc_b = candidate.frame_count,
+                confidence = %format!("{:.3}", conf),
+                "proxy pair compared",
+            );
+            // Promote near-misses (≥ 0.5 but below threshold) to INFO so
+            // operators can see borderline pairs without enabling debug mode.
+            // Pairs below 0.5 are almost certainly unrelated clips.
+            if conf >= 0.5 && conf < PROXY_SIMILARITY_THRESHOLD {
+                tracing::info!(
+                    "Near-miss proxy pair (conf {:.3} < {:.2} threshold): {} [{}×{}] vs {} [{}×{}]",
+                    conf,
+                    PROXY_SIMILARITY_THRESHOLD,
+                    anchor.filename,
+                    anchor.width, anchor.height,
+                    candidate.filename,
+                    candidate.width, candidate.height,
+                );
+            }
+
             if conf >= PROXY_SIMILARITY_THRESHOLD {
                 if let Err(e) = db.set_proxy_of(&candidate.id, &anchor.id, conf, true) {
                     tracing::warn!(
@@ -135,9 +286,7 @@ pub fn detect_proxies(db: &Database, thumbnail_cache: &Path) -> Result<DetectSum
                 }
                 tracing::info!(
                     "Auto-detected proxy: {} → {} (confidence {:.3})",
-                    candidate.filename,
-                    anchor.filename,
-                    conf,
+                    candidate.filename, anchor.filename, conf,
                 );
                 summary.proxies_marked += 1;
             }
@@ -147,59 +296,84 @@ pub fn detect_proxies(db: &Database, thumbnail_cache: &Path) -> Result<DetectSum
     Ok(summary)
 }
 
-/// Pre-computed hashes for one video's medium thumbnail + scrub frames.
-/// Stored grouped so [`compare_thumb_sets`] can average across them
-/// without re-reading from disk.
-#[derive(Debug, Clone, Default)]
-struct ThumbHashes {
-    medium: Option<DHash>,
-    scrubs: Vec<DHash>, // one entry per existing scrub_N.jpg
+// ---- Public thumbnail comparison API -----------------------------------
+
+/// Compare the thumbnail sets for two already-indexed videos and return a
+/// confidence score in `[0.0, 1.0]`.
+///
+/// This is the same algorithm used internally by [`detect_proxies`] but
+/// exposed so the gRPC service (and tests) can call it directly.
+///
+/// * If both videos have ≥ [`MIN_SCRUB_FRAMES_FOR_AVG`] scrub frames, the
+///   result is the average dHash similarity across all matched-index pairs
+///   (same temporal offsets), with the medium thumbnail appended.
+/// * Otherwise the medium thumbnail alone is used as a fallback.
+/// * Returns 0.0 when neither side has any thumbnail to compare.
+///
+/// The proxy threshold is [`PROXY_SIMILARITY_THRESHOLD`] (0.9).
+/// A plausible stacking-similarity lower bound is ~0.5 — dHash is
+/// brightness/saturation-agnostic so colour-grade variants of the same
+/// shot tend to score well above that.
+pub fn compare_video_thumbnails(thumbnail_cache: &Path, id_a: &str, id_b: &str) -> f64 {
+    let a = thumb_images_for(thumbnail_cache, id_a);
+    let b = thumb_images_for(thumbnail_cache, id_b);
+    compare_thumb_sets(&a, &b)
 }
 
-fn thumb_hashes_for(thumbnail_cache: &Path, video_id: &str) -> ThumbHashes {
+// ---- Internal types ----------------------------------------------------
+
+/// Loaded thumbnail images for one video — medium thumbnail plus any
+/// scrub frames that exist on disk.  Stored so [`compare_thumb_sets`]
+/// can average across them without re-loading from disk.
+#[derive(Clone, Default)]
+struct ThumbImages {
+    medium: Option<image::DynamicImage>,
+    scrubs: Vec<image::DynamicImage>, // one per existing scrub_N.jpg
+}
+
+fn thumb_images_for(thumbnail_cache: &Path, video_id: &str) -> ThumbImages {
     let medium_path = thumbnail_cache.join(format!("{}_medium.jpg", video_id));
-    let medium = imagehash::hash_file(&medium_path);
+    let medium = image::open(&medium_path).ok();
 
     let mut scrubs = Vec::new();
     for i in 0..10 {
         let p = thumbnail_cache.join(format!("{}_scrub_{}.jpg", video_id, i));
         if p.exists() {
-            if let Some(h) = imagehash::hash_file(&p) {
-                scrubs.push(h);
+            if let Ok(img) = image::open(&p) {
+                scrubs.push(img);
             }
         }
     }
 
-    ThumbHashes { medium, scrubs }
+    ThumbImages { medium, scrubs }
 }
 
-/// Average similarity across two videos' thumbnails. Returns 0.0 if
-/// neither side has anything to compare.
+/// Average pixel-MAD similarity across two videos' thumbnail sets.
+/// Returns 0.0 when neither side has any thumbnail to compare.
 ///
-/// When both sides have ≥ `MIN_SCRUB_FRAMES_FOR_AVG` scrubs, we average
-/// the scrub similarities (one per matched index). When only the medium
-/// thumbnail exists on either side, we use that.
-fn compare_thumb_sets(a: &ThumbHashes, b: &ThumbHashes) -> f64 {
-    let mut comparisons: Vec<f64> = Vec::new();
+/// When both sides have ≥ [`MIN_SCRUB_FRAMES_FOR_AVG`] scrubs we average
+/// across the matched-index scrub pairs (same temporal offset, so they
+/// depict the same moment).  Otherwise we fall back to the medium
+/// thumbnail alone.
+fn compare_thumb_sets(a: &ThumbImages, b: &ThumbImages) -> f64 {
+    let mut scores: Vec<f64> = Vec::new();
 
-    // Pair up scrub frames by index — both sides took 10 frames at the
-    // same relative offsets in the source video, so scrub_0(a) and
-    // scrub_0(b) should depict the same moment.
+    // Pair up scrub frames by index.
     let scrub_pairs = a.scrubs.len().min(b.scrubs.len());
     if scrub_pairs >= MIN_SCRUB_FRAMES_FOR_AVG {
         for i in 0..scrub_pairs {
-            comparisons.push(a.scrubs[i].similarity(b.scrubs[i]));
+            scores.push(imagehash::similarity(&a.scrubs[i], &b.scrubs[i]));
         }
     }
 
-    if let (Some(ma), Some(mb)) = (a.medium, b.medium) {
-        comparisons.push(ma.similarity(mb));
+    if let (Some(ma), Some(mb)) = (&a.medium, &b.medium) {
+        scores.push(imagehash::similarity(ma, mb));
     }
 
-    if comparisons.is_empty() {
+    if scores.is_empty() {
         0.0
     } else {
-        comparisons.iter().sum::<f64>() / comparisons.len() as f64
+        scores.iter().sum::<f64>() / scores.len() as f64
     }
 }
 

@@ -90,9 +90,6 @@ struct GridView: View {
                         onClick: { shift, toggle in
                             handleClick(item: item, rendered: rendered, shift: shift, toggle: toggle)
                         },
-                        onDoubleClick: {
-                            viewModel.openVideoInExternal(path: item.video.openPath)
-                        },
                         onStackBadgeClick: {
                             viewModel.toggleStackExpansion(item.video.groupId)
                         },
@@ -100,7 +97,11 @@ struct GridView: View {
                             viewModel.loadScrubFrames(videoId: item.video.id)
                         },
                         onPlayClick: {
-                            viewModel.playVideo(videoId: item.video.id)
+                            // Always go through the proxy-aware path: if the
+                            // video is oversize and a proxy is available it
+                            // will be used automatically; if natively playable
+                            // (or no proxy exists) it falls through to direct.
+                            viewModel.playVideoPreferProxy(videoId: item.video.id)
                         },
                         onStopPlayback: {
                             viewModel.stopPlayback()
@@ -326,7 +327,6 @@ struct VideoCardView: View {
     /// Override URL for inline playback (proxy path). nil → `video.openPath`.
     let playPath: String?
     let onClick: (_ shift: Bool, _ toggle: Bool) -> Void
-    let onDoubleClick: () -> Void
     let onStackBadgeClick: () -> Void
     let onHoverEnter: () -> Void
     /// Fired when the play-button overlay is clicked on a `playableNatively`
@@ -522,6 +522,17 @@ struct VideoCardView: View {
         .onContinuousHover { phase in
             switch phase {
             case .active(let location):
+                // Drive isHovered from the continuous-hover phase rather than
+                // from `.onHover`. On macOS, `.onHover` is backed by
+                // NSTrackingArea cursor-entry/exit events; AppKit fires a
+                // cursor-exit when the mouse button is pressed (mouse capture
+                // changes), which makes `isHovered` flip to false at exactly
+                // the wrong moment — the play-button overlay disappears and its
+                // action is never delivered. `.onContinuousHover` tracks pointer
+                // position (mouse-moved events) and continues firing `.active`
+                // phases while a button is held, so hover state stays true for
+                // the full press+release cycle.
+                isHovered = true
                 if lastTooltipCursor != location {
                     lastTooltipCursor = location
                     scheduleTooltipShow()
@@ -546,6 +557,7 @@ struct VideoCardView: View {
                     hoverX = nil
                 }
             case .ended:
+                isHovered = false
                 lastTooltipCursor = nil
                 resetTooltipTimer()
                 hoverX = nil
@@ -569,7 +581,6 @@ struct VideoCardView: View {
             resetTooltipTimer()
             lastTooltipCursor = nil
         }
-        .onHover { isHovered = $0 }
         // AVPlayer lifecycle. `.onChange` fires *after* the first render
         // in which `isPlaying` is already true, so `avPlayer` would be nil
         // on that render (showing nothing). We also explicitly play() after
@@ -600,25 +611,31 @@ struct VideoCardView: View {
                 avPlayer = player
             }
         }
-        // Order matters: the count:2 gesture is registered first so SwiftUI
-        // gives it priority. A single click then waits briefly for a possible
-        // second click before firing the count:1 handler.
-        .onTapGesture(count: 2) {
-            onDoubleClick()
-        }
-        .simultaneousGesture(TapGesture().onEnded {
-            // `TapGesture.modifiers(...)` is unreliable on macOS SwiftUI, and
-            // `NSApp.currentEvent` at tap-recognition time reflects the mouse-UP
-            // event — by which point the user may have already released the
-            // modifier. We read from `ModifierSnapshot`, which is captured at
-            // mouse-DOWN time by the global NSEvent monitor.
+        // Card-tap: select (with shift/toggle modifier support).
+        //
+        // Using plain `.onTapGesture` (not `.simultaneousGesture`). On macOS,
+        // `.simultaneousGesture(TapGesture())` on a parent *appears* to fire
+        // simultaneously with children in documentation, but in practice it claims
+        // the NSEvent before child views see it — both child Buttons and child
+        // `.onTapGesture` handlers stop firing entirely. Using `.onTapGesture`
+        // gives children normal SwiftUI priority: Button actions and inner tap
+        // gestures always win over this parent tap, so the play-button, stop-button,
+        // and stack-badge clicks all reach their handlers. Clicking empty card space
+        // falls through to here and selects the card.
+        //
+        // Trade-off: clicking the play button no longer *also* selects the card.
+        // That's acceptable — the `.onContinuousHover` fix keeps `isHovered` true
+        // through the full press/release cycle so the Button action fires reliably.
+        //
+        // `TapGesture.modifiers(...)` is unreliable on macOS SwiftUI; `NSApp.currentEvent`
+        // at tap-recognition time reflects mouse-UP (modifier may already be released).
+        // We read from `ModifierSnapshot`, captured at mouse-DOWN by the global monitor.
+        .onTapGesture {
             let mods = ModifierSnapshot.lastMouseDownModifiers
             let shift = mods.contains(.shift)
-            // Accept either Command (Mac convention) or Control (Windows/Linux)
-            // as the toggle modifier.
             let toggle = mods.contains(.command) || mods.contains(.control)
             onClick(shift, toggle)
-        })
+        }
     }
 
     private var cardBackground: Color {

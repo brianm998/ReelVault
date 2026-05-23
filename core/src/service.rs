@@ -776,23 +776,28 @@ impl VideoRoomTrait for VideoRoomService {
             // O(n) thumbnail hashes + O(b²) within each frame-count
             // bucket, where b is typically 1–3.
             match crate::proxies::detect_proxies(db.as_ref(), &cache_path) {
-                Ok(s) if s.proxies_marked > 0 => {
+                Ok(s) => {
+                    // Always log so operators can tell "nothing new to detect"
+                    // from "detection didn't run at all". The pairs_compared
+                    // count is especially useful for debugging false-negatives.
                     tracing::info!(
-                        "Auto-detected {} proxy/proxies (compared {} pairs)",
-                        s.proxies_marked, s.pairs_compared,
+                        pairs_compared = s.pairs_compared,
+                        proxies_marked = s.proxies_marked,
+                        "Proxy detection complete",
                     );
-                    let _ = tx.blocking_send(Ok(ScanProgress {
-                        status: "proxies".to_string(),
-                        videos_found: 0,
-                        videos_indexed: s.proxies_marked as i64,
-                        current_file: format!(
-                            "Detected {} proxy/proxies",
-                            s.proxies_marked,
-                        ),
-                        progress_percent: 100.0,
-                    }));
+                    if s.proxies_marked > 0 {
+                        let _ = tx.blocking_send(Ok(ScanProgress {
+                            status: "proxies".to_string(),
+                            videos_found: 0,
+                            videos_indexed: s.proxies_marked as i64,
+                            current_file: format!(
+                                "Detected {} proxy/proxies",
+                                s.proxies_marked,
+                            ),
+                            progress_percent: 100.0,
+                        }));
+                    }
                 }
-                Ok(_) => {}
                 Err(e) => tracing::warn!("Proxy detection failed: {}", e),
             }
 

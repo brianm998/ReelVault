@@ -1066,12 +1066,15 @@ impl Database {
         };
 
         // Representative selection:
+        //   - Proxies are always hidden from the grid and the total count.
+        //     They only surface through the "P×N" badge and the ListProxies RPC.
         //   - If video is ungrouped: it represents itself
         //   - If grouped: use the group's preferred_video_id (falling back to itself if it IS that video)
-        let representative_filter = "v.group_id IS NULL \
+        let representative_filter = "v.proxy_of IS NULL \
+             AND (v.group_id IS NULL \
              OR v.id = (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id) \
              OR (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id) IS NULL \
-                AND v.id = (SELECT MIN(v2.id) FROM videos v2 WHERE v2.group_id = v.group_id)";
+                AND v.id = (SELECT MIN(v2.id) FROM videos v2 WHERE v2.group_id = v.group_id))";
 
         // Build the optional location-prefix filter. We match the directory plus
         // a trailing slash to avoid spurious matches (so `/foo/bar` doesn't match
@@ -1428,11 +1431,11 @@ impl Database {
         let conn = self.get_connection()?;
         let mut stmt = conn
             .prepare(
-                "SELECT v.id, v.filename, v.path,
+                "SELECT v.id, v.filename, v.path, v.group_id,
                         COALESCE(m.width, 0), COALESCE(m.height, 0),
                         COALESCE(m.fps, 0), COALESCE(m.frame_count, 0),
                         COALESCE(m.camera_model, ''),
-                        v.proxy_of
+                        COALESCE(v.file_size_bytes, 0)
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
                  WHERE v.proxy_of IS NULL",
             )
@@ -1450,11 +1453,13 @@ impl Database {
                     filename: row.get(1)?,
                     path,
                     parent_dir,
-                    width: row.get(3)?,
-                    height: row.get(4)?,
-                    fps: row.get(5)?,
-                    frame_count: row.get(6)?,
-                    camera_model: row.get(7)?,
+                    group_id: row.get(3)?,
+                    width: row.get(4)?,
+                    height: row.get(5)?,
+                    fps: row.get(6)?,
+                    frame_count: row.get(7)?,
+                    camera_model: row.get(8)?,
+                    file_size_bytes: row.get(9)?,
                 })
             })
             .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
@@ -1475,7 +1480,8 @@ impl Database {
                         COALESCE(m.fps, 0),
                         COALESCE(m.camera_model, ''),
                         COALESCE(strftime('%s', v.modified_at) * 1000, 0)
-                 FROM videos v LEFT JOIN metadata m ON v.id = m.video_id",
+                 FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
+                 WHERE v.proxy_of IS NULL",
             )
             .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
 
@@ -1609,11 +1615,20 @@ pub struct ProxyDetectCandidate {
     pub filename: String,
     pub path: String,
     pub parent_dir: String,
+    /// If this video belongs to an auto-detected group, this is the group ID.
+    /// Proxy detection uses the group as the bucket when available — auto-grouping
+    /// already validated that the members share the same clip identity.
+    pub group_id: Option<String>,
     pub width: i32,
     pub height: i32,
     pub fps: f64,
     pub frame_count: i64,
     pub camera_model: String,
+    /// Raw byte size of the file on disk. Used to distinguish "same-resolution
+    /// lower-bitrate codec proxy" (e.g. ProRes-444 UHQ vs ProRes-422 MQ) from
+    /// true duplicates — a ≥ 2.5× size ratio at the same resolution is a
+    /// strong signal for a codec-quality proxy relationship.
+    pub file_size_bytes: i64,
 }
 
 #[derive(Debug, Clone)]
