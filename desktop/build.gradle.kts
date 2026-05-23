@@ -98,6 +98,20 @@ sourceSets {
 compose.desktop {
     application {
         mainClass = "com.videoroom.AppKt"
+        // JNA on JDK 17+ needs reflective access to a few java.* internals to
+        // attach native callbacks; without these, EmbeddedMediaPlayerComponent
+        // can fail to wire up its event listener (silent: VLCJ swallows the
+        // InaccessibleObjectException during its static init).  These same
+        // flags are documented by the VLCJ project for modern JDKs.
+        jvmArgs += listOf(
+            "--add-opens=java.base/java.lang=ALL-UNNAMED",
+            "--add-opens=java.base/java.nio=ALL-UNNAMED",
+            "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
+            "--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
+            "--add-opens=java.desktop/java.awt=ALL-UNNAMED",
+            "--add-opens=java.desktop/sun.lwawt=ALL-UNNAMED",
+            "--add-opens=java.desktop/sun.lwawt.macosx=ALL-UNNAMED",
+        )
         nativeDistributions {
             packageName = "VideoRoom"
             packageVersion = "0.1.0"

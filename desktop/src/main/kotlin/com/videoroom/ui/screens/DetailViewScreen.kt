@@ -29,6 +29,9 @@ import com.videoroom.ui.theme.VideoRoomSpacing
 import com.videoroom.viewmodel.DetailViewModel
 import com.videoroom.viewmodel.GridViewModel
 import org.jetbrains.skia.Image as SkiaImage
+import org.slf4j.LoggerFactory
+
+private val detailLogger = LoggerFactory.getLogger("com.videoroom.ui.screens.DetailViewScreen")
 
 /** Three-state info overlay cycle, advanced by the 'i' key (Lightroom-style). */
 enum class InfoOverlayState { NONE, CAMERA, FILE }
@@ -119,6 +122,11 @@ fun DetailViewScreen(
     // when the screen first mounts.
     LaunchedEffect(playToggle) {
         if (playToggle == 0) return@LaunchedEffect
+        detailLogger.info(
+            "Space-bar toggle: video={} playbackStarted={} player.available={} initError={}",
+            video.id, playbackStarted, player.available,
+            player.initError?.javaClass?.simpleName
+        )
         if (!player.available) return@LaunchedEffect
         if (playbackStarted) {
             player.togglePause()
@@ -177,6 +185,11 @@ fun DetailViewScreen(
             playbackStarted = playbackStarted,
             stepFrames = stepFrames,
             onStartPlayback = {
+                detailLogger.info(
+                    "Detail play button: video={} playbackStarted={} player.available={} initError={}",
+                    video.id, playbackStarted, player.available,
+                    player.initError?.javaClass?.simpleName
+                )
                 if (!playbackStarted) {
                     playbackStarted = true
                     if (player.available) {

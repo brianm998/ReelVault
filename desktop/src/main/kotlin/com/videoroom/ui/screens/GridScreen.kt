@@ -26,6 +26,9 @@ import com.videoroom.ui.components.ComposeVideoPlayer
 import com.videoroom.ui.components.VideoCard
 import com.videoroom.ui.theme.VideoRoomSpacing
 import com.videoroom.viewmodel.GridViewModel
+import org.slf4j.LoggerFactory
+
+private val gridScreenLogger = LoggerFactory.getLogger("com.videoroom.ui.screens.GridScreen")
 
 @Composable
 fun GridScreen(
@@ -71,7 +74,11 @@ fun GridScreen(
         val id = playingVideoId.value ?: return@LaunchedEffect
         val path = playingVideoPath.value
             ?: videos.value.find { it.id == id }?.openPath
-            ?: return@LaunchedEffect
+            ?: run {
+                gridScreenLogger.warn("playingVideoId={} but no openPath in video list", id)
+                return@LaunchedEffect
+            }
+        gridScreenLogger.info("Grid playback: loading {} into shared player", path)
         inlinePlayer.load(path, playImmediately = true)
     }
 
@@ -294,6 +301,13 @@ fun GridScreen(
                                 inlinePlayer = inlinePlayer,
                                 playEnabled = vlcAvailable,
                                 onPlayClick = {
+                                    gridScreenLogger.info(
+                                        "Play clicked: video={} playableNatively={} " +
+                                            "vlcAvailable={} player.available={} initError={}",
+                                        video.id, video.playableNatively, vlcAvailable,
+                                        inlinePlayer.available,
+                                        inlinePlayer.initError?.javaClass?.simpleName
+                                    )
                                     when {
                                         // Startup check (fast path): NativeDiscovery said no
                                         // libvlc before we even tried to build a player.
