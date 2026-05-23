@@ -1350,6 +1350,151 @@ class GridViewModel(
         val videosIndexed: Int
     )
 
+    /** Accumulated progress across all paths in a multi-path add+scan batch. */
+    data class BatchScanProgress(
+        /** Total videos found across all paths scanned so far. */
+        val found: Int,
+        /** Total videos indexed across all paths scanned so far. */
+        val indexed: Int,
+        /** How many paths have finished scanning. */
+        val pathsDone: Int,
+        /** Total number of paths in the batch. */
+        val pathsTotal: Int
+    )
+
+    private val _batchScanProgress = MutableStateFlow<BatchScanProgress?>(null)
+    val batchScanProgress: StateFlow<BatchScanProgress?> = _batchScanProgress.asStateFlow()
+
+    /**
+     * Add multiple library locations and scan them sequentially.
+     *
+     * Each path is expanded on the **backend** (which handles `$YEAR` template
+     * substitution). The UI progress counters are accumulated across all paths
+     * so the progress bar reflects the whole batch rather than resetting per
+     * path.
+     *
+     * The [options] block shares the same `recursive`, `autoGroup`, and date
+     * settings for every path in the list — if you need per-path settings, call
+     * [addLibraryAndScan] individually.
+     */
+    fun addLibraryAndScanMultiple(
+        paths: List<String>,
+        recursive: Boolean = true,
+        autoGroup: Boolean = true,
+        filenameDateFormat: String = "",
+        filenameDatePosition: String = ""
+    ) {
+        if (paths.isEmpty()) return
+        if (paths.size == 1) {
+            // Fast-path: reuse the well-tested single-path implementation.
+            addLibraryAndScan(
+                path = paths[0],
+                recursive = recursive,
+                autoGroup = autoGroup,
+                filenameDateFormat = filenameDateFormat,
+                filenameDatePosition = filenameDatePosition
+            )
+            return
+        }
+
+        viewModelScope.launch {
+            _isLoading.value = true
+            _scanResult.value = null
+            _batchScanProgress.value = BatchScanProgress(0, 0, 0, paths.size)
+
+            var totalFound = 0
+            var totalIndexed = 0
+            var failures = 0
+
+            for ((idx, path) in paths.withIndex()) {
+                val trimmed = path.trim()
+                if (trimmed.isEmpty()) {
+                    _batchScanProgress.value = _batchScanProgress.value?.copy(pathsDone = idx + 1)
+                    continue
+                }
+
+                _scanStatus.value = "Adding location ${idx + 1}/${paths.size}: ${java.io.File(trimmed).name}"
+
+                val (added, addMessage) = repository.addLibraryLocationWithMessage(trimmed, recursive)
+                if (!added) {
+                    logger.warn("Failed to add $trimmed: $addMessage")
+                    failures++
+                    _batchScanProgress.value = _batchScanProgress.value?.copy(pathsDone = idx + 1)
+                    continue
+                }
+
+                // Surface new location in the sidebar immediately.
+                loadLibraryLocations()
+
+                _scanStatus.value = "Scanning ${idx + 1}/${paths.size}: ${java.io.File(trimmed).name}"
+
+                var peakFound = 0
+                var peakIndexed = 0
+                var libraryRefreshTick = 0
+
+                try {
+                    repository.scanLibrary(
+                        locationPath = trimmed,
+                        autoGroup = autoGroup,
+                        filenameDateFormat = filenameDateFormat,
+                        filenameDatePosition = filenameDatePosition
+                    ).collect { progress ->
+                        if (progress.status != "error") {
+                            peakFound = maxOf(peakFound, progress.videosFound)
+                            peakIndexed = maxOf(peakIndexed, progress.videosIndexed)
+                            // Update accumulated totals so the progress bar
+                            // reflects the entire batch, not just the current path.
+                            _batchScanProgress.value = BatchScanProgress(
+                                found   = totalFound + peakFound,
+                                indexed = totalIndexed + peakIndexed,
+                                pathsDone   = idx,       // still in progress
+                                pathsTotal  = paths.size
+                            )
+                            _scanStatus.value = "Scanning ${idx + 1}/${paths.size}: " +
+                                "$peakIndexed/$peakFound in ${java.io.File(trimmed).name}"
+                        }
+                        libraryRefreshTick += 1
+                        if (libraryRefreshTick % 12 == 0) {
+                            loadVideos()
+                            loadLibraryLocations()
+                        }
+                    }
+                } catch (e: Exception) {
+                    logger.error("Scan failed for $trimmed", e)
+                    failures++
+                }
+
+                totalFound  += peakFound
+                totalIndexed += peakIndexed
+                _batchScanProgress.value = BatchScanProgress(
+                    found       = totalFound,
+                    indexed     = totalIndexed,
+                    pathsDone   = idx + 1,
+                    pathsTotal  = paths.size
+                )
+            }
+
+            val successCount = paths.size - failures
+            _scanResult.value = ScanResult(
+                success = failures < paths.size,
+                message = buildString {
+                    append("Scanned $successCount/${paths.size} location(s): ")
+                    append("$totalFound videos found, $totalIndexed indexed")
+                    if (failures > 0) append(" ($failures failed)")
+                },
+                videosFound   = totalFound,
+                videosIndexed = totalIndexed
+            )
+
+            _scanStatus.value = null
+            _isLoading.value = false
+            _batchScanProgress.value = null
+            loadVideos()
+            loadLibraryLocations()
+            loadFilterOptions()
+        }
+    }
+
     fun onDestroy() {
         viewModelScope.cancel()
         logger.info("GridViewModel destroyed")

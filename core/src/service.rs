@@ -5,6 +5,7 @@ use crate::config::Config;
 use crate::db::Database;
 use crate::error::{Result, VideoRoomError};
 use crate::indexing::IndexingEngine;
+use crate::path_templates::expand_path_templates;
 use crate::search::SearchEngine;
 use crate::thumbnails::ThumbnailGenerator;
 use crate::watcher::{CatalogChange, LibraryWatcher};
@@ -542,42 +543,81 @@ impl VideoRoomTrait for VideoRoomService {
     ) -> std::result::Result<Response<LocationResponse>, Status> {
         let req = request.into_inner();
 
-        // Expand tilde to home directory
-        let expanded_path = expand_tilde(&req.path);
+        // Expand tilde to home directory first, then expand any path
+        // templates (currently $YEAR). Template expansion happens on the
+        // backend so the result is authoritative: the client may show a
+        // local preview, but this is the source of truth.
+        let tilde_expanded = expand_tilde(&req.path);
+        let candidate_paths = expand_path_templates(&tilde_expanded);
 
-        // Validate path
-        let path_obj = std::path::Path::new(&expanded_path);
-        if !path_obj.exists() {
+        // If the template produced no paths, every candidate was either
+        // non-existent or the original path (without a template) does not
+        // exist. Fall back to the original single-path validation so the
+        // existing "path does not exist" error message is preserved.
+        if candidate_paths.is_empty() {
             return Ok(Response::new(LocationResponse {
                 success: false,
-                message: format!("Path does not exist: {}", expanded_path),
+                message: format!("Path does not exist: {}", tilde_expanded),
             }));
         }
-        if !path_obj.is_dir() {
+
+        let mut added_paths: Vec<String> = Vec::new();
+        let mut errors: Vec<String> = Vec::new();
+
+        for expanded_path in &candidate_paths {
+            let path_obj = std::path::Path::new(expanded_path);
+
+            // Validate: must exist and be a directory.
+            if !path_obj.exists() {
+                errors.push(format!("Path does not exist: {}", expanded_path));
+                continue;
+            }
+            if !path_obj.is_dir() {
+                errors.push(format!("Path is not a directory: {}", expanded_path));
+                continue;
+            }
+
+            // The DB UPSERTs — if the path already exists, the recursive
+            // flag is updated in place. So this is idempotent and lets the
+            // user toggle recursive on/off by re-adding.
+            match self.db.add_library_location(expanded_path, req.recursive) {
+                Ok(_) => added_paths.push(expanded_path.clone()),
+                Err(e) => errors.push(format!("DB error for {}: {}", expanded_path, e)),
+            }
+        }
+
+        // Restart the watcher once after all inserts rather than once per
+        // path to keep the restart count bounded.
+        if !added_paths.is_empty() {
+            let handle = self.clone_for_watcher();
+            tokio::spawn(async move { handle.restart_watcher().await });
+        }
+
+        if added_paths.is_empty() {
+            // Nothing was added — surface the first error.
             return Ok(Response::new(LocationResponse {
                 success: false,
-                message: format!("Path is not a directory: {}", expanded_path),
+                message: errors.into_iter().next().unwrap_or_else(|| "No paths added".to_string()),
             }));
         }
 
-        // The DB UPSERTs — if the path already exists, the recursive flag is
-        // updated in place. So this is idempotent and lets the user toggle
-        // recursive on/off by re-adding.
-        self.db
-            .add_library_location(&expanded_path, req.recursive)
-            .map_err(Status::from)?;
-
-        // Pick up the new location in the running watcher. Restart is
-        // simpler than splicing a single path in — and we already drop
-        // the old watcher cleanly in `restart_watcher`.
-        let handle = self.clone_for_watcher();
-        tokio::spawn(async move { handle.restart_watcher().await });
+        let recursive_label = if req.recursive { "recursive" } else { "non-recursive" };
+        let message = if added_paths.len() == 1 {
+            format!("Added library location: {} ({})", added_paths[0], recursive_label)
+        } else {
+            format!(
+                "Added {} library locations ({}) — e.g. {}{}",
+                added_paths.len(),
+                recursive_label,
+                added_paths[0],
+                if errors.is_empty() { String::new() }
+                else { format!("; {} path(s) skipped", errors.len()) }
+            )
+        };
 
         Ok(Response::new(LocationResponse {
             success: true,
-            message: format!("Added library location: {} ({})",
-                expanded_path,
-                if req.recursive { "recursive" } else { "non-recursive" }),
+            message,
         }))
     }
 

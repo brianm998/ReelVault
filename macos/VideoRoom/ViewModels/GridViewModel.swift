@@ -68,6 +68,19 @@ class GridViewModel: ObservableObject {
     @Published var scanStatus: String?
     @Published var scanResult: ScanResult?
 
+    // Accumulated progress across all paths in a multi-path add+scan batch.
+    struct BatchScanProgress: Equatable {
+        /// Total videos found across all paths scanned so far.
+        let found: Int
+        /// Total videos indexed across all paths scanned so far.
+        let indexed: Int
+        /// How many paths have finished scanning.
+        let pathsDone: Int
+        /// Total number of paths in the batch.
+        let pathsTotal: Int
+    }
+    @Published var batchScanProgress: BatchScanProgress?
+
     // Real-time updates from the server's file watcher.
     //
     // `liveUpdatesEnabled` reflects the most recent state we heard about
@@ -617,6 +630,151 @@ class GridViewModel: ObservableObject {
                 scanStatus = nil
                 isLoading = false
             }
+        }
+    }
+
+    /// Add multiple library locations and scan them sequentially.
+    ///
+    /// Each path is expanded on the **backend** (which handles `$YEAR`
+    /// template substitution). The `batchScanProgress` property accumulates
+    /// totals across all paths so callers can show a single progress indicator
+    /// for the entire batch instead of one that resets per path.
+    func addLibraryAndScanMultiple(
+        paths: [String],
+        recursive: Bool = true,
+        autoGroup: Bool = true,
+        filenameDateFormat: String = "",
+        filenameDatePosition: String = ""
+    ) {
+        guard !paths.isEmpty else { return }
+
+        // Fast-path: single path reuses the well-tested single-path implementation.
+        if paths.count == 1 {
+            addLibraryAndScan(
+                path: paths[0],
+                recursive: recursive,
+                autoGroup: autoGroup,
+                filenameDateFormat: filenameDateFormat,
+                filenameDatePosition: filenameDatePosition
+            )
+            return
+        }
+
+        Task {
+            isLoading = true
+            scanResult = nil
+            batchScanProgress = BatchScanProgress(found: 0, indexed: 0, pathsDone: 0, pathsTotal: paths.count)
+
+            var totalFound = 0
+            var totalIndexed = 0
+            var failures = 0
+
+            for (idx, rawPath) in paths.enumerated() {
+                let path = rawPath.trimmingCharacters(in: .whitespaces)
+                guard !path.isEmpty else {
+                    batchScanProgress = BatchScanProgress(
+                        found: totalFound, indexed: totalIndexed,
+                        pathsDone: idx + 1, pathsTotal: paths.count
+                    )
+                    continue
+                }
+
+                scanStatus = "Adding location \(idx + 1)/\(paths.count): \(URL(fileURLWithPath: path).lastPathComponent)"
+
+                do {
+                    let (added, message) = try await repository.addLibraryLocation(path: path, recursive: recursive)
+                    if !added {
+                        print("[GridViewModel] Failed to add \(path): \(message)")
+                        failures += 1
+                        batchScanProgress = BatchScanProgress(
+                            found: totalFound, indexed: totalIndexed,
+                            pathsDone: idx + 1, pathsTotal: paths.count
+                        )
+                        continue
+                    }
+                } catch {
+                    print("[GridViewModel] Error adding \(path): \(error)")
+                    failures += 1
+                    batchScanProgress = BatchScanProgress(
+                        found: totalFound, indexed: totalIndexed,
+                        pathsDone: idx + 1, pathsTotal: paths.count
+                    )
+                    continue
+                }
+
+                // Surface the new location in the left panel right away.
+                loadLibraryLocations()
+
+                scanStatus = "Scanning \(idx + 1)/\(paths.count): \(URL(fileURLWithPath: path).lastPathComponent)"
+
+                var peakFound = 0
+                var peakIndexed = 0
+                var libraryRefreshTick = 0
+
+                do {
+                    for try await progress in repository.scanLibrary(
+                        locationPath: path,
+                        autoGroup: autoGroup,
+                        filenameDateFormat: filenameDateFormat,
+                        filenameDatePosition: filenameDatePosition
+                    ) {
+                        if progress.status != "error" {
+                            peakFound = max(peakFound, progress.videosFound)
+                            peakIndexed = max(peakIndexed, progress.videosIndexed)
+                            // Update accumulated totals so the progress indicator
+                            // reflects the entire batch, not just the current path.
+                            batchScanProgress = BatchScanProgress(
+                                found:      totalFound + peakFound,
+                                indexed:    totalIndexed + peakIndexed,
+                                pathsDone:  idx,          // still scanning this path
+                                pathsTotal: paths.count
+                            )
+                            scanStatus = "Scanning \(idx + 1)/\(paths.count): " +
+                                "\(peakIndexed)/\(peakFound) in \(URL(fileURLWithPath: path).lastPathComponent)"
+                        }
+                        libraryRefreshTick += 1
+                        if libraryRefreshTick % 12 == 0 {
+                            reloadFromTop()
+                            loadLibraryLocations()
+                        }
+                    }
+                } catch {
+                    print("[GridViewModel] Scan failed for \(path): \(error)")
+                    failures += 1
+                }
+
+                totalFound   += peakFound
+                totalIndexed += peakIndexed
+                batchScanProgress = BatchScanProgress(
+                    found:      totalFound,
+                    indexed:    totalIndexed,
+                    pathsDone:  idx + 1,
+                    pathsTotal: paths.count
+                )
+            }
+
+            let successCount = paths.count - failures
+            let resultMsg: String
+            if failures == paths.count {
+                resultMsg = "Failed to add all \(paths.count) location(s)"
+            } else {
+                resultMsg = "Scanned \(successCount)/\(paths.count) location(s): " +
+                    "\(totalFound) videos found, \(totalIndexed) indexed" +
+                    (failures > 0 ? " (\(failures) failed)" : "")
+            }
+            scanResult = ScanResult(
+                success: failures < paths.count,
+                message: resultMsg,
+                videosFound: totalFound,
+                videosIndexed: totalIndexed
+            )
+
+            scanStatus = nil
+            isLoading = false
+            batchScanProgress = nil
+            reloadFromTop()
+            loadLibraryLocations()
+            loadFilterOptions()
         }
     }
 

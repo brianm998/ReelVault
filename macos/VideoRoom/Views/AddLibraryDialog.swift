@@ -4,23 +4,30 @@
 import SwiftUI
 import AppKit
 
-/// Sheet for adding a library location. Lets the user enter a path manually
-/// or pick one via NSOpenPanel, choose whether to recurse into subdirectories,
-/// and whether to auto-group variants.
+/// Sheet for adding one or more library locations in a single session.
+///
+/// The user starts with one path row and can click "Add another path" to
+/// append more rows. Each row uses the existing `PathCompletingField` for
+/// Tab-completion and directory browsing.
+///
+/// When a path contains `$YEAR` the dialog shows a local preview hint (e.g.
+/// "Will expand to 12 directories…"). The authoritative expansion happens in
+/// the Rust backend; this is UX only.
 struct AddLibraryDialog: View {
     @Binding var isPresented: Bool
-    /// `dateFormat` is empty when the filename-date feature is off. When non-
-    /// empty it is one of "MM-DD-YYYY" / "DD-MM-YYYY" / "YYYY-MM-DD"; in that
-    /// case `datePosition` is one of "anywhere" / "beginning" / "end".
+    /// Called when the user confirms. `paths` may contain more than one entry
+    /// when the user added multiple rows or when a `$YEAR` template is used.
+    /// `dateFormat` is empty when the filename-date feature is off.
     let onConfirm: (
-        _ path: String,
+        _ paths: [String],
         _ recursive: Bool,
         _ autoGroup: Bool,
         _ dateFormat: String,
         _ datePosition: String
     ) -> Void
 
-    @State private var path: String = ""
+    // Each element is the text in one path row.
+    @State private var pathEntries: [String] = [""]
     @State private var recursive: Bool = true
     @State private var autoGroup: Bool = true
     @State private var inferDate: Bool = false
@@ -35,28 +42,46 @@ struct AddLibraryDialog: View {
     private static let kDateFormat = "videoroom.scanDefaults.dateFormat"
     private static let kDatePos    = "videoroom.scanDefaults.datePosition"
 
+    private var hasAnyNonBlank: Bool {
+        pathEntries.contains { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+    }
+
+    private var nonBlankCount: Int {
+        pathEntries.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Add Library Location")
+            Text("Add Library Locations")
                 .font(.headline)
 
-            Text("Choose a directory containing videos.")
+            Text("Enter one or more directories. Use $YEAR in a path (e.g. /Volumes/Media/$YEAR/Raw) to add every matching year folder at once.")
                 .font(.caption)
                 .foregroundColor(.secondary)
 
-            HStack(alignment: .top) {
-                // PathCompletingField provides Tab-to-complete + inline
-                // grey ghost (after 5 chars) + a dropdown of matching
-                // child directories. The Choose… button remains for users
-                // who'd rather navigate to the folder with a file picker.
-                PathCompletingField(text: $path, placeholder: "/Users/you/Videos")
-                    .help("Full filesystem path to the folder containing your videos. Press Tab to complete, type more to narrow the suggestions, or pick from the dropdown.")
-                Button("Choose…") {
-                    chooseDirectory()
+            // ── Path list ────────────────────────────────────────────────
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(pathEntries.indices, id: \.self) { idx in
+                        pathRow(idx: idx)
+                    }
                 }
-                .help("Open a file picker to choose a folder.")
             }
+            .frame(maxHeight: 200)
 
+            // "+  Add another path" button
+            Button {
+                pathEntries.append("")
+            } label: {
+                Label("Add another path", systemImage: "plus")
+                    .font(.caption)
+            }
+            .buttonStyle(.borderless)
+            .help("Add a second (or further) path to scan in the same session.")
+
+            Divider()
+
+            // ── Scan options ─────────────────────────────────────────────
             Toggle(isOn: $recursive) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Scan subdirectories")
@@ -132,35 +157,37 @@ struct AddLibraryDialog: View {
                     isPresented = false
                 }
                 .keyboardShortcut(.cancelAction)
-                .help("Close this dialog without adding the location.")
+                .help("Close this dialog without adding any locations.")
 
-                Button("Add & Scan") {
-                    let trimmed = path.trimmingCharacters(in: .whitespaces)
-                    if !trimmed.isEmpty {
-                        // Persist date-inference defaults when requested.
-                        if alwaysApply {
-                            Self.ud.set(true,        forKey: Self.kHasSaved)
-                            Self.ud.set(inferDate,   forKey: Self.kInferDate)
-                            Self.ud.set(dateFormat,  forKey: Self.kDateFormat)
-                            Self.ud.set(datePosition, forKey: Self.kDatePos)
-                        }
-                        onConfirm(
-                            trimmed,
-                            recursive,
-                            autoGroup,
-                            inferDate ? dateFormat : "",
-                            inferDate ? datePosition : ""
-                        )
-                        isPresented = false
+                Button(nonBlankCount > 1 ? "Add & Scan All" : "Add & Scan") {
+                    let trimmed = pathEntries
+                        .map { $0.trimmingCharacters(in: .whitespaces) }
+                        .filter { !$0.isEmpty }
+                    guard !trimmed.isEmpty else { return }
+
+                    // Persist date-inference defaults when requested.
+                    if alwaysApply {
+                        Self.ud.set(true,        forKey: Self.kHasSaved)
+                        Self.ud.set(inferDate,   forKey: Self.kInferDate)
+                        Self.ud.set(dateFormat,  forKey: Self.kDateFormat)
+                        Self.ud.set(datePosition, forKey: Self.kDatePos)
                     }
+                    onConfirm(
+                        trimmed,
+                        recursive,
+                        autoGroup,
+                        inferDate ? dateFormat : "",
+                        inferDate ? datePosition : ""
+                    )
+                    isPresented = false
                 }
                 .keyboardShortcut(.defaultAction)
-                .disabled(path.trimmingCharacters(in: .whitespaces).isEmpty)
-                .help("Save this location and start scanning. Indexing runs in the background — you can keep using VideoRoom while it works.")
+                .disabled(!hasAnyNonBlank)
+                .help("Save these locations and start scanning. Indexing runs in the background — you can keep using VideoRoom while it works.")
             }
         }
         .padding(20)
-        .frame(width: 480)
+        .frame(width: 520)
         .onAppear {
             // Restore saved date-inference defaults (if the user previously
             // checked "Always apply these settings").
@@ -172,14 +199,79 @@ struct AddLibraryDialog: View {
         }
     }
 
-    private func chooseDirectory() {
+    // MARK: - Path row
+
+    @ViewBuilder
+    private func pathRow(idx: Int) -> some View {
+        // Client-side $YEAR preview: count how many year directories the
+        // user's path template would match on the local filesystem.
+        // The backend does the authoritative expansion; this is UX only.
+        let pathValue = pathEntries[idx]
+        let yearHint: String? = {
+            guard pathValue.contains("$YEAR") else { return nil }
+            let yearNow = Calendar.current.component(.year, from: Date())
+            let matches = (1970...yearNow)
+                .map { y in pathValue.replacingOccurrences(of: "$YEAR", with: String(y)) }
+                .filter { FileManager.default.fileExists(atPath: $0) }
+            if matches.isEmpty {
+                return "No matching directories found on disk yet"
+            }
+            let example = matches.first ?? ""
+            return "Will expand to \(matches.count) director\(matches.count == 1 ? "y" : "ies") (e.g. \(example))"
+        }()
+
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .top) {
+                // PathCompletingField provides Tab-to-complete + inline
+                // grey ghost (after 5 chars) + a dropdown of matching
+                // child directories.
+                PathCompletingField(
+                    text: Binding(
+                        get: { pathEntries.indices.contains(idx) ? pathEntries[idx] : "" },
+                        set: { if pathEntries.indices.contains(idx) { pathEntries[idx] = $0 } }
+                    ),
+                    placeholder: idx == 0 ? "/Users/you/Videos" : "Another path…"
+                )
+                .help("Full filesystem path to the folder containing your videos. Press Tab to complete, type more to narrow the suggestions, or pick from the dropdown. Use $YEAR to expand to every matching year folder.")
+
+                Button("Choose…") {
+                    chooseDirectory(for: idx)
+                }
+                .help("Open a file picker to choose a folder.")
+
+                // Remove button — only shown when there are multiple rows.
+                if pathEntries.count > 1 {
+                    Button {
+                        pathEntries.remove(at: idx)
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Remove this path from the list.")
+                }
+            }
+
+            if let hint = yearHint {
+                Text(hint)
+                    .font(.caption)
+                    .foregroundColor(.accentColor)
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func chooseDirectory(for idx: Int) {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
         panel.prompt = "Choose"
         if panel.runModal() == .OK, let url = panel.url {
-            path = url.path
+            if pathEntries.indices.contains(idx) {
+                pathEntries[idx] = url.path
+            }
         }
     }
 }
