@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.videoroom.data.editors.EditorRegistry
 import com.videoroom.data.editors.ExternalEditor
+import com.videoroom.data.models.LibraryLocation
 import com.videoroom.data.models.VideoSummary
 import com.videoroom.ui.components.ComposeVideoPlayer
 import com.videoroom.ui.components.VideoCard
@@ -283,6 +284,9 @@ fun GridScreen(
                                     // proxy-of-a-proxy makes no sense.
                                     proxyableVideoId = video.id.takeIf { !video.isProxy },
                                     onCreateProxy = { vid -> viewModel.requestCreateProxy(vid) },
+                                    videoPath = video.path,
+                                    libraryLocations = viewModel.libraryLocations.value,
+                                    onGoToFolder = { path -> viewModel.setLocationFilter(path) },
                                 )
                             }
                         ) {
@@ -452,6 +456,15 @@ internal fun buildVideoContextMenu(
      *  menu entry. */
     proxyableVideoId: String? = null,
     onCreateProxy: (videoId: String) -> Unit = {},
+    /** Path of the right-clicked video itself (not the drag-target list).
+     *  Used to identify which library location contains it. Null suppresses
+     *  the "Go to Folder in Library" menu entry. */
+    videoPath: String? = null,
+    /** All known library locations, for longest-prefix matching. */
+    libraryLocations: List<LibraryLocation> = emptyList(),
+    /** Called with the matched location path when "Go to Folder in Library"
+     *  is selected. */
+    onGoToFolder: ((String) -> Unit)? = null,
 ): List<androidx.compose.foundation.ContextMenuItem> {
     val items = mutableListOf<androidx.compose.foundation.ContextMenuItem>()
     val registry = EditorRegistry.Default
@@ -501,6 +514,21 @@ internal fun buildVideoContextMenu(
     if (proxyableVideoId != null) {
         items += androidx.compose.foundation.ContextMenuItem("Create proxy…") {
             onCreateProxy(proxyableVideoId)
+        }
+    }
+
+    // "Go to Folder in Library" — find the library location whose path is
+    // the longest prefix of this video's path, then scroll the left panel
+    // to that location. Only shown when the caller supplies both the video
+    // path and a non-empty locations list.
+    if (videoPath != null && onGoToFolder != null && libraryLocations.isNotEmpty()) {
+        val containing = libraryLocations
+            .filter { videoPath.startsWith(it.path) }
+            .maxByOrNull { it.path.length }
+        if (containing != null) {
+            items += androidx.compose.foundation.ContextMenuItem("Go to Folder in Library") {
+                onGoToFolder(containing.path)
+            }
         }
     }
 

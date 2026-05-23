@@ -192,6 +192,9 @@ fun ListScreen(
                                     },
                                     proxyableVideoId = video.id.takeIf { !video.isProxy },
                                     onCreateProxy = { vid -> viewModel.requestCreateProxy(vid) },
+                                    videoPath = video.path,
+                                    libraryLocations = viewModel.libraryLocations.value,
+                                    onGoToFolder = { path -> viewModel.setLocationFilter(path) },
                                 )
                             }
                         ) {

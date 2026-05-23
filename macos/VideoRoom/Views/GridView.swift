@@ -252,6 +252,20 @@ struct GridView: View {
                 : "This video is above the inline-playback ceiling. Create a lower-resolution proxy so VideoRoom can play it without falling back to an external editor.")
         }
 
+        // "Go to Folder in Library" — identify the library location whose
+        // path is the longest prefix of this video's path, then ask the
+        // ViewModel to filter the grid to that location.
+        let containingLocation = viewModel.libraryLocations
+            .filter { video.path.hasPrefix($0.path) }
+            .max(by: { $0.path.count < $1.path.count })
+        if let loc = containingLocation {
+            Divider()
+            Button("Go to Folder in Library") {
+                viewModel.setLocationFilter(loc.path)
+            }
+            .help("Filter the library panel to show only videos from \(loc.path)")
+        }
+
         Divider()
 
         Button("Configure External Editors…") {
