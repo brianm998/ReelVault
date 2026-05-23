@@ -1276,6 +1276,73 @@ class GridViewModel(
         }
     }
 
+    // Set of library paths currently being rescanned. The UI uses this to
+    // show a per-row spinner instead of the refresh button during a scan.
+    private val _rescanningPaths = MutableStateFlow<Set<String>>(emptySet())
+    val rescanningPaths: StateFlow<Set<String>> = _rescanningPaths.asStateFlow()
+
+    /**
+     * Re-scan an already-registered library location without re-adding it.
+     * Runs the same scan pipeline as [addLibraryAndScan] (including proxy
+     * detection) but skips the addLibraryLocation RPC.
+     */
+    fun rescanLibrary(path: String) {
+        viewModelScope.launch {
+            _rescanningPaths.update { it + path }
+            _scanStatus.value = "Rescanning ${java.io.File(path).name}..."
+            _scanResult.value = null
+            var peakFound = 0
+            var peakIndexed = 0
+            var errorMessage: String? = null
+            var libraryRefreshTick = 0
+            try {
+                repository.scanLibrary(
+                    locationPath = path,
+                    autoGroup = true,
+                    filenameDateFormat = "",
+                    filenameDatePosition = ""
+                ).collect { progress ->
+                    if (progress.status == "error") {
+                        errorMessage = progress.currentFile
+                    } else {
+                        peakFound = maxOf(peakFound, progress.videosFound)
+                        peakIndexed = maxOf(peakIndexed, progress.videosIndexed)
+                        _scanStatus.value = if (progress.status == "complete") {
+                            "Rescan complete: $peakFound found, $peakIndexed indexed"
+                        } else {
+                            "${progress.status}: $peakIndexed/$peakFound"
+                        }
+                    }
+                    libraryRefreshTick += 1
+                    if (libraryRefreshTick % 12 == 0) {
+                        loadVideos()
+                        loadLibraryLocations()
+                    }
+                }
+                loadVideos()
+                loadLibraryLocations()
+                _scanResult.value = ScanResult(
+                    success = errorMessage == null,
+                    message = errorMessage
+                        ?: "Rescan complete — $peakFound found, $peakIndexed indexed",
+                    videosFound = peakFound,
+                    videosIndexed = peakIndexed
+                )
+            } catch (e: Exception) {
+                _scanResult.value = ScanResult(
+                    success = false,
+                    message = "Rescan failed: ${e.message}",
+                    videosFound = 0,
+                    videosIndexed = 0
+                )
+            } finally {
+                _rescanningPaths.update { it - path }
+                _scanStatus.value = null
+                _isLoading.value = false
+            }
+        }
+    }
+
     data class ScanResult(
         val success: Boolean,
         val message: String,

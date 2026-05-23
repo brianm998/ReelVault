@@ -777,6 +777,8 @@ fun VideoRoomApp(
                                 onSelect = { path -> gridViewModel.setLocationFilter(path) },
                                 onAddLocation = { showAddLibraryDialog = true },
                                 onRemoveLocation = { loc -> pendingRemoveLocation = loc },
+                                onRescan = { loc -> gridViewModel.rescanLibrary(loc.path) },
+                                rescanningPaths = gridViewModel.rescanningPaths.collectAsState().value,
                                 onCollapse = { leftPanelExpanded = false },
                                 modifier = Modifier
                                     .weight(0.18f)

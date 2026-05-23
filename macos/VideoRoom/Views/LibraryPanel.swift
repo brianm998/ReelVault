@@ -15,6 +15,10 @@ struct LibraryPanel: View {
     /// Called when the user chooses "Remove from library" for a location.
     /// The caller is responsible for showing a confirmation alert.
     var onRemoveLocation: ((LibraryLocation) -> Void)? = nil
+    /// Called when the user clicks the rescan button for a location row.
+    var onRescan: ((LibraryLocation) -> Void)? = nil
+    /// Set of paths currently being rescanned; drives the spinner in each row.
+    var rescanningPaths: Set<String> = []
     let onCollapse: () -> Void
 
     var body: some View {
@@ -72,7 +76,9 @@ struct LibraryPanel: View {
                         count: loc.videoCount,
                         isSelected: loc.path == selectedPath,
                         tooltip: "Show only videos from \(loc.path) (\(loc.videoCount) videos).\nRight-click or swipe left to remove.",
-                        onClick: { onSelect(loc.path) }
+                        onClick: { onSelect(loc.path) },
+                        onRescan: onRescan != nil ? { onRescan!(loc) } : nil,
+                        isRescanning: rescanningPaths.contains(loc.path)
                     )
                     .listRowInsets(EdgeInsets())
                     // Swipe-left reveals the destructive Remove action.
@@ -120,6 +126,10 @@ private struct LocationRow: View {
     let isSelected: Bool
     var tooltip: String = ""
     let onClick: () -> Void
+    var onRescan: (() -> Void)? = nil
+    var isRescanning: Bool = false
+
+    @State private var isHovered = false
 
     var body: some View {
         Button(action: onClick) {
@@ -145,6 +155,25 @@ private struct LocationRow: View {
                 Text("\(count)")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
+                // Rescan spinner or button — shown to the right of the count badge.
+                if isRescanning {
+                    ProgressView()
+                        .scaleEffect(0.5)
+                        .frame(width: 18, height: 18)
+                } else if onRescan != nil && isHovered {
+                    Button {
+                        onRescan?()
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 11))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Rescan this folder and reconnect any proxies")
+                    .frame(width: 18, height: 18)
+                } else {
+                    // Reserve space so count badge doesn't jump on hover.
+                    Color.clear.frame(width: 18, height: 18)
+                }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
@@ -153,6 +182,7 @@ private struct LocationRow: View {
         }
         .buttonStyle(.plain)
         .help(tooltip)
+        .onHover { isHovered = $0 }
     }
 }
 

@@ -4,6 +4,8 @@
 package com.videoroom.ui.components
 
 import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,9 +16,12 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,6 +43,10 @@ fun LibraryPanel(
     onAddLocation: () -> Unit = {},
     /** Called when the user confirms removal of a library location. */
     onRemoveLocation: ((LibraryLocation) -> Unit)? = null,
+    /** Called when the user requests a rescan of a library location. */
+    onRescan: ((LibraryLocation) -> Unit)? = null,
+    /** Set of paths currently being rescanned; shows spinner instead of rescan button. */
+    rescanningPaths: Set<String> = emptySet(),
     onCollapse: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -120,6 +129,9 @@ fun LibraryPanel(
                 ContextMenuArea(
                     items = {
                         buildList {
+                            if (onRescan != null) {
+                                add(ContextMenuItem("Rescan folder…") { onRescan(loc) })
+                            }
                             if (onRemoveLocation != null) {
                                 add(ContextMenuItem("Remove from library…") {
                                     onRemoveLocation(loc)
@@ -136,7 +148,9 @@ fun LibraryPanel(
                         isSelected = loc.path == selectedPath,
                         tooltip = "Show only videos from ${loc.path} (${loc.videoCount} videos). " +
                             "Right-click to remove from library.",
-                        onClick = { onSelect(loc.path) }
+                        onClick = { onSelect(loc.path) },
+                        onRescan = onRescan?.let { cb -> { cb(loc) } },
+                        isRescanning = loc.path in rescanningPaths
                     )
                 }
             }
@@ -152,7 +166,9 @@ private fun LocationRow(
     count: Long,
     isSelected: Boolean,
     tooltip: String = "",
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onRescan: (() -> Unit)? = null,
+    isRescanning: Boolean = false
 ) {
     val bg = if (isSelected) {
         MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
@@ -164,11 +180,14 @@ private fun LocationRow(
     } else {
         MaterialTheme.colorScheme.onSurface
     }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
     Tooltip(text = tooltip) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(bg)
+            .hoverable(interactionSource)
             .clickable(onClick = onClick)
             .padding(horizontal = VideoRoomSpacing.Medium, vertical = VideoRoomSpacing.Small),
         verticalAlignment = Alignment.CenterVertically
@@ -205,6 +224,28 @@ private fun LocationRow(
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        // Rescan button / spinner (only shown for library-location rows)
+        if (isRescanning) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(14.dp).padding(start = 4.dp),
+                strokeWidth = 1.5.dp,
+                color = MaterialTheme.colorScheme.primary
+            )
+        } else if (onRescan != null && isHovered) {
+            Tooltip(text = "Rescan this folder and reconnect any proxies") {
+                IconButton(
+                    onClick = { onRescan() },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Rescan",
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
     }
     }
 }

@@ -588,6 +588,8 @@ struct ContentView: View {
                     onSelect: { gridViewModel.setLocationFilter($0) },
                     onAddLibrary: { showAddLibrarySheet = true },
                     onRemoveLocation: { locationToRemove = $0 },
+                    onRescan: { loc in gridViewModel.rescanLibrary(path: loc.path) },
+                    rescanningPaths: Set(gridViewModel.rescanningPaths),
                     onCollapse: { leftPanelExpanded = false }
                 )
                 .alert(

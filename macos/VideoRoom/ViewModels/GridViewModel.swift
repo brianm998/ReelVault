@@ -24,6 +24,7 @@ class GridViewModel: ObservableObject {
     // Library locations / filter
     @Published var libraryLocations: [LibraryLocation] = []
     @Published var selectedLocationPath: String = ""  // "" = all
+    @Published var rescanningPaths: Set<String> = []
 
     // Keywords / tag filter
     @Published var tags: [Tag] = []
@@ -615,6 +616,75 @@ class GridViewModel: ObservableObject {
                 )
                 scanStatus = nil
                 isLoading = false
+            }
+        }
+    }
+
+    func rescanLibrary(path: String) {
+        Task {
+            rescanningPaths.insert(path)
+            defer {
+                rescanningPaths.remove(path)
+                scanStatus = nil
+            }
+
+            scanStatus = "Rescanning \(URL(fileURLWithPath: path).lastPathComponent)..."
+            scanResult = nil
+
+            do {
+                var peakFound = 0
+                var peakIndexed = 0
+                var errorMessage: String?
+                var libraryRefreshTick = 0
+
+                for try await progress in repository.scanLibrary(
+                    locationPath: path,
+                    autoGroup: true,
+                    filenameDateFormat: "",
+                    filenameDatePosition: ""
+                ) {
+                    if progress.status == "error" {
+                        errorMessage = progress.currentFile
+                    } else {
+                        peakFound = max(peakFound, progress.videosFound)
+                        peakIndexed = max(peakIndexed, progress.videosIndexed)
+                        if progress.status == "complete" {
+                            scanStatus = "Complete: \(peakFound) found, \(peakIndexed) indexed"
+                        } else {
+                            scanStatus = "\(progress.status): \(peakIndexed)/\(peakFound) - \(progress.currentFile)"
+                        }
+                    }
+                    libraryRefreshTick += 1
+                    if libraryRefreshTick % 12 == 0 {
+                        loadVideos()
+                        loadLibraryLocations()
+                    }
+                }
+
+                loadVideos()
+                loadLibraryLocations()
+
+                if let errorMessage = errorMessage {
+                    scanResult = ScanResult(success: false, message: errorMessage, videosFound: 0, videosIndexed: 0)
+                } else {
+                    let foundForReport = max(peakFound, peakIndexed)
+                    scanResult = ScanResult(
+                        success: true,
+                        message: foundForReport == 0
+                            ? "No videos found in \(path)"
+                            : "Rescanned \(path): \(foundForReport) videos found, \(peakIndexed) indexed",
+                        videosFound: foundForReport,
+                        videosIndexed: peakIndexed
+                    )
+                }
+            } catch {
+                scanStatus = nil
+                scanResult = ScanResult(
+                    success: false,
+                    message: "Rescan failed: \(error.localizedDescription)",
+                    videosFound: 0,
+                    videosIndexed: 0
+                )
             }
         }
     }
