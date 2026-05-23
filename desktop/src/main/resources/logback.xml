@@ -1,0 +1,29 @@
+<configuration>
+    <!-- Send everything to stderr so logs interleave correctly with Compose
+         Desktop / VLCJ output regardless of stdout buffering. -->
+    <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.err</target>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{20} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Video playback diagnostics — keep at DEBUG so we capture every step
+         of the VLCJ init / load / play pipeline. This is what we need to
+         figure out why playback fails on macOS. -->
+    <logger name="com.videoroom.ui.components.ComposeVideoPlayer" level="DEBUG"/>
+    <logger name="com.videoroom.ui.screens.GridScreen" level="DEBUG"/>
+    <logger name="com.videoroom.ui.screens.DetailViewScreen" level="DEBUG"/>
+    <logger name="uk.co.caprica.vlcj" level="DEBUG"/>
+    <!-- Native libvlc diagnostics, piped through NativeLog. DEBUG while
+         we're still hunting the callback-doesn't-fire issue — it shows
+         vout module selection, decoder probing, and per-frame decisions. -->
+    <logger name="libvlc" level="DEBUG"/>
+
+    <!-- Most of the rest of the app at INFO; gRPC chatter at WARN. -->
+    <root level="INFO">
+        <appender-ref ref="STDERR"/>
+    </root>
+    <logger name="io.grpc" level="WARN"/>
+    <logger name="io.netty" level="WARN"/>
+</configuration>

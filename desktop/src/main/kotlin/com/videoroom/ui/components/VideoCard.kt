@@ -141,18 +141,33 @@ fun VideoCard(
     // Stationary-tooltip dwell. Every Enter/Move event bumps
     // `motionTickMs` to the current clock; a LaunchedEffect keyed on that
     // value waits [TOOLTIP_DWELL_MS] and then sets `tooltipVisible`.
+    //
     // Each new motion cancels the in-flight effect (the LaunchedEffect
     // restart-on-key behavior) and starts a fresh 2-second wait, so the
     // popup only ever surfaces after the cursor has actually been still
     // the full dwell. `motionTickMs = 0` means "no motion observed yet"
     // (also used on Exit) and skips the timer entirely.
+    //
+    // Once the tooltip is showing, subsequent motion within the card does
+    // NOT dismiss it. This matters because a card with inline video playback
+    // recomposes every frame; the natural micro-tremor of a user's hovering
+    // cursor used to fire Move events every few seconds, restarting the
+    // dwell timer and visibly flickering the tooltip in and out. The
+    // tooltip now stays visible until the cursor leaves the card.
     var motionTickMs by remember { mutableStateOf(0L) }
     var tooltipVisible by remember { mutableStateOf(false) }
     var lastPointerPos by remember { mutableStateOf<Offset?>(null) }
     LaunchedEffect(motionTickMs, suppressTooltip) {
-        tooltipVisible = false
+        if (suppressTooltip || motionTickMs == 0L) {
+            tooltipVisible = false
+            return@LaunchedEffect
+        }
+        // Already showing — motion within the card shouldn't dismiss it.
+        if (tooltipVisible) return@LaunchedEffect
+        delay(TOOLTIP_DWELL_MS)
+        // Re-check after the dwell in case the cursor left or the menu
+        // opened while we were sleeping.
         if (motionTickMs > 0L && !suppressTooltip) {
-            delay(TOOLTIP_DWELL_MS)
             tooltipVisible = true
         }
     }
