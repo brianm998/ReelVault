@@ -49,6 +49,16 @@ private val logger = LoggerFactory.getLogger("VideoRoom")
 // read at click time by VideoCard / GridScreen.
 val LocalShiftPressed = compositionLocalOf { false }
 
+/**
+ * Provides the AWT [java.awt.Window] that hosts this Compose tree.
+ * Used by drag-out support ([FileDragSource]) to register a
+ * [java.awt.dnd.DragGestureRecognizer] on the underlying rendering component.
+ *
+ * Provided once by the [Window] scope in [main]; null if this composable is
+ * ever rendered outside a real window (previews, tests).
+ */
+val LocalAppWindow = compositionLocalOf<java.awt.Window?> { null }
+
 /** Top-level view mode for the central content area. */
 enum class ViewMode { GRID, LIST, DETAIL }
 
@@ -214,7 +224,13 @@ fun main() = application {
                 .focusRequester(rootFocus)
                 .focusable()
         ) {
-            CompositionLocalProvider(LocalShiftPressed provides shiftPressed) {
+            CompositionLocalProvider(
+                LocalShiftPressed provides shiftPressed,
+                // Expose the AWT window for drag-out support (FileDragSource).
+                // `window` is the ComposeWindow (a JFrame) available in
+                // FrameWindowScope — the lambda body of Window { ... }.
+                LocalAppWindow provides window
+            ) {
                 VideoRoomApp(
                     onRegisterGroupAction = { groupSelectedAction.value = it },
                     onRegisterTogglePanelsAction = { togglePanelsAction.value = it },

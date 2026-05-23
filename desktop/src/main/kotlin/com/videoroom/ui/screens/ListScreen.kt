@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isShiftPressed
@@ -28,10 +29,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.withTimeoutOrNull
+import com.videoroom.LocalAppWindow
 import com.videoroom.LocalShiftPressed
 import com.videoroom.data.models.VideoSummary
 import com.videoroom.ui.components.Tooltip
 import com.videoroom.ui.theme.VideoRoomSpacing
+import com.videoroom.util.FileDragSource
 import com.videoroom.viewmodel.GridViewModel
 import java.time.Instant
 import java.time.ZoneId
@@ -214,7 +217,15 @@ fun ListScreen(
                                     }
                                     onVideoSelect(video)
                                 },
-                                onDoubleClick = { viewModel.openVideoInExternal(video.openPath) }
+                                onDoubleClick = { viewModel.openVideoInExternal(video.openPath) },
+                                dragPaths = run {
+                                    val multi = selectedVideoIds.value
+                                    if (video.id in multi && multi.size > 1) {
+                                        videos.value.filter { it.id in multi }.map { it.openPath }
+                                    } else {
+                                        listOf(video.openPath)
+                                    }
+                                }
                             )
                         }
 
@@ -273,6 +284,11 @@ fun VideoListRow(
     visibleColumns: Set<String> = emptySet(),
     onClick: (shiftPressed: Boolean, togglePressed: Boolean) -> Unit = { _, _ -> },
     onDoubleClick: () -> Unit = {},
+    /**
+     * File paths to transfer when the user drags this row out to an external
+     * app. When empty, the row's own [item.video.openPath] is used.
+     */
+    dragPaths: List<String> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     val video = item.video
@@ -288,6 +304,12 @@ fun VideoListRow(
         }
     }
 
+    // AWT window for drag-out support.
+    val awtWindow = LocalAppWindow.current
+
+    // FileDragSource is stateless between gestures.
+    val fileDragSource = remember { FileDragSource() }
+
     // Row background based on selection state
     val rowBackground = when {
         isAnchor -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
@@ -300,6 +322,38 @@ fun VideoListRow(
     val rowModifier = modifier
         .fillMaxWidth()
         .background(rowBackground)
+        // Drag-out: detect drag motion in Compose and hand off to AWT.
+        .pointerInput(dragPaths, video.openPath) {
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false)
+                val startPos = down.position
+                val effectivePaths = dragPaths.ifEmpty { listOf(video.openPath) }
+                fileDragSource.setPendingFiles(effectivePaths)
+
+                var handled = false
+                while (!handled) {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    val change = event.changes.firstOrNull() ?: break
+                    if (!change.pressed) {
+                        fileDragSource.clearPending()
+                        handled = true
+                    } else {
+                        val delta = change.position - startPos
+                        val dist = kotlin.math.sqrt(
+                            (delta.x * delta.x + delta.y * delta.y).toDouble()
+                        ).toFloat()
+                        if (dist >= LIST_ROW_DRAG_THRESHOLD_PX && awtWindow != null) {
+                            val winX = awtWindow.x
+                            val winY = awtWindow.y
+                            val screenX = (winX + change.position.x).toInt()
+                            val screenY = (winY + change.position.y).toInt()
+                            fileDragSource.startDragIfPending(awtWindow, screenX, screenY)
+                            handled = true
+                        }
+                    }
+                }
+            }
+        }
         .shiftAwareRowClickable(onClick = onClick, onDoubleClick = onDoubleClick)
         .padding(
             start = if (item.isStackChild) (VideoRoomSpacing.Medium + 16.dp) else VideoRoomSpacing.Small,
@@ -446,3 +500,7 @@ private fun Modifier.shiftAwareRowClickable(
         }
     }
 }
+
+/** Minimum pointer travel (px) before a press-and-move is treated as a
+ *  drag-out gesture in [VideoListRow]. */
+private const val LIST_ROW_DRAG_THRESHOLD_PX = 8f

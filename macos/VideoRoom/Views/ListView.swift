@@ -60,6 +60,16 @@ struct ListView: View {
         return ScrollView {
             LazyVStack(spacing: 0) {
                 ForEach(Array(rendered.enumerated()), id: \.element.id) { index, item in
+                    let multi = viewModel.selectedVideoIds
+                    let rowDragPaths: [String] = {
+                        if multi.contains(item.video.id) && multi.count > 1 {
+                            return viewModel.videos
+                                .filter { multi.contains($0.id) }
+                                .map { $0.openPath }
+                                .filter { !$0.isEmpty }
+                        }
+                        return [item.video.openPath]
+                    }()
                     VideoListRowView(
                         item: item,
                         thumbnail: viewModel.thumbnails[item.video.id],
@@ -76,7 +86,8 @@ struct ListView: View {
                         },
                         onStackBadgeClick: {
                             viewModel.toggleStackExpansion(item.video.groupId)
-                        }
+                        },
+                        dragPaths: rowDragPaths
                     )
                     .contextMenu {
                         videoContextMenu(for: item.video)
@@ -223,6 +234,10 @@ struct VideoListRowView: View {
     let onClick: (_ shift: Bool, _ toggle: Bool) -> Void
     let onDoubleClick: () -> Void
     let onStackBadgeClick: () -> Void
+    /// Paths to drag when the user drags this row out. When the row is part
+    /// of a multi-selection, every selected file is included so the receiving
+    /// app gets the full set in one drop.
+    var dragPaths: [String] = []
 
     @State private var isHovered = false
 
@@ -315,6 +330,37 @@ struct VideoListRowView: View {
             let shift = mods.contains(.shift)
             let toggle = mods.contains(.command) || mods.contains(.control)
             onClick(shift, toggle)
+        }
+        // File drag-out: lets users drag video files directly from the list
+        // into DaVinci Resolve, Premiere Pro, Final Cut Pro, Finder, etc.
+        .onDrag {
+            let primary = dragPaths.first ?? video.openPath
+            return DragExport.provider(for: primary)
+        } preview: {
+            HStack(spacing: 6) {
+                if let img = thumbnail {
+                    Image(nsImage: img)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 48, height: 27)
+                        .cornerRadius(3)
+                        .clipped()
+                }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(video.filename)
+                        .font(.caption2)
+                        .lineLimit(1)
+                    if dragPaths.count > 1 {
+                        Text("\(dragPaths.count) files")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .padding(6)
+            .background(Color(.windowBackgroundColor))
+            .cornerRadius(6)
+            .shadow(radius: 2)
         }
     }
 

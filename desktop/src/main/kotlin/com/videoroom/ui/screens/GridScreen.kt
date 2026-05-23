@@ -350,6 +350,17 @@ fun GridScreen(
                                 },
                                 onHoverEnter = { viewModel.loadScrubFrames(video.id) },
                                 suppressTooltip = isContextMenuOpen,
+                                dragPaths = run {
+                                    val multi = selectedVideoIds.value
+                                    if (video.id in multi && multi.size > 1) {
+                                        // Drag all selected cards as a batch.
+                                        rendered.mapNotNull { gi ->
+                                            gi.video.openPath.takeIf { gi.video.id in multi }
+                                        }
+                                    } else {
+                                        listOf(video.openPath)
+                                    }
+                                },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }

@@ -46,9 +46,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.videoroom.LocalAppWindow
 import com.videoroom.data.models.VideoSummary
 import com.videoroom.ui.theme.VideoRoomCornerRadius
 import com.videoroom.ui.theme.VideoRoomSpacing
+import com.videoroom.util.FileDragSource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.skia.Image as SkiaImage
@@ -104,6 +106,18 @@ fun VideoCard(
      * to start the player. When `true` (default), normal play behavior.
      */
     playEnabled: Boolean = true,
+    /**
+     * File paths to transfer when the user drags this card out to an
+     * external app (e.g. DaVinci Resolve, Premiere Pro).
+     *
+     * When empty, the card's own [video.openPath] is used. When the card is
+     * part of a multi-selection the caller should pass all selected paths so
+     * a single drag delivers the whole batch.
+     *
+     * Non-existent paths are silently dropped; if every path is invalid the
+     * drag is not initiated.
+     */
+    dragPaths: List<String> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -272,6 +286,14 @@ fun VideoCard(
         else -> MaterialTheme.colorScheme.surface
     }
 
+    // AWT window for drag-out support. Provided via LocalAppWindow (defined in
+    // App.kt and passed through CompositionLocalProvider in main()).
+    val awtWindow = LocalAppWindow.current
+
+    // FileDragSource is stateless between gestures — safe to share across
+    // recompositions via remember.
+    val fileDragSource = remember { FileDragSource() }
+
     // Custom stationary tooltip. We own timing end-to-end here rather
     // than relying on Compose's TooltipArea, whose 500 ms hover gate
     // interacts poorly with the suppression pattern (toggling its
@@ -283,6 +305,46 @@ fun VideoCard(
     // scrub-tracking continue to work.
     Box(
         modifier = modifier
+            // Drag-out support: detect drag motion in Compose then hand off
+            // to AWT via FileDragSource.startDragIfPending().
+            // Uses javaFileListFlavor — the cross-platform standard understood
+            // by DaVinci Resolve, Premiere Pro, and every major file manager
+            // on macOS, Windows, and Linux.
+            .pointerInput(dragPaths, video.openPath) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val startPos = down.position
+                    val effectivePaths = dragPaths.ifEmpty { listOf(video.openPath) }
+                    fileDragSource.setPendingFiles(effectivePaths)
+
+                    var handled = false
+                    while (!handled) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val change = event.changes.firstOrNull() ?: break
+
+                        if (!change.pressed) {
+                            // Normal click — disarm.
+                            fileDragSource.clearPending()
+                            handled = true
+                        } else {
+                            val delta = change.position - startPos
+                            val dist = kotlin.math.sqrt(
+                                (delta.x * delta.x + delta.y * delta.y).toDouble()
+                            ).toFloat()
+                            if (dist >= DRAG_THRESHOLD_PX && awtWindow != null) {
+                                // Compute screen coordinates from window-relative
+                                // Compose position.
+                                val winX = awtWindow.x
+                                val winY = awtWindow.y
+                                val screenX = (winX + change.position.x).toInt()
+                                val screenY = (winY + change.position.y).toInt()
+                                fileDragSource.startDragIfPending(awtWindow, screenX, screenY)
+                                handled = true
+                            }
+                        }
+                    }
+                }
+            }
             .onPointerEvent(PointerEventType.Enter) { event ->
                 val p = event.changes.firstOrNull()?.position
                 lastPointerPos = p
@@ -707,3 +769,8 @@ private fun Modifier.shiftAwareClickable(
 /// frame-inspecting pauses — won't trigger the popup, and short enough
 /// that an intentional rest to read the help feels responsive.
 private const val TOOLTIP_DWELL_MS = 2000L
+
+/** Minimum pointer travel (in pixels) before a press-and-move is treated as
+ *  a drag-out gesture.  8 px matches the drag threshold used by most desktop
+ *  environments and is large enough to avoid accidental drags on regular clicks. */
+private const val DRAG_THRESHOLD_PX = 8f

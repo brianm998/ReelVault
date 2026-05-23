@@ -77,6 +77,16 @@ struct GridView: View {
                 spacing: 8
             ) {
                 ForEach(Array(rendered.enumerated()), id: \.element.id) { index, item in
+                    let multi = viewModel.selectedVideoIds
+                    let cardDragPaths: [String] = {
+                        if multi.contains(item.video.id) && multi.count > 1 {
+                            return viewModel.videos
+                                .filter { multi.contains($0.id) }
+                                .map { $0.openPath }
+                                .filter { !$0.isEmpty }
+                        }
+                        return [item.video.openPath]
+                    }()
                     VideoCardView(
                         item: item,
                         thumbnail: viewModel.thumbnails[item.video.id],
@@ -105,7 +115,8 @@ struct GridView: View {
                         },
                         onStopPlayback: {
                             viewModel.stopPlayback()
-                        }
+                        },
+                        dragPaths: cardDragPaths
                     )
                     .contextMenu {
                         videoContextMenu(for: item.video)
@@ -334,6 +345,10 @@ struct VideoCardView: View {
     let onPlayClick: () -> Void
     /// Fired when the ✕ stop button on the inline player is tapped.
     let onStopPlayback: () -> Void
+    /// Paths to drag when the user drags this card out. When the card is part
+    /// of a multi-selection, every selected file is included so the receiving
+    /// app gets the full set in one drop.
+    var dragPaths: [String] = []
 
     /// AVPlayer kept alive for the lifetime of this view instance. Created
     /// on first play, released when `isPlaying` goes false.
@@ -443,6 +458,49 @@ struct VideoCardView: View {
 
         lines.append("Click to select, Shift-click to multi-select, double-click to open.")
         return lines.joined(separator: "\n")
+    }
+
+    /// Drag preview shown under the cursor while dragging out of VideoRoom.
+    /// Displays the card thumbnail (or a placeholder), the filename, and a
+    /// count badge when multiple files are selected.
+    private var dragPreview: some View {
+        ZStack(alignment: .bottomLeading) {
+            if let img = displayedImage {
+                Image(nsImage: img)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 120, height: 68)
+                    .clipped()
+                    .cornerRadius(6)
+            } else {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.secondary.opacity(0.3))
+                    .frame(width: 120, height: 68)
+            }
+            // Filename label
+            Text(video.filename)
+                .font(.caption2)
+                .lineLimit(1)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(Color.black.opacity(0.65))
+                .foregroundColor(.white)
+                .cornerRadius(4)
+                .padding(4)
+            // Multi-file count badge
+            if dragPaths.count > 1 {
+                Text("×\(dragPaths.count)")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(Color.accentColor)
+                    .clipShape(Capsule())
+                    .padding(4)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+            }
+        }
+        .frame(width: 120, height: 68)
     }
 
     /// The image to actually display: a scrub frame if we're hovering and have
@@ -635,6 +693,17 @@ struct VideoCardView: View {
             let shift = mods.contains(.shift)
             let toggle = mods.contains(.command) || mods.contains(.control)
             onClick(shift, toggle)
+        }
+        // File drag-out: lets users drag video files directly from the grid
+        // into DaVinci Resolve, Premiere Pro, Final Cut Pro, Finder, etc.
+        // When this card is part of a multi-selection, the primary path is
+        // dragged; all paths are baked into `dragPaths` by the caller so
+        // the count badge in the preview reflects the full set.
+        .onDrag {
+            let primary = dragPaths.first ?? video.openPath
+            return DragExport.provider(for: primary)
+        } preview: {
+            dragPreview
         }
     }
 
