@@ -42,6 +42,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import com.videoroom.LocalPathFieldFocused
 import com.videoroom.util.PathCompletion
 
 /**
@@ -76,6 +77,10 @@ fun PathCompletingTextField(
     var ghostSuffix by remember { mutableStateOf("") }
     var dropdownOpen by remember { mutableStateOf(false) }
     var isFocused by remember { mutableStateOf(false) }
+    // Window-level flag read by onPreviewKeyEvent to suppress Tab → panel-
+    // toggle while this field is active. We write it here rather than having
+    // the caller thread a callback through the dialog hierarchy.
+    val pathFieldFocused = LocalPathFieldFocused.current
 
     // Recompute whenever the user's text changes — pure call, no IO
     // beyond a single `File.list()` on the parent directory.
@@ -151,7 +156,12 @@ fun PathCompletingTextField(
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .onFocusChanged { isFocused = it.isFocused }
+                    .onFocusChanged { state ->
+                        isFocused = state.isFocused
+                        // Tell the Window-level key listener whether Tab
+                        // should complete paths here or toggle panels.
+                        pathFieldFocused.value = state.isFocused
+                    }
                     .onPreviewKeyEvent { event ->
                         // Capture Tab BEFORE Compose's default focus
                         // traversal gets a chance — without this the

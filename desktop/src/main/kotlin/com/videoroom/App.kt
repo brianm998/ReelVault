@@ -59,6 +59,15 @@ val LocalShiftPressed = compositionLocalOf { false }
  */
 val LocalAppWindow = compositionLocalOf<java.awt.Window?> { null }
 
+/**
+ * Tracks whether a [com.videoroom.ui.components.PathCompletingTextField]
+ * currently holds keyboard focus. The field sets this on focus-gained and
+ * clears it on focus-lost. [Window.onPreviewKeyEvent] reads it so the
+ * Tab → toggle-panels shortcut is suppressed while the field is active —
+ * Tab should drive bash-style path completion, not collapse the side panels.
+ */
+val LocalPathFieldFocused = compositionLocalOf { mutableStateOf(false) }
+
 /** Top-level view mode for the central content area. */
 enum class ViewMode { GRID, LIST, DETAIL }
 
@@ -92,6 +101,9 @@ fun main() = application {
     // single-key shortcuts ('g', 'd', 'i') so the user can still type those
     // letters into the search box.
     val searchFocused = remember { mutableStateOf(false) }
+    // True while a PathCompletingTextField holds focus. Suppresses the
+    // Tab → toggle-panels shortcut so Tab drives path completion instead.
+    val pathFieldFocused = remember { mutableStateOf(false) }
     // VideoRoomApp registers its "group selected" action here, so the Window-
     // level key listener can invoke it on Cmd/Ctrl+G regardless of focus.
     val groupSelectedAction = remember { mutableStateOf<() -> Unit>({}) }
@@ -140,9 +152,13 @@ fun main() = application {
                 return@Window true // consume so default shortcuts don't also fire
             }
             // Tab → toggle both side panels (Lightroom-style).
+            // Guard: when a PathCompletingTextField is focused, Tab must
+            // drive its bash-style path completion — not collapse panels.
+            // pathFieldFocused is set/cleared by the field's onFocusChanged.
             if (event.type == KeyEventType.KeyDown &&
                 event.key == Key.Tab &&
-                !event.isMetaPressed && !event.isCtrlPressed && !event.isAltPressed
+                !event.isMetaPressed && !event.isCtrlPressed && !event.isAltPressed &&
+                !pathFieldFocused.value
             ) {
                 togglePanelsAction.value()
                 return@Window true // consume so focus traversal doesn't also fire
@@ -229,7 +245,10 @@ fun main() = application {
                 // Expose the AWT window for drag-out support (FileDragSource).
                 // `window` is the ComposeWindow (a JFrame) available in
                 // FrameWindowScope — the lambda body of Window { ... }.
-                LocalAppWindow provides window
+                LocalAppWindow provides window,
+                // Let PathCompletingTextField signal its focus state so
+                // onPreviewKeyEvent can suppress Tab → panel-toggle.
+                LocalPathFieldFocused provides pathFieldFocused
             ) {
                 VideoRoomApp(
                     onRegisterGroupAction = { groupSelectedAction.value = it },
