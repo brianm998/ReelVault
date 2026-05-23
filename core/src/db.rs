@@ -145,6 +145,36 @@ impl Database {
             ("videos.proxy_confidence", "ALTER TABLE videos ADD COLUMN proxy_confidence REAL"),
             ("videos.proxy_auto_detected", "ALTER TABLE videos ADD COLUMN proxy_auto_detected INTEGER DEFAULT 0"),
             ("idx_videos_proxy_of", "CREATE INDEX IF NOT EXISTS idx_videos_proxy_of ON videos(proxy_of)"),
+            // Junction table for the proxy ↔ master many-to-many
+            // relationship. Each row links one proxy video to one
+            // master video; a proxy can show up under multiple masters
+            // (and vice versa) which is needed for clusters of nearly-
+            // identical processed variants that all share the same
+            // low-res preview.
+            //
+            // `videos.proxy_of` is kept as a denormalized "any master"
+            // pointer to keep existing `WHERE proxy_of IS NULL` filters
+            // cheap and to give the simple "is this row a proxy" check
+            // a fast O(1) answer.
+            ("proxy_links table", "CREATE TABLE IF NOT EXISTS proxy_links (
+                master_id TEXT NOT NULL,
+                proxy_id TEXT NOT NULL,
+                confidence REAL,
+                auto_detected INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY(master_id, proxy_id),
+                FOREIGN KEY(master_id) REFERENCES videos(id) ON DELETE CASCADE,
+                FOREIGN KEY(proxy_id) REFERENCES videos(id) ON DELETE CASCADE
+            )"),
+            ("idx_proxy_links_proxy", "CREATE INDEX IF NOT EXISTS idx_proxy_links_proxy ON proxy_links(proxy_id)"),
+            ("idx_proxy_links_master", "CREATE INDEX IF NOT EXISTS idx_proxy_links_master ON proxy_links(master_id)"),
+            // Backfill: for catalogs whose single-column relation
+            // pre-dates the junction table, mirror every (proxy,
+            // master) pair into proxy_links. INSERT OR IGNORE keeps
+            // this idempotent across re-runs of `initialize`.
+            ("proxy_links backfill", "INSERT OR IGNORE INTO proxy_links (master_id, proxy_id, confidence, auto_detected)
+                SELECT proxy_of, id, proxy_confidence, COALESCE(proxy_auto_detected, 0)
+                FROM videos
+                WHERE proxy_of IS NOT NULL"),
         ];
         for (label, sql) in migrations {
             match conn.execute(sql, []) {
@@ -1368,11 +1398,22 @@ impl Database {
 
     // --- Proxy relationships ---
 
-    /// Mark `proxy_id` as a proxy for `original_id`. `confidence` is the
-    /// thumb-similarity score (or 1.0 for VideoRoom-generated proxies).
-    /// `auto_detected` distinguishes "scanner inferred this" (true) from
-    /// "user told us / we generated it" (false) so a future "show only
-    /// auto-detected proxies" UI is possible without schema changes.
+    /// Link `proxy_id` to `original_id` in the proxy_links junction
+    /// table. `confidence` is the thumb-similarity score (or 1.0 for
+    /// VideoRoom-generated / user-marked proxies). `auto_detected`
+    /// distinguishes scanner inferences from user/system marks so the
+    /// UI can render them differently.
+    ///
+    /// Additive: a proxy can be linked to many masters. Re-calling
+    /// with the same pair updates the confidence + auto_detected flag
+    /// in place (`INSERT OR REPLACE`).
+    ///
+    /// Also writes a denormalized pointer into `videos.proxy_of` so
+    /// `WHERE proxy_of IS NULL` (the cheap "is this row a proxy" gate
+    /// used by detection filters) keeps working. The denormalized
+    /// pointer reflects whichever master was most recently linked —
+    /// callers that need the full master set should query the
+    /// junction table directly via [`Self::list_masters_for_proxy`].
     pub fn set_proxy_of(
         &self,
         proxy_id: &str,
@@ -1381,6 +1422,12 @@ impl Database {
         auto_detected: bool,
     ) -> Result<()> {
         let conn = self.get_connection()?;
+        conn.execute(
+            "INSERT OR REPLACE INTO proxy_links (master_id, proxy_id, confidence, auto_detected)
+             VALUES (?, ?, ?, ?)",
+            params![original_id, proxy_id, confidence, auto_detected as i32],
+        )
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
         conn.execute(
             "UPDATE videos
              SET proxy_of = ?, proxy_confidence = ?, proxy_auto_detected = ?
@@ -1391,23 +1438,112 @@ impl Database {
         Ok(())
     }
 
-    /// List every proxy of `video_id`. Returns the proxy rows + their
-    /// confidence + auto-detected flag, sorted by descending pixel count
-    /// so the highest-res proxy comes first.
+    /// Remove one specific master/proxy pair from the junction table.
+    /// If no links remain for `proxy_id` afterwards, the denormalized
+    /// `videos.proxy_of` columns are cleared as well so the row stops
+    /// reading as a proxy. When some links remain, `videos.proxy_of`
+    /// is re-pointed to any remaining master (lexicographically
+    /// smallest, for determinism).
+    pub fn remove_proxy_link(&self, master_id: &str, proxy_id: &str) -> Result<()> {
+        let conn = self.get_connection()?;
+        conn.execute(
+            "DELETE FROM proxy_links WHERE master_id = ? AND proxy_id = ?",
+            params![master_id, proxy_id],
+        )
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+
+        // Find a remaining master (if any) to keep the denormalized
+        // pointer in sync.  The MIN() picks deterministically so
+        // multiple clients see the same primary.
+        let remaining: Option<(String, Option<f64>, i32)> = conn
+            .query_row(
+                "SELECT master_id, confidence, auto_detected
+                 FROM proxy_links
+                 WHERE proxy_id = ?
+                 ORDER BY master_id
+                 LIMIT 1",
+                [proxy_id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .optional()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+
+        if let Some((m, conf, auto)) = remaining {
+            conn.execute(
+                "UPDATE videos
+                 SET proxy_of = ?, proxy_confidence = ?, proxy_auto_detected = ?
+                 WHERE id = ?",
+                params![m, conf, auto, proxy_id],
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        } else {
+            conn.execute(
+                "UPDATE videos
+                 SET proxy_of = NULL, proxy_confidence = NULL, proxy_auto_detected = 0
+                 WHERE id = ?",
+                [proxy_id],
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        }
+        Ok(())
+    }
+
+    /// List every proxy linked to `video_id` via the proxy_links
+    /// junction table. Returns the proxy rows + the link's confidence
+    /// + auto-detected flag, sorted by descending pixel count so the
+    /// highest-res proxy comes first.
     pub fn list_proxies(&self, video_id: &str) -> Result<Vec<ProxyRecord>> {
         let conn = self.get_connection()?;
         let mut stmt = conn
             .prepare(
                 "SELECT v.id, v.filename, v.path, v.file_size_bytes,
                         COALESCE(m.width, 0), COALESCE(m.height, 0),
-                        v.proxy_confidence, COALESCE(v.proxy_auto_detected, 0)
-                 FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
-                 WHERE v.proxy_of = ?
+                        pl.confidence, pl.auto_detected
+                 FROM proxy_links pl
+                 JOIN videos v ON pl.proxy_id = v.id
+                 LEFT JOIN metadata m ON v.id = m.video_id
+                 WHERE pl.master_id = ?
                  ORDER BY (COALESCE(m.width,0) * COALESCE(m.height,0)) DESC",
             )
             .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
         let rows = stmt
             .query_map([video_id], |row| {
+                Ok(ProxyRecord {
+                    id: row.get(0)?,
+                    filename: row.get(1)?,
+                    path: row.get(2)?,
+                    file_size_bytes: row.get(3)?,
+                    width: row.get(4)?,
+                    height: row.get(5)?,
+                    proxy_confidence: row.get::<_, Option<f64>>(6)?.unwrap_or(0.0),
+                    auto_detected: row.get::<_, i32>(7)? != 0,
+                })
+            })
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(rows)
+    }
+
+    /// List every master that `proxy_video_id` is linked to. The
+    /// inverse of [`Self::list_proxies`]. Sorted by descending pixel
+    /// count so the highest-res master comes first.
+    pub fn list_masters_for_proxy(&self, proxy_video_id: &str) -> Result<Vec<ProxyRecord>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn
+            .prepare(
+                "SELECT v.id, v.filename, v.path, v.file_size_bytes,
+                        COALESCE(m.width, 0), COALESCE(m.height, 0),
+                        pl.confidence, pl.auto_detected
+                 FROM proxy_links pl
+                 JOIN videos v ON pl.master_id = v.id
+                 LEFT JOIN metadata m ON v.id = m.video_id
+                 WHERE pl.proxy_id = ?
+                 ORDER BY (COALESCE(m.width,0) * COALESCE(m.height,0)) DESC",
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        let rows = stmt
+            .query_map([proxy_video_id], |row| {
                 Ok(ProxyRecord {
                     id: row.get(0)?,
                     filename: row.get(1)?,
@@ -1440,9 +1576,17 @@ impl Database {
         Ok(result)
     }
 
-    /// Clear the proxy_of pointer for a video (e.g. user un-marks it).
+    /// Clear *all* proxy links for `video_id` (the row stops being a
+    /// proxy of anything). Used when the user fully un-marks a proxy
+    /// — for breaking just one specific master/proxy pair see
+    /// [`Self::remove_proxy_link`].
     pub fn clear_proxy_of(&self, video_id: &str) -> Result<()> {
         let conn = self.get_connection()?;
+        conn.execute(
+            "DELETE FROM proxy_links WHERE proxy_id = ?",
+            [video_id],
+        )
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
         conn.execute(
             "UPDATE videos
              SET proxy_of = NULL, proxy_confidence = NULL, proxy_auto_detected = 0
@@ -1453,8 +1597,13 @@ impl Database {
         Ok(())
     }
 
-    /// Candidate rows used by the proxy auto-detector. One row per video
-    /// — bundles the thumbnail-comparable bits with the EXIF gates.
+    /// Candidate rows used by the proxy auto-detector. Returns every
+    /// video in the catalog regardless of existing proxy_links: with
+    /// many-to-many proxy relationships, a video that's already a
+    /// proxy of one master can still be linked to additional masters
+    /// that arrive later, and a master can pick up more proxies as
+    /// new lower-resolution variants appear. The detection algorithm
+    /// itself decides masters vs proxies from pixel counts.
     pub fn list_for_proxy_detection(&self) -> Result<Vec<ProxyDetectCandidate>> {
         let conn = self.get_connection()?;
         let mut stmt = conn
@@ -1464,8 +1613,7 @@ impl Database {
                         COALESCE(m.fps, 0), COALESCE(m.frame_count, 0),
                         COALESCE(m.camera_model, ''),
                         COALESCE(v.file_size_bytes, 0)
-                 FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
-                 WHERE v.proxy_of IS NULL",
+                 FROM videos v LEFT JOIN metadata m ON v.id = m.video_id",
             )
             .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
         let rows = stmt
@@ -1498,8 +1646,9 @@ impl Database {
 
     /// Fetch the proxy-detection candidate row for a single video — the
     /// per-video equivalent of [`Self::list_for_proxy_detection`].
-    /// Returns `None` when the row is missing or already marked as a
-    /// proxy (`proxy_of IS NOT NULL`).
+    /// Returns `None` when the row is missing entirely. Already-linked
+    /// proxies still come back so the incremental worker can consider
+    /// them as candidates for new master pairings.
     pub fn get_proxy_candidate(&self, video_id: &str) -> Result<Option<ProxyDetectCandidate>> {
         let conn = self.get_connection()?;
         let result = conn
@@ -1510,7 +1659,7 @@ impl Database {
                         COALESCE(m.camera_model, ''),
                         COALESCE(v.file_size_bytes, 0)
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
-                 WHERE v.id = ? AND v.proxy_of IS NULL",
+                 WHERE v.id = ?",
                 [video_id],
                 |row| {
                     let path: String = row.get(2)?;
@@ -1539,10 +1688,12 @@ impl Database {
         Ok(result)
     }
 
-    /// Proxy-detection candidates that share a parent directory with the
-    /// given path. Used by the incremental post-index worker to find a
-    /// new video's bucket-mates without re-loading the entire catalog.
-    /// Excludes the video itself and rows already marked as proxies.
+    /// Proxy-detection candidates that share a parent directory with
+    /// the given path. Used by the incremental post-index worker to
+    /// find a new video's bucket-mates without re-loading the entire
+    /// catalog. Excludes the video itself; *includes* rows already
+    /// linked as proxies so the worker can attach a freshly-indexed
+    /// master to existing proxies it matches.
     ///
     /// Uses a half-open range query on `v.path` so SQLite can use
     /// `idx_videos_path` rather than a full table scan — important
@@ -1564,8 +1715,7 @@ impl Database {
                         COALESCE(m.camera_model, ''),
                         COALESCE(v.file_size_bytes, 0)
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
-                 WHERE v.proxy_of IS NULL
-                   AND v.id != ?
+                 WHERE v.id != ?
                    AND v.path >= ? AND v.path < ?",
             )
             .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
@@ -1604,7 +1754,8 @@ impl Database {
     }
 
     /// Proxy-detection candidates that belong to a given group.
-    /// Excludes the video itself and any row already marked as a proxy.
+    /// Excludes the video itself; includes already-linked proxies so
+    /// the worker can attach additional masters where appropriate.
     pub fn list_proxy_candidates_in_group(
         &self,
         group_id: &str,
@@ -1619,8 +1770,7 @@ impl Database {
                         COALESCE(m.camera_model, ''),
                         COALESCE(v.file_size_bytes, 0)
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
-                 WHERE v.proxy_of IS NULL
-                   AND v.group_id = ?
+                 WHERE v.group_id = ?
                    AND v.id != ?",
             )
             .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
@@ -1769,18 +1919,37 @@ impl Database {
         Ok(())
     }
 
-    /// Re-point every video that's currently a proxy of `old_anchor_id`
-    /// to instead be a proxy of `new_anchor_id`. Used when the
+    /// Re-point every proxy currently linked to `old_anchor_id` so
+    /// that it's *also* linked to `new_anchor_id`. Used when the
     /// incremental post-index worker promotes a freshly-indexed
     /// higher-resolution sibling above an existing anchor.
+    ///
+    /// Additive semantics now that proxies can have many masters:
+    /// existing `(old_anchor, proxy)` rows are preserved, and new
+    /// `(new_anchor, proxy)` rows are inserted alongside them. The
+    /// denormalized `videos.proxy_of` field still gets rewritten so
+    /// callers who only look at the single-master pointer see the new
+    /// anchor.
+    ///
+    /// Returns the number of new junction rows inserted (i.e. the
+    /// number of old proxies that didn't already have a link to the
+    /// new anchor).
     pub fn repoint_proxies(&self, old_anchor_id: &str, new_anchor_id: &str) -> Result<usize> {
         let conn = self.get_connection()?;
         let n = conn
             .execute(
-                "UPDATE videos SET proxy_of = ? WHERE proxy_of = ?",
+                "INSERT OR IGNORE INTO proxy_links (master_id, proxy_id, confidence, auto_detected)
+                 SELECT ?, proxy_id, confidence, auto_detected
+                 FROM proxy_links
+                 WHERE master_id = ?",
                 params![new_anchor_id, old_anchor_id],
             )
             .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        conn.execute(
+            "UPDATE videos SET proxy_of = ? WHERE proxy_of = ?",
+            params![new_anchor_id, old_anchor_id],
+        )
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
         Ok(n)
     }
 

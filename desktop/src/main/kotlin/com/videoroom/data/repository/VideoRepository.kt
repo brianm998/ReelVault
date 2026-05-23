@@ -490,6 +490,24 @@ class VideoRepository(
         }
     }
 
+    /** Break a single master ↔ proxy edge without disturbing any
+     *  other proxy relationships the row may have. Used by the
+     *  inspector's "break" affordance. */
+    suspend fun removeProxyLink(masterId: String, proxyId: String): Boolean = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext false
+        try {
+            val request = Videoroom.RemoveProxyLinkRequest.newBuilder()
+                .setMasterId(masterId)
+                .setProxyId(proxyId)
+                .build()
+            s.removeProxyLink(request)
+            true
+        } catch (e: Exception) {
+            logger.warn("removeProxyLink failed", e)
+            false
+        }
+    }
+
     /** Re-run the auto-detector. Returns (pairsCompared, proxiesMarked). */
     suspend fun detectProxies(): Pair<Int, Int> = withContext(Dispatchers.IO) {
         val s = stub ?: return@withContext (0 to 0)

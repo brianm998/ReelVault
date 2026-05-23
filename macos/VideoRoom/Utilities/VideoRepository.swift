@@ -605,6 +605,24 @@ class VideoRepository: ObservableObject {
         let autoDetected: Bool
     }
 
+    /// Break a single master ↔ proxy junction-table edge without
+    /// disturbing the row's other proxy relationships. Used by the
+    /// inspector's per-row "break" button.
+    @discardableResult
+    func removeProxyLink(masterId: String, proxyId: String) async -> Bool {
+        guard let client = serviceClient else { return false }
+        var request = Videoroom_RemoveProxyLinkRequest()
+        request.masterID = masterId
+        request.proxyID = proxyId
+        do {
+            _ = try await client.removeProxyLink(request)
+            return true
+        } catch {
+            NSLog("removeProxyLink failed: \(error)")
+            return false
+        }
+    }
+
     /// List every lower-resolution proxy of `videoId`. Sorted descending
     /// by pixel count so the highest-resolution proxy is first.
     func listProxies(videoId: String) async throws -> [ProxyInfo] {

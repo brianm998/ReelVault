@@ -42,11 +42,15 @@ use std::path::{Path, PathBuf};
 /// Threshold below which we refuse to call two videos "the same shot".
 ///
 /// With pixel-MAD similarity, a true proxy pair (same clip, different
-/// resolution) typically scores 0.97+. 0.9 gives comfortable headroom
-/// for codec artefacts, slight colour-grade differences, and aspect-ratio
-/// squish from 3:2→16:9 exports while still rejecting visually-similar
-/// but distinct shots.
-pub const PROXY_SIMILARITY_THRESHOLD: f64 = 0.9;
+/// resolution) typically scores 0.97+. 0.96 sits just below the cluster
+/// of real-world proxy pairs and well above the false-positive cluster
+/// observed in field tests — for example, two clips that share a
+/// canonical filename prefix and bucket but differ in post-processing
+/// (e.g. raw take vs. aurora+topaz pass) consistently scored ≤ 0.95,
+/// while genuine same-shot pairs from the same machine scored ≥ 0.98.
+/// The previous 0.9 ceiling let a band of post-processing siblings slip
+/// through.
+pub const PROXY_SIMILARITY_THRESHOLD: f64 = 0.96;
 
 /// How many of the 10 scrub frames must exist on disk for us to trust
 /// the average. If fewer than this exist, we fall back to comparing
@@ -136,164 +140,144 @@ pub fn detect_proxies(db: &Database, thumbnail_cache: &Path) -> Result<DetectSum
         // Sort by (descending pixel count, descending file size).
         // When two files have the same pixel dimensions (e.g. ProRes-444 UHQ
         // and ProRes-422 MQ both at 3840×2160), the larger file — the heavier
-        // codec — becomes the anchor / master, and the smaller one is the proxy.
+        // codec — comes first; smaller same-res files are codec-proxy
+        // candidates downstream.
         members.sort_by_key(|m| {
             let pixels = (m.width as i64) * (m.height as i64);
             (-(pixels), -(m.file_size_bytes))
         });
 
-        let mut img_cache: HashMap<String, ThumbImages> = HashMap::with_capacity(members.len());
-
-        let anchor = members[0].clone();
         tracing::debug!(
             dir = %bucket_dir,
             fps = bucket_fps,
-            anchor = %anchor.filename,
-            anchor_res = %format!("{}×{}", anchor.width, anchor.height),
-            anchor_fc = anchor.frame_count,
-            candidates = members.len() - 1,
+            members = members.len(),
             "proxy detection: processing bucket",
         );
-        let anchor_imgs = thumb_images_for(thumbnail_cache, &anchor.id);
-        img_cache.insert(anchor.id.clone(), anchor_imgs.clone());
 
-        for candidate in members.iter().skip(1) {
-            // Skip already-tagged rows in case detect_proxies is called
-            // mid-scan and we picked them up before the upsert landed.
-            if db.get_proxy_target(&candidate.id).ok().flatten().is_some() {
-                tracing::debug!(
-                    skip_reason = "already tagged",
-                    filename = %candidate.filename,
-                    anchor = %anchor.filename,
-                    "proxy detection: skipping candidate",
-                );
-                continue;
-            }
+        // Cache thumbnail loads per video so the inner O(b²) loop
+        // doesn't re-decode the same JPEG for every pairwise pass.
+        let mut img_cache: HashMap<String, ThumbImages> = HashMap::with_capacity(members.len());
 
-            // ── Frame-count gate (with tolerance) ──────────────────────────
-            // Allow ±5% OR ±10 frames (same tolerance the auto-grouper uses).
-            // Videos differing more than this are genuinely different shots.
-            if anchor.frame_count > 0 && candidate.frame_count > 0 {
-                let max_fc = anchor.frame_count.max(candidate.frame_count);
-                let fc_tol = (max_fc / 20).max(10); // 5% or 10 frames
-                let fc_diff = (anchor.frame_count - candidate.frame_count).abs();
-                if fc_diff > fc_tol {
-                    tracing::debug!(
-                        skip_reason = "frame count mismatch",
-                        filename = %candidate.filename,
-                        anchor = %anchor.filename,
-                        anchor_fc = anchor.frame_count,
-                        candidate_fc = candidate.frame_count,
-                        diff = fc_diff,
-                        tolerance = fc_tol,
-                        "proxy detection: skipping candidate",
-                    );
-                    continue;
-                }
-            }
-
-            // ── Same-resolution gate (reworked) ────────────────────────────
-            // Pure duplicates at the same resolution belong in a stack, not a
-            // proxy relationship. HOWEVER: a same-resolution file with a much
-            // smaller file size is a *codec proxy* — e.g. ProRes-444 UHQ master
-            // (heavy) vs ProRes-422 MQ at the same dimensions (~4× smaller).
-            // The lighter file is still useful as a playback proxy when the
-            // machine can't decode the master in real time.
-            // Gate: require ≥ 2.5× file-size ratio; below that it's close
-            // enough to a re-encode that stacking is the right relationship.
-            let same_res = candidate.width == anchor.width
-                && candidate.height == anchor.height;
-            if same_res {
-                let size_ratio = if candidate.file_size_bytes > 0 && anchor.file_size_bytes > 0 {
-                    anchor.file_size_bytes as f64 / candidate.file_size_bytes as f64
-                } else {
-                    1.0
-                };
-                if size_ratio < 2.5 {
-                    tracing::debug!(
-                        skip_reason = "same resolution, size ratio too low for codec-proxy",
-                        filename = %candidate.filename,
-                        anchor = %anchor.filename,
-                        res = %format!("{}×{}", candidate.width, candidate.height),
-                        size_ratio = %format!("{:.2}×", size_ratio),
-                        "proxy detection: skipping candidate",
-                    );
-                    continue; // Similar size → stack member, not proxy
-                }
-                // Large size difference at same resolution → codec proxy candidate.
-            }
-
-            // ── Camera-model gate ──────────────────────────────────────────
-            // Reject only when *both* sides carry non-empty, non-matching EXIF.
-            if !anchor.camera_model.is_empty()
-                && !candidate.camera_model.is_empty()
-                && anchor.camera_model != candidate.camera_model
-            {
-                tracing::debug!(
-                    skip_reason = "camera model mismatch",
-                    filename = %candidate.filename,
-                    anchor = %anchor.filename,
-                    anchor_camera = %anchor.camera_model,
-                    candidate_camera = %candidate.camera_model,
-                    "proxy detection: skipping candidate",
-                );
-                continue;
-            }
-
+        // For each (master, candidate) pair where the master is
+        // earlier in the sorted bucket and qualifies as a master of
+        // the candidate (strictly more pixels OR same-pixels + ≥ 2.5×
+        // larger file), run the gates + thumbnail comparison. Every
+        // pair that passes adds a junction-table link, so a single
+        // proxy can attach to multiple visually-equivalent masters
+        // (e.g. three slightly-different aurora/topaz/star_v variants
+        // that all share the same low-res preview).
+        for j in 1..members.len() {
+            let candidate = members[j].clone();
+            // Gather this candidate's thumbnails once.
             let cand_imgs = img_cache
                 .entry(candidate.id.clone())
                 .or_insert_with(|| thumb_images_for(thumbnail_cache, &candidate.id))
                 .clone();
 
-            summary.pairs_compared += 1;
-            let conf = compare_thumb_sets(&anchor_imgs, &cand_imgs);
-
-            // Always log at DEBUG so a verbose run shows every comparison.
-            tracing::debug!(
-                proxy_a = %anchor.filename,
-                proxy_b = %candidate.filename,
-                res_a = %format!("{}×{}", anchor.width, anchor.height),
-                res_b = %format!("{}×{}", candidate.width, candidate.height),
-                size_a_mb = anchor.file_size_bytes / 1_048_576,
-                size_b_mb = candidate.file_size_bytes / 1_048_576,
-                fc_a = anchor.frame_count,
-                fc_b = candidate.frame_count,
-                confidence = %format!("{:.3}", conf),
-                "proxy pair compared",
-            );
-            // Promote near-misses (≥ 0.5 but below threshold) to INFO so
-            // operators can see borderline pairs without enabling debug mode.
-            // Pairs below 0.5 are almost certainly unrelated clips.
-            if conf >= 0.5 && conf < PROXY_SIMILARITY_THRESHOLD {
-                tracing::info!(
-                    "Near-miss proxy pair (conf {:.3} < {:.2} threshold): {} [{}×{}] vs {} [{}×{}]",
-                    conf,
-                    PROXY_SIMILARITY_THRESHOLD,
-                    anchor.filename,
-                    anchor.width, anchor.height,
-                    candidate.filename,
-                    candidate.width, candidate.height,
-                );
-            }
-
-            if conf >= PROXY_SIMILARITY_THRESHOLD {
-                if let Err(e) = db.set_proxy_of(&candidate.id, &anchor.id, conf, true) {
-                    tracing::warn!(
-                        "Failed to mark {} as proxy of {}: {}",
-                        candidate.filename, anchor.filename, e,
-                    );
+            for i in 0..j {
+                let master = members[i].clone();
+                if !is_master_of(&master, &candidate) {
                     continue;
                 }
-                tracing::info!(
-                    "Auto-detected proxy: {} → {} (confidence {:.3})",
-                    candidate.filename, anchor.filename, conf,
+                if !proxy_pair_gates_pass(&master, &candidate) {
+                    continue;
+                }
+                let master_imgs = img_cache
+                    .entry(master.id.clone())
+                    .or_insert_with(|| thumb_images_for(thumbnail_cache, &master.id))
+                    .clone();
+
+                summary.pairs_compared += 1;
+                let conf = compare_thumb_sets(&master_imgs, &cand_imgs);
+                tracing::debug!(
+                    master = %master.filename,
+                    candidate = %candidate.filename,
+                    res_master = %format!("{}×{}", master.width, master.height),
+                    res_cand = %format!("{}×{}", candidate.width, candidate.height),
+                    size_master_mb = master.file_size_bytes / 1_048_576,
+                    size_cand_mb = candidate.file_size_bytes / 1_048_576,
+                    fc_master = master.frame_count,
+                    fc_cand = candidate.frame_count,
+                    confidence = %format!("{:.3}", conf),
+                    "proxy pair compared",
                 );
-                summary.proxies_marked += 1;
+                if conf >= 0.5 && conf < PROXY_SIMILARITY_THRESHOLD {
+                    tracing::info!(
+                        "Near-miss proxy pair (conf {:.3} < {:.2} threshold): {} [{}×{}] vs {} [{}×{}]",
+                        conf,
+                        PROXY_SIMILARITY_THRESHOLD,
+                        master.filename,
+                        master.width, master.height,
+                        candidate.filename,
+                        candidate.width, candidate.height,
+                    );
+                }
+                if conf >= PROXY_SIMILARITY_THRESHOLD {
+                    if let Err(e) = db.set_proxy_of(&candidate.id, &master.id, conf, true) {
+                        tracing::warn!(
+                            "Failed to link {} as proxy of {}: {}",
+                            candidate.filename, master.filename, e,
+                        );
+                        continue;
+                    }
+                    tracing::info!(
+                        "Auto-detected proxy: {} → {} (confidence {:.3})",
+                        candidate.filename, master.filename, conf,
+                    );
+                    summary.proxies_marked += 1;
+                }
             }
         }
     }
 
     Ok(summary)
+}
+
+/// Does `master` qualify as a potential master for `candidate`?
+///
+/// A master either has strictly more pixels than the candidate, or
+/// matches on pixel count but is ≥ 2.5× larger on disk (a "codec
+/// proxy" relationship — e.g. ProRes-444 UHQ master vs ProRes-422 MQ
+/// at the same dimensions but ~4× lighter). Equal-pixel-and-similar-
+/// size pairs belong in a stack instead.
+pub(crate) fn is_master_of(master: &ProxyDetectCandidate, candidate: &ProxyDetectCandidate) -> bool {
+    let m_px = (master.width as i64) * (master.height as i64);
+    let c_px = (candidate.width as i64) * (candidate.height as i64);
+    if m_px > c_px {
+        return true;
+    }
+    if m_px == c_px && master.file_size_bytes > 0 && candidate.file_size_bytes > 0 {
+        let ratio = master.file_size_bytes as f64 / candidate.file_size_bytes as f64;
+        return ratio >= 2.5;
+    }
+    false
+}
+
+/// Frame-count / camera-model gates shared between batch detection
+/// and the incremental post-index worker. The pixel-count and
+/// same-resolution-size gates are handled by [`is_master_of`].
+pub(crate) fn proxy_pair_gates_pass(
+    master: &ProxyDetectCandidate,
+    candidate: &ProxyDetectCandidate,
+) -> bool {
+    // Frame-count gate (with tolerance): allow ±5% or ±10 frames.
+    if master.frame_count > 0 && candidate.frame_count > 0 {
+        let max_fc = master.frame_count.max(candidate.frame_count);
+        let fc_tol = (max_fc / 20).max(10);
+        let fc_diff = (master.frame_count - candidate.frame_count).abs();
+        if fc_diff > fc_tol {
+            return false;
+        }
+    }
+    // Camera-model gate: reject only when both sides carry non-empty,
+    // non-matching EXIF.
+    if !master.camera_model.is_empty()
+        && !candidate.camera_model.is_empty()
+        && master.camera_model != candidate.camera_model
+    {
+        return false;
+    }
+    true
 }
 
 // ---- Public thumbnail comparison API -----------------------------------

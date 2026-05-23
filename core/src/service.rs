@@ -1312,6 +1312,26 @@ impl VideoRoomTrait for VideoRoomService {
         }))
     }
 
+    async fn remove_proxy_link(
+        &self,
+        request: Request<RemoveProxyLinkRequest>,
+    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+        let req = request.into_inner();
+        if req.master_id.is_empty() || req.proxy_id.is_empty() {
+            return Err(Status::invalid_argument(
+                "master_id and proxy_id are both required",
+            ));
+        }
+        self.db
+            .remove_proxy_link(&req.master_id, &req.proxy_id)
+            .map_err(Status::from)?;
+        Ok(Response::new(videoroom::Response {
+            success: true,
+            message: "Proxy link removed".into(),
+            error: String::new(),
+        }))
+    }
+
     async fn detect_proxies(
         &self,
         _request: Request<DetectProxiesRequest>,

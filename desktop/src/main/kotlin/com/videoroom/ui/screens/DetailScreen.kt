@@ -635,6 +635,65 @@ fun DetailScreen(
                                         )
                                     }
                                 }
+                                // Break-link affordance — always visible
+                                // so the user can correct false
+                                // auto-detections regardless of view
+                                // mode. Click handler is a stop-event
+                                // wrapper so the surrounding row tap
+                                // (which switches loupe playback in
+                                // DETAIL mode) doesn't fire.
+                                Spacer(modifier = Modifier.width(VideoRoomSpacing.XSmall))
+                                com.videoroom.ui.components.Tooltip(
+                                    text = "Break this proxy link. The proxy file itself stays in the catalog; only the relationship with this master is removed."
+                                ) {
+                                    IconButton(
+                                        onClick = { viewModel.breakProxyLink(proxy.id) },
+                                        modifier = Modifier.size(24.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.LinkOff,
+                                            contentDescription = "Break proxy link",
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.outline,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // "Add selected as proxy" affordance — visible when
+                    // the multi-selection contains exactly one OTHER
+                    // video besides the currently-inspected master.
+                    // Using the existing selection keeps the workflow
+                    // discoverable without a separate picker dialog:
+                    // click master, Cmd-click candidate, click button.
+                    val selectedIds = gridViewModel.selectedVideoIds.collectAsState()
+                    val masterId = currentSummary.value?.id
+                    val candidateId = remember(selectedIds.value, masterId) {
+                        if (masterId == null) null
+                        else selectedIds.value.firstOrNull { it != masterId }
+                            ?.takeIf { selectedIds.value.size == 2 }
+                    }
+                    if (candidateId != null) {
+                        Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
+                        com.videoroom.ui.components.Tooltip(
+                            text = "Manually link the second selected video to this master as a proxy. Use this when auto-detection missed a valid proxy."
+                        ) {
+                            OutlinedButton(
+                                onClick = { viewModel.forceProxyLink(candidateId) },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AddLink,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
+                                Text(
+                                    text = "Add selected video as proxy",
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
                             }
                         }
                     }

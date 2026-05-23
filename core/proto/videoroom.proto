@@ -49,6 +49,7 @@ service VideoRoom {
   rpc GenerateProxy(GenerateProxyRequest) returns (stream ProxyGenerationProgress);
   rpc ListProxies(ListProxiesRequest) returns (ListProxiesResponse);
   rpc SetProxyOf(SetProxyOfRequest) returns (Response);
+  rpc RemoveProxyLink(RemoveProxyLinkRequest) returns (Response);
   rpc DetectProxies(DetectProxiesRequest) returns (DetectProxiesResponse);
 
   // Filter options (distinct values for the grid's dropdowns)
@@ -429,10 +430,21 @@ message ListProxiesResponse {
 }
 
 // Set or clear a manual proxy_of pointer. Used by the right-panel
-// "This is a proxy of …" picker. `original_id` empty = clear the link.
+// "This is a proxy of …" picker. `original_id` empty = clear *all*
+// proxy links for `proxy_id` (the row stops being a proxy of anything).
+// To break a single master/proxy pair without affecting other masters,
+// use `RemoveProxyLink` instead.
 message SetProxyOfRequest {
   string proxy_id = 1;
-  string original_id = 2;   // Empty to un-mark.
+  string original_id = 2;   // Empty to un-mark every link for this proxy.
+}
+
+// Remove a single master ↔ proxy edge from the junction table. Lets
+// the user "break" an incorrect auto-detection without wiping the row's
+// other (correct) proxy relationships.
+message RemoveProxyLinkRequest {
+  string master_id = 1;
+  string proxy_id = 2;
 }
 
 // Sweep the catalog for thumbnail-similar pairs and mark proxies. Idempotent.
