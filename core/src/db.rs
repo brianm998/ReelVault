@@ -1658,6 +1658,70 @@ impl Database {
         Ok(rows)
     }
 
+    /// Proxy-detection candidates restricted to a subtree of the catalog.
+    ///
+    /// Used by per-directory refreshes so we don't redo the whole library's
+    /// pairwise comparisons just because one location was rescanned. Returns
+    /// every video whose `v.path` lives under `base_path/`, **plus** every
+    /// video that shares a `group_id` with one of those — group buckets span
+    /// directories, so a freshly-rescanned member needs its grouped siblings
+    /// (which may live elsewhere on disk) loaded as candidates too.
+    ///
+    /// Uses the same half-open prefix range trick as
+    /// [`Self::list_proxy_candidates_in_dir`] so SQLite can use
+    /// `idx_videos_path` instead of scanning the table.
+    pub fn list_for_proxy_detection_under_path(
+        &self,
+        base_path: &str,
+    ) -> Result<Vec<ProxyDetectCandidate>> {
+        let conn = self.get_connection()?;
+        let (lower, upper) = path_prefix_range(&(base_path.trim_end_matches('/').to_string() + "/"));
+        let mut stmt = conn
+            .prepare(
+                "SELECT v.id, v.filename, v.path, v.group_id,
+                        COALESCE(m.width, 0), COALESCE(m.height, 0),
+                        COALESCE(m.fps, 0), COALESCE(m.frame_count, 0),
+                        COALESCE(m.camera_model, ''),
+                        COALESCE(v.file_size_bytes, 0)
+                 FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
+                 WHERE (v.path >= ?1 AND v.path < ?2)
+                    OR (v.group_id IS NOT NULL
+                        AND v.group_id IN (
+                            SELECT DISTINCT v2.group_id
+                            FROM videos v2
+                            WHERE v2.group_id IS NOT NULL
+                              AND v2.path >= ?1 AND v2.path < ?2
+                        ))",
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        let rows = stmt
+            .query_map(params![lower, upper], |row| {
+                let path: String = row.get(2)?;
+                let parent_dir = std::path::Path::new(&path)
+                    .parent()
+                    .and_then(|p| p.to_str())
+                    .unwrap_or("")
+                    .to_string();
+                Ok(ProxyDetectCandidate {
+                    id: row.get(0)?,
+                    filename: row.get(1)?,
+                    path,
+                    parent_dir,
+                    group_id: row.get(3)?,
+                    width: row.get(4)?,
+                    height: row.get(5)?,
+                    fps: row.get(6)?,
+                    frame_count: row.get(7)?,
+                    camera_model: row.get(8)?,
+                    file_size_bytes: row.get(9)?,
+                })
+            })
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(rows)
+    }
+
     /// Fetch the proxy-detection candidate row for a single video — the
     /// per-video equivalent of [`Self::list_for_proxy_detection`].
     /// Returns `None` when the row is missing entirely. Already-linked

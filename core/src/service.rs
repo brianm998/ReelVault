@@ -822,7 +822,22 @@ impl VideoRoomTrait for VideoRoomService {
             // pair with until its high-res sibling shows up). Cheap:
             // O(n) thumbnail hashes + O(b²) within each frame-count
             // bucket, where b is typically 1–3.
-            match crate::proxies::detect_proxies(db.as_ref(), &cache_path) {
+            //
+            // Scope detection to just the refreshed location when the
+            // caller asked for a single path — re-running pairwise
+            // comparisons across the whole catalog after every
+            // per-folder refresh can take minutes on large libraries.
+            let detect_result = if location_path.is_empty() {
+                crate::proxies::detect_proxies(db.as_ref(), &cache_path)
+            } else {
+                let expanded = expand_tilde(&location_path);
+                crate::proxies::detect_proxies_under_path(
+                    db.as_ref(),
+                    &cache_path,
+                    std::path::Path::new(&expanded),
+                )
+            };
+            match detect_result {
                 Ok(s) => {
                     // Always log so operators can tell "nothing new to detect"
                     // from "detection didn't run at all". The pairs_compared
