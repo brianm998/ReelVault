@@ -303,16 +303,23 @@ class GridViewModel(
     }
 
     /**
-     * Like [playVideo], but first looks for a lower-resolution proxy for
-     * oversize videos. If the video is not natively playable but has at
-     * least one proxy, fetches the proxy list and picks the smallest one
-     * (last in the list, which is sorted descending by pixel count).
-     * Sets [playingVideoPath] before [playingVideoId] so the card picks
-     * up the right URL on its first composition.
+     * Like [playVideo], but always picks the lowest-resolution proxy
+     * whenever any is available — even for natively-playable masters.
+     *
+     * Rationale: inline grid/list playback is a hover-preview surface,
+     * not a master-quality experience. The smallest proxy decodes
+     * cheapest, leaves CPU + GPU headroom for a busy grid, and avoids
+     * "the card is laggy" complaints on high-bitrate 4K masters that
+     * the server *would* let us play but that the user's machine
+     * struggles to decode in real time. The right panel / detail view
+     * picker is where the user can explicitly choose the master.
+     *
+     * Falls back to the master path when no proxy exists or the gRPC
+     * call fails.
      */
     fun playVideoPreferProxy(videoId: String) {
         val video = _videos.value.find { it.id == videoId }
-        if (video == null || video.playableNatively || video.proxyCount == 0) {
+        if (video == null || video.proxyCount == 0) {
             _playingVideoPath.value = null
             _playingVideoId.value = videoId
             return

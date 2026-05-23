@@ -11,6 +11,11 @@ struct DetailView: View {
     let onCollapse: () -> Void
     /// When `true`, a "List Columns" toggle section appears below the thumbnail slider.
     var isListMode: Bool = false
+    /// When `true`, the proxy section rows are clickable: a click swaps
+    /// the detail-view (loupe) player to the selected proxy. In Grid
+    /// and List mode the section is read-only because inline playback
+    /// always auto-selects the lowest-res proxy.
+    var isLoupeMode: Bool = false
     /// Opens the LocationPicker sheet for the given video IDs. `initial`
     /// is the existing (lat, lon) when one is already set, or nil.
     var onEditLocation: (_ videoIds: [String], _ initial: (Double, Double)?) -> Void = { _, _ in }
@@ -311,6 +316,83 @@ struct DetailView: View {
                 .cornerRadius(4)
             }
 
+            // Proxies section — shown whenever the catalog has any
+            // proxies attached to the current video. Mirrors the stack
+            // section: filename + height + size per row, plus the auto-
+            // detected flag.
+            //
+            // In Loupe mode each row is clickable: it tells the
+            // detail-view player to swap to that proxy. In Grid/List
+            // mode rows are read-only because inline playback always
+            // picks the smallest proxy automatically.
+            if !viewModel.proxies.isEmpty {
+                Divider()
+                HStack {
+                    Text("Proxies (\(viewModel.proxies.count))")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+                if let summary = viewModel.currentSummary, !summary.playableNatively {
+                    // Surface the "master too large to play here"
+                    // notice immediately above the proxy list — these
+                    // proxies are precisely how the user can still
+                    // play the clip without launching an external
+                    // editor.
+                    Text(isLoupeMode
+                         ? "The original is above the inline-playback ceiling. Pick a proxy below to play it here."
+                         : "The original is above the inline-playback ceiling. Switch to Detail view to play a proxy in-app.")
+                        .font(.system(size: 10))
+                        .padding(8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.accentColor.opacity(0.12))
+                        .cornerRadius(4)
+                }
+                VStack(spacing: 0) {
+                    ForEach(Array(viewModel.proxies.enumerated()), id: \.element.id) { idx, proxy in
+                        if idx > 0 { Divider() }
+                        let isSelected = proxy.id == viewModel.selectedProxyId
+                        HStack(spacing: 6) {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(proxy.filename)
+                                    .font(.system(size: 11))
+                                    .lineLimit(1)
+                                Text(proxyDetailLine(proxy))
+                                    .font(.system(size: 9))
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            if isLoupeMode {
+                                Button {
+                                    // Toggle: clicking the currently-
+                                    // selected proxy reverts to the
+                                    // master.
+                                    viewModel.setSelectedProxy(isSelected ? nil : proxy.id)
+                                } label: {
+                                    Image(systemName: isSelected ? "play.circle.fill" : "play.circle")
+                                        .foregroundColor(isSelected ? .accentColor : .secondary)
+                                }
+                                .buttonStyle(.plain)
+                                .help(isSelected
+                                      ? "Currently playing this proxy. Click to revert to the original."
+                                      : "Play this proxy in the detail view instead of the original.")
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 6)
+                        .background(isSelected ? Color.accentColor.opacity(0.12) : .clear)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            guard isLoupeMode else { return }
+                            viewModel.setSelectedProxy(isSelected ? nil : proxy.id)
+                        }
+                    }
+                }
+                .background(Color(.windowBackgroundColor).opacity(0.5))
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color(.separatorColor)))
+                .cornerRadius(4)
+            }
+
             Divider()
 
             // Notes
@@ -373,6 +455,13 @@ struct DetailView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity)
+    }
+
+    /// "<height>p • <size> • auto-detected" subtitle for a proxy row.
+    private func proxyDetailLine(_ proxy: VideoRepository.ProxyInfo) -> String {
+        let res = proxy.height > 0 ? "\(proxy.height)p" : "?"
+        let size = ByteCountFormatter.string(fromByteCount: proxy.sizeBytes, countStyle: .binary)
+        return proxy.autoDetected ? "\(res) • \(size) • auto-detected" : "\(res) • \(size)"
     }
 }
 

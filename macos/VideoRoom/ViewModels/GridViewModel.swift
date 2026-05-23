@@ -255,24 +255,32 @@ class GridViewModel: ObservableObject {
         playingVideoId = videoId
     }
 
-    /// Like `playVideo`, but first checks for a lower-resolution proxy.
-    /// If the video is oversize (`!playableNatively`) and has at least one
-    /// proxy, fetches the proxy list and picks the smallest one so inline
-    /// playback stays smooth. Sets `playingVideoPath` before
-    /// `playingVideoId` so the card gets the right URL on its first render.
+    /// Like `playVideo`, but always picks the lowest-resolution proxy
+    /// whenever any is available — even for natively-playable masters.
+    ///
+    /// Rationale: inline grid/list playback is a hover-preview surface,
+    /// not a master-quality experience. The smallest proxy decodes
+    /// cheapest, leaves CPU + GPU headroom for a busy grid, and avoids
+    /// "the card is laggy" complaints on high-bitrate 4K masters that
+    /// the server would let us play but that the user's machine
+    /// struggles to decode in real time. The right panel / detail
+    /// view picker is where the user can explicitly choose the master.
+    ///
+    /// Falls back to the master path when no proxy exists or the gRPC
+    /// call fails.
     func playVideoPreferProxy(videoId: String) {
         guard let video = videos.first(where: { $0.id == videoId }) else {
             playVideo(videoId: videoId)
             return
         }
-        if video.playableNatively || !video.hasProxies {
-            // Already fits under the playback ceiling, or no proxy exists.
+        if !video.hasProxies {
+            // No proxy available — play the master directly.
             playingVideoPath = nil
             playingVideoId = videoId
             return
         }
-        // Oversize with proxies: fetch them asynchronously, then start playback.
-        // (listProxies returns sorted descending by pixel count; .last = smallest.)
+        // Fetch the proxy list and pick the smallest entry.
+        // (`listProxies` returns descending by pixel count; `.last` = smallest.)
         Task { @MainActor in
             do {
                 let proxies = try await repository.listProxies(videoId: videoId)

@@ -117,6 +117,26 @@ fun DetailViewScreen(
     // After "play", VLCJ takes over the preview area.
     var playbackStarted by remember(video.id) { mutableStateOf(false) }
 
+    // Resolve which path the player should load right now: explicit proxy
+    // pick from the right panel takes precedence, then the
+    // unplayable-master → smallest-proxy fallback, then the master path.
+    // We re-derive on every recomposition (cheap — just two state reads
+    // plus a list lookup) so picking a different proxy mid-session
+    // immediately changes what gets loaded.
+    val selectedProxyId by detailViewModel.selectedProxyId.collectAsState()
+    val proxies by detailViewModel.proxies.collectAsState()
+    val effectivePath: String = remember(video.id, selectedProxyId, proxies, video.playableNatively) {
+        detailViewModel.playbackPathFor(video) ?: video.path
+    }
+    // If the user picks a different proxy (or reverts to master) while
+    // a video is already playing, swap the URL in place. Skip when the
+    // player isn't active so we don't auto-start playback on selection.
+    LaunchedEffect(effectivePath, playbackStarted) {
+        if (playbackStarted && player.available) {
+            player.load(effectivePath, playImmediately = true)
+        }
+    }
+
     // Space bar handler: each increment of playToggle fires a play/pause.
     // Skip the initial composition (playToggle == 0) to avoid auto-playing
     // when the screen first mounts.
@@ -131,7 +151,7 @@ fun DetailViewScreen(
         if (playbackStarted) {
             player.togglePause()
         } else {
-            player.load(video.path, playImmediately = true)
+            player.load(effectivePath, playImmediately = true)
             playbackStarted = true
         }
     }
@@ -168,6 +188,44 @@ fun DetailViewScreen(
                 )
             }
 
+            // Proxy-playback banner (top-right). Visible whenever the
+            // player is loading a proxy instead of the master — either
+            // because the master is too large to play inline (auto
+            // fallback) or because the user explicitly picked a proxy
+            // in the right panel. Reassures the user that yes, this is
+            // playable, and tells them which file they're seeing.
+            //
+            // The badge is informational only; the right panel is where
+            // the user picks a different proxy or reverts to master.
+            if (effectivePath != video.path) {
+                val activeProxy = remember(effectivePath, proxies) {
+                    proxies.firstOrNull { it.path == effectivePath }
+                }
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(VideoRoomSpacing.Medium),
+                    color = Color(0xFF408888).copy(alpha = 0.85f),
+                    shape = MaterialTheme.shapes.small,
+                ) {
+                    Column(modifier = Modifier.padding(VideoRoomSpacing.Small)) {
+                        Text(
+                            text = if (selectedProxyId != null) "Playing selected proxy"
+                                else "Original too large — playing proxy",
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                        if (activeProxy != null) {
+                            Text(
+                                text = "${activeProxy.filename} • ${activeProxy.height}p",
+                                color = Color.White.copy(alpha = 0.85f),
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                    }
+                }
+            }
+
             // "VLC not installed" or "VLC found but video surface is black"
             // overlay. VlcUnavailableOverlay handles both cases: immediate
             // display when player.available is false (libvlc not found), and
@@ -193,7 +251,7 @@ fun DetailViewScreen(
                 if (!playbackStarted) {
                     playbackStarted = true
                     if (player.available) {
-                        player.load(video.path, playImmediately = true)
+                        player.load(effectivePath, playImmediately = true)
                     }
                     // If libvlc isn't available, playbackStarted is still set
                     // so the "VLCJ unavailable" overlay shows; the Stop button

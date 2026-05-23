@@ -4,10 +4,12 @@
 use crate::db::Database;
 use crate::error::{Result, VideoRoomError};
 use crate::metadata::MetadataExtractor;
+use crate::post_index;
 use crate::thumbnails::ThumbnailGenerator;
 use rayon::prelude::*;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::Arc;
 use walkdir::WalkDir;
 
 pub const SUPPORTED_EXTENSIONS: &[&str] = &[
@@ -128,11 +130,12 @@ pub struct IndexingEngine;
 
 impl IndexingEngine {
     pub fn scan_directory(
-        db: &Database,
+        db: Arc<Database>,
         path: &Path,
         recursive: bool,
         thumbnail_cache: &Path,
         filename_date: Option<FilenameDateRule>,
+        post_index_options: post_index::Options,
         on_progress: impl Fn(&ScanProgress) + Sync,
     ) -> Result<()> {
         tracing::info!("Starting scan of: {}", path.display());
@@ -167,6 +170,18 @@ impl IndexingEngine {
 
         let videos_found = video_paths.len() as i64;
         tracing::info!("Found {} videos to index", videos_found);
+
+        // Spin up the incremental post-index worker pool *before* the
+        // par_iter so each indexed video can be handed off the moment
+        // its row lands in the DB.  The pool exists for the lifetime of
+        // this scan; we close it (drop sender + join) after the par_iter
+        // returns, so any items still in flight finish processing before
+        // we report scan completion.
+        let post_index = post_index::spawn(
+            Arc::clone(&db),
+            thumbnail_cache.to_path_buf(),
+            post_index_options,
+        );
 
         // Second pass: extract metadata + generate thumbnails in parallel.
         //
@@ -208,10 +223,15 @@ impl IndexingEngine {
                 progress_percent: (started_idx as f64 / videos_found.max(1) as f64) * 100.0,
             });
 
-            match Self::index_video(db, video_path, thumbnail_cache, filename_date) {
-                Ok(_) => {
+            match Self::index_video(db.as_ref(), video_path, thumbnail_cache, filename_date) {
+                Ok(video_id) => {
                     let done = videos_indexed.fetch_add(1, Ordering::Relaxed) + 1;
                     tracing::debug!("Indexed: {}", filename);
+                    // Hand the freshly-indexed video off to the
+                    // post-index pool. The submit call applies
+                    // backpressure if the pool is saturated, which
+                    // throttles the rayon loop and keeps memory bounded.
+                    post_index.submit(video_id);
                     // Also emit a "finished this file" tick so the
                     // client sees the indexed count climb steadily.
                     on_progress(&ScanProgress {
@@ -227,6 +247,19 @@ impl IndexingEngine {
                 }
             }
         });
+
+        // Drain the worker pool before reporting "complete". Without
+        // this, the caller could observe the scan as finished while
+        // proxy/stack decisions for the last few videos are still
+        // pending — and an interrupt at that point would lose them.
+        on_progress(&ScanProgress {
+            status: "finalizing".to_string(),
+            videos_found,
+            videos_indexed: videos_indexed.load(Ordering::Relaxed),
+            current_file: "Finishing proxy & group detection".to_string(),
+            progress_percent: 99.0,
+        });
+        post_index.finish();
 
         let videos_indexed_final = videos_indexed.load(Ordering::Relaxed);
 

@@ -3,6 +3,7 @@
 
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Instant;
 use humansize::{format_size, BINARY};
 use prettytable::{Table, Row, Cell};
@@ -11,6 +12,7 @@ use videoroom_core::db::Database;
 use videoroom_core::metadata::MetadataExtractor;
 use videoroom_core::thumbnails::ThumbnailGenerator;
 use videoroom_core::indexing::IndexingEngine;
+use videoroom_core::post_index;
 use videoroom_core::search::SearchEngine;
 use videoroom_core::config::Config;
 
@@ -154,12 +156,15 @@ async fn main() -> anyhow::Result<()> {
     println!("📚 VideoRoom CLI v{}", env!("CARGO_PKG_VERSION"));
     println!("Database: {}\n", db_path.display());
 
-    // Initialize database
-    let db = Database::new(&db_path)?;
+    // Initialize database. Wrapped in `Arc` so scan-related commands
+    // can hand a clone to the post-index worker pool inside
+    // [`IndexingEngine::scan_directory`]. Other subcommands still
+    // take a `&Database` borrow via auto-deref.
+    let db = Arc::new(Database::new(&db_path)?);
     db.initialize().await?;
 
     match cli.command {
-        Commands::Scan { path, recursive } => cmd_scan(&db, &path, recursive).await?,
+        Commands::Scan { path, recursive } => cmd_scan(Arc::clone(&db), &path, recursive).await?,
         Commands::List { limit, offset } => cmd_list(&db, limit, offset).await?,
         Commands::Meta { video_id } => cmd_meta(&db, &video_id).await?,
         Commands::Search { query, limit } => cmd_search(&db, &query, limit).await?,
@@ -171,14 +176,14 @@ async fn main() -> anyhow::Result<()> {
         Commands::CreateTag { name, color } => cmd_create_tag(&db, &name, color.as_deref()).await?,
         Commands::ListTags => cmd_list_tags(&db).await?,
         Commands::Tag { video_id, tag_id } => cmd_tag(&db, &video_id, &tag_id).await?,
-        Commands::Bench { path } => cmd_bench(&db, &path).await?,
+        Commands::Bench { path } => cmd_bench(Arc::clone(&db), &path).await?,
     }
 
     Ok(())
 }
 
 async fn cmd_scan(
-    db: &Database,
+    db: Arc<Database>,
     path: &std::path::Path,
     recursive: bool,
 ) -> anyhow::Result<()> {
@@ -194,6 +199,7 @@ async fn cmd_scan(
         recursive,
         &cache_path,
         None,
+        post_index::Options::default(),
         |progress| {
             if !progress.current_file.is_empty() {
                 println!(
@@ -565,18 +571,20 @@ async fn cmd_tag(db: &Database, video_id: &str, tag_id: &str) -> anyhow::Result<
     Ok(())
 }
 
-async fn cmd_bench(db: &Database, path: &std::path::Path) -> anyhow::Result<()> {
+async fn cmd_bench(db: Arc<Database>, path: &std::path::Path) -> anyhow::Result<()> {
     println!("⚡ Running benchmark on: {}\n", path.display());
 
     let cache_path = get_cache_path()?;
     let start = Instant::now();
 
+    let db_for_stats = Arc::clone(&db);
     IndexingEngine::scan_directory(
         db,
         path,
         true,
         &cache_path,
         None,
+        post_index::Options::default(),
         |progress| {
             if progress.progress_percent > 0.0 && progress.progress_percent % 10.0 < 1.0 {
                 println!("  {:.0}% - {} videos found, {} indexed",
@@ -587,7 +595,7 @@ async fn cmd_bench(db: &Database, path: &std::path::Path) -> anyhow::Result<()> 
     )?;
 
     let elapsed = start.elapsed();
-    let (videos, _) = db.list_videos(1, 0)?;
+    let (videos, _) = db_for_stats.list_videos(1, 0)?;
     let total_videos = videos.first().map(|_| 1).unwrap_or(0);
 
     println!("\n📈 Benchmark Results:");

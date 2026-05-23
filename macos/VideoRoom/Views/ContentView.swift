@@ -657,6 +657,7 @@ struct ContentView: View {
                     thumbnailWidth: $thumbnailWidth,
                     onCollapse: { rightPanelExpanded = false },
                     isListMode: viewMode == .list,
+                    isLoupeMode: viewMode == .detail,
                     onEditLocation: { videoIds, initial in
                         // Await before showing the sheet so the picker's
                         // init captures populated arrays and frames the

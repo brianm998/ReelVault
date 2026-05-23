@@ -41,16 +41,88 @@ class DetailViewModel(
     private val _groupPreferredId = MutableStateFlow("")
     val groupPreferredId: StateFlow<String> = _groupPreferredId.asStateFlow()
 
-    private var currentVideoSummary: com.videoroom.data.models.VideoSummary? = null
+    // Proxies attached to the currently-selected video.
+    //
+    // Sorted by height descending — the same order `list_proxies` returns
+    // from the server. UI sites can take `.lastOrNull()` to get the
+    // smallest proxy (used for grid/list inline playback) or
+    // `.firstOrNull()` for the largest.
+    private val _proxies = MutableStateFlow<List<VideoRepository.ProxyInfo>>(emptyList())
+    val proxies: StateFlow<List<VideoRepository.ProxyInfo>> = _proxies.asStateFlow()
+
+    // ID of the proxy the user explicitly picked for full-screen detail-view
+    // playback. `null` means "play the master" (or, when the master is too
+    // large, the player code falls back to the smallest proxy).
+    //
+    // Carries across selection changes intentionally — once cleared (via
+    // [setCurrentVideo]) it stays `null` until the user clicks a proxy row
+    // in the right panel.
+    private val _selectedProxyId = MutableStateFlow<String?>(null)
+    val selectedProxyId: StateFlow<String?> = _selectedProxyId.asStateFlow()
+
+    // The summary backing the currently-selected card. Exposed as a
+    // StateFlow so the right-panel proxy section (which keys off
+    // `playableNatively` and `hasProxies` — neither carried by
+    // VideoMetadata) can collect it directly.
+    private val _currentSummary = MutableStateFlow<com.videoroom.data.models.VideoSummary?>(null)
+    val currentSummary: StateFlow<com.videoroom.data.models.VideoSummary?> = _currentSummary.asStateFlow()
+    private val currentVideoSummary: com.videoroom.data.models.VideoSummary?
+        get() = _currentSummary.value
 
     fun setCurrentVideo(video: com.videoroom.data.models.VideoSummary) {
-        currentVideoSummary = video
+        _currentSummary.value = video
         if (video.isInGroup) {
             loadGroupMembers(video.groupId)
         } else {
             _groupMembers.value = emptyList()
             _groupPreferredId.value = ""
         }
+        // Reset proxy selection on each new video, then lazily load the
+        // proxy list when the summary advertises any. Servers send
+        // `proxyCount = 0` for almost every video, so the conditional
+        // saves a round trip on the common case.
+        _selectedProxyId.value = null
+        if (video.hasProxies) {
+            loadProxies(video.id)
+        } else {
+            _proxies.value = emptyList()
+        }
+    }
+
+    private fun loadProxies(videoId: String) {
+        viewModelScope.launch {
+            try {
+                _proxies.value = repository.listProxies(videoId)
+            } catch (e: Exception) {
+                logger.warn("Failed to load proxies for $videoId", e)
+                _proxies.value = emptyList()
+            }
+        }
+    }
+
+    /** User picked a specific proxy in the detail-view right panel.
+     *  Pass `null` to revert to playing the master. */
+    fun setSelectedProxy(proxyId: String?) {
+        _selectedProxyId.value = proxyId
+    }
+
+    /** The on-disk path that the detail-view player should load, based
+     *  on the current proxy selection and the master's playability. The
+     *  rules:
+     *    • User explicitly picked a proxy → that proxy's path.
+     *    • Master is not natively playable AND a proxy exists → smallest proxy's path.
+     *    • Otherwise → null, callers should fall back to the master's own path.
+     */
+    fun playbackPathFor(video: com.videoroom.data.models.VideoSummary): String? {
+        val pickedId = _selectedProxyId.value
+        if (pickedId != null) {
+            return _proxies.value.firstOrNull { it.id == pickedId }?.path
+        }
+        if (!video.playableNatively && _proxies.value.isNotEmpty()) {
+            // `list_proxies` returns descending by pixel count — last = smallest.
+            return _proxies.value.lastOrNull()?.path
+        }
+        return null
     }
 
     private fun loadGroupMembers(groupId: String) {
@@ -238,6 +310,8 @@ class DetailViewModel(
         _thumbnail.value = null
         _notes.value = ""
         _error.value = null
+        _proxies.value = emptyList()
+        _selectedProxyId.value = null
     }
 
     fun onDestroy() {
