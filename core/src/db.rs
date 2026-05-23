@@ -18,6 +18,34 @@ pub struct Database {
     path: RwLock<Option<PathBuf>>,
 }
 
+/// Build the half-open `[lower, upper)` byte range that contains every
+/// string starting with `prefix`.  Used by per-video post-index queries
+/// to find all videos in a given parent directory: a range query on
+/// `videos.path` is guaranteed to use `idx_videos_path` (where a `LIKE`
+/// would only do so under `case_sensitive_like = ON`, which this
+/// catalog doesn't enable).
+///
+/// Returns `(lower, upper)` where `lower = prefix` and `upper = prefix`
+/// with its last byte incremented by 1.  Callers in this module pass
+/// `parent_dir + '/'` so the upper bound naturally lands on
+/// `parent_dir + '0'` (`/` is 0x2F, `0` is 0x30) — i.e. every string
+/// lexicographically between the two starts with `parent_dir/`.
+fn path_prefix_range(prefix: &str) -> (String, String) {
+    let lower = prefix.to_string();
+    let mut upper_bytes = lower.clone().into_bytes();
+    if let Some(last) = upper_bytes.last_mut() {
+        // Saturating: a prefix ending in 0xFF is unreachable for real
+        // filesystem paths but if it ever happens, falling back to an
+        // empty upper bound would match nothing — same effect as no
+        // bucket-mates.
+        *last = last.saturating_add(1);
+    }
+    // Safe: incrementing one ASCII byte (the path separator from the
+    // caller) keeps the string valid UTF-8.
+    let upper = String::from_utf8(upper_bytes).unwrap_or_else(|_| lower.clone());
+    (lower, upper)
+}
+
 impl Database {
     /// Build a `Database` that already points at `path`. Callers should still
     /// invoke [`Database::initialize`] before serving traffic so the schema
@@ -1466,6 +1494,294 @@ impl Database {
             .collect::<std::result::Result<Vec<_>, _>>()
             .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
         Ok(rows)
+    }
+
+    /// Fetch the proxy-detection candidate row for a single video — the
+    /// per-video equivalent of [`Self::list_for_proxy_detection`].
+    /// Returns `None` when the row is missing or already marked as a
+    /// proxy (`proxy_of IS NOT NULL`).
+    pub fn get_proxy_candidate(&self, video_id: &str) -> Result<Option<ProxyDetectCandidate>> {
+        let conn = self.get_connection()?;
+        let result = conn
+            .query_row(
+                "SELECT v.id, v.filename, v.path, v.group_id,
+                        COALESCE(m.width, 0), COALESCE(m.height, 0),
+                        COALESCE(m.fps, 0), COALESCE(m.frame_count, 0),
+                        COALESCE(m.camera_model, ''),
+                        COALESCE(v.file_size_bytes, 0)
+                 FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
+                 WHERE v.id = ? AND v.proxy_of IS NULL",
+                [video_id],
+                |row| {
+                    let path: String = row.get(2)?;
+                    let parent_dir = std::path::Path::new(&path)
+                        .parent()
+                        .and_then(|p| p.to_str())
+                        .unwrap_or("")
+                        .to_string();
+                    Ok(ProxyDetectCandidate {
+                        id: row.get(0)?,
+                        filename: row.get(1)?,
+                        path,
+                        parent_dir,
+                        group_id: row.get(3)?,
+                        width: row.get(4)?,
+                        height: row.get(5)?,
+                        fps: row.get(6)?,
+                        frame_count: row.get(7)?,
+                        camera_model: row.get(8)?,
+                        file_size_bytes: row.get(9)?,
+                    })
+                },
+            )
+            .optional()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(result)
+    }
+
+    /// Proxy-detection candidates that share a parent directory with the
+    /// given path. Used by the incremental post-index worker to find a
+    /// new video's bucket-mates without re-loading the entire catalog.
+    /// Excludes the video itself and rows already marked as proxies.
+    ///
+    /// Uses a half-open range query on `v.path` so SQLite can use
+    /// `idx_videos_path` rather than a full table scan — important
+    /// when this is called per-video during a scan. The Rust-side
+    /// post-filter eliminates rows in *nested* subdirectories that
+    /// share the same prefix.
+    pub fn list_proxy_candidates_in_dir(
+        &self,
+        parent_dir: &str,
+        exclude_id: &str,
+    ) -> Result<Vec<ProxyDetectCandidate>> {
+        let conn = self.get_connection()?;
+        let (lower, upper) = path_prefix_range(&(parent_dir.to_string() + "/"));
+        let mut stmt = conn
+            .prepare(
+                "SELECT v.id, v.filename, v.path, v.group_id,
+                        COALESCE(m.width, 0), COALESCE(m.height, 0),
+                        COALESCE(m.fps, 0), COALESCE(m.frame_count, 0),
+                        COALESCE(m.camera_model, ''),
+                        COALESCE(v.file_size_bytes, 0)
+                 FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
+                 WHERE v.proxy_of IS NULL
+                   AND v.id != ?
+                   AND v.path >= ? AND v.path < ?",
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        let rows = stmt
+            .query_map(params![exclude_id, lower, upper], |row| {
+                let path: String = row.get(2)?;
+                let parent_dir = std::path::Path::new(&path)
+                    .parent()
+                    .and_then(|p| p.to_str())
+                    .unwrap_or("")
+                    .to_string();
+                Ok(ProxyDetectCandidate {
+                    id: row.get(0)?,
+                    filename: row.get(1)?,
+                    path,
+                    parent_dir,
+                    group_id: row.get(3)?,
+                    width: row.get(4)?,
+                    height: row.get(5)?,
+                    fps: row.get(6)?,
+                    frame_count: row.get(7)?,
+                    camera_model: row.get(8)?,
+                    file_size_bytes: row.get(9)?,
+                })
+            })
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        // The range query also matches nested subdirectories — keep
+        // only rows whose computed parent_dir matches exactly.
+        let rows = rows
+            .into_iter()
+            .filter(|c| c.parent_dir == parent_dir)
+            .collect();
+        Ok(rows)
+    }
+
+    /// Proxy-detection candidates that belong to a given group.
+    /// Excludes the video itself and any row already marked as a proxy.
+    pub fn list_proxy_candidates_in_group(
+        &self,
+        group_id: &str,
+        exclude_id: &str,
+    ) -> Result<Vec<ProxyDetectCandidate>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn
+            .prepare(
+                "SELECT v.id, v.filename, v.path, v.group_id,
+                        COALESCE(m.width, 0), COALESCE(m.height, 0),
+                        COALESCE(m.fps, 0), COALESCE(m.frame_count, 0),
+                        COALESCE(m.camera_model, ''),
+                        COALESCE(v.file_size_bytes, 0)
+                 FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
+                 WHERE v.proxy_of IS NULL
+                   AND v.group_id = ?
+                   AND v.id != ?",
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        let rows = stmt
+            .query_map(params![group_id, exclude_id], |row| {
+                let path: String = row.get(2)?;
+                let parent_dir = std::path::Path::new(&path)
+                    .parent()
+                    .and_then(|p| p.to_str())
+                    .unwrap_or("")
+                    .to_string();
+                Ok(ProxyDetectCandidate {
+                    id: row.get(0)?,
+                    filename: row.get(1)?,
+                    path,
+                    parent_dir,
+                    group_id: row.get(3)?,
+                    width: row.get(4)?,
+                    height: row.get(5)?,
+                    fps: row.get(6)?,
+                    frame_count: row.get(7)?,
+                    camera_model: row.get(8)?,
+                    file_size_bytes: row.get(9)?,
+                })
+            })
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(rows)
+    }
+
+    /// Fetch the auto-grouping candidate row for a single video — the
+    /// per-video equivalent of [`Self::list_for_auto_grouping`].
+    pub fn get_group_candidate(&self, video_id: &str) -> Result<Option<AutoGroupCandidate>> {
+        let conn = self.get_connection()?;
+        let result = conn
+            .query_row(
+                "SELECT v.id, v.filename, v.path, v.group_id,
+                        COALESCE(m.duration_ms, 0), COALESCE(m.frame_count, 0),
+                        COALESCE(m.width, 0), COALESCE(m.height, 0),
+                        COALESCE(m.fps, 0),
+                        COALESCE(m.camera_model, ''),
+                        COALESCE(strftime('%s', v.modified_at) * 1000, 0)
+                 FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
+                 WHERE v.id = ? AND v.proxy_of IS NULL",
+                [video_id],
+                |row| {
+                    let path: String = row.get(2)?;
+                    let parent_dir = std::path::Path::new(&path)
+                        .parent()
+                        .and_then(|p| p.to_str())
+                        .unwrap_or("")
+                        .to_string();
+                    Ok(AutoGroupCandidate {
+                        id: row.get(0)?,
+                        filename: row.get(1)?,
+                        parent_dir,
+                        group_id: row.get(3)?,
+                        duration_ms: row.get(4)?,
+                        frame_count: row.get(5)?,
+                        width: row.get(6)?,
+                        height: row.get(7)?,
+                        fps: row.get(8)?,
+                        camera_model: row.get(9)?,
+                        modified_at_ms: row.get(10)?,
+                    })
+                },
+            )
+            .optional()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(result)
+    }
+
+    /// Auto-grouping candidates that share a parent directory — used by
+    /// the post-index worker to evaluate a single new video against its
+    /// potential siblings without scanning the whole catalog.
+    /// Excludes the video itself; includes already-grouped videos (so
+    /// the worker can choose to join an existing group).
+    ///
+    /// Uses the same half-open range query on `v.path` as
+    /// [`Self::list_proxy_candidates_in_dir`] so SQLite can use
+    /// `idx_videos_path` and the call is cheap per-video.
+    pub fn list_group_candidates_in_dir(
+        &self,
+        parent_dir: &str,
+        exclude_id: &str,
+    ) -> Result<Vec<AutoGroupCandidate>> {
+        let conn = self.get_connection()?;
+        let (lower, upper) = path_prefix_range(&(parent_dir.to_string() + "/"));
+        let mut stmt = conn
+            .prepare(
+                "SELECT v.id, v.filename, v.path, v.group_id,
+                        COALESCE(m.duration_ms, 0), COALESCE(m.frame_count, 0),
+                        COALESCE(m.width, 0), COALESCE(m.height, 0),
+                        COALESCE(m.fps, 0),
+                        COALESCE(m.camera_model, ''),
+                        COALESCE(strftime('%s', v.modified_at) * 1000, 0)
+                 FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
+                 WHERE v.proxy_of IS NULL
+                   AND v.id != ?
+                   AND v.path >= ? AND v.path < ?",
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        let rows = stmt
+            .query_map(params![exclude_id, lower, upper], |row| {
+                let path: String = row.get(2)?;
+                let parent_dir = std::path::Path::new(&path)
+                    .parent()
+                    .and_then(|p| p.to_str())
+                    .unwrap_or("")
+                    .to_string();
+                Ok(AutoGroupCandidate {
+                    id: row.get(0)?,
+                    filename: row.get(1)?,
+                    parent_dir,
+                    group_id: row.get(3)?,
+                    duration_ms: row.get(4)?,
+                    frame_count: row.get(5)?,
+                    width: row.get(6)?,
+                    height: row.get(7)?,
+                    fps: row.get(8)?,
+                    camera_model: row.get(9)?,
+                    modified_at_ms: row.get(10)?,
+                })
+            })
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        let rows = rows
+            .into_iter()
+            .filter(|c| c.parent_dir == parent_dir)
+            .collect();
+        Ok(rows)
+    }
+
+    /// Add a video to an existing group. No-op if the video is already
+    /// a member. Used by the incremental post-index worker when a new
+    /// video matches an existing group instead of forming a fresh one.
+    pub fn add_video_to_group(&self, group_id: &str, video_id: &str) -> Result<()> {
+        let conn = self.get_connection()?;
+        conn.execute(
+            "UPDATE videos SET group_id = ? WHERE id = ?",
+            params![group_id, video_id],
+        )
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
+    /// Re-point every video that's currently a proxy of `old_anchor_id`
+    /// to instead be a proxy of `new_anchor_id`. Used when the
+    /// incremental post-index worker promotes a freshly-indexed
+    /// higher-resolution sibling above an existing anchor.
+    pub fn repoint_proxies(&self, old_anchor_id: &str, new_anchor_id: &str) -> Result<usize> {
+        let conn = self.get_connection()?;
+        let n = conn
+            .execute(
+                "UPDATE videos SET proxy_of = ? WHERE proxy_of = ?",
+                params![new_anchor_id, old_anchor_id],
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(n)
     }
 
     /// Fetch all (video_id, filename, base_name_candidate, duration_ms, width, height, fps,

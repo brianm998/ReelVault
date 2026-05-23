@@ -14,5 +14,6 @@ pub mod concurrency;
 pub mod watcher;
 pub mod imagehash;
 pub mod proxies;
+pub mod post_index;
 
 pub use error::Result;

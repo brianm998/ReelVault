@@ -326,12 +326,12 @@ pub fn compare_video_thumbnails(thumbnail_cache: &Path, id_a: &str, id_b: &str) 
 /// scrub frames that exist on disk.  Stored so [`compare_thumb_sets`]
 /// can average across them without re-loading from disk.
 #[derive(Clone, Default)]
-struct ThumbImages {
-    medium: Option<image::DynamicImage>,
-    scrubs: Vec<image::DynamicImage>, // one per existing scrub_N.jpg
+pub(crate) struct ThumbImages {
+    pub(crate) medium: Option<image::DynamicImage>,
+    pub(crate) scrubs: Vec<image::DynamicImage>, // one per existing scrub_N.jpg
 }
 
-fn thumb_images_for(thumbnail_cache: &Path, video_id: &str) -> ThumbImages {
+pub(crate) fn thumb_images_for(thumbnail_cache: &Path, video_id: &str) -> ThumbImages {
     let medium_path = thumbnail_cache.join(format!("{}_medium.jpg", video_id));
     let medium = image::open(&medium_path).ok();
 
@@ -355,7 +355,7 @@ fn thumb_images_for(thumbnail_cache: &Path, video_id: &str) -> ThumbImages {
 /// across the matched-index scrub pairs (same temporal offset, so they
 /// depict the same moment).  Otherwise we fall back to the medium
 /// thumbnail alone.
-fn compare_thumb_sets(a: &ThumbImages, b: &ThumbImages) -> f64 {
+pub(crate) fn compare_thumb_sets(a: &ThumbImages, b: &ThumbImages) -> f64 {
     let mut scores: Vec<f64> = Vec::new();
 
     // Pair up scrub frames by index.

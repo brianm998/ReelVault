@@ -68,7 +68,7 @@ fn name_part(stem: &str) -> &str {
 ///   * `04_18_2026-a7sii-1` → `04_18_2026-a7sii-1`
 ///   * `04_18_2026-a7sii-1-aurora` → `04_18_2026-a7sii-1`
 ///   * `04_18_2026-a7sii-1-aurora-topaz-star-v-0` → `04_18_2026-a7sii-1`
-fn canonical_base(filename: &str) -> String {
+pub(crate) fn canonical_base(filename: &str) -> String {
     let name = name_part(stem(filename));
     let tokens: Vec<&str> = name.split('-').collect();
     let take = tokens.len().min(3);
@@ -90,7 +90,7 @@ fn canonical_base(filename: &str) -> String {
 ///      Variants of the same clip should always come from the same
 ///      camera; this catches naming collisions where two unrelated
 ///      cameras happened to start with a similar date+number pattern.
-fn should_group_together(
+pub(crate) fn should_group_together(
     a: &AutoGroupCandidate,
     b: &AutoGroupCandidate,
     opts: &AutoGroupOptions,
@@ -141,6 +141,33 @@ fn should_group_together(
     }
 
     true
+}
+
+/// Return the index of the preferred-leader member from a slice of
+/// group candidates. Tie-break order matches the original batch-mode
+/// auto-grouper so incremental and batch decisions stay consistent:
+///   1. Highest pixel count (width × height).
+///   2. Most recent `modified_at_ms`.
+///   3. Largest frame count.
+///   4. Filename (deterministic last-resort).
+///
+/// Panics if `members` is empty (callers know the group is non-empty).
+pub(crate) fn preferred_index(members: &[AutoGroupCandidate]) -> usize {
+    assert!(!members.is_empty(), "preferred_index called with empty group");
+    members
+        .iter()
+        .enumerate()
+        .max_by(|(_, a), (_, b)| {
+            let pixels_a = (a.width as i64) * (a.height as i64);
+            let pixels_b = (b.width as i64) * (b.height as i64);
+            pixels_a
+                .cmp(&pixels_b)
+                .then(a.modified_at_ms.cmp(&b.modified_at_ms))
+                .then(a.frame_count.cmp(&b.frame_count))
+                .then_with(|| b.filename.cmp(&a.filename))
+        })
+        .map(|(i, _)| i)
+        .unwrap()
 }
 
 /// Simple union-find for grouping items.

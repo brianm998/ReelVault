@@ -703,11 +703,18 @@ impl VideoRoomTrait for VideoRoomService {
                 }
 
                 match IndexingEngine::scan_directory(
-                    db.as_ref(),
+                    Arc::clone(&db),
                     scan_path,
                     recursive,
                     &cache_path,
                     filename_date_rule,
+                    crate::post_index::Options {
+                        // Mirror the existing gate: auto-grouping
+                        // is opt-in per scan request; proxy
+                        // detection runs unconditionally.
+                        auto_group,
+                        detect_proxies: true,
+                    },
                     |progress| send_progress(tx, progress),
                 ) {
                     Ok(_) => {
