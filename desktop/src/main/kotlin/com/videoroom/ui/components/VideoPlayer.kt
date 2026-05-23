@@ -451,9 +451,35 @@ class ComposeVideoPlayer {
             "--no-snapshot-preview",
             "--intf=dummy",
             "--no-video-title-show",
+
+            // --- Don't drop late frames ---
+            //
+            // The vmem vout (our callback path) silently skips display()
+            // for any picture past its presentation deadline. On 4K HEVC
+            // the decoder + CVPP→I0AL→I420→RV32 conversion chain takes
+            // longer than the first frame's display deadline, so libvlc
+            // logs "picture is too late" and our render callback never
+            // fires — the user sees black.
+            //
+            // `--no-drop-late-frames` forces libvlc to display late
+            // pictures anyway. Playback may judder, but at least the
+            // user sees frames.
+            "--no-drop-late-frames",
+
+            // Don't skip frames in the decoder either — same reasoning.
+            // Skipping in the decoder would drop the very first I-frame
+            // on a slow-start file, leaving us with no reference frames.
+            "--no-skip-frames",
+
+            // Larger file cache so libvlc has more headroom to absorb
+            // the decode + filter-chain latency before the playback clock
+            // starts. Default is 300 ms.
+            "--file-caching=1500",
+
             // verbose=2 enables libvlc's DEBUG-level messages; NativeLog
-            // then routes them through the "libvlc" SLF4J logger. We want
-            // these on while we're still debugging vout/decoder issues.
+            // then routes them through the "libvlc" SLF4J logger. Keep
+            // this on while we're hunting playback issues; tune the
+            // SLF4J logger in logback.xml to control what actually prints.
             "--verbose=2",
         )
         // System property escape hatch: -Dvideoroom.libvlc.args=... appends
