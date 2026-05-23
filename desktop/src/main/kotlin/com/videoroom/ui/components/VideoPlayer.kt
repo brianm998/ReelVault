@@ -204,32 +204,59 @@ class ComposeVideoPlayer {
         }
     }
 
-    /** One call per decoded frame. Runs on libvlc's display thread. */
-    private val renderCallback = RenderCallback { _, buffers, format ->
-        try {
-            val src = buffers.firstOrNull() ?: return@RenderCallback
-            val w = format.width
-            val h = format.height
-            val rowBytes = w * 4
-            val needed = rowBytes * h
-            // Re-allocate if libvlc switched formats out from under us
-            // (shouldn't happen mid-playback, but cheap to guard against).
-            val bytes = scratch?.takeIf { it.size == needed }
-                ?: ByteArray(needed).also { scratch = it; scratchWidth = w; scratchHeight = h }
-            src.rewind()
-            src.get(bytes)
-            val info = ImageInfo(
-                ColorInfo(ColorType.BGRA_8888, ColorAlphaType.OPAQUE, ColorSpace.sRGB),
-                w, h
-            )
-            val skiaImage = SkiaImage.makeRaster(info, bytes, rowBytes)
-            frame.value = skiaImage.toComposeImageBitmap()
-            if (!renderingHealthy.value) {
-                logger.info("First decoded frame received: {}x{}", w, h)
-                renderingHealthy.value = true
+    /**
+     * Counts frames so we can log the first one (proves the callback is
+     * actually firing) without spamming on every subsequent frame.
+     */
+    @Volatile private var frameCount = 0L
+
+    /**
+     * One call per decoded frame. Runs on libvlc's display thread.
+     *
+     * Implemented as an explicit `object : RenderCallback` rather than a
+     * SAM lambda — vlcj's binding uses a `JNA Callback` reference under the
+     * hood and the object form is the most predictable way to keep the
+     * reference alive and the JNA stub stable across JIT compilation.
+     */
+    private val renderCallback = object : RenderCallback {
+        override fun display(
+            mediaPlayer: MediaPlayer,
+            nativeBuffers: Array<out ByteBuffer>,
+            bufferFormat: BufferFormat,
+        ) {
+            try {
+                val n = ++frameCount
+                if (n == 1L || n % 300L == 0L) {
+                    logger.info("renderCallback fired: frame={} format={}x{}",
+                        n, bufferFormat.width, bufferFormat.height)
+                }
+                val src = nativeBuffers.firstOrNull() ?: run {
+                    logger.warn("renderCallback: nativeBuffers empty")
+                    return
+                }
+                val w = bufferFormat.width
+                val h = bufferFormat.height
+                val rowBytes = w * 4
+                val needed = rowBytes * h
+                val bytes = scratch?.takeIf { it.size == needed }
+                    ?: ByteArray(needed).also {
+                        scratch = it; scratchWidth = w; scratchHeight = h
+                    }
+                src.rewind()
+                src.get(bytes)
+                val info = ImageInfo(
+                    ColorInfo(ColorType.BGRA_8888, ColorAlphaType.OPAQUE, ColorSpace.sRGB),
+                    w, h
+                )
+                val skiaImage = SkiaImage.makeRaster(info, bytes, rowBytes)
+                frame.value = skiaImage.toComposeImageBitmap()
+                if (!renderingHealthy.value) {
+                    logger.info("First decoded frame painted: {}x{}", w, h)
+                    renderingHealthy.value = true
+                }
+            } catch (t: Throwable) {
+                logger.error("Exception in renderCallback (frame {})", frameCount, t)
             }
-        } catch (t: Throwable) {
-            logger.error("Exception in renderCallback", t)
         }
     }
 
@@ -249,6 +276,12 @@ class ComposeVideoPlayer {
             override fun playing(mp: MediaPlayer) {
                 logger.info("event: playing")
                 isPlaying.value = true
+                // Fallback so the "VLC not installed" overlay disappears as
+                // soon as libvlc is actively playing — even if our render
+                // callback hasn't been wired or hasn't fired yet. Without
+                // this the overlay would stay visible during audio-only
+                // startup or while we wait for the first decoded frame.
+                renderingHealthy.value = true
             }
             override fun paused(mp: MediaPlayer) {
                 logger.debug("event: paused")
@@ -268,6 +301,7 @@ class ComposeVideoPlayer {
             override fun lengthChanged(mp: MediaPlayer, newLength: Long) {
                 logger.info("event: lengthChanged {}ms", newLength)
                 lengthMs.value = newLength
+                renderingHealthy.value = true
             }
             override fun error(mp: MediaPlayer) {
                 logger.error("event: error — libvlc failed to play media")
