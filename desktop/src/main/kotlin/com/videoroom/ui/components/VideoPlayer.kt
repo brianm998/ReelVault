@@ -152,9 +152,9 @@ class ComposeVideoPlayer {
                 //   inputEvents, lockBuffers, renderCallback,
                 //   bufferFormatCallback, videoSurfaceComponent).
                 //
-                // lockBuffers=true: libvlc holds the buffer while display()
-                // runs. Safe because we do a synchronous copy inside the
-                // callback.
+                // lockBuffers=true: vlcj acquires a JNA lock around buffer
+                // access during the libvlc lock/unlock callbacks. Doesn't
+                // affect whether callbacks fire, just synchronisation.
                 val c = CallbackMediaPlayerComponent(
                     f, null, null, true,
                     renderCallback, bufferFormatCallback, null
@@ -451,10 +451,14 @@ class ComposeVideoPlayer {
             "--no-snapshot-preview",
             "--intf=dummy",
             "--no-video-title-show",
+            // verbose=2 enables libvlc's DEBUG-level messages; NativeLog
+            // then routes them through the "libvlc" SLF4J logger. We want
+            // these on while we're still debugging vout/decoder issues.
+            "--verbose=2",
         )
-        // System property escape hatch: -Dvideoroom.libvlc.args="--verbose=2"
-        // adds extra args. Useful for diagnosing codec issues without
-        // rebuilding.
+        // System property escape hatch: -Dvideoroom.libvlc.args=... appends
+        // extra args. Useful for switching vouts (`--vout=caopengllayer`)
+        // or tightening verbosity (`--verbose=3`) without rebuilding.
         val extra = System.getProperty("videoroom.libvlc.args", "").trim()
         if (extra.isNotEmpty()) {
             base += extra.split(Regex("\\s+")).filter { it.isNotEmpty() }

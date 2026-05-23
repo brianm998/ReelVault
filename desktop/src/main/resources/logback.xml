@@ -15,9 +15,10 @@
     <logger name="com.videoroom.ui.screens.GridScreen" level="DEBUG"/>
     <logger name="com.videoroom.ui.screens.DetailViewScreen" level="DEBUG"/>
     <logger name="uk.co.caprica.vlcj" level="DEBUG"/>
-    <!-- Native libvlc diagnostics, piped through NativeLog. INFO drops most
-         of the spam; bump to DEBUG when investigating vout/codec issues. -->
-    <logger name="libvlc" level="INFO"/>
+    <!-- Native libvlc diagnostics, piped through NativeLog. DEBUG while
+         we're still hunting the callback-doesn't-fire issue — it shows
+         vout module selection, decoder probing, and per-frame decisions. -->
+    <logger name="libvlc" level="DEBUG"/>
 
     <!-- Most of the rest of the app at INFO; gRPC chatter at WARN. -->
     <root level="INFO">
