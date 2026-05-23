@@ -73,6 +73,28 @@ pub struct DetectSummary {
 /// `proxy_of` is already set.
 pub fn detect_proxies(db: &Database, thumbnail_cache: &Path) -> Result<DetectSummary> {
     let candidates = db.list_for_proxy_detection()?;
+    run_detection(db, thumbnail_cache, candidates)
+}
+
+/// Like [`detect_proxies`] but restricted to videos under `base_path` (plus
+/// their grouped siblings elsewhere on disk). Called after a per-directory
+/// refresh so we don't re-do O(n) thumbnail loads for every video in the
+/// catalog when only one location changed.
+pub fn detect_proxies_under_path(
+    db: &Database,
+    thumbnail_cache: &Path,
+    base_path: &Path,
+) -> Result<DetectSummary> {
+    let base = base_path.to_string_lossy();
+    let candidates = db.list_for_proxy_detection_under_path(&base)?;
+    run_detection(db, thumbnail_cache, candidates)
+}
+
+fn run_detection(
+    db: &Database,
+    thumbnail_cache: &Path,
+    candidates: Vec<ProxyDetectCandidate>,
+) -> Result<DetectSummary> {
     if candidates.len() < 2 {
         return Ok(DetectSummary::default());
     }
