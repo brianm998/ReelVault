@@ -337,6 +337,9 @@ fun VideoRoomApp(
     // dialog.
     var showAddLibraryDialog by remember { mutableStateOf(false) }
 
+    // Help dialog visibility.
+    var showHelpDialog by remember { mutableStateOf(false) }
+
     // Top-level view mode. GRID is the default catalog view; DETAIL is the
     // single-video loupe with in-app playback.
     var viewMode by remember { mutableStateOf(ViewMode.GRID) }
@@ -577,6 +580,7 @@ fun VideoRoomApp(
                             }
                         },
                         selectedCount = selectedIds.value.size,
+                        onShowHelp = { showHelpDialog = true },
                     )
 
                     // Scan status banner (during scan)
@@ -938,6 +942,11 @@ fun VideoRoomApp(
                     )
                 }
 
+                // Help dialog
+                if (showHelpDialog) {
+                    HelpDialog(onDismiss = { showHelpDialog = false })
+                }
+
                 // Live-updates / watcher preferences dialog
                 if (showWatchSettingsDialog) {
                     com.videoroom.ui.screens.WatchSettingsDialog(
@@ -1128,6 +1137,384 @@ fun ConnectingScreen() {
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Help Dialog
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Full in-app help reference. Launched from the `?` button in the top bar.
+ * Mirrors the macOS [HelpView] content: collapsible sections with icons,
+ * markdown-rendered paragraphs, bullet lists, two-column tables, and numbered
+ * steps.
+ */
+@Composable
+fun HelpDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier.width(680.dp),
+        title = {
+            Column {
+                Text("VideoRoom Help", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    "Your video catalog, explained",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        text = {
+            val scrollState = rememberScrollState()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 580.dp)
+                    .verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                    HelpSection(icon = Icons.Default.VideoLibrary, title = "What is VideoRoom?") {
+                        HelpPara(
+                            "VideoRoom is a video catalog manager — think Adobe Lightroom, but " +
+                            "built exclusively for video files. It organises large collections of footage " +
+                            "so you can find, inspect, tag, and hand off clips to professional editors, " +
+                            "without VideoRoom ever modifying your original files."
+                        )
+                        HelpPara(
+                            "VideoRoom stores all metadata, tags, and settings in a small catalog file " +
+                            "(.vrcat). Your video files stay exactly where they are on disk."
+                        )
+                    }
+
+                    HelpSection(icon = Icons.Default.CheckCircle, title = "What VideoRoom can do") {
+                        HelpBullets(listOf(
+                            "Browse hundreds of thousands of clips at 60 fps in a thumbnail grid",
+                            "Extract and display codec, resolution, FPS, bitrate, duration, GPS, camera model, and more",
+                            "Search instantly across filename, notes, and tags",
+                            "Apply custom tags to any number of clips at once",
+                            "Group related variants into stacks (e.g. 4K + proxy of the same shot)",
+                            "Filter by camera, lens, codec, year, GPS radius, or library folder",
+                            "Detect or generate lower-resolution proxies for oversize footage",
+                            "Play clips inline using VLC (Linux/Windows) or native decoders (macOS)",
+                            "Drag clips straight from the grid into DaVinci Resolve, Final Cut Pro, Premiere, and any app that accepts file drops",
+                            "See geotagged clips on a world map; filter to a radius with one click",
+                            "Watch library folders for new footage and update the catalog automatically",
+                        ))
+                    }
+
+                    HelpSection(icon = Icons.Default.Cancel, title = "What VideoRoom cannot do") {
+                        HelpBullets(listOf(
+                            "Edit, trim, or color-grade video (open in DaVinci Resolve, Premiere, etc. instead)",
+                            "Transcode or encode (use Handbrake, FFmpeg, or your NLE's export panel)",
+                            "Sync libraries or manage cloud storage",
+                            "Play video without a compatible codec — VLC is recommended on non-Apple platforms",
+                        ))
+                    }
+
+                    HelpSection(icon = Icons.Default.Flag, title = "Getting started") {
+                        HelpStep(number = "1", heading = "Create or open a catalog") {
+                            Text(
+                                "A catalog is a small database file that stores all your metadata, tags, and settings. " +
+                                "Use File → Open Catalog… (Ctrl+O) to create a new one or open an existing one. " +
+                                "Your video files are never moved or modified.",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        HelpStep(number = "2", heading = "Add a library location") {
+                            Text(
+                                "Click the folder+ icon in the top bar. You can add multiple folders in one session. " +
+                                "Use \$YEAR in a path — for example /Volumes/Footage/\$YEAR/Raw — to import every " +
+                                "matching year folder at once. VideoRoom scans in the background and the grid fills " +
+                                "as files are indexed.",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        HelpStep(number = "3", heading = "Browse and inspect") {
+                            Text(
+                                "Click any thumbnail to select it and load its full metadata in the right panel. " +
+                                "The panel shows codec, resolution, FPS, bitrate, GPS, camera model, notes, tags, and more.",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+
+                    HelpSection(icon = Icons.Default.ViewModule, title = "Views") {
+                        HelpTable(listOf(
+                            "G — Grid" to "Adaptive thumbnail grid. Drag the slider in the bottom bar to resize cards.",
+                            "L — List" to "Horizontal rows: thumbnail left, metadata columns right.",
+                            "D — Detail" to "Full-window video player and inspector. Step through your library with ← / →.",
+                        ))
+                        HelpPara("Switch views with the segment control in the bottom bar, or press G, L, or D.")
+                    }
+
+                    HelpSection(icon = Icons.Default.TouchApp, title = "Selecting clips") {
+                        HelpTable(listOf(
+                            "Click" to "Select one clip",
+                            "Shift-click" to "Extend the selection to include everything between the anchor and the clicked card",
+                            "Ctrl-click" to "Add or remove individual clips from the selection",
+                            "Ctrl+A" to "Select all currently-visible clips",
+                            "Ctrl+D" to "Clear the selection",
+                            "← ↑ → ↓" to "Navigate the grid one card at a time",
+                        ))
+                    }
+
+                    HelpSection(icon = Icons.Default.Layers, title = "Stacks") {
+                        HelpPara(
+                            "Stacks let a single card represent a group of related clips — useful for 4K originals " +
+                            "paired with 1080p proxies, or multiple takes from the same setup."
+                        )
+                        HelpBullets(listOf(
+                            "Select 2+ clips and press Ctrl+G (or click the layers icon in the top bar) to create a stack",
+                            "Click the N× badge on a stack card to expand or collapse it inline",
+                            "Right-click → Remove from stack: pulls just that clip out; the rest stay grouped",
+                            "Right-click → Unstack: disbands the entire group so every clip stands alone",
+                            "VideoRoom auto-stacks matching variants during import (can be disabled per scan)",
+                        ))
+                    }
+
+                    HelpSection(icon = Icons.Default.VideoSettings, title = "Proxies") {
+                        HelpPara(
+                            "A proxy is a lower-resolution stand-in stored alongside the original and linked " +
+                            "automatically. Use them when source footage is too large to play inline."
+                        )
+                        HelpBullets(listOf(
+                            "Videos above the inline-playback ceiling (configurable via the playback settings button) show a warning badge",
+                            "Right-click → Create proxy… to generate one; choose a target height (720p, 1080p, …)",
+                            "Proxies are auto-detected when they appear in the same folder after a rescan",
+                            "The P×N badge on a card means N proxies are linked to that clip",
+                            "In Detail view you can manually select which proxy to play",
+                        ))
+                    }
+
+                    HelpSection(icon = Icons.Default.Search, title = "Search & filters") {
+                        HelpBullets(listOf(
+                            "Search bar: live search across filename, notes, and tags",
+                            "Filter dropdowns (Camera · Lens · Keyword · Codec · Year): stack multiple filters; click Clear to reset all",
+                            "Map view (globe icon in top bar): click a pin to filter to that GPS radius",
+                            "Library panel (left): click a folder to limit the grid to that location",
+                            "Right-click → Go to Folder in Library: jumps the left panel to the containing folder",
+                        ))
+                    }
+
+                    HelpSection(icon = Icons.Default.Label, title = "Tags") {
+                        HelpPara(
+                            "Tags are catalog-only labels — they are not written into the video file. " +
+                            "Add or remove tags from the right panel while one or more clips are selected, " +
+                            "or filter the grid using the Keyword dropdown."
+                        )
+                    }
+
+                    HelpSection(icon = Icons.Default.OpenInNew, title = "External editors") {
+                        HelpBullets(listOf(
+                            "Drag one or more cards from the grid or list directly into DaVinci Resolve, Final Cut Pro, Premiere Pro, or any app that accepts file drops",
+                            "Configure editors via the wrench icon in the top bar — enable specific apps and check installation status",
+                            "Double-click a row in List view to open it with the system's default media player",
+                        ))
+                    }
+
+                    HelpSection(icon = Icons.Default.FolderOpen, title = "Library management") {
+                        HelpBullets(listOf(
+                            "Add as many source folders as you like — each appears as a row in the left panel",
+                            "Use \$YEAR in a path (e.g. /archive/\$YEAR/) to add an entire decade of year folders in one click",
+                            "Hover over a library row in the left panel to reveal the ↺ rescan button — useful after moving files",
+                            "Right-click or swipe left on a library row to remove it — your video files are not deleted",
+                        ))
+                    }
+
+                    HelpSection(icon = Icons.Default.Visibility, title = "Live updates") {
+                        HelpPara(
+                            "VideoRoom can watch your library folders for new footage using the operating system's " +
+                            "file-change notifications. Toggle via the Live pill in the top bar or from the settings panel."
+                        )
+                        HelpPara(
+                            "When on, newly-added files appear in the grid within a few seconds of landing on disk. " +
+                            "A short settle delay prevents half-written files from being indexed."
+                        )
+                    }
+
+                    HelpSection(icon = Icons.Default.Keyboard, title = "Keyboard shortcuts") {
+                        HelpTable(listOf(
+                            "G" to "Grid view",
+                            "L" to "List view",
+                            "D" to "Detail / Catalog view",
+                            "I" to "Cycle info overlay (Detail mode: none → camera → file → …)",
+                            "Tab" to "Toggle both side panels",
+                            "Space" to "Play / pause selected clip",
+                            "Ctrl+G" to "Stack selected clips into a group",
+                            "Ctrl+A" to "Select all currently-visible clips",
+                            "Ctrl+D" to "Deselect all",
+                            "Ctrl+O" to "Open Catalog…",
+                            "← ↑ → ↓" to "Navigate the grid",
+                            "Escape" to "Clear search field focus",
+                        ))
+                    }
+
+                    HelpSection(icon = Icons.Default.Lightbulb, title = "Tips & tricks") {
+                        HelpBullets(listOf(
+                            "The thumbnail slider in the bottom bar rescales in real time — find the density that suits your display",
+                            "Rescan a folder from the left panel without re-adding it — hover the row and click ↺",
+                            "Press Tab to hide both panels and give the grid maximum screen space (Lightroom-style)",
+                            "Hold Shift to select a range in the grid, then drag the whole selection into your editor",
+                            "Using \$YEAR when adding a library (e.g. /footage/\$YEAR/) imports decade-scale archives in one click",
+                            "Auto-stacking during import groups 4K + 1080p variants automatically — look for the N× badge",
+                        ))
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Close") }
+        }
+    )
+}
+
+// ── Help dialog primitives ────────────────────────────────────────────────────
+
+@Composable
+private fun HelpSection(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    var expanded by remember { mutableStateOf(true) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Clickable section header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded }
+                .padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = if (expanded) "Collapse" else "Expand",
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        HorizontalDivider()
+        if (expanded) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                content = content
+            )
+        }
+    }
+}
+
+@Composable
+private fun HelpPara(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurface
+    )
+}
+
+@Composable
+private fun HelpBullets(items: List<String>) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        items.forEach { item ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Text(
+                    "•",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 1.dp)
+                )
+                Text(
+                    item,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HelpTable(rows: List<Pair<String, String>>) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        rows.forEach { (key, value) ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Text(
+                    text = key,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.width(140.dp)
+                )
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HelpStep(
+    number: String,
+    heading: String,
+    body: @Composable () -> Unit
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Surface(
+            shape = androidx.compose.foundation.shape.CircleShape,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(22.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                Text(
+                    text = number,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Text(heading, style = MaterialTheme.typography.labelMedium)
+            body()
+        }
+    }
+}
+
 @Composable
 fun VideoRoomTopBar(
     gridViewModel: com.videoroom.viewmodel.GridViewModel,
@@ -1148,7 +1535,9 @@ fun VideoRoomTopBar(
     /** Opens the global map dialog showing every geotagged video. */
     onShowGlobalMap: () -> Unit = {},
     selectedCount: Int = 0,
-    onSearchFocusChanged: (Boolean) -> Unit = {}
+    onSearchFocusChanged: (Boolean) -> Unit = {},
+    /** Opens the full in-app help reference. */
+    onShowHelp: () -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var showFileMenu by remember { mutableStateOf(false) }
@@ -1432,6 +1821,19 @@ fun VideoRoomTopBar(
                             Icon(
                                 imageVector = Icons.Default.CreateNewFolder,
                                 contentDescription = "Add Library Location"
+                            )
+                        }
+                    }
+
+                    // Help button
+                    com.videoroom.ui.components.Tooltip(
+                        text = "Open VideoRoom Help — learn what VideoRoom can do, " +
+                            "keyboard shortcuts, and tips for new users."
+                    ) {
+                        IconButton(onClick = onShowHelp) {
+                            Icon(
+                                imageVector = Icons.Default.HelpOutline,
+                                contentDescription = "Help"
                             )
                         }
                     }

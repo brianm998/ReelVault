@@ -15,6 +15,7 @@ struct ContentView: View {
     @State private var rightPanelExpanded = true
     @State private var thumbnailWidth: CGFloat = 220
     @State private var showAddLibrarySheet = false
+    @State private var showHelpSheet = false
     @State private var showEditorsSheet = false
     @State private var showWatchSettingsSheet = false
     @State private var showPlaybackSettingsSheet = false
@@ -273,6 +274,12 @@ struct ContentView: View {
         }
         .onChange(of: appState.clearRecentsRequestToken) { _, _ in
             for path in recents.list() { recents.remove(path) }
+        }
+        .onChange(of: appState.showHelpRequestToken) { _, _ in
+            showHelpSheet = true
+        }
+        .sheet(isPresented: $showHelpSheet) {
+            HelpView()
         }
     }
 
