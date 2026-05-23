@@ -1341,9 +1341,23 @@ impl Database {
             prefix.push('/');
         }
         let pattern = format!("{}%", prefix);
+        // Mirror the representative_filter used by list_videos_grouped so the
+        // count reflects the same set of items the grid actually shows:
+        //   • Proxies are excluded — they surface only through the "P×N" badge.
+        //   • Each stack counts as one video (the group representative).
         let count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM videos WHERE path LIKE ?",
+                "SELECT COUNT(*) FROM videos v
+                 WHERE v.path LIKE ?
+                   AND v.proxy_of IS NULL
+                   AND (
+                     v.group_id IS NULL
+                     OR v.id = (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id)
+                     OR (
+                       (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id) IS NULL
+                       AND v.id = (SELECT MIN(v2.id) FROM videos v2 WHERE v2.group_id = v.group_id)
+                     )
+                   )",
                 params![pattern],
                 |row| row.get(0),
             )
