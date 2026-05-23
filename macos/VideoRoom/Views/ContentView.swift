@@ -113,9 +113,9 @@ struct ContentView: View {
             }
         ))
         .sheet(isPresented: $showAddLibrarySheet) {
-            AddLibraryDialog(isPresented: $showAddLibrarySheet) { path, recursive, autoGroup, dateFormat, datePosition in
-                gridViewModel.addLibraryAndScan(
-                    path: path,
+            AddLibraryDialog(isPresented: $showAddLibrarySheet) { paths, recursive, autoGroup, dateFormat, datePosition in
+                gridViewModel.addLibraryAndScanMultiple(
+                    paths: paths,
                     recursive: recursive,
                     autoGroup: autoGroup,
                     filenameDateFormat: dateFormat,
@@ -283,6 +283,7 @@ struct ContentView: View {
             scanResultBanner
             locationFilterBanner
             mainContent
+            bottomBar
         }
     }
 
@@ -351,18 +352,6 @@ struct ContentView: View {
                 }
             }
 
-            // Grid / List / Detail view-mode toggle. Mirrors the 'G', 'L', and 'D'
-            // keyboard shortcuts.
-            Picker("", selection: $viewMode) {
-                Image(systemName: "square.grid.2x2").tag(ViewMode.grid)
-                Image(systemName: "list.bullet").tag(ViewMode.list)
-                Image(systemName: "play.rectangle").tag(ViewMode.detail)
-            }
-            .pickerStyle(.segmented)
-            .frame(width: 135)
-            .labelsHidden()
-            .help("Switch between Grid (G), List (L), and Detail (D) views.")
-
             TextField("Search videos…", text: $gridViewModel.searchQuery)
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 240)
@@ -371,27 +360,6 @@ struct ContentView: View {
             FilterDropdowns(vm: gridViewModel)
 
             Spacer()
-
-            // Sort menu
-            Menu {
-                sortMenuItem(label: "Filename",       key: "filename")
-                sortMenuItem(label: "Date Added",     key: "indexed_at")
-                sortMenuItem(label: "Date Captured",  key: "creation_date")
-                sortMenuItem(label: "Duration",       key: "duration")
-                sortMenuItem(label: "File Size",      key: "size")
-                sortMenuItem(label: "Resolution",     key: "resolution")
-                sortMenuItem(label: "Frame Rate",     key: "fps")
-                sortMenuItem(label: "Codec",          key: "codec")
-                sortMenuItem(label: "Bitrate",        key: "bitrate")
-                sortMenuItem(label: "Camera",         key: "camera")
-                sortMenuItem(label: "Lens",           key: "lens")
-                sortMenuItem(label: "Keyword",        key: "keyword")
-            } label: {
-                Image(systemName: "arrow.up.arrow.down")
-            }
-            .menuStyle(.borderlessButton)
-            .frame(width: 30)
-            .help("Sort the video grid. Pick a field; choose the same field again to reverse direction.")
 
             // Group selected (enabled when 2+ selected)
             Button {
@@ -511,6 +479,106 @@ struct ContentView: View {
         .padding(.vertical, 10)
         .background(Color(.windowBackgroundColor))
         .overlay(Rectangle().frame(height: 1).foregroundColor(Color(.separatorColor)), alignment: .bottom)
+    }
+
+    /// Full-width bottom bar: view-mode toggle (left), sort controls (centre),
+    /// thumbnail-size slider (right). Height matches a standard macOS toolbar row.
+    private var bottomBar: some View {
+        VStack(spacing: 0) {
+            Divider()
+            HStack(spacing: 0) {
+                // Left cluster — view-mode toggle (Catalog/Detail, Grid, List)
+                Picker("", selection: $viewMode) {
+                    Image(systemName: "play.rectangle").tag(ViewMode.detail)
+                    Image(systemName: "square.grid.2x2").tag(ViewMode.grid)
+                    Image(systemName: "list.bullet").tag(ViewMode.list)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 135)
+                .labelsHidden()
+                .help("Switch between Catalog/Detail (D), Grid (G), and List (L) views.")
+
+                Spacer()
+
+                // Centre — sort controls
+                HStack(spacing: 6) {
+                    Menu {
+                        sortMenuItem(label: "Filename",       key: "filename")
+                        sortMenuItem(label: "Date Added",     key: "indexed_at")
+                        sortMenuItem(label: "Date Captured",  key: "creation_date")
+                        sortMenuItem(label: "Duration",       key: "duration")
+                        sortMenuItem(label: "File Size",      key: "size")
+                        sortMenuItem(label: "Resolution",     key: "resolution")
+                        sortMenuItem(label: "Frame Rate",     key: "fps")
+                        sortMenuItem(label: "Codec",          key: "codec")
+                        sortMenuItem(label: "Bitrate",        key: "bitrate")
+                        sortMenuItem(label: "Camera",         key: "camera")
+                        sortMenuItem(label: "Lens",           key: "lens")
+                        sortMenuItem(label: "Keyword",        key: "keyword")
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(sortFieldLabel(gridViewModel.sortBy))
+                                .font(.system(size: 11))
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 9))
+                        }
+                    }
+                    .menuStyle(.borderlessButton)
+                    .help("Sort the video grid. Pick a field; choose the same field again to reverse direction.")
+
+                    // Ascending / descending toggle button
+                    Button {
+                        gridViewModel.setSort(gridViewModel.sortBy, ascending: !gridViewModel.sortAscending)
+                    } label: {
+                        Image(systemName: gridViewModel.sortAscending ? "arrow.up" : "arrow.down")
+                    }
+                    .buttonStyle(.borderless)
+                    .help(gridViewModel.sortAscending ? "Sorted ascending — click to reverse" : "Sorted descending — click to reverse")
+                }
+
+                Spacer()
+
+                // Right cluster — thumbnail-size slider (disabled in Catalog/Detail mode)
+                let sliderEnabled = viewMode != .detail
+                HStack(spacing: 6) {
+                    Image(systemName: "photo")
+                        .font(.system(size: 10))
+                        .foregroundColor(sliderEnabled ? .primary : .secondary)
+                    Slider(value: $thumbnailWidth, in: 120...400)
+                        .frame(width: 140)
+                        .disabled(!sliderEnabled)
+                        .help(sliderEnabled
+                              ? "Drag to resize thumbnails. The grid automatically adjusts how many columns fit."
+                              : "Thumbnail size only applies in Grid or List mode.")
+                    Image(systemName: "photo")
+                        .font(.system(size: 14))
+                        .foregroundColor(sliderEnabled ? .primary : .secondary)
+                }
+                .opacity(sliderEnabled ? 1.0 : 0.4)
+            }
+            .padding(.horizontal, 12)
+            .frame(height: 44)
+            .background(Color(.windowBackgroundColor))
+        }
+    }
+
+    /// Human-readable label for a sort field key.
+    private func sortFieldLabel(_ key: String) -> String {
+        switch key {
+        case "filename":      return "Filename"
+        case "indexed_at":    return "Date Added"
+        case "creation_date": return "Date Captured"
+        case "duration":      return "Duration"
+        case "size":          return "File Size"
+        case "resolution":    return "Resolution"
+        case "fps":           return "Frame Rate"
+        case "codec":         return "Codec"
+        case "bitrate":       return "Bitrate"
+        case "camera":        return "Camera"
+        case "lens":          return "Lens"
+        case "keyword":       return "Keyword"
+        default:              return key
+        }
     }
 
     @ViewBuilder
@@ -656,7 +724,6 @@ struct ContentView: View {
                 DetailView(
                     viewModel: detailViewModel,
                     gridViewModel: gridViewModel,
-                    thumbnailWidth: $thumbnailWidth,
                     onCollapse: { rightPanelExpanded = false },
                     isListMode: viewMode == .list,
                     isLoupeMode: viewMode == .detail,

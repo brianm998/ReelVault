@@ -6,6 +6,7 @@
 package com.videoroom
 
 import androidx.compose.foundation.*
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -542,8 +543,6 @@ fun VideoRoomApp(
             if (connectionState == ConnectionState.Connected) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     // Top bar
-                    val currentSort = gridViewModel.currentSortField.collectAsState()
-                    val sortAsc = gridViewModel.currentSortAscending.collectAsState()
                     val selectedIds = gridViewModel.selectedVideoIds.collectAsState()
                     VideoRoomTopBar(
                         gridViewModel = gridViewModel,
@@ -551,8 +550,6 @@ fun VideoRoomApp(
                         onThemeToggle = { isDarkTheme = !isDarkTheme },
                         onSearch = { gridViewModel.setSearchQuery(it) },
                         onRequestAddLibrary = { showAddLibraryDialog = true },
-                        viewMode = viewMode,
-                        onViewModeChange = { viewMode = it },
                         onSearchFocusChanged = onSearchFocusChanged,
                         onGroupSelected = { gridViewModel.groupSelectedVideos() },
                         onConfigureEditors = { showEditorsDialog = true },
@@ -580,9 +577,6 @@ fun VideoRoomApp(
                             }
                         },
                         selectedCount = selectedIds.value.size,
-                        currentSort = currentSort.value,
-                        sortAscending = sortAsc.value,
-                        onSortChange = { field, ascending -> gridViewModel.setSort(field, ascending) }
                     )
 
                     // Scan status banner (during scan)
@@ -758,10 +752,10 @@ fun VideoRoomApp(
                         }
                     }
 
-                    // Main content
+                    // Main content — takes remaining vertical space above the bottom bar.
                     Row(
                         modifier = Modifier
-                            .fillMaxSize()
+                            .fillMaxWidth()
                             .weight(1f)
                     ) {
                         val libraryLocations = gridViewModel.libraryLocations.collectAsState()
@@ -890,8 +884,6 @@ fun VideoRoomApp(
                                 gridViewModel = gridViewModel,
                                 viewMode = viewMode,
                                 onCollapse = { rightPanelExpanded = false },
-                                thumbnailWidth = thumbnailWidth,
-                                onThumbnailWidthChange = { thumbnailWidth = it },
                                 onEditLocation = { videoIds, initial ->
                                     // Await before showing the dialog so
                                     // its bbox-framing logic captures
@@ -923,6 +915,21 @@ fun VideoRoomApp(
                             )
                         }
                     }
+
+                    // Bottom bar — view-mode toggle (left), sort controls (centre),
+                    // thumbnail-size slider (right). Replaces the top-bar toggle and
+                    // sort button, and the detail-panel slider.
+                    val currentSort = gridViewModel.currentSortField.collectAsState()
+                    val sortAsc = gridViewModel.currentSortAscending.collectAsState()
+                    BottomBar(
+                        viewMode = viewMode,
+                        onViewModeChange = { viewMode = it },
+                        currentSort = currentSort.value,
+                        sortAscending = sortAsc.value,
+                        onSortChange = { field, ascending -> gridViewModel.setSort(field, ascending) },
+                        thumbnailWidth = thumbnailWidth,
+                        onThumbnailWidthChange = { thumbnailWidth = it },
+                    )
                 }
                 // External editors preferences dialog
                 if (showEditorsDialog) {
@@ -1050,9 +1057,9 @@ fun VideoRoomApp(
                 if (showAddLibraryDialog) {
                     AddLibraryDialog(
                         onDismiss = { showAddLibraryDialog = false },
-                        onConfirm = { path, recursive, autoGroup, dateFormat, datePosition ->
-                            gridViewModel.addLibraryAndScan(
-                                path = path,
+                        onConfirm = { paths, recursive, autoGroup, dateFormat, datePosition ->
+                            gridViewModel.addLibraryAndScanMultiple(
+                                paths = paths,
                                 recursive = recursive,
                                 autoGroup = autoGroup,
                                 filenameDateFormat = dateFormat,
@@ -1141,31 +1148,10 @@ fun VideoRoomTopBar(
     /** Opens the global map dialog showing every geotagged video. */
     onShowGlobalMap: () -> Unit = {},
     selectedCount: Int = 0,
-    currentSort: String = "indexed_at",
-    sortAscending: Boolean = false,
-    onSortChange: (String, Boolean) -> Unit = { _, _ -> },
-    viewMode: ViewMode = ViewMode.GRID,
-    onViewModeChange: (ViewMode) -> Unit = {},
     onSearchFocusChanged: (Boolean) -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var showSortMenu by remember { mutableStateOf(false) }
     var showFileMenu by remember { mutableStateOf(false) }
-
-    val sortOptions = listOf(
-        "filename" to "Filename",
-        "indexed_at" to "Date Added",
-        "creation_date" to "Date Captured",
-        "duration" to "Duration",
-        "size" to "File Size",
-        "resolution" to "Resolution",
-        "fps" to "Frame Rate",
-        "codec" to "Codec",
-        "bitrate" to "Bitrate",
-        "camera" to "Camera",
-        "lens" to "Lens",
-        "keyword" to "Keyword",
-    )
 
     TopAppBar(
         title = {
@@ -1256,15 +1242,6 @@ fun VideoRoomTopBar(
                     }
                 }
 
-                // Grid / Detail view-mode toggle. Mirrors the 'g' and 'd'
-                // keyboard shortcuts.
-                ViewModeToggle(
-                    current = viewMode,
-                    onChange = onViewModeChange
-                )
-
-                Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
-
                 // Search bar - use OutlinedTextField which has a more compact
                 // default height that fits inside the TopAppBar without
                 // clipping text.
@@ -1317,74 +1294,6 @@ fun VideoRoomTopBar(
                 Spacer(modifier = Modifier.weight(1f))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Sort menu
-                    Box {
-                        com.videoroom.ui.components.Tooltip(
-                            text = "Sort the video grid. Click the same field again to reverse direction."
-                        ) {
-                            IconButton(onClick = { showSortMenu = true }) {
-                                Icon(
-                                    imageVector = Icons.Default.Sort,
-                                    contentDescription = "Sort"
-                                )
-                            }
-                        }
-                        DropdownMenu(
-                            expanded = showSortMenu,
-                            onDismissRequest = { showSortMenu = false }
-                        ) {
-                            Text(
-                                text = "Sort by",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(
-                                    horizontal = VideoRoomSpacing.Medium,
-                                    vertical = VideoRoomSpacing.Small
-                                )
-                            )
-                            sortOptions.forEach { (key, label) ->
-                                val isSelected = key == currentSort
-                                DropdownMenuItem(
-                                    text = {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                text = label,
-                                                color = if (isSelected) {
-                                                    MaterialTheme.colorScheme.primary
-                                                } else {
-                                                    MaterialTheme.colorScheme.onSurface
-                                                }
-                                            )
-                                            if (isSelected) {
-                                                Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
-                                                Icon(
-                                                    imageVector = if (sortAscending) {
-                                                        Icons.Default.ArrowUpward
-                                                    } else {
-                                                        Icons.Default.ArrowDownward
-                                                    },
-                                                    contentDescription = if (sortAscending) "Ascending" else "Descending",
-                                                    modifier = Modifier.size(16.dp),
-                                                    tint = MaterialTheme.colorScheme.primary
-                                                )
-                                            }
-                                        }
-                                    },
-                                    onClick = {
-                                        if (isSelected) {
-                                            // Toggle direction on second click
-                                            onSortChange(key, !sortAscending)
-                                        } else {
-                                            // Default to descending for most fields, ascending for filename
-                                            onSortChange(key, key == "filename" || key == "camera" || key == "codec")
-                                        }
-                                        showSortMenu = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
                     // Group Selected button: enabled when 2+ videos are multi-selected.
                     // Shows a small count badge to make the selection visible.
                     Box {
@@ -1551,6 +1460,206 @@ fun VideoRoomTopBar(
             titleContentColor = MaterialTheme.colorScheme.onSurface
         )
     )
+}
+
+/**
+ * Full-width bottom status/control bar.
+ *
+ * Layout (left → right):
+ *   • [ViewModeToggle] — three-segment Catalog/Grid/List toggle (left cluster)
+ *   • Sort controls — field dropdown + ascending/descending toggle (centred)
+ *   • Thumbnail-size slider — only enabled in Grid or List mode (right cluster)
+ *
+ * Height is fixed at 44 dp with a top divider line, matching the Lightroom
+ * filmstrip bar aesthetic.
+ */
+@Composable
+fun BottomBar(
+    viewMode: ViewMode,
+    onViewModeChange: (ViewMode) -> Unit,
+    currentSort: String,
+    sortAscending: Boolean,
+    onSortChange: (String, Boolean) -> Unit,
+    thumbnailWidth: androidx.compose.ui.unit.Dp,
+    onThumbnailWidthChange: (androidx.compose.ui.unit.Dp) -> Unit,
+) {
+    val sortOptions = listOf(
+        "filename" to "Filename",
+        "indexed_at" to "Date Added",
+        "creation_date" to "Date Captured",
+        "duration" to "Duration",
+        "size" to "File Size",
+        "resolution" to "Resolution",
+        "fps" to "Frame Rate",
+        "codec" to "Codec",
+        "bitrate" to "Bitrate",
+        "camera" to "Camera",
+        "lens" to "Lens",
+        "keyword" to "Keyword",
+    )
+    val currentSortLabel = sortOptions.firstOrNull { it.first == currentSort }?.second ?: currentSort
+    var showSortMenu by remember { mutableStateOf(false) }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Top divider
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp)
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Left cluster — view-mode toggle
+                ViewModeToggle(current = viewMode, onChange = onViewModeChange)
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                // Centre — sort controls
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(VideoRoomSpacing.XSmall)
+                ) {
+                    // Sort field dropdown
+                    Box {
+                        com.videoroom.ui.components.Tooltip(
+                            text = "Sort the video grid. Click the same field again to reverse direction."
+                        ) {
+                            OutlinedButton(
+                                onClick = { showSortMenu = true },
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                modifier = Modifier.height(28.dp)
+                            ) {
+                                Text(
+                                    text = currentSortLabel,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDropDown,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
+                        DropdownMenu(
+                            expanded = showSortMenu,
+                            onDismissRequest = { showSortMenu = false }
+                        ) {
+                            Text(
+                                text = "Sort by",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(
+                                    horizontal = VideoRoomSpacing.Medium,
+                                    vertical = VideoRoomSpacing.Small
+                                )
+                            )
+                            sortOptions.forEach { (key, label) ->
+                                val isSelected = key == currentSort
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = label,
+                                                color = if (isSelected)
+                                                    MaterialTheme.colorScheme.primary
+                                                else
+                                                    MaterialTheme.colorScheme.onSurface
+                                            )
+                                            if (isSelected) {
+                                                Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
+                                                Icon(
+                                                    imageVector = if (sortAscending)
+                                                        Icons.Default.ArrowUpward
+                                                    else
+                                                        Icons.Default.ArrowDownward,
+                                                    contentDescription = if (sortAscending) "Ascending" else "Descending",
+                                                    modifier = Modifier.size(16.dp),
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
+                                    },
+                                    onClick = {
+                                        if (isSelected) {
+                                            onSortChange(key, !sortAscending)
+                                        } else {
+                                            onSortChange(key, key == "filename" || key == "camera" || key == "codec")
+                                        }
+                                        showSortMenu = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // Ascending / descending toggle
+                    com.videoroom.ui.components.Tooltip(
+                        text = if (sortAscending) "Sorted ascending — click to reverse" else "Sorted descending — click to reverse"
+                    ) {
+                        IconButton(
+                            onClick = { onSortChange(currentSort, !sortAscending) },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (sortAscending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                                contentDescription = if (sortAscending) "Ascending" else "Descending",
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                // Right cluster — thumbnail size slider (disabled in Catalog/Detail mode)
+                val sliderEnabled = viewMode != ViewMode.DETAIL
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(VideoRoomSpacing.XSmall)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PhotoSizeSelectSmall,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = if (sliderEnabled)
+                            MaterialTheme.colorScheme.onSurface
+                        else
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    )
+                    com.videoroom.ui.components.Tooltip(
+                        text = if (sliderEnabled)
+                            "Drag to resize thumbnails. The grid automatically adjusts how many columns fit."
+                        else
+                            "Thumbnail size only applies in Grid or List mode."
+                    ) {
+                        Slider(
+                            value = thumbnailWidth.value,
+                            onValueChange = { onThumbnailWidthChange(it.dp) },
+                            valueRange = 120f..400f,
+                            enabled = sliderEnabled,
+                            modifier = Modifier.width(140.dp)
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Default.PhotoSizeSelectLarge,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = if (sliderEnabled)
+                            MaterialTheme.colorScheme.onSurface
+                        else
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    )
+                }
+            }
+        }
+    }
 }
 
 /**
@@ -1792,16 +1901,18 @@ fun AddLibraryDialog(
      * must be one of "MM-DD-YYYY", "DD-MM-YYYY", or "YYYY-MM-DD".
      * datePosition: "anywhere" | "beginning" | "end" (only consulted when
      * dateFormat is non-empty).
+     * paths: all non-blank paths entered by the user (may be one or many).
      */
     onConfirm: (
-        path: String,
+        paths: List<String>,
         recursive: Boolean,
         autoGroup: Boolean,
         dateFormat: String,
         datePosition: String
     ) -> Unit
 ) {
-    var path by remember { mutableStateOf("") }
+    // Each entry in the list is the text in one path row.
+    val pathEntries = remember { mutableStateListOf("") }
     var recursive by remember { mutableStateOf(true) }
     var autoGroup by remember { mutableStateOf(true) }
     var inferDate by remember { mutableStateOf(false) }
@@ -1823,32 +1934,118 @@ fun AddLibraryDialog(
         }
     }
 
+    val hasAnyNonBlank = pathEntries.any { it.isNotBlank() }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Library Location") },
+        title = { Text("Add Library Locations") },
         text = {
             Column {
                 Text(
-                    text = "Enter the full path to a directory containing videos:",
+                    text = "Enter one or more directories containing videos. Use \$YEAR in a path " +
+                        "(e.g. /Volumes/Media/\$YEAR/Raw) to add every matching year folder at once.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
-                com.videoroom.ui.components.Tooltip(
-                    text = "Full filesystem path to the folder containing your videos. " +
-                        "Press Tab to complete, type more to narrow the suggestions, or " +
-                        "pick a directory from the dropdown."
+
+                // ── Path list ──────────────────────────────────────────────
+                // Show at most ~4 rows before scrolling.
+                androidx.compose.foundation.lazy.LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 220.dp),
+                    verticalArrangement = Arrangement.spacedBy(VideoRoomSpacing.Small)
                 ) {
-                    com.videoroom.ui.components.PathCompletingTextField(
-                        value = path,
-                        onValueChange = { path = it },
-                        placeholder = "/Users/you/Videos",
-                        modifier = Modifier.fillMaxWidth(),
+                    itemsIndexed(pathEntries) { idx, pathValue ->
+                        // Client-side $YEAR preview: count how many year directories
+                        // the user's path template would match on the local filesystem.
+                        // The backend does the authoritative expansion; this is UX only.
+                        val yearHint: String? = remember(pathValue) {
+                            if (!pathValue.contains("\$YEAR")) return@remember null
+                            val yearNow = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+                            val matches = (1970..yearNow)
+                                .map { y -> pathValue.replace("\$YEAR", y.toString()) }
+                                .filter { java.io.File(it).isDirectory }
+                            if (matches.isEmpty()) {
+                                "No matching directories found on disk yet"
+                            } else {
+                                val example = matches.firstOrNull() ?: ""
+                                "Will expand to ${matches.size} director${if (matches.size == 1) "y" else "ies"} " +
+                                    "(e.g. $example)"
+                            }
+                        }
+
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                com.videoroom.ui.components.Tooltip(
+                                    text = "Full filesystem path to the folder containing your videos. " +
+                                        "Press Tab to complete, type more to narrow the suggestions, or " +
+                                        "pick a directory from the dropdown. " +
+                                        "Use \$YEAR to expand to every matching year folder."
+                                ) {
+                                    com.videoroom.ui.components.PathCompletingTextField(
+                                        value = pathValue,
+                                        onValueChange = { pathEntries[idx] = it },
+                                        placeholder = if (idx == 0) "/Users/you/Videos" else "Another path…",
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+
+                                // Remove button — only shown when there are multiple rows.
+                                if (pathEntries.size > 1) {
+                                    IconButton(
+                                        onClick = { pathEntries.removeAt(idx) },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Remove path",
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (yearHint != null) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = yearHint,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
+
+                // "+  Add another path" button
+                TextButton(
+                    onClick = { pathEntries.add("") },
+                    contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Add another path",
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
 
                 Spacer(modifier = Modifier.height(VideoRoomSpacing.Medium))
 
+                // ── Scan options ───────────────────────────────────────────
                 com.videoroom.ui.components.Tooltip(
                     text = "When on, VideoRoom walks into every subdirectory. " +
                         "When off, only files directly inside the chosen folder are indexed."
@@ -2063,7 +2260,8 @@ fun AddLibraryDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    if (path.isNotBlank()) {
+                    val nonBlankPaths = pathEntries.map { it.trim() }.filter { it.isNotBlank() }
+                    if (nonBlankPaths.isNotEmpty()) {
                         // Persist date-rule defaults when "always apply" is ticked.
                         if (alwaysApplySettings && inferDate) {
                             prefs.putBoolean("hasSavedDefaults", true)
@@ -2077,7 +2275,7 @@ fun AddLibraryDialog(
                             prefs.putBoolean("inferDate", false)
                         }
                         onConfirm(
-                            path.trim(),
+                            nonBlankPaths,
                             recursive,
                             autoGroup,
                             if (inferDate) dateFormat else "",
@@ -2085,9 +2283,9 @@ fun AddLibraryDialog(
                         )
                     }
                 },
-                enabled = path.isNotBlank()
+                enabled = hasAnyNonBlank
             ) {
-                Text("Add & Scan")
+                Text(if (pathEntries.count { it.isNotBlank() } > 1) "Add & Scan All" else "Add & Scan")
             }
         },
         dismissButton = {

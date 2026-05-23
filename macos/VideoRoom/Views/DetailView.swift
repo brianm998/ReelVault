@@ -7,9 +7,8 @@ import AppKit
 struct DetailView: View {
     @ObservedObject var viewModel: DetailViewModel
     @ObservedObject var gridViewModel: GridViewModel
-    @Binding var thumbnailWidth: CGFloat
     let onCollapse: () -> Void
-    /// When `true`, a "List Columns" toggle section appears below the thumbnail slider.
+    /// When `true`, a "List Columns" toggle section appears below the metadata.
     var isListMode: Bool = false
     /// When `true`, the proxy section rows are clickable: a click swaps
     /// the detail-view (loupe) player to the selected proxy. In Grid
@@ -42,23 +41,6 @@ struct DetailView: View {
             }
             .padding(.horizontal, 12)
             .padding(.top, 12)
-            .padding(.bottom, 8)
-
-            // Thumbnail-size slider — controls the grid's adaptive column width
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("Thumbnail size")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    Text("\(Int(thumbnailWidth))")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                Slider(value: $thumbnailWidth, in: 120...400)
-                    .help("Drag to resize thumbnails. The grid automatically adjusts how many columns fit at this size.")
-            }
-            .padding(.horizontal, 12)
             .padding(.bottom, 8)
 
             if isListMode {

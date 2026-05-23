@@ -23,9 +23,6 @@ fun DetailScreen(
     gridViewModel: com.videoroom.viewmodel.GridViewModel,
     viewMode: ViewMode = ViewMode.GRID,
     onCollapse: () -> Unit = {},
-    /** Current thumbnail min-width controlling adaptive grid column count. */
-    thumbnailWidth: androidx.compose.ui.unit.Dp = 220.dp,
-    onThumbnailWidthChange: (androidx.compose.ui.unit.Dp) -> Unit = {},
     /** Opens the LocationPickerDialog for the given video IDs. `initial` is
      *  pre-filled GPS coordinate (lat, lon) when one is already set. */
     onEditLocation: (videoIds: List<String>, initial: Pair<Double, Double>?) -> Unit = { _, _ -> },
@@ -75,45 +72,6 @@ fun DetailScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f)
             )
-        }
-
-        // Thumbnail-size slider — controls the adaptive grid's minimum card
-        // width. Wider min → fewer, larger cards. Narrower min → more, smaller.
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    horizontal = VideoRoomSpacing.Medium,
-                    vertical = VideoRoomSpacing.XSmall
-                )
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Thumbnail size",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "${thumbnailWidth.value.toInt()}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            com.videoroom.ui.components.Tooltip(
-                text = "Drag to resize thumbnails. The grid automatically adjusts " +
-                    "how many columns fit at this size."
-            ) {
-                Slider(
-                    value = thumbnailWidth.value,
-                    onValueChange = { onThumbnailWidthChange(it.dp) },
-                    valueRange = 120f..400f,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
         }
 
         // List columns — only shown when List view is active
