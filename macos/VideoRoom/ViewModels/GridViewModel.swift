@@ -60,6 +60,9 @@ class GridViewModel: ObservableObject {
     @Published var expandedGroupIds: Set<String> = []
     @Published var expandedGroupMembers: [String: [VideoSummary]] = [:]
 
+    // List-mode column visibility
+    @Published var listColumns: Set<String> = ["resolution", "duration", "fps", "codec", "date", "tags", "proxy"]
+
     // Scan status / result banners
     @Published var scanStatus: String?
     @Published var scanResult: ScanResult?
@@ -110,6 +113,16 @@ class GridViewModel: ObservableObject {
             .sink { [weak self] _ in
                 self?.reloadFromTop()
             }
+    }
+
+    // MARK: - List mode columns
+
+    func toggleListColumn(_ column: String) {
+        if listColumns.contains(column) {
+            listColumns.remove(column)
+        } else {
+            listColumns.insert(column)
+        }
     }
 
     // MARK: - Live updates

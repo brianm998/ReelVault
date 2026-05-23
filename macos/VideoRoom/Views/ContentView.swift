@@ -50,7 +50,7 @@ struct ContentView: View {
     @ObservedObject private var recents = RecentCatalogs.shared
 
     enum ConnectionState { case connecting, connected, failed }
-    enum ViewMode { case grid, detail }
+    enum ViewMode { case grid, list, detail }
 
     var body: some View {
         Group {
@@ -84,6 +84,7 @@ struct ContentView: View {
             onSelectAll: { gridViewModel.selectAllVisible() },
             onDeselectAll: { gridViewModel.clearSelection() },
             onSetGridMode: { viewMode = .grid },
+            onSetListMode: { viewMode = .list },
             onSetDetailMode: { viewMode = .detail },
             onCycleInfoOverlay: {
                 infoOverlay = {
@@ -96,7 +97,7 @@ struct ContentView: View {
             },
             onSpaceBar: {
                 switch viewMode {
-                case .grid:
+                case .grid, .list:
                     // Only respond when exactly one video is selected so we
                     // don't accidentally start playback during multi-select.
                     if gridViewModel.playingVideoId != nil {
@@ -350,16 +351,17 @@ struct ContentView: View {
                 }
             }
 
-            // Grid / Detail view-mode toggle. Mirrors the 'G' and 'D'
+            // Grid / List / Detail view-mode toggle. Mirrors the 'G', 'L', and 'D'
             // keyboard shortcuts.
             Picker("", selection: $viewMode) {
                 Image(systemName: "square.grid.2x2").tag(ViewMode.grid)
+                Image(systemName: "list.bullet").tag(ViewMode.list)
                 Image(systemName: "play.rectangle").tag(ViewMode.detail)
             }
             .pickerStyle(.segmented)
-            .frame(width: 90)
+            .frame(width: 135)
             .labelsHidden()
-            .help("Switch between Grid (G) and Detail (D) views.")
+            .help("Switch between Grid (G), List (L), and Detail (D) views.")
 
             TextField("Search videos…", text: $gridViewModel.searchQuery)
                 .textFieldStyle(.roundedBorder)
@@ -617,13 +619,21 @@ struct ContentView: View {
 
             Divider()
 
-            // Middle area — grid (browse) or detail (single-video loupe).
+            // Middle area — grid (browse), list, or detail (single-video loupe).
             switch viewMode {
             case .grid:
                 GridView(
                     viewModel: gridViewModel,
                     detailViewModel: detailViewModel,
                     thumbnailMinWidth: thumbnailWidth,
+                    onConfigureEditors: { showEditorsSheet = true }
+                )
+                .frame(maxWidth: .infinity)
+            case .list:
+                ListView(
+                    viewModel: gridViewModel,
+                    detailViewModel: detailViewModel,
+                    thumbnailHeight: thumbnailWidth / 2,
                     onConfigureEditors: { showEditorsSheet = true }
                 )
                 .frame(maxWidth: .infinity)
@@ -646,6 +656,7 @@ struct ContentView: View {
                     gridViewModel: gridViewModel,
                     thumbnailWidth: $thumbnailWidth,
                     onCollapse: { rightPanelExpanded = false },
+                    isListMode: viewMode == .list,
                     onEditLocation: { videoIds, initial in
                         // Await before showing the sheet so the picker's
                         // init captures populated arrays and frames the
@@ -811,6 +822,8 @@ struct GlobalKeyboardShortcuts: ViewModifier {
     let onDeselectAll: () -> Void
     /// Plain 'g' — switch to grid view mode.
     let onSetGridMode: () -> Void
+    /// Plain 'l' — switch to list view mode.
+    let onSetListMode: () -> Void
     /// Plain 'd' — switch to detail (loupe) view mode.
     let onSetDetailMode: () -> Void
     /// Plain 'i' — cycle the info overlay through none → camera → file → none.
@@ -907,6 +920,7 @@ struct GlobalKeyboardShortcuts: ViewModifier {
             // while the user is typing in the search box, notes, etc.
             //   Space (keyCode 49) → toggle inline playback
             //   G (keyCode 5)  → grid mode
+            //   L (keyCode 37) → list mode
             //   D (keyCode 2)  → detail mode
             //   I (keyCode 34) → cycle info overlay
             if mods.isEmpty {
@@ -916,6 +930,9 @@ struct GlobalKeyboardShortcuts: ViewModifier {
                     return nil
                 case 5:
                     onSetGridMode()
+                    return nil
+                case 37:
+                    onSetListMode()
                     return nil
                 case 2:
                     onSetDetailMode()

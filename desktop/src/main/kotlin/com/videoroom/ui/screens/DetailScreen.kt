@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.videoroom.ViewMode
 import com.videoroom.ui.theme.VideoRoomSpacing
 import com.videoroom.viewmodel.DetailViewModel
 
@@ -20,6 +21,7 @@ import com.videoroom.viewmodel.DetailViewModel
 fun DetailScreen(
     viewModel: DetailViewModel,
     gridViewModel: com.videoroom.viewmodel.GridViewModel,
+    viewMode: ViewMode = ViewMode.GRID,
     onCollapse: () -> Unit = {},
     /** Current thumbnail min-width controlling adaptive grid column count. */
     thumbnailWidth: androidx.compose.ui.unit.Dp = 220.dp,
@@ -111,6 +113,52 @@ fun DetailScreen(
                     valueRange = 120f..400f,
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
+        }
+
+        // List columns — only shown when List view is active
+        if (viewMode == ViewMode.LIST) {
+            val cols = gridViewModel.listColumns.collectAsState()
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = VideoRoomSpacing.Small),
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
+            Text(
+                text = "LIST COLUMNS",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(
+                    start = VideoRoomSpacing.Medium,
+                    end = VideoRoomSpacing.Medium,
+                    top = VideoRoomSpacing.Medium,
+                    bottom = VideoRoomSpacing.XSmall
+                )
+            )
+            listOf(
+                "resolution" to "Resolution",
+                "duration"   to "Duration",
+                "fps"        to "FPS",
+                "codec"      to "Codec",
+                "filesize"   to "File Size",
+                "date"       to "Date",
+                "tags"       to "Tags",
+                "proxy"      to "Proxy",
+            ).forEach { (key, label) ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { gridViewModel.toggleListColumn(key) }
+                        .padding(horizontal = VideoRoomSpacing.Medium, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = key in cols.value,
+                        onCheckedChange = { gridViewModel.toggleListColumn(key) },
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
+                    Text(text = label, style = MaterialTheme.typography.bodySmall)
+                }
             }
         }
 

@@ -9,6 +9,8 @@ struct DetailView: View {
     @ObservedObject var gridViewModel: GridViewModel
     @Binding var thumbnailWidth: CGFloat
     let onCollapse: () -> Void
+    /// When `true`, a "List Columns" toggle section appears below the thumbnail slider.
+    var isListMode: Bool = false
     /// Opens the LocationPicker sheet for the given video IDs. `initial`
     /// is the existing (lat, lon) when one is already set, or nil.
     var onEditLocation: (_ videoIds: [String], _ initial: (Double, Double)?) -> Void = { _, _ in }
@@ -54,7 +56,39 @@ struct DetailView: View {
             .padding(.horizontal, 12)
             .padding(.bottom, 8)
 
-            Divider()
+            if isListMode {
+                Divider()
+                Text("LIST COLUMNS")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+                    .padding(.bottom, 2)
+
+                let columnDefs: [(String, String)] = [
+                    ("resolution", "Resolution"),
+                    ("duration",   "Duration"),
+                    ("fps",        "FPS"),
+                    ("codec",      "Codec"),
+                    ("filesize",   "File Size"),
+                    ("date",       "Date"),
+                    ("tags",       "Tags"),
+                    ("proxy",      "Proxy"),
+                ]
+                ForEach(columnDefs, id: \.0) { key, label in
+                    Toggle(label, isOn: Binding(
+                        get: { gridViewModel.listColumns.contains(key) },
+                        set: { _ in gridViewModel.toggleListColumn(key) }
+                    ))
+                    .toggleStyle(.checkbox)
+                    .controlSize(.small)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 1)
+                }
+                Divider()
+            } else {
+                Divider()
+            }
 
             // Content
             if let metadata = viewModel.metadata {

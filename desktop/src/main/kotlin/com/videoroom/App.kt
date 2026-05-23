@@ -31,6 +31,7 @@ import com.videoroom.data.server.ServerLauncher
 import com.videoroom.ui.screens.GridScreen
 import com.videoroom.ui.screens.DetailScreen
 import com.videoroom.ui.screens.DetailViewScreen
+import com.videoroom.ui.screens.ListScreen
 import com.videoroom.ui.screens.InfoOverlayState
 import com.videoroom.ui.screens.OpenCatalogDialog
 import com.videoroom.ui.theme.VideoRoomTheme
@@ -49,7 +50,7 @@ private val logger = LoggerFactory.getLogger("VideoRoom")
 val LocalShiftPressed = compositionLocalOf { false }
 
 /** Top-level view mode for the central content area. */
-enum class ViewMode { GRID, DETAIL }
+enum class ViewMode { GRID, LIST, DETAIL }
 
 fun main() = application {
     // Set the JVM-wide HTTP User-Agent before any networking happens. The
@@ -94,6 +95,7 @@ fun main() = application {
     // overlay). Bound via onPreviewKeyEvent so the search field's plain-key
     // input still works via the `searchFocused` gate above.
     val setGridModeAction = remember { mutableStateOf<() -> Unit>({}) }
+    val setListModeAction = remember { mutableStateOf<() -> Unit>({}) }
     val setDetailModeAction = remember { mutableStateOf<() -> Unit>({}) }
     val cycleInfoOverlayAction = remember { mutableStateOf<() -> Unit>({}) }
     // Space bar: toggle inline playback of the selected video.
@@ -144,6 +146,7 @@ fun main() = application {
             ) {
                 when (event.key) {
                     Key.G -> { setGridModeAction.value(); return@Window true }
+                    Key.L -> { setListModeAction.value(); return@Window true }
                     Key.D -> { setDetailModeAction.value(); return@Window true }
                     Key.I -> { cycleInfoOverlayAction.value(); return@Window true }
                     Key.Spacebar -> { spacebarAction.value(); return@Window true }
@@ -218,6 +221,7 @@ fun main() = application {
                     onRegisterSelectAllAction = { selectAllAction.value = it },
                     onRegisterDeselectAllAction = { deselectAllAction.value = it },
                     onRegisterSetGridMode = { setGridModeAction.value = it },
+                    onRegisterSetListMode = { setListModeAction.value = it },
                     onRegisterSetDetailMode = { setDetailModeAction.value = it },
                     onRegisterCycleInfoOverlay = { cycleInfoOverlayAction.value = it },
                     onRegisterSpacebarAction = { spacebarAction.value = it },
@@ -243,6 +247,8 @@ fun VideoRoomApp(
     onRegisterDeselectAllAction: (() -> Unit) -> Unit = {},
     /** Called once to register the "switch to grid" action for the 'g' shortcut. */
     onRegisterSetGridMode: (() -> Unit) -> Unit = {},
+    /** Called once to register the "switch to list" action for the 'l' shortcut. */
+    onRegisterSetListMode: (() -> Unit) -> Unit = {},
     /** Called once to register the "switch to detail" action for the 'd' shortcut. */
     onRegisterSetDetailMode: (() -> Unit) -> Unit = {},
     /** Called once to register the "cycle info overlay" action for the 'i' shortcut. */
@@ -328,7 +334,7 @@ fun VideoRoomApp(
                     // Delegate to DetailViewScreen via the toggle token.
                     detailPlayToggle++
                 }
-                ViewMode.GRID -> {
+                ViewMode.GRID, ViewMode.LIST -> {
                     val playing = gridViewModel.playingVideoId.value
                     if (playing != null) {
                         // A video is playing — stop it.
@@ -357,6 +363,7 @@ fun VideoRoomApp(
     }
     LaunchedEffect(Unit) {
         onRegisterSetGridMode { viewMode = ViewMode.GRID }
+        onRegisterSetListMode { viewMode = ViewMode.LIST }
         onRegisterSetDetailMode { viewMode = ViewMode.DETAIL }
         onRegisterCycleInfoOverlay {
             infoOverlay = when (infoOverlay) {
@@ -798,7 +805,7 @@ fun VideoRoomApp(
                                 .width(1.dp)
                         )
 
-                        // Middle area — grid or single-video loupe.
+                        // Middle area — grid, list, or single-video loupe.
                         when (viewMode) {
                             ViewMode.GRID -> GridScreen(
                                 viewModel = gridViewModel,
@@ -811,6 +818,16 @@ fun VideoRoomApp(
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxHeight()
+                            )
+                            ViewMode.LIST -> ListScreen(
+                                viewModel = gridViewModel,
+                                onVideoSelect = { video ->
+                                    detailViewModel.setCurrentVideo(video)
+                                    detailViewModel.loadMetadata(video.id)
+                                },
+                                thumbnailHeight = (thumbnailWidth.value / 2).coerceIn(60f, 200f).dp,
+                                onConfigureEditors = { showEditorsDialog = true },
+                                modifier = Modifier.weight(1f).fillMaxHeight()
                             )
                             ViewMode.DETAIL -> DetailViewScreen(
                                 gridViewModel = gridViewModel,
@@ -834,6 +851,7 @@ fun VideoRoomApp(
                             DetailScreen(
                                 viewModel = detailViewModel,
                                 gridViewModel = gridViewModel,
+                                viewMode = viewMode,
                                 onCollapse = { rightPanelExpanded = false },
                                 thumbnailWidth = thumbnailWidth,
                                 onThumbnailWidthChange = { thumbnailWidth = it },
@@ -1499,57 +1517,54 @@ fun VideoRoomTopBar(
 }
 
 /**
- * Two-segment Grid / Detail toggle. The active mode is filled; the other is
- * outlined. Mirrors the 'g' (grid) and 'd' (detail) keyboard shortcuts.
+ * Three-segment icon-only pill toggle: Grid (G) / List (L) / Detail (D).
+ * The active segment has a filled primary background; the others are transparent.
+ * Divider lines between segments give the segmented-control appearance.
  */
 @Composable
 fun ViewModeToggle(
     current: ViewMode,
     onChange: (ViewMode) -> Unit
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        com.videoroom.ui.components.Tooltip(text = "Grid view — browse all videos as thumbnails (G)") {
-            val isGrid = current == ViewMode.GRID
-            if (isGrid) {
-                Button(
-                    onClick = { onChange(ViewMode.GRID) },
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    Icon(Icons.Default.GridView, contentDescription = null, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Grid", style = MaterialTheme.typography.labelSmall)
+    val modes = listOf(
+        Triple(ViewMode.GRID,   Icons.Default.GridView,          "Grid view (G)"),
+        Triple(ViewMode.LIST,   Icons.Default.ViewList,          "List view (L)"),
+        Triple(ViewMode.DETAIL, Icons.Default.PlayCircleOutline, "Detail view (D)")
+    )
+    Surface(
+        shape = MaterialTheme.shapes.small,
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp, MaterialTheme.colorScheme.outlineVariant
+        ),
+        color = Color.Transparent
+    ) {
+        Row(modifier = Modifier.height(32.dp)) {
+            modes.forEachIndexed { idx, (mode, icon, tooltip) ->
+                if (idx > 0) {
+                    Box(modifier = Modifier.width(1.dp).fillMaxHeight()
+                        .background(MaterialTheme.colorScheme.outlineVariant))
                 }
-            } else {
-                OutlinedButton(
-                    onClick = { onChange(ViewMode.GRID) },
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    Icon(Icons.Default.GridView, contentDescription = null, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Grid", style = MaterialTheme.typography.labelSmall)
-                }
-            }
-        }
-        Spacer(modifier = Modifier.width(4.dp))
-        com.videoroom.ui.components.Tooltip(text = "Detail (loupe) view — play and inspect a single video (D)") {
-            val isDetail = current == ViewMode.DETAIL
-            if (isDetail) {
-                Button(
-                    onClick = { onChange(ViewMode.DETAIL) },
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    Icon(Icons.Default.PlayCircleOutline, contentDescription = null, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Detail", style = MaterialTheme.typography.labelSmall)
-                }
-            } else {
-                OutlinedButton(
-                    onClick = { onChange(ViewMode.DETAIL) },
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    Icon(Icons.Default.PlayCircleOutline, contentDescription = null, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Detail", style = MaterialTheme.typography.labelSmall)
+                com.videoroom.ui.components.Tooltip(text = tooltip) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp, 32.dp)
+                            .background(
+                                if (current == mode) MaterialTheme.colorScheme.primary
+                                else Color.Transparent
+                            )
+                            .clickable { onChange(mode) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = if (current == mode)
+                                MaterialTheme.colorScheme.onPrimary
+                            else
+                                MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             }
         }
