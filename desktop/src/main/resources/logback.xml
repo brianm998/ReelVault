@@ -15,6 +15,9 @@
     <logger name="com.videoroom.ui.screens.GridScreen" level="DEBUG"/>
     <logger name="com.videoroom.ui.screens.DetailViewScreen" level="DEBUG"/>
     <logger name="uk.co.caprica.vlcj" level="DEBUG"/>
+    <!-- Native libvlc diagnostics, piped through NativeLog. INFO drops most
+         of the spam; bump to DEBUG when investigating vout/codec issues. -->
+    <logger name="libvlc" level="INFO"/>
 
     <!-- Most of the rest of the app at INFO; gRPC chatter at WARN. -->
     <root level="INFO">

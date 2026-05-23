@@ -7,7 +7,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.SwingPanel
 import org.slf4j.LoggerFactory
+import uk.co.caprica.vlcj.factory.MediaPlayerFactory
 import uk.co.caprica.vlcj.factory.discovery.NativeDiscovery
+import uk.co.caprica.vlcj.log.LogLevel
+import uk.co.caprica.vlcj.log.NativeLog
 import uk.co.caprica.vlcj.player.base.MediaPlayer
 import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter
 import uk.co.caprica.vlcj.player.component.EmbeddedMediaPlayerComponent
@@ -56,7 +59,11 @@ import javax.swing.SwingUtilities
  */
 class ComposeVideoPlayer {
     private val logger = LoggerFactory.getLogger(ComposeVideoPlayer::class.java)
+    /** Separate logger so libvlc's own diagnostics are easy to filter. */
+    private val libvlcLogger = LoggerFactory.getLogger("libvlc")
     private var component: EmbeddedMediaPlayerComponent? = null
+    private var factory: MediaPlayerFactory? = null
+    private var nativeLog: NativeLog? = null
     private var initFailure: Throwable? = null
 
     /**
@@ -98,7 +105,33 @@ class ComposeVideoPlayer {
             try {
                 logger.debug("Constructing EmbeddedMediaPlayerComponent on EDT={}",
                     SwingUtilities.isEventDispatchThread())
-                val c = EmbeddedMediaPlayerComponent()
+                // Build a custom MediaPlayerFactory so we can (a) capture
+                // libvlc's own diagnostics via NativeLog and (b) tune the
+                // libvlc startup args. We intentionally drop the default
+                // "--quiet" arg so libvlc emits informational/warning
+                // messages — the NativeLog listener below pipes them into
+                // SLF4J under the "libvlc" logger.
+                val args = buildLibvlcArgs()
+                logger.info("Creating MediaPlayerFactory with args: {}", args.joinToString(" "))
+                val f = MediaPlayerFactory(*args)
+                factory = f
+                // Pipe libvlc's own logs through SLF4J so we can see what
+                // libvlc thinks is going wrong with vout, codec selection,
+                // module loading, etc.
+                nativeLog = f.application().newLog().apply {
+                    setLevel(LogLevel.DEBUG)
+                    addLogListener { level, module, _, _, _, _, _, message ->
+                        val tag = module ?: "?"
+                        when (level) {
+                            LogLevel.ERROR -> libvlcLogger.error("[{}] {}", tag, message)
+                            LogLevel.WARNING -> libvlcLogger.warn("[{}] {}", tag, message)
+                            LogLevel.NOTICE -> libvlcLogger.info("[{}] {}", tag, message)
+                            LogLevel.DEBUG -> libvlcLogger.debug("[{}] {}", tag, message)
+                            else -> libvlcLogger.info("[{}] {}", tag, message)
+                        }
+                    }
+                }
+                val c = EmbeddedMediaPlayerComponent(f, null, null, null, null)
                 logger.debug("EmbeddedMediaPlayerComponent constructed: {} (isJComponent={})",
                     c.javaClass.name, c is javax.swing.JComponent)
                 val canvas = c.videoSurfaceComponent()
@@ -116,7 +149,8 @@ class ComposeVideoPlayer {
                 surfacePanel = c
                 attachEventListeners(c)
                 component = c
-                logger.info("ComposeVideoPlayer ready (libvlc native init succeeded)")
+                logger.info("ComposeVideoPlayer ready (libvlc {}, native init succeeded)",
+                    try { f.application().version() } catch (_: Throwable) { "<unknown>" })
             } catch (t: Throwable) {
                 logger.error("VLCJ player init failed — is libvlc installed?  " +
                     "macOS: install VLC.app from videolan.org. " +
@@ -297,10 +331,43 @@ class ComposeVideoPlayer {
         logger.debug("release")
         SwingUtilities.invokeLater {
             try { c.release() } catch (t: Throwable) {
-                logger.warn("Exception during release", t)
+                logger.warn("Exception during release (component)", t)
+            }
+            try { nativeLog?.release() } catch (t: Throwable) {
+                logger.warn("Exception during release (nativeLog)", t)
+            }
+            // EmbeddedMediaPlayerComponent only releases the factory when
+            // it created it; we passed one in, so we own the release.
+            try { factory?.release() } catch (t: Throwable) {
+                logger.warn("Exception during release (factory)", t)
             }
         }
         component = null
+        nativeLog = null
+        factory = null
+    }
+
+    /**
+     * libvlc startup args. The defaults from
+     * [uk.co.caprica.vlcj.player.component.MediaPlayerComponentDefaults] are
+     * `--video-title=…`, `--no-snapshot-preview`, `--quiet`, `--intf=dummy`.
+     * We drop `--quiet` so we can see what libvlc is doing through
+     * [NativeLog], and we keep the others.
+     */
+    private fun buildLibvlcArgs(): Array<String> {
+        val base = mutableListOf(
+            "--no-snapshot-preview",
+            "--intf=dummy",
+            "--no-video-title-show",
+        )
+        // System property escape hatch: -Dvideoroom.libvlc.args="--vout=caopengllayer --verbose=2"
+        // overrides nothing but adds extra args. Useful for quickly trying a
+        // different vout module without rebuilding.
+        val extra = System.getProperty("videoroom.libvlc.args", "").trim()
+        if (extra.isNotEmpty()) {
+            base += extra.split(Regex("\\s+")).filter { it.isNotEmpty() }
+        }
+        return base.toTypedArray()
     }
 
     /**
