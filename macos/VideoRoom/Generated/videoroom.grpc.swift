@@ -371,6 +371,18 @@ internal enum Videoroom_VideoRoom: Sendable {
                 method: "SetProxyOf"
             )
         }
+        /// Namespace for "RemoveProxyLink" metadata.
+        internal enum RemoveProxyLink: Sendable {
+            /// Request type for "RemoveProxyLink".
+            internal typealias Input = Videoroom_RemoveProxyLinkRequest
+            /// Response type for "RemoveProxyLink".
+            internal typealias Output = Videoroom_Response
+            /// Descriptor for "RemoveProxyLink".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "RemoveProxyLink"
+            )
+        }
         /// Namespace for "DetectProxies" metadata.
         internal enum DetectProxies: Sendable {
             /// Request type for "DetectProxies".
@@ -606,6 +618,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             GenerateProxy.descriptor,
             ListProxies.descriptor,
             SetProxyOf.descriptor,
+            RemoveProxyLink.descriptor,
             DetectProxies.descriptor,
             GetFilterOptions.descriptor,
             GetStatus.descriptor,
@@ -1083,6 +1096,20 @@ extension Videoroom_VideoRoom {
         /// - Returns: A streaming response of `Videoroom_Response` messages.
         func setProxyOf(
             request: GRPCCore.StreamingServerRequest<Videoroom_SetProxyOfRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
+
+        /// Handle the "RemoveProxyLink" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_RemoveProxyLinkRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func removeProxyLink(
+            request: GRPCCore.StreamingServerRequest<Videoroom_RemoveProxyLinkRequest>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
 
@@ -1819,6 +1846,20 @@ extension Videoroom_VideoRoom {
         /// - Returns: A response containing a single `Videoroom_Response` message.
         func setProxyOf(
             request: GRPCCore.ServerRequest<Videoroom_SetProxyOfRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
+
+        /// Handle the "RemoveProxyLink" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_RemoveProxyLinkRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func removeProxyLink(
+            request: GRPCCore.ServerRequest<Videoroom_RemoveProxyLinkRequest>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
 
@@ -2559,6 +2600,20 @@ extension Videoroom_VideoRoom {
             context: GRPCCore.ServerContext
         ) async throws -> Videoroom_Response
 
+        /// Handle the "RemoveProxyLink" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_RemoveProxyLinkRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func removeProxyLink(
+            request: Videoroom_RemoveProxyLinkRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
+
         /// Handle the "DetectProxies" method.
         ///
         /// - Parameters:
@@ -3175,6 +3230,17 @@ extension Videoroom_VideoRoom.StreamingServiceProtocol {
             }
         )
         router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.RemoveProxyLink.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_RemoveProxyLinkRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.removeProxyLink(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
             forMethod: Videoroom_VideoRoom.Method.DetectProxies.descriptor,
             deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_DetectProxiesRequest>(),
             serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_DetectProxiesResponse>(),
@@ -3680,6 +3746,17 @@ extension Videoroom_VideoRoom.ServiceProtocol {
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
         let response = try await self.setProxyOf(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func removeProxyLink(
+        request: GRPCCore.StreamingServerRequest<Videoroom_RemoveProxyLinkRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.removeProxyLink(
             request: GRPCCore.ServerRequest(stream: request),
             context: context
         )
@@ -4259,6 +4336,19 @@ extension Videoroom_VideoRoom.SimpleServiceProtocol {
     ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
         return GRPCCore.ServerResponse<Videoroom_Response>(
             message: try await self.setProxyOf(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func removeProxyLink(
+        request: GRPCCore.ServerRequest<Videoroom_RemoveProxyLinkRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.removeProxyLink(
                 request: request.message,
                 context: context
             ),
@@ -5079,6 +5169,25 @@ extension Videoroom_VideoRoom {
         func setProxyOf<Result>(
             request: GRPCCore.ClientRequest<Videoroom_SetProxyOfRequest>,
             serializer: some GRPCCore.MessageSerializer<Videoroom_SetProxyOfRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "RemoveProxyLink" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_RemoveProxyLinkRequest` message.
+        ///   - serializer: A serializer for `Videoroom_RemoveProxyLinkRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func removeProxyLink<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_RemoveProxyLinkRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_RemoveProxyLinkRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result
@@ -6364,6 +6473,36 @@ extension Videoroom_VideoRoom {
             try await self.client.unary(
                 request: request,
                 descriptor: Videoroom_VideoRoom.Method.SetProxyOf.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "RemoveProxyLink" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_RemoveProxyLinkRequest` message.
+        ///   - serializer: A serializer for `Videoroom_RemoveProxyLinkRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func removeProxyLink<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_RemoveProxyLinkRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_RemoveProxyLinkRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.RemoveProxyLink.descriptor,
                 serializer: serializer,
                 deserializer: deserializer,
                 options: options,
@@ -7676,6 +7815,31 @@ extension Videoroom_VideoRoom.ClientProtocol {
         try await self.setProxyOf(
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_SetProxyOfRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_Response>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "RemoveProxyLink" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_RemoveProxyLinkRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func removeProxyLink<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_RemoveProxyLinkRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.removeProxyLink(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_RemoveProxyLinkRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_Response>(),
             options: options,
             onResponse: handleResponse
@@ -9017,6 +9181,35 @@ extension Videoroom_VideoRoom.ClientProtocol {
             metadata: metadata
         )
         return try await self.setProxyOf(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "RemoveProxyLink" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func removeProxyLink<Result>(
+        _ message: Videoroom_RemoveProxyLinkRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_RemoveProxyLinkRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.removeProxyLink(
             request: request,
             options: options,
             onResponse: handleResponse

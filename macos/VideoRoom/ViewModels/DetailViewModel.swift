@@ -75,6 +75,48 @@ class DetailViewModel: ObservableObject {
         selectedProxyId = proxyId
     }
 
+    /// Break the link between the currently-displayed master and one
+    /// of its proxies. Refreshes the proxy list on success.
+    func breakProxyLink(proxyId: String) {
+        guard let masterId = currentSummary?.id else { return }
+        Task {
+            let ok = await repository.removeProxyLink(masterId: masterId, proxyId: proxyId)
+            if ok {
+                do {
+                    proxies = try await repository.listProxies(videoId: masterId)
+                } catch {
+                    NSLog("Reload proxies after break failed: \(error)")
+                }
+                if selectedProxyId == proxyId { selectedProxyId = nil }
+            } else {
+                error = "Failed to remove proxy link"
+            }
+        }
+    }
+
+    /// Mark `proxyId` as a manual proxy of the currently-displayed
+    /// master. Surfaces via the inspector's "Add selected video as
+    /// proxy" affordance.
+    func forceProxyLink(proxyId: String) {
+        guard let masterId = currentSummary?.id else { return }
+        guard masterId != proxyId else {
+            error = "A video can't be a proxy of itself"
+            return
+        }
+        Task {
+            let ok = await repository.setProxyOf(proxyId: proxyId, originalId: masterId)
+            if ok {
+                do {
+                    proxies = try await repository.listProxies(videoId: masterId)
+                } catch {
+                    NSLog("Reload proxies after force failed: \(error)")
+                }
+            } else {
+                error = "Failed to add proxy link"
+            }
+        }
+    }
+
     /// The on-disk path that the detail-view player should load, based
     /// on the current proxy selection and the master's playability:
     ///   * User explicitly picked a proxy → that proxy's path.

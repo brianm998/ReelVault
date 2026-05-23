@@ -377,6 +377,17 @@ struct DetailView: View {
                                       ? "Currently playing this proxy. Click to revert to the original."
                                       : "Play this proxy in the detail view instead of the original.")
                             }
+                            // Break-link button — always visible so
+                            // the user can correct false auto-detections
+                            // regardless of view mode.
+                            Button {
+                                viewModel.breakProxyLink(proxyId: proxy.id)
+                            } label: {
+                                Image(systemName: "link.badge.minus")
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Break this proxy link. The proxy file itself stays in the catalog; only the relationship with this master is removed.")
                         }
                         .padding(.vertical, 4)
                         .padding(.horizontal, 6)
@@ -391,6 +402,30 @@ struct DetailView: View {
                 .background(Color(.windowBackgroundColor).opacity(0.5))
                 .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color(.separatorColor)))
                 .cornerRadius(4)
+            }
+
+            // "Add selected as proxy" button — surfaces when the user
+            // has multi-selected exactly one OTHER video alongside the
+            // currently-inspected master. Click master, Cmd-click
+            // candidate, click button: discoverable without a separate
+            // picker dialog.
+            if let masterId = viewModel.currentSummary?.id {
+                let secondarySelections = gridViewModel.selectedVideoIds.filter { $0 != masterId }
+                if gridViewModel.selectedVideoIds.count == 2,
+                   let candidateId = secondarySelections.first {
+                    Button {
+                        viewModel.forceProxyLink(proxyId: candidateId)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "link.badge.plus")
+                            Text("Add selected video as proxy")
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("Manually link the second selected video to this master as a proxy. Use this when auto-detection missed a valid proxy.")
+                }
             }
 
             Divider()

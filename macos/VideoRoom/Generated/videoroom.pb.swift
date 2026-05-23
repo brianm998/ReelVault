@@ -933,7 +933,10 @@ nonisolated struct Videoroom_ListProxiesResponse: Sendable {
 }
 
 /// Set or clear a manual proxy_of pointer. Used by the right-panel
-/// "This is a proxy of …" picker. `original_id` empty = clear the link.
+/// "This is a proxy of …" picker. `original_id` empty = clear *all*
+/// proxy links for `proxy_id` (the row stops being a proxy of anything).
+/// To break a single master/proxy pair without affecting other masters,
+/// use `RemoveProxyLink` instead.
 nonisolated struct Videoroom_SetProxyOfRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -941,8 +944,25 @@ nonisolated struct Videoroom_SetProxyOfRequest: Sendable {
 
   var proxyID: String = String()
 
-  /// Empty to un-mark.
+  /// Empty to un-mark every link for this proxy.
   var originalID: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+/// Remove a single master ↔ proxy edge from the junction table. Lets
+/// the user "break" an incorrect auto-detection without wiping the row's
+/// other (correct) proxy relationships.
+nonisolated struct Videoroom_RemoveProxyLinkRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var masterID: String = String()
+
+  var proxyID: String = String()
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3583,6 +3603,41 @@ nonisolated extension Videoroom_SetProxyOfRequest: SwiftProtobuf.Message, SwiftP
   static func ==(lhs: Videoroom_SetProxyOfRequest, rhs: Videoroom_SetProxyOfRequest) -> Bool {
     if lhs.proxyID != rhs.proxyID {return false}
     if lhs.originalID != rhs.originalID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_RemoveProxyLinkRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".RemoveProxyLinkRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}master_id\0\u{3}proxy_id\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.masterID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.proxyID) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.masterID.isEmpty {
+      try visitor.visitSingularStringField(value: self.masterID, fieldNumber: 1)
+    }
+    if !self.proxyID.isEmpty {
+      try visitor.visitSingularStringField(value: self.proxyID, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_RemoveProxyLinkRequest, rhs: Videoroom_RemoveProxyLinkRequest) -> Bool {
+    if lhs.masterID != rhs.masterID {return false}
+    if lhs.proxyID != rhs.proxyID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

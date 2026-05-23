@@ -106,6 +106,55 @@ class DetailViewModel(
         _selectedProxyId.value = proxyId
     }
 
+    /** Break the link between the currently-displayed master and one
+     *  of its proxies. Auto-refreshes the inspector list on success;
+     *  surfaces failures via [error]. */
+    fun breakProxyLink(proxyId: String) {
+        val masterId = currentVideoSummary?.id ?: return
+        viewModelScope.launch {
+            try {
+                if (repository.removeProxyLink(masterId, proxyId)) {
+                    _proxies.value = repository.listProxies(masterId)
+                    // If the user had this proxy selected for loupe
+                    // playback, reset the selection so the player
+                    // reverts to the master on the next frame.
+                    if (_selectedProxyId.value == proxyId) {
+                        _selectedProxyId.value = null
+                    }
+                    logger.info("Removed proxy link $masterId → $proxyId")
+                } else {
+                    _error.value = "Failed to remove proxy link"
+                }
+            } catch (e: Exception) {
+                _error.value = "Failed to remove proxy link: ${e.message}"
+            }
+        }
+    }
+
+    /** Mark `proxyId` as a manual proxy of the currently-displayed
+     *  master. Used by the inspector's "Add selected as proxy"
+     *  button. Confidence is 1.0 and auto_detected=false so the
+     *  link is presented as user-authored. */
+    fun forceProxyLink(proxyId: String) {
+        val masterId = currentVideoSummary?.id ?: return
+        if (masterId == proxyId) {
+            _error.value = "A video can't be a proxy of itself"
+            return
+        }
+        viewModelScope.launch {
+            try {
+                if (repository.setProxyOf(proxyId, masterId)) {
+                    _proxies.value = repository.listProxies(masterId)
+                    logger.info("Added manual proxy link $masterId → $proxyId")
+                } else {
+                    _error.value = "Failed to add proxy link"
+                }
+            } catch (e: Exception) {
+                _error.value = "Failed to add proxy link: ${e.message}"
+            }
+        }
+    }
+
     /** The on-disk path that the detail-view player should load, based
      *  on the current proxy selection and the master's playability. The
      *  rules:

@@ -44,7 +44,7 @@
 //! `detect_proxies` are idempotent by construction (they filter on
 //! `group_id IS NULL` / `proxy_of IS NULL`).
 
-use crate::db::{AutoGroupCandidate, Database, ProxyDetectCandidate};
+use crate::db::{AutoGroupCandidate, Database};
 use crate::error::Result;
 use crate::grouping::{self, AutoGroupOptions};
 use crate::proxies::{self, PROXY_SIMILARITY_THRESHOLD};
@@ -334,17 +334,14 @@ fn detect_proxy_for(
 ) -> Result<()> {
     let cand = match db.get_proxy_candidate(video_id)? {
         Some(c) => c,
-        None => return Ok(()), // Already marked as proxy, or unavailable.
+        None => return Ok(()),
     };
-
-    // Skip if metadata is incomplete — proxy gates depend on
-    // resolution and frame count.
     if cand.width == 0 || cand.height == 0 {
-        return Ok(());
+        return Ok(()); // Metadata not ready; let the next pass try.
     }
 
     // Bucket-mates use group_id when set, else (parent_dir, fps_rounded).
-    let mut bucket = if let Some(gid) = &cand.group_id {
+    let bucket = if let Some(gid) = &cand.group_id {
         db.list_proxy_candidates_in_group(gid, &cand.id)?
     } else {
         let mut by_dir = db.list_proxy_candidates_in_dir(&cand.parent_dir, &cand.id)?;
@@ -352,135 +349,68 @@ fn detect_proxy_for(
         by_dir.retain(|c| c.fps.round() as i64 == cand_fps);
         by_dir
     };
-
     if bucket.is_empty() {
         return Ok(());
     }
 
-    // Combine into [cand + bucket] then sort by (descending pixel
-    // count, descending file size). The first element is the bucket
-    // anchor — proxies always point upward.
-    bucket.push(cand.clone());
-    bucket.sort_by_key(|m| {
-        let pixels = (m.width as i64) * (m.height as i64);
-        (-(pixels), -(m.file_size_bytes))
-    });
-    let anchor = bucket[0].clone();
+    // Load the new video's thumbnails once — the expensive part of
+    // every comparison. Done outside the decision lock so multiple
+    // workers can decode JPEGs in parallel.
+    let cand_imgs = proxies::thumb_images_for(thumbnail_cache, &cand.id);
 
-    // If our candidate is *not* the anchor, the only decision is
-    // "should cand be marked as a proxy of anchor?" — a single
-    // comparison.
-    //
-    // If our candidate *is* the anchor (i.e. it just arrived and
-    // beats the prior highest-res sibling), we must re-promote: the
-    // old anchor and any existing proxies of the old anchor have to
-    // be re-pointed at the new candidate.
-    let cand_is_anchor = anchor.id == cand.id;
-    let other_idx = if cand_is_anchor { 1 } else { 0 };
+    // Examine every bucket-mate as a potential opposite end of a
+    // proxy link. The new video might be a proxy of `other` (other
+    // has more pixels / heavier file) or `other` might be a proxy of
+    // the new video. With many-to-many semantics we don't pick "the
+    // anchor"; we just attempt to link wherever the gates + threshold
+    // agree.
+    for other in &bucket {
+        // Determine direction. Skip if neither qualifies as master.
+        let (master, proxy_cand, master_imgs, proxy_imgs) =
+            if proxies::is_master_of(other, &cand) {
+                let m_imgs = proxies::thumb_images_for(thumbnail_cache, &other.id);
+                (other.clone(), cand.clone(), m_imgs, cand_imgs.clone())
+            } else if proxies::is_master_of(&cand, other) {
+                let p_imgs = proxies::thumb_images_for(thumbnail_cache, &other.id);
+                (cand.clone(), other.clone(), cand_imgs.clone(), p_imgs)
+            } else {
+                continue;
+            };
 
-    let other = bucket[other_idx].clone();
+        if !proxies::proxy_pair_gates_pass(&master, &proxy_cand) {
+            continue;
+        }
 
-    // Load thumbnails *before* acquiring the decision lock so the
-    // expensive IO/CPU runs in parallel across workers.
-    let anchor_imgs = proxies::thumb_images_for(thumbnail_cache, &anchor.id);
-    let other_imgs = proxies::thumb_images_for(thumbnail_cache, &other.id);
-
-    // Apply gates. Inlined from `detect_proxies` so behavior stays
-    // identical between batch and incremental.
-    if !proxy_gates_pass(&anchor, &other) {
-        return Ok(());
-    }
-
-    let confidence = proxies::compare_thumb_sets(&anchor_imgs, &other_imgs);
-    tracing::debug!(
-        anchor = %anchor.filename,
-        candidate = %other.filename,
-        confidence = %format!("{:.3}", confidence),
-        incremental = true,
-        "post-index: proxy comparison",
-    );
-    if confidence < PROXY_SIMILARITY_THRESHOLD {
-        return Ok(());
-    }
-
-    // Critical section: write decision.
-    let _guard = decision_mutex.lock().unwrap_or_else(|p| p.into_inner());
-
-    // Re-check under the lock — another worker may have just acted
-    // on the same bucket. We refetch the *anchor's* current state;
-    // if the anchor has become a proxy of something else since we
-    // started, abort.
-    if db.get_proxy_target(&anchor.id)?.is_some() {
-        return Ok(());
-    }
-
-    if cand_is_anchor {
-        // `cand` is the new high-res winner; promote it.
-        // Step 1: re-point any existing proxies of `other` (the old
-        // anchor) at `cand`.
-        let repointed = db.repoint_proxies(&other.id, &cand.id)?;
-        // Step 2: mark the old anchor itself as a proxy of cand.
-        db.set_proxy_of(&other.id, &cand.id, confidence, true)?;
-        tracing::info!(
-            new_anchor = %cand.filename,
-            old_anchor = %other.filename,
-            repointed = repointed,
+        let confidence = proxies::compare_thumb_sets(&master_imgs, &proxy_imgs);
+        tracing::debug!(
+            master = %master.filename,
+            proxy = %proxy_cand.filename,
             confidence = %format!("{:.3}", confidence),
-            "post-index: promoted higher-res sibling to anchor",
+            incremental = true,
+            "post-index: proxy comparison",
         );
-    } else {
-        // Normal case: cand is a proxy of anchor.
-        db.set_proxy_of(&cand.id, &anchor.id, confidence, true)?;
+        if confidence < PROXY_SIMILARITY_THRESHOLD {
+            continue;
+        }
+
+        // Critical section: serialize the actual write so two workers
+        // can't double-insert. INSERT OR REPLACE makes the write
+        // idempotent, so we don't bother re-checking state here —
+        // worst case two workers both write the same row with the
+        // same confidence.
+        let _guard = decision_mutex.lock().unwrap_or_else(|p| p.into_inner());
+        if let Err(e) = db.set_proxy_of(&proxy_cand.id, &master.id, confidence, true) {
+            tracing::warn!(
+                "Failed to link {} as proxy of {}: {}",
+                proxy_cand.filename, master.filename, e,
+            );
+            continue;
+        }
         tracing::info!(
-            proxy = %cand.filename,
-            anchor = %anchor.filename,
-            confidence = %format!("{:.3}", confidence),
-            "post-index: marked as proxy",
+            "post-index: linked {} → {} (confidence {:.3})",
+            proxy_cand.filename, master.filename, confidence,
         );
     }
 
     Ok(())
-}
-
-/// Frame-count, same-resolution, and camera-model gates. Returns
-/// `true` when the pair is still a proxy candidate after all gates;
-/// `false` when any gate rejects them. Matches the logic in
-/// [`crate::proxies::detect_proxies`] so the incremental decision is
-/// equivalent to the batch one.
-fn proxy_gates_pass(anchor: &ProxyDetectCandidate, candidate: &ProxyDetectCandidate) -> bool {
-    // Frame-count gate (±5% or ±10 frames).
-    if anchor.frame_count > 0 && candidate.frame_count > 0 {
-        let max_fc = anchor.frame_count.max(candidate.frame_count);
-        let fc_tol = (max_fc / 20).max(10);
-        let fc_diff = (anchor.frame_count - candidate.frame_count).abs();
-        if fc_diff > fc_tol {
-            return false;
-        }
-    }
-
-    // Same-resolution gate — stack rather than proxy when codec sizes
-    // are too close.
-    let same_res = candidate.width == anchor.width && candidate.height == anchor.height;
-    if same_res {
-        let size_ratio = if candidate.file_size_bytes > 0 && anchor.file_size_bytes > 0 {
-            (anchor.file_size_bytes as f64).max(candidate.file_size_bytes as f64)
-                / (anchor.file_size_bytes as f64).min(candidate.file_size_bytes as f64)
-        } else {
-            1.0
-        };
-        if size_ratio < 2.5 {
-            return false;
-        }
-    }
-
-    // Camera-model gate — only rejects when both sides carry
-    // non-empty, non-matching EXIF.
-    if !anchor.camera_model.is_empty()
-        && !candidate.camera_model.is_empty()
-        && anchor.camera_model != candidate.camera_model
-    {
-        return false;
-    }
-
-    true
 }
