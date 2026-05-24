@@ -10,8 +10,21 @@ struct ContentView: View {
     @StateObject private var detailViewModel = DetailViewModel()
     @State private var connectionState: ConnectionState = .connecting
     @State private var connectionError: String = ""
-    @State private var leftPanelExpanded = true
-    @State private var rightPanelExpanded = true
+    // Per-view-mode panel state — width + open/closed flag for each of
+    // (grid, list, detail). Lightroom keeps these independent, and so
+    // do we: a user who narrows the right panel in list mode probably
+    // wants the wider one back when they switch to detail. Defaults
+    // are loaded from `UserDefaults` on init so widths persist across
+    // launches; mutations are written back via `setLeft…` /
+    // `setRight…` helpers below.
+    @State private var leftPanelWidths: [ViewMode: CGFloat] =
+        PanelPrefs.loadWidths(side: .left)
+    @State private var rightPanelWidths: [ViewMode: CGFloat] =
+        PanelPrefs.loadWidths(side: .right)
+    @State private var leftPanelExpandeds: [ViewMode: Bool] =
+        PanelPrefs.loadExpandeds(side: .left)
+    @State private var rightPanelExpandeds: [ViewMode: Bool] =
+        PanelPrefs.loadExpandeds(side: .right)
     @State private var thumbnailWidth: CGFloat = 220
     @State private var showAddLibrarySheet = false
     @State private var showHelpSheet = false
@@ -78,8 +91,8 @@ struct ContentView: View {
         .modifier(GlobalKeyboardShortcuts(
             onTab: {
                 let anyOpen = leftPanelExpanded || rightPanelExpanded
-                leftPanelExpanded = !anyOpen
-                rightPanelExpanded = !anyOpen
+                setLeftPanelExpanded(!anyOpen)
+                setRightPanelExpanded(!anyOpen)
             },
             onGroupSelected: { gridViewModel.groupSelectedVideos() },
             onSelectAll: { gridViewModel.selectAllVisible() },
@@ -662,7 +675,7 @@ struct ContentView: View {
                     onRemoveLocation: { locationToRemove = $0 },
                     onRescan: { loc in gridViewModel.rescanLibrary(path: loc.path) },
                     rescanningPaths: Set(gridViewModel.rescanningPaths),
-                    onCollapse: { leftPanelExpanded = false }
+                    onCollapse: { setLeftPanelExpanded(false) }
                 )
                 .alert(
                     "Remove library location?",
@@ -682,12 +695,19 @@ struct ContentView: View {
                     let word = n == 1 ? "video" : "videos"
                     Text("\(n) \(word) from \"\(loc.path)\" will be removed from your catalog. The files on disk will not be deleted.")
                 }
-                .frame(width: 240)
+                .frame(width: leftPanelWidth)
+                // Drag handle on the inner edge — drag right to widen,
+                // left to shrink. Cursor switches to a horizontal
+                // resize affordance while hovering the handle.
+                PanelResizeHandle(isLeftPanel: true,
+                                  currentWidth: leftPanelWidth) { newWidth in
+                    setLeftPanelWidth(newWidth)
+                }
             } else {
                 CollapsedPanelStrip(
                     expandIconLeft: false,
                     tooltip: "Show library panel (Tab)",
-                    onClick: { leftPanelExpanded = true }
+                    onClick: { setLeftPanelExpanded(true) }
                 )
             }
 
@@ -723,12 +743,19 @@ struct ContentView: View {
 
             Divider()
 
-            // Right detail panel
+            // Right detail panel — its drag handle sits on the LEFT
+            // edge (between the divider and the panel body) so drags
+            // toward the right narrow the panel, drags toward the
+            // left widen it.
             if rightPanelExpanded {
+                PanelResizeHandle(isLeftPanel: false,
+                                  currentWidth: rightPanelWidth) { newWidth in
+                    setRightPanelWidth(newWidth)
+                }
                 DetailView(
                     viewModel: detailViewModel,
                     gridViewModel: gridViewModel,
-                    onCollapse: { rightPanelExpanded = false },
+                    onCollapse: { setRightPanelExpanded(false) },
                     isListMode: viewMode == .list,
                     isLoupeMode: viewMode == .detail,
                     onEditLocation: { videoIds, initial in
@@ -751,15 +778,54 @@ struct ContentView: View {
                         datePickerInitial = initialTs
                     }
                 )
-                .frame(width: 240)
+                .frame(width: rightPanelWidth)
             } else {
                 CollapsedPanelStrip(
                     expandIconLeft: true,
                     tooltip: "Show details panel (Tab)",
-                    onClick: { rightPanelExpanded = true }
+                    onClick: { setRightPanelExpanded(true) }
                 )
             }
         }
+    }
+
+    // MARK: - Panel width / open-state accessors
+    //
+    // The four `@State` dictionaries above store per-view-mode values;
+    // these computed properties + setters read/write the entry for the
+    // current `viewMode` and persist updates to UserDefaults so they
+    // survive across app launches.
+
+    private var leftPanelWidth: CGFloat {
+        leftPanelWidths[viewMode] ?? PanelPrefs.defaultWidth
+    }
+    private var rightPanelWidth: CGFloat {
+        rightPanelWidths[viewMode] ?? PanelPrefs.defaultWidth
+    }
+    private var leftPanelExpanded: Bool {
+        leftPanelExpandeds[viewMode] ?? true
+    }
+    private var rightPanelExpanded: Bool {
+        rightPanelExpandeds[viewMode] ?? true
+    }
+
+    private func setLeftPanelWidth(_ width: CGFloat) {
+        let clamped = PanelPrefs.clamp(width)
+        leftPanelWidths[viewMode] = clamped
+        PanelPrefs.saveWidth(side: .left, mode: viewMode, value: clamped)
+    }
+    private func setRightPanelWidth(_ width: CGFloat) {
+        let clamped = PanelPrefs.clamp(width)
+        rightPanelWidths[viewMode] = clamped
+        PanelPrefs.saveWidth(side: .right, mode: viewMode, value: clamped)
+    }
+    private func setLeftPanelExpanded(_ open: Bool) {
+        leftPanelExpandeds[viewMode] = open
+        PanelPrefs.saveExpanded(side: .left, mode: viewMode, value: open)
+    }
+    private func setRightPanelExpanded(_ open: Bool) {
+        rightPanelExpandeds[viewMode] = open
+        PanelPrefs.saveExpanded(side: .right, mode: viewMode, value: open)
     }
 
     /// Connect to the gRPC daemon. Flow:
@@ -1230,6 +1296,121 @@ struct FilterMenu: View {
 private struct LocationPickerTargets: Identifiable {
     let ids: [String]
     var id: String { ids.joined(separator: ",") }
+}
+
+// MARK: - Resizable side panels
+
+/// Per-view-mode panel preferences persisted to `UserDefaults`.
+///
+/// Lightroom keeps the left/right panel widths and open states
+/// independent for each view (Library / Develop / Print …); we apply
+/// the same pattern across our three modes (Grid / List / Detail).
+/// Six keys per side per mode = 12 total entries. Reads default to
+/// the sensible value (`defaultWidth` / open) when no prior write
+/// exists, so first launch behaves like the old hard-coded layout.
+enum PanelPrefs {
+    enum Side: String { case left, right }
+    static let defaultWidth: CGFloat = 240
+    static let minWidth: CGFloat = 180
+    static let maxWidth: CGFloat = 600
+
+    /// Clamp a candidate width into the legal range.
+    static func clamp(_ value: CGFloat) -> CGFloat {
+        max(minWidth, min(maxWidth, value))
+    }
+
+    private static func widthKey(_ side: Side, _ mode: ContentView.ViewMode) -> String {
+        "videoroom.panel.\(side.rawValue).width.\(String(describing: mode))"
+    }
+    private static func openKey(_ side: Side, _ mode: ContentView.ViewMode) -> String {
+        "videoroom.panel.\(side.rawValue).open.\(String(describing: mode))"
+    }
+
+    static func loadWidths(side: Side) -> [ContentView.ViewMode: CGFloat] {
+        var out: [ContentView.ViewMode: CGFloat] = [:]
+        for mode in [ContentView.ViewMode.grid, .list, .detail] {
+            let raw = UserDefaults.standard.double(forKey: widthKey(side, mode))
+            // UserDefaults returns 0 when no entry exists — treat that
+            // as "use the default" rather than as a literal zero width.
+            out[mode] = raw > 0 ? clamp(CGFloat(raw)) : defaultWidth
+        }
+        return out
+    }
+
+    static func loadExpandeds(side: Side) -> [ContentView.ViewMode: Bool] {
+        var out: [ContentView.ViewMode: Bool] = [:]
+        for mode in [ContentView.ViewMode.grid, .list, .detail] {
+            let k = openKey(side, mode)
+            // `object(forKey:)` distinguishes "no value set" (nil) from
+            // a stored `false`, so panels open by default on first
+            // launch and respect the user's last close on subsequent
+            // launches.
+            if let b = UserDefaults.standard.object(forKey: k) as? Bool {
+                out[mode] = b
+            } else {
+                out[mode] = true
+            }
+        }
+        return out
+    }
+
+    static func saveWidth(side: Side, mode: ContentView.ViewMode, value: CGFloat) {
+        UserDefaults.standard.set(Double(value), forKey: widthKey(side, mode))
+    }
+    static func saveExpanded(side: Side, mode: ContentView.ViewMode, value: Bool) {
+        UserDefaults.standard.set(value, forKey: openKey(side, mode))
+    }
+}
+
+/// Slim vertical drag handle that resizes its owning panel.
+///
+/// Behaviour:
+/// - Hover: the cursor switches to the macOS horizontal-resize affordance
+///   so the handle is discoverable without a visible chrome.
+/// - Drag: each `DragGesture` event reports a cumulative translation
+///   from the gesture's start. We snapshot the panel's width on the
+///   first `onChanged` and add the (possibly negated) translation to
+///   it; the parent clamps the result into the legal `min…max` range.
+/// - `isLeftPanel`: drives the sign of the delta. For the left panel
+///   a rightward drag widens (positive). For the right panel a
+///   rightward drag *narrows*, so we negate.
+struct PanelResizeHandle: View {
+    let isLeftPanel: Bool
+    let currentWidth: CGFloat
+    let onWidthChange: (CGFloat) -> Void
+
+    /// Width recorded when the current drag began. `nil` between gestures.
+    @State private var startWidth: CGFloat? = nil
+
+    var body: some View {
+        Rectangle()
+            .fill(Color.clear)
+            .frame(width: 6)
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            // Don't capture the cursor permanently — the resize cursor
+            // should be active only while the pointer is over the
+            // handle, restored as soon as the user moves away.
+            .onHover { hovered in
+                if hovered {
+                    NSCursor.resizeLeftRight.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        if startWidth == nil { startWidth = currentWidth }
+                        guard let start = startWidth else { return }
+                        let signed = isLeftPanel
+                            ? value.translation.width
+                            : -value.translation.width
+                        onWidthChange(start + signed)
+                    }
+                    .onEnded { _ in startWidth = nil }
+            )
+    }
 }
 
 #Preview {

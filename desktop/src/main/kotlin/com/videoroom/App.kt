@@ -33,6 +33,8 @@ import com.videoroom.ui.screens.GridScreen
 import com.videoroom.ui.screens.DetailScreen
 import com.videoroom.ui.screens.DetailViewScreen
 import com.videoroom.ui.screens.ListScreen
+import com.videoroom.ui.components.PanelPrefs
+import com.videoroom.ui.components.PanelResizeHandle
 import com.videoroom.ui.screens.InfoOverlayState
 import com.videoroom.ui.screens.OpenCatalogDialog
 import com.videoroom.ui.theme.VideoRoomTheme
@@ -334,10 +336,26 @@ fun VideoRoomApp(
     val launcher = remember { ServerLauncher() }
     val recents = remember { RecentCatalogs.Default }
 
-    // Side panel expansion state. Tab toggles both at once (Lightroom-style),
-    // and each panel also has its own chevron to collapse/expand individually.
-    var leftPanelExpanded by remember { mutableStateOf(true) }
-    var rightPanelExpanded by remember { mutableStateOf(true) }
+    // Per-view-mode panel state — width + open/closed flag for each of
+    // (Grid, List, Detail). Lightroom keeps these independent across
+    // views (Library / Develop / Print), and we apply the same pattern.
+    // Defaults are loaded from Java `Preferences` so widths persist
+    // across launches; mutations write back via `setLeftPanelWidth`
+    // / `setRightPanelWidth` / `setLeftPanelExpanded` etc.
+    val leftPanelWidths = remember { mutableStateMapOf<ViewMode, Float>().also {
+        ViewMode.values().forEach { m -> it[m] = PanelPrefs.loadWidth(PanelPrefs.Side.LEFT, m) }
+    } }
+    val rightPanelWidths = remember { mutableStateMapOf<ViewMode, Float>().also {
+        ViewMode.values().forEach { m -> it[m] = PanelPrefs.loadWidth(PanelPrefs.Side.RIGHT, m) }
+    } }
+    val leftPanelExpandeds = remember { mutableStateMapOf<ViewMode, Boolean>().also {
+        ViewMode.values().forEach { m -> it[m] = PanelPrefs.loadExpanded(PanelPrefs.Side.LEFT, m) }
+    } }
+    val rightPanelExpandeds = remember { mutableStateMapOf<ViewMode, Boolean>().also {
+        ViewMode.values().forEach { m -> it[m] = PanelPrefs.loadExpanded(PanelPrefs.Side.RIGHT, m) }
+    } }
+    // Convenience accessors for the active view-mode live further down,
+    // after `viewMode` itself is declared — Kotlin can't forward-reference.
 
     // Thumbnail size controls the minimum column width for the adaptive grid.
     // Smaller value → more columns when there's space; larger → fewer, bigger cards.
@@ -372,6 +390,32 @@ fun VideoRoomApp(
     // Top-level view mode. GRID is the default catalog view; DETAIL is the
     // single-video loupe with in-app playback.
     var viewMode by remember { mutableStateOf(ViewMode.GRID) }
+
+    // Per-view-mode panel state accessors. The 4 maps above store every
+    // view-mode's values; these `val`s + helper funcs read/write the
+    // entry for the *current* viewMode and persist on every change.
+    val leftPanelWidth = leftPanelWidths[viewMode] ?: PanelPrefs.DEFAULT_WIDTH
+    val rightPanelWidth = rightPanelWidths[viewMode] ?: PanelPrefs.DEFAULT_WIDTH
+    val leftPanelExpanded = leftPanelExpandeds[viewMode] ?: true
+    val rightPanelExpanded = rightPanelExpandeds[viewMode] ?: true
+    fun setLeftPanelWidth(w: Float) {
+        val clamped = PanelPrefs.clamp(w)
+        leftPanelWidths[viewMode] = clamped
+        PanelPrefs.saveWidth(PanelPrefs.Side.LEFT, viewMode, clamped)
+    }
+    fun setRightPanelWidth(w: Float) {
+        val clamped = PanelPrefs.clamp(w)
+        rightPanelWidths[viewMode] = clamped
+        PanelPrefs.saveWidth(PanelPrefs.Side.RIGHT, viewMode, clamped)
+    }
+    fun setLeftPanelExpanded(open: Boolean) {
+        leftPanelExpandeds[viewMode] = open
+        PanelPrefs.saveExpanded(PanelPrefs.Side.LEFT, viewMode, open)
+    }
+    fun setRightPanelExpanded(open: Boolean) {
+        rightPanelExpandeds[viewMode] = open
+        PanelPrefs.saveExpanded(PanelPrefs.Side.RIGHT, viewMode, open)
+    }
 
     // Info overlay cycle in detail view ('i' key advances through states).
     var infoOverlay by remember { mutableStateOf(InfoOverlayState.NONE) }
@@ -431,8 +475,8 @@ fun VideoRoomApp(
         onRegisterTogglePanelsAction {
             // If either is open, close both. If both are closed, open both.
             val anyOpen = leftPanelExpanded || rightPanelExpanded
-            leftPanelExpanded = !anyOpen
-            rightPanelExpanded = !anyOpen
+            setLeftPanelExpanded(!anyOpen)
+            setRightPanelExpanded(!anyOpen)
         }
     }
     LaunchedEffect(Unit) {
@@ -813,9 +857,9 @@ fun VideoRoomApp(
                                 onRemoveLocation = { loc -> pendingRemoveLocation = loc },
                                 onRescan = { loc -> gridViewModel.rescanLibrary(loc.path) },
                                 rescanningPaths = gridViewModel.rescanningPaths.collectAsState().value,
-                                onCollapse = { leftPanelExpanded = false },
+                                onCollapse = { setLeftPanelExpanded(false) },
                                 modifier = Modifier
-                                    .weight(0.18f)
+                                    .width(leftPanelWidth.dp)
                                     .fillMaxHeight()
                             )
 
@@ -865,9 +909,22 @@ fun VideoRoomApp(
                             com.videoroom.ui.components.CollapsedPanelStrip(
                                 expandIconLeft = false,  // arrow points right (toward expand)
                                 tooltip = "Show library panel (Tab)",
-                                onClick = { leftPanelExpanded = true },
+                                onClick = { setLeftPanelExpanded(true) },
                                 modifier = Modifier.fillMaxHeight()
                             )
+                        }
+
+                        // Drag handle on the left panel's inner edge.
+                        // Only rendered when the panel is expanded — when
+                        // collapsed the strip itself absorbs all clicks.
+                        if (leftPanelExpanded) {
+                            PanelResizeHandle(isLeftPanel = true) { dragDeltaPx ->
+                                // Convert pixels → dp once for the
+                                // accumulator. `dp.value` is dp scaled
+                                // to display density which is what the
+                                // pointer event already reports.
+                                setLeftPanelWidth(leftPanelWidth + dragDeltaPx)
+                            }
                         }
 
                         Divider(
@@ -917,13 +974,23 @@ fun VideoRoomApp(
                                 .width(1.dp)
                         )
 
+                        // Drag handle on the right panel's inner edge.
+                        // For the right panel, a rightward drag should
+                        // shrink the panel — `isLeftPanel = false`
+                        // negates the delta sign internally.
+                        if (rightPanelExpanded) {
+                            PanelResizeHandle(isLeftPanel = false) { dragDeltaPx ->
+                                setRightPanelWidth(rightPanelWidth - dragDeltaPx)
+                            }
+                        }
+
                         // Detail panel — expanded view or collapsed strip
                         if (rightPanelExpanded) {
                             DetailScreen(
                                 viewModel = detailViewModel,
                                 gridViewModel = gridViewModel,
                                 viewMode = viewMode,
-                                onCollapse = { rightPanelExpanded = false },
+                                onCollapse = { setRightPanelExpanded(false) },
                                 onEditLocation = { videoIds, initial ->
                                     // Await before showing the dialog so
                                     // its bbox-framing logic captures
@@ -943,14 +1010,14 @@ fun VideoRoomApp(
                                     initialTimestampForPicker = initialTs
                                 },
                                 modifier = Modifier
-                                    .weight(0.18f)
+                                    .width(rightPanelWidth.dp)
                                     .fillMaxHeight()
                             )
                         } else {
                             com.videoroom.ui.components.CollapsedPanelStrip(
                                 expandIconLeft = true,  // arrow points left (toward expand)
                                 tooltip = "Show details panel (Tab)",
-                                onClick = { rightPanelExpanded = true },
+                                onClick = { setRightPanelExpanded(true) },
                                 modifier = Modifier.fillMaxHeight()
                             )
                         }
