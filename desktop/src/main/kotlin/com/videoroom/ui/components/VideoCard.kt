@@ -301,19 +301,22 @@ fun VideoCard(
         isInMultiSelection                              -> Color(0xFF666666)
         else                                            -> Color(0xFF3D3D3D)
     }
+    // Selection beats colour label: a selected labelled card uses the
+    // brighter neutral selection background, and the label is shown as a
+    // small swatch in the photo-area corner (see `showCornerLabelBadge`).
+    // Unselected labelled cards keep the full-area label tint.
     val photoAreaBackground = when {
-        isAnchor || (isSelected && !isInMultiSelection) ->
-            if (colorLabelEnum == com.videoroom.data.models.ColorLabel.None) Color(0xFF333333)
-            else colorLabelEnum.swatch
-        isInMultiSelection ->
-            if (colorLabelEnum == com.videoroom.data.models.ColorLabel.None) Color(0xFF292929)
-            else colorLabelEnum.secondary
+        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFF555555)
+        isInMultiSelection -> Color(0xFF3D3D3D)
         isInExpandedStack -> MaterialTheme.colorScheme.primary
             .copy(alpha = 0.13f)
             .compositeOver(Color(0xFF1F1F1F))
         colorLabelEnum != com.videoroom.data.models.ColorLabel.None -> colorLabelEnum.dimmed
         else -> Color(0xFF1F1F1F)
     }
+    val showCornerLabelBadge =
+        colorLabelEnum != com.videoroom.data.models.ColorLabel.None &&
+            (isAnchor || isSelected || isInMultiSelection)
     // 1 dp outer card border. Dark by default, brightening on selection
     // so adjacent cards stay distinct in the zero-gutter grid without
     // re-introducing a chunky accent stroke.
@@ -455,37 +458,66 @@ fun VideoCard(
         // thumbnail is inset by `photoPadding` and uses ContentScale.Fit
         // so the whole video frame stays visible — letterbox space above
         // and below shows the photo-area background.
+        //
+        // The outer Box owns the background and the corner colour-label
+        // badge (shown when the card is selected AND labelled — the
+        // selection neutral wins the photo area, the label keeps a
+        // small swatch in the corner). The inner Box owns padding +
+        // pointer events for the thumbnail itself, so the badge sits in
+        // the 8 dp margin gap and never overlaps the video frame.
         run {
             val photoPadding = 8.dp
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(1f)  // Lightroom-style square
+                    .aspectRatio(1f)
                     .background(photoAreaBackground)
-                    .padding(photoPadding)
-                    .onSizeChanged { thumbSize = it }
-                    // Track cursor position over the thumbnail to drive
-                    // Lightroom-style scrubbing. The X coordinate is mapped
-                    // onto the scrub-frame array (0..N-1).
-                    .onPointerEvent(PointerEventType.Enter) {
-                        onHoverEnter()
-                        it.changes.firstOrNull()?.position?.let { p -> hoverX = p.x }
-                        // Tooltip motion-tracking lives on the *outer*
-                        // wrapping Box (above) so it sees every move on
-                        // the whole card, not just the thumbnail. No
-                        // tooltip work to do here.
-                    }
-                    .onPointerEvent(PointerEventType.Move) {
-                        val p = it.changes.firstOrNull()?.position
-                        if (p != null && hoverX != p.x) {
-                            hoverX = p.x
-                        }
-                    }
-                    .onPointerEvent(PointerEventType.Exit) {
-                        hoverX = null
-                    },
-                contentAlignment = Alignment.Center
             ) {
+                // Corner badge — only when selected AND labelled.
+                if (showCornerLabelBadge) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(4.dp)
+                            .size(14.dp)
+                            .background(
+                                colorLabelEnum.swatch,
+                                RoundedCornerShape(2.dp)
+                            )
+                            .border(
+                                0.5.dp,
+                                Color.White.copy(alpha = 0.6f),
+                                RoundedCornerShape(2.dp)
+                            )
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(photoPadding)
+                        .onSizeChanged { thumbSize = it }
+                        // Track cursor position over the thumbnail to drive
+                        // Lightroom-style scrubbing. The X coordinate is mapped
+                        // onto the scrub-frame array (0..N-1).
+                        .onPointerEvent(PointerEventType.Enter) {
+                            onHoverEnter()
+                            it.changes.firstOrNull()?.position?.let { p -> hoverX = p.x }
+                            // Tooltip motion-tracking lives on the *outer*
+                            // wrapping Box (above) so it sees every move on
+                            // the whole card, not just the thumbnail. No
+                            // tooltip work to do here.
+                        }
+                        .onPointerEvent(PointerEventType.Move) {
+                            val p = it.changes.firstOrNull()?.position
+                            if (p != null && hoverX != p.x) {
+                                hoverX = p.x
+                            }
+                        }
+                        .onPointerEvent(PointerEventType.Exit) {
+                            hoverX = null
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
                 if (isPlayingInline && inlinePlayer?.available == true) {
                     // Live video surface — replaces thumbnail while playing.
                     inlinePlayer.Surface(modifier = Modifier.fillMaxSize())
@@ -704,7 +736,8 @@ fun VideoCard(
                         )
                     }
                 }
-            }
+                } // inner padded thumbnail Box
+            } // outer photo-area Box (background + corner badge)
         } // end of square-thumbnail run { }
 
         // ── Bottom rating band ───────────────────────────────────────
@@ -728,8 +761,11 @@ fun VideoCard(
                                 val up = waitForUpOrCancellation()
                                 if (up != null) {
                                     up.consume()
-                                    // Lightroom: clicking the current rating clears it back one.
-                                    if (video.rating == position) onSetRating(position - 1)
+                                    // Click the rightmost filled star (the
+                                    // one whose position == current rating)
+                                    // → clear to zero. Any other star sets
+                                    // the rating to that position.
+                                    if (video.rating == position) onSetRating(0)
                                     else onSetRating(position)
                                 }
                             }
@@ -814,44 +850,56 @@ private fun RowScope.StatCell(
     //     the data is missing for this particular video.
     val displayed: String =
         if (stat == com.videoroom.data.models.GridStatKey.None) "—" else value
-    val items = remember(slotIndex, key) {
-        com.videoroom.data.models.GridStatKey.values().map { choice ->
-            androidx.compose.foundation.ContextMenuItem(
-                if (choice == stat) "✓ ${choice.displayName}" else choice.displayName
-            ) {
-                onPick(slotIndex, choice.raw)
+    var expanded by remember { mutableStateOf(false) }
+    // Plain left-click opens the picker via a `DropdownMenu`. The Box
+    // owns the click handler; the menu is anchored to its bounds so it
+    // appears below the cell. `Modifier.clickable` consumes the press
+    // so the outer card-level `shiftAwareClickable` doesn't *also*
+    // re-select the card on the same press.
+    Box(
+        modifier = Modifier
+            .weight(weight)
+            .heightIn(min = 14.dp)
+            .clickable { expanded = true },
+        contentAlignment = if (alignEnd) Alignment.CenterEnd else Alignment.CenterStart
+    ) {
+        Text(
+            text = displayed,
+            style = if (slotIndex == 0) {
+                MaterialTheme.typography.labelMedium
+            } else {
+                MaterialTheme.typography.labelSmall
+            },
+            color = if (stat == com.videoroom.data.models.GridStatKey.None)
+                Color.Black.copy(alpha = 0.4f)
+            else
+                Color.Black.copy(alpha = 0.85f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = if (alignEnd) {
+                androidx.compose.ui.text.style.TextAlign.End
+            } else {
+                androidx.compose.ui.text.style.TextAlign.Start
             }
-        }
-    }
-    // ContextMenuArea wraps a Box so the right-click target is the whole
-    // cell area, including the empty placeholder. Without this, empty
-    // cells have no AWT region to fire a right-click on.
-    androidx.compose.foundation.ContextMenuArea(items = { items }) {
-        Box(
-            modifier = Modifier
-                .weight(weight)
-                .heightIn(min = 14.dp),
-            contentAlignment = if (alignEnd) Alignment.CenterEnd else Alignment.CenterStart
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
         ) {
-            Text(
-                text = displayed,
-                style = if (slotIndex == 0) {
-                    MaterialTheme.typography.labelMedium
-                } else {
-                    MaterialTheme.typography.labelSmall
-                },
-                color = if (stat == com.videoroom.data.models.GridStatKey.None)
-                    Color.Black.copy(alpha = 0.4f)
-                else
-                    Color.Black.copy(alpha = 0.85f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = if (alignEnd) {
-                    androidx.compose.ui.text.style.TextAlign.End
-                } else {
-                    androidx.compose.ui.text.style.TextAlign.Start
-                }
-            )
+            com.videoroom.data.models.GridStatKey.values().forEach { choice ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            if (choice == stat) "✓ ${choice.displayName}"
+                            else choice.displayName
+                        )
+                    },
+                    onClick = {
+                        onPick(slotIndex, choice.raw)
+                        expanded = false
+                    }
+                )
+            }
         }
     }
 }

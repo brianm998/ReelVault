@@ -626,6 +626,23 @@ struct VideoCardView: View {
                     thumbnailArea
                         .padding(photoPadding)
                 }
+                // When the card is selected AND labelled, the photo-area
+                // background switches to selection-neutral (see
+                // `photoAreaBackground`) and the colour label is shown
+                // as a small swatch in the corner instead of taking the
+                // whole background.
+                .overlay(alignment: .topLeading) {
+                    if showCornerLabelBadge {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(ColorLabel(video.colorLabel).swatch)
+                            .frame(width: 14, height: 14)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 2)
+                                    .stroke(Color.white.opacity(0.6), lineWidth: 0.5)
+                            )
+                            .padding(4)
+                    }
+                }
                 .clipped()
             ratingBand
                 .frame(maxWidth: .infinity)
@@ -826,24 +843,40 @@ struct VideoCardView: View {
         return Color(white: 0.24)       // default: a touch darker than top
     }
 
-    /// Background painted *behind* the photo thumbnail. This is where the
-    /// colour label shows through — the bands themselves stay neutral.
-    /// Selection brightens the swatch; an unlabelled card falls back to
-    /// the platform's controlBackgroundColor so the photo letterboxing
-    /// blends into the catalog viewer's overall theme.
+    /// Background painted *behind* the photo thumbnail.
+    ///
+    /// Selection takes precedence over colour-label: when a labelled
+    /// card is selected, the background switches to a brighter selection
+    /// neutral so the selection state is obvious at a glance, and the
+    /// label is preserved as a small swatch in the photo-area corner
+    /// (see `body`). Unselected labelled cards keep the full label
+    /// background.
     private var photoAreaBackground: Color {
         let label = ColorLabel(video.colorLabel)
         if isAnchor || (isPrimarySelected && !isInMultiSelection) {
-            return label == .none ? Color(white: 0.20) : label.swatch
+            // Selected anchor — brighter neutral, regardless of label.
+            return Color(white: 0.34)
         }
         if isInMultiSelection {
-            return label == .none ? Color(white: 0.16) : label.secondary
+            return Color(white: 0.24)
         }
         if isInExpandedStack {
             return Color.accentColor.opacity(0.13)
         }
-        if label != .none { return label.dimmed }
+        if label != .none {
+            return label.dimmed
+        }
         return Color(white: 0.12)
+    }
+
+    /// True when the card has a colour label AND is currently part of
+    /// the selection. In that case the photo-area background switches to
+    /// a neutral selection colour and we render the label as a small
+    /// swatch in the photo-area's top-left corner.
+    private var showCornerLabelBadge: Bool {
+        let label = ColorLabel(video.colorLabel)
+        guard label != .none else { return false }
+        return isAnchor || isPrimarySelected || isInMultiSelection
     }
 
     /// 1 pt outer card border. Drawn dark so adjacent cards in the zero-
@@ -900,10 +933,9 @@ struct VideoCardView: View {
     ///     nothing so the user isn't confused about whether the slot is
     ///     configured.
     ///
-    /// The right-click picker fires from any cell — set or unset. To
-    /// guarantee the hit target, the visible Text is wrapped in a
-    /// `Color.clear` Rectangle the cell's full width that owns both the
-    /// `.contentShape` and the `.contextMenu` modifiers.
+    /// Opens on a plain left-click via SwiftUI's `Menu`. The dropdown
+    /// chevron is hidden so the band stays visually clean — the click
+    /// affordance comes from the cell's tappability, not a visible arrow.
     @ViewBuilder
     private func statCell(slotIndex: Int, key: String, alignTrailing: Bool) -> some View {
         let stat = GridStatKey(rawValue: key) ?? .none
@@ -912,30 +944,31 @@ struct VideoCardView: View {
             if stat == .none { return "—" }
             return value      // empty if this video has no data for the chosen stat
         }()
-        Color.clear
-            .frame(maxWidth: .infinity, minHeight: 14)
-            .overlay(alignment: alignTrailing ? .trailing : .leading) {
-                Text(displayed)
-                    .font(.system(size: 10, weight: slotIndex == 0 ? .semibold : .regular))
-                    .foregroundColor(stat == .none ? Color.black.opacity(0.4) : Color.black.opacity(0.85))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-            .contentShape(Rectangle())
-            .contextMenu {
-                Text("Show in this slot")
-                ForEach(GridStatKey.allCases) { choice in
-                    Button {
-                        onPickStatSlot(slotIndex, choice.rawValue)
-                    } label: {
-                        if choice == stat {
-                            Label(choice.displayName, systemImage: "checkmark")
-                        } else {
-                            Text(choice.displayName)
-                        }
+        Menu {
+            ForEach(GridStatKey.allCases) { choice in
+                Button {
+                    onPickStatSlot(slotIndex, choice.rawValue)
+                } label: {
+                    if choice == stat {
+                        Label(choice.displayName, systemImage: "checkmark")
+                    } else {
+                        Text(choice.displayName)
                     }
                 }
             }
+        } label: {
+            Text(displayed)
+                .font(.system(size: 10, weight: slotIndex == 0 ? .semibold : .regular))
+                .foregroundColor(stat == .none ? Color.black.opacity(0.4) : Color.black.opacity(0.85))
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
+                .frame(minHeight: 14)
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     /// Ensure we always render four cells even if the server / VM hands us
@@ -978,8 +1011,14 @@ struct VideoCardView: View {
                 .frame(width: 20, height: 20)
                 .contentShape(Rectangle())  // 20×20 hit target
                 .onTapGesture {
+                    // Click the *rightmost* filled star (i.e. the one
+                    // whose position equals the current rating) to clear
+                    // the rating to zero. Clicking any other star — to
+                    // the left of the rightmost filled star or to the
+                    // right of the unfilled region — sets the rating to
+                    // that position. Matches the user spec.
                     if video.rating == position {
-                        onSetRating(position - 1)  // toggle off
+                        onSetRating(0)
                     } else {
                         onSetRating(position)
                     }
