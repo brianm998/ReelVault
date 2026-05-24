@@ -673,6 +673,41 @@ struct VideoCardView: View {
                         .allowsHitTesting(false)
                     }
                 }
+                // "Too large to play here" — vertical-centered in the
+                // letterbox gap between the video's bottom edge and the
+                // photo area's bottom edge. Same GeometryReader trick as
+                // the colour-label frame; the badge sits flat in the
+                // empty space below the video rather than overlapping it.
+                .overlay {
+                    if !video.playableNatively && !video.hasProxies {
+                        GeometryReader { geo in
+                            let aspect: CGFloat = (video.width > 0 && video.height > 0)
+                                ? CGFloat(video.width) / CGFloat(video.height)
+                                : 1
+                            let photoH = geo.size.height
+                            let available = max(0, photoH - 2 * photoPadding)
+                            let videoH: CGFloat = aspect >= 1
+                                ? available / aspect
+                                : available
+                            // Where the video's bottom edge falls inside
+                            // the photo-area's coordinate space.
+                            let topLetterbox = max(0, (available - videoH) / 2)
+                            let videoBottom = photoPadding + topLetterbox + videoH
+                            // Centre of the space below the video, capped
+                            // so we don't dip into the bottom band divider.
+                            let badgeCentreY = (videoBottom + photoH) / 2
+                            Text("Too large to play here")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color(red: 0.72, green: 0.45, blue: 0.18).opacity(0.9))
+                                .cornerRadius(4)
+                                .position(x: geo.size.width / 2, y: badgeCentreY)
+                        }
+                        .allowsHitTesting(false)
+                    }
+                }
                 .clipped()
             // 1 pt separator above the bottom band.
             Rectangle()
@@ -1243,28 +1278,11 @@ struct VideoCardView: View {
             }
             .padding(6)
 
-            // "Too large to play here" marker — bottom-center.
-            // Shown when the server's `playableNatively` is false (video
-            // height exceeds the configured max-native-playback-height)
-            // AND no proxy exists. When a proxy is available the play
-            // button quietly routes through the smallest proxy.
-            if !video.playableNatively && !video.hasProxies {
-                VStack {
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Text("Too large to play here")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(Color(red: 0.72, green: 0.45, blue: 0.18).opacity(0.9))
-                            .cornerRadius(4)
-                        Spacer()
-                    }
-                    .padding(.bottom, 28) // sit above the icon row
-                }
-            }
+            // (The "Too large to play here" marker now sits in the
+            // letterbox area below the video, positioned by a
+            // GeometryReader overlay on the photo-area box — see the
+            // `body`. That overlay needs to know the photo area's full
+            // dimensions to compute where the video's bottom edge lands.)
         }
     }
 

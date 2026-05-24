@@ -733,30 +733,50 @@ fun VideoCard(
                     }
                 }
 
-                // "Too large to play here" marker — bottom-center.
-                // Shown when the server says this video exceeds the
-                // configured max-native-playback-height AND no proxy is
-                // available to substitute.
+                // ("Too large to play here" badge moved out of the inner
+                //  padded box — it now sits in the letterbox area
+                //  *below* the video, positioned by the outer
+                //  BoxWithConstraints so the maths can use the photo
+                //  area's full dimensions.)
+                } // inner padded thumbnail Box
+
+                // "Too large to play here" marker — sits in the
+                // letterbox gap between the video's bottom edge and the
+                // photo area's bottom edge. For landscape clips that
+                // gap is sizeable; for portrait / square clips it
+                // collapses to just the 8 dp bottom padding so the
+                // badge sits flush against the band divider.
                 if (!video.playableNatively && !video.hasProxies) {
-                    Surface(
+                    val aspect = if (video.width > 0 && video.height > 0)
+                        video.width.toFloat() / video.height.toFloat() else 1f
+                    val available = (maxHeight - photoPadding * 2).coerceAtLeast(0.dp)
+                    val videoH = if (aspect >= 1f) available / aspect else available
+                    val topLetterbox = ((available - videoH) / 2f).coerceAtLeast(0.dp)
+                    val videoBottom = photoPadding + topLetterbox + videoH
+                    val bottomSpace = (maxHeight - videoBottom).coerceAtLeast(0.dp)
+                    Box(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = 28.dp),
-                        color = Color(0xFFB8722E).copy(alpha = 0.9f),
-                        shape = MaterialTheme.shapes.small,
+                            .fillMaxWidth()
+                            .height(bottomSpace),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "Too large to play here",
-                            modifier = Modifier.padding(
-                                horizontal = VideoRoomSpacing.Small,
-                                vertical = 2.dp,
-                            ),
-                            color = Color.White,
-                            style = MaterialTheme.typography.labelSmall,
-                        )
+                        Surface(
+                            color = Color(0xFFB8722E).copy(alpha = 0.9f),
+                            shape = MaterialTheme.shapes.small,
+                        ) {
+                            Text(
+                                text = "Too large to play here",
+                                modifier = Modifier.padding(
+                                    horizontal = VideoRoomSpacing.Small,
+                                    vertical = 2.dp,
+                                ),
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
                     }
                 }
-                } // inner padded thumbnail Box
             } // outer photo-area Box (background + corner badge)
         } // end of square-thumbnail run { }
 
