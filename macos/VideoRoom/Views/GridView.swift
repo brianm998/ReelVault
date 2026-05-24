@@ -1048,6 +1048,11 @@ struct VideoCardView: View {
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
+        // Force the Menu itself to take half the HStack width — without this
+        // the .borderlessButton style collapses to the label's intrinsic size,
+        // which would leave a gap between adjacent cells (and make trailing
+        // alignment have nothing to push against on the right cells).
+        .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
         .fixedSize(horizontal: false, vertical: true)
     }
 
