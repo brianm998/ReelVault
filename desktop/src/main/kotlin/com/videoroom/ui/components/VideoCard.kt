@@ -476,22 +476,32 @@ fun VideoCard(
         // around it".
         run {
             val photoPadding = 8.dp
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1f)
                     .background(photoAreaBackground)
             ) {
-                // Colour-label frame, only when selected + labelled.
-                // Inset 7 dp from the photo-area edge so it sits 1 dp
-                // outside the thumbnail bounds (thumbnail uses 8 dp
-                // padding) — i.e. wrapping the video, not the area.
+                // Colour-label frame, only when selected + labelled. The
+                // frame wraps the *video* itself — sized to the video's
+                // aspect ratio, with its inner edge flush against the
+                // video bounds (no gap). For a 16:9 video in a 1:1
+                // photo area, the frame is a 16:9 rectangle, NOT a
+                // square inset.
                 if (thumbnailFrameColor != null) {
+                    val aspect = if (video.width > 0 && video.height > 0)
+                        video.width.toFloat() / video.height.toFloat()
+                    else 1f
+                    val photoSize = minOf(maxWidth, maxHeight)
+                    val available = (photoSize - photoPadding * 2).coerceAtLeast(0.dp)
+                    val videoW = if (aspect >= 1f) available else available * aspect
+                    val videoH = if (aspect >= 1f) available / aspect else available
+                    val frameLine = 3.dp
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(7.dp)
-                            .border(3.dp, thumbnailFrameColor)
+                            .align(Alignment.Center)
+                            .size(videoW + frameLine * 2, videoH + frameLine * 2)
+                            .border(frameLine, thumbnailFrameColor)
                     )
                 }
                 Box(

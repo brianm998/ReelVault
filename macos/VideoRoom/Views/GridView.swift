@@ -632,10 +632,16 @@ struct VideoCardView: View {
                         .padding(photoPadding)
                 }
                 // Selected + labelled cards get a thin colour-label
-                // frame wrapped tight to the thumbnail (1 pt outside the
-                // thumbnail bounds), so the label identity is preserved
-                // even after the photo-area background went bright on
-                // selection.
+                // frame wrapped tight around the video itself — sized
+                // to the video's aspect ratio, not the photo area's,
+                // and with the frame's inner edge flush against the
+                // video edge so there's no gap between band and video.
+                //
+                // A `GeometryReader` is necessary because the frame
+                // must track the video's letterboxed bounds inside the
+                // 1:1 photo area, and SwiftUI's aspect-ratio modifier
+                // alone doesn't give a uniform-thickness band when the
+                // two containers have different sizes.
                 //
                 // `.allowsHitTesting(false)` is essential — SwiftUI's
                 // overlays sit *on top* of the parent's content, so a
@@ -643,10 +649,28 @@ struct VideoCardView: View {
                 // every click underneath.
                 .overlay {
                     if let frame = thumbnailFrameColor {
-                        Rectangle()
-                            .strokeBorder(frame, lineWidth: 3)
-                            .padding(photoPadding - 1)
-                            .allowsHitTesting(false)
+                        GeometryReader { geo in
+                            let aspect: CGFloat = (video.width > 0 && video.height > 0)
+                                ? CGFloat(video.width) / CGFloat(video.height)
+                                : 1
+                            // The thumbnail container (inside photoPadding)
+                            // is square — same size as min(width, height).
+                            let photoSize = min(geo.size.width, geo.size.height)
+                            let available = max(0, photoSize - 2 * photoPadding)
+                            // Video's scaledToFit bounds inside that square.
+                            let videoSize: CGSize = aspect >= 1
+                                ? CGSize(width: available, height: available / aspect)
+                                : CGSize(width: available * aspect, height: available)
+                            let lineWidth: CGFloat = 3
+                            Rectangle()
+                                .strokeBorder(frame, lineWidth: lineWidth)
+                                .frame(
+                                    width: videoSize.width + 2 * lineWidth,
+                                    height: videoSize.height + 2 * lineWidth
+                                )
+                                .position(x: geo.size.width / 2, y: geo.size.height / 2)
+                        }
+                        .allowsHitTesting(false)
                     }
                 }
                 .clipped()
