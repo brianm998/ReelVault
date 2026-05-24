@@ -318,7 +318,6 @@ fun VideoListRow(
     modifier: Modifier = Modifier
 ) {
     val video = item.video
-    val thumbnailWidth = thumbnailHeight * 16f / 9f
     val isInExpandedStack = item.isExpandedRepresentative || item.isStackChild
 
     val thumbnailImage = remember(thumbnailBytes) {
@@ -374,12 +373,17 @@ fun VideoListRow(
         s
     }
 
-    // Outer Column: top stat band, middle horizontal row, bottom rating
-    // band — matching the grid card's three-band layout but stretched
-    // wide for list mode.
+    // Card width matches `thumbnailHeight` so the card is a strict
+    // square in the middle band — same proportions as a grid card,
+    // never wider than its grid-mode counterpart. Textual metadata
+    // sits alongside (trailing) the card instead of inside it.
+    val cardWidth: Dp = thumbnailHeight
+
+    // Outer Row: compact card on the leading edge, info column to its
+    // right. The whole row absorbs the row-level click / drag-out
+    // gestures so clicking anywhere selects the video.
     val outerModifier = modifier
         .fillMaxWidth()
-        .border(1.dp, cardBorderColor)
         // Drag-out: detect drag motion in Compose and hand off to AWT.
         .pointerInput(dragPaths, video.openPath) {
             awaitEachGesture {
@@ -413,75 +417,128 @@ fun VideoListRow(
             }
         }
         .shiftAwareRowClickable(onClick = onClick, onDoubleClick = onDoubleClick)
-
-    Column(modifier = outerModifier) {
-        // Top stat band — single horizontal row of 4 configurable cells.
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(22.dp)
-                .background(topBandColor)
-                .padding(horizontal = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            ListRowStatCell(0, paddedSlots[0], video, onPickStatSlot, alignEnd = false, weight = 1f)
-            ListRowStatCell(1, paddedSlots[1], video, onPickStatSlot, alignEnd = false, weight = 1f)
-            ListRowStatCell(2, paddedSlots[2], video, onPickStatSlot, alignEnd = false, weight = 1f)
-            ListRowStatCell(3, paddedSlots[3], video, onPickStatSlot, alignEnd = true, weight = 1f)
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(bandDividerColor)
+        .padding(
+            start = if (item.isStackChild) (VideoRoomSpacing.Medium + 16.dp) else VideoRoomSpacing.Small,
+            end = VideoRoomSpacing.Small,
+            top = VideoRoomSpacing.XSmall,
+            bottom = VideoRoomSpacing.XSmall
         )
 
-        // Middle row: existing thumbnail + info layout. The middle takes
-        // its own padding (stack-child indent, end padding, etc).
-        Row(
+    Row(
+        modifier = outerModifier,
+        verticalAlignment = Alignment.Top
+    ) {
+        // ----- Card on the leading edge: top stat band, square
+        //       thumbnail, bottom rating band. Width is `cardWidth`
+        //       so it never widens past the grid-mode card.
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .background(rowMiddleBackground)
-                .padding(
-                    start = if (item.isStackChild) (VideoRoomSpacing.Medium + 16.dp) else VideoRoomSpacing.Small,
-                    end = VideoRoomSpacing.Small,
-                    top = VideoRoomSpacing.XSmall,
-                    bottom = VideoRoomSpacing.XSmall
-                ),
-            verticalAlignment = Alignment.CenterVertically
+                .width(cardWidth)
+                .border(1.dp, cardBorderColor)
         ) {
-        // Thumbnail
-        Box(
-            modifier = Modifier
-                .size(thumbnailWidth, thumbnailHeight)
-                .background(Color.Black),
-            contentAlignment = Alignment.Center
-        ) {
-            if (thumbnailImage != null) {
-                Image(
-                    bitmap = thumbnailImage,
-                    contentDescription = video.filename,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Movie,
-                    contentDescription = "No thumbnail",
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.outline
-                )
+            // Top stat band — single horizontal row of 4 configurable cells.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(22.dp)
+                    .background(topBandColor)
+                    .padding(horizontal = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ListRowStatCell(0, paddedSlots[0], video, onPickStatSlot, alignEnd = false, weight = 1f)
+                ListRowStatCell(1, paddedSlots[1], video, onPickStatSlot, alignEnd = false, weight = 1f)
+                ListRowStatCell(2, paddedSlots[2], video, onPickStatSlot, alignEnd = false, weight = 1f)
+                ListRowStatCell(3, paddedSlots[3], video, onPickStatSlot, alignEnd = true, weight = 1f)
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(bandDividerColor)
+            )
+            // Square thumbnail (cardWidth × thumbnailHeight).
+            Box(
+                modifier = Modifier
+                    .size(cardWidth, thumbnailHeight)
+                    .background(rowMiddleBackground),
+                contentAlignment = Alignment.Center
+            ) {
+                if (thumbnailImage != null) {
+                    Image(
+                        bitmap = thumbnailImage,
+                        contentDescription = video.filename,
+                        modifier = Modifier.fillMaxSize(),
+                        // `Fit` (not `Crop`) so non-square footage
+                        // letterboxes inside the square — matching
+                        // the grid card's behaviour for landscape
+                        // clips.
+                        contentScale = ContentScale.Fit
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Movie,
+                        contentDescription = "No thumbnail",
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.outline
+                    )
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(bandDividerColor)
+            )
+            // Bottom rating band: 5 star/dot positions.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(22.dp)
+                    .background(bottomBandColor),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                for (position in 1..5) {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable {
+                                if (video.rating == position) onSetRating(0)
+                                else onSetRating(position)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (position <= video.rating) {
+                            Icon(
+                                imageVector = Icons.Filled.Star,
+                                contentDescription = "Rating $position",
+                                tint = Color.Black,
+                                modifier = Modifier.size(11.dp)
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(4.dp)
+                                    .background(
+                                        Color(0xFF595959),
+                                        shape = androidx.compose.foundation.shape.CircleShape
+                                    )
+                            )
+                        }
+                    }
+                }
             }
         }
 
         Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
 
-        // Metadata column
+        // ----- Info column: filename, secondary tech line, tags. Lives
+        //       *alongside* the card rather than inside it so the
+        //       card's geometry matches the grid card exactly.
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            // Filename — always visible
             Text(
                 text = video.filename,
                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
@@ -491,7 +548,6 @@ fun VideoListRow(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Secondary metadata row — only include columns that are toggled on
             val secondaryParts = buildList {
                 if ("resolution" in visibleColumns && video.width > 0 && video.height > 0) {
                     add("${video.width}×${video.height}")
@@ -522,8 +578,6 @@ fun VideoListRow(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-
-            // Tags row
             if ("tags" in visibleColumns && video.tags.isNotEmpty()) {
                 Text(
                     text = video.tags.joinToString(", "),
@@ -533,71 +587,17 @@ fun VideoListRow(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-        }
-
-        // Proxy badge on the right edge
-        if ("proxy" in visibleColumns && video.proxyCount > 0) {
-            Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
-            Surface(
-                color = Color(0xFF408888),
-                shape = MaterialTheme.shapes.small
-            ) {
-                Text(
-                    text = "P×${video.proxyCount}",
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(horizontal = VideoRoomSpacing.Small, vertical = 2.dp)
-                )
-            }
-        }
-        }  // end middle Row
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(bandDividerColor)
-        )
-
-        // Bottom rating band: 5 star/dot positions.
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(22.dp)
-                .background(bottomBandColor),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            for (position in 1..5) {
-                Box(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clickable {
-                            // Lightroom toggle-off: clicking the current
-                            // rating clears it (rating -> 0). Any other
-                            // position sets the rating to that value.
-                            if (video.rating == position) onSetRating(0)
-                            else onSetRating(position)
-                        },
-                    contentAlignment = Alignment.Center
+            if ("proxy" in visibleColumns && video.proxyCount > 0) {
+                Surface(
+                    color = Color(0xFF408888),
+                    shape = MaterialTheme.shapes.small
                 ) {
-                    if (position <= video.rating) {
-                        Icon(
-                            imageVector = Icons.Filled.Star,
-                            contentDescription = "Rating $position",
-                            tint = Color.Black,
-                            modifier = Modifier.size(11.dp)
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .size(4.dp)
-                                .background(
-                                    Color(0xFF595959),
-                                    shape = androidx.compose.foundation.shape.CircleShape
-                                )
-                        )
-                    }
+                    Text(
+                        text = "P×${video.proxyCount}",
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = VideoRoomSpacing.Small, vertical = 2.dp)
+                    )
                 }
             }
         }

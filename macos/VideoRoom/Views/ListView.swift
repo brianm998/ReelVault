@@ -279,32 +279,30 @@ struct VideoListRowView: View {
     private var isInExpandedStack: Bool {
         item.isExpandedRepresentative || item.isStackChild
     }
+    /// Width of the grid-style card on the leading side of the row. The
+    /// card's middle band is a square at `thumbnailHeight`, so the card
+    /// itself is the same width — never wider than a grid card.
+    private var cardWidth: CGFloat { thumbnailHeight }
 
     var body: some View {
-        // Lightroom-style three-band wrapper, matching the grid card: a
-        // top stat band, a middle media-and-info row, and a bottom rating
-        // band. The bands span the full row width; the existing
-        // horizontal row layout sits unchanged in the middle.
-        VStack(alignment: .leading, spacing: 0) {
-            topStatBand
-                .frame(maxWidth: .infinity)
-                .frame(height: 22)
-                .background(topBandColor)
-            Rectangle()
-                .fill(bandDividerColor)
-                .frame(height: 1)
-                .allowsHitTesting(false)
-            rowBody
-                .background(rowMiddleBackground)
-            Rectangle()
-                .fill(bandDividerColor)
-                .frame(height: 1)
-                .allowsHitTesting(false)
-            ratingBand
-                .frame(maxWidth: .infinity)
-                .frame(height: 22)
-                .background(bottomBandColor)
+        // Outer layout: a compact Lightroom-style card on the leading
+        // edge (same three-band shape as the grid card, just sized to
+        // the list-row), with the textual metadata living *beside* the
+        // card rather than inside it. That keeps the card's geometry
+        // identical to its grid-mode counterpart while letting list
+        // mode surface filename / tech / date / tags / proxy in a
+        // dedicated trailing column.
+        HStack(alignment: .top, spacing: 10) {
+            if isStackChild {
+                Spacer().frame(width: 12)
+            }
+            cardContainer
+                .frame(width: cardWidth)
+            infoColumn
+            Spacer(minLength: 0)
         }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
         .overlay(
             Rectangle()
                 .stroke(cardBorderColor, lineWidth: 1)
@@ -355,82 +353,91 @@ struct VideoListRowView: View {
     /// Middle band: the existing horizontal layout (thumbnail + info
     /// columns). Lifted out of `body` so the surrounding three-band
     /// wrapper stays readable.
-    private var rowBody: some View {
-        HStack(spacing: 10) {
-            // Indent stack children
-            if isStackChild {
-                Spacer().frame(width: 12)
-            }
-
-            // Thumbnail
+    ///
+    /// The Lightroom-style three-band card. Same vertical structure as
+    /// the grid card — top stat band, square video, bottom rating band
+    /// — but sized to `cardWidth` so it never grows wider than its
+    /// grid-mode counterpart. The middle band contains only the
+    /// thumbnail; textual metadata lives in `infoColumn` to the right.
+    private var cardContainer: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            topStatBand
+                .frame(maxWidth: .infinity)
+                .frame(height: 22)
+                .background(topBandColor)
+            Rectangle()
+                .fill(bandDividerColor)
+                .frame(height: 1)
+                .allowsHitTesting(false)
             thumbnailArea
+                .frame(width: cardWidth, height: thumbnailHeight)
+                .background(rowMiddleBackground)
+            Rectangle()
+                .fill(bandDividerColor)
+                .frame(height: 1)
+                .allowsHitTesting(false)
+            ratingBand
+                .frame(maxWidth: .infinity)
+                .frame(height: 22)
+                .background(bottomBandColor)
+        }
+    }
 
-            // Info columns
-            VStack(alignment: .leading, spacing: 3) {
-                // Filename
-                Text(video.filename)
-                    .font(.body)
-                    .fontWeight(.medium)
+    /// Textual metadata column rendered alongside (trailing) the
+    /// `cardContainer`. Same content the row used to embed in its
+    /// middle band: filename, tech line, date + size line, tags, and
+    /// the proxy badge.
+    private var infoColumn: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(video.filename)
+                .font(.body)
+                .fontWeight(.medium)
+                .lineLimit(1)
+
+            let techLine = buildTechLine()
+            if !techLine.isEmpty {
+                Text(techLine)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
                     .lineLimit(1)
+            }
 
-                // Tech line: resolution · codec · fps · duration
-                let techLine = buildTechLine()
-                if !techLine.isEmpty {
-                    Text(techLine)
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
+            let dateLine = buildDateLine()
+            if !dateLine.isEmpty {
+                Text(dateLine)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
 
-                // Date + file size line
-                let dateLine = buildDateLine()
-                if !dateLine.isEmpty {
-                    Text(dateLine)
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-
-                // Tags row
-                if columns.contains("tags") && !video.tags.isEmpty {
-                    HStack(spacing: 4) {
-                        ForEach(video.tags, id: \.self) { tag in
-                            Text(tag)
-                                .font(.system(size: 10))
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.accentColor.opacity(0.2))
-                                .cornerRadius(4)
-                        }
-                    }
-                }
-
-                // Proxy badge
-                if columns.contains("proxy") && video.hasProxies {
-                    HStack(spacing: 3) {
-                        Image(systemName: "rectangle.compress.vertical")
+            if columns.contains("tags") && !video.tags.isEmpty {
+                HStack(spacing: 4) {
+                    ForEach(video.tags, id: \.self) { tag in
+                        Text(tag)
                             .font(.system(size: 10))
-                        Text("P×\(video.proxyCount)")
-                            .font(.system(size: 10, weight: .medium))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.accentColor.opacity(0.2))
+                            .cornerRadius(4)
                     }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
-                    .background(Color(red: 0.25, green: 0.55, blue: 0.55))
-                    .cornerRadius(4)
                 }
             }
-            // No .frame(maxWidth: .infinity) — that combined with the trailing
-            // Spacer() left two flexible siblings, so SwiftUI split the leftover
-            // width 50/50 and put a big gap *between* the thumbnail and the
-            // info. Letting the VStack size to its content (intrinsic width)
-            // and giving the Spacer all the flex pushes the info flush against
-            // the thumbnail with the slack absorbed on the right of the row.
 
-            Spacer(minLength: 0)
+            if columns.contains("proxy") && video.hasProxies {
+                HStack(spacing: 3) {
+                    Image(systemName: "rectangle.compress.vertical")
+                        .font(.system(size: 10))
+                    Text("P×\(video.proxyCount)")
+                        .font(.system(size: 10, weight: .medium))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(Color(red: 0.25, green: 0.55, blue: 0.55))
+                .cornerRadius(4)
+            }
         }
-        .padding(.vertical, 6)
-        .padding(.horizontal, 10)
+        .padding(.top, 2)
     }
 
     // MARK: - Lightroom bands
@@ -578,6 +585,13 @@ struct VideoListRowView: View {
     }
 
     private var thumbnailArea: some View {
+        // Width matches `cardWidth` (= `thumbnailHeight`) so the
+        // middle band sits as a strict square — same proportions as
+        // the grid card's photo area. The image inside uses
+        // `.scaledToFit` (rather than `.scaledToFill`) so 16:9
+        // footage letterboxes inside the square instead of being
+        // cropped — matching the grid card's behaviour for non-
+        // square clips.
         ZStack(alignment: .topLeading) {
             Rectangle()
                 .fill(Color.black)
@@ -585,15 +599,14 @@ struct VideoListRowView: View {
                     if let image = thumbnail {
                         Image(nsImage: image)
                             .resizable()
-                            .scaledToFill()
-                            .clipped()
+                            .scaledToFit()
                     } else {
                         Image(systemName: "film")
                             .font(.system(size: 18))
                             .foregroundColor(.secondary)
                     }
                 }
-                .frame(width: thumbnailWidth, height: thumbnailHeight)
+                .frame(width: cardWidth, height: thumbnailHeight)
                 .cornerRadius(4)
 
             // Stack badge
