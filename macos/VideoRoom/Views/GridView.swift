@@ -599,17 +599,25 @@ struct VideoCardView: View {
         // Lightroom-style three-band layout: stats above, square thumbnail in
         // the middle, rating below. Card width tracks the LazyVGrid item
         // width; both bands' widths track the thumbnail's edge naturally.
+        //
+        // The thumbnail is wrapped in a `Color.clear.aspectRatio(1, .fit)`
+        // placeholder so its size is decided by the layout system *before*
+        // the actual content renders into the overlay. Without this, the
+        // greedy `Rectangle().fill()` inside `thumbnailArea` would expand
+        // beyond the column width and overflow into adjacent cells.
         VStack(alignment: .leading, spacing: 0) {
             topStatBand
-                .frame(height: 70)
                 .frame(maxWidth: .infinity)
+                .frame(height: 36)
                 .background(bandBackground)
-            thumbnailArea
-                .aspectRatio(1, contentMode: .fit) // square inside the card
+            Color.clear
                 .frame(maxWidth: .infinity)
+                .aspectRatio(1, contentMode: .fit)
+                .overlay { thumbnailArea }
+                .clipped()
             ratingBand
-                .frame(height: 50)
                 .frame(maxWidth: .infinity)
+                .frame(height: 26)
                 .background(bandBackground)
         }
         // Hover tint applied as a SwiftUI overlay so SwiftUI handles
@@ -806,40 +814,53 @@ struct VideoCardView: View {
 
     // MARK: - Top stat band
 
-    /// Two-column stack of four stat cells (top-left / mid-left / top-right
-    /// / mid-right). Each cell is right-clickable to pick which stat it
-    /// shows; the choice applies to every card via the catalog-scoped
-    /// `topSlots` configuration.
+    /// Top band: four stat cells, one in each corner of the band. Slot 0 =
+    /// top-left, slot 1 = bottom-left, slot 2 = top-right, slot 3 =
+    /// bottom-right. Each cell is right-clickable to pick which stat it
+    /// renders. Mirrors the Lightroom Library top-of-card layout.
     @ViewBuilder
     private var topStatBand: some View {
         let slots = padSlots(topSlots)
-        HStack(alignment: .top, spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                statCell(slotIndex: 0, key: slots[0])
-                statCell(slotIndex: 1, key: slots[1])
+        VStack(spacing: 0) {
+            // Top row of the band: slots 0 (TL) and 2 (TR).
+            HStack(alignment: .center, spacing: 6) {
+                statCell(slotIndex: 0, key: slots[0], alignTrailing: false)
+                statCell(slotIndex: 2, key: slots[2], alignTrailing: true)
             }
-            Spacer(minLength: 4)
-            VStack(alignment: .trailing, spacing: 2) {
-                statCell(slotIndex: 2, key: slots[2])
-                statCell(slotIndex: 3, key: slots[3])
+            .frame(maxWidth: .infinity)
+            // Bottom row of the band: slots 1 (BL) and 3 (BR).
+            HStack(alignment: .center, spacing: 6) {
+                statCell(slotIndex: 1, key: slots[1], alignTrailing: false)
+                statCell(slotIndex: 3, key: slots[3], alignTrailing: true)
             }
+            .frame(maxWidth: .infinity)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
     }
 
     /// A single stat cell. `slotIndex` is 0..3; `key` is the GridStatKey
     /// raw value that drives both the label and the picker preselection.
+    /// Empty cells render an invisible " " character but still receive a
+    /// right-click via `.contentShape(Rectangle())` so the slot picker can
+    /// be opened on any of the four corners regardless of current value.
     @ViewBuilder
-    private func statCell(slotIndex: Int, key: String) -> some View {
+    private func statCell(slotIndex: Int, key: String, alignTrailing: Bool) -> some View {
         let stat = GridStatKey(rawValue: key) ?? .none
         let value = stat.value(for: video)
-        Text(value.isEmpty ? " " : value)
-            .font(.system(size: 11, weight: slotIndex == 0 ? .semibold : .regular))
-            .foregroundColor(value.isEmpty ? .clear : .primary)
+        Text(value.isEmpty ? "—" : value)
+            .font(.system(size: 10, weight: slotIndex == 0 ? .semibold : .regular))
+            .foregroundColor(value.isEmpty ? Color.white.opacity(0.3) : .primary)
             .lineLimit(1)
             .truncationMode(.middle)
+            .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
+            // Force a minimum hit area so right-click works even on an
+            // empty cell — without the contentShape, an empty / clear
+            // Text has no NSView region for AppKit to target.
+            .frame(minHeight: 14)
+            .contentShape(Rectangle())
             .contextMenu {
+                Text("Show in this slot")
                 ForEach(GridStatKey.allCases) { choice in
                     Button {
                         onPickStatSlot(slotIndex, choice.rawValue)
@@ -870,17 +891,17 @@ struct VideoCardView: View {
     /// the current rating is already N clears (rating - 1) — Lightroom's
     /// toggle-off semantics. Position 0 doesn't exist; the band itself
     /// (outside the stars) is non-interactive.
+    ///
+    /// Uses `.onTapGesture` on a sized hit-target rather than a `Button`,
+    /// because the card's outer `.onTapGesture` (which selects the card)
+    /// can intercept Button presses on macOS — the buttons would render
+    /// but never fire. SwiftUI gives `.onTapGesture` on children priority
+    /// over the parent's `.onTapGesture`, which is exactly what we need.
     @ViewBuilder
     private var ratingBand: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 4) {
             ForEach(1...5, id: \.self) { position in
-                Button {
-                    if video.rating == position {
-                        onSetRating(position - 1)  // toggle off
-                    } else {
-                        onSetRating(position)
-                    }
-                } label: {
+                ZStack {
                     if position <= video.rating {
                         Image(systemName: "star.fill")
                             .font(.system(size: 11))
@@ -888,12 +909,18 @@ struct VideoCardView: View {
                     } else {
                         Image(systemName: "circle.fill")
                             .font(.system(size: 4))
-                            .foregroundColor(Color.secondary.opacity(0.5))
+                            .foregroundColor(Color.white.opacity(0.4))
                     }
                 }
-                .buttonStyle(.plain)
-                .frame(width: 16, height: 16)
-                .contentShape(Rectangle())  // hit area covers the full cell
+                .frame(width: 20, height: 20)
+                .contentShape(Rectangle())  // 20×20 hit target
+                .onTapGesture {
+                    if video.rating == position {
+                        onSetRating(position - 1)  // toggle off
+                    } else {
+                        onSetRating(position)
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity)

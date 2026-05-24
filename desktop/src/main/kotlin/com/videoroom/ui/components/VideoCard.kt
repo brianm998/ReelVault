@@ -399,36 +399,30 @@ fun VideoCard(
                 onDoubleClick = onDoubleClick
             )
     ) {
-        // ── Top stat band (70 dp) ────────────────────────────────────
+        // ── Top stat band ────────────────────────────────────────────
+        // Four stat cells, one in each corner of the band. Slot 0 = TL,
+        // 1 = BL, 2 = TR, 3 = BR. Each cell is right-clickable to pick
+        // which stat it renders; the choice applies catalog-wide.
         val paddedSlots = remember(topSlots) {
             val s = topSlots.toMutableList()
             while (s.size < 4) s.add("")
             s.take(4)
         }
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(70.dp)
+                .height(36.dp)
                 .background(bandBackground)
-                .padding(horizontal = 8.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(
-                modifier = Modifier.weight(1f, fill = false),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                StatCell(slotIndex = 0, key = paddedSlots[0], video = video, onPick = onPickStatSlot, alignEnd = false)
-                StatCell(slotIndex = 1, key = paddedSlots[1], video = video, onPick = onPickStatSlot, alignEnd = false)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                StatCell(slotIndex = 0, key = paddedSlots[0], video = video, onPick = onPickStatSlot, alignEnd = false, weight = 1f)
+                StatCell(slotIndex = 2, key = paddedSlots[2], video = video, onPick = onPickStatSlot, alignEnd = true, weight = 1f)
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            Column(
-                modifier = Modifier.weight(1f, fill = false),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-                horizontalAlignment = Alignment.End
-            ) {
-                StatCell(slotIndex = 2, key = paddedSlots[2], video = video, onPick = onPickStatSlot, alignEnd = true)
-                StatCell(slotIndex = 3, key = paddedSlots[3], video = video, onPick = onPickStatSlot, alignEnd = true)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                StatCell(slotIndex = 1, key = paddedSlots[1], video = video, onPick = onPickStatSlot, alignEnd = false, weight = 1f)
+                StatCell(slotIndex = 3, key = paddedSlots[3], video = video, onPick = onPickStatSlot, alignEnd = true, weight = 1f)
             }
         }
 
@@ -678,11 +672,11 @@ fun VideoCard(
             }
         } // end of square-thumbnail run { }
 
-        // ── Bottom rating band (50 dp) ───────────────────────────────
+        // ── Bottom rating band ───────────────────────────────────────
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp)
+                .height(26.dp)
                 .background(bandBackground),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
@@ -763,12 +757,13 @@ fun VideoCard(
  * catalog-wide (via [onPick] → `GridViewModel.updateGridTopSlot`).
  */
 @Composable
-private fun StatCell(
+private fun RowScope.StatCell(
     slotIndex: Int,
     key: String,
     video: VideoSummary,
     onPick: (Int, String) -> Unit,
     alignEnd: Boolean,
+    weight: Float,
 ) {
     val stat = com.videoroom.data.models.GridStatKey.fromRaw(key)
     val value = stat.valueFor(video)
@@ -781,23 +776,33 @@ private fun StatCell(
             }
         }
     }
+    // ContextMenuArea wraps a Box so the right-click target is the whole
+    // cell area, including the empty-value " — " placeholder. Without this,
+    // empty cells have no NSView region for AWT to fire a right-click on.
     androidx.compose.foundation.ContextMenuArea(items = { items }) {
-        Text(
-            text = value.ifEmpty { " " },
-            style = if (slotIndex == 0) {
-                MaterialTheme.typography.labelMedium
-            } else {
-                MaterialTheme.typography.labelSmall
-            },
-            color = if (value.isEmpty()) Color.Transparent else Color.White,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = if (alignEnd) {
-                androidx.compose.ui.text.style.TextAlign.End
-            } else {
-                androidx.compose.ui.text.style.TextAlign.Start
-            }
-        )
+        Box(
+            modifier = Modifier
+                .weight(weight)
+                .heightIn(min = 14.dp),
+            contentAlignment = if (alignEnd) Alignment.CenterEnd else Alignment.CenterStart
+        ) {
+            Text(
+                text = value.ifEmpty { "—" },
+                style = if (slotIndex == 0) {
+                    MaterialTheme.typography.labelMedium
+                } else {
+                    MaterialTheme.typography.labelSmall
+                },
+                color = if (value.isEmpty()) Color.White.copy(alpha = 0.3f) else Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = if (alignEnd) {
+                    androidx.compose.ui.text.style.TextAlign.End
+                } else {
+                    androidx.compose.ui.text.style.TextAlign.Start
+                }
+            )
+        }
     }
 }
 
