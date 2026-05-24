@@ -733,14 +733,29 @@ class GridViewModel(
     }
 
     /** Apply the colour label to the current selection. Wired from the
-     *  keyboard handler for digits 6..9 and backtick (clear). */
+     *  keyboard handler for digits 6..9 and backtick (clear).
+     *
+     *  Toggle semantics: pressing a colour hotkey when every selected
+     *  video already carries that colour clears the colour from all of
+     *  them. Pressing the same hotkey on a mixed / differently-labelled
+     *  selection applies the colour uniformly. Explicit clear via
+     *  backtick (`label == ""`) bypasses the toggle and always clears. */
     fun setColorLabelOnSelection(label: String) {
         val ids = if (_selectedVideoIds.value.isNotEmpty()) {
             _selectedVideoIds.value
         } else {
             _selectedVideoId.value?.let { listOf(it) } ?: emptyList()
         }
-        setColorLabel(label, ids)
+        if (ids.isEmpty()) return
+        if (label.isEmpty()) {
+            setColorLabel("", ids)
+            return
+        }
+        val idSet = ids.toSet()
+        val affected = _videos.value.filter { it.id in idSet }
+        val allAlreadyHaveLabel = affected.isNotEmpty() &&
+            affected.all { it.colorLabel == label }
+        setColorLabel(if (allAlreadyHaveLabel) "" else label, ids)
     }
 
     // --- Grid layout settings (top-of-card stat slots) ---

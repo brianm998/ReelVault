@@ -1229,11 +1229,26 @@ class GridViewModel: ObservableObject {
 
     /// Apply the colour label to the current selection. Used by the keyboard
     /// handler for digits 6..9 and the backtick (clear).
+    ///
+    /// Toggle semantics: pressing a colour hotkey when every selected video
+    /// already carries that colour clears the colour from all of them.
+    /// Pressing the same hotkey on a mixed (or differently-labelled)
+    /// selection applies the colour uniformly. Explicit clear via backtick
+    /// (`label == ""`) bypasses the toggle and always clears.
     func setColorLabelOnSelection(_ label: String) {
         let ids = selectedVideoIds.isEmpty
             ? (selectedVideoId.map { [$0] } ?? [])
             : selectedVideoIds
-        setColorLabel(label, for: ids)
+        guard !ids.isEmpty else { return }
+        if label.isEmpty {
+            setColorLabel("", for: ids)
+            return
+        }
+        let idSet = Set(ids)
+        let affected = videos.filter { idSet.contains($0.id) }
+        let allAlreadyHaveLabel = !affected.isEmpty
+            && affected.allSatisfy { $0.colorLabel == label }
+        setColorLabel(allAlreadyHaveLabel ? "" : label, for: ids)
     }
 
     // MARK: - Grid layout settings (top-of-card stat slots)
