@@ -229,7 +229,10 @@ fun DetailScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     if (metadata.value!!.cameraModel.isNotEmpty()) {
-                        MetadataItem("Camera", metadata.value!!.cameraModel)
+                        CameraMetadataRow(
+                            internalName = metadata.value!!.cameraModel,
+                            displayName = metadata.value!!.cameraDisplayName
+                        )
                     }
                     if (metadata.value!!.lensModel.isNotEmpty()) {
                         MetadataItem("Lens", metadata.value!!.lensModel)
@@ -832,6 +835,61 @@ private fun defaultMetadataTooltip(label: String, value: String): String = when 
     "Captured" -> "Original recording date and time from the file's metadata."
     "GPS" -> "Latitude and longitude where the video was recorded (when present)."
     else -> "$label: $value"
+}
+
+/**
+ * Camera-model row that defaults to the marketing-friendly name (e.g.
+ * "Sony a7R III") and reveals a small ⓘ affordance when the core has a
+ * mapping for the internal name. Clicking the icon flips the displayed
+ * string to the internal model code (e.g. "SONY ILCE-7RM3") and back.
+ *
+ * When the marketing name equals the internal name (no mapping known),
+ * the row collapses to a plain [MetadataItem] — there's no point
+ * offering a toggle that would do nothing.
+ */
+@Composable
+fun CameraMetadataRow(internalName: String, displayName: String) {
+    val hasMarketing = displayName.isNotEmpty() && displayName != internalName
+    if (!hasMarketing) {
+        MetadataItem("Camera", internalName)
+        return
+    }
+    var showInternal by remember { mutableStateOf(false) }
+    val helpText = if (showInternal) {
+        "Showing the internal model name from the file's metadata. " +
+            "Click to switch back to the marketing name."
+    } else {
+        "Showing the marketing name. Click to reveal the internal " +
+            "model code recorded in the file's metadata ($internalName)."
+    }
+    Column(modifier = Modifier.padding(vertical = VideoRoomSpacing.Small)) {
+        Text(
+            text = "Camera",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = if (showInternal) internalName else displayName,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.width(VideoRoomSpacing.XSmall))
+            com.videoroom.ui.components.Tooltip(text = helpText) {
+                IconButton(
+                    onClick = { showInternal = !showInternal },
+                    modifier = Modifier.size(20.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = "Toggle internal/marketing camera name",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable

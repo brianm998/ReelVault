@@ -123,6 +123,11 @@ struct VideoMetadata: Identifiable {
     let audioSampleRate: Int
     let creationDate: Int64
     let cameraModel: String
+    /// Marketing-friendly camera name (e.g. "Sony a7R III" for an internal
+    /// "SONY ILCE-7RM3"). Falls back to `cameraModel` verbatim when no
+    /// mapping is known. UI compares the two: when they differ a
+    /// toggleable 'i' affordance reveals the internal name on click.
+    let cameraDisplayName: String
     let lensModel: String
     let gpsLat: Double
     let gpsLon: Double
@@ -196,6 +201,10 @@ struct LibraryLocation: Identifiable, Hashable {
 /// Distinct values that can populate the top-bar filter dropdowns.
 struct FilterOptions: Equatable {
     var cameras: [String] = []
+    /// Marketing-friendly names for each entry in `cameras`, same order
+    /// and length. Empty when the server didn't supply any (older
+    /// catalog/daemon) — the UI then falls back to `cameras` verbatim.
+    var cameraDisplayNames: [String] = []
     var lenses: [String] = []
     var codecs: [String] = []
     var captureYears: [Int32] = []

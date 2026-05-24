@@ -128,6 +128,7 @@ class VideoRepository(
             modificationDate = proto.modificationDate,
             indexedAt = proto.indexedAt,
             cameraModel = proto.cameraModel,
+            cameraDisplayName = proto.cameraDisplayName.ifEmpty { proto.cameraModel },
             lensModel = proto.lensModel,
             gpsLatitude = proto.gpsLatitude,
             gpsLongitude = proto.gpsLongitude,
@@ -202,6 +203,7 @@ class VideoRepository(
             val response = s.getFilterOptions(Videoroom.GetFilterOptionsRequest.newBuilder().build())
             com.videoroom.data.models.FilterOptions(
                 cameras = response.camerasList.toList(),
+                cameraDisplayNames = response.cameraDisplayNamesList.toList(),
                 lenses = response.lensesList.toList(),
                 codecs = response.codecsList.toList(),
                 captureYears = response.captureYearsList.toList()

@@ -259,6 +259,11 @@ message VideoMetadata {
   // color_label so the detail panel doesn't need a second lookup).
   int32 rating = 29;
   string color_label = 30;
+  // Marketing-friendly camera name when the core knows one for
+  // `camera_model`. Defaults to `camera_model` verbatim when no
+  // mapping is known — clients can detect "no mapping" by checking
+  // whether the two fields match.
+  string camera_display_name = 31;
 }
 
 message GetThumbnailRequest {
@@ -591,6 +596,12 @@ message FilterOptions {
   repeated string lenses = 2;
   repeated string codecs = 3;
   repeated int32 capture_years = 4;
+  // Marketing-friendly names for each entry in `cameras`, in the same
+  // order. Each value is either the curated marketing name (e.g.
+  // "Sony a7R III") or — when no mapping exists — the internal name
+  // verbatim. Clients can use these as the dropdown labels while
+  // sending the matching `cameras` entry as the filter value.
+  repeated string camera_display_names = 5;
 }
 
 // Catalog lifecycle

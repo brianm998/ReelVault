@@ -81,6 +81,13 @@ data class VideoMetadata(
     val modificationDate: Long,
     val indexedAt: Long,
     val cameraModel: String = "",
+    /**
+     * Marketing-friendly camera name (e.g. "Sony a7R III" for an internal
+     * "SONY ILCE-7RM3"). Falls back to [cameraModel] verbatim when the
+     * core has no mapping. UI compares the two: when they differ a
+     * toggleable ⓘ affordance reveals the internal name on click.
+     */
+    val cameraDisplayName: String = "",
     val lensModel: String = "",
     val gpsLatitude: Double = 0.0,
     val gpsLongitude: Double = 0.0,
@@ -153,6 +160,12 @@ data class LibraryLocation(
 /** Distinct values that can populate the top-bar filter dropdowns. */
 data class FilterOptions(
     val cameras: List<String> = emptyList(),
+    /**
+     * Marketing-friendly names for each entry in [cameras], same order
+     * and length. Empty when the server didn't supply any (older
+     * catalog/daemon) — the UI then falls back to [cameras] verbatim.
+     */
+    val cameraDisplayNames: List<String> = emptyList(),
     val lenses: List<String> = emptyList(),
     val codecs: List<String> = emptyList(),
     val captureYears: List<Int> = emptyList()

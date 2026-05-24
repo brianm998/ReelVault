@@ -160,7 +160,10 @@ struct DetailView: View {
                     .foregroundColor(.secondary)
                 VStack(alignment: .leading, spacing: 12) {
                     if !metadata.cameraModel.isEmpty {
-                        MetadataItemView(label: "Camera", value: metadata.cameraModel)
+                        CameraMetadataRow(
+                            internalName: metadata.cameraModel,
+                            displayName: metadata.cameraDisplayName
+                        )
                     }
                     if !metadata.lensModel.isEmpty {
                         MetadataItemView(label: "Lens", value: metadata.lensModel)
@@ -520,6 +523,56 @@ struct MetadataItemView: View {
         case "Captured":    return "Original recording date and time from the file's metadata."
         case "GPS":         return "Latitude and longitude where the video was recorded (when present)."
         default:            return "\(label): \(value)"
+        }
+    }
+}
+
+/// Camera-model row that defaults to the marketing-friendly name (e.g.
+/// "Sony a7R III") and reveals a small ⓘ affordance when the core has a
+/// mapping for the internal name. Clicking the icon flips the displayed
+/// string to the internal model code (e.g. "SONY ILCE-7RM3") and back.
+///
+/// When the marketing name equals the internal name (no mapping known),
+/// the row collapses to a plain `MetadataItemView` — there's no point
+/// offering a toggle that would do nothing.
+struct CameraMetadataRow: View {
+    let internalName: String
+    let displayName: String
+    @State private var showInternal: Bool = false
+
+    private var hasMarketing: Bool {
+        !displayName.isEmpty
+            && displayName != internalName
+    }
+
+    var body: some View {
+        if !hasMarketing {
+            MetadataItemView(label: "Camera", value: internalName)
+        } else {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Camera")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                HStack(spacing: 6) {
+                    Text(showInternal ? internalName : displayName)
+                        .font(.body)
+                    Button {
+                        showInternal.toggle()
+                    } label: {
+                        Image(systemName: showInternal
+                              ? "info.circle.fill"
+                              : "info.circle")
+                            .foregroundColor(.secondary)
+                            .font(.system(size: 13))
+                    }
+                    .buttonStyle(.plain)
+                    .help(showInternal
+                          ? "Showing the internal model name from the file's metadata. " +
+                            "Click to switch back to the marketing name."
+                          : "Showing the marketing name. Click to reveal the internal " +
+                            "model code recorded in the file's metadata (\(internalName)).")
+                }
+            }
         }
     }
 }

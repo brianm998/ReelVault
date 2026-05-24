@@ -505,6 +505,15 @@ nonisolated struct Videoroom_VideoMetadata: @unchecked Sendable {
     set {_uniqueStorage()._colorLabel = newValue}
   }
 
+  /// Marketing-friendly camera name when the core knows one for
+  /// `camera_model`. Defaults to `camera_model` verbatim when no
+  /// mapping is known — clients can detect "no mapping" by checking
+  /// whether the two fields match.
+  var cameraDisplayName: String {
+    get {_storage._cameraDisplayName}
+    set {_uniqueStorage()._cameraDisplayName = newValue}
+  }
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -1338,6 +1347,13 @@ nonisolated struct Videoroom_FilterOptions: Sendable {
   var codecs: [String] = []
 
   var captureYears: [Int32] = []
+
+  /// Marketing-friendly names for each entry in `cameras`, in the same
+  /// order. Each value is either the curated marketing name (e.g.
+  /// "Sony a7R III") or — when no mapping exists — the internal name
+  /// verbatim. Clients can use these as the dropdown labels while
+  /// sending the matching `cameras` entry as the filter value.
+  var cameraDisplayNames: [String] = []
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2394,7 +2410,7 @@ nonisolated extension Videoroom_GetMetadataRequest: SwiftProtobuf.Message, Swift
 
 nonisolated extension Videoroom_VideoMetadata: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".VideoMetadata"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0\u{1}rating\0\u{3}color_label\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0\u{1}rating\0\u{3}color_label\0\u{3}camera_display_name\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -2427,6 +2443,7 @@ nonisolated extension Videoroom_VideoMetadata: SwiftProtobuf.Message, SwiftProto
     var _isOnline: Bool = false
     var _rating: Int32 = 0
     var _colorLabel: String = String()
+    var _cameraDisplayName: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2467,6 +2484,7 @@ nonisolated extension Videoroom_VideoMetadata: SwiftProtobuf.Message, SwiftProto
       _isOnline = source._isOnline
       _rating = source._rating
       _colorLabel = source._colorLabel
+      _cameraDisplayName = source._cameraDisplayName
     }
   }
 
@@ -2515,6 +2533,7 @@ nonisolated extension Videoroom_VideoMetadata: SwiftProtobuf.Message, SwiftProto
         case 28: try { try decoder.decodeSingularBoolField(value: &_storage._isOnline) }()
         case 29: try { try decoder.decodeSingularInt32Field(value: &_storage._rating) }()
         case 30: try { try decoder.decodeSingularStringField(value: &_storage._colorLabel) }()
+        case 31: try { try decoder.decodeSingularStringField(value: &_storage._cameraDisplayName) }()
         default: break
         }
       }
@@ -2613,6 +2632,9 @@ nonisolated extension Videoroom_VideoMetadata: SwiftProtobuf.Message, SwiftProto
       if !_storage._colorLabel.isEmpty {
         try visitor.visitSingularStringField(value: _storage._colorLabel, fieldNumber: 30)
       }
+      if !_storage._cameraDisplayName.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._cameraDisplayName, fieldNumber: 31)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2652,6 +2674,7 @@ nonisolated extension Videoroom_VideoMetadata: SwiftProtobuf.Message, SwiftProto
         if _storage._isOnline != rhs_storage._isOnline {return false}
         if _storage._rating != rhs_storage._rating {return false}
         if _storage._colorLabel != rhs_storage._colorLabel {return false}
+        if _storage._cameraDisplayName != rhs_storage._cameraDisplayName {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -4530,7 +4553,7 @@ nonisolated extension Videoroom_GetFilterOptionsRequest: SwiftProtobuf.Message, 
 
 nonisolated extension Videoroom_FilterOptions: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".FilterOptions"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}cameras\0\u{1}lenses\0\u{1}codecs\0\u{3}capture_years\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}cameras\0\u{1}lenses\0\u{1}codecs\0\u{3}capture_years\0\u{3}camera_display_names\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4542,6 +4565,7 @@ nonisolated extension Videoroom_FilterOptions: SwiftProtobuf.Message, SwiftProto
       case 2: try { try decoder.decodeRepeatedStringField(value: &self.lenses) }()
       case 3: try { try decoder.decodeRepeatedStringField(value: &self.codecs) }()
       case 4: try { try decoder.decodeRepeatedInt32Field(value: &self.captureYears) }()
+      case 5: try { try decoder.decodeRepeatedStringField(value: &self.cameraDisplayNames) }()
       default: break
       }
     }
@@ -4560,6 +4584,9 @@ nonisolated extension Videoroom_FilterOptions: SwiftProtobuf.Message, SwiftProto
     if !self.captureYears.isEmpty {
       try visitor.visitPackedInt32Field(value: self.captureYears, fieldNumber: 4)
     }
+    if !self.cameraDisplayNames.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.cameraDisplayNames, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -4568,6 +4595,7 @@ nonisolated extension Videoroom_FilterOptions: SwiftProtobuf.Message, SwiftProto
     if lhs.lenses != rhs.lenses {return false}
     if lhs.codecs != rhs.codecs {return false}
     if lhs.captureYears != rhs.captureYears {return false}
+    if lhs.cameraDisplayNames != rhs.cameraDisplayNames {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

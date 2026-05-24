@@ -16,5 +16,6 @@ pub mod imagehash;
 pub mod proxies;
 pub mod post_index;
 pub mod path_templates;
+pub mod camera_names;
 
 pub use error::Result;

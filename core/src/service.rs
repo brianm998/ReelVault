@@ -186,6 +186,17 @@ impl VideoRoomService {
              camera_model, lens_model, gps_lat, gps_lon, gps_alt) =
             row.unwrap_or((0, None, None, 0, 0, 0.0, 0, None, false, 0, 0, None, None, None, None, None, None));
 
+        let camera_model_str = camera_model.unwrap_or_default();
+        // Resolve marketing name from the built-in mapping table; fall
+        // back to the internal name when no mapping is known. Clients
+        // detect "no mapping" by comparing `camera_display_name` to
+        // `camera_model` — equal means no mapping, so they hide the
+        // info-icon affordance that flips between names.
+        let camera_display_name =
+            crate::camera_names::marketing_name_for(&camera_model_str)
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| camera_model_str.clone());
+
         Ok(VideoMetadata {
             id: video_id.to_string(),
             filename: video.filename,
@@ -205,7 +216,7 @@ impl VideoRoomService {
             creation_date: creation_date.unwrap_or(0),
             modification_date: 0,
             indexed_at: video.indexed_at,
-            camera_model: camera_model.unwrap_or_default(),
+            camera_model: camera_model_str,
             lens_model: lens_model.unwrap_or_default(),
             gps_latitude: gps_lat.unwrap_or(0.0),
             gps_longitude: gps_lon.unwrap_or(0.0),
@@ -217,6 +228,7 @@ impl VideoRoomService {
             is_online: video.is_online != 0,
             rating,
             color_label,
+            camera_display_name,
         })
     }
 
@@ -1541,11 +1553,23 @@ impl VideoRoomTrait for VideoRoomService {
         let lenses = self.db.list_distinct_lenses().unwrap_or_default();
         let codecs = self.db.list_distinct_codecs().unwrap_or_default();
         let years = self.db.list_distinct_capture_years().unwrap_or_default();
+        // Parallel list of marketing-friendly camera names — same length
+        // and order as `cameras`. Falls back to the internal name when
+        // no mapping exists so the two lists stay in lockstep.
+        let camera_display_names: Vec<String> = cameras
+            .iter()
+            .map(|internal| {
+                crate::camera_names::marketing_name_for(internal)
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| internal.clone())
+            })
+            .collect();
         Ok(Response::new(FilterOptions {
             cameras,
             lenses,
             codecs,
             capture_years: years,
+            camera_display_names,
         }))
     }
 

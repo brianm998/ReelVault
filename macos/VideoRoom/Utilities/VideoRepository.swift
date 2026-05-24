@@ -355,6 +355,7 @@ class VideoRepository: ObservableObject {
             let response = try await client.getFilterOptions(Videoroom_GetFilterOptionsRequest())
             return FilterOptions(
                 cameras: response.cameras,
+                cameraDisplayNames: response.cameraDisplayNames,
                 lenses: response.lenses,
                 codecs: response.codecs,
                 captureYears: response.captureYears
@@ -908,6 +909,7 @@ class VideoRepository: ObservableObject {
             audioSampleRate: Int(p.audioSampleRate),
             creationDate: p.creationDate,
             cameraModel: p.cameraModel,
+            cameraDisplayName: p.cameraDisplayName.isEmpty ? p.cameraModel : p.cameraDisplayName,
             lensModel: p.lensModel,
             gpsLat: p.gpsLatitude,
             gpsLon: p.gpsLongitude,

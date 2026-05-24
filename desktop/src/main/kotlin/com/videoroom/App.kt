@@ -2178,7 +2178,8 @@ fun FilterDropdowns(gridViewModel: com.videoroom.viewmodel.GridViewModel) {
                     label = "Camera",
                     values = options.cameras,
                     selected = camera,
-                    onSelect = { gridViewModel.setCameraFilter(it) }
+                    onSelect = { gridViewModel.setCameraFilter(it) },
+                    displayLabels = options.cameraDisplayNames
                 )
             }
             Spacer(modifier = Modifier.width(VideoRoomSpacing.XSmall))
@@ -2315,10 +2316,29 @@ fun FilterDropdown(
     label: String,
     values: List<String>,
     selected: String,
-    onSelect: (String) -> Unit
+    onSelect: (String) -> Unit,
+    /**
+     * Optional parallel list of user-facing labels — same length and
+     * order as [values]. When provided, dropdown items + the selected
+     * chip render the label, but the internal `value` is still what
+     * gets passed to [onSelect]. Used by the Camera filter to show
+     * marketing names (e.g. "Sony a7R III") while filtering on the
+     * internal model code (e.g. "SONY ILCE-7RM3"). Pass an empty list
+     * (the default) to keep the legacy "label == value" behaviour.
+     */
+    displayLabels: List<String> = emptyList()
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val display = if (selected.isEmpty()) "---" else selected
+    fun labelFor(idx: Int, value: String): String =
+        if (displayLabels.isNotEmpty() && idx < displayLabels.size) displayLabels[idx] else value
+    val display = when {
+        selected.isEmpty() -> "---"
+        displayLabels.isNotEmpty() -> {
+            val idx = values.indexOf(selected)
+            if (idx >= 0 && idx < displayLabels.size) displayLabels[idx] else selected
+        }
+        else -> selected
+    }
 
     Box {
         OutlinedButton(
@@ -2352,11 +2372,11 @@ fun FilterDropdown(
                 }
             )
             HorizontalDivider()
-            values.forEach { value ->
+            values.forEachIndexed { idx, value ->
                 DropdownMenuItem(
                     text = {
                         Text(
-                            value,
+                            labelFor(idx, value),
                             color = if (value == selected) {
                                 MaterialTheme.colorScheme.primary
                             } else {

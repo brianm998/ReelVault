@@ -1077,6 +1077,7 @@ struct FilterDropdowns: View {
                 FilterMenu(
                     label: "Camera",
                     values: vm.filterOptions.cameras,
+                    displayLabels: vm.filterOptions.cameraDisplayNames,
                     selected: vm.filterCamera,
                     onSelect: { vm.setCameraFilter($0) }
                 )
@@ -1169,17 +1170,42 @@ struct FilterDropdowns: View {
 struct FilterMenu: View {
     let label: String
     let values: [String]
+    /// Optional parallel list of user-facing labels — same length and
+    /// order as `values`. When provided, dropdown items + the selected
+    /// chip render the label, but the internal `value` is still what
+    /// gets passed to `onSelect`. Used by the Camera filter to show
+    /// marketing names (e.g. "Sony a7R III") while filtering on the
+    /// internal model code (e.g. "SONY ILCE-7RM3"). Pass an empty array
+    /// (the default) to keep the legacy "label == value" behaviour.
+    var displayLabels: [String] = []
     let selected: String
     let onSelect: (String) -> Void
 
-    private var display: String { selected.isEmpty ? "---" : selected }
+    /// User-facing string shown in the chip for the currently-selected
+    /// value. Resolves through `displayLabels` when one is configured.
+    private var display: String {
+        if selected.isEmpty { return "---" }
+        if !displayLabels.isEmpty,
+           let idx = values.firstIndex(of: selected),
+           idx < displayLabels.count {
+            return displayLabels[idx]
+        }
+        return selected
+    }
+
+    private func displayLabel(for index: Int, value: String) -> String {
+        if !displayLabels.isEmpty && index < displayLabels.count {
+            return displayLabels[index]
+        }
+        return value
+    }
 
     var body: some View {
         Menu {
             Button("---") { onSelect("") }
             Divider()
-            ForEach(values, id: \.self) { v in
-                Button(v) { onSelect(v) }
+            ForEach(Array(values.enumerated()), id: \.element) { idx, v in
+                Button(displayLabel(for: idx, value: v)) { onSelect(v) }
             }
         } label: {
             VStack(alignment: .leading, spacing: 0) {
