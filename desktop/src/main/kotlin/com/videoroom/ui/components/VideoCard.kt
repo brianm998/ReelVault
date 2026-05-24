@@ -284,22 +284,33 @@ fun VideoCard(
         else -> 1.dp
     }
 
-    // Lightroom-style card colouring. A single uniform background fills
-    // the entire card (top band + photo area + bottom band):
-    //   * Unselected, unlabelled → warm mid-grey.
-    //   * Unselected, labelled    → dimmed label tint (whole card).
-    //   * Selected, unlabelled    → bright neutral.
-    //   * Selected, labelled      → bright neutral + colour-label frame
-    //                                drawn around the photo area.
-    // The label always remains visible: as the full background when
-    // unselected, as a thin frame around the photo when selected.
+    // Lightroom-style three-tone card. Top band is lighter than the
+    // photo area; bottom band sits a touch darker than the top. ONLY
+    // the photo area takes the colour-label tint — the bands stay
+    // neutral so the grid reads as a uniform filmstrip. Selection
+    // brightens all three regions to the same neutral and the label is
+    // preserved as a thin frame wrapping the thumbnail.
     val colorLabelEnum = com.videoroom.data.models.ColorLabel.from(video.colorLabel)
-    val cardBackgroundColor = when {
-        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFFE6E6E6)
-        isInMultiSelection -> Color(0xFFCCCCCC)
-        isInExpandedStack -> Color(0xFF8B8FA0)   // pre-tinted stack hint
+    val topBandColor = when {
+        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFFF0F0F0)
+        isInMultiSelection -> Color(0xFFD7D7D7)
+        else -> Color(0xFFB3B3B3)
+    }
+    val photoAreaBackground = when {
+        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFFF0F0F0)
+        isInMultiSelection -> Color(0xFFD7D7D7)
+        isInExpandedStack -> Color(0xFF8B8FA0)
         colorLabelEnum != com.videoroom.data.models.ColorLabel.None -> colorLabelEnum.dimmed
-        else -> Color(0xFF8C8C8C)
+        else -> Color(0xFF858585)
+    }
+    val bottomBandColor = when {
+        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFFF0F0F0)
+        isInMultiSelection -> Color(0xFFD7D7D7)
+        else -> Color(0xFF999999)
+    }
+    val bandDividerColor = when {
+        isAnchor || isSelected || isInMultiSelection -> Color.Black.copy(alpha = 0.10f)
+        else -> Color.Black.copy(alpha = 0.35f)
     }
     val thumbnailFrameColor: Color? =
         if (colorLabelEnum != com.videoroom.data.models.ColorLabel.None &&
@@ -310,12 +321,10 @@ fun VideoCard(
         isAnchor || isSelected || isInMultiSelection -> Color.White.copy(alpha = 0.6f)
         else -> Color.Black.copy(alpha = 0.4f)
     }
-    // Backwards-compat alias for any leftover references inside the body.
-    @Suppress("UnusedVariable") val bandBackground = cardBackgroundColor
-    @Suppress("UnusedVariable") val cardBackground = cardBackgroundColor
-    @Suppress("UnusedVariable") val topBandColor = cardBackgroundColor
-    @Suppress("UnusedVariable") val bottomBandColor = cardBackgroundColor
-    @Suppress("UnusedVariable") val photoAreaBackground = cardBackgroundColor
+    // Backwards-compat aliases — old call sites use these names.
+    @Suppress("UnusedVariable") val bandBackground = topBandColor
+    @Suppress("UnusedVariable") val cardBackground = photoAreaBackground
+    @Suppress("UnusedVariable") val cardBackgroundColor = photoAreaBackground
     @Suppress("UnusedVariable") val showCornerLabelBadge = false
 
     // AWT window for drag-out support. Provided via LocalAppWindow (defined in
@@ -428,7 +437,7 @@ fun VideoCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(36.dp)
-                .background(cardBackgroundColor)
+                .background(topBandColor)
                 .padding(horizontal = 6.dp, vertical = 2.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
@@ -442,35 +451,46 @@ fun VideoCard(
             }
         }
 
+        // 1 dp separator under the top band.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(bandDividerColor)
+        )
+
         // ── Square photo area ────────────────────────────────────────
         // Lightroom letterboxing: the photo area is a 1:1 box backed by
-        // the colour-label tint (or surface for unlabelled). The actual
-        // thumbnail is inset by `photoPadding` and uses ContentScale.Fit
-        // so the whole video frame stays visible — letterbox space above
-        // and below shows the photo-area background.
+        // the colour-label tint (or neutral grey for unlabelled). The
+        // actual thumbnail is inset by `photoPadding` and uses
+        // ContentScale.Fit so the whole video frame stays visible —
+        // letterbox space above and below shows the photo-area
+        // background.
         //
-        // The outer Box owns the background and the corner colour-label
-        // badge (shown when the card is selected AND labelled — the
-        // selection neutral wins the photo area, the label keeps a
-        // small swatch in the corner). The inner Box owns padding +
-        // pointer events for the thumbnail itself, so the badge sits in
-        // the 8 dp margin gap and never overlaps the video frame.
+        // The outer Box owns the background and the colour-label frame.
+        // The inner Box owns padding + pointer events for the thumbnail
+        // itself. When the card is selected + labelled, the colour-label
+        // tint moves off the full photo area onto a thin frame tight
+        // against the thumbnail bounds — the user spec calls for "the
+        // smaller colored area should wrap the video, not the area
+        // around it".
         run {
             val photoPadding = 8.dp
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1f)
-                    .background(cardBackgroundColor)
+                    .background(photoAreaBackground)
             ) {
-                // Colour-label frame around the photo area, drawn only when
-                // the card is BOTH selected and labelled. Inset from the
-                // photo area edge so it doesn't bleed into the bands.
+                // Colour-label frame, only when selected + labelled.
+                // Inset 7 dp from the photo-area edge so it sits 1 dp
+                // outside the thumbnail bounds (thumbnail uses 8 dp
+                // padding) — i.e. wrapping the video, not the area.
                 if (thumbnailFrameColor != null) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(4.dp)
+                            .padding(7.dp)
                             .border(3.dp, thumbnailFrameColor)
                     )
                 }
@@ -723,12 +743,20 @@ fun VideoCard(
             } // outer photo-area Box (background + corner badge)
         } // end of square-thumbnail run { }
 
+        // 1 dp separator above the bottom band.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(bandDividerColor)
+        )
+
         // ── Bottom rating band ───────────────────────────────────────
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(26.dp)
-                .background(cardBackgroundColor),
+                .background(bottomBandColor),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
