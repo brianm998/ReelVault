@@ -284,26 +284,46 @@ fun VideoCard(
         else -> 1.dp
     }
 
-    // Lightroom-style band background — anchor cards get the fully-
-    // saturated label swatch (or a neutral hi-light if unlabelled),
-    // secondary-selected cards get a mid-brightness tint, and unselected
-    // cards either keep their dimmed label tint or fall through to the
-    // panel's surface colour.
+    // Lightroom-style colours. Bands stay neutral grey at all times —
+    // the colour label only tints the photo area BEHIND the thumbnail.
+    // That keeps the grid reading as a uniform filmstrip while still
+    // exposing label state per card. Top band is one step brighter than
+    // bottom; selection brightens both; the bottom band only ever
+    // changes on selection (never on colour label).
     val colorLabelEnum = com.videoroom.data.models.ColorLabel.from(video.colorLabel)
-    val bandBackground = when {
+    val topBandColor = when {
+        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFF939393)
+        isInMultiSelection                              -> Color(0xFF767676)
+        else                                            -> Color(0xFF4D4D4D)
+    }
+    val bottomBandColor = when {
+        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFF808080)
+        isInMultiSelection                              -> Color(0xFF666666)
+        else                                            -> Color(0xFF3D3D3D)
+    }
+    val photoAreaBackground = when {
         isAnchor || (isSelected && !isInMultiSelection) ->
-            if (colorLabelEnum == com.videoroom.data.models.ColorLabel.None) Color(0xFF505050)
+            if (colorLabelEnum == com.videoroom.data.models.ColorLabel.None) Color(0xFF333333)
             else colorLabelEnum.swatch
         isInMultiSelection ->
-            if (colorLabelEnum == com.videoroom.data.models.ColorLabel.None) Color(0xFF3D3D3D)
+            if (colorLabelEnum == com.videoroom.data.models.ColorLabel.None) Color(0xFF292929)
             else colorLabelEnum.secondary
         isInExpandedStack -> MaterialTheme.colorScheme.primary
             .copy(alpha = 0.13f)
-            .compositeOver(MaterialTheme.colorScheme.surface)
+            .compositeOver(Color(0xFF1F1F1F))
         colorLabelEnum != com.videoroom.data.models.ColorLabel.None -> colorLabelEnum.dimmed
-        else -> MaterialTheme.colorScheme.surface
+        else -> Color(0xFF1F1F1F)
     }
-    val cardBackground = bandBackground  // kept for any leftover references below
+    // 1 dp outer card border. Dark by default, brightening on selection
+    // so adjacent cards stay distinct in the zero-gutter grid without
+    // re-introducing a chunky accent stroke.
+    val cardBorderColor = when {
+        isAnchor || isSelected || isInMultiSelection -> Color.White.copy(alpha = 0.4f)
+        else -> Color.Black.copy(alpha = 0.6f)
+    }
+    // Backwards-compat alias for any leftover references inside the body.
+    val bandBackground = topBandColor
+    val cardBackground = bandBackground
 
     // AWT window for drag-out support. Provided via LocalAppWindow (defined in
     // App.kt and passed through CompositionLocalProvider in main()).
@@ -324,6 +344,9 @@ fun VideoCard(
     // scrub-tracking continue to work.
     Box(
         modifier = modifier
+            // 1 dp outer card border so adjacent cards in the zero-gutter
+            // grid remain visually distinct. Brightens on selection.
+            .border(1.dp, cardBorderColor)
             // Drag-out support: detect drag motion in Compose then hand off
             // to AWT via FileDragSource.startDragIfPending().
             // Uses javaFileListFlavor — the cross-platform standard understood
@@ -412,7 +435,7 @@ fun VideoCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(36.dp)
-                .background(bandBackground)
+                .background(topBandColor)
                 .padding(horizontal = 6.dp, vertical = 2.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
@@ -426,13 +449,20 @@ fun VideoCard(
             }
         }
 
-        // ── Square thumbnail in the middle ───────────────────────────
+        // ── Square photo area ────────────────────────────────────────
+        // Lightroom letterboxing: the photo area is a 1:1 box backed by
+        // the colour-label tint (or surface for unlabelled). The actual
+        // thumbnail is inset by `photoPadding` and uses ContentScale.Fit
+        // so the whole video frame stays visible — letterbox space above
+        // and below shows the photo-area background.
         run {
+            val photoPadding = 8.dp
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1f)  // Lightroom-style square
-                    .background(Color.Black)
+                    .background(photoAreaBackground)
+                    .padding(photoPadding)
                     .onSizeChanged { thumbSize = it }
                     // Track cursor position over the thumbnail to drive
                     // Lightroom-style scrubbing. The X coordinate is mapped
@@ -470,7 +500,12 @@ fun VideoCard(
                         bitmap = displayedImage,
                         contentDescription = video.filename,
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                        // Lightroom letterboxing — keep the full frame
+                        // visible. The colour-label background fills any
+                        // empty space above/below (or left/right for
+                        // portrait clips) so the user always sees the
+                        // entire shot, not a cropped square.
+                        contentScale = ContentScale.Fit
                     )
                 } else {
                     // Placeholder when no thumbnail available
@@ -677,7 +712,7 @@ fun VideoCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(26.dp)
-                .background(bandBackground),
+                .background(bottomBandColor),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
@@ -702,17 +737,20 @@ fun VideoCard(
                     contentAlignment = Alignment.Center
                 ) {
                     if (filled) {
+                        // Black stars match the Lightroom Library
+                        // filmstrip aesthetic against the light band.
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = "$position star",
                             modifier = Modifier.size(14.dp),
-                            tint = Color(0xFFF2C739)
+                            tint = Color.Black
                         )
                     } else {
+                        // Darker grey dots for unrated positions.
                         Box(
                             modifier = Modifier
                                 .size(4.dp)
-                                .background(Color.White.copy(alpha = 0.4f), RoundedCornerShape(50))
+                                .background(Color(0xFF595959), RoundedCornerShape(50))
                         )
                     }
                 }
@@ -767,6 +805,15 @@ private fun RowScope.StatCell(
 ) {
     val stat = com.videoroom.data.models.GridStatKey.fromRaw(key)
     val value = stat.valueFor(video)
+    // Two distinct empty states:
+    //   • Slot is unset (`stat == None`) → show "—" so the user
+    //     knows the cell is configurable.
+    //   • Slot is set but this clip has no data for the chosen stat
+    //     (e.g. picked "Camera model" on a clip with no EXIF) →
+    //     render nothing so it's clear the slot IS configured, just
+    //     the data is missing for this particular video.
+    val displayed: String =
+        if (stat == com.videoroom.data.models.GridStatKey.None) "—" else value
     val items = remember(slotIndex, key) {
         com.videoroom.data.models.GridStatKey.values().map { choice ->
             androidx.compose.foundation.ContextMenuItem(
@@ -777,8 +824,8 @@ private fun RowScope.StatCell(
         }
     }
     // ContextMenuArea wraps a Box so the right-click target is the whole
-    // cell area, including the empty-value " — " placeholder. Without this,
-    // empty cells have no NSView region for AWT to fire a right-click on.
+    // cell area, including the empty placeholder. Without this, empty
+    // cells have no AWT region to fire a right-click on.
     androidx.compose.foundation.ContextMenuArea(items = { items }) {
         Box(
             modifier = Modifier
@@ -787,13 +834,16 @@ private fun RowScope.StatCell(
             contentAlignment = if (alignEnd) Alignment.CenterEnd else Alignment.CenterStart
         ) {
             Text(
-                text = value.ifEmpty { "—" },
+                text = displayed,
                 style = if (slotIndex == 0) {
                     MaterialTheme.typography.labelMedium
                 } else {
                     MaterialTheme.typography.labelSmall
                 },
-                color = if (value.isEmpty()) Color.White.copy(alpha = 0.3f) else Color.White,
+                color = if (stat == com.videoroom.data.models.GridStatKey.None)
+                    Color.Black.copy(alpha = 0.4f)
+                else
+                    Color.Black.copy(alpha = 0.85f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = if (alignEnd) {

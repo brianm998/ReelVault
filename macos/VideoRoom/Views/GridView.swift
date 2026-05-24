@@ -509,6 +509,12 @@ struct VideoCardView: View {
     /// short enough that an intentional rest surfaces the info quickly.
     static let tooltipDwell: TimeInterval = 2.0
 
+    /// Inset around the thumbnail inside the square photo area, mirroring
+    /// the visible margin that surrounds each photo in Lightroom. Keeps
+    /// the photo's full frame visible (no edge-cropping) and gives the
+    /// colour-label tint behind it room to read.
+    private var photoPadding: CGFloat { 8 }
+
     /// Multi-line help text shown when the user hovers the card. Pulls together
     /// the most useful at-a-glance facts about this video so the user doesn't
     /// have to select it just to see the basics.
@@ -600,35 +606,41 @@ struct VideoCardView: View {
         // the middle, rating below. Card width tracks the LazyVGrid item
         // width; both bands' widths track the thumbnail's edge naturally.
         //
-        // The thumbnail is wrapped in a `Color.clear.aspectRatio(1, .fit)`
-        // placeholder so its size is decided by the layout system *before*
-        // the actual content renders into the overlay. Without this, the
-        // greedy `Rectangle().fill()` inside `thumbnailArea` would expand
-        // beyond the column width and overflow into adjacent cells.
+        // The middle section is a `Color.clear.aspectRatio(1, .fit)
+        // .frame(maxWidth: .infinity)` placeholder so the layout engine
+        // picks the strict square size BEFORE the actual content renders.
+        // The photo-area background sits behind that, and the thumbnail
+        // itself is inset by [photoPadding] so its full frame is visible
+        // — matching Lightroom's letterbox behaviour where landscape
+        // photos show top/bottom band of card background.
         VStack(alignment: .leading, spacing: 0) {
             topStatBand
                 .frame(maxWidth: .infinity)
                 .frame(height: 36)
-                .background(bandBackground)
+                .background(topBandColor)
             Color.clear
                 .frame(maxWidth: .infinity)
                 .aspectRatio(1, contentMode: .fit)
-                .overlay { thumbnailArea }
+                .background(photoAreaBackground)
+                .overlay {
+                    thumbnailArea
+                        .padding(photoPadding)
+                }
                 .clipped()
             ratingBand
                 .frame(maxWidth: .infinity)
                 .frame(height: 26)
-                .background(bandBackground)
+                .background(bottomBandColor)
         }
         // Hover tint applied as a SwiftUI overlay so SwiftUI handles
         // compositing in the correct appearance context.
         .overlay(Color.white.opacity(hoverOverlayAlpha))
-        // 1 pt separator between adjacent cards. Lightroom uses a thin dark
-        // line; this keeps neighbouring unselected cards visually distinct
-        // without re-introducing the old chunky accent border.
+        // 1 pt outer border between adjacent cards. Dark by default,
+        // brightening on selection so the user always knows which card
+        // they last touched.
         .overlay(
             Rectangle()
-                .stroke(Color(NSColor.separatorColor).opacity(0.5), lineWidth: 0.5)
+                .stroke(cardBorderColor, lineWidth: 1)
         )
         // Custom popup tooltip — we own the timing end-to-end rather
         // than relying on NSView's system tooltip, whose delay isn't
@@ -782,35 +794,73 @@ struct VideoCardView: View {
         }
     }
 
-    /// Lightroom-style band background: anchor cards get the fully-saturated
-    /// label swatch (or a bright neutral hi-light if unlabelled), secondary-
-    /// selected cards get a mid-brightness tint, and unselected cards either
-    /// keep their dimmed label tint (if labelled) or fall through to the
-    /// panel's surface color.
-    private var bandBackground: Color {
-        let label = ColorLabel(video.colorLabel)
+    // Lightroom-style band colors. Bands stay neutral grey — the colour
+    // label only tints the photo area behind the thumbnail (see
+    // [photoAreaBackground]), so a green-labelled card has a green
+    // backdrop *behind* the photo but still reads as part of a uniform
+    // grey grid above and below. The top band is one shade lighter than
+    // the bottom, matching Lightroom's filmstrip aesthetic.
+
+    /// Background for the top stat band. Selection brightens it; colour
+    /// label never affects it.
+    private var topBandColor: Color {
         if isAnchor || (isPrimarySelected && !isInMultiSelection) {
-            // Anchor — brightest. Even an unlabelled anchor gets a clearly
-            // visible neutral hi-light so the user can tell what's selected.
-            return label == .none ? Color(white: 0.32) : label.swatch
+            return Color(white: 0.58)   // selected anchor — brightest neutral
         }
         if isInMultiSelection {
-            return label == .none ? Color(white: 0.24) : label.secondary
+            return Color(white: 0.46)   // secondary selection — mid neutral
         }
-        if isInExpandedStack {
-            // Expanded-stack members keep a subtle accent tint to read as
-            // part of the group, regardless of label.
-            return Color.accentColor.opacity(0.13)
-        }
-        if label != .none {
-            return label.dimmed
-        }
-        return Color(.controlBackgroundColor)
+        return Color(white: 0.30)       // default: warm-ish dark grey
     }
 
-    // Kept for backwards compatibility with code paths that haven't been
-    // updated to use bandBackground (e.g. thumbnailArea's fallback).
-    private var cardBackground: Color { bandBackground }
+    /// Background for the bottom rating band. Per spec the bottom band is
+    /// "always the same colour except when the video is selected" — so it
+    /// only flips on selection state, never on colour label.
+    private var bottomBandColor: Color {
+        if isAnchor || (isPrimarySelected && !isInMultiSelection) {
+            return Color(white: 0.50)
+        }
+        if isInMultiSelection {
+            return Color(white: 0.40)
+        }
+        return Color(white: 0.24)       // default: a touch darker than top
+    }
+
+    /// Background painted *behind* the photo thumbnail. This is where the
+    /// colour label shows through — the bands themselves stay neutral.
+    /// Selection brightens the swatch; an unlabelled card falls back to
+    /// the platform's controlBackgroundColor so the photo letterboxing
+    /// blends into the catalog viewer's overall theme.
+    private var photoAreaBackground: Color {
+        let label = ColorLabel(video.colorLabel)
+        if isAnchor || (isPrimarySelected && !isInMultiSelection) {
+            return label == .none ? Color(white: 0.20) : label.swatch
+        }
+        if isInMultiSelection {
+            return label == .none ? Color(white: 0.16) : label.secondary
+        }
+        if isInExpandedStack {
+            return Color.accentColor.opacity(0.13)
+        }
+        if label != .none { return label.dimmed }
+        return Color(white: 0.12)
+    }
+
+    /// 1 pt outer card border. Drawn dark so adjacent cards in the zero-
+    /// gutter grid stay visually distinct without a chunky accent stroke.
+    /// Selected cards get a slightly brighter line; the rest fall back to
+    /// the panel's separator color.
+    private var cardBorderColor: Color {
+        if isAnchor || isPrimarySelected || isInMultiSelection {
+            return Color.white.opacity(0.4)
+        }
+        return Color.black.opacity(0.6)
+    }
+
+    // Backwards-compatibility shim: keep `cardBackground` symbol so any
+    // unmigrated call site still resolves (the new layout uses the three
+    // explicit colour properties above).
+    private var cardBackground: Color { topBandColor }
 
     // MARK: - Top stat band
 
@@ -841,23 +891,36 @@ struct VideoCardView: View {
 
     /// A single stat cell. `slotIndex` is 0..3; `key` is the GridStatKey
     /// raw value that drives both the label and the picker preselection.
-    /// Empty cells render an invisible " " character but still receive a
-    /// right-click via `.contentShape(Rectangle())` so the slot picker can
-    /// be opened on any of the four corners regardless of current value.
+    ///
+    /// Two distinct empty states:
+    ///   • Slot itself is unset (`stat == .none`) → render "—" so the
+    ///     user sees there's a picker available here.
+    ///   • Slot is set but this video has no value for that stat
+    ///     (e.g. picked "Camera model" but the clip has none) → render
+    ///     nothing so the user isn't confused about whether the slot is
+    ///     configured.
+    ///
+    /// The right-click picker fires from any cell — set or unset. To
+    /// guarantee the hit target, the visible Text is wrapped in a
+    /// `Color.clear` Rectangle the cell's full width that owns both the
+    /// `.contentShape` and the `.contextMenu` modifiers.
     @ViewBuilder
     private func statCell(slotIndex: Int, key: String, alignTrailing: Bool) -> some View {
         let stat = GridStatKey(rawValue: key) ?? .none
         let value = stat.value(for: video)
-        Text(value.isEmpty ? "—" : value)
-            .font(.system(size: 10, weight: slotIndex == 0 ? .semibold : .regular))
-            .foregroundColor(value.isEmpty ? Color.white.opacity(0.3) : .primary)
-            .lineLimit(1)
-            .truncationMode(.middle)
-            .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
-            // Force a minimum hit area so right-click works even on an
-            // empty cell — without the contentShape, an empty / clear
-            // Text has no NSView region for AppKit to target.
-            .frame(minHeight: 14)
+        let displayed: String = {
+            if stat == .none { return "—" }
+            return value      // empty if this video has no data for the chosen stat
+        }()
+        Color.clear
+            .frame(maxWidth: .infinity, minHeight: 14)
+            .overlay(alignment: alignTrailing ? .trailing : .leading) {
+                Text(displayed)
+                    .font(.system(size: 10, weight: slotIndex == 0 ? .semibold : .regular))
+                    .foregroundColor(stat == .none ? Color.black.opacity(0.4) : Color.black.opacity(0.85))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
             .contentShape(Rectangle())
             .contextMenu {
                 Text("Show in this slot")
@@ -905,11 +968,11 @@ struct VideoCardView: View {
                     if position <= video.rating {
                         Image(systemName: "star.fill")
                             .font(.system(size: 11))
-                            .foregroundColor(Color(red: 0.95, green: 0.78, blue: 0.20))
+                            .foregroundColor(.black)
                     } else {
                         Image(systemName: "circle.fill")
                             .font(.system(size: 4))
-                            .foregroundColor(Color.white.opacity(0.4))
+                            .foregroundColor(Color(white: 0.35))
                     }
                 }
                 .frame(width: 20, height: 20)
@@ -966,16 +1029,19 @@ struct VideoCardView: View {
             //     hit-testable for hover tracking,
             //   * apply `.onContinuousHover` directly on the rendered content.
             Rectangle()
-                .fill(Color.black)
+                .fill(Color.clear)  // background lives one layer up (photoAreaBackground)
                 // Thumbnail / scrub-frame layer — always shown so the image
                 // stays visible while the AVPlayer initializes and its first
                 // frame is still being decoded (prevents a black flash).
+                // Uses `.scaledToFit` (Lightroom letterboxing) so the
+                // photo's full frame is visible inside the card — the
+                // colour-label background fills any letterbox space above
+                // and below (or left and right for portrait clips).
                 .overlay {
                     if let image = displayedImage {
                         Image(nsImage: image)
                             .resizable()
-                            .scaledToFill()
-                            .clipped()
+                            .scaledToFit()
                     } else {
                         Image(systemName: "film")
                             .font(.system(size: 32))

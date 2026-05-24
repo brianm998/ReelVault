@@ -1170,17 +1170,21 @@ impl VideoRoomTrait for VideoRoomService {
     ) -> std::result::Result<Response<videoroom::GridSettings>, Status> {
         // Catalog-scoped value lives in the existing `config` table under
         // a stable key. Serialised as a `,`-delimited list of 4 slot keys.
-        // Missing → defaults the client uses, which keeps older catalogs
-        // working without an explicit "set defaults" round-trip.
+        //
+        // First-open behaviour: when no row exists yet the daemon returns
+        // a sensible set of defaults — filename, file size, resolution
+        // shorthand ("1080p"), FPS — rather than four empty strings. That
+        // way a brand-new catalog opens with informative stat slots
+        // without each client having to ship its own fallback list (and
+        // disagreeing if those lists drift).
+        let default_slots: [&str; 4] = ["filename", "file_size", "resolution", "fps"];
         let raw = self
             .db
             .get_catalog_setting("grid_top_slots")
-            .map_err(Status::from)?
-            .unwrap_or_default();
-        let mut slots: Vec<String> = if raw.is_empty() {
-            Vec::new()
-        } else {
-            raw.split(',').map(|s| s.to_string()).collect()
+            .map_err(Status::from)?;
+        let mut slots: Vec<String> = match raw {
+            Some(s) if !s.is_empty() => s.split(',').map(|t| t.to_string()).collect(),
+            _ => default_slots.iter().map(|s| s.to_string()).collect(),
         };
         // Pad / truncate to exactly four entries so the client doesn't have
         // to defend against malformed values.
