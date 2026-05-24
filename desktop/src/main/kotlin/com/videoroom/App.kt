@@ -123,6 +123,12 @@ fun main() = application {
     val cycleInfoOverlayAction = remember { mutableStateOf<() -> Unit>({}) }
     // Space bar: toggle inline playback of the selected video.
     val spacebarAction = remember { mutableStateOf<() -> Unit>({}) }
+    // Lightroom-style rating shortcut (digits 0..5). Carries the rating
+    // value; the handler applies it to the current selection.
+    val setRatingAction = remember { mutableStateOf<(Int) -> Unit>({ _ -> }) }
+    // Lightroom-style colour-label shortcut (digits 6..9 + backtick).
+    // Carries the colour raw value; "" clears.
+    val setColorLabelAction = remember { mutableStateOf<(String) -> Unit>({ _ -> }) }
     // Title reflects the currently-open catalog (lifted here so Window.title
     // recomposes when the catalog changes).
     var currentCatalog by remember { mutableStateOf(CatalogInfo.Closed) }
@@ -177,6 +183,23 @@ fun main() = application {
                     Key.D -> { setDetailModeAction.value(); return@Window true }
                     Key.I -> { cycleInfoOverlayAction.value(); return@Window true }
                     Key.Spacebar -> { spacebarAction.value(); return@Window true }
+                    // Lightroom-style rating shortcuts (number-row digits).
+                    Key.Zero  -> { setRatingAction.value(0); return@Window true }
+                    Key.One   -> { setRatingAction.value(1); return@Window true }
+                    Key.Two   -> { setRatingAction.value(2); return@Window true }
+                    Key.Three -> { setRatingAction.value(3); return@Window true }
+                    Key.Four  -> { setRatingAction.value(4); return@Window true }
+                    Key.Five  -> { setRatingAction.value(5); return@Window true }
+                    // Lightroom-style colour-label shortcuts. Purple has
+                    // no shortcut by design (right-click only).
+                    Key.Six   -> { setColorLabelAction.value("red");    return@Window true }
+                    Key.Seven -> { setColorLabelAction.value("yellow"); return@Window true }
+                    Key.Eight -> { setColorLabelAction.value("green");  return@Window true }
+                    Key.Nine  -> { setColorLabelAction.value("blue");   return@Window true }
+                    // Backtick / grave clears the colour label. Universal
+                    // fallback via the right-click "Set Color Label →
+                    // None" menu for keyboards where this key is awkward.
+                    Key.Grave -> { setColorLabelAction.value("");       return@Window true }
                     else -> Unit
                 }
             }
@@ -261,6 +284,8 @@ fun main() = application {
                     onRegisterSetDetailMode = { setDetailModeAction.value = it },
                     onRegisterCycleInfoOverlay = { cycleInfoOverlayAction.value = it },
                     onRegisterSpacebarAction = { spacebarAction.value = it },
+                    onRegisterSetRatingAction = { setRatingAction.value = it },
+                    onRegisterSetColorLabelAction = { setColorLabelAction.value = it },
                     onSearchFocusChanged = { searchFocused.value = it },
                     onCatalogChanged = { currentCatalog = it }
                 )
@@ -291,6 +316,11 @@ fun VideoRoomApp(
     onRegisterCycleInfoOverlay: (() -> Unit) -> Unit = {},
     /** Called once to register the space-bar play/pause action. */
     onRegisterSpacebarAction: (() -> Unit) -> Unit = {},
+    /** Called once to register the digit-key rating action (0..5). */
+    onRegisterSetRatingAction: ((Int) -> Unit) -> Unit = {},
+    /** Called once to register the digit-key colour-label action. Receives
+     *  the raw colour string ("" / red / yellow / green / blue). */
+    onRegisterSetColorLabelAction: ((String) -> Unit) -> Unit = {},
     /** Reports search-field focus state to the Window so it can suppress
      *  single-letter shortcuts while the user is typing. */
     onSearchFocusChanged: (Boolean) -> Unit = {},
@@ -391,6 +421,12 @@ fun VideoRoomApp(
                 }
             }
         }
+        onRegisterSetRatingAction { rating ->
+            gridViewModel.setRatingOnSelection(rating)
+        }
+        onRegisterSetColorLabelAction { label ->
+            gridViewModel.setColorLabelOnSelection(label)
+        }
     }
     LaunchedEffect(Unit) {
         onRegisterTogglePanelsAction {
@@ -423,6 +459,8 @@ fun VideoRoomApp(
         gridViewModel.loadLibraryLocations()
         gridViewModel.loadTags()
         gridViewModel.loadFilterOptions()
+        // Per-catalog grid layout — the four top-of-card stat slots.
+        gridViewModel.loadGridSettings()
         // Pre-load both location-related data sources so the global-map
         // and location-picker dialogs can open with the camera framed on
         // real data, not the global-view fallback.
@@ -2133,9 +2171,12 @@ fun FilterDropdowns(gridViewModel: com.videoroom.viewmodel.GridViewModel) {
     val year = gridViewModel.filterCaptureYear.collectAsState().value
     val tagId = gridViewModel.filterTagId.collectAsState().value
     val allTags = gridViewModel.tags.collectAsState().value
+    val minRating = gridViewModel.filterMinRating.collectAsState().value
+    val colorLabel = gridViewModel.filterColorLabel.collectAsState().value
     val anyFilterActive =
         camera.isNotEmpty() || lens.isNotEmpty() || codec.isNotEmpty() ||
-            year != 0 || tagId.isNotEmpty()
+            year != 0 || tagId.isNotEmpty() ||
+            minRating != 0 || colorLabel.isNotEmpty()
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (options.cameras.isNotEmpty()) {
@@ -2210,11 +2251,59 @@ fun FilterDropdowns(gridViewModel: com.videoroom.viewmodel.GridViewModel) {
                     onSelect = { gridViewModel.setCaptureYearFilter(it.toIntOrNull() ?: 0) }
                 )
             }
+            Spacer(modifier = Modifier.width(VideoRoomSpacing.XSmall))
         }
+
+        // Lightroom-style rating filter.
+        com.videoroom.ui.components.Tooltip(
+            text = "Show only videos at or above this star rating. Pick \"---\" to clear."
+        ) {
+            FilterDropdown(
+                label = "Rating",
+                values = listOf("≥1", "≥2", "≥3", "≥4", "5"),
+                selected = when (minRating) {
+                    0 -> ""
+                    5 -> "5"
+                    else -> "≥$minRating"
+                },
+                onSelect = { raw ->
+                    val n = when {
+                        raw.isEmpty() -> 0
+                        raw == "5"    -> 5
+                        else          -> raw.removePrefix("≥").toIntOrNull() ?: 0
+                    }
+                    gridViewModel.setMinRatingFilter(n)
+                }
+            )
+        }
+        Spacer(modifier = Modifier.width(VideoRoomSpacing.XSmall))
+
+        // Lightroom-style colour-label filter.
+        com.videoroom.ui.components.Tooltip(
+            text = "Show only videos with this colour label. Pick \"---\" to clear."
+        ) {
+            val colorChoices = com.videoroom.data.models.ColorLabel.values()
+                .filter { it != com.videoroom.data.models.ColorLabel.None }
+                .map { it.displayName }
+            FilterDropdown(
+                label = "Color",
+                values = colorChoices,
+                selected = com.videoroom.data.models.ColorLabel.from(colorLabel).let {
+                    if (it == com.videoroom.data.models.ColorLabel.None) "" else it.displayName
+                },
+                onSelect = { display ->
+                    val match = com.videoroom.data.models.ColorLabel.values()
+                        .firstOrNull { it.displayName == display }
+                        ?: com.videoroom.data.models.ColorLabel.None
+                    gridViewModel.setColorLabelFilter(match.raw)
+                }
+            )
+        }
+
         if (anyFilterActive) {
             Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
             com.videoroom.ui.components.Tooltip(
-                text = "Clear all active filters (camera, lens, keyword, codec, year)."
+                text = "Clear all active filters (camera, lens, keyword, codec, year, rating, colour)."
             ) {
                 TextButton(onClick = {
                     gridViewModel.clearAllDropdownFilters()

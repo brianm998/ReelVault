@@ -156,7 +156,11 @@ class VideoRepository: ObservableObject {
         filterCodec: String = "",
         filterCaptureYear: Int32 = 0,
         /// Proximity filter (latitude, longitude, radius_km). nil = disabled.
-        geoFilter: (latitude: Double, longitude: Double, radiusKm: Double)? = nil
+        geoFilter: (latitude: Double, longitude: Double, radiusKm: Double)? = nil,
+        /// 0 = no rating filter; 1..5 = "show videos with at least this rating".
+        filterMinRating: Int32 = 0,
+        /// "" = no colour filter; otherwise exact-match the colour label.
+        filterColorLabel: String = ""
     ) async throws -> (videos: [VideoSummary], totalCount: Int64) {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
 
@@ -187,6 +191,8 @@ class VideoRepository: ObservableObject {
             request.filterLongitude = geo.longitude
             request.filterRadiusKm = geo.radiusKm
         }
+        request.filterMinRating = filterMinRating
+        request.filterColorLabel = filterColorLabel
         let response = try await client.listVideos(request)
         return (response.videos.map(Self.makeSummary), response.totalCount)
     }
@@ -877,7 +883,9 @@ class VideoRepository: ObservableObject {
             groupPreferredPath: p.groupPreferredPath,
             proxyCount: Int(p.proxyCount),
             proxyOf: p.proxyOf,
-            playableNatively: p.playableNatively
+            playableNatively: p.playableNatively,
+            rating: Int(p.rating),
+            colorLabel: p.colorLabel
         )
     }
 
@@ -906,8 +914,55 @@ class VideoRepository: ObservableObject {
             gpsAltitude: p.gpsAltitude,
             notes: p.notes,
             tags: p.tags,
-            collections: p.collections
+            collections: p.collections,
+            rating: Int(p.rating),
+            colorLabel: p.colorLabel
         )
+    }
+
+    // MARK: - User marks (rating + color label)
+
+    /// Apply a 0..5 star rating to one or more videos in a single round-trip.
+    @discardableResult
+    func updateVideoRating(videoIds: [String], rating: Int) async throws -> Bool {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        var request = Videoroom_UpdateVideoRatingRequest()
+        request.videoIds = videoIds
+        request.rating = Int32(rating)
+        let response = try await client.updateVideoRating(request)
+        return response.success
+    }
+
+    /// Apply a colour label to one or more videos. Pass empty string to clear.
+    @discardableResult
+    func updateVideoColorLabel(videoIds: [String], colorLabel: String) async throws -> Bool {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        var request = Videoroom_UpdateVideoColorLabelRequest()
+        request.videoIds = videoIds
+        request.colorLabel = colorLabel
+        let response = try await client.updateVideoColorLabel(request)
+        return response.success
+    }
+
+    // MARK: - Grid settings (per-catalog)
+
+    /// Fetch the catalog's saved top-of-card slot configuration. Always
+    /// returns exactly four entries; the server pads / truncates as needed.
+    func getGridSettings() async throws -> [String] {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        let response = try await client.getGridSettings(Videoroom_GetGridSettingsRequest())
+        return response.topSlots
+    }
+
+    /// Persist the four-slot configuration. Both clients pick it up the next
+    /// time they open the same catalog (or via a follow-up GetGridSettings).
+    @discardableResult
+    func updateGridSettings(topSlots: [String]) async throws -> Bool {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        var request = Videoroom_GridSettings()
+        request.topSlots = topSlots
+        let response = try await client.updateGridSettings(request)
+        return response.success
     }
 }
 

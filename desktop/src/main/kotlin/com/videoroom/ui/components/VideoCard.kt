@@ -18,6 +18,8 @@ import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.PictureInPicture
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Sell
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -118,6 +120,17 @@ fun VideoCard(
      * drag is not initiated.
      */
     dragPaths: List<String> = emptyList(),
+    /** The four catalog-scoped top-of-card stat slot keys. Each entry is a
+     *  [com.videoroom.data.models.GridStatKey.raw] value; unknown strings
+     *  render as blank. Padded / truncated internally to exactly four. */
+    topSlots: List<String> = com.videoroom.data.models.defaultGridTopSlots,
+    /** Fired when one of the five rating positions is clicked. Receives the
+     *  new rating (0..5). Callers translate "click same position twice" into
+     *  a clear (rating - 1). */
+    onSetRating: (Int) -> Unit = {},
+    /** Fired when the user right-clicks a top stat slot and picks a new
+     *  stat key. Receives (slotIndex 0..3, GridStatKey.raw). */
+    onPickStatSlot: (Int, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -271,20 +284,26 @@ fun VideoCard(
         else -> 1.dp
     }
 
-    // Tint the card background to indicate state:
-    //   * Expanded stack — subtle primary tint so the group is cohesive.
-    //   * Hover — slightly brighter surface so the card the cursor is
-    //     over reads as "active" without dimming the thumbnail (the old
-    //     play-button overlay obscured the frame the user wanted to see).
-    val cardBackground = when {
+    // Lightroom-style band background — anchor cards get the fully-
+    // saturated label swatch (or a neutral hi-light if unlabelled),
+    // secondary-selected cards get a mid-brightness tint, and unselected
+    // cards either keep their dimmed label tint or fall through to the
+    // panel's surface colour.
+    val colorLabelEnum = com.videoroom.data.models.ColorLabel.from(video.colorLabel)
+    val bandBackground = when {
+        isAnchor || (isSelected && !isInMultiSelection) ->
+            if (colorLabelEnum == com.videoroom.data.models.ColorLabel.None) Color(0xFF505050)
+            else colorLabelEnum.swatch
+        isInMultiSelection ->
+            if (colorLabelEnum == com.videoroom.data.models.ColorLabel.None) Color(0xFF3D3D3D)
+            else colorLabelEnum.secondary
         isInExpandedStack -> MaterialTheme.colorScheme.primary
-            .copy(alpha = 0.15f)
+            .copy(alpha = 0.13f)
             .compositeOver(MaterialTheme.colorScheme.surface)
-        isHovered -> Color.White
-            .copy(alpha = 0.07f)
-            .compositeOver(MaterialTheme.colorScheme.surface)
+        colorLabelEnum != com.videoroom.data.models.ColorLabel.None -> colorLabelEnum.dimmed
         else -> MaterialTheme.colorScheme.surface
     }
+    val cardBackground = bandBackground  // kept for any leftover references below
 
     // AWT window for drag-out support. Provided via LocalAppWindow (defined in
     // App.kt and passed through CompositionLocalProvider in main()).
@@ -368,30 +387,57 @@ fun VideoCard(
                 tooltipVisible = false
             }
     ) {
-    Surface(
+    // Lightroom-style three-band layout: top stat band, square thumbnail in
+    // the middle, rating band at the bottom. No corner radius, no outer
+    // padding — adjacent cards share crisp 1 px borders for a dense grid.
+    Column(
         modifier = Modifier
-            .clip(RectangleShape)
-            .border(
-                width = borderWidth,
-                color = borderColor,
-                shape = VideoRoomCornerRadius.Large
-            )
-            .clip(VideoRoomCornerRadius.Large)
+            .fillMaxWidth()
             .hoverable(interactionSource)
             .shiftAwareClickable(
                 onClick = onClick,
                 onDoubleClick = onDoubleClick
-            ),
-        color = cardBackground,
-        shape = VideoRoomCornerRadius.Large
+            )
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // Thumbnail or placeholder — always 16:9 to match standard video
-            // aspect, regardless of card width.
+        // ── Top stat band (70 dp) ────────────────────────────────────
+        val paddedSlots = remember(topSlots) {
+            val s = topSlots.toMutableList()
+            while (s.size < 4) s.add("")
+            s.take(4)
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(70.dp)
+                .background(bandBackground)
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(
+                modifier = Modifier.weight(1f, fill = false),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                StatCell(slotIndex = 0, key = paddedSlots[0], video = video, onPick = onPickStatSlot, alignEnd = false)
+                StatCell(slotIndex = 1, key = paddedSlots[1], video = video, onPick = onPickStatSlot, alignEnd = false)
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(
+                modifier = Modifier.weight(1f, fill = false),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                horizontalAlignment = Alignment.End
+            ) {
+                StatCell(slotIndex = 2, key = paddedSlots[2], video = video, onPick = onPickStatSlot, alignEnd = true)
+                StatCell(slotIndex = 3, key = paddedSlots[3], video = video, onPick = onPickStatSlot, alignEnd = true)
+            }
+        }
+
+        // ── Square thumbnail in the middle ───────────────────────────
+        run {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
+                    .aspectRatio(1f)  // Lightroom-style square
                     .background(Color.Black)
                     .onSizeChanged { thumbSize = it }
                     // Track cursor position over the thumbnail to drive
@@ -506,29 +552,9 @@ fun VideoCard(
                     }
                 }
 
-                // (Hover is now indicated by the card-cell background
-                // tint — see `cardBackground` above. No play-button
-                // overlay so the user can read the thumbnail unobscured
-                // even before they start scrubbing.)
-
-                // Resolution badge
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(VideoRoomSpacing.Small),
-                    color = Color.Black.copy(alpha = 0.7f),
-                    shape = MaterialTheme.shapes.small
-                ) {
-                    Text(
-                        text = if (video.height > 0) "${video.height}p" else "?",
-                        modifier = Modifier.padding(
-                            horizontal = VideoRoomSpacing.Small,
-                            vertical = 2.dp
-                        ),
-                        color = Color.White,
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                }
+                // (Resolution / duration / proxy-count chips that used to
+                // float over the thumbnail are gone — those stats are now
+                // surfaced via the four configurable top-of-card slots.)
 
                 // Stack/group badge — shown on group representatives AND stack children
                 // Clicking the badge toggles expansion of the stack.
@@ -585,53 +611,56 @@ fun VideoCard(
                     }
                 }
 
-                // Proxy badge — bottom-left, distinct teal color from the
-                // stack badge (which uses the primary color) since
-                // proxies and stacks are orthogonal concepts.
-                if (video.hasProxies) {
-                    Surface(
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(VideoRoomSpacing.Small),
-                        color = Color(0xFF408888),
-                        shape = MaterialTheme.shapes.small,
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(
-                                horizontal = VideoRoomSpacing.Small,
-                                vertical = 2.dp,
-                            ),
-                            verticalAlignment = Alignment.CenterVertically,
+                // Bottom-right icon row — at-a-glance status (keyword,
+                // proxy). Lightroom-equivalent placement: small mono
+                // icons over the thumbnail's bottom-right corner.
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    if (video.tags.isNotEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Sell,
+                                contentDescription = "${video.tags.size} keyword(s)",
+                                modifier = Modifier.size(10.dp),
+                                tint = Color.White
+                            )
+                        }
+                    }
+                    if (video.hasProxies) {
+                        Box(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
+                            contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.PictureInPicture,
-                                contentDescription = "Has proxies",
-                                modifier = Modifier.size(12.dp),
-                                tint = Color.White,
-                            )
-                            Spacer(modifier = Modifier.width(2.dp))
-                            Text(
-                                text = "P×${video.proxyCount}",
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelSmall,
+                                contentDescription = "${video.proxyCount} proxy/proxies",
+                                modifier = Modifier.size(10.dp),
+                                tint = Color.White
                             )
                         }
                     }
                 }
 
                 // "Too large to play here" marker — bottom-center.
-                // Shown when the server's `playable_natively` is false
-                // (video height exceeds the configured
-                // max_native_playback_height) AND no proxy exists. When
-                // a proxy is available we hide the warning because the
-                // play button will quietly route through the smallest
-                // proxy — there's no "can't play this" state for the
-                // user to know about.
+                // Shown when the server says this video exceeds the
+                // configured max-native-playback-height AND no proxy is
+                // available to substitute.
                 if (!video.playableNatively && !video.hasProxies) {
                     Surface(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(VideoRoomSpacing.Small),
+                            .padding(bottom = 28.dp),
                         color = Color(0xFFB8722E).copy(alpha = 0.9f),
                         shape = MaterialTheme.shapes.small,
                     ) {
@@ -646,54 +675,54 @@ fun VideoCard(
                         )
                     }
                 }
-
-                // Duration badge
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(VideoRoomSpacing.Small),
-                    color = Color.Black.copy(alpha = 0.7f),
-                    shape = MaterialTheme.shapes.small
-                ) {
-                    Text(
-                        text = video.durationFormatted,
-                        modifier = Modifier.padding(
-                            horizontal = VideoRoomSpacing.Small,
-                            vertical = 2.dp
-                        ),
-                        color = Color.White,
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                }
             }
+        } // end of square-thumbnail run { }
 
-            // Info section — fixed height so it doesn't scale with thumbnail
-            // width (keeps text readable at any card size).
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(VideoRoomSpacing.Small)
-            ) {
-                // Filename
-                Text(
-                    text = video.filename,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(2.dp))
-
-                // Metadata
-                Text(
-                    text = "${video.codecVideo.ifEmpty { "?" }} • ${video.fps.toInt()}fps",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+        // ── Bottom rating band (50 dp) ───────────────────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp)
+                .background(bandBackground),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            for (position in 1..5) {
+                val filled = position <= video.rating
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .pointerInput(video.rating, position) {
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                down.consume()
+                                val up = waitForUpOrCancellation()
+                                if (up != null) {
+                                    up.consume()
+                                    // Lightroom: clicking the current rating clears it back one.
+                                    if (video.rating == position) onSetRating(position - 1)
+                                    else onSetRating(position)
+                                }
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (filled) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = "$position star",
+                            modifier = Modifier.size(14.dp),
+                            tint = Color(0xFFF2C739)
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(4.dp)
+                                .background(Color.White.copy(alpha = 0.4f), RoundedCornerShape(50))
+                        )
+                    }
+                }
+                if (position < 5) Spacer(modifier = Modifier.width(6.dp))
             }
         }
     }
@@ -724,6 +753,51 @@ fun VideoCard(
                 }
             }
         }
+    }
+}
+
+/**
+ * One cell in the top-of-card stat band. Renders the stat's value for the
+ * given video, with a right-click `ContextMenuArea` offering every
+ * [com.videoroom.data.models.GridStatKey] option. The user's choice applies
+ * catalog-wide (via [onPick] → `GridViewModel.updateGridTopSlot`).
+ */
+@Composable
+private fun StatCell(
+    slotIndex: Int,
+    key: String,
+    video: VideoSummary,
+    onPick: (Int, String) -> Unit,
+    alignEnd: Boolean,
+) {
+    val stat = com.videoroom.data.models.GridStatKey.fromRaw(key)
+    val value = stat.valueFor(video)
+    val items = remember(slotIndex, key) {
+        com.videoroom.data.models.GridStatKey.values().map { choice ->
+            androidx.compose.foundation.ContextMenuItem(
+                if (choice == stat) "✓ ${choice.displayName}" else choice.displayName
+            ) {
+                onPick(slotIndex, choice.raw)
+            }
+        }
+    }
+    androidx.compose.foundation.ContextMenuArea(items = { items }) {
+        Text(
+            text = value.ifEmpty { " " },
+            style = if (slotIndex == 0) {
+                MaterialTheme.typography.labelMedium
+            } else {
+                MaterialTheme.typography.labelSmall
+            },
+            color = if (value.isEmpty()) Color.Transparent else Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = if (alignEnd) {
+                androidx.compose.ui.text.style.TextAlign.End
+            } else {
+                androidx.compose.ui.text.style.TextAlign.Start
+            }
+        )
     }
 }
 

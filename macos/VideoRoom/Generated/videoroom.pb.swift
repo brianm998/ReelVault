@@ -28,52 +28,113 @@ fileprivate nonisolated struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobu
   typealias Version = _2
 }
 
-nonisolated struct Videoroom_ListVideosRequest: Sendable {
+nonisolated struct Videoroom_ListVideosRequest: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var limit: Int32 = 0
+  var limit: Int32 {
+    get {_storage._limit}
+    set {_uniqueStorage()._limit = newValue}
+  }
 
-  var offset: Int32 = 0
+  var offset: Int32 {
+    get {_storage._offset}
+    set {_uniqueStorage()._offset = newValue}
+  }
 
   /// "name", "date_added", "duration", etc.
-  var sortBy: String = String()
+  var sortBy: String {
+    get {_storage._sortBy}
+    set {_uniqueStorage()._sortBy = newValue}
+  }
 
-  var sortAscending: Bool = false
+  var sortAscending: Bool {
+    get {_storage._sortAscending}
+    set {_uniqueStorage()._sortAscending = newValue}
+  }
 
-  var filterTags: [String] = []
+  var filterTags: [String] {
+    get {_storage._filterTags}
+    set {_uniqueStorage()._filterTags = newValue}
+  }
 
-  var collectionID: String = String()
+  var collectionID: String {
+    get {_storage._collectionID}
+    set {_uniqueStorage()._collectionID = newValue}
+  }
 
   /// Filter to videos whose path is inside this directory (recursive).
   /// Empty means "all locations".
-  var locationPath: String = String()
+  var locationPath: String {
+    get {_storage._locationPath}
+    set {_uniqueStorage()._locationPath = newValue}
+  }
 
   /// Exact-match filters from the top-bar dropdowns. Empty / 0 = no filter.
-  var filterCamera: String = String()
+  var filterCamera: String {
+    get {_storage._filterCamera}
+    set {_uniqueStorage()._filterCamera = newValue}
+  }
 
-  var filterLens: String = String()
+  var filterLens: String {
+    get {_storage._filterLens}
+    set {_uniqueStorage()._filterLens = newValue}
+  }
 
-  var filterCodec: String = String()
+  var filterCodec: String {
+    get {_storage._filterCodec}
+    set {_uniqueStorage()._filterCodec = newValue}
+  }
 
-  var filterCaptureYear: Int32 = 0
+  var filterCaptureYear: Int32 {
+    get {_storage._filterCaptureYear}
+    set {_uniqueStorage()._filterCaptureYear = newValue}
+  }
 
   /// Geographic proximity filter — set `filter_by_location` true and provide
   /// lat/lon/radius_km to limit results to videos whose recorded coordinates
   /// fall within `filter_radius_km` of (filter_latitude, filter_longitude).
   /// Used when the user taps a pin on the global map.
-  var filterByLocation: Bool = false
+  var filterByLocation: Bool {
+    get {_storage._filterByLocation}
+    set {_uniqueStorage()._filterByLocation = newValue}
+  }
 
-  var filterLatitude: Double = 0
+  var filterLatitude: Double {
+    get {_storage._filterLatitude}
+    set {_uniqueStorage()._filterLatitude = newValue}
+  }
 
-  var filterLongitude: Double = 0
+  var filterLongitude: Double {
+    get {_storage._filterLongitude}
+    set {_uniqueStorage()._filterLongitude = newValue}
+  }
 
-  var filterRadiusKm: Double = 0
+  var filterRadiusKm: Double {
+    get {_storage._filterRadiusKm}
+    set {_uniqueStorage()._filterRadiusKm = newValue}
+  }
+
+  /// Lightroom-style user-mark filters.
+  ///   filter_min_rating: 0 = no filter; 1..5 = "≥ this many stars".
+  ///   filter_color_label: "" = no filter; otherwise exact match
+  ///     against one of "red" | "yellow" | "green" | "blue" | "purple".
+  var filterMinRating: Int32 {
+    get {_storage._filterMinRating}
+    set {_uniqueStorage()._filterMinRating = newValue}
+  }
+
+  var filterColorLabel: String {
+    get {_storage._filterColorLabel}
+    set {_uniqueStorage()._filterColorLabel = newValue}
+  }
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
+
+  fileprivate var _storage = _StorageClass.defaultInstance
 }
 
 nonisolated struct Videoroom_VideoSummary: @unchecked Sendable {
@@ -197,6 +258,20 @@ nonisolated struct Videoroom_VideoSummary: @unchecked Sendable {
   var playableNatively: Bool {
     get {_storage._playableNatively}
     set {_uniqueStorage()._playableNatively = newValue}
+  }
+
+  /// Lightroom-style user marks. `rating` is 0..5 (0 means unrated).
+  /// `color_label` is "" (no label) or one of "red" / "yellow" / "green" /
+  /// "blue" / "purple". The grid renders rating as stars/dots in the bottom
+  /// band and color_label as the band's tint.
+  var rating: Int32 {
+    get {_storage._rating}
+    set {_uniqueStorage()._rating = newValue}
+  }
+
+  var colorLabel: String {
+    get {_storage._colorLabel}
+    set {_uniqueStorage()._colorLabel = newValue}
   }
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -416,6 +491,18 @@ nonisolated struct Videoroom_VideoMetadata: @unchecked Sendable {
   var isOnline: Bool {
     get {_storage._isOnline}
     set {_uniqueStorage()._isOnline = newValue}
+  }
+
+  /// Lightroom-style user marks (mirror of VideoSummary.rating /
+  /// color_label so the detail panel doesn't need a second lookup).
+  var rating: Int32 {
+    get {_storage._rating}
+    set {_uniqueStorage()._rating = newValue}
+  }
+
+  var colorLabel: String {
+    get {_storage._colorLabel}
+    set {_uniqueStorage()._colorLabel = newValue}
   }
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -1671,6 +1758,72 @@ nonisolated struct Videoroom_WatchSettings: Sendable {
   init() {}
 }
 
+/// Apply a rating (0..5) to one or more videos. Sending video_ids of length
+/// > 1 lets the keyboard shortcut "press 5 with N cards selected" land in
+/// a single round-trip. `rating` of 0 means "unrated" (clear).
+nonisolated struct Videoroom_UpdateVideoRatingRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var videoIds: [String] = []
+
+  /// 0..5
+  var rating: Int32 = 0
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+/// Apply a color label to one or more videos. `color_label` must be one of
+/// "" (no label / clear), "red", "yellow", "green", "blue", "purple". The
+/// daemon validates and rejects unknown values.
+nonisolated struct Videoroom_UpdateVideoColorLabelRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var videoIds: [String] = []
+
+  var colorLabel: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+/// GridSettings carries the catalog-scoped layout configuration that needs
+/// to be shared between clients opening the same catalog. Today it only
+/// covers the four configurable top-of-card stat slots; future fields can
+/// be added here without bumping a major version.
+nonisolated struct Videoroom_GetGridSettingsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Videoroom_GridSettings: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Exactly four entries, one per slot (top-left, mid-left, top-right,
+  /// mid-right). Each is a stat key the client knows how to render — e.g.
+  /// "filename", "file_size", "resolution", "fps", "camera_model". Empty
+  /// string ("") means "blank slot". Both clients ship the same set of
+  /// recognized keys; unknown keys render as blank.
+  var topSlots: [String] = []
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
 nonisolated struct Videoroom_Response: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -1693,99 +1846,177 @@ fileprivate nonisolated let _protobuf_package = "videoroom"
 
 nonisolated extension Videoroom_ListVideosRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ListVideosRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}limit\0\u{1}offset\0\u{3}sort_by\0\u{3}sort_ascending\0\u{3}filter_tags\0\u{3}collection_id\0\u{3}location_path\0\u{3}filter_camera\0\u{3}filter_lens\0\u{3}filter_codec\0\u{3}filter_capture_year\0\u{3}filter_by_location\0\u{3}filter_latitude\0\u{3}filter_longitude\0\u{3}filter_radius_km\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}limit\0\u{1}offset\0\u{3}sort_by\0\u{3}sort_ascending\0\u{3}filter_tags\0\u{3}collection_id\0\u{3}location_path\0\u{3}filter_camera\0\u{3}filter_lens\0\u{3}filter_codec\0\u{3}filter_capture_year\0\u{3}filter_by_location\0\u{3}filter_latitude\0\u{3}filter_longitude\0\u{3}filter_radius_km\0\u{3}filter_min_rating\0\u{3}filter_color_label\0")
+
+  fileprivate class _StorageClass {
+    var _limit: Int32 = 0
+    var _offset: Int32 = 0
+    var _sortBy: String = String()
+    var _sortAscending: Bool = false
+    var _filterTags: [String] = []
+    var _collectionID: String = String()
+    var _locationPath: String = String()
+    var _filterCamera: String = String()
+    var _filterLens: String = String()
+    var _filterCodec: String = String()
+    var _filterCaptureYear: Int32 = 0
+    var _filterByLocation: Bool = false
+    var _filterLatitude: Double = 0
+    var _filterLongitude: Double = 0
+    var _filterRadiusKm: Double = 0
+    var _filterMinRating: Int32 = 0
+    var _filterColorLabel: String = String()
+
+      // This property is used as the initial default value for new instances of the type.
+      // The type itself is protecting the reference to its storage via CoW semantics.
+      // This will force a copy to be made of this reference when the first mutation occurs;
+      // hence, it is safe to mark this as `nonisolated(unsafe)`.
+      static nonisolated(unsafe) let defaultInstance = _StorageClass()
+
+    private init() {}
+
+    init(copying source: _StorageClass) {
+      _limit = source._limit
+      _offset = source._offset
+      _sortBy = source._sortBy
+      _sortAscending = source._sortAscending
+      _filterTags = source._filterTags
+      _collectionID = source._collectionID
+      _locationPath = source._locationPath
+      _filterCamera = source._filterCamera
+      _filterLens = source._filterLens
+      _filterCodec = source._filterCodec
+      _filterCaptureYear = source._filterCaptureYear
+      _filterByLocation = source._filterByLocation
+      _filterLatitude = source._filterLatitude
+      _filterLongitude = source._filterLongitude
+      _filterRadiusKm = source._filterRadiusKm
+      _filterMinRating = source._filterMinRating
+      _filterColorLabel = source._filterColorLabel
+    }
+  }
+
+  fileprivate mutating func _uniqueStorage() -> _StorageClass {
+    if !isKnownUniquelyReferenced(&_storage) {
+      _storage = _StorageClass(copying: _storage)
+    }
+    return _storage
+  }
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularInt32Field(value: &self.limit) }()
-      case 2: try { try decoder.decodeSingularInt32Field(value: &self.offset) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.sortBy) }()
-      case 4: try { try decoder.decodeSingularBoolField(value: &self.sortAscending) }()
-      case 5: try { try decoder.decodeRepeatedStringField(value: &self.filterTags) }()
-      case 6: try { try decoder.decodeSingularStringField(value: &self.collectionID) }()
-      case 7: try { try decoder.decodeSingularStringField(value: &self.locationPath) }()
-      case 8: try { try decoder.decodeSingularStringField(value: &self.filterCamera) }()
-      case 9: try { try decoder.decodeSingularStringField(value: &self.filterLens) }()
-      case 10: try { try decoder.decodeSingularStringField(value: &self.filterCodec) }()
-      case 11: try { try decoder.decodeSingularInt32Field(value: &self.filterCaptureYear) }()
-      case 12: try { try decoder.decodeSingularBoolField(value: &self.filterByLocation) }()
-      case 13: try { try decoder.decodeSingularDoubleField(value: &self.filterLatitude) }()
-      case 14: try { try decoder.decodeSingularDoubleField(value: &self.filterLongitude) }()
-      case 15: try { try decoder.decodeSingularDoubleField(value: &self.filterRadiusKm) }()
-      default: break
+    _ = _uniqueStorage()
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      while let fieldNumber = try decoder.nextFieldNumber() {
+        // The use of inline closures is to circumvent an issue where the compiler
+        // allocates stack space for every case branch when no optimizations are
+        // enabled. https://github.com/apple/swift-protobuf/issues/1034
+        switch fieldNumber {
+        case 1: try { try decoder.decodeSingularInt32Field(value: &_storage._limit) }()
+        case 2: try { try decoder.decodeSingularInt32Field(value: &_storage._offset) }()
+        case 3: try { try decoder.decodeSingularStringField(value: &_storage._sortBy) }()
+        case 4: try { try decoder.decodeSingularBoolField(value: &_storage._sortAscending) }()
+        case 5: try { try decoder.decodeRepeatedStringField(value: &_storage._filterTags) }()
+        case 6: try { try decoder.decodeSingularStringField(value: &_storage._collectionID) }()
+        case 7: try { try decoder.decodeSingularStringField(value: &_storage._locationPath) }()
+        case 8: try { try decoder.decodeSingularStringField(value: &_storage._filterCamera) }()
+        case 9: try { try decoder.decodeSingularStringField(value: &_storage._filterLens) }()
+        case 10: try { try decoder.decodeSingularStringField(value: &_storage._filterCodec) }()
+        case 11: try { try decoder.decodeSingularInt32Field(value: &_storage._filterCaptureYear) }()
+        case 12: try { try decoder.decodeSingularBoolField(value: &_storage._filterByLocation) }()
+        case 13: try { try decoder.decodeSingularDoubleField(value: &_storage._filterLatitude) }()
+        case 14: try { try decoder.decodeSingularDoubleField(value: &_storage._filterLongitude) }()
+        case 15: try { try decoder.decodeSingularDoubleField(value: &_storage._filterRadiusKm) }()
+        case 16: try { try decoder.decodeSingularInt32Field(value: &_storage._filterMinRating) }()
+        case 17: try { try decoder.decodeSingularStringField(value: &_storage._filterColorLabel) }()
+        default: break
+        }
       }
     }
   }
 
   func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if self.limit != 0 {
-      try visitor.visitSingularInt32Field(value: self.limit, fieldNumber: 1)
-    }
-    if self.offset != 0 {
-      try visitor.visitSingularInt32Field(value: self.offset, fieldNumber: 2)
-    }
-    if !self.sortBy.isEmpty {
-      try visitor.visitSingularStringField(value: self.sortBy, fieldNumber: 3)
-    }
-    if self.sortAscending != false {
-      try visitor.visitSingularBoolField(value: self.sortAscending, fieldNumber: 4)
-    }
-    if !self.filterTags.isEmpty {
-      try visitor.visitRepeatedStringField(value: self.filterTags, fieldNumber: 5)
-    }
-    if !self.collectionID.isEmpty {
-      try visitor.visitSingularStringField(value: self.collectionID, fieldNumber: 6)
-    }
-    if !self.locationPath.isEmpty {
-      try visitor.visitSingularStringField(value: self.locationPath, fieldNumber: 7)
-    }
-    if !self.filterCamera.isEmpty {
-      try visitor.visitSingularStringField(value: self.filterCamera, fieldNumber: 8)
-    }
-    if !self.filterLens.isEmpty {
-      try visitor.visitSingularStringField(value: self.filterLens, fieldNumber: 9)
-    }
-    if !self.filterCodec.isEmpty {
-      try visitor.visitSingularStringField(value: self.filterCodec, fieldNumber: 10)
-    }
-    if self.filterCaptureYear != 0 {
-      try visitor.visitSingularInt32Field(value: self.filterCaptureYear, fieldNumber: 11)
-    }
-    if self.filterByLocation != false {
-      try visitor.visitSingularBoolField(value: self.filterByLocation, fieldNumber: 12)
-    }
-    if self.filterLatitude.bitPattern != 0 {
-      try visitor.visitSingularDoubleField(value: self.filterLatitude, fieldNumber: 13)
-    }
-    if self.filterLongitude.bitPattern != 0 {
-      try visitor.visitSingularDoubleField(value: self.filterLongitude, fieldNumber: 14)
-    }
-    if self.filterRadiusKm.bitPattern != 0 {
-      try visitor.visitSingularDoubleField(value: self.filterRadiusKm, fieldNumber: 15)
+    try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
+      if _storage._limit != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._limit, fieldNumber: 1)
+      }
+      if _storage._offset != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._offset, fieldNumber: 2)
+      }
+      if !_storage._sortBy.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._sortBy, fieldNumber: 3)
+      }
+      if _storage._sortAscending != false {
+        try visitor.visitSingularBoolField(value: _storage._sortAscending, fieldNumber: 4)
+      }
+      if !_storage._filterTags.isEmpty {
+        try visitor.visitRepeatedStringField(value: _storage._filterTags, fieldNumber: 5)
+      }
+      if !_storage._collectionID.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._collectionID, fieldNumber: 6)
+      }
+      if !_storage._locationPath.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._locationPath, fieldNumber: 7)
+      }
+      if !_storage._filterCamera.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._filterCamera, fieldNumber: 8)
+      }
+      if !_storage._filterLens.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._filterLens, fieldNumber: 9)
+      }
+      if !_storage._filterCodec.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._filterCodec, fieldNumber: 10)
+      }
+      if _storage._filterCaptureYear != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._filterCaptureYear, fieldNumber: 11)
+      }
+      if _storage._filterByLocation != false {
+        try visitor.visitSingularBoolField(value: _storage._filterByLocation, fieldNumber: 12)
+      }
+      if _storage._filterLatitude.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._filterLatitude, fieldNumber: 13)
+      }
+      if _storage._filterLongitude.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._filterLongitude, fieldNumber: 14)
+      }
+      if _storage._filterRadiusKm.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._filterRadiusKm, fieldNumber: 15)
+      }
+      if _storage._filterMinRating != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._filterMinRating, fieldNumber: 16)
+      }
+      if !_storage._filterColorLabel.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._filterColorLabel, fieldNumber: 17)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   static func ==(lhs: Videoroom_ListVideosRequest, rhs: Videoroom_ListVideosRequest) -> Bool {
-    if lhs.limit != rhs.limit {return false}
-    if lhs.offset != rhs.offset {return false}
-    if lhs.sortBy != rhs.sortBy {return false}
-    if lhs.sortAscending != rhs.sortAscending {return false}
-    if lhs.filterTags != rhs.filterTags {return false}
-    if lhs.collectionID != rhs.collectionID {return false}
-    if lhs.locationPath != rhs.locationPath {return false}
-    if lhs.filterCamera != rhs.filterCamera {return false}
-    if lhs.filterLens != rhs.filterLens {return false}
-    if lhs.filterCodec != rhs.filterCodec {return false}
-    if lhs.filterCaptureYear != rhs.filterCaptureYear {return false}
-    if lhs.filterByLocation != rhs.filterByLocation {return false}
-    if lhs.filterLatitude != rhs.filterLatitude {return false}
-    if lhs.filterLongitude != rhs.filterLongitude {return false}
-    if lhs.filterRadiusKm != rhs.filterRadiusKm {return false}
+    if lhs._storage !== rhs._storage {
+      let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
+        let _storage = _args.0
+        let rhs_storage = _args.1
+        if _storage._limit != rhs_storage._limit {return false}
+        if _storage._offset != rhs_storage._offset {return false}
+        if _storage._sortBy != rhs_storage._sortBy {return false}
+        if _storage._sortAscending != rhs_storage._sortAscending {return false}
+        if _storage._filterTags != rhs_storage._filterTags {return false}
+        if _storage._collectionID != rhs_storage._collectionID {return false}
+        if _storage._locationPath != rhs_storage._locationPath {return false}
+        if _storage._filterCamera != rhs_storage._filterCamera {return false}
+        if _storage._filterLens != rhs_storage._filterLens {return false}
+        if _storage._filterCodec != rhs_storage._filterCodec {return false}
+        if _storage._filterCaptureYear != rhs_storage._filterCaptureYear {return false}
+        if _storage._filterByLocation != rhs_storage._filterByLocation {return false}
+        if _storage._filterLatitude != rhs_storage._filterLatitude {return false}
+        if _storage._filterLongitude != rhs_storage._filterLongitude {return false}
+        if _storage._filterRadiusKm != rhs_storage._filterRadiusKm {return false}
+        if _storage._filterMinRating != rhs_storage._filterMinRating {return false}
+        if _storage._filterColorLabel != rhs_storage._filterColorLabel {return false}
+        return true
+      }
+      if !storagesAreEqual {return false}
+    }
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1793,7 +2024,7 @@ nonisolated extension Videoroom_ListVideosRequest: SwiftProtobuf.Message, SwiftP
 
 nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".VideoSummary"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0\u{3}proxy_count\0\u{3}proxy_of\0\u{3}playable_natively\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0\u{3}proxy_count\0\u{3}proxy_of\0\u{3}playable_natively\0\u{1}rating\0\u{3}color_label\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -1817,6 +2048,8 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
     var _proxyCount: Int32 = 0
     var _proxyOf: String = String()
     var _playableNatively: Bool = false
+    var _rating: Int32 = 0
+    var _colorLabel: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -1848,6 +2081,8 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
       _proxyCount = source._proxyCount
       _proxyOf = source._proxyOf
       _playableNatively = source._playableNatively
+      _rating = source._rating
+      _colorLabel = source._colorLabel
     }
   }
 
@@ -1887,6 +2122,8 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
         case 19: try { try decoder.decodeSingularInt32Field(value: &_storage._proxyCount) }()
         case 20: try { try decoder.decodeSingularStringField(value: &_storage._proxyOf) }()
         case 21: try { try decoder.decodeSingularBoolField(value: &_storage._playableNatively) }()
+        case 22: try { try decoder.decodeSingularInt32Field(value: &_storage._rating) }()
+        case 23: try { try decoder.decodeSingularStringField(value: &_storage._colorLabel) }()
         default: break
         }
       }
@@ -1958,6 +2195,12 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
       if _storage._playableNatively != false {
         try visitor.visitSingularBoolField(value: _storage._playableNatively, fieldNumber: 21)
       }
+      if _storage._rating != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._rating, fieldNumber: 22)
+      }
+      if !_storage._colorLabel.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._colorLabel, fieldNumber: 23)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -1988,6 +2231,8 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
         if _storage._proxyCount != rhs_storage._proxyCount {return false}
         if _storage._proxyOf != rhs_storage._proxyOf {return false}
         if _storage._playableNatively != rhs_storage._playableNatively {return false}
+        if _storage._rating != rhs_storage._rating {return false}
+        if _storage._colorLabel != rhs_storage._colorLabel {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -2149,7 +2394,7 @@ nonisolated extension Videoroom_GetMetadataRequest: SwiftProtobuf.Message, Swift
 
 nonisolated extension Videoroom_VideoMetadata: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".VideoMetadata"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0\u{1}rating\0\u{3}color_label\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -2180,6 +2425,8 @@ nonisolated extension Videoroom_VideoMetadata: SwiftProtobuf.Message, SwiftProto
     var _notes: String = String()
     var _volumeID: String = String()
     var _isOnline: Bool = false
+    var _rating: Int32 = 0
+    var _colorLabel: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2218,6 +2465,8 @@ nonisolated extension Videoroom_VideoMetadata: SwiftProtobuf.Message, SwiftProto
       _notes = source._notes
       _volumeID = source._volumeID
       _isOnline = source._isOnline
+      _rating = source._rating
+      _colorLabel = source._colorLabel
     }
   }
 
@@ -2264,6 +2513,8 @@ nonisolated extension Videoroom_VideoMetadata: SwiftProtobuf.Message, SwiftProto
         case 26: try { try decoder.decodeSingularStringField(value: &_storage._notes) }()
         case 27: try { try decoder.decodeSingularStringField(value: &_storage._volumeID) }()
         case 28: try { try decoder.decodeSingularBoolField(value: &_storage._isOnline) }()
+        case 29: try { try decoder.decodeSingularInt32Field(value: &_storage._rating) }()
+        case 30: try { try decoder.decodeSingularStringField(value: &_storage._colorLabel) }()
         default: break
         }
       }
@@ -2356,6 +2607,12 @@ nonisolated extension Videoroom_VideoMetadata: SwiftProtobuf.Message, SwiftProto
       if _storage._isOnline != false {
         try visitor.visitSingularBoolField(value: _storage._isOnline, fieldNumber: 28)
       }
+      if _storage._rating != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._rating, fieldNumber: 29)
+      }
+      if !_storage._colorLabel.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._colorLabel, fieldNumber: 30)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2393,6 +2650,8 @@ nonisolated extension Videoroom_VideoMetadata: SwiftProtobuf.Message, SwiftProto
         if _storage._notes != rhs_storage._notes {return false}
         if _storage._volumeID != rhs_storage._volumeID {return false}
         if _storage._isOnline != rhs_storage._isOnline {return false}
+        if _storage._rating != rhs_storage._rating {return false}
+        if _storage._colorLabel != rhs_storage._colorLabel {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -4986,6 +5245,125 @@ nonisolated extension Videoroom_WatchSettings: SwiftProtobuf.Message, SwiftProto
     if lhs.enabled != rhs.enabled {return false}
     if lhs.writeSettleMs != rhs.writeSettleMs {return false}
     if lhs.pollIntervalMs != rhs.pollIntervalMs {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_UpdateVideoRatingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".UpdateVideoRatingRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_ids\0\u{1}rating\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedStringField(value: &self.videoIds) }()
+      case 2: try { try decoder.decodeSingularInt32Field(value: &self.rating) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.videoIds.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.videoIds, fieldNumber: 1)
+    }
+    if self.rating != 0 {
+      try visitor.visitSingularInt32Field(value: self.rating, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_UpdateVideoRatingRequest, rhs: Videoroom_UpdateVideoRatingRequest) -> Bool {
+    if lhs.videoIds != rhs.videoIds {return false}
+    if lhs.rating != rhs.rating {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_UpdateVideoColorLabelRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".UpdateVideoColorLabelRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_ids\0\u{3}color_label\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedStringField(value: &self.videoIds) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.colorLabel) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.videoIds.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.videoIds, fieldNumber: 1)
+    }
+    if !self.colorLabel.isEmpty {
+      try visitor.visitSingularStringField(value: self.colorLabel, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_UpdateVideoColorLabelRequest, rhs: Videoroom_UpdateVideoColorLabelRequest) -> Bool {
+    if lhs.videoIds != rhs.videoIds {return false}
+    if lhs.colorLabel != rhs.colorLabel {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_GetGridSettingsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".GetGridSettingsRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_GetGridSettingsRequest, rhs: Videoroom_GetGridSettingsRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_GridSettings: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".GridSettings"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}top_slots\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedStringField(value: &self.topSlots) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.topSlots.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.topSlots, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_GridSettings, rhs: Videoroom_GridSettings) -> Bool {
+    if lhs.topSlots != rhs.topSlots {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

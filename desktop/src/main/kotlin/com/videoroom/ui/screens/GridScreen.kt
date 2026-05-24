@@ -211,9 +211,12 @@ fun GridScreen(
                     // width. Cards expand from there to fill available space.
                     columns = GridCells.Adaptive(minSize = thumbnailMinWidth),
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(VideoRoomSpacing.Small),
-                    horizontalArrangement = Arrangement.spacedBy(VideoRoomSpacing.Small),
-                    verticalArrangement = Arrangement.spacedBy(VideoRoomSpacing.Small)
+                    // Lightroom-style: zero spacing between cards so the grid
+                    // reads as a dense edge-to-edge filmstrip. No content
+                    // padding either — the cards run flush to the viewport.
+                    contentPadding = PaddingValues(0.dp),
+                    horizontalArrangement = Arrangement.spacedBy(0.dp),
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
                     items(
                         count = rendered.size,
@@ -263,6 +266,9 @@ fun GridScreen(
                                 } else {
                                     listOf(video.openPath)
                                 }
+                                val ratingTargets: List<String> =
+                                    if (video.id in multi && multi.size > 1) multi.toList()
+                                    else listOf(video.id)
                                 buildVideoContextMenu(
                                     targetFiles = targets,
                                     onConfigureEditors = onConfigureEditors,
@@ -287,6 +293,14 @@ fun GridScreen(
                                     videoPath = video.path,
                                     libraryLocations = viewModel.libraryLocations.value,
                                     onGoToFolder = { path -> viewModel.setLocationFilter(path) },
+                                    ratingTargetIds = ratingTargets,
+                                    onSetRating = { rating, ids -> viewModel.setRating(rating, ids) },
+                                    onSetColorLabel = { label, ids -> viewModel.setColorLabel(label, ids) },
+                                    stackMasterCandidate =
+                                        if (video.isInGroup && video.id != video.groupPreferredId)
+                                            video.id to video.groupId
+                                        else null,
+                                    onSetStackMaster = { vid, gid -> viewModel.setStackMaster(vid, gid) },
                                 )
                             }
                         ) {
@@ -365,6 +379,9 @@ fun GridScreen(
                                         listOf(video.openPath)
                                     }
                                 },
+                                topSlots = viewModel.topSlots.collectAsState().value,
+                                onSetRating = { rating -> viewModel.setRating(rating, listOf(video.id)) },
+                                onPickStatSlot = { slotIndex, key -> viewModel.updateGridTopSlot(slotIndex, key) },
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -465,6 +482,20 @@ internal fun buildVideoContextMenu(
     /** Called with the matched location path when "Go to Folder in Library"
      *  is selected. */
     onGoToFolder: ((String) -> Unit)? = null,
+    /** Video IDs the rating / colour-label / stack-master actions should
+     *  apply to. Usually the multi-selection (or just `[video.id]`). */
+    ratingTargetIds: List<String> = emptyList(),
+    /** Called when the user picks "Set Rating → N stars". Receives (rating
+     *  0..5, target ids). */
+    onSetRating: ((Int, List<String>) -> Unit)? = null,
+    /** Called when the user picks "Set Color Label → X". Receives (label
+     *  raw, target ids); empty string clears. */
+    onSetColorLabel: ((String, List<String>) -> Unit)? = null,
+    /** Video ID + group ID for the right-clicked card *if* it sits in a
+     *  stack AND is NOT already the representative. Used to surface
+     *  "Set as Stack Master". */
+    stackMasterCandidate: Pair<String, String>? = null,
+    onSetStackMaster: ((String, String) -> Unit)? = null,
 ): List<androidx.compose.foundation.ContextMenuItem> {
     val items = mutableListOf<androidx.compose.foundation.ContextMenuItem>()
     val registry = EditorRegistry.Default
@@ -529,6 +560,40 @@ internal fun buildVideoContextMenu(
             items += androidx.compose.foundation.ContextMenuItem("Go to Folder in Library") {
                 onGoToFolder(containing.path)
             }
+        }
+    }
+
+    // Lightroom-style user-mark items. Apply to every video in
+    // `ratingTargetIds` so multi-select keyboard equivalents map to the
+    // same set the right-click menu addresses.
+    if (onSetRating != null && ratingTargetIds.isNotEmpty()) {
+        // Render 5..0 so the menu reads "★★★★★" at the top, which is the
+        // common Lightroom muscle-memory.
+        for (stars in 5 downTo 0) {
+            val label = if (stars == 0) "Set Rating: No rating" else "Set Rating: ${"★".repeat(stars)}"
+            items += androidx.compose.foundation.ContextMenuItem(label) {
+                onSetRating(stars, ratingTargetIds)
+            }
+        }
+    }
+    if (onSetColorLabel != null && ratingTargetIds.isNotEmpty()) {
+        for (label in com.videoroom.data.models.ColorLabel.values()) {
+            val text = if (label == com.videoroom.data.models.ColorLabel.None)
+                "Set Color Label: None"
+            else
+                "Set Color Label: ${label.displayName}"
+            items += androidx.compose.foundation.ContextMenuItem(text) {
+                onSetColorLabel(label.raw, ratingTargetIds)
+            }
+        }
+    }
+
+    // Stack-master picker. Only surfaces when the right-clicked card is a
+    // non-representative member of its stack.
+    if (stackMasterCandidate != null && onSetStackMaster != null) {
+        val (vid, gid) = stackMasterCandidate
+        items += androidx.compose.foundation.ContextMenuItem("Set as Stack Master") {
+            onSetStackMaster(vid, gid)
         }
     }
 

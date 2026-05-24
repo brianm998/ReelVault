@@ -142,6 +142,21 @@ CREATE TABLE IF NOT EXISTS video_notes (
   FOREIGN KEY(video_id) REFERENCES videos(id) ON DELETE CASCADE
 );
 
+-- Per-video user marks: Lightroom-style star rating (0..5) and color label.
+-- Lives separately from `metadata` (which is FFprobe-derived, machine-extracted)
+-- to keep human/user data and technical data clearly separated. One row per
+-- video; missing row → rating 0, no color label.
+CREATE TABLE IF NOT EXISTS video_user_marks (
+  video_id     TEXT PRIMARY KEY,
+  rating       INTEGER NOT NULL DEFAULT 0 CHECK (rating BETWEEN 0 AND 5),
+  color_label  TEXT NOT NULL DEFAULT '',  -- '' | red | yellow | green | blue | purple
+  updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(video_id) REFERENCES videos(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_video_user_marks_rating ON video_user_marks(rating);
+CREATE INDEX IF NOT EXISTS idx_video_user_marks_color  ON video_user_marks(color_label);
+
 -- Proxies (lower resolution versions for large videos)
 CREATE TABLE IF NOT EXISTS proxies (
   id TEXT PRIMARY KEY,

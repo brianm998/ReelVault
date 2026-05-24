@@ -179,6 +179,9 @@ fun ListScreen(
                                 } else {
                                     listOf(video.openPath)
                                 }
+                                val ratingTargets: List<String> =
+                                    if (video.id in multi && multi.size > 1) multi.toList()
+                                    else listOf(video.id)
                                 buildVideoContextMenu(
                                     targetFiles = targets,
                                     onConfigureEditors = onConfigureEditors,
@@ -195,6 +198,14 @@ fun ListScreen(
                                     videoPath = video.path,
                                     libraryLocations = viewModel.libraryLocations.value,
                                     onGoToFolder = { path -> viewModel.setLocationFilter(path) },
+                                    ratingTargetIds = ratingTargets,
+                                    onSetRating = { rating, ids -> viewModel.setRating(rating, ids) },
+                                    onSetColorLabel = { label, ids -> viewModel.setColorLabel(label, ids) },
+                                    stackMasterCandidate =
+                                        if (video.isInGroup && video.id != video.groupPreferredId)
+                                            video.id to video.groupId
+                                        else null,
+                                    onSetStackMaster = { vid, gid -> viewModel.setStackMaster(vid, gid) },
                                 )
                             }
                         ) {

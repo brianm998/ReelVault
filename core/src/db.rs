@@ -175,6 +175,19 @@ impl Database {
                 SELECT proxy_of, id, proxy_confidence, COALESCE(proxy_auto_detected, 0)
                 FROM videos
                 WHERE proxy_of IS NOT NULL"),
+            // Lightroom-style star rating + color label. Stored in a
+            // separate table from `metadata` (machine-extracted) so user
+            // marks remain visually and operationally distinct from
+            // ffprobe data. Old catalogs gain the table on first open.
+            ("video_user_marks table", "CREATE TABLE IF NOT EXISTS video_user_marks (
+                video_id     TEXT PRIMARY KEY,
+                rating       INTEGER NOT NULL DEFAULT 0 CHECK (rating BETWEEN 0 AND 5),
+                color_label  TEXT NOT NULL DEFAULT '',
+                updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(video_id) REFERENCES videos(id) ON DELETE CASCADE
+            )"),
+            ("idx_video_user_marks_rating", "CREATE INDEX IF NOT EXISTS idx_video_user_marks_rating ON video_user_marks(rating)"),
+            ("idx_video_user_marks_color",  "CREATE INDEX IF NOT EXISTS idx_video_user_marks_color ON video_user_marks(color_label)"),
         ];
         for (label, sql) in migrations {
             match conn.execute(sql, []) {
@@ -702,6 +715,83 @@ impl Database {
         Ok(())
     }
 
+    // USER MARKS (RATING / COLOR LABEL) OPERATIONS
+
+    /// Set the 0..5 star rating on a video. Mirrors the [`update_notes`] upsert
+    /// pattern: insert if no marks row yet, otherwise update in place. Rating
+    /// is clamped here (0 = unrated) — the SQL CHECK constraint guarantees
+    /// only valid values reach disk even if a caller bypasses the clamp.
+    pub fn update_video_rating(&self, video_id: &str, rating: i32) -> Result<()> {
+        let rating = rating.clamp(0, 5);
+        let conn = self.get_connection()?;
+        conn.execute(
+            "INSERT INTO video_user_marks (video_id, rating, color_label, updated_at)
+             VALUES (?, ?, COALESCE((SELECT color_label FROM video_user_marks WHERE video_id = ?), ''), CURRENT_TIMESTAMP)
+             ON CONFLICT(video_id) DO UPDATE SET rating = excluded.rating, updated_at = CURRENT_TIMESTAMP",
+            params![video_id, rating, video_id],
+        )
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
+    /// Set the color label on a video. `label` must be one of '', 'red',
+    /// 'yellow', 'green', 'blue', 'purple'. The empty string clears the label.
+    /// Caller is expected to validate before reaching here.
+    pub fn update_video_color_label(&self, video_id: &str, label: &str) -> Result<()> {
+        let conn = self.get_connection()?;
+        conn.execute(
+            "INSERT INTO video_user_marks (video_id, rating, color_label, updated_at)
+             VALUES (?, COALESCE((SELECT rating FROM video_user_marks WHERE video_id = ?), 0), ?, CURRENT_TIMESTAMP)
+             ON CONFLICT(video_id) DO UPDATE SET color_label = excluded.color_label, updated_at = CURRENT_TIMESTAMP",
+            params![video_id, video_id, label],
+        )
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
+    /// Read the (rating, color_label) tuple for a single video. Returns
+    /// (0, "") when no marks row exists — the natural "unset" default.
+    pub fn get_video_user_marks(&self, video_id: &str) -> Result<(i32, String)> {
+        let conn = self.get_connection()?;
+        match conn.query_row(
+            "SELECT rating, color_label FROM video_user_marks WHERE video_id = ?",
+            [video_id],
+            |row| Ok((row.get::<_, i32>(0)?, row.get::<_, String>(1)?)),
+        ) {
+            Ok(pair) => Ok(pair),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok((0, String::new())),
+            Err(e) => Err(VideoRoomError::DatabaseError(e.to_string())),
+        }
+    }
+
+    /// Catalog-scoped key/value preferences (reuses the existing `config`
+    /// table). Used by the clients to persist UI choices like the grid's
+    /// 4 top-stat-slot selections so both clients see the same configuration
+    /// when they open the same catalog.
+    pub fn get_catalog_setting(&self, key: &str) -> Result<Option<String>> {
+        let conn = self.get_connection()?;
+        let row = conn
+            .query_row(
+                "SELECT value FROM config WHERE key = ?",
+                [key],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(row)
+    }
+
+    pub fn set_catalog_setting(&self, key: &str, value: &str) -> Result<()> {
+        let conn = self.get_connection()?;
+        conn.execute(
+            "INSERT INTO config (key, value) VALUES (?, ?)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP",
+            params![key, value],
+        )
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
     /// Enumerate every video that has known GPS coordinates. Used by the
     /// global-map view in both clients to render pins.
     pub fn list_videos_with_locations(&self) -> Result<Vec<VideoLocationRecord>> {
@@ -1094,6 +1184,12 @@ impl Database {
         // < 100km the approximation differs by < 1% from a great-circle
         // computation — well within "videos near this pin" tolerance.
         filter_location: Option<(f64, f64, f64)>,
+        // Lightroom-style user-mark filters. `filter_min_rating` of 0 means
+        // "no rating filter" (include unrated videos); 1..5 means "≥ this
+        // many stars". `filter_color_label` of "" means no filter; otherwise
+        // exact-match against the video's color_label.
+        filter_min_rating: i32,
+        filter_color_label: &str,
     ) -> Result<(Vec<VideoRecord>, i64)> {
         let conn = self.get_connection()?;
 
@@ -1120,6 +1216,10 @@ impl Database {
                             WHERE vt.video_id = v.id), '') {}",
                 direction
             ),
+            // Lightroom-style user-mark sorts. Unrated / unlabelled rows
+            // sort as 0 / '' respectively.
+            "rating" | "stars" => format!("COALESCE(um.rating, 0) {}", direction),
+            "color" | "color_label" | "label" => format!("COALESCE(um.color_label, '') {}", direction),
             _ => format!("v.filename {}", direction),
         };
 
@@ -1210,6 +1310,22 @@ impl Database {
             ""
         };
 
+        // Star-rating / color-label filters. The LEFT JOIN to video_user_marks
+        // happens unconditionally in the SQL below; the clauses here are
+        // appended only when the caller asks for them. COALESCE on the rating
+        // means rows with no marks default to 0 so "≥ 1" naturally excludes
+        // unrated videos.
+        let rating_clause = if filter_min_rating > 0 {
+            " AND COALESCE(um.rating, 0) >= ?"
+        } else {
+            ""
+        };
+        let color_clause = if filter_color_label.is_empty() {
+            ""
+        } else {
+            " AND COALESCE(um.color_label, '') = ?"
+        };
+
         // Helper to bind all dynamic params in order:
         // [location_param?, tag_id_1, tag_id_2, ..., tag_count?, camera?, lens?, codec?, year?, geo_min_lat?, geo_max_lat?, geo_min_lon?, geo_max_lon?]
         let mut bind: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
@@ -1240,12 +1356,19 @@ impl Database {
             bind.push(Box::new(min_lon));
             bind.push(Box::new(max_lon));
         }
+        if filter_min_rating > 0 {
+            bind.push(Box::new(filter_min_rating));
+        }
+        if !filter_color_label.is_empty() {
+            bind.push(Box::new(filter_color_label.to_string()));
+        }
 
         // ---- COUNT(*) ----
         let count_sql = format!(
             "SELECT COUNT(*) FROM videos v
              LEFT JOIN metadata m ON v.id = m.video_id
-             WHERE ({}){}{}{}{}{}{}{}",
+             LEFT JOIN video_user_marks um ON v.id = um.video_id
+             WHERE ({}){}{}{}{}{}{}{}{}{}",
             representative_filter,
             location_clause,
             tag_clause,
@@ -1253,7 +1376,9 @@ impl Database {
             lens_clause,
             codec_clause,
             year_clause,
-            geo_clause
+            geo_clause,
+            rating_clause,
+            color_clause
         );
         let count_params: Vec<&dyn rusqlite::ToSql> =
             bind.iter().map(|b| b.as_ref() as &dyn rusqlite::ToSql).collect();
@@ -1264,8 +1389,10 @@ impl Database {
         // ---- SELECT page ----
         let sql = format!(
             "SELECT v.id, v.path, v.filename, v.volume_id, v.hash, v.file_size_bytes, v.indexed_at, v.is_online
-             FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
-             WHERE ({}){}{}{}{}{}{}{}
+             FROM videos v
+             LEFT JOIN metadata m ON v.id = m.video_id
+             LEFT JOIN video_user_marks um ON v.id = um.video_id
+             WHERE ({}){}{}{}{}{}{}{}{}{}
              ORDER BY {} LIMIT ? OFFSET ?",
             representative_filter,
             location_clause,
@@ -1275,6 +1402,8 @@ impl Database {
             codec_clause,
             year_clause,
             geo_clause,
+            rating_clause,
+            color_clause,
             order_by
         );
 

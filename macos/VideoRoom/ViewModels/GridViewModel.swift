@@ -37,6 +37,17 @@ class GridViewModel: ObservableObject {
     @Published var filterCaptureYear: Int32 = 0
     @Published var filterOptions = FilterOptions()
 
+    // Lightroom-style user-mark filters.
+    //   filterMinRating: 0 = no filter; 1..5 = "show videos with ≥ N stars".
+    //   filterColorLabel: "" = no filter; otherwise exact-match the colour.
+    @Published var filterMinRating: Int32 = 0
+    @Published var filterColorLabel: String = ""
+
+    // Lightroom-style top-of-card stat slots. Exactly four entries — empty
+    // string means "blank slot". Defaults to a sensible set on first launch;
+    // overwritten by `loadGridSettings()` once the daemon answers.
+    @Published var topSlots: [String] = defaultGridTopSlots
+
     // Geographic proximity filter — set when the user taps a pin on the
     // global map. nil = no proximity filter active.
     @Published var filterLocation: GeoFilter? = nil
@@ -364,7 +375,9 @@ class GridViewModel: ObservableObject {
                 filterLens: filterLens,
                 filterCodec: filterCodec,
                 filterCaptureYear: filterCaptureYear,
-                geoFilter: geo
+                geoFilter: geo,
+                filterMinRating: filterMinRating,
+                filterColorLabel: filterColorLabel
             )
             if replace {
                 videos = results
@@ -439,6 +452,18 @@ class GridViewModel: ObservableObject {
         reloadFromTop()
     }
 
+    func setMinRatingFilter(_ n: Int32) {
+        guard filterMinRating != n else { return }
+        filterMinRating = n
+        reloadFromTop()
+    }
+
+    func setColorLabelFilter(_ label: String) {
+        guard filterColorLabel != label else { return }
+        filterColorLabel = label
+        reloadFromTop()
+    }
+
     func clearAllDropdownFilters() {
         var changed = false
         if !filterCamera.isEmpty { filterCamera = ""; changed = true }
@@ -446,6 +471,8 @@ class GridViewModel: ObservableObject {
         if !filterCodec.isEmpty { filterCodec = ""; changed = true }
         if filterCaptureYear != 0 { filterCaptureYear = 0; changed = true }
         if !filterTagId.isEmpty { filterTagId = ""; changed = true }
+        if filterMinRating != 0 { filterMinRating = 0; changed = true }
+        if !filterColorLabel.isEmpty { filterColorLabel = ""; changed = true }
         if changed { reloadFromTop() }
     }
 
@@ -952,6 +979,43 @@ class GridViewModel: ObservableObject {
         }
     }
 
+    /// Promote a video within an existing stack to become the
+    /// representative shown when the stack is collapsed. Wired from the
+    /// right-click "Set as Stack Master" menu item that appears only when
+    /// the right-clicked card is a non-representative member.
+    func setStackMaster(videoId: String, groupId: String) {
+        guard !videoId.isEmpty, !groupId.isEmpty else { return }
+        // Optimistic local update so the badge / grid order updates
+        // before the round-trip completes.
+        videos = videos.map { v in
+            if v.groupId == groupId {
+                return VideoSummary(
+                    id: v.id, filename: v.filename, path: v.path,
+                    width: v.width, height: v.height, durationMs: v.durationMs,
+                    fps: v.fps, codecVideo: v.codecVideo, codecAudio: v.codecAudio,
+                    bitrateKbps: v.bitrateKbps, sizeBytes: v.sizeBytes,
+                    indexedAt: v.indexedAt, creationDate: v.creationDate,
+                    tags: v.tags, hasThumbnail: v.hasThumbnail,
+                    groupId: v.groupId, groupSize: v.groupSize,
+                    groupPreferredId: videoId, groupPreferredPath: v.groupPreferredPath,
+                    proxyCount: v.proxyCount, proxyOf: v.proxyOf,
+                    playableNatively: v.playableNatively,
+                    rating: v.rating, colorLabel: v.colorLabel
+                )
+            }
+            return v
+        }
+        Task {
+            do {
+                _ = try await repository.setGroupPreferred(groupId: groupId, videoId: videoId)
+                refreshAfterStackChange(groupId: groupId)
+                reloadFromTop()  // representative changed → grid order may shift
+            } catch {
+                self.error = "Failed to set stack master: \(error.localizedDescription)"
+            }
+        }
+    }
+
     /// Disband an entire stack — ungroups every member, leaving each
     /// video standalone. Wired from the right-click "Unstack" menu
     /// item. We iterate via individual `UngroupVideo` calls rather than
@@ -1099,6 +1163,9 @@ class GridViewModel: ObservableObject {
         filterCodec = ""
         filterCaptureYear = 0
         filterOptions = FilterOptions()
+        filterMinRating = 0
+        filterColorLabel = ""
+        topSlots = defaultGridTopSlots
         thumbnails = [:]
         scrubFrames = [:]
         scrubLoading = []
@@ -1109,6 +1176,104 @@ class GridViewModel: ObservableObject {
         currentPage = 0
         filterLocation = nil
         videoLocations = []
+    }
+
+    // MARK: - User marks (rating + color label)
+
+    /// Apply a 0..5 star rating to one or more videos. Optimistically updates
+    /// the cached `videos` list so the UI redraws immediately, then sends the
+    /// RPC. The pattern mirrors how tag-add/-remove is handled today.
+    func setRating(_ rating: Int, for videoIds: [String]) {
+        let clamped = max(0, min(5, rating))
+        let ids = Set(videoIds.filter { !$0.isEmpty })
+        guard !ids.isEmpty else { return }
+        // Optimistic local update so the stars repaint without a round-trip.
+        videos = videos.map { v in
+            ids.contains(v.id) ? v.withRating(clamped) : v
+        }
+        Task {
+            do {
+                try await repository.updateVideoRating(videoIds: Array(ids), rating: clamped)
+            } catch {
+                self.error = "Failed to set rating: \(error.localizedDescription)"
+                // Don't roll back — server is the source of truth on next reload.
+            }
+        }
+    }
+
+    /// Apply a colour label to one or more videos. Empty string clears the
+    /// label. Optimistic update like [setRating].
+    func setColorLabel(_ label: String, for videoIds: [String]) {
+        let ids = Set(videoIds.filter { !$0.isEmpty })
+        guard !ids.isEmpty else { return }
+        videos = videos.map { v in
+            ids.contains(v.id) ? v.withColorLabel(label) : v
+        }
+        Task {
+            do {
+                try await repository.updateVideoColorLabel(videoIds: Array(ids), colorLabel: label)
+            } catch {
+                self.error = "Failed to set color label: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    /// Apply the rating to the current selection (or to the anchor when no
+    /// multi-select). Called by the keyboard handler for digits 0..5.
+    func setRatingOnSelection(_ rating: Int) {
+        let ids = selectedVideoIds.isEmpty
+            ? (selectedVideoId.map { [$0] } ?? [])
+            : selectedVideoIds
+        setRating(rating, for: ids)
+    }
+
+    /// Apply the colour label to the current selection. Used by the keyboard
+    /// handler for digits 6..9 and the backtick (clear).
+    func setColorLabelOnSelection(_ label: String) {
+        let ids = selectedVideoIds.isEmpty
+            ? (selectedVideoId.map { [$0] } ?? [])
+            : selectedVideoIds
+        setColorLabel(label, for: ids)
+    }
+
+    // MARK: - Grid layout settings (top-of-card stat slots)
+
+    /// Pull the saved 4-slot configuration from the catalog. Called once
+    /// after the catalog opens. Defaults survive an RPC failure so the grid
+    /// never starts in a broken state.
+    func loadGridSettings() {
+        Task {
+            do {
+                let raw = try await repository.getGridSettings()
+                let normalised = Self.normaliseSlots(raw)
+                await MainActor.run { self.topSlots = normalised }
+            } catch {
+                // Silent on failure — keep using defaults.
+            }
+        }
+    }
+
+    /// Persist the four-slot configuration. The optimistic local update
+    /// already happened when the picker mutated `topSlots`; this just
+    /// shoves the value across the wire.
+    func saveGridSettings() {
+        let slots = Self.normaliseSlots(topSlots)
+        Task {
+            do {
+                try await repository.updateGridSettings(topSlots: slots)
+            } catch {
+                self.error = "Failed to save grid settings: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    /// Pad / truncate any slot list to exactly four entries. Defends against
+    /// malformed server replies and against UI mistakes.
+    private static func normaliseSlots(_ raw: [String]) -> [String] {
+        var slots = raw
+        while slots.count < 4 { slots.append("") }
+        if slots.count > 4 { slots = Array(slots.prefix(4)) }
+        return slots
     }
 
     // MARK: - Geolocation

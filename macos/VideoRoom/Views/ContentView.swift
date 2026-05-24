@@ -111,6 +111,12 @@ struct ContentView: View {
                     // Delegate to DetailLoupeView via the toggle token.
                     detailPlayToggle += 1
                 }
+            },
+            onSetRating: { rating in
+                gridViewModel.setRatingOnSelection(rating)
+            },
+            onSetColorLabel: { label in
+                gridViewModel.setColorLabelOnSelection(label)
             }
         ))
         .sheet(isPresented: $showAddLibrarySheet) {
@@ -847,6 +853,8 @@ struct ContentView: View {
         gridViewModel.loadLibraryLocations()
         gridViewModel.loadTags()
         gridViewModel.loadFilterOptions()
+        // Per-catalog grid layout — the four top-of-card stat slots.
+        gridViewModel.loadGridSettings()
         // Pre-load both location-related data sources so the global-map
         // and location-picker sheets can open with the camera framed on
         // real data, not the (25, 0) global fallback.
@@ -907,6 +915,12 @@ struct GlobalKeyboardShortcuts: ViewModifier {
     let onCycleInfoOverlay: () -> Void
     /// Space bar — toggle inline playback (grid) or play/pause (detail).
     let onSpaceBar: () -> Void
+    /// Digits 0..5 — set a star rating on every selected video. 0 clears.
+    let onSetRating: (Int) -> Void
+    /// Digits 6..9 — apply a colour label (red / yellow / green / blue) to
+    /// every selected video. The receiver translates the digit into the
+    /// colour name; purple has no shortcut by design (right-click only).
+    let onSetColorLabel: (String) -> Void
 
     @State private var keyMonitor: Any?
     @State private var mouseMonitor: Any?
@@ -1000,6 +1014,9 @@ struct GlobalKeyboardShortcuts: ViewModifier {
             //   L (keyCode 37) → list mode
             //   D (keyCode 2)  → detail mode
             //   I (keyCode 34) → cycle info overlay
+            //   0..5           → Lightroom-style star rating (0 clears)
+            //   6..9           → Lightroom-style colour label
+            //   ` (50)         → clear colour label
             if mods.isEmpty {
                 switch event.keyCode {
                 case 49:
@@ -1016,6 +1033,25 @@ struct GlobalKeyboardShortcuts: ViewModifier {
                     return nil
                 case 34:
                     onCycleInfoOverlay()
+                    return nil
+                // Number-row digits. macOS keyCodes: 1=18, 2=19, 3=20, 4=21,
+                // 5=23, 6=22, 7=26, 8=28, 9=25, 0=29. Yes, 5 and 6 are
+                // out-of-order in the hardware map — that's Apple, not us.
+                case 18: onSetRating(1); return nil
+                case 19: onSetRating(2); return nil
+                case 20: onSetRating(3); return nil
+                case 21: onSetRating(4); return nil
+                case 23: onSetRating(5); return nil
+                case 29: onSetRating(0); return nil
+                case 22: onSetColorLabel("red"); return nil
+                case 26: onSetColorLabel("yellow"); return nil
+                case 28: onSetColorLabel("green"); return nil
+                case 25: onSetColorLabel("blue"); return nil
+                // Backtick (keyCode 50, the key left of the 1 on US layouts)
+                // clears the colour label. The right-click menu has a
+                // universal fallback for keyboards where this key is awkward.
+                case 50:
+                    onSetColorLabel("")
                     return nil
                 default:
                     break
@@ -1094,11 +1130,39 @@ struct FilterDropdowns: View {
                 )
                 .help("Show only videos whose capture date falls in this year. Pick \"---\" to clear.")
             }
+            // Lightroom-style rating filter: ≥ N stars.
+            FilterMenu(
+                label: "Rating",
+                values: ["≥1", "≥2", "≥3", "≥4", "5"],
+                selected: vm.filterMinRating == 0 ? "" : (vm.filterMinRating == 5 ? "5" : "≥\(vm.filterMinRating)"),
+                onSelect: { raw in
+                    let n: Int32
+                    if raw.isEmpty { n = 0 }
+                    else if raw == "5" { n = 5 }
+                    else { n = Int32(raw.dropFirst()) ?? 0 }
+                    vm.setMinRatingFilter(n)
+                }
+            )
+            .help("Show only videos at or above this star rating. Pick \"---\" to clear.")
+
+            // Lightroom-style colour-label filter.
+            FilterMenu(
+                label: "Color",
+                values: ColorLabel.allCases.filter { $0 != .none }.map { $0.displayName },
+                selected: ColorLabel(vm.filterColorLabel).displayName == "None"
+                    ? "" : ColorLabel(vm.filterColorLabel).displayName,
+                onSelect: { displayName in
+                    let label = ColorLabel.allCases.first { $0.displayName == displayName } ?? .none
+                    vm.setColorLabelFilter(label.rawValue)
+                }
+            )
+            .help("Show only videos with this colour label. Pick \"---\" to clear.")
+
             if anyActive {
                 Button("Clear") { vm.clearAllDropdownFilters() }
                     .buttonStyle(.borderless)
                     .controlSize(.small)
-                    .help("Clear all active filters (camera, lens, keyword, codec, year).")
+                    .help("Clear all active filters (camera, lens, keyword, codec, year, rating, colour).")
             }
         }
     }
@@ -1106,6 +1170,7 @@ struct FilterDropdowns: View {
     private var anyActive: Bool {
         !vm.filterCamera.isEmpty || !vm.filterLens.isEmpty || !vm.filterCodec.isEmpty
             || vm.filterCaptureYear != 0 || !vm.filterTagId.isEmpty
+            || vm.filterMinRating != 0 || !vm.filterColorLabel.isEmpty
     }
 }
 

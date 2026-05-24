@@ -72,9 +72,13 @@ struct GridView: View {
         )
 
         return ScrollView {
+            // Lightroom-style: edge-to-edge cards with zero gutters so the
+            // grid reads as a dense filmstrip. The `spacing: 0` on both axes
+            // here is the crucial half of the layout; the card itself drops
+            // its corner radius so adjacent cards share crisp 1 pt borders.
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: thumbnailMinWidth), spacing: 8)],
-                spacing: 8
+                columns: [GridItem(.adaptive(minimum: thumbnailMinWidth), spacing: 0)],
+                spacing: 0
             ) {
                 ForEach(Array(rendered.enumerated()), id: \.element.id) { index, item in
                     let multi = viewModel.selectedVideoIds
@@ -97,6 +101,7 @@ struct GridView: View {
                         isPlaying: viewModel.playingVideoId == item.video.id,
                         playPath: viewModel.playingVideoId == item.video.id
                             ? viewModel.playingVideoPath : nil,
+                        topSlots: viewModel.topSlots,
                         onClick: { shift, toggle in
                             handleClick(item: item, rendered: rendered, shift: shift, toggle: toggle)
                         },
@@ -115,6 +120,17 @@ struct GridView: View {
                         },
                         onStopPlayback: {
                             viewModel.stopPlayback()
+                        },
+                        onSetRating: { rating in
+                            viewModel.setRating(rating, for: [item.video.id])
+                        },
+                        onPickStatSlot: { slotIndex, key in
+                            guard slotIndex >= 0, slotIndex < 4 else { return }
+                            var slots = viewModel.topSlots
+                            while slots.count < 4 { slots.append("") }
+                            slots[slotIndex] = key
+                            viewModel.topSlots = slots
+                            viewModel.saveGridSettings()
                         },
                         dragPaths: cardDragPaths
                     )
@@ -138,7 +154,8 @@ struct GridView: View {
                         .gridCellColumns(99)
                 }
             }
-            .padding(8)
+            // Intentionally no .padding(...) here — the Lightroom-style grid
+            // fills the viewport flush to the edge.
         }
     }
 
@@ -266,6 +283,44 @@ struct GridView: View {
             .help("Filter the library panel to show only videos from \(loc.path)")
         }
 
+        // Lightroom-style user-mark submenus. Apply to the full multi-
+        // selection (`targetIds`) so the user can rate or label many
+        // videos at once. Star count uses 0..5 with "0 stars" reading as
+        // "clear rating" — same as the keyboard shortcut.
+        Divider()
+        Menu("Set Rating") {
+            ForEach((0...5).reversed(), id: \.self) { stars in
+                Button(stars == 0 ? "No rating" : String(repeating: "★", count: stars)) {
+                    viewModel.setRating(stars, for: targetIds)
+                }
+            }
+        }
+        Menu("Set Color Label") {
+            ForEach(ColorLabel.allCases) { label in
+                Button {
+                    viewModel.setColorLabel(label.rawValue, for: targetIds)
+                } label: {
+                    HStack {
+                        Circle()
+                            .fill(label == .none ? Color.gray.opacity(0.3) : label.swatch)
+                            .frame(width: 10, height: 10)
+                        Text(label.displayName)
+                    }
+                }
+            }
+        }
+
+        // Stack-master picker: surfaces only when the right-clicked card
+        // is part of an expanded stack. Lets the user promote a different
+        // variant to be the representative shown in the collapsed view.
+        if video.isInGroup && video.id != video.groupPreferredId {
+            Divider()
+            Button("Set as Stack Master") {
+                viewModel.setStackMaster(videoId: video.id, groupId: video.groupId)
+            }
+            .help("Make this video the representative shown when the stack is collapsed in the grid.")
+        }
+
         Divider()
 
         Button("Configure External Editors…") {
@@ -351,6 +406,9 @@ struct VideoCardView: View {
     let isPlaying: Bool
     /// Override URL for inline playback (proxy path). nil → `video.openPath`.
     let playPath: String?
+    /// The four catalog-scoped top-of-card stat-slot choices. Each entry is a
+    /// `GridStatKey.rawValue`; unknown strings render as blank.
+    let topSlots: [String]
     let onClick: (_ shift: Bool, _ toggle: Bool) -> Void
     let onStackBadgeClick: () -> Void
     let onHoverEnter: () -> Void
@@ -359,6 +417,13 @@ struct VideoCardView: View {
     let onPlayClick: () -> Void
     /// Fired when the ✕ stop button on the inline player is tapped.
     let onStopPlayback: () -> Void
+    /// Fired when one of the five rating positions is clicked. Receives the
+    /// new rating (0..5); the card-tap handler is responsible for translating
+    /// "click same position twice" into a clear (rating - 1).
+    let onSetRating: (_ rating: Int) -> Void
+    /// Fired when the user right-clicks a top stat slot and picks a new key.
+    /// The closure receives the slot index (0..3) and the new stat key.
+    let onPickStatSlot: (_ slotIndex: Int, _ statKey: String) -> Void
     /// Paths to drag when the user drags this card out. When the card is part
     /// of a multi-selection, every selected file is included so the receiving
     /// app gets the full set in one drop.
@@ -531,44 +596,32 @@ struct VideoCardView: View {
     }
 
     var body: some View {
+        // Lightroom-style three-band layout: stats above, square thumbnail in
+        // the middle, rating below. Card width tracks the LazyVGrid item
+        // width; both bands' widths track the thumbnail's edge naturally.
         VStack(alignment: .leading, spacing: 0) {
-            // Thumbnail area — always 16:9
-            thumbnailArea
-                .aspectRatio(16 / 9, contentMode: .fit)
+            topStatBand
+                .frame(height: 70)
                 .frame(maxWidth: .infinity)
-
-            // Info area — fixed height regardless of card width.
-            // Top inset is wider than the other three because SwiftUI's
-            // `Text` ascender sits very close to the top of the layout
-            // frame, so the filename reads as "touching" the thumbnail
-            // when padded uniformly. The Kotlin client doesn't see this
-            // because Material 3's Text adds extra built-in leading on
-            // top, so a uniform 8 dp inset already looks comfortable
-            // over there.
-            VStack(alignment: .leading, spacing: 2) {
-                Text(video.filename)
-                    .font(.system(size: 11))
-                    .lineLimit(2)
-                    .foregroundColor(.primary)
-                Text("\(video.codecVideo.isEmpty ? "?" : video.codecVideo) • \(Int(video.fps))fps")
-                    .font(.system(size: 10))
-                    .lineLimit(1)
-                    .foregroundColor(.secondary)
-            }
-            .padding(EdgeInsets(top: 12, leading: 8, bottom: 8, trailing: 8))
-            .frame(maxWidth: .infinity, alignment: .leading)
+                .background(bandBackground)
+            thumbnailArea
+                .aspectRatio(1, contentMode: .fit) // square inside the card
+                .frame(maxWidth: .infinity)
+            ratingBand
+                .frame(height: 50)
+                .frame(maxWidth: .infinity)
+                .background(bandBackground)
         }
-        .background(cardBackground)
         // Hover tint applied as a SwiftUI overlay so SwiftUI handles
-        // compositing in the correct appearance context — the previous
-        // pre-blended NSColor approach baked in the *light-mode* base
-        // colour, producing a near-white card in dark mode.
+        // compositing in the correct appearance context.
         .overlay(Color.white.opacity(hoverOverlayAlpha))
+        // 1 pt separator between adjacent cards. Lightroom uses a thin dark
+        // line; this keeps neighbouring unselected cards visually distinct
+        // without re-introducing the old chunky accent border.
         .overlay(
-            RoundedRectangle(cornerRadius: 6)
-                .stroke(borderColor, lineWidth: borderWidth)
+            Rectangle()
+                .stroke(Color(NSColor.separatorColor).opacity(0.5), lineWidth: 0.5)
         )
-        .cornerRadius(6)
         // Custom popup tooltip — we own the timing end-to-end rather
         // than relying on NSView's system tooltip, whose delay isn't
         // tunable per-view and was either firing during scrubs or
@@ -721,11 +774,129 @@ struct VideoCardView: View {
         }
     }
 
-    private var cardBackground: Color {
+    /// Lightroom-style band background: anchor cards get the fully-saturated
+    /// label swatch (or a bright neutral hi-light if unlabelled), secondary-
+    /// selected cards get a mid-brightness tint, and unselected cards either
+    /// keep their dimmed label tint (if labelled) or fall through to the
+    /// panel's surface color.
+    private var bandBackground: Color {
+        let label = ColorLabel(video.colorLabel)
+        if isAnchor || (isPrimarySelected && !isInMultiSelection) {
+            // Anchor — brightest. Even an unlabelled anchor gets a clearly
+            // visible neutral hi-light so the user can tell what's selected.
+            return label == .none ? Color(white: 0.32) : label.swatch
+        }
+        if isInMultiSelection {
+            return label == .none ? Color(white: 0.24) : label.secondary
+        }
         if isInExpandedStack {
+            // Expanded-stack members keep a subtle accent tint to read as
+            // part of the group, regardless of label.
             return Color.accentColor.opacity(0.13)
         }
+        if label != .none {
+            return label.dimmed
+        }
         return Color(.controlBackgroundColor)
+    }
+
+    // Kept for backwards compatibility with code paths that haven't been
+    // updated to use bandBackground (e.g. thumbnailArea's fallback).
+    private var cardBackground: Color { bandBackground }
+
+    // MARK: - Top stat band
+
+    /// Two-column stack of four stat cells (top-left / mid-left / top-right
+    /// / mid-right). Each cell is right-clickable to pick which stat it
+    /// shows; the choice applies to every card via the catalog-scoped
+    /// `topSlots` configuration.
+    @ViewBuilder
+    private var topStatBand: some View {
+        let slots = padSlots(topSlots)
+        HStack(alignment: .top, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                statCell(slotIndex: 0, key: slots[0])
+                statCell(slotIndex: 1, key: slots[1])
+            }
+            Spacer(minLength: 4)
+            VStack(alignment: .trailing, spacing: 2) {
+                statCell(slotIndex: 2, key: slots[2])
+                statCell(slotIndex: 3, key: slots[3])
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+    }
+
+    /// A single stat cell. `slotIndex` is 0..3; `key` is the GridStatKey
+    /// raw value that drives both the label and the picker preselection.
+    @ViewBuilder
+    private func statCell(slotIndex: Int, key: String) -> some View {
+        let stat = GridStatKey(rawValue: key) ?? .none
+        let value = stat.value(for: video)
+        Text(value.isEmpty ? " " : value)
+            .font(.system(size: 11, weight: slotIndex == 0 ? .semibold : .regular))
+            .foregroundColor(value.isEmpty ? .clear : .primary)
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .contextMenu {
+                ForEach(GridStatKey.allCases) { choice in
+                    Button {
+                        onPickStatSlot(slotIndex, choice.rawValue)
+                    } label: {
+                        if choice == stat {
+                            Label(choice.displayName, systemImage: "checkmark")
+                        } else {
+                            Text(choice.displayName)
+                        }
+                    }
+                }
+            }
+    }
+
+    /// Ensure we always render four cells even if the server / VM hands us
+    /// fewer entries (defensive).
+    private func padSlots(_ raw: [String]) -> [String] {
+        var slots = raw
+        while slots.count < 4 { slots.append("") }
+        if slots.count > 4 { slots = Array(slots.prefix(4)) }
+        return slots
+    }
+
+    // MARK: - Rating band
+
+    /// Five tappable star/dot positions along the bottom of the card.
+    /// Clicking position N sets the rating to N; clicking position N when
+    /// the current rating is already N clears (rating - 1) — Lightroom's
+    /// toggle-off semantics. Position 0 doesn't exist; the band itself
+    /// (outside the stars) is non-interactive.
+    @ViewBuilder
+    private var ratingBand: some View {
+        HStack(spacing: 6) {
+            ForEach(1...5, id: \.self) { position in
+                Button {
+                    if video.rating == position {
+                        onSetRating(position - 1)  // toggle off
+                    } else {
+                        onSetRating(position)
+                    }
+                } label: {
+                    if position <= video.rating {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(red: 0.95, green: 0.78, blue: 0.20))
+                    } else {
+                        Image(systemName: "circle.fill")
+                            .font(.system(size: 4))
+                            .foregroundColor(Color.secondary.opacity(0.5))
+                    }
+                }
+                .buttonStyle(.plain)
+                .frame(width: 16, height: 16)
+                .contentShape(Rectangle())  // hit area covers the full cell
+            }
+        }
+        .frame(maxWidth: .infinity)
     }
 
     /// White overlay alpha used to indicate hover. Composed by SwiftUI on
@@ -861,35 +1032,36 @@ struct VideoCardView: View {
                           : "Expand this stack to see all \(video.groupSize) variants inline.")
             }
 
-            // Proxy badge — sibling to the stack badge but placed on the
-            // bottom-left so it doesn't collide. Tooltip explains that
-            // the user has lower-resolution variants available for
-            // inline playback. Non-interactive for now — the right
-            // panel's proxy section is where management happens.
-            if video.hasProxies {
-                VStack {
-                    Spacer()
-                    HStack {
-                        proxyBadge
-                            .padding(6)
-                            .help(video.playableNatively
-                                ? "This video has \(video.proxyCount) lower-resolution proxy/proxies. They can be played inline if the original is too large to load smoothly."
-                                : "This video is above your inline-playback ceiling (\(video.height) px). \(video.proxyCount) proxy/proxies available.")
-                        Spacer()
-                    }
-                }
-            }
-
-            // Resolution + duration badges (top-right and bottom-right)
+            // Bottom-right icon row — Lightroom-style. The old proxy / resolution /
+            // duration chips have been retired; users who want resolution
+            // or duration on the card put them in one of the four
+            // configurable top stat slots. This corner keeps the at-a-
+            // glance "has keywords" and "has proxies" indicators visible
+            // without crowding the thumbnail.
             VStack {
-                HStack {
-                    Spacer()
-                    badgeText(video.height > 0 ? "\(video.height)p" : "?")
-                }
                 Spacer()
                 HStack {
                     Spacer()
-                    badgeText(video.durationFormatted)
+                    HStack(spacing: 4) {
+                        if !video.tags.isEmpty {
+                            Image(systemName: "tag.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white)
+                                .padding(3)
+                                .background(Color.black.opacity(0.55))
+                                .clipShape(Circle())
+                                .help("\(video.tags.count) keyword\(video.tags.count == 1 ? "" : "s")")
+                        }
+                        if video.hasProxies {
+                            Image(systemName: "rectangle.on.rectangle.angled")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white)
+                                .padding(3)
+                                .background(Color.black.opacity(0.55))
+                                .clipShape(Circle())
+                                .help("\(video.proxyCount) proxy/proxies available for inline playback.")
+                        }
+                    }
                 }
             }
             .padding(6)
@@ -898,9 +1070,7 @@ struct VideoCardView: View {
             // Shown when the server's `playableNatively` is false (video
             // height exceeds the configured max-native-playback-height)
             // AND no proxy exists. When a proxy is available the play
-            // button quietly routes through the smallest proxy, so
-            // there's no "can't play this" state for the user to know
-            // about.
+            // button quietly routes through the smallest proxy.
             if !video.playableNatively && !video.hasProxies {
                 VStack {
                     Spacer()
@@ -915,7 +1085,7 @@ struct VideoCardView: View {
                             .cornerRadius(4)
                         Spacer()
                     }
-                    .padding(.bottom, 28) // sit above the duration badge
+                    .padding(.bottom, 28) // sit above the icon row
                 }
             }
         }

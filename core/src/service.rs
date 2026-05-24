@@ -171,6 +171,9 @@ impl VideoRoomService {
 
         let tags = db.get_video_tags(video_id).unwrap_or_default();
         let notes = db.get_notes(video_id).unwrap_or_default().unwrap_or_default();
+        let (rating, color_label) = db
+            .get_video_user_marks(video_id)
+            .unwrap_or((0, String::new()));
 
         let row = metadata_row;
 
@@ -212,6 +215,8 @@ impl VideoRoomService {
             notes,
             volume_id: video.volume_id.unwrap_or_default(),
             is_online: video.is_online != 0,
+            rating,
+            color_label,
         })
     }
 
@@ -279,6 +284,13 @@ impl VideoRoomService {
             None => (String::new(), 1, String::new(), String::new()),
         };
 
+        // Lightroom-style user marks (rating + color label). Defaults to
+        // (0, "") when no row exists for this video.
+        let (rating, color_label) = self
+            .db
+            .get_video_user_marks(video_id)
+            .unwrap_or((0, String::new()));
+
         VideoSummary {
             id: video_id.to_string(),
             filename: filename.to_string(),
@@ -302,6 +314,8 @@ impl VideoRoomService {
             proxy_of,
             playable_natively: self.config.max_native_playback_height == 0
                 || height <= self.config.max_native_playback_height,
+            rating,
+            color_label,
         }
     }
 }
@@ -371,6 +385,8 @@ impl VideoRoomTrait for VideoRoomService {
                 &req.filter_codec,
                 req.filter_capture_year,
                 geo_filter,
+                req.filter_min_rating,
+                &req.filter_color_label,
             )
             .map_err(Status::from)?;
 
@@ -1088,6 +1104,110 @@ impl VideoRoomTrait for VideoRoomService {
         Ok(Response::new(videoroom::Response {
             success: true,
             message: "Notes updated".to_string(),
+            error: String::new(),
+        }))
+    }
+
+    async fn update_video_rating(
+        &self,
+        request: Request<videoroom::UpdateVideoRatingRequest>,
+    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+        let req = request.into_inner();
+        if !(0..=5).contains(&req.rating) {
+            return Err(Status::invalid_argument(
+                "rating must be between 0 and 5 (inclusive)",
+            ));
+        }
+        if req.video_ids.is_empty() {
+            return Err(Status::invalid_argument("video_ids must be non-empty"));
+        }
+        let count = req.video_ids.len();
+        for id in &req.video_ids {
+            self.db
+                .update_video_rating(id, req.rating)
+                .map_err(Status::from)?;
+        }
+        Ok(Response::new(videoroom::Response {
+            success: true,
+            message: format!("Rating set to {} on {} video(s)", req.rating, count),
+            error: String::new(),
+        }))
+    }
+
+    async fn update_video_color_label(
+        &self,
+        request: Request<videoroom::UpdateVideoColorLabelRequest>,
+    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+        let req = request.into_inner();
+        // Allowed label set kept in sync with the clients' `ColorLabel` enum.
+        const ALLOWED: &[&str] = &["", "red", "yellow", "green", "blue", "purple"];
+        if !ALLOWED.contains(&req.color_label.as_str()) {
+            return Err(Status::invalid_argument(format!(
+                "color_label must be one of {:?}",
+                ALLOWED
+            )));
+        }
+        if req.video_ids.is_empty() {
+            return Err(Status::invalid_argument("video_ids must be non-empty"));
+        }
+        let count = req.video_ids.len();
+        for id in &req.video_ids {
+            self.db
+                .update_video_color_label(id, &req.color_label)
+                .map_err(Status::from)?;
+        }
+        let displayed_label = if req.color_label.is_empty() { "(none)" } else { req.color_label.as_str() };
+        Ok(Response::new(videoroom::Response {
+            success: true,
+            message: format!("Color label '{}' applied to {} video(s)", displayed_label, count),
+            error: String::new(),
+        }))
+    }
+
+    async fn get_grid_settings(
+        &self,
+        _request: Request<videoroom::GetGridSettingsRequest>,
+    ) -> std::result::Result<Response<videoroom::GridSettings>, Status> {
+        // Catalog-scoped value lives in the existing `config` table under
+        // a stable key. Serialised as a `,`-delimited list of 4 slot keys.
+        // Missing → defaults the client uses, which keeps older catalogs
+        // working without an explicit "set defaults" round-trip.
+        let raw = self
+            .db
+            .get_catalog_setting("grid_top_slots")
+            .map_err(Status::from)?
+            .unwrap_or_default();
+        let mut slots: Vec<String> = if raw.is_empty() {
+            Vec::new()
+        } else {
+            raw.split(',').map(|s| s.to_string()).collect()
+        };
+        // Pad / truncate to exactly four entries so the client doesn't have
+        // to defend against malformed values.
+        while slots.len() < 4 {
+            slots.push(String::new());
+        }
+        slots.truncate(4);
+        Ok(Response::new(videoroom::GridSettings { top_slots: slots }))
+    }
+
+    async fn update_grid_settings(
+        &self,
+        request: Request<videoroom::GridSettings>,
+    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+        let req = request.into_inner();
+        if req.top_slots.len() != 4 {
+            return Err(Status::invalid_argument(
+                "top_slots must contain exactly four entries (use \"\" for blank)",
+            ));
+        }
+        let serialised = req.top_slots.join(",");
+        self.db
+            .set_catalog_setting("grid_top_slots", &serialised)
+            .map_err(Status::from)?;
+        Ok(Response::new(videoroom::Response {
+            success: true,
+            message: "Grid settings saved".to_string(),
             error: String::new(),
         }))
     }

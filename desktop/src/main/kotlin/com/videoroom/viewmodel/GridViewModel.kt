@@ -85,6 +85,19 @@ class GridViewModel(
     private val _filterCaptureYear = MutableStateFlow(0)
     val filterCaptureYear: StateFlow<Int> = _filterCaptureYear.asStateFlow()
 
+    // Lightroom-style user-mark filters. `_filterMinRating` of 0 = no filter;
+    // 1..5 = "show videos with at least N stars". `_filterColorLabel` of ""
+    // = no filter; otherwise exact-match the colour name.
+    private val _filterMinRating = MutableStateFlow(0)
+    val filterMinRating: StateFlow<Int> = _filterMinRating.asStateFlow()
+    private val _filterColorLabel = MutableStateFlow("")
+    val filterColorLabel: StateFlow<String> = _filterColorLabel.asStateFlow()
+
+    // Lightroom-style top-of-card slot configuration. Four entries, each a
+    // GridStatKey.raw value. Defaults until `loadGridSettings` answers.
+    private val _topSlots = MutableStateFlow(com.videoroom.data.models.defaultGridTopSlots)
+    val topSlots: StateFlow<List<String>> = _topSlots.asStateFlow()
+
     // Distinct values fetched from the backend to populate the dropdowns.
     private val _filterOptions = MutableStateFlow(com.videoroom.data.models.FilterOptions())
     val filterOptions: StateFlow<com.videoroom.data.models.FilterOptions> = _filterOptions.asStateFlow()
@@ -382,6 +395,8 @@ class GridViewModel(
                         filterCodec = _filterCodec.value,
                         filterCaptureYear = _filterCaptureYear.value,
                         geoFilter = _filterLocation.value,
+                        filterMinRating = _filterMinRating.value,
+                        filterColorLabel = _filterColorLabel.value,
                     )
                 }
 
@@ -438,6 +453,8 @@ class GridViewModel(
                         filterCodec = _filterCodec.value,
                         filterCaptureYear = _filterCaptureYear.value,
                         geoFilter = _filterLocation.value,
+                        filterMinRating = _filterMinRating.value,
+                        filterColorLabel = _filterColorLabel.value,
                     )
                 }
 
@@ -643,6 +660,18 @@ class GridViewModel(
         loadVideos()
     }
 
+    fun setMinRatingFilter(n: Int) {
+        if (_filterMinRating.value == n) return
+        _filterMinRating.value = n
+        loadVideos()
+    }
+
+    fun setColorLabelFilter(label: String) {
+        if (_filterColorLabel.value == label) return
+        _filterColorLabel.value = label
+        loadVideos()
+    }
+
     fun clearAllDropdownFilters() {
         var changed = false
         if (_filterCamera.value.isNotEmpty()) { _filterCamera.value = ""; changed = true }
@@ -650,7 +679,105 @@ class GridViewModel(
         if (_filterCodec.value.isNotEmpty()) { _filterCodec.value = ""; changed = true }
         if (_filterCaptureYear.value != 0) { _filterCaptureYear.value = 0; changed = true }
         if (_filterLocation.value != null) { _filterLocation.value = null; changed = true }
+        if (_filterMinRating.value != 0) { _filterMinRating.value = 0; changed = true }
+        if (_filterColorLabel.value.isNotEmpty()) { _filterColorLabel.value = ""; changed = true }
         if (changed) loadVideos()
+    }
+
+    // --- Lightroom-style user marks ---
+
+    /** Apply a 0..5 star rating to the given videos. Optimistic local update
+     *  followed by an RPC; the cached list is replaced in-place so the
+     *  grid repaints immediately. */
+    fun setRating(rating: Int, videoIds: List<String>) {
+        val clamped = rating.coerceIn(0, 5)
+        val ids = videoIds.filter { it.isNotEmpty() }.toSet()
+        if (ids.isEmpty()) return
+        _videos.value = _videos.value.map { v ->
+            if (v.id in ids) v.copy(rating = clamped) else v
+        }
+        viewModelScope.launch {
+            try {
+                repository.updateVideoRating(ids.toList(), clamped)
+            } catch (e: Exception) {
+                logger.error("setRating failed: ${e.message}", e)
+            }
+        }
+    }
+
+    /** Apply a colour label to the given videos. Empty string clears. */
+    fun setColorLabel(label: String, videoIds: List<String>) {
+        val ids = videoIds.filter { it.isNotEmpty() }.toSet()
+        if (ids.isEmpty()) return
+        _videos.value = _videos.value.map { v ->
+            if (v.id in ids) v.copy(colorLabel = label) else v
+        }
+        viewModelScope.launch {
+            try {
+                repository.updateVideoColorLabel(ids.toList(), label)
+            } catch (e: Exception) {
+                logger.error("setColorLabel failed: ${e.message}", e)
+            }
+        }
+    }
+
+    /** Apply the rating to the current selection. Wired from the keyboard
+     *  handler for digits 0..5. Falls back to the anchor when no multi-select. */
+    fun setRatingOnSelection(rating: Int) {
+        val ids = if (_selectedVideoIds.value.isNotEmpty()) {
+            _selectedVideoIds.value
+        } else {
+            _selectedVideoId.value?.let { listOf(it) } ?: emptyList()
+        }
+        setRating(rating, ids)
+    }
+
+    /** Apply the colour label to the current selection. Wired from the
+     *  keyboard handler for digits 6..9 and backtick (clear). */
+    fun setColorLabelOnSelection(label: String) {
+        val ids = if (_selectedVideoIds.value.isNotEmpty()) {
+            _selectedVideoIds.value
+        } else {
+            _selectedVideoId.value?.let { listOf(it) } ?: emptyList()
+        }
+        setColorLabel(label, ids)
+    }
+
+    // --- Grid layout settings (top-of-card stat slots) ---
+
+    /** Pull the saved 4-slot configuration from the catalog. Defaults
+     *  survive an RPC failure so the grid never starts broken. */
+    fun loadGridSettings() {
+        viewModelScope.launch {
+            try {
+                val raw = repository.getGridSettings()
+                _topSlots.value = normaliseSlots(raw)
+            } catch (e: Exception) {
+                logger.warn("loadGridSettings failed: ${e.message}", e)
+            }
+        }
+    }
+
+    /** Update one slot's stat key and persist the full set to the catalog. */
+    fun updateGridTopSlot(slotIndex: Int, statKey: String) {
+        if (slotIndex !in 0..3) return
+        val current = normaliseSlots(_topSlots.value).toMutableList()
+        current[slotIndex] = statKey
+        _topSlots.value = current.toList()
+        viewModelScope.launch {
+            try {
+                repository.updateGridSettings(current.toList())
+            } catch (e: Exception) {
+                logger.error("updateGridSettings failed: ${e.message}", e)
+            }
+        }
+    }
+
+    /** Pad / truncate any list to exactly four entries. */
+    private fun normaliseSlots(raw: List<String>): List<String> {
+        val padded = raw.toMutableList()
+        while (padded.size < 4) padded.add("")
+        return padded.take(4)
     }
 
     /** Apply (or clear) the geographic proximity filter and reload the grid.
@@ -956,6 +1083,27 @@ class GridViewModel(
                 refreshAfterStackChange(groupId)
             } catch (e: Exception) {
                 _error.value = "Failed to unstack: ${e.message}"
+            }
+        }
+    }
+
+    /** Promote a video within an existing stack to become the
+     *  representative shown when the stack is collapsed. Wired from the
+     *  right-click "Set as Stack Master" menu item. */
+    fun setStackMaster(videoId: String, groupId: String) {
+        if (videoId.isEmpty() || groupId.isEmpty()) return
+        // Optimistic local update so the badge / order changes before
+        // the round-trip completes.
+        _videos.value = _videos.value.map { v ->
+            if (v.groupId == groupId) v.copy(groupPreferredId = videoId) else v
+        }
+        viewModelScope.launch {
+            try {
+                repository.setGroupPreferred(groupId, videoId)
+                refreshAfterStackChange(groupId)
+                loadVideos()  // representative changed → grid order may shift
+            } catch (e: Exception) {
+                _error.value = "Failed to set stack master: ${e.message}"
             }
         }
     }
@@ -1524,6 +1672,9 @@ class GridViewModel(
         _filterCodec.value = ""
         _filterCaptureYear.value = 0
         _filterOptions.value = com.videoroom.data.models.FilterOptions()
+        _filterMinRating.value = 0
+        _filterColorLabel.value = ""
+        _topSlots.value = com.videoroom.data.models.defaultGridTopSlots
         _thumbnails.value = emptyMap()
         _scrubFrames.value = emptyMap()
         _scanStatus.value = null

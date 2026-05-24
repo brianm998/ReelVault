@@ -86,6 +86,19 @@ service VideoRoom {
   // client asks for it.
   rpc UpdateVideoCaptureDate(UpdateVideoCaptureDateRequest) returns (Response);
 
+  // Lightroom-style user marks. The grid renders the rating as star/dots
+  // along the bottom of each card, and the color label as the band-color
+  // around the card. Both take a list of video IDs so a multi-select keyboard
+  // shortcut applies in a single round-trip.
+  rpc UpdateVideoRating(UpdateVideoRatingRequest) returns (Response);
+  rpc UpdateVideoColorLabel(UpdateVideoColorLabelRequest) returns (Response);
+
+  // Grid layout preferences — per-catalog so two clients open against the
+  // same catalog show the same top-of-card stat slots. GridSettings carries
+  // exactly four slot keys (empty string = unset / blank slot).
+  rpc GetGridSettings(GetGridSettingsRequest) returns (GridSettings);
+  rpc UpdateGridSettings(GridSettings) returns (Response);
+
   // Live catalog change events. Subscribe once on connect to receive a
   // never-ending stream of `CatalogEvent`s as the daemon's file watcher
   // adds, modifies, or removes videos in the background. The client uses
@@ -129,6 +142,12 @@ message ListVideosRequest {
   double filter_latitude = 13;
   double filter_longitude = 14;
   double filter_radius_km = 15;
+  // Lightroom-style user-mark filters.
+  //   filter_min_rating: 0 = no filter; 1..5 = "≥ this many stars".
+  //   filter_color_label: "" = no filter; otherwise exact match
+  //     against one of "red" | "yellow" | "green" | "blue" | "purple".
+  int32 filter_min_rating = 16;
+  string filter_color_label = 17;
 }
 
 message VideoSummary {
@@ -162,6 +181,12 @@ message VideoSummary {
   int32 proxy_count = 19;
   string proxy_of = 20;
   bool playable_natively = 21;
+  // Lightroom-style user marks. `rating` is 0..5 (0 means unrated).
+  // `color_label` is "" (no label) or one of "red" / "yellow" / "green" /
+  // "blue" / "purple". The grid renders rating as stars/dots in the bottom
+  // band and color_label as the band's tint.
+  int32 rating = 22;
+  string color_label = 23;
 }
 
 message ListVideosResponse {
@@ -229,6 +254,11 @@ message VideoMetadata {
   // Volume info
   string volume_id = 27;
   bool is_online = 28;
+
+  // Lightroom-style user marks (mirror of VideoSummary.rating /
+  // color_label so the detail panel doesn't need a second lookup).
+  int32 rating = 29;
+  string color_label = 30;
 }
 
 message GetThumbnailRequest {
@@ -718,6 +748,41 @@ message WatchSettings {
   // can't deliver events (NFS / SMB / SAN). 0 disables the poll
   // fallback entirely. Default 30 000 ms.
   int64 poll_interval_ms = 3;
+}
+
+// --- Lightroom-style user marks ---
+
+// Apply a rating (0..5) to one or more videos. Sending video_ids of length
+// > 1 lets the keyboard shortcut "press 5 with N cards selected" land in
+// a single round-trip. `rating` of 0 means "unrated" (clear).
+message UpdateVideoRatingRequest {
+  repeated string video_ids = 1;
+  int32 rating = 2;          // 0..5
+}
+
+// Apply a color label to one or more videos. `color_label` must be one of
+// "" (no label / clear), "red", "yellow", "green", "blue", "purple". The
+// daemon validates and rejects unknown values.
+message UpdateVideoColorLabelRequest {
+  repeated string video_ids = 1;
+  string color_label = 2;
+}
+
+// --- Grid layout preferences (per-catalog) ---
+
+// GridSettings carries the catalog-scoped layout configuration that needs
+// to be shared between clients opening the same catalog. Today it only
+// covers the four configurable top-of-card stat slots; future fields can
+// be added here without bumping a major version.
+message GetGridSettingsRequest {}
+
+message GridSettings {
+  // Exactly four entries, one per slot (top-left, mid-left, top-right,
+  // mid-right). Each is a stat key the client knows how to render — e.g.
+  // "filename", "file_size", "resolution", "fps", "camera_model". Empty
+  // string ("") means "blank slot". Both clients ship the same set of
+  // recognized keys; unknown keys render as blank.
+  repeated string top_slots = 1;
 }
 
 // Generic responses

@@ -101,7 +101,9 @@ class VideoRepository(
             groupPreferredPath = proto.groupPreferredPath,
             proxyCount = proto.proxyCount,
             proxyOf = proto.proxyOf,
-            playableNatively = proto.playableNatively
+            playableNatively = proto.playableNatively,
+            rating = proto.rating,
+            colorLabel = proto.colorLabel,
         )
     }
 
@@ -134,7 +136,9 @@ class VideoRepository(
             collections = proto.collectionsList.toList(),
             notes = proto.notes,
             volumeId = proto.volumeId,
-            isOnline = proto.isOnline
+            isOnline = proto.isOnline,
+            rating = proto.rating,
+            colorLabel = proto.colorLabel,
         )
     }
 
@@ -153,6 +157,10 @@ class VideoRepository(
         /** Set non-null to filter to videos within `geoFilter.third` km of
          *  (lat, lon). Used when the user taps a pin on the global map. */
         geoFilter: Triple<Double, Double, Double>? = null,
+        /** 0 = no rating filter; 1..5 = "show videos with at least this rating". */
+        filterMinRating: Int = 0,
+        /** "" = no colour filter; otherwise exact-match the label. */
+        filterColorLabel: String = "",
     ): Pair<List<VideoSummary>, Long> = withContext(Dispatchers.IO) {
         val s = stub ?: return@withContext Pair(emptyList(), 0L)
         try {
@@ -168,6 +176,8 @@ class VideoRepository(
                 .setFilterLens(filterLens)
                 .setFilterCodec(filterCodec)
                 .setFilterCaptureYear(filterCaptureYear)
+                .setFilterMinRating(filterMinRating)
+                .setFilterColorLabel(filterColorLabel)
             if (geoFilter != null) {
                 builder
                     .setFilterByLocation(true)
@@ -1022,6 +1032,73 @@ class VideoRepository(
         } catch (e: Exception) {
             logger.error("GetCurrentCatalog failed: ${e.message}", e)
             CatalogInfo.Closed
+        }
+    }
+
+    // --- Lightroom-style user marks ---
+
+    /** Apply a 0..5 star rating to one or more videos in a single round-trip. */
+    suspend fun updateVideoRating(videoIds: List<String>, rating: Int): Boolean =
+        withContext(Dispatchers.IO) {
+            val s = stub ?: return@withContext false
+            try {
+                val request = Videoroom.UpdateVideoRatingRequest.newBuilder()
+                    .addAllVideoIds(videoIds)
+                    .setRating(rating)
+                    .build()
+                val response = s.updateVideoRating(request)
+                response.success
+            } catch (e: Exception) {
+                logger.error("UpdateVideoRating failed: ${e.message}", e)
+                false
+            }
+        }
+
+    /** Apply a colour label to one or more videos. Empty string clears. */
+    suspend fun updateVideoColorLabel(videoIds: List<String>, colorLabel: String): Boolean =
+        withContext(Dispatchers.IO) {
+            val s = stub ?: return@withContext false
+            try {
+                val request = Videoroom.UpdateVideoColorLabelRequest.newBuilder()
+                    .addAllVideoIds(videoIds)
+                    .setColorLabel(colorLabel)
+                    .build()
+                val response = s.updateVideoColorLabel(request)
+                response.success
+            } catch (e: Exception) {
+                logger.error("UpdateVideoColorLabel failed: ${e.message}", e)
+                false
+            }
+        }
+
+    // --- Grid settings (catalog-scoped top-of-card slot config) ---
+
+    /** Fetch the catalog's saved top-of-card slot configuration. Always
+     *  returns exactly four entries; the server pads / truncates as needed. */
+    suspend fun getGridSettings(): List<String> = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext defaultGridTopSlots
+        try {
+            val response = s.getGridSettings(Videoroom.GetGridSettingsRequest.newBuilder().build())
+            response.topSlotsList.toList()
+        } catch (e: Exception) {
+            logger.error("GetGridSettings failed: ${e.message}", e)
+            defaultGridTopSlots
+        }
+    }
+
+    /** Persist the four-slot configuration. Both clients pick it up the next
+     *  time they open the same catalog (or via a follow-up GetGridSettings). */
+    suspend fun updateGridSettings(topSlots: List<String>): Boolean = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext false
+        try {
+            val request = Videoroom.GridSettings.newBuilder()
+                .addAllTopSlots(topSlots)
+                .build()
+            val response = s.updateGridSettings(request)
+            response.success
+        } catch (e: Exception) {
+            logger.error("UpdateGridSettings failed: ${e.message}", e)
+            false
         }
     }
 

@@ -2,6 +2,7 @@
 // Copyright (C) 2026 VideoRoom Contributors
 
 import Foundation
+import SwiftUI
 
 struct VideoSummary: Identifiable, Hashable {
     let id: String
@@ -34,6 +35,11 @@ struct VideoSummary: Identifiable, Hashable {
     let proxyCount: Int
     let proxyOf: String
     let playableNatively: Bool
+    /// Lightroom-style 0..5 star rating. 0 means unrated.
+    let rating: Int
+    /// Lightroom-style color label — one of "", "red", "yellow", "green",
+    /// "blue", "purple". Surfaces as the band-color around the card.
+    let colorLabel: String
 
     var isInGroup: Bool { !groupId.isEmpty && groupSize > 1 }
     var hasProxies: Bool { proxyCount > 0 }
@@ -60,6 +66,42 @@ struct VideoSummary: Identifiable, Hashable {
             return String(format: "%.2f GB", mb / 1024)
         }
         return String(format: "%.2f MB", mb)
+    }
+
+    /// Return a copy of self with `rating` replaced — used by the
+    /// view-model's optimistic update path so a single field change
+    /// doesn't require re-fetching the whole row.
+    func withRating(_ newRating: Int) -> VideoSummary {
+        VideoSummary(
+            id: id, filename: filename, path: path,
+            width: width, height: height, durationMs: durationMs,
+            fps: fps, codecVideo: codecVideo, codecAudio: codecAudio,
+            bitrateKbps: bitrateKbps, sizeBytes: sizeBytes,
+            indexedAt: indexedAt, creationDate: creationDate,
+            tags: tags, hasThumbnail: hasThumbnail,
+            groupId: groupId, groupSize: groupSize,
+            groupPreferredId: groupPreferredId, groupPreferredPath: groupPreferredPath,
+            proxyCount: proxyCount, proxyOf: proxyOf,
+            playableNatively: playableNatively,
+            rating: newRating, colorLabel: colorLabel
+        )
+    }
+
+    /// Return a copy of self with `colorLabel` replaced.
+    func withColorLabel(_ newLabel: String) -> VideoSummary {
+        VideoSummary(
+            id: id, filename: filename, path: path,
+            width: width, height: height, durationMs: durationMs,
+            fps: fps, codecVideo: codecVideo, codecAudio: codecAudio,
+            bitrateKbps: bitrateKbps, sizeBytes: sizeBytes,
+            indexedAt: indexedAt, creationDate: creationDate,
+            tags: tags, hasThumbnail: hasThumbnail,
+            groupId: groupId, groupSize: groupSize,
+            groupPreferredId: groupPreferredId, groupPreferredPath: groupPreferredPath,
+            proxyCount: proxyCount, proxyOf: proxyOf,
+            playableNatively: playableNatively,
+            rating: rating, colorLabel: newLabel
+        )
     }
 }
 
@@ -88,6 +130,10 @@ struct VideoMetadata: Identifiable {
     let notes: String
     let tags: [String]
     let collections: [String]
+    /// Lightroom-style 0..5 star rating mirrored from VideoSummary.
+    let rating: Int
+    /// Lightroom-style color label mirrored from VideoSummary.
+    let colorLabel: String
 
     var resolution: String { "\(width)×\(height)" }
 
@@ -248,3 +294,194 @@ struct WatchSettings: Equatable {
 
     static let `default` = WatchSettings(enabled: true, writeSettleMs: 5000, pollIntervalMs: 30000)
 }
+
+// MARK: - Lightroom-style color labels
+
+/// Color labels mirror Adobe Lightroom's five-colour palette. Stored on
+/// `VideoSummary.colorLabel` as the raw value (the empty string means "no
+/// label"). The grid uses [.swatch] for the anchor card's band background
+/// and [.dimmed] for unselected cards with the same label.
+enum ColorLabel: String, CaseIterable, Identifiable, Hashable {
+    case none = ""
+    case red, yellow, green, blue, purple
+
+    var id: String { rawValue }
+
+    /// Initialise from the raw string on `VideoSummary.colorLabel`. Unknown
+    /// values fall back to `.none` so the UI degrades gracefully if the
+    /// server adds a colour we don't yet recognise.
+    init(_ raw: String) {
+        self = ColorLabel(rawValue: raw) ?? .none
+    }
+
+    /// Display name for menus and tooltips. "None" reads better in the
+    /// right-click submenu than an empty string.
+    var displayName: String {
+        switch self {
+        case .none:   return "None"
+        case .red:    return "Red"
+        case .yellow: return "Yellow"
+        case .green:  return "Green"
+        case .blue:   return "Blue"
+        case .purple: return "Purple"
+        }
+    }
+
+    /// Fully-saturated swatch used as the band-background for the anchor
+    /// card (the primary selection). Tuned to roughly match Lightroom's
+    /// classic palette — desaturated enough not to overwhelm the thumbnail.
+    var swatch: Color {
+        switch self {
+        case .none:   return Color(white: 0.18)        // neutral panel tone
+        case .red:    return Color(red: 0.78, green: 0.25, blue: 0.25)
+        case .yellow: return Color(red: 0.82, green: 0.72, blue: 0.20)
+        case .green:  return Color(red: 0.30, green: 0.65, blue: 0.32)
+        case .blue:   return Color(red: 0.22, green: 0.45, blue: 0.78)
+        case .purple: return Color(red: 0.55, green: 0.32, blue: 0.74)
+        }
+    }
+
+    /// Toned-down variant used for unselected cards that still carry this
+    /// colour label. Preserves the colour identity at a glance without
+    /// shouting for the viewer's attention.
+    var dimmed: Color { swatch.opacity(0.45) }
+
+    /// Mid-brightness variant used for secondary-selected (non-anchor)
+    /// cards. Sits between [.swatch] and [.dimmed] so the user can tell
+    /// at a glance which card is the anchor.
+    var secondary: Color { swatch.opacity(0.72) }
+
+    /// Keyboard shortcut digit that applies this label, or nil for
+    /// labels with no shortcut. Matches Lightroom: 6/7/8/9 for the four
+    /// primary colours; purple has no shortcut historically.
+    var shortcutKey: Character? {
+        switch self {
+        case .red:    return "6"
+        case .yellow: return "7"
+        case .green:  return "8"
+        case .blue:   return "9"
+        case .purple, .none: return nil
+        }
+    }
+
+    /// Map a keyboard digit back to a label, used by the global key handler.
+    static func from(shortcut: Character) -> ColorLabel? {
+        switch shortcut {
+        case "6": return .red
+        case "7": return .yellow
+        case "8": return .green
+        case "9": return .blue
+        default:  return nil
+        }
+    }
+}
+
+// MARK: - Grid card stat slots (Lightroom-style top-of-card)
+
+/// Stable keys naming every stat that can appear in one of the four
+/// configurable top-of-card slots. The string value is exchanged with the
+/// daemon as part of `GridSettings.top_slots`, so it must match what the
+/// Kotlin client emits.
+enum GridStatKey: String, CaseIterable, Identifiable, Hashable {
+    case none           = ""
+    case filename
+    case fileSize       = "file_size"
+    case resolutionName = "resolution"    // "1080p", "4K", etc.
+    case pixelDimensions = "pixel_dimensions"
+    case duration
+    case videoCodec     = "video_codec"
+    case audioCodec     = "audio_codec"
+    case fps
+    case bitrate
+    case cameraModel    = "camera_model"
+    case lensModel      = "lens_model"
+    case captureDate    = "capture_date"
+    case captureYear    = "capture_year"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .none:             return "(empty)"
+        case .filename:         return "Filename"
+        case .fileSize:         return "File size"
+        case .resolutionName:   return "Resolution"
+        case .pixelDimensions:  return "Pixel dimensions"
+        case .duration:         return "Duration"
+        case .videoCodec:       return "Video codec"
+        case .audioCodec:       return "Audio codec"
+        case .fps:              return "FPS"
+        case .bitrate:          return "Bitrate"
+        case .cameraModel:      return "Camera"
+        case .lensModel:        return "Lens"
+        case .captureDate:      return "Capture date"
+        case .captureYear:      return "Capture year"
+        }
+    }
+
+    /// Resolve this stat against a [VideoSummary]. Returns the display
+    /// string for the card, or empty string if the underlying data is
+    /// missing / inapplicable.
+    func value(for video: VideoSummary) -> String {
+        switch self {
+        case .none:             return ""
+        case .filename:         return video.filename
+        case .fileSize:         return video.sizeFormatted
+        case .resolutionName:   return resolutionLabel(height: video.height)
+        case .pixelDimensions:  return video.resolution
+        case .duration:         return video.durationFormatted
+        case .videoCodec:       return video.codecVideo.isEmpty ? "" : video.codecVideo
+        case .audioCodec:       return video.codecAudio.isEmpty ? "" : video.codecAudio
+        case .fps:              return video.fps > 0 ? String(format: "%g fps", video.fps) : ""
+        case .bitrate:
+            if video.bitrateKbps <= 0 { return "" }
+            return video.bitrateKbps >= 1000
+                ? String(format: "%.1f Mbps", Double(video.bitrateKbps) / 1000)
+                : "\(video.bitrateKbps) kbps"
+        case .cameraModel, .lensModel:
+            // VideoSummary doesn't carry camera/lens — the field exists on
+            // VideoMetadata. The card uses a separate lookup; if we have no
+            // cached metadata we render the stat as blank. The cache is
+            // populated by GridViewModel once the user selects a video.
+            return ""
+        case .captureDate:
+            if video.creationDate <= 0 { return "" }
+            let date = Date(timeIntervalSince1970: TimeInterval(video.creationDate / 1000))
+            let df = DateFormatter()
+            df.dateStyle = .short
+            return df.string(from: date)
+        case .captureYear:
+            if video.creationDate <= 0 { return "" }
+            let date = Date(timeIntervalSince1970: TimeInterval(video.creationDate / 1000))
+            let cal = Calendar(identifier: .gregorian)
+            return String(cal.component(.year, from: date))
+        }
+    }
+
+    /// "1080p" / "720p" / "4K" / "8K" — the common shorthand pros use.
+    /// Returns empty string when height is unknown.
+    private func resolutionLabel(height: Int) -> String {
+        switch height {
+        case 0:           return ""
+        case 1...479:     return "SD"
+        case 480...575:   return "480p"
+        case 576...719:   return "576p"
+        case 720...1079:  return "720p"
+        case 1080...1439: return "1080p"
+        case 1440...2159: return "1440p"
+        case 2160...4319: return "4K"
+        case 4320...:     return "8K"
+        default:          return "\(height)p"
+        }
+    }
+}
+
+/// Default top-slot configuration if the catalog has nothing stored yet.
+/// Picks four stats that fit the Lightroom screenshot the user shared:
+/// filename, file size, resolution shorthand, FPS.
+let defaultGridTopSlots: [String] = [
+    GridStatKey.filename.rawValue,
+    GridStatKey.fileSize.rawValue,
+    GridStatKey.resolutionName.rawValue,
+    GridStatKey.fps.rawValue,
+]

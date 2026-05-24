@@ -35,6 +35,11 @@ data class VideoSummary(
     val proxyCount: Int = 0,
     val proxyOf: String = "",
     val playableNatively: Boolean = true,
+    /** Lightroom-style 0..5 star rating. 0 means unrated. */
+    val rating: Int = 0,
+    /** Lightroom-style colour label — "" | red | yellow | green | blue | purple.
+     *  Drives the band-tint around the card in the grid. */
+    val colorLabel: String = "",
 ) {
     val isInGroup: Boolean get() = groupId.isNotEmpty() && groupSize > 1
     val hasProxies: Boolean get() = proxyCount > 0
@@ -84,7 +89,11 @@ data class VideoMetadata(
     val collections: List<String> = emptyList(),
     val notes: String = "",
     val volumeId: String = "",
-    val isOnline: Boolean = true
+    val isOnline: Boolean = true,
+    /** Lightroom-style 0..5 star rating mirrored from VideoSummary. */
+    val rating: Int = 0,
+    /** Lightroom-style colour label mirrored from VideoSummary. */
+    val colorLabel: String = "",
 ) {
     val resolution: String get() = "$width x $height"
     val durationFormatted: String get() {
@@ -245,3 +254,125 @@ data class WatchSettings(
         val Default = WatchSettings(enabled = true, writeSettleMs = 5_000, pollIntervalMs = 30_000)
     }
 }
+
+// --- Lightroom-style color labels ---
+
+/**
+ * Color labels mirror Adobe Lightroom's five-colour palette. Stored on
+ * [VideoSummary.colorLabel] as the raw string value; "" means "no label".
+ * The card uses [swatch] for the anchor card's band-background and [dimmed]
+ * for unselected cards that still carry this label.
+ */
+enum class ColorLabel(
+    val raw: String,
+    val displayName: String,
+    /** Saturated background colour used when this card is the anchor. */
+    val swatch: androidx.compose.ui.graphics.Color,
+    /** Keyboard digit that applies this label, or null. Purple has no key. */
+    val shortcutDigit: Char? = null,
+) {
+    None  ("",       "None",   androidx.compose.ui.graphics.Color(0xFF2E2E2E), null),
+    Red   ("red",    "Red",    androidx.compose.ui.graphics.Color(0xFFC75050), '6'),
+    Yellow("yellow", "Yellow", androidx.compose.ui.graphics.Color(0xFFD1B233), '7'),
+    Green ("green",  "Green",  androidx.compose.ui.graphics.Color(0xFF4DA653), '8'),
+    Blue  ("blue",   "Blue",   androidx.compose.ui.graphics.Color(0xFF3873C7), '9'),
+    Purple("purple", "Purple", androidx.compose.ui.graphics.Color(0xFF8C52BD), null);
+
+    /** Toned-down variant used by unselected cards that still carry this label. */
+    val dimmed: androidx.compose.ui.graphics.Color get() = swatch.copy(alpha = 0.45f)
+
+    /** Mid-brightness variant for secondary-selected (non-anchor) cards. */
+    val secondary: androidx.compose.ui.graphics.Color get() = swatch.copy(alpha = 0.72f)
+
+    companion object {
+        /** Look up by the raw wire-string. Unknown values fall back to [None]. */
+        fun from(raw: String): ColorLabel = values().firstOrNull { it.raw == raw } ?: None
+
+        /** Map a keyboard digit to a colour (or null if no mapping). */
+        fun fromShortcut(c: Char): ColorLabel? = values().firstOrNull { it.shortcutDigit == c }
+    }
+}
+
+// --- Grid card stat slots (Lightroom-style top-of-card) ---
+
+/**
+ * Stable keys naming every stat that can appear in one of the four top-of-
+ * card slots. The string value is exchanged with the daemon as part of
+ * `GridSettings.top_slots`, so it must match what the macOS client emits.
+ */
+enum class GridStatKey(val raw: String, val displayName: String) {
+    None           ("",                  "(empty)"),
+    Filename       ("filename",          "Filename"),
+    FileSize       ("file_size",         "File size"),
+    ResolutionName ("resolution",        "Resolution"),
+    PixelDimensions("pixel_dimensions",  "Pixel dimensions"),
+    Duration       ("duration",          "Duration"),
+    VideoCodec     ("video_codec",       "Video codec"),
+    AudioCodec     ("audio_codec",       "Audio codec"),
+    Fps            ("fps",               "FPS"),
+    Bitrate        ("bitrate",           "Bitrate"),
+    CameraModel    ("camera_model",      "Camera"),
+    LensModel      ("lens_model",        "Lens"),
+    CaptureDate    ("capture_date",      "Capture date"),
+    CaptureYear    ("capture_year",      "Capture year");
+
+    /** Resolve this stat against a [VideoSummary] into the display string. */
+    fun valueFor(video: VideoSummary): String = when (this) {
+        None             -> ""
+        Filename         -> video.filename
+        FileSize         -> formatBytes(video.sizeBytes)
+        ResolutionName   -> resolutionLabel(video.height)
+        PixelDimensions  -> if (video.width > 0 && video.height > 0) "${video.width}×${video.height}" else ""
+        Duration         -> video.durationFormatted
+        VideoCodec       -> video.codecVideo
+        AudioCodec       -> video.codecAudio
+        Fps              -> if (video.fps > 0) "%.0f fps".format(video.fps) else ""
+        Bitrate          -> ""  // VideoSummary doesn't carry bitrate today
+        CameraModel,
+        LensModel        -> ""  // Both live on VideoMetadata, not the summary
+        CaptureDate      -> if (video.creationDate > 0) {
+            val instant = java.time.Instant.ofEpochMilli(video.creationDate)
+            java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")
+                .withZone(java.time.ZoneId.systemDefault())
+                .format(instant)
+        } else ""
+        CaptureYear      -> if (video.creationDate > 0) {
+            val instant = java.time.Instant.ofEpochMilli(video.creationDate)
+            java.time.ZonedDateTime.ofInstant(instant, java.time.ZoneId.systemDefault())
+                .year.toString()
+        } else ""
+    }
+
+    companion object {
+        fun fromRaw(raw: String): GridStatKey = values().firstOrNull { it.raw == raw } ?: None
+
+        private fun formatBytes(b: Long): String = when {
+            b >= 1024L * 1024 * 1024 -> "%.2f GB".format(b / (1024.0 * 1024 * 1024))
+            b >= 1024L * 1024        -> "%.2f MB".format(b / (1024.0 * 1024))
+            b > 0                    -> "%.2f KB".format(b / 1024.0)
+            else                     -> ""
+        }
+
+        private fun resolutionLabel(h: Int): String = when {
+            h <= 0     -> ""
+            h < 480    -> "SD"
+            h < 576    -> "480p"
+            h < 720    -> "576p"
+            h < 1080   -> "720p"
+            h < 1440   -> "1080p"
+            h < 2160   -> "1440p"
+            h < 4320   -> "4K"
+            else       -> "8K"
+        }
+    }
+}
+
+/** Default grid top-slot configuration before the server replies with the
+ *  saved value. Matches the macOS client so a freshly-created catalog looks
+ *  identical regardless of which client opens it first. */
+val defaultGridTopSlots: List<String> = listOf(
+    GridStatKey.Filename.raw,
+    GridStatKey.FileSize.raw,
+    GridStatKey.ResolutionName.raw,
+    GridStatKey.Fps.raw,
+)

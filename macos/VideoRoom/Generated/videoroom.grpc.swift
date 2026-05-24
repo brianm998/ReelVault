@@ -551,6 +551,54 @@ internal enum Videoroom_VideoRoom: Sendable {
                 method: "UpdateVideoCaptureDate"
             )
         }
+        /// Namespace for "UpdateVideoRating" metadata.
+        internal enum UpdateVideoRating: Sendable {
+            /// Request type for "UpdateVideoRating".
+            internal typealias Input = Videoroom_UpdateVideoRatingRequest
+            /// Response type for "UpdateVideoRating".
+            internal typealias Output = Videoroom_Response
+            /// Descriptor for "UpdateVideoRating".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "UpdateVideoRating"
+            )
+        }
+        /// Namespace for "UpdateVideoColorLabel" metadata.
+        internal enum UpdateVideoColorLabel: Sendable {
+            /// Request type for "UpdateVideoColorLabel".
+            internal typealias Input = Videoroom_UpdateVideoColorLabelRequest
+            /// Response type for "UpdateVideoColorLabel".
+            internal typealias Output = Videoroom_Response
+            /// Descriptor for "UpdateVideoColorLabel".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "UpdateVideoColorLabel"
+            )
+        }
+        /// Namespace for "GetGridSettings" metadata.
+        internal enum GetGridSettings: Sendable {
+            /// Request type for "GetGridSettings".
+            internal typealias Input = Videoroom_GetGridSettingsRequest
+            /// Response type for "GetGridSettings".
+            internal typealias Output = Videoroom_GridSettings
+            /// Descriptor for "GetGridSettings".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "GetGridSettings"
+            )
+        }
+        /// Namespace for "UpdateGridSettings" metadata.
+        internal enum UpdateGridSettings: Sendable {
+            /// Request type for "UpdateGridSettings".
+            internal typealias Input = Videoroom_GridSettings
+            /// Response type for "UpdateGridSettings".
+            internal typealias Output = Videoroom_Response
+            /// Descriptor for "UpdateGridSettings".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "UpdateGridSettings"
+            )
+        }
         /// Namespace for "SubscribeCatalogEvents" metadata.
         internal enum SubscribeCatalogEvents: Sendable {
             /// Request type for "SubscribeCatalogEvents".
@@ -633,6 +681,10 @@ internal enum Videoroom_VideoRoom: Sendable {
             UpsertNamedLocation.descriptor,
             DeleteNamedLocation.descriptor,
             UpdateVideoCaptureDate.descriptor,
+            UpdateVideoRating.descriptor,
+            UpdateVideoColorLabel.descriptor,
+            GetGridSettings.descriptor,
+            UpdateGridSettings.descriptor,
             SubscribeCatalogEvents.descriptor,
             GetWatchSettings.descriptor,
             UpdateWatchSettings.descriptor
@@ -1339,6 +1391,75 @@ extension Videoroom_VideoRoom {
         /// - Returns: A streaming response of `Videoroom_Response` messages.
         func updateVideoCaptureDate(
             request: GRPCCore.StreamingServerRequest<Videoroom_UpdateVideoCaptureDateRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
+
+        /// Handle the "UpdateVideoRating" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Lightroom-style user marks. The grid renders the rating as star/dots
+        /// > along the bottom of each card, and the color label as the band-color
+        /// > around the card. Both take a list of video IDs so a multi-select keyboard
+        /// > shortcut applies in a single round-trip.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_UpdateVideoRatingRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func updateVideoRating(
+            request: GRPCCore.StreamingServerRequest<Videoroom_UpdateVideoRatingRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
+
+        /// Handle the "UpdateVideoColorLabel" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_UpdateVideoColorLabelRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func updateVideoColorLabel(
+            request: GRPCCore.StreamingServerRequest<Videoroom_UpdateVideoColorLabelRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
+
+        /// Handle the "GetGridSettings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Grid layout preferences — per-catalog so two clients open against the
+        /// > same catalog show the same top-of-card stat slots. GridSettings carries
+        /// > exactly four slot keys (empty string = unset / blank slot).
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_GetGridSettingsRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_GridSettings` messages.
+        func getGridSettings(
+            request: GRPCCore.StreamingServerRequest<Videoroom_GetGridSettingsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_GridSettings>
+
+        /// Handle the "UpdateGridSettings" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_GridSettings` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func updateGridSettings(
+            request: GRPCCore.StreamingServerRequest<Videoroom_GridSettings>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
 
@@ -2089,6 +2210,75 @@ extension Videoroom_VideoRoom {
         /// - Returns: A response containing a single `Videoroom_Response` message.
         func updateVideoCaptureDate(
             request: GRPCCore.ServerRequest<Videoroom_UpdateVideoCaptureDateRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
+
+        /// Handle the "UpdateVideoRating" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Lightroom-style user marks. The grid renders the rating as star/dots
+        /// > along the bottom of each card, and the color label as the band-color
+        /// > around the card. Both take a list of video IDs so a multi-select keyboard
+        /// > shortcut applies in a single round-trip.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_UpdateVideoRatingRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func updateVideoRating(
+            request: GRPCCore.ServerRequest<Videoroom_UpdateVideoRatingRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
+
+        /// Handle the "UpdateVideoColorLabel" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_UpdateVideoColorLabelRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func updateVideoColorLabel(
+            request: GRPCCore.ServerRequest<Videoroom_UpdateVideoColorLabelRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
+
+        /// Handle the "GetGridSettings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Grid layout preferences — per-catalog so two clients open against the
+        /// > same catalog show the same top-of-card stat slots. GridSettings carries
+        /// > exactly four slot keys (empty string = unset / blank slot).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_GetGridSettingsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_GridSettings` message.
+        func getGridSettings(
+            request: GRPCCore.ServerRequest<Videoroom_GetGridSettingsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_GridSettings>
+
+        /// Handle the "UpdateGridSettings" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_GridSettings` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func updateGridSettings(
+            request: GRPCCore.ServerRequest<Videoroom_GridSettings>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
 
@@ -2843,6 +3033,75 @@ extension Videoroom_VideoRoom {
             context: GRPCCore.ServerContext
         ) async throws -> Videoroom_Response
 
+        /// Handle the "UpdateVideoRating" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Lightroom-style user marks. The grid renders the rating as star/dots
+        /// > along the bottom of each card, and the color label as the band-color
+        /// > around the card. Both take a list of video IDs so a multi-select keyboard
+        /// > shortcut applies in a single round-trip.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_UpdateVideoRatingRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func updateVideoRating(
+            request: Videoroom_UpdateVideoRatingRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
+
+        /// Handle the "UpdateVideoColorLabel" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_UpdateVideoColorLabelRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func updateVideoColorLabel(
+            request: Videoroom_UpdateVideoColorLabelRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
+
+        /// Handle the "GetGridSettings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Grid layout preferences — per-catalog so two clients open against the
+        /// > same catalog show the same top-of-card stat slots. GridSettings carries
+        /// > exactly four slot keys (empty string = unset / blank slot).
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_GetGridSettingsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_GridSettings` to respond with.
+        func getGridSettings(
+            request: Videoroom_GetGridSettingsRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_GridSettings
+
+        /// Handle the "UpdateGridSettings" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_GridSettings` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func updateGridSettings(
+            request: Videoroom_GridSettings,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
+
         /// Handle the "SubscribeCatalogEvents" method.
         ///
         /// > Source IDL Documentation:
@@ -3395,6 +3654,50 @@ extension Videoroom_VideoRoom.StreamingServiceProtocol {
             }
         )
         router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.UpdateVideoRating.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_UpdateVideoRatingRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.updateVideoRating(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.UpdateVideoColorLabel.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_UpdateVideoColorLabelRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.updateVideoColorLabel(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.GetGridSettings.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_GetGridSettingsRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_GridSettings>(),
+            handler: { request, context in
+                try await self.getGridSettings(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.UpdateGridSettings.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_GridSettings>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.updateGridSettings(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
             forMethod: Videoroom_VideoRoom.Method.SubscribeCatalogEvents.descriptor,
             deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_SubscribeCatalogEventsRequest>(),
             serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_CatalogEvent>(),
@@ -3911,6 +4214,50 @@ extension Videoroom_VideoRoom.ServiceProtocol {
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
         let response = try await self.updateVideoCaptureDate(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func updateVideoRating(
+        request: GRPCCore.StreamingServerRequest<Videoroom_UpdateVideoRatingRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.updateVideoRating(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func updateVideoColorLabel(
+        request: GRPCCore.StreamingServerRequest<Videoroom_UpdateVideoColorLabelRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.updateVideoColorLabel(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func getGridSettings(
+        request: GRPCCore.StreamingServerRequest<Videoroom_GetGridSettingsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_GridSettings> {
+        let response = try await self.getGridSettings(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func updateGridSettings(
+        request: GRPCCore.StreamingServerRequest<Videoroom_GridSettings>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.updateGridSettings(
             request: GRPCCore.ServerRequest(stream: request),
             context: context
         )
@@ -4531,6 +4878,58 @@ extension Videoroom_VideoRoom.SimpleServiceProtocol {
     ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
         return GRPCCore.ServerResponse<Videoroom_Response>(
             message: try await self.updateVideoCaptureDate(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func updateVideoRating(
+        request: GRPCCore.ServerRequest<Videoroom_UpdateVideoRatingRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.updateVideoRating(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func updateVideoColorLabel(
+        request: GRPCCore.ServerRequest<Videoroom_UpdateVideoColorLabelRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.updateVideoColorLabel(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func getGridSettings(
+        request: GRPCCore.ServerRequest<Videoroom_GetGridSettingsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_GridSettings> {
+        return GRPCCore.ServerResponse<Videoroom_GridSettings>(
+            message: try await self.getGridSettings(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func updateGridSettings(
+        request: GRPCCore.ServerRequest<Videoroom_GridSettings>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.updateGridSettings(
                 request: request.message,
                 context: context
             ),
@@ -5487,6 +5886,95 @@ extension Videoroom_VideoRoom {
         func updateVideoCaptureDate<Result>(
             request: GRPCCore.ClientRequest<Videoroom_UpdateVideoCaptureDateRequest>,
             serializer: some GRPCCore.MessageSerializer<Videoroom_UpdateVideoCaptureDateRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "UpdateVideoRating" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Lightroom-style user marks. The grid renders the rating as star/dots
+        /// > along the bottom of each card, and the color label as the band-color
+        /// > around the card. Both take a list of video IDs so a multi-select keyboard
+        /// > shortcut applies in a single round-trip.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_UpdateVideoRatingRequest` message.
+        ///   - serializer: A serializer for `Videoroom_UpdateVideoRatingRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func updateVideoRating<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_UpdateVideoRatingRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_UpdateVideoRatingRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "UpdateVideoColorLabel" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_UpdateVideoColorLabelRequest` message.
+        ///   - serializer: A serializer for `Videoroom_UpdateVideoColorLabelRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func updateVideoColorLabel<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_UpdateVideoColorLabelRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_UpdateVideoColorLabelRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "GetGridSettings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Grid layout preferences — per-catalog so two clients open against the
+        /// > same catalog show the same top-of-card stat slots. GridSettings carries
+        /// > exactly four slot keys (empty string = unset / blank slot).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_GetGridSettingsRequest` message.
+        ///   - serializer: A serializer for `Videoroom_GetGridSettingsRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_GridSettings` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func getGridSettings<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_GetGridSettingsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_GetGridSettingsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_GridSettings>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_GridSettings>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "UpdateGridSettings" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_GridSettings` message.
+        ///   - serializer: A serializer for `Videoroom_GridSettings` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func updateGridSettings<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_GridSettings>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_GridSettings>,
             deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result
@@ -6963,6 +7451,139 @@ extension Videoroom_VideoRoom {
             )
         }
 
+        /// Call the "UpdateVideoRating" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Lightroom-style user marks. The grid renders the rating as star/dots
+        /// > along the bottom of each card, and the color label as the band-color
+        /// > around the card. Both take a list of video IDs so a multi-select keyboard
+        /// > shortcut applies in a single round-trip.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_UpdateVideoRatingRequest` message.
+        ///   - serializer: A serializer for `Videoroom_UpdateVideoRatingRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func updateVideoRating<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_UpdateVideoRatingRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_UpdateVideoRatingRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.UpdateVideoRating.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "UpdateVideoColorLabel" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_UpdateVideoColorLabelRequest` message.
+        ///   - serializer: A serializer for `Videoroom_UpdateVideoColorLabelRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func updateVideoColorLabel<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_UpdateVideoColorLabelRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_UpdateVideoColorLabelRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.UpdateVideoColorLabel.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "GetGridSettings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Grid layout preferences — per-catalog so two clients open against the
+        /// > same catalog show the same top-of-card stat slots. GridSettings carries
+        /// > exactly four slot keys (empty string = unset / blank slot).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_GetGridSettingsRequest` message.
+        ///   - serializer: A serializer for `Videoroom_GetGridSettingsRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_GridSettings` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func getGridSettings<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_GetGridSettingsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_GetGridSettingsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_GridSettings>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_GridSettings>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.GetGridSettings.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "UpdateGridSettings" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_GridSettings` message.
+        ///   - serializer: A serializer for `Videoroom_GridSettings` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func updateGridSettings<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_GridSettings>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_GridSettings>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.UpdateGridSettings.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
         /// Call the "SubscribeCatalogEvents" method.
         ///
         /// > Source IDL Documentation:
@@ -8223,6 +8844,119 @@ extension Videoroom_VideoRoom.ClientProtocol {
         try await self.updateVideoCaptureDate(
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_UpdateVideoCaptureDateRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_Response>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateVideoRating" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Lightroom-style user marks. The grid renders the rating as star/dots
+    /// > along the bottom of each card, and the color label as the band-color
+    /// > around the card. Both take a list of video IDs so a multi-select keyboard
+    /// > shortcut applies in a single round-trip.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_UpdateVideoRatingRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func updateVideoRating<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_UpdateVideoRatingRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.updateVideoRating(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_UpdateVideoRatingRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_Response>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateVideoColorLabel" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_UpdateVideoColorLabelRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func updateVideoColorLabel<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_UpdateVideoColorLabelRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.updateVideoColorLabel(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_UpdateVideoColorLabelRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_Response>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetGridSettings" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Grid layout preferences — per-catalog so two clients open against the
+    /// > same catalog show the same top-of-card stat slots. GridSettings carries
+    /// > exactly four slot keys (empty string = unset / blank slot).
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_GetGridSettingsRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func getGridSettings<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_GetGridSettingsRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_GridSettings>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getGridSettings(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_GetGridSettingsRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_GridSettings>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateGridSettings" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_GridSettings` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func updateGridSettings<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_GridSettings>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.updateGridSettings(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_GridSettings>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_Response>(),
             options: options,
             onResponse: handleResponse
@@ -9649,6 +10383,135 @@ extension Videoroom_VideoRoom.ClientProtocol {
             metadata: metadata
         )
         return try await self.updateVideoCaptureDate(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateVideoRating" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Lightroom-style user marks. The grid renders the rating as star/dots
+    /// > along the bottom of each card, and the color label as the band-color
+    /// > around the card. Both take a list of video IDs so a multi-select keyboard
+    /// > shortcut applies in a single round-trip.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func updateVideoRating<Result>(
+        _ message: Videoroom_UpdateVideoRatingRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_UpdateVideoRatingRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.updateVideoRating(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateVideoColorLabel" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func updateVideoColorLabel<Result>(
+        _ message: Videoroom_UpdateVideoColorLabelRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_UpdateVideoColorLabelRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.updateVideoColorLabel(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetGridSettings" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Grid layout preferences — per-catalog so two clients open against the
+    /// > same catalog show the same top-of-card stat slots. GridSettings carries
+    /// > exactly four slot keys (empty string = unset / blank slot).
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func getGridSettings<Result>(
+        _ message: Videoroom_GetGridSettingsRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_GridSettings>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_GetGridSettingsRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getGridSettings(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpdateGridSettings" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func updateGridSettings<Result>(
+        _ message: Videoroom_GridSettings,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_GridSettings>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.updateGridSettings(
             request: request,
             options: options,
             onResponse: handleResponse
