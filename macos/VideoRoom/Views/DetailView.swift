@@ -45,9 +45,14 @@ struct DetailView: View {
 
             if isListMode {
                 Divider()
+                // Outer VStack uses default .center alignment, so individual
+                // children (the header + each Toggle) need .frame(maxWidth:
+                // .infinity, alignment: .leading) — otherwise they collapse
+                // to their intrinsic width and end up centred in the panel.
                 Text("LIST COLUMNS")
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 12)
                     .padding(.top, 8)
                     .padding(.bottom, 2)
@@ -69,6 +74,7 @@ struct DetailView: View {
                     ))
                     .toggleStyle(.checkbox)
                     .controlSize(.small)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 1)
                 }

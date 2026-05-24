@@ -323,9 +323,14 @@ struct VideoListRowView: View {
                     .cornerRadius(4)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            // No .frame(maxWidth: .infinity) — that combined with the trailing
+            // Spacer() left two flexible siblings, so SwiftUI split the leftover
+            // width 50/50 and put a big gap *between* the thumbnail and the
+            // info. Letting the VStack size to its content (intrinsic width)
+            // and giving the Spacer all the flex pushes the info flush against
+            // the thumbnail with the slack absorbed on the right of the row.
 
-            Spacer()
+            Spacer(minLength: 0)
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 10)

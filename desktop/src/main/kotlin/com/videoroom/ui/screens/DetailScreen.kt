@@ -115,7 +115,15 @@ fun DetailScreen(
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
-                    Text(text = label, style = MaterialTheme.typography.bodySmall)
+                    // Explicit color — the surrounding Column is not a Surface,
+                    // so without this the Text falls back to LocalContentColor,
+                    // which in this scope resolves to a near-black that's
+                    // unreadable on the panel's dark background.
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
             }
         }
