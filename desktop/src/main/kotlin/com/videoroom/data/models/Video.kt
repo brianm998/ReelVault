@@ -158,6 +158,20 @@ data class LibraryLocation(
 )
 
 /** Distinct values that can populate the top-bar filter dropdowns. */
+/**
+ * One row in the Camera Names editor. [isBuiltin] is true when the
+ * daemon ships a curated mapping for [internalName]; [isCustom] is
+ * true when the user has added or overridden a row in this catalog.
+ * Both can be true at once — that's the "user replaced a built-in"
+ * case, where [marketingName] carries the user's chosen string.
+ */
+data class CameraNameMapping(
+    val internalName: String,
+    val marketingName: String,
+    val isBuiltin: Boolean,
+    val isCustom: Boolean,
+)
+
 data class FilterOptions(
     val cameras: List<String> = emptyList(),
     /**

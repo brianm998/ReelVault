@@ -367,6 +367,8 @@ fun VideoRoomApp(
     var showWatchSettingsDialog by remember { mutableStateOf(false) }
     // Inline-playback / proxy-resolution preferences dialog visibility.
     var showPlaybackSettingsDialog by remember { mutableStateOf(false) }
+    // Camera-names editor dialog visibility (internal → marketing).
+    var showCameraNamesDialog by remember { mutableStateOf(false) }
     // Library removal confirmation. Non-null while the "Are you sure?" dialog is shown.
     var pendingRemoveLocation by remember { mutableStateOf<com.videoroom.data.models.LibraryLocation?>(null) }
     // Global-map dialog visibility.
@@ -637,6 +639,7 @@ fun VideoRoomApp(
                         onGroupSelected = { gridViewModel.groupSelectedVideos() },
                         onConfigureEditors = { showEditorsDialog = true },
                         onConfigureWatcher = { showWatchSettingsDialog = true },
+                        onConfigureCameraNames = { showCameraNamesDialog = true },
                         onOpenCatalog = {
                             openDialogIsStartup = false
                             showOpenCatalogDialog = true
@@ -1063,6 +1066,15 @@ fun VideoRoomApp(
                     com.videoroom.ui.screens.PlaybackSettingsDialog(
                         repository = repository,
                         onDismiss = { showPlaybackSettingsDialog = false }
+                    )
+                }
+
+                // Camera-names editor dialog (internal → marketing
+                // mapping with user overrides).
+                if (showCameraNamesDialog) {
+                    com.videoroom.ui.screens.CameraNamesDialog(
+                        repository = repository,
+                        onDismiss = { showCameraNamesDialog = false }
                     )
                 }
 
@@ -1627,6 +1639,8 @@ fun VideoRoomTopBar(
     onConfigureEditors: () -> Unit = {},
     /** Opens the watcher (live-updates) preferences dialog. */
     onConfigureWatcher: () -> Unit = {},
+    /** Opens the camera-names editor dialog. */
+    onConfigureCameraNames: () -> Unit = {},
     onOpenCatalog: () -> Unit = {},
     onCloseCatalog: () -> Unit = {},
     onOpenRecent: (String) -> Unit = {},
@@ -1841,6 +1855,23 @@ fun VideoRoomTopBar(
                             Icon(
                                 imageVector = Icons.Default.Build,
                                 contentDescription = "External Editors"
+                            )
+                        }
+                    }
+
+                    // Camera names editor — opens the table of internal →
+                    // marketing name mappings (built-in + user overrides).
+                    com.videoroom.ui.components.Tooltip(
+                        text = "Manage the table that maps internal camera model codes " +
+                            "(e.g. \"SONY ILCE-7RM3A\") to marketing-friendly names " +
+                            "(e.g. \"Sony a7R IIIA\"). Add custom rows for cameras " +
+                            "not in the built-in list, or override built-in entries " +
+                            "you'd prefer named differently."
+                    ) {
+                        IconButton(onClick = onConfigureCameraNames) {
+                            Icon(
+                                imageVector = Icons.Default.Camera,
+                                contentDescription = "Camera Names"
                             )
                         }
                     }

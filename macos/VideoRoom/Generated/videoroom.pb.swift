@@ -1840,6 +1840,74 @@ nonisolated struct Videoroom_GridSettings: Sendable {
   init() {}
 }
 
+/// --- Camera marketing-name mappings (per-catalog overrides) ---
+///
+/// A single mapping entry exposed to the UI. `is_builtin` lets the
+/// client style built-in vs. user-supplied rows differently; `is_custom`
+/// is true for any internal name with an active override in the
+/// catalog's config (which may *be* a built-in name the user has
+/// re-mapped, in which case both flags are true and `marketing` is the
+/// user's chosen string).
+nonisolated struct Videoroom_CameraNameMapping: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var `internal`: String = String()
+
+  var marketing: String = String()
+
+  var isBuiltin: Bool = false
+
+  var isCustom: Bool = false
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Videoroom_ListCameraNameMappingsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Videoroom_ListCameraNameMappingsResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Built-in mappings first (alphabetised), then any custom-only
+  /// entries (i.e. user mappings whose internal name has no built-in
+  /// counterpart). Each entry's `marketing` already reflects custom
+  /// overrides — clients can render the string directly.
+  var mappings: [Videoroom_CameraNameMapping] = []
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+/// Add or update a custom override. Sending `marketing = ""` deletes
+/// the override (and reveals the built-in entry, if there is one).
+nonisolated struct Videoroom_SetCameraNameMappingRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var `internal`: String = String()
+
+  var marketing: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
 nonisolated struct Videoroom_Response: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -5392,6 +5460,135 @@ nonisolated extension Videoroom_GridSettings: SwiftProtobuf.Message, SwiftProtob
 
   static func ==(lhs: Videoroom_GridSettings, rhs: Videoroom_GridSettings) -> Bool {
     if lhs.topSlots != rhs.topSlots {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_CameraNameMapping: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".CameraNameMapping"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}internal\0\u{1}marketing\0\u{3}is_builtin\0\u{3}is_custom\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.`internal`) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.marketing) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.isBuiltin) }()
+      case 4: try { try decoder.decodeSingularBoolField(value: &self.isCustom) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.`internal`.isEmpty {
+      try visitor.visitSingularStringField(value: self.`internal`, fieldNumber: 1)
+    }
+    if !self.marketing.isEmpty {
+      try visitor.visitSingularStringField(value: self.marketing, fieldNumber: 2)
+    }
+    if self.isBuiltin != false {
+      try visitor.visitSingularBoolField(value: self.isBuiltin, fieldNumber: 3)
+    }
+    if self.isCustom != false {
+      try visitor.visitSingularBoolField(value: self.isCustom, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_CameraNameMapping, rhs: Videoroom_CameraNameMapping) -> Bool {
+    if lhs.`internal` != rhs.`internal` {return false}
+    if lhs.marketing != rhs.marketing {return false}
+    if lhs.isBuiltin != rhs.isBuiltin {return false}
+    if lhs.isCustom != rhs.isCustom {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_ListCameraNameMappingsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".ListCameraNameMappingsRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_ListCameraNameMappingsRequest, rhs: Videoroom_ListCameraNameMappingsRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_ListCameraNameMappingsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".ListCameraNameMappingsResponse"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}mappings\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.mappings) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.mappings.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.mappings, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_ListCameraNameMappingsResponse, rhs: Videoroom_ListCameraNameMappingsResponse) -> Bool {
+    if lhs.mappings != rhs.mappings {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Videoroom_SetCameraNameMappingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".SetCameraNameMappingRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}internal\0\u{1}marketing\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.`internal`) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.marketing) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.`internal`.isEmpty {
+      try visitor.visitSingularStringField(value: self.`internal`, fieldNumber: 1)
+    }
+    if !self.marketing.isEmpty {
+      try visitor.visitSingularStringField(value: self.marketing, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Videoroom_SetCameraNameMappingRequest, rhs: Videoroom_SetCameraNameMappingRequest) -> Bool {
+    if lhs.`internal` != rhs.`internal` {return false}
+    if lhs.marketing != rhs.marketing {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

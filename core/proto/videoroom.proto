@@ -115,6 +115,19 @@ service VideoRoom {
   // settings on UpdateWatchSettings.
   rpc GetWatchSettings(GetWatchSettingsRequest) returns (WatchSettings);
   rpc UpdateWatchSettings(WatchSettings) returns (Response);
+
+  // Camera marketing-name mappings — internal model code → marketing
+  // name. The daemon ships a built-in table (see
+  // `core/src/camera_names.rs`); users can add their own overrides
+  // (or correct built-in entries they disagree with) via the
+  // SetCameraNameMapping RPC. List returns the merged view —
+  // built-in entries plus any active custom override — so clients
+  // can render one unified table with a "Custom" badge on overridden
+  // rows. Setting a marketing name equal to "" removes any custom
+  // override and reveals the built-in mapping again.
+  rpc ListCameraNameMappings(ListCameraNameMappingsRequest)
+      returns (ListCameraNameMappingsResponse);
+  rpc SetCameraNameMapping(SetCameraNameMappingRequest) returns (Response);
 }
 
 // Messages for queries
@@ -794,6 +807,38 @@ message GridSettings {
   // string ("") means "blank slot". Both clients ship the same set of
   // recognized keys; unknown keys render as blank.
   repeated string top_slots = 1;
+}
+
+// --- Camera marketing-name mappings (per-catalog overrides) ---
+//
+// A single mapping entry exposed to the UI. `is_builtin` lets the
+// client style built-in vs. user-supplied rows differently; `is_custom`
+// is true for any internal name with an active override in the
+// catalog's config (which may *be* a built-in name the user has
+// re-mapped, in which case both flags are true and `marketing` is the
+// user's chosen string).
+message CameraNameMapping {
+  string internal = 1;
+  string marketing = 2;
+  bool is_builtin = 3;
+  bool is_custom = 4;
+}
+
+message ListCameraNameMappingsRequest {}
+
+message ListCameraNameMappingsResponse {
+  // Built-in mappings first (alphabetised), then any custom-only
+  // entries (i.e. user mappings whose internal name has no built-in
+  // counterpart). Each entry's `marketing` already reflects custom
+  // overrides — clients can render the string directly.
+  repeated CameraNameMapping mappings = 1;
+}
+
+// Add or update a custom override. Sending `marketing = ""` deletes
+// the override (and reveals the built-in entry, if there is one).
+message SetCameraNameMappingRequest {
+  string internal = 1;
+  string marketing = 2;
 }
 
 // Generic responses

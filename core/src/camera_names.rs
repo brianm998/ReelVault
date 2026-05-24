@@ -27,6 +27,14 @@
 //!
 //! Lookup is case-insensitive on the input but the returned marketing
 //! name is the curated string verbatim.
+//!
+//! Custom mappings: users can extend (and override) the built-in table
+//! via the Camera Names editor in either client. Those entries are
+//! stored per-catalog in the `config` table as a JSON blob and merged
+//! over the built-in MAPPINGS at lookup time — see
+//! [`marketing_name_for_with_custom`].
+
+use std::collections::HashMap;
 
 /// Look up a marketing-friendly name for a camera's internal model code.
 ///
@@ -47,10 +55,70 @@ pub fn marketing_name_for(internal: &str) -> Option<&'static str> {
         .map(|(_, v)| *v)
 }
 
+/// Same as [`marketing_name_for`] but consults a user-supplied override
+/// map first. Map keys must already be normalised (see [`normalise`]);
+/// build them via [`build_custom_overrides`].
+///
+/// Override semantics:
+/// - A key present in `custom_overrides` *replaces* any built-in entry
+///   for the same internal name. This lets users correct a built-in
+///   mapping they disagree with as well as add brand-new ones.
+/// - Returns the override string verbatim — callers can render that
+///   directly as the marketing name.
+pub fn marketing_name_for_with_custom(
+    internal: &str,
+    custom_overrides: &HashMap<String, String>,
+) -> Option<String> {
+    let key = normalise(internal);
+    if key.is_empty() {
+        return None;
+    }
+    if let Some(custom) = custom_overrides.get(&key) {
+        return Some(custom.clone());
+    }
+    MAPPINGS
+        .iter()
+        .find(|(k, _)| *k == key.as_str())
+        .map(|(_, v)| v.to_string())
+}
+
+/// Build a normalised-key override map from an arbitrary
+/// `(internal, marketing)` iterator. Internal-side keys are passed
+/// through [`normalise`] so callers don't need to know about the
+/// canonical form. Empty / blank marketing values are dropped — they
+/// represent "no override" rather than "set the marketing name to the
+/// empty string".
+pub fn build_custom_overrides<I, S1, S2>(entries: I) -> HashMap<String, String>
+where
+    I: IntoIterator<Item = (S1, S2)>,
+    S1: AsRef<str>,
+    S2: AsRef<str>,
+{
+    let mut out = HashMap::new();
+    for (internal, marketing) in entries {
+        let key = normalise(internal.as_ref());
+        let value = marketing.as_ref().trim();
+        if key.is_empty() || value.is_empty() {
+            continue;
+        }
+        out.insert(key, value.to_string());
+    }
+    out
+}
+
+/// Return the entire built-in mapping table as `(internal, marketing)`
+/// pairs in the order they're declared. Used by the
+/// `ListCameraNameMappings` RPC so clients can render the curated list
+/// alongside any custom overrides the user has added.
+pub fn builtin_entries() -> impl Iterator<Item = (&'static str, &'static str)> {
+    MAPPINGS.iter().copied()
+}
+
 /// Strip extraneous whitespace and uppercase the input so different
 /// equivalent representations of the same camera all collide on the
-/// same map key.
-fn normalise(s: &str) -> String {
+/// same map key. Public so callers can construct override maps with
+/// matching keys.
+pub fn normalise(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut last_space = true;
     for ch in s.chars() {
@@ -91,7 +159,15 @@ const MAPPINGS: &[(&str, &str)] = &[
     ("SONY ILCE-7R",       "Sony a7R"),
     ("SONY ILCE-7RM2",     "Sony a7R II"),
     ("SONY ILCE-7RM3",     "Sony a7R III"),
+    // ILCE-7RM3A is the silently-refreshed body Sony shipped in late
+    // 2021 with a faster processor and the higher-res EVF/screen from
+    // the IV. Sony's own marketing calls it "α7R IIIA" (lower-case
+    // alpha in shop pages, capital R as always). Keep "Sony a7R IIIA"
+    // to stay consistent with the rest of the Sony table.
+    ("SONY ILCE-7RM3A",    "Sony a7R IIIA"),
     ("SONY ILCE-7RM4",     "Sony a7R IV"),
+    // Same story for the a7R IVA refresh.
+    ("SONY ILCE-7RM4A",    "Sony a7R IVA"),
     ("SONY ILCE-7RM5",     "Sony a7R V"),
     ("SONY ILCE-7S",       "Sony a7S"),
     ("SONY ILCE-7SM2",     "Sony a7S II"),
@@ -302,6 +378,69 @@ mod tests {
         assert_eq!(
             marketing_name_for("Panasonic DC-S5M2"),
             Some("Panasonic Lumix S5 II")
+        );
+    }
+
+    #[test]
+    fn sony_a7riii_a_refresh_resolves() {
+        assert_eq!(
+            marketing_name_for("SONY ILCE-7RM3A"),
+            Some("Sony a7R IIIA")
+        );
+        // The user's bug report came in lowercase — make sure the
+        // case-insensitive lookup catches that too.
+        assert_eq!(
+            marketing_name_for("sony ilce-7rm3a"),
+            Some("Sony a7R IIIA")
+        );
+    }
+
+    #[test]
+    fn custom_override_replaces_builtin() {
+        let custom = build_custom_overrides([
+            ("SONY ILCE-7RM3", "My a7riii"),
+        ]);
+        assert_eq!(
+            marketing_name_for_with_custom("SONY ILCE-7RM3", &custom),
+            Some("My a7riii".to_string()),
+            "custom override should win over the curated built-in"
+        );
+    }
+
+    #[test]
+    fn custom_falls_through_to_builtin() {
+        // Custom map has *no* override for this body — built-in wins.
+        let custom = build_custom_overrides(std::iter::empty::<(&str, &str)>());
+        assert_eq!(
+            marketing_name_for_with_custom("SONY ILCE-7RM3", &custom),
+            Some("Sony a7R III".to_string())
+        );
+    }
+
+    #[test]
+    fn custom_can_introduce_brand_new_camera() {
+        let custom = build_custom_overrides([
+            ("HASSELBLAD X2D 100C", "Hasselblad X2D"),
+        ]);
+        assert_eq!(
+            marketing_name_for_with_custom("hasselblad  X2D 100c", &custom),
+            Some("Hasselblad X2D".to_string()),
+            "custom map should normalise its keys the same way \
+             lookup normalises inputs, so users don't have to \
+             match whitespace / case exactly"
+        );
+    }
+
+    #[test]
+    fn empty_marketing_in_custom_drops_the_entry() {
+        // A blank marketing value means "no override" — i.e. it
+        // should not silently shadow the built-in.
+        let custom = build_custom_overrides([
+            ("SONY ILCE-7RM3", "   "),
+        ]);
+        assert_eq!(
+            marketing_name_for_with_custom("SONY ILCE-7RM3", &custom),
+            Some("Sony a7R III".to_string())
         );
     }
 }

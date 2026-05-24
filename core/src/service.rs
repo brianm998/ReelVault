@@ -129,6 +129,94 @@ impl VideoRoomService {
         VideoRoomServer::new(self)
     }
 
+    /// Load the user's custom camera-name overrides from the catalog
+    /// config table and pre-normalise them into the map shape that
+    /// [`camera_names::marketing_name_for_with_custom`] expects.
+    ///
+    /// Storage: one JSON entry under the `custom_camera_names` config
+    /// key, shape `[{"internal": "...", "marketing": "..."}, …]`.
+    /// Missing key, blank value, or a deserialisation error all yield
+    /// an empty map (i.e. fall back to built-in only) — we never want
+    /// a malformed user mapping to crash the metadata pipeline.
+    fn load_custom_camera_names(&self) -> std::collections::HashMap<String, String> {
+        use crate::config::CustomCameraName;
+        let raw: Option<String> = self
+            .db
+            .get_connection()
+            .ok()
+            .and_then(|c| {
+                c.query_row(
+                    "SELECT value FROM config WHERE key = ?",
+                    ["custom_camera_names"],
+                    |row| row.get::<_, String>(0),
+                )
+                .ok()
+            });
+        let raw = match raw {
+            Some(s) if !s.trim().is_empty() => s,
+            _ => return std::collections::HashMap::new(),
+        };
+        let parsed: Vec<CustomCameraName> = match serde_json::from_str(&raw) {
+            Ok(v) => v,
+            Err(e) => {
+                tracing::warn!(
+                    "custom_camera_names JSON parse failed (falling back to \
+                     built-in only): {}",
+                    e
+                );
+                return std::collections::HashMap::new();
+            }
+        };
+        crate::camera_names::build_custom_overrides(
+            parsed.into_iter().map(|e| (e.internal, e.marketing)),
+        )
+    }
+
+    /// Read the raw `Vec<CustomCameraName>` stored in the config table
+    /// (unfiltered, unsorted). Used by the editor RPCs so we can mutate
+    /// the list and write it back without losing the user's chosen
+    /// `internal`-side casing.
+    fn read_custom_camera_names(&self) -> Vec<crate::config::CustomCameraName> {
+        let raw: Option<String> = self
+            .db
+            .get_connection()
+            .ok()
+            .and_then(|c| {
+                c.query_row(
+                    "SELECT value FROM config WHERE key = ?",
+                    ["custom_camera_names"],
+                    |row| row.get::<_, String>(0),
+                )
+                .ok()
+            });
+        match raw {
+            Some(s) if !s.trim().is_empty() => {
+                serde_json::from_str(&s).unwrap_or_default()
+            }
+            _ => Vec::new(),
+        }
+    }
+
+    /// Serialise + persist a custom-camera-name list to the config
+    /// table. Empty input is fine — it just stores `"[]"` which
+    /// `load_custom_camera_names` treats as "no overrides".
+    fn write_custom_camera_names(
+        &self,
+        entries: &[crate::config::CustomCameraName],
+    ) -> Result<()> {
+        let json = serde_json::to_string(entries).map_err(|e| {
+            VideoRoomError::DatabaseError(format!("custom_camera_names serialize failed: {e}"))
+        })?;
+        let conn = self.db.get_connection()?;
+        conn.execute(
+            "INSERT INTO config (key, value) VALUES (?, ?)
+             ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP",
+            rusqlite::params!["custom_camera_names", json, json],
+        )
+        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
     fn get_video_metadata_sync(&self, video_id: &str) -> Result<VideoMetadata> {
         let db = self.db.as_ref();
         let video = db
@@ -187,15 +275,19 @@ impl VideoRoomService {
             row.unwrap_or((0, None, None, 0, 0, 0.0, 0, None, false, 0, 0, None, None, None, None, None, None));
 
         let camera_model_str = camera_model.unwrap_or_default();
-        // Resolve marketing name from the built-in mapping table; fall
-        // back to the internal name when no mapping is known. Clients
-        // detect "no mapping" by comparing `camera_display_name` to
+        // Resolve marketing name with the user's custom overrides
+        // layered on top of the built-in mapping table; fall back to
+        // the internal name when no mapping is known. Clients detect
+        // "no mapping" by comparing `camera_display_name` to
         // `camera_model` — equal means no mapping, so they hide the
         // info-icon affordance that flips between names.
+        let custom_overrides = self.load_custom_camera_names();
         let camera_display_name =
-            crate::camera_names::marketing_name_for(&camera_model_str)
-                .map(|s| s.to_string())
-                .unwrap_or_else(|| camera_model_str.clone());
+            crate::camera_names::marketing_name_for_with_custom(
+                &camera_model_str,
+                &custom_overrides,
+            )
+            .unwrap_or_else(|| camera_model_str.clone());
 
         Ok(VideoMetadata {
             id: video_id.to_string(),
@@ -1555,13 +1647,17 @@ impl VideoRoomTrait for VideoRoomService {
         let years = self.db.list_distinct_capture_years().unwrap_or_default();
         // Parallel list of marketing-friendly camera names — same length
         // and order as `cameras`. Falls back to the internal name when
-        // no mapping exists so the two lists stay in lockstep.
+        // no mapping (built-in or custom) exists so the two lists stay
+        // in lockstep.
+        let custom_overrides = self.load_custom_camera_names();
         let camera_display_names: Vec<String> = cameras
             .iter()
             .map(|internal| {
-                crate::camera_names::marketing_name_for(internal)
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| internal.clone())
+                crate::camera_names::marketing_name_for_with_custom(
+                    internal,
+                    &custom_overrides,
+                )
+                .unwrap_or_else(|| internal.clone())
             })
             .collect();
         Ok(Response::new(FilterOptions {
@@ -2046,6 +2142,114 @@ impl VideoRoomTrait for VideoRoomService {
                 "Watch settings updated (enabled={}, settle={}ms, poll={}ms)",
                 req.enabled, settle, poll
             ),
+            error: String::new(),
+        }))
+    }
+
+    async fn list_camera_name_mappings(
+        &self,
+        _request: Request<ListCameraNameMappingsRequest>,
+    ) -> std::result::Result<Response<ListCameraNameMappingsResponse>, Status> {
+        // 1. Custom overrides keyed by normalised internal name. We
+        //    also keep the raw (user-supplied) internal string so the
+        //    editor displays it back exactly as typed.
+        let raw_customs = self.read_custom_camera_names();
+        let mut custom_by_normalised: std::collections::HashMap<String, (String, String)> =
+            std::collections::HashMap::new();
+        for c in &raw_customs {
+            let key = crate::camera_names::normalise(&c.internal);
+            let marketing = c.marketing.trim();
+            if key.is_empty() || marketing.is_empty() {
+                continue;
+            }
+            custom_by_normalised.insert(key, (c.internal.clone(), marketing.to_string()));
+        }
+
+        // 2. Walk every built-in entry. If a custom override exists
+        //    for the same normalised key, the custom marketing wins and
+        //    we mark both flags. We also pop the entry out of
+        //    `custom_by_normalised` so step 3 only sees custom-only
+        //    rows.
+        let mut mappings = Vec::new();
+        let mut builtin_entries: Vec<(&'static str, &'static str)> =
+            crate::camera_names::builtin_entries().collect();
+        builtin_entries.sort_by(|a, b| a.0.to_ascii_uppercase().cmp(&b.0.to_ascii_uppercase()));
+        for (internal, marketing) in builtin_entries {
+            let key = crate::camera_names::normalise(internal);
+            let overridden = custom_by_normalised.remove(&key);
+            let (final_internal, final_marketing, is_custom) = match overridden {
+                Some((raw_internal, custom_marketing)) => {
+                    (raw_internal, custom_marketing, true)
+                }
+                None => (internal.to_string(), marketing.to_string(), false),
+            };
+            mappings.push(CameraNameMapping {
+                internal: final_internal,
+                marketing: final_marketing,
+                is_builtin: true,
+                is_custom,
+            });
+        }
+
+        // 3. Any custom-only entries (no matching built-in) come last,
+        //    alphabetised by internal name so the editor's table is
+        //    stable across calls.
+        let mut custom_only: Vec<(String, String)> =
+            custom_by_normalised.into_values().collect();
+        custom_only.sort_by(|a, b| a.0.to_ascii_uppercase().cmp(&b.0.to_ascii_uppercase()));
+        for (raw_internal, marketing) in custom_only {
+            mappings.push(CameraNameMapping {
+                internal: raw_internal,
+                marketing,
+                is_builtin: false,
+                is_custom: true,
+            });
+        }
+
+        Ok(Response::new(ListCameraNameMappingsResponse { mappings }))
+    }
+
+    async fn set_camera_name_mapping(
+        &self,
+        request: Request<SetCameraNameMappingRequest>,
+    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+        let req = request.into_inner();
+        let internal_raw = req.internal.trim().to_string();
+        let marketing = req.marketing.trim().to_string();
+
+        if internal_raw.is_empty() {
+            return Ok(Response::new(videoroom::Response {
+                success: false,
+                message: String::new(),
+                error: "internal name must not be blank".to_string(),
+            }));
+        }
+
+        let normalised_key = crate::camera_names::normalise(&internal_raw);
+        let mut entries = self.read_custom_camera_names();
+        // Drop any pre-existing entry with the same normalised internal
+        // key, regardless of casing/whitespace the user originally
+        // typed. Keeps the list deduped and lets the new entry win.
+        entries.retain(|e| crate::camera_names::normalise(&e.internal) != normalised_key);
+
+        if !marketing.is_empty() {
+            entries.push(crate::config::CustomCameraName {
+                internal: internal_raw.clone(),
+                marketing: marketing.clone(),
+            });
+        }
+
+        self.write_custom_camera_names(&entries)
+            .map_err(|e| Status::internal(format!("Failed to save mappings: {e}")))?;
+
+        let message = if marketing.is_empty() {
+            format!("Removed custom mapping for \"{internal_raw}\"")
+        } else {
+            format!("Saved custom mapping: \"{internal_raw}\" → \"{marketing}\"")
+        };
+        Ok(Response::new(videoroom::Response {
+            success: true,
+            message,
             error: String::new(),
         }))
     }

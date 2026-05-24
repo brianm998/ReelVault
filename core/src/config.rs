@@ -54,6 +54,16 @@ pub struct ExternalEditor {
     pub platforms: Vec<String>,
 }
 
+/// A user-supplied override for the built-in camera-name mapping table
+/// in [`crate::camera_names`]. `internal` is stored as the raw string
+/// the user typed (so it round-trips back into the editor unchanged);
+/// lookups normalise both sides via `camera_names::normalise`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomCameraName {
+    pub internal: String,
+    pub marketing: String,
+}
+
 impl Config {
     pub async fn load(db: &Database) -> Result<Self> {
         // When the daemon was started with `--no-catalog` there's no DB to

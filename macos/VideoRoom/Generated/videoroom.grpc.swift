@@ -635,6 +635,30 @@ internal enum Videoroom_VideoRoom: Sendable {
                 method: "UpdateWatchSettings"
             )
         }
+        /// Namespace for "ListCameraNameMappings" metadata.
+        internal enum ListCameraNameMappings: Sendable {
+            /// Request type for "ListCameraNameMappings".
+            internal typealias Input = Videoroom_ListCameraNameMappingsRequest
+            /// Response type for "ListCameraNameMappings".
+            internal typealias Output = Videoroom_ListCameraNameMappingsResponse
+            /// Descriptor for "ListCameraNameMappings".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "ListCameraNameMappings"
+            )
+        }
+        /// Namespace for "SetCameraNameMapping" metadata.
+        internal enum SetCameraNameMapping: Sendable {
+            /// Request type for "SetCameraNameMapping".
+            internal typealias Input = Videoroom_SetCameraNameMappingRequest
+            /// Response type for "SetCameraNameMapping".
+            internal typealias Output = Videoroom_Response
+            /// Descriptor for "SetCameraNameMapping".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
+                method: "SetCameraNameMapping"
+            )
+        }
         /// Descriptors for all methods in the "videoroom.VideoRoom" service.
         internal static let descriptors: [GRPCCore.MethodDescriptor] = [
             ListVideos.descriptor,
@@ -687,7 +711,9 @@ internal enum Videoroom_VideoRoom: Sendable {
             UpdateGridSettings.descriptor,
             SubscribeCatalogEvents.descriptor,
             GetWatchSettings.descriptor,
-            UpdateWatchSettings.descriptor
+            UpdateWatchSettings.descriptor,
+            ListCameraNameMappings.descriptor,
+            SetCameraNameMapping.descriptor
         ]
     }
 }
@@ -1522,6 +1548,46 @@ extension Videoroom_VideoRoom {
             request: GRPCCore.StreamingServerRequest<Videoroom_WatchSettings>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
+
+        /// Handle the "ListCameraNameMappings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Camera marketing-name mappings — internal model code → marketing
+        /// > name. The daemon ships a built-in table (see
+        /// > `core/src/camera_names.rs`); users can add their own overrides
+        /// > (or correct built-in entries they disagree with) via the
+        /// > SetCameraNameMapping RPC. List returns the merged view —
+        /// > built-in entries plus any active custom override — so clients
+        /// > can render one unified table with a "Custom" badge on overridden
+        /// > rows. Setting a marketing name equal to "" removes any custom
+        /// > override and reveals the built-in mapping again.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_ListCameraNameMappingsRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_ListCameraNameMappingsResponse` messages.
+        func listCameraNameMappings(
+            request: GRPCCore.StreamingServerRequest<Videoroom_ListCameraNameMappingsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ListCameraNameMappingsResponse>
+
+        /// Handle the "SetCameraNameMapping" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Videoroom_SetCameraNameMappingRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Videoroom_Response` messages.
+        func setCameraNameMapping(
+            request: GRPCCore.StreamingServerRequest<Videoroom_SetCameraNameMappingRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response>
     }
 
     /// Service protocol for the "videoroom.VideoRoom" service.
@@ -2339,6 +2405,46 @@ extension Videoroom_VideoRoom {
         /// - Returns: A response containing a single `Videoroom_Response` message.
         func updateWatchSettings(
             request: GRPCCore.ServerRequest<Videoroom_WatchSettings>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
+
+        /// Handle the "ListCameraNameMappings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Camera marketing-name mappings — internal model code → marketing
+        /// > name. The daemon ships a built-in table (see
+        /// > `core/src/camera_names.rs`); users can add their own overrides
+        /// > (or correct built-in entries they disagree with) via the
+        /// > SetCameraNameMapping RPC. List returns the merged view —
+        /// > built-in entries plus any active custom override — so clients
+        /// > can render one unified table with a "Custom" badge on overridden
+        /// > rows. Setting a marketing name equal to "" removes any custom
+        /// > override and reveals the built-in mapping again.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_ListCameraNameMappingsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_ListCameraNameMappingsResponse` message.
+        func listCameraNameMappings(
+            request: GRPCCore.ServerRequest<Videoroom_ListCameraNameMappingsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Videoroom_ListCameraNameMappingsResponse>
+
+        /// Handle the "SetCameraNameMapping" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_SetCameraNameMappingRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Videoroom_Response` message.
+        func setCameraNameMapping(
+            request: GRPCCore.ServerRequest<Videoroom_SetCameraNameMappingRequest>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.ServerResponse<Videoroom_Response>
     }
@@ -3162,6 +3268,46 @@ extension Videoroom_VideoRoom {
             request: Videoroom_WatchSettings,
             context: GRPCCore.ServerContext
         ) async throws -> Videoroom_Response
+
+        /// Handle the "ListCameraNameMappings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Camera marketing-name mappings — internal model code → marketing
+        /// > name. The daemon ships a built-in table (see
+        /// > `core/src/camera_names.rs`); users can add their own overrides
+        /// > (or correct built-in entries they disagree with) via the
+        /// > SetCameraNameMapping RPC. List returns the merged view —
+        /// > built-in entries plus any active custom override — so clients
+        /// > can render one unified table with a "Custom" badge on overridden
+        /// > rows. Setting a marketing name equal to "" removes any custom
+        /// > override and reveals the built-in mapping again.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_ListCameraNameMappingsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_ListCameraNameMappingsResponse` to respond with.
+        func listCameraNameMappings(
+            request: Videoroom_ListCameraNameMappingsRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_ListCameraNameMappingsResponse
+
+        /// Handle the "SetCameraNameMapping" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Videoroom_SetCameraNameMappingRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Videoroom_Response` to respond with.
+        func setCameraNameMapping(
+            request: Videoroom_SetCameraNameMappingRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Videoroom_Response
     }
 }
 
@@ -3730,6 +3876,28 @@ extension Videoroom_VideoRoom.StreamingServiceProtocol {
                 )
             }
         )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.ListCameraNameMappings.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_ListCameraNameMappingsRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_ListCameraNameMappingsResponse>(),
+            handler: { request, context in
+                try await self.listCameraNameMappings(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Videoroom_VideoRoom.Method.SetCameraNameMapping.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_SetCameraNameMappingRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_Response>(),
+            handler: { request, context in
+                try await self.setCameraNameMapping(
+                    request: request,
+                    context: context
+                )
+            }
+        )
     }
 }
 
@@ -4291,6 +4459,28 @@ extension Videoroom_VideoRoom.ServiceProtocol {
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
         let response = try await self.updateWatchSettings(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func listCameraNameMappings(
+        request: GRPCCore.StreamingServerRequest<Videoroom_ListCameraNameMappingsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_ListCameraNameMappingsResponse> {
+        let response = try await self.listCameraNameMappings(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func setCameraNameMapping(
+        request: GRPCCore.StreamingServerRequest<Videoroom_SetCameraNameMappingRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Videoroom_Response> {
+        let response = try await self.setCameraNameMapping(
             request: GRPCCore.ServerRequest(stream: request),
             context: context
         )
@@ -4973,6 +5163,32 @@ extension Videoroom_VideoRoom.SimpleServiceProtocol {
     ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
         return GRPCCore.ServerResponse<Videoroom_Response>(
             message: try await self.updateWatchSettings(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func listCameraNameMappings(
+        request: GRPCCore.ServerRequest<Videoroom_ListCameraNameMappingsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_ListCameraNameMappingsResponse> {
+        return GRPCCore.ServerResponse<Videoroom_ListCameraNameMappingsResponse>(
+            message: try await self.listCameraNameMappings(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func setCameraNameMapping(
+        request: GRPCCore.ServerRequest<Videoroom_SetCameraNameMappingRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Videoroom_Response> {
+        return GRPCCore.ServerResponse<Videoroom_Response>(
+            message: try await self.setCameraNameMapping(
                 request: request.message,
                 context: context
             ),
@@ -6050,6 +6266,56 @@ extension Videoroom_VideoRoom {
         func updateWatchSettings<Result>(
             request: GRPCCore.ClientRequest<Videoroom_WatchSettings>,
             serializer: some GRPCCore.MessageSerializer<Videoroom_WatchSettings>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "ListCameraNameMappings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Camera marketing-name mappings — internal model code → marketing
+        /// > name. The daemon ships a built-in table (see
+        /// > `core/src/camera_names.rs`); users can add their own overrides
+        /// > (or correct built-in entries they disagree with) via the
+        /// > SetCameraNameMapping RPC. List returns the merged view —
+        /// > built-in entries plus any active custom override — so clients
+        /// > can render one unified table with a "Custom" badge on overridden
+        /// > rows. Setting a marketing name equal to "" removes any custom
+        /// > override and reveals the built-in mapping again.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_ListCameraNameMappingsRequest` message.
+        ///   - serializer: A serializer for `Videoroom_ListCameraNameMappingsRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_ListCameraNameMappingsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func listCameraNameMappings<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_ListCameraNameMappingsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_ListCameraNameMappingsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_ListCameraNameMappingsResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_ListCameraNameMappingsResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "SetCameraNameMapping" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_SetCameraNameMappingRequest` message.
+        ///   - serializer: A serializer for `Videoroom_SetCameraNameMappingRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func setCameraNameMapping<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_SetCameraNameMappingRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_SetCameraNameMappingRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result
@@ -7689,6 +7955,78 @@ extension Videoroom_VideoRoom {
                 onResponse: handleResponse
             )
         }
+
+        /// Call the "ListCameraNameMappings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Camera marketing-name mappings — internal model code → marketing
+        /// > name. The daemon ships a built-in table (see
+        /// > `core/src/camera_names.rs`); users can add their own overrides
+        /// > (or correct built-in entries they disagree with) via the
+        /// > SetCameraNameMapping RPC. List returns the merged view —
+        /// > built-in entries plus any active custom override — so clients
+        /// > can render one unified table with a "Custom" badge on overridden
+        /// > rows. Setting a marketing name equal to "" removes any custom
+        /// > override and reveals the built-in mapping again.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_ListCameraNameMappingsRequest` message.
+        ///   - serializer: A serializer for `Videoroom_ListCameraNameMappingsRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_ListCameraNameMappingsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func listCameraNameMappings<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_ListCameraNameMappingsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_ListCameraNameMappingsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_ListCameraNameMappingsResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_ListCameraNameMappingsResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.ListCameraNameMappings.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "SetCameraNameMapping" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Videoroom_SetCameraNameMappingRequest` message.
+        ///   - serializer: A serializer for `Videoroom_SetCameraNameMappingRequest` messages.
+        ///   - deserializer: A deserializer for `Videoroom_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func setCameraNameMapping<Result>(
+            request: GRPCCore.ClientRequest<Videoroom_SetCameraNameMappingRequest>,
+            serializer: some GRPCCore.MessageSerializer<Videoroom_SetCameraNameMappingRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Videoroom_Response>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Videoroom_VideoRoom.Method.SetCameraNameMapping.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
     }
 }
 
@@ -9048,6 +9386,68 @@ extension Videoroom_VideoRoom.ClientProtocol {
         try await self.updateWatchSettings(
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_WatchSettings>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_Response>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ListCameraNameMappings" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Camera marketing-name mappings — internal model code → marketing
+    /// > name. The daemon ships a built-in table (see
+    /// > `core/src/camera_names.rs`); users can add their own overrides
+    /// > (or correct built-in entries they disagree with) via the
+    /// > SetCameraNameMapping RPC. List returns the merged view —
+    /// > built-in entries plus any active custom override — so clients
+    /// > can render one unified table with a "Custom" badge on overridden
+    /// > rows. Setting a marketing name equal to "" removes any custom
+    /// > override and reveals the built-in mapping again.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_ListCameraNameMappingsRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func listCameraNameMappings<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_ListCameraNameMappingsRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_ListCameraNameMappingsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.listCameraNameMappings(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_ListCameraNameMappingsRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_ListCameraNameMappingsResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SetCameraNameMapping" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Videoroom_SetCameraNameMappingRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func setCameraNameMapping<Result>(
+        request: GRPCCore.ClientRequest<Videoroom_SetCameraNameMappingRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.setCameraNameMapping(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Videoroom_SetCameraNameMappingRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Videoroom_Response>(),
             options: options,
             onResponse: handleResponse
@@ -10615,6 +11015,76 @@ extension Videoroom_VideoRoom.ClientProtocol {
             metadata: metadata
         )
         return try await self.updateWatchSettings(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ListCameraNameMappings" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Camera marketing-name mappings — internal model code → marketing
+    /// > name. The daemon ships a built-in table (see
+    /// > `core/src/camera_names.rs`); users can add their own overrides
+    /// > (or correct built-in entries they disagree with) via the
+    /// > SetCameraNameMapping RPC. List returns the merged view —
+    /// > built-in entries plus any active custom override — so clients
+    /// > can render one unified table with a "Custom" badge on overridden
+    /// > rows. Setting a marketing name equal to "" removes any custom
+    /// > override and reveals the built-in mapping again.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func listCameraNameMappings<Result>(
+        _ message: Videoroom_ListCameraNameMappingsRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_ListCameraNameMappingsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_ListCameraNameMappingsRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.listCameraNameMappings(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SetCameraNameMapping" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func setCameraNameMapping<Result>(
+        _ message: Videoroom_SetCameraNameMappingRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Videoroom_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Videoroom_SetCameraNameMappingRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.setCameraNameMapping(
             request: request,
             options: options,
             onResponse: handleResponse

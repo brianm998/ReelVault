@@ -366,6 +366,46 @@ class VideoRepository: ObservableObject {
         }
     }
 
+    // MARK: - Camera marketing-name mappings (built-in + user overrides)
+
+    /// Fetch the merged mapping table — built-in entries (sorted) plus
+    /// any custom overrides the user has added. Each `CameraNameMapping`
+    /// already has its `marketing` field reflecting the active override
+    /// (when any).
+    func listCameraNameMappings() async throws -> [CameraNameMapping] {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        let response = try await client.listCameraNameMappings(
+            Videoroom_ListCameraNameMappingsRequest()
+        )
+        return response.mappings.map {
+            CameraNameMapping(
+                internalName: $0.internal,
+                marketingName: $0.marketing,
+                isBuiltin: $0.isBuiltin,
+                isCustom: $0.isCustom
+            )
+        }
+    }
+
+    /// Save a custom override. Pass `marketing == ""` to delete the
+    /// override and fall back to the built-in entry (if one exists).
+    @discardableResult
+    func setCameraNameMapping(internal internalName: String,
+                              marketing: String) async throws -> String {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        var req = Videoroom_SetCameraNameMappingRequest()
+        req.internal = internalName
+        req.marketing = marketing
+        let response = try await client.setCameraNameMapping(req)
+        if !response.success {
+            throw RepositoryError.serverError(
+                response.error.isEmpty ? "set_camera_name_mapping failed"
+                                       : response.error
+            )
+        }
+        return response.message
+    }
+
     // MARK: - Tags / keywords
 
     func listTags() async throws -> [Tag] {
@@ -984,10 +1024,17 @@ private extension GRPCClient {
 
 enum RepositoryError: LocalizedError {
     case notConnected
+    /// The daemon accepted the RPC but responded with `success == false`.
+    /// Carries the human-readable error message the daemon returned so
+    /// the UI can surface it in a toast or alert.
+    case serverError(String)
 
     var errorDescription: String? {
         switch self {
-        case .notConnected: return "Not connected to VideoRoom backend"
+        case .notConnected:
+            return "Not connected to VideoRoom backend"
+        case .serverError(let message):
+            return message
         }
     }
 }

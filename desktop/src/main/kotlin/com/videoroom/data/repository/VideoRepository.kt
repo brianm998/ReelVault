@@ -214,6 +214,60 @@ class VideoRepository(
         }
     }
 
+    /**
+     * Fetch the merged camera-name mapping table — every built-in
+     * entry plus any custom overrides the user has saved for this
+     * catalog. Each entry's [marketingName] already reflects the
+     * active override (if any).
+     */
+    suspend fun listCameraNameMappings(): List<com.videoroom.data.models.CameraNameMapping> =
+        withContext(Dispatchers.IO) {
+            val s = stub ?: return@withContext emptyList()
+            try {
+                val response = s.listCameraNameMappings(
+                    Videoroom.ListCameraNameMappingsRequest.newBuilder().build()
+                )
+                response.mappingsList.map {
+                    com.videoroom.data.models.CameraNameMapping(
+                        internalName = it.internal,
+                        marketingName = it.marketing,
+                        isBuiltin = it.isBuiltin,
+                        isCustom = it.isCustom
+                    )
+                }
+            } catch (e: Exception) {
+                logger.error("Failed to list camera name mappings: ${e.message}", e)
+                emptyList()
+            }
+        }
+
+    /**
+     * Save (or remove) a custom override. Pass an empty
+     * [marketingName] to delete the override for [internalName] —
+     * the row will fall back to its built-in mapping (if one exists)
+     * or vanish from the list entirely.
+     *
+     * Returns the server's human-readable status message ("Saved …"
+     * or "Removed …") so the caller can surface it in a toast.
+     */
+    suspend fun setCameraNameMapping(
+        internalName: String,
+        marketingName: String,
+    ): String = withContext(Dispatchers.IO) {
+        val s = stub ?: throw IllegalStateException("Not connected to VideoRoom backend")
+        val req = Videoroom.SetCameraNameMappingRequest.newBuilder()
+            .setInternal(internalName)
+            .setMarketing(marketingName)
+            .build()
+        val response = s.setCameraNameMapping(req)
+        if (!response.success) {
+            throw RuntimeException(
+                response.error.ifEmpty { "Failed to save camera name mapping" }
+            )
+        }
+        response.message
+    }
+
     suspend fun searchVideos(
         query: String,
         limit: Int = 50,

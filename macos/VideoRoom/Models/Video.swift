@@ -199,6 +199,22 @@ struct LibraryLocation: Identifiable, Hashable {
 }
 
 /// Distinct values that can populate the top-bar filter dropdowns.
+/// One row in the Camera Names editor. `isBuiltin` is true when the
+/// daemon ships a curated mapping for `internalName`; `isCustom` is
+/// true when the user has added or overridden a row in this catalog.
+/// Both can be true at once — that's the "user replaced a built-in"
+/// case, where `marketingName` carries the user's chosen string.
+struct CameraNameMapping: Identifiable, Hashable {
+    let internalName: String
+    let marketingName: String
+    let isBuiltin: Bool
+    let isCustom: Bool
+
+    /// Stable identity for SwiftUI List/ForEach. Internal name is the
+    /// catalog-unique key for a mapping.
+    var id: String { internalName }
+}
+
 struct FilterOptions: Equatable {
     var cameras: [String] = []
     /// Marketing-friendly names for each entry in `cameras`, same order
