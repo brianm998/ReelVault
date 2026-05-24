@@ -328,7 +328,6 @@ fun VideoRoomApp(
      *  update the Window title. */
     onCatalogChanged: (CatalogInfo) -> Unit = {}
 ) {
-    var isDarkTheme by remember { mutableStateOf(true) }
     val repository = remember { VideoRepository.getInstance() }
     val gridViewModel = remember { GridViewModel(repository) }
     val detailViewModel = remember { DetailViewModel(repository) }
@@ -575,7 +574,8 @@ fun VideoRoomApp(
         }
     }
 
-    VideoRoomTheme(darkTheme = isDarkTheme) {
+    // VideoRoom is dark-mode only — light mode is intentionally not offered.
+    VideoRoomTheme {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -587,8 +587,6 @@ fun VideoRoomApp(
                     val selectedIds = gridViewModel.selectedVideoIds.collectAsState()
                     VideoRoomTopBar(
                         gridViewModel = gridViewModel,
-                        isDarkTheme = isDarkTheme,
-                        onThemeToggle = { isDarkTheme = !isDarkTheme },
                         onSearch = { gridViewModel.setSearchQuery(it) },
                         onRequestAddLibrary = { showAddLibraryDialog = true },
                         onSearchFocusChanged = onSearchFocusChanged,
@@ -1556,8 +1554,6 @@ private fun HelpStep(
 @Composable
 fun VideoRoomTopBar(
     gridViewModel: com.videoroom.viewmodel.GridViewModel,
-    isDarkTheme: Boolean,
-    onThemeToggle: () -> Unit,
     onSearch: (String) -> Unit,
     onRequestAddLibrary: () -> Unit,
     onGroupSelected: () -> Unit = {},
@@ -1885,21 +1881,6 @@ fun VideoRoomTopBar(
                         }
                     }
 
-                    // Theme toggle
-                    com.videoroom.ui.components.Tooltip(
-                        text = if (isDarkTheme) "Switch to light theme" else "Switch to dark theme"
-                    ) {
-                        IconButton(onClick = onThemeToggle) {
-                            Icon(
-                                imageVector = if (isDarkTheme) {
-                                    Icons.Default.LightMode
-                                } else {
-                                    Icons.Default.DarkMode
-                                },
-                                contentDescription = "Toggle theme"
-                            )
-                        }
-                    }
                 }
             }
         },

@@ -10,7 +10,6 @@ struct ContentView: View {
     @StateObject private var detailViewModel = DetailViewModel()
     @State private var connectionState: ConnectionState = .connecting
     @State private var connectionError: String = ""
-    @State private var isDarkMode = true
     @State private var leftPanelExpanded = true
     @State private var rightPanelExpanded = true
     @State private var thumbnailWidth: CGFloat = 220
@@ -70,7 +69,8 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 1200, minHeight: 800)
-        .preferredColorScheme(isDarkMode ? .dark : .light)
+        // VideoRoom is dark-mode only — light mode is intentionally not offered.
+        .preferredColorScheme(.dark)
         .task { await setupConnection() }
         // Install an app-level NSEvent monitor so keyboard shortcuts work even
         // when no SwiftUI view holds explicit focus. This is more reliable than
@@ -478,15 +478,6 @@ struct ContentView: View {
             }
             .buttonStyle(.borderless)
             .help("Add a folder to your library. VideoRoom will scan it for videos and extract their metadata in the background.")
-
-            // Dark mode toggle
-            Button {
-                isDarkMode.toggle()
-            } label: {
-                Image(systemName: isDarkMode ? "sun.max" : "moon")
-            }
-            .buttonStyle(.borderless)
-            .help(isDarkMode ? "Switch to light theme" : "Switch to dark theme")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)

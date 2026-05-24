@@ -3,24 +3,24 @@
 
 package com.videoroom.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-// Brand colors (used across both themes)
+// Brand colors used by the dark theme.
+//
+// VideoRoom is dark-mode only. A light theme was intentionally removed —
+// the app is a media-browsing surface that's always viewed against
+// thumbnails and footage, where a dark chrome is the established
+// (Lightroom / Resolve / Final Cut / Premiere) convention.
 object VideoRoomColors {
-    val PrimaryLight = Color(0xFF6200EE)
     val PrimaryDark = Color(0xFFBB86FC)
     val Secondary = Color(0xFF03DAC6)
     val Tertiary = Color(0xFF1F6FEB)
 }
 
-// Use Material 3 defaults but override brand colors.
-// Material 3 darkColorScheme/lightColorScheme provide good defaults for
-// all the surface/onSurface/background/etc. colors.
 private val DarkColorScheme = darkColorScheme(
     primary = VideoRoomColors.PrimaryDark,
     onPrimary = Color(0xFF000000),
@@ -55,49 +55,12 @@ private val DarkColorScheme = darkColorScheme(
     onErrorContainer = Color(0xFFFFDAD6),
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = VideoRoomColors.PrimaryLight,
-    onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFEADDFF),
-    onPrimaryContainer = Color(0xFF21005D),
-
-    secondary = VideoRoomColors.Secondary,
-    onSecondary = Color(0xFF000000),
-    secondaryContainer = Color(0xFFA0F2E8),
-    onSecondaryContainer = Color(0xFF002019),
-
-    tertiary = VideoRoomColors.Tertiary,
-    onTertiary = Color(0xFFFFFFFF),
-    tertiaryContainer = Color(0xFFD8E2FF),
-    onTertiaryContainer = Color(0xFF001A41),
-
-    background = Color(0xFFFAFAFA),
-    onBackground = Color(0xFF1C1B1F),
-
-    surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF1C1B1F),
-
-    surfaceVariant = Color(0xFFE7E0EC),
-    onSurfaceVariant = Color(0xFF49454F),
-
-    outline = Color(0xFF79747E),
-    outlineVariant = Color(0xFFCAC4D0),
-
-    error = Color(0xFFB00020),
-    onError = Color(0xFFFFFFFF),
-    errorContainer = Color(0xFFFFDAD6),
-    onErrorContainer = Color(0xFF410002),
-)
-
 @Composable
 fun VideoRoomTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
-
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = DarkColorScheme,
         typography = Typography(),
         content = content
     )
