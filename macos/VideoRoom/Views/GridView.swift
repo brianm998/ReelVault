@@ -630,11 +630,18 @@ struct VideoCardView: View {
                 // frame around the photo area (inset from the 1:1 box
                 // edge), so the label identity is preserved even after
                 // the background goes bright neutral on selection.
+                //
+                // `.allowsHitTesting(false)` is essential — SwiftUI's
+                // overlays sit *on top* of the parent's content, so a
+                // shape view that covers the full photo area swallows
+                // every click underneath. Marking it non-hit-testable
+                // lets clicks pass straight through to the thumbnail.
                 .overlay {
                     if let frame = thumbnailFrameColor {
                         Rectangle()
                             .strokeBorder(frame, lineWidth: 3)
                             .padding(photoPadding - 4)
+                            .allowsHitTesting(false)
                     }
                 }
                 .clipped()
@@ -644,14 +651,24 @@ struct VideoCardView: View {
                 .background(cardBackgroundColor)
         }
         // Hover tint applied as a SwiftUI overlay so SwiftUI handles
-        // compositing in the correct appearance context.
-        .overlay(Color.white.opacity(hoverOverlayAlpha))
+        // compositing in the correct appearance context. Non-hit-
+        // testable — otherwise the (covering) Color view would intercept
+        // every click before it reached the stars / stack badge / stat
+        // menu.
+        .overlay(
+            Color.white.opacity(hoverOverlayAlpha)
+                .allowsHitTesting(false)
+        )
         // 1 pt outer border between adjacent cards. Dark by default,
         // brightening on selection so the user always knows which card
-        // they last touched.
+        // they last touched. Also non-hit-testable for the same reason
+        // — even though only the stroke line is drawn, `Rectangle()
+        // .stroke(...)` reports a hit-test area covering the whole
+        // bounding box, which would block child clicks.
         .overlay(
             Rectangle()
                 .stroke(cardBorderColor, lineWidth: 1)
+                .allowsHitTesting(false)
         )
         // Custom popup tooltip — we own the timing end-to-end rather
         // than relying on NSView's system tooltip, whose delay isn't
