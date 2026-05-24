@@ -63,6 +63,7 @@ fun ListScreen(
     val expandedMembers = viewModel.expandedGroupMembers.collectAsState()
     val shiftPressed = LocalShiftPressed.current
     val listColumns = viewModel.listColumns.collectAsState()
+    val topSlots = viewModel.topSlots.collectAsState()
 
     val rendered: List<GridItem> = remember(
         videos.value,
@@ -217,6 +218,7 @@ fun ListScreen(
                                 thumbnailBytes = thumbnails.value[video.id],
                                 thumbnailHeight = thumbnailHeight,
                                 visibleColumns = listColumns.value,
+                                topSlots = topSlots.value,
                                 onClick = { shiftFromEvent, toggleFromEvent ->
                                     val shift = shiftFromEvent || shiftPressed
                                     val toggle = toggleFromEvent
@@ -232,6 +234,10 @@ fun ListScreen(
                                     onVideoSelect(video)
                                 },
                                 onDoubleClick = { viewModel.openVideoInExternal(video.openPath) },
+                                onSetRating = { rating -> viewModel.setRating(rating, listOf(video.id)) },
+                                onPickStatSlot = { slotIndex, key ->
+                                    viewModel.updateGridTopSlot(slotIndex, key)
+                                },
                                 dragPaths = run {
                                     val multi = selectedVideoIds.value
                                     if (video.id in multi && multi.size > 1) {
@@ -296,8 +302,14 @@ fun VideoListRow(
     thumbnailBytes: ByteArray? = null,
     thumbnailHeight: Dp = 80.dp,
     visibleColumns: Set<String> = emptySet(),
+    /** Same 4 catalog-scoped top-of-card stat-slot choices the grid uses. */
+    topSlots: List<String> = emptyList(),
     onClick: (shiftPressed: Boolean, togglePressed: Boolean) -> Unit = { _, _ -> },
     onDoubleClick: () -> Unit = {},
+    /** Fired when one of the five rating positions is clicked. */
+    onSetRating: (Int) -> Unit = {},
+    /** Fired when the user picks a different stat key for one of the four top slots. */
+    onPickStatSlot: (Int, String) -> Unit = { _, _ -> },
     /**
      * File paths to transfer when the user drags this row out to an external
      * app. When empty, the row's own [item.video.openPath] is used.
@@ -307,6 +319,7 @@ fun VideoListRow(
 ) {
     val video = item.video
     val thumbnailWidth = thumbnailHeight * 16f / 9f
+    val isInExpandedStack = item.isExpandedRepresentative || item.isStackChild
 
     val thumbnailImage = remember(thumbnailBytes) {
         thumbnailBytes?.let { bytes ->
@@ -324,18 +337,49 @@ fun VideoListRow(
     // FileDragSource is stateless between gestures.
     val fileDragSource = remember { FileDragSource() }
 
-    // Row background based on selection state
-    val rowBackground = when {
-        isAnchor -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
-        isSelected -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-        isInMultiSelection -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-        item.isStackChild -> MaterialTheme.colorScheme.primary.copy(alpha = 0.06f)
-        else -> Color.Transparent
+    // Lightroom band palette — mirrors the grid card so list rows and
+    // grid cards share visual language. The middle row picks up the
+    // colour-label tint when unselected; the bands stay neutral.
+    val colorLabelEnum = com.videoroom.data.models.ColorLabel.from(video.colorLabel)
+    val topBandColor = when {
+        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFFF0F0F0)
+        isInMultiSelection -> Color(0xFFD7D7D7)
+        else -> Color(0xFFB3B3B3)
+    }
+    val rowMiddleBackground = when {
+        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFFF0F0F0)
+        isInMultiSelection -> Color(0xFFD7D7D7)
+        isInExpandedStack -> Color(0xFF8B8FA0)
+        colorLabelEnum != com.videoroom.data.models.ColorLabel.None -> colorLabelEnum.dimmed
+        else -> Color(0xFF858585)
+    }
+    val bottomBandColor = when {
+        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFFF0F0F0)
+        isInMultiSelection -> Color(0xFFD7D7D7)
+        else -> Color(0xFF999999)
+    }
+    val bandDividerColor = when {
+        isAnchor || isSelected || isInMultiSelection -> Color.Black.copy(alpha = 0.10f)
+        else -> Color.Black.copy(alpha = 0.35f)
+    }
+    val cardBorderColor = when {
+        isAnchor || isSelected || isInMultiSelection -> Color.White.copy(alpha = 0.6f)
+        else -> Color.Black.copy(alpha = 0.4f)
     }
 
-    val rowModifier = modifier
+    val paddedSlots: List<String> = run {
+        val s = topSlots.toMutableList()
+        while (s.size < 4) s.add("")
+        if (s.size > 4) s.subList(4, s.size).clear()
+        s
+    }
+
+    // Outer Column: top stat band, middle horizontal row, bottom rating
+    // band — matching the grid card's three-band layout but stretched
+    // wide for list mode.
+    val outerModifier = modifier
         .fillMaxWidth()
-        .background(rowBackground)
+        .border(1.dp, cardBorderColor)
         // Drag-out: detect drag motion in Compose and hand off to AWT.
         .pointerInput(dragPaths, video.openPath) {
             awaitEachGesture {
@@ -369,17 +413,43 @@ fun VideoListRow(
             }
         }
         .shiftAwareRowClickable(onClick = onClick, onDoubleClick = onDoubleClick)
-        .padding(
-            start = if (item.isStackChild) (VideoRoomSpacing.Medium + 16.dp) else VideoRoomSpacing.Small,
-            end = VideoRoomSpacing.Small,
-            top = VideoRoomSpacing.XSmall,
-            bottom = VideoRoomSpacing.XSmall
+
+    Column(modifier = outerModifier) {
+        // Top stat band — single horizontal row of 4 configurable cells.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(22.dp)
+                .background(topBandColor)
+                .padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ListRowStatCell(0, paddedSlots[0], video, onPickStatSlot, alignEnd = false, weight = 1f)
+            ListRowStatCell(1, paddedSlots[1], video, onPickStatSlot, alignEnd = false, weight = 1f)
+            ListRowStatCell(2, paddedSlots[2], video, onPickStatSlot, alignEnd = false, weight = 1f)
+            ListRowStatCell(3, paddedSlots[3], video, onPickStatSlot, alignEnd = true, weight = 1f)
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(bandDividerColor)
         )
 
-    Row(
-        modifier = rowModifier,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+        // Middle row: existing thumbnail + info layout. The middle takes
+        // its own padding (stack-child indent, end padding, etc).
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(rowMiddleBackground)
+                .padding(
+                    start = if (item.isStackChild) (VideoRoomSpacing.Medium + 16.dp) else VideoRoomSpacing.Small,
+                    end = VideoRoomSpacing.Small,
+                    top = VideoRoomSpacing.XSmall,
+                    bottom = VideoRoomSpacing.XSmall
+                ),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
         // Thumbnail
         Box(
             modifier = Modifier
@@ -477,6 +547,116 @@ fun VideoListRow(
                     color = Color.White,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(horizontal = VideoRoomSpacing.Small, vertical = 2.dp)
+                )
+            }
+        }
+        }  // end middle Row
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(bandDividerColor)
+        )
+
+        // Bottom rating band: 5 star/dot positions.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(22.dp)
+                .background(bottomBandColor),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            for (position in 1..5) {
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable {
+                            // Lightroom toggle-off: clicking the current
+                            // rating clears it (rating -> 0). Any other
+                            // position sets the rating to that value.
+                            if (video.rating == position) onSetRating(0)
+                            else onSetRating(position)
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (position <= video.rating) {
+                        Icon(
+                            imageVector = Icons.Filled.Star,
+                            contentDescription = "Rating $position",
+                            tint = Color.Black,
+                            modifier = Modifier.size(11.dp)
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(4.dp)
+                                .background(
+                                    Color(0xFF595959),
+                                    shape = androidx.compose.foundation.shape.CircleShape
+                                )
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Stat cell rendered inside the list-row's top band. Click anywhere in
+ *  the cell to open the stat-picker dropdown. Mirrors VideoCard.StatCell
+ *  in look + behaviour but lives here so ListScreen owns its own card. */
+@Composable
+private fun RowScope.ListRowStatCell(
+    slotIndex: Int,
+    key: String,
+    video: VideoSummary,
+    onPick: (Int, String) -> Unit,
+    alignEnd: Boolean,
+    weight: Float,
+) {
+    val stat = com.videoroom.data.models.GridStatKey.fromRaw(key)
+    val value = stat.valueFor(video)
+    val displayed: String =
+        if (stat == com.videoroom.data.models.GridStatKey.None) "—" else value
+    var expanded by remember { mutableStateOf(false) }
+    Box(
+        modifier = Modifier
+            .weight(weight)
+            .heightIn(min = 14.dp)
+            .clickable { expanded = true },
+        contentAlignment = if (alignEnd) Alignment.CenterEnd else Alignment.CenterStart
+    ) {
+        Text(
+            text = displayed,
+            style = if (slotIndex == 0) MaterialTheme.typography.labelMedium
+                    else MaterialTheme.typography.labelSmall,
+            color = if (stat == com.videoroom.data.models.GridStatKey.None)
+                Color.Black.copy(alpha = 0.4f)
+            else
+                Color.Black.copy(alpha = 0.85f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = if (alignEnd) androidx.compose.ui.text.style.TextAlign.End
+                        else androidx.compose.ui.text.style.TextAlign.Start
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            com.videoroom.data.models.GridStatKey.values().forEach { choice ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            if (choice == stat) "✓ ${choice.displayName}"
+                            else choice.displayName
+                        )
+                    },
+                    onClick = {
+                        onPick(slotIndex, choice.raw)
+                        expanded = false
+                    }
                 )
             }
         }

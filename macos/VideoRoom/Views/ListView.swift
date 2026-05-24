@@ -78,6 +78,7 @@ struct ListView: View {
                         isPrimarySelected: viewModel.selectedVideoId == item.video.id,
                         isInMultiSelection: viewModel.selectedVideoIds.contains(item.video.id),
                         isAnchor: viewModel.anchorVideoId == item.video.id && viewModel.selectedVideoIds.count > 1,
+                        topSlots: viewModel.topSlots,
                         onClick: { shift, toggle in
                             handleClick(item: item, rendered: rendered, shift: shift, toggle: toggle)
                         },
@@ -86,6 +87,17 @@ struct ListView: View {
                         },
                         onStackBadgeClick: {
                             viewModel.toggleStackExpansion(item.video.groupId)
+                        },
+                        onSetRating: { rating in
+                            viewModel.setRating(rating, for: [item.video.id])
+                        },
+                        onPickStatSlot: { slotIndex, key in
+                            guard slotIndex >= 0, slotIndex < 4 else { return }
+                            var slots = viewModel.topSlots
+                            while slots.count < 4 { slots.append("") }
+                            slots[slotIndex] = key
+                            viewModel.topSlots = slots
+                            viewModel.saveGridSettings()
                         },
                         dragPaths: rowDragPaths
                     )
@@ -101,9 +113,9 @@ struct ListView: View {
                             viewModel.loadMore()
                         }
                     }
-
-                    Divider()
-                        .padding(.leading, thumbnailHeight * 16.0 / 9.0 + 16)
+                    // No inter-row Divider here — each row's Lightroom
+                    // container now has its own outer border, so an extra
+                    // divider between rows would double up.
                 }
 
                 if viewModel.isLoading && !viewModel.videos.isEmpty {
@@ -244,9 +256,16 @@ struct VideoListRowView: View {
     let isPrimarySelected: Bool
     let isInMultiSelection: Bool
     let isAnchor: Bool
+    /// Same four catalog-scoped top-of-card stat-slot choices the grid uses.
+    /// Each entry is a `GridStatKey.rawValue`; unknown strings render as blank.
+    var topSlots: [String] = []
     let onClick: (_ shift: Bool, _ toggle: Bool) -> Void
     let onDoubleClick: () -> Void
     let onStackBadgeClick: () -> Void
+    /// Fired when one of the five rating positions is clicked.
+    var onSetRating: (_ rating: Int) -> Void = { _ in }
+    /// Fired when the user picks a different stat key for one of the four top slots.
+    var onPickStatSlot: (_ slotIndex: Int, _ statKey: String) -> Void = { _, _ in }
     /// Paths to drag when the user drags this row out. When the row is part
     /// of a multi-selection, every selected file is included so the receiving
     /// app gets the full set in one drop.
@@ -257,8 +276,86 @@ struct VideoListRowView: View {
     private var video: VideoSummary { item.video }
     private var isStackChild: Bool { item.isStackChild }
     private var thumbnailWidth: CGFloat { thumbnailHeight * 16.0 / 9.0 }
+    private var isInExpandedStack: Bool {
+        item.isExpandedRepresentative || item.isStackChild
+    }
 
     var body: some View {
+        // Lightroom-style three-band wrapper, matching the grid card: a
+        // top stat band, a middle media-and-info row, and a bottom rating
+        // band. The bands span the full row width; the existing
+        // horizontal row layout sits unchanged in the middle.
+        VStack(alignment: .leading, spacing: 0) {
+            topStatBand
+                .frame(maxWidth: .infinity)
+                .frame(height: 22)
+                .background(topBandColor)
+            Rectangle()
+                .fill(bandDividerColor)
+                .frame(height: 1)
+                .allowsHitTesting(false)
+            rowBody
+                .background(rowMiddleBackground)
+            Rectangle()
+                .fill(bandDividerColor)
+                .frame(height: 1)
+                .allowsHitTesting(false)
+            ratingBand
+                .frame(maxWidth: .infinity)
+                .frame(height: 22)
+                .background(bottomBandColor)
+        }
+        .overlay(
+            Rectangle()
+                .stroke(cardBorderColor, lineWidth: 1)
+                .allowsHitTesting(false)
+        )
+        .contentShape(Rectangle())
+        .onHover { hovered in isHovered = hovered }
+        .onTapGesture(count: 2) { onDoubleClick() }
+        .onTapGesture {
+            let mods = ModifierSnapshot.lastMouseDownModifiers
+            let shift = mods.contains(.shift)
+            let toggle = mods.contains(.command) || mods.contains(.control)
+            onClick(shift, toggle)
+        }
+        // File drag-out: lets users drag video files directly from the list
+        // into DaVinci Resolve, Premiere Pro, Final Cut Pro, Finder, etc.
+        .onDrag {
+            let primary = dragPaths.first ?? video.openPath
+            return DragExport.provider(for: primary)
+        } preview: {
+            HStack(spacing: 6) {
+                if let img = thumbnail {
+                    Image(nsImage: img)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 48, height: 27)
+                        .cornerRadius(3)
+                        .clipped()
+                }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(video.filename)
+                        .font(.caption2)
+                        .lineLimit(1)
+                    if dragPaths.count > 1 {
+                        Text("\(dragPaths.count) files")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .padding(6)
+            .background(Color(.windowBackgroundColor))
+            .cornerRadius(6)
+            .shadow(radius: 2)
+        }
+    }
+
+    /// Middle band: the existing horizontal layout (thumbnail + info
+    /// columns). Lifted out of `body` so the surrounding three-band
+    /// wrapper stays readable.
+    private var rowBody: some View {
         HStack(spacing: 10) {
             // Indent stack children
             if isStackChild {
@@ -334,52 +431,150 @@ struct VideoListRowView: View {
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 10)
-        .background(rowBackground)
-        .overlay(
-            RoundedRectangle(cornerRadius: 0)
-                .stroke(borderColor, lineWidth: borderWidth)
-        )
-        .onHover { hovered in isHovered = hovered }
-        .onTapGesture(count: 2) {
-            onDoubleClick()
+    }
+
+    // MARK: - Lightroom bands
+
+    /// Top band: a single horizontal row of four configurable stat cells,
+    /// mirroring the 4 catalog-scoped slots used by the grid card.
+    @ViewBuilder
+    private var topStatBand: some View {
+        let slots = padSlots(topSlots)
+        HStack(spacing: 12) {
+            statCell(slotIndex: 0, key: slots[0], alignTrailing: false)
+            statCell(slotIndex: 1, key: slots[1], alignTrailing: false)
+            statCell(slotIndex: 2, key: slots[2], alignTrailing: false)
+            statCell(slotIndex: 3, key: slots[3], alignTrailing: true)
         }
-        .onTapGesture {
-            let mods = ModifierSnapshot.lastMouseDownModifiers
-            let shift = mods.contains(.shift)
-            let toggle = mods.contains(.command) || mods.contains(.control)
-            onClick(shift, toggle)
-        }
-        // File drag-out: lets users drag video files directly from the list
-        // into DaVinci Resolve, Premiere Pro, Final Cut Pro, Finder, etc.
-        .onDrag {
-            let primary = dragPaths.first ?? video.openPath
-            return DragExport.provider(for: primary)
-        } preview: {
-            HStack(spacing: 6) {
-                if let img = thumbnail {
-                    Image(nsImage: img)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 48, height: 27)
-                        .cornerRadius(3)
-                        .clipped()
-                }
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(video.filename)
-                        .font(.caption2)
-                        .lineLimit(1)
-                    if dragPaths.count > 1 {
-                        Text("\(dragPaths.count) files")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+        .padding(.horizontal, 10)
+    }
+
+    @ViewBuilder
+    private func statCell(slotIndex: Int, key: String, alignTrailing: Bool) -> some View {
+        let stat = GridStatKey(rawValue: key) ?? .none
+        let value = stat.value(for: video)
+        let displayed: String = {
+            if stat == .none { return "—" }
+            return value
+        }()
+        Menu {
+            ForEach(GridStatKey.allCases) { choice in
+                Button {
+                    onPickStatSlot(slotIndex, choice.rawValue)
+                } label: {
+                    if choice == stat {
+                        Label(choice.displayName, systemImage: "checkmark")
+                    } else {
+                        Text(choice.displayName)
                     }
                 }
             }
-            .padding(6)
-            .background(Color(.windowBackgroundColor))
-            .cornerRadius(6)
-            .shadow(radius: 2)
+        } label: {
+            Text(displayed)
+                .font(.system(size: 10, weight: slotIndex == 0 ? .semibold : .regular))
+                .foregroundColor(stat == .none ? Color.black.opacity(0.4) : Color.black.opacity(0.85))
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
+                .contentShape(Rectangle())
         }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// Bottom band: 5 tappable star/dot positions, matching the grid card's
+    /// rating semantics (click N to set to N; click already-N to clear).
+    @ViewBuilder
+    private var ratingBand: some View {
+        HStack(spacing: 4) {
+            ForEach(1...5, id: \.self) { position in
+                ZStack {
+                    if position <= video.rating {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(.black)
+                    } else {
+                        Image(systemName: "circle.fill")
+                            .font(.system(size: 4))
+                            .foregroundColor(Color(white: 0.35))
+                    }
+                }
+                .frame(width: 20, height: 20)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if video.rating == position {
+                        onSetRating(0)
+                    } else {
+                        onSetRating(position)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func padSlots(_ raw: [String]) -> [String] {
+        var slots = raw
+        while slots.count < 4 { slots.append("") }
+        if slots.count > 4 { slots = Array(slots.prefix(4)) }
+        return slots
+    }
+
+    // MARK: - Band / row colors (mirrors the grid card's logic)
+
+    /// Top stat band: lighter than the middle row by default; bright neutral
+    /// when the row is selected.
+    private var topBandColor: Color {
+        if isAnchor || (isPrimarySelected && !isInMultiSelection) {
+            return Color(white: 0.94)
+        }
+        if isInMultiSelection {
+            return Color(white: 0.84)
+        }
+        return Color(white: 0.70)
+    }
+
+    /// Middle row background: takes the colour-label tint when unselected,
+    /// bright neutral when selected.
+    private var rowMiddleBackground: Color {
+        let label = ColorLabel(video.colorLabel)
+        if isAnchor || (isPrimarySelected && !isInMultiSelection) {
+            return Color(white: 0.94)
+        }
+        if isInMultiSelection {
+            return Color(white: 0.84)
+        }
+        if isInExpandedStack {
+            return Color(red: 0.52, green: 0.55, blue: 0.62)
+        }
+        if label != .none { return label.dimmed }
+        return Color(white: 0.52)
+    }
+
+    private var bottomBandColor: Color {
+        if isAnchor || (isPrimarySelected && !isInMultiSelection) {
+            return Color(white: 0.94)
+        }
+        if isInMultiSelection {
+            return Color(white: 0.84)
+        }
+        return Color(white: 0.60)
+    }
+
+    private var bandDividerColor: Color {
+        if isAnchor || isPrimarySelected || isInMultiSelection {
+            return Color.black.opacity(0.10)
+        }
+        return Color.black.opacity(0.35)
+    }
+
+    private var cardBorderColor: Color {
+        if isAnchor || isPrimarySelected || isInMultiSelection {
+            return Color.white.opacity(0.6)
+        }
+        return Color.black.opacity(0.5)
     }
 
     private var thumbnailArea: some View {
@@ -488,25 +683,10 @@ struct VideoListRowView: View {
         return parts.joined(separator: "  ")
     }
 
-    private var rowBackground: Color {
-        if isPrimarySelected { return Color.primary.opacity(0.15) }
-        if isInMultiSelection { return Color.accentColor.opacity(0.08) }
-        if isStackChild || item.isExpandedRepresentative { return Color.accentColor.opacity(0.06) }
-        if isHovered { return Color.primary.opacity(0.04) }
-        return Color.clear
-    }
-
-    private var borderColor: Color {
-        if isAnchor { return Color(red: 0.12, green: 0.43, blue: 0.92) }
-        if isPrimarySelected { return Color.accentColor }
-        if isInMultiSelection { return Color.accentColor.opacity(0.65) }
-        return Color.clear
-    }
-
-    private var borderWidth: CGFloat {
-        if isAnchor || isPrimarySelected || isInMultiSelection { return 1.5 }
-        return 0
-    }
+    // Row selection / border styling now lives in the band-color helpers
+    // above (`topBandColor`, `rowMiddleBackground`, `bottomBandColor`,
+    // `cardBorderColor`) — those mirror the grid card so list rows and
+    // grid cards share visual language.
 }
 
 #Preview {
