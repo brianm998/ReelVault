@@ -184,17 +184,24 @@ fun VideoCard(
     var motionTickMs by remember { mutableStateOf(0L) }
     var tooltipVisible by remember { mutableStateOf(false) }
     var lastPointerPos by remember { mutableStateOf<Offset?>(null) }
-    LaunchedEffect(motionTickMs, suppressTooltip) {
-        if (suppressTooltip || motionTickMs == 0L) {
+    LaunchedEffect(motionTickMs, suppressTooltip, isPlayingInline) {
+        // Suppress the tooltip outright while a video is playing inline.
+        // The embedded VLC surface fires spurious Enter/Exit cycles on
+        // the outer card Box during playback, which kept toggling
+        // `tooltipVisible` and producing a visible flash every ~2 s.
+        // The user is watching the video at that point — a help popup
+        // over it is unwelcome anyway — so the cleanest fix is to keep
+        // the tooltip down for the full duration of playback.
+        if (suppressTooltip || isPlayingInline || motionTickMs == 0L) {
             tooltipVisible = false
             return@LaunchedEffect
         }
         // Already showing — motion within the card shouldn't dismiss it.
         if (tooltipVisible) return@LaunchedEffect
         delay(TOOLTIP_DWELL_MS)
-        // Re-check after the dwell in case the cursor left or the menu
-        // opened while we were sleeping.
-        if (motionTickMs > 0L && !suppressTooltip) {
+        // Re-check after the dwell in case the cursor left, the menu
+        // opened, or playback started while we were sleeping.
+        if (motionTickMs > 0L && !suppressTooltip && !isPlayingInline) {
             tooltipVisible = true
         }
     }

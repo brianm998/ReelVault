@@ -1823,6 +1823,15 @@ fun VideoRoomTopBar(
                                 Text(
                                     "Live",
                                     fontSize = 11.sp,
+                                    // Compose's default `lineHeight` for inline
+                                    // Text is ~1.4× font size, which adds
+                                    // asymmetric padding above the cap height
+                                    // and visibly pushes the glyphs down
+                                    // inside a CenterVertically Row. Clamping
+                                    // line height to the font size eliminates
+                                    // that padding so "Live" sits on the
+                                    // dot's vertical axis.
+                                    lineHeight = 11.sp,
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
