@@ -617,37 +617,31 @@ struct VideoCardView: View {
             topStatBand
                 .frame(maxWidth: .infinity)
                 .frame(height: 36)
-                .background(topBandColor)
+                .background(cardBackgroundColor)
             Color.clear
                 .frame(maxWidth: .infinity)
                 .aspectRatio(1, contentMode: .fit)
-                .background(photoAreaBackground)
+                .background(cardBackgroundColor)
                 .overlay {
                     thumbnailArea
                         .padding(photoPadding)
                 }
-                // When the card is selected AND labelled, the photo-area
-                // background switches to selection-neutral (see
-                // `photoAreaBackground`) and the colour label is shown
-                // as a small swatch in the corner instead of taking the
-                // whole background.
-                .overlay(alignment: .topLeading) {
-                    if showCornerLabelBadge {
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(ColorLabel(video.colorLabel).swatch)
-                            .frame(width: 14, height: 14)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 2)
-                                    .stroke(Color.white.opacity(0.6), lineWidth: 0.5)
-                            )
-                            .padding(4)
+                // Selected + labelled cards get a thin colour-label
+                // frame around the photo area (inset from the 1:1 box
+                // edge), so the label identity is preserved even after
+                // the background goes bright neutral on selection.
+                .overlay {
+                    if let frame = thumbnailFrameColor {
+                        Rectangle()
+                            .strokeBorder(frame, lineWidth: 3)
+                            .padding(photoPadding - 4)
                     }
                 }
                 .clipped()
             ratingBand
                 .frame(maxWidth: .infinity)
                 .frame(height: 26)
-                .background(bottomBandColor)
+                .background(cardBackgroundColor)
         }
         // Hover tint applied as a SwiftUI overlay so SwiftUI handles
         // compositing in the correct appearance context.
@@ -811,89 +805,58 @@ struct VideoCardView: View {
         }
     }
 
-    // Lightroom-style band colors. Bands stay neutral grey — the colour
-    // label only tints the photo area behind the thumbnail (see
-    // [photoAreaBackground]), so a green-labelled card has a green
-    // backdrop *behind* the photo but still reads as part of a uniform
-    // grey grid above and below. The top band is one shade lighter than
-    // the bottom, matching Lightroom's filmstrip aesthetic.
+    // Lightroom-style card colouring. A single neutral colour fills the
+    // entire card (top band + photo area + bottom band) at all times —
+    // when the card carries a colour label, that single colour is the
+    // dimmed label tint; when it's selected, it's a bright neutral. On
+    // top of that uniform background, a selected+labelled card gets a
+    // thin colour-label frame around the photo so the label remains
+    // visible even though the background went bright.
 
-    /// Background for the top stat band. Selection brightens it; colour
-    /// label never affects it.
-    private var topBandColor: Color {
-        if isAnchor || (isPrimarySelected && !isInMultiSelection) {
-            return Color(white: 0.58)   // selected anchor — brightest neutral
-        }
-        if isInMultiSelection {
-            return Color(white: 0.46)   // secondary selection — mid neutral
-        }
-        return Color(white: 0.30)       // default: warm-ish dark grey
-    }
-
-    /// Background for the bottom rating band. Per spec the bottom band is
-    /// "always the same colour except when the video is selected" — so it
-    /// only flips on selection state, never on colour label.
-    private var bottomBandColor: Color {
-        if isAnchor || (isPrimarySelected && !isInMultiSelection) {
-            return Color(white: 0.50)
-        }
-        if isInMultiSelection {
-            return Color(white: 0.40)
-        }
-        return Color(white: 0.24)       // default: a touch darker than top
-    }
-
-    /// Background painted *behind* the photo thumbnail.
-    ///
-    /// Selection takes precedence over colour-label: when a labelled
-    /// card is selected, the background switches to a brighter selection
-    /// neutral so the selection state is obvious at a glance, and the
-    /// label is preserved as a small swatch in the photo-area corner
-    /// (see `body`). Unselected labelled cards keep the full label
-    /// background.
-    private var photoAreaBackground: Color {
+    /// Single background colour used for the whole card.
+    private var cardBackgroundColor: Color {
         let label = ColorLabel(video.colorLabel)
         if isAnchor || (isPrimarySelected && !isInMultiSelection) {
-            // Selected anchor — brighter neutral, regardless of label.
-            return Color(white: 0.34)
+            return Color(white: 0.90)        // selected anchor — bright neutral
         }
         if isInMultiSelection {
-            return Color(white: 0.24)
+            return Color(white: 0.80)        // multi-selected — slightly less bright
         }
         if isInExpandedStack {
-            return Color.accentColor.opacity(0.13)
+            // SwiftUI's Color doesn't have compositeOver; pick a pre-tinted
+            // mid-grey that reads as part of a stack group.
+            return Color(red: 0.52, green: 0.55, blue: 0.62)
         }
         if label != .none {
-            return label.dimmed
+            return label.dimmed              // unselected + labelled → tint whole card
         }
-        return Color(white: 0.12)
+        return Color(white: 0.55)            // unselected default — warm mid-grey
     }
 
-    /// True when the card has a colour label AND is currently part of
-    /// the selection. In that case the photo-area background switches to
-    /// a neutral selection colour and we render the label as a small
-    /// swatch in the photo-area's top-left corner.
-    private var showCornerLabelBadge: Bool {
+    /// Thin colour-label frame drawn around the photo area when a card
+    /// is selected and carries a label. The frame preserves the label
+    /// identity even though the card background went bright on
+    /// selection. nil → no frame drawn.
+    private var thumbnailFrameColor: Color? {
         let label = ColorLabel(video.colorLabel)
-        guard label != .none else { return false }
-        return isAnchor || isPrimarySelected || isInMultiSelection
+        guard label != .none else { return nil }
+        guard isAnchor || isPrimarySelected || isInMultiSelection else { return nil }
+        return label.swatch
     }
 
-    /// 1 pt outer card border. Drawn dark so adjacent cards in the zero-
-    /// gutter grid stay visually distinct without a chunky accent stroke.
-    /// Selected cards get a slightly brighter line; the rest fall back to
-    /// the panel's separator color.
+    /// 1 pt outer card border. Drawn dark by default so adjacent cards
+    /// in the zero-gutter grid stay visually distinct; brightens on
+    /// selection so the user can tell which card they last touched.
     private var cardBorderColor: Color {
         if isAnchor || isPrimarySelected || isInMultiSelection {
-            return Color.white.opacity(0.4)
+            return Color.white.opacity(0.6)
         }
-        return Color.black.opacity(0.6)
+        return Color.black.opacity(0.4)
     }
 
     // Backwards-compatibility shim: keep `cardBackground` symbol so any
-    // unmigrated call site still resolves (the new layout uses the three
-    // explicit colour properties above).
-    private var cardBackground: Color { topBandColor }
+    // unmigrated call site still resolves.
+    private var cardBackground: Color { cardBackgroundColor }
 
     // MARK: - Top stat band
 

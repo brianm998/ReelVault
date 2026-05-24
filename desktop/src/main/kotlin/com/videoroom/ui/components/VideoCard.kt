@@ -284,49 +284,39 @@ fun VideoCard(
         else -> 1.dp
     }
 
-    // Lightroom-style colours. Bands stay neutral grey at all times —
-    // the colour label only tints the photo area BEHIND the thumbnail.
-    // That keeps the grid reading as a uniform filmstrip while still
-    // exposing label state per card. Top band is one step brighter than
-    // bottom; selection brightens both; the bottom band only ever
-    // changes on selection (never on colour label).
+    // Lightroom-style card colouring. A single uniform background fills
+    // the entire card (top band + photo area + bottom band):
+    //   * Unselected, unlabelled → warm mid-grey.
+    //   * Unselected, labelled    → dimmed label tint (whole card).
+    //   * Selected, unlabelled    → bright neutral.
+    //   * Selected, labelled      → bright neutral + colour-label frame
+    //                                drawn around the photo area.
+    // The label always remains visible: as the full background when
+    // unselected, as a thin frame around the photo when selected.
     val colorLabelEnum = com.videoroom.data.models.ColorLabel.from(video.colorLabel)
-    val topBandColor = when {
-        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFF939393)
-        isInMultiSelection                              -> Color(0xFF767676)
-        else                                            -> Color(0xFF4D4D4D)
-    }
-    val bottomBandColor = when {
-        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFF808080)
-        isInMultiSelection                              -> Color(0xFF666666)
-        else                                            -> Color(0xFF3D3D3D)
-    }
-    // Selection beats colour label: a selected labelled card uses the
-    // brighter neutral selection background, and the label is shown as a
-    // small swatch in the photo-area corner (see `showCornerLabelBadge`).
-    // Unselected labelled cards keep the full-area label tint.
-    val photoAreaBackground = when {
-        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFF555555)
-        isInMultiSelection -> Color(0xFF3D3D3D)
-        isInExpandedStack -> MaterialTheme.colorScheme.primary
-            .copy(alpha = 0.13f)
-            .compositeOver(Color(0xFF1F1F1F))
+    val cardBackgroundColor = when {
+        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFFE6E6E6)
+        isInMultiSelection -> Color(0xFFCCCCCC)
+        isInExpandedStack -> Color(0xFF8B8FA0)   // pre-tinted stack hint
         colorLabelEnum != com.videoroom.data.models.ColorLabel.None -> colorLabelEnum.dimmed
-        else -> Color(0xFF1F1F1F)
+        else -> Color(0xFF8C8C8C)
     }
-    val showCornerLabelBadge =
-        colorLabelEnum != com.videoroom.data.models.ColorLabel.None &&
-            (isAnchor || isSelected || isInMultiSelection)
-    // 1 dp outer card border. Dark by default, brightening on selection
-    // so adjacent cards stay distinct in the zero-gutter grid without
-    // re-introducing a chunky accent stroke.
+    val thumbnailFrameColor: Color? =
+        if (colorLabelEnum != com.videoroom.data.models.ColorLabel.None &&
+            (isAnchor || isSelected || isInMultiSelection)) {
+            colorLabelEnum.swatch
+        } else null
     val cardBorderColor = when {
-        isAnchor || isSelected || isInMultiSelection -> Color.White.copy(alpha = 0.4f)
-        else -> Color.Black.copy(alpha = 0.6f)
+        isAnchor || isSelected || isInMultiSelection -> Color.White.copy(alpha = 0.6f)
+        else -> Color.Black.copy(alpha = 0.4f)
     }
     // Backwards-compat alias for any leftover references inside the body.
-    val bandBackground = topBandColor
-    val cardBackground = bandBackground
+    @Suppress("UnusedVariable") val bandBackground = cardBackgroundColor
+    @Suppress("UnusedVariable") val cardBackground = cardBackgroundColor
+    @Suppress("UnusedVariable") val topBandColor = cardBackgroundColor
+    @Suppress("UnusedVariable") val bottomBandColor = cardBackgroundColor
+    @Suppress("UnusedVariable") val photoAreaBackground = cardBackgroundColor
+    @Suppress("UnusedVariable") val showCornerLabelBadge = false
 
     // AWT window for drag-out support. Provided via LocalAppWindow (defined in
     // App.kt and passed through CompositionLocalProvider in main()).
@@ -438,7 +428,7 @@ fun VideoCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(36.dp)
-                .background(topBandColor)
+                .background(cardBackgroundColor)
                 .padding(horizontal = 6.dp, vertical = 2.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
@@ -471,24 +461,17 @@ fun VideoCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(1f)
-                    .background(photoAreaBackground)
+                    .background(cardBackgroundColor)
             ) {
-                // Corner badge — only when selected AND labelled.
-                if (showCornerLabelBadge) {
+                // Colour-label frame around the photo area, drawn only when
+                // the card is BOTH selected and labelled. Inset from the
+                // photo area edge so it doesn't bleed into the bands.
+                if (thumbnailFrameColor != null) {
                     Box(
                         modifier = Modifier
-                            .align(Alignment.TopStart)
+                            .fillMaxSize()
                             .padding(4.dp)
-                            .size(14.dp)
-                            .background(
-                                colorLabelEnum.swatch,
-                                RoundedCornerShape(2.dp)
-                            )
-                            .border(
-                                0.5.dp,
-                                Color.White.copy(alpha = 0.6f),
-                                RoundedCornerShape(2.dp)
-                            )
+                            .border(3.dp, thumbnailFrameColor)
                     )
                 }
                 Box(
@@ -745,7 +728,7 @@ fun VideoCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(26.dp)
-                .background(bottomBandColor),
+                .background(cardBackgroundColor),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
