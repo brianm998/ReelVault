@@ -56,66 +56,110 @@ struct ListView: View {
             expandedIds: viewModel.expandedGroupIds,
             members: viewModel.expandedGroupMembers
         )
+        let displayRows = buildListDisplayRows(rendered)
 
         return ScrollView {
             LazyVStack(spacing: 0) {
-                ForEach(Array(rendered.enumerated()), id: \.element.id) { index, item in
-                    let multi = viewModel.selectedVideoIds
-                    let rowDragPaths: [String] = {
-                        if multi.contains(item.video.id) && multi.count > 1 {
-                            return viewModel.videos
-                                .filter { multi.contains($0.id) }
-                                .map { $0.openPath }
-                                .filter { !$0.isEmpty }
+                ForEach(Array(displayRows.enumerated()), id: \.element.key) { index, displayRow in
+                    switch displayRow {
+                    case .single(let item):
+                        let multi = viewModel.selectedVideoIds
+                        let rowDragPaths: [String] = {
+                            if multi.contains(item.video.id) && multi.count > 1 {
+                                return viewModel.videos
+                                    .filter { multi.contains($0.id) }
+                                    .map { $0.openPath }
+                                    .filter { !$0.isEmpty }
+                            }
+                            return [item.video.openPath]
+                        }()
+                        VideoListRowView(
+                            item: item,
+                            thumbnail: viewModel.thumbnails[item.video.id],
+                            thumbnailHeight: thumbnailHeight,
+                            columns: viewModel.listColumns,
+                            isPrimarySelected: viewModel.selectedVideoId == item.video.id,
+                            isInMultiSelection: viewModel.selectedVideoIds.contains(item.video.id),
+                            isAnchor: viewModel.anchorVideoId == item.video.id && viewModel.selectedVideoIds.count > 1,
+                            topSlots: viewModel.topSlots,
+                            onClick: { shift, toggle in
+                                handleClick(item: item, rendered: rendered, shift: shift, toggle: toggle)
+                            },
+                            onDoubleClick: {
+                                viewModel.openVideoInExternal(path: item.video.openPath)
+                            },
+                            onStackBadgeClick: {
+                                viewModel.toggleStackExpansion(item.video.groupId)
+                            },
+                            onSetRating: { rating in
+                                viewModel.setRating(rating, for: [item.video.id])
+                            },
+                            onPickStatSlot: { slotIndex, key in
+                                guard slotIndex >= 0, slotIndex < 4 else { return }
+                                var slots = viewModel.topSlots
+                                while slots.count < 4 { slots.append("") }
+                                slots[slotIndex] = key
+                                viewModel.topSlots = slots
+                                viewModel.saveGridSettings()
+                            },
+                            dragPaths: rowDragPaths
+                        )
+                        .contextMenu {
+                            videoContextMenu(for: item.video)
                         }
-                        return [item.video.openPath]
-                    }()
-                    VideoListRowView(
-                        item: item,
-                        thumbnail: viewModel.thumbnails[item.video.id],
-                        thumbnailHeight: thumbnailHeight,
-                        columns: viewModel.listColumns,
-                        isPrimarySelected: viewModel.selectedVideoId == item.video.id,
-                        isInMultiSelection: viewModel.selectedVideoIds.contains(item.video.id),
-                        isAnchor: viewModel.anchorVideoId == item.video.id && viewModel.selectedVideoIds.count > 1,
-                        topSlots: viewModel.topSlots,
-                        onClick: { shift, toggle in
-                            handleClick(item: item, rendered: rendered, shift: shift, toggle: toggle)
-                        },
-                        onDoubleClick: {
-                            viewModel.openVideoInExternal(path: item.video.openPath)
-                        },
-                        onStackBadgeClick: {
-                            viewModel.toggleStackExpansion(item.video.groupId)
-                        },
-                        onSetRating: { rating in
-                            viewModel.setRating(rating, for: [item.video.id])
-                        },
-                        onPickStatSlot: { slotIndex, key in
-                            guard slotIndex >= 0, slotIndex < 4 else { return }
-                            var slots = viewModel.topSlots
-                            while slots.count < 4 { slots.append("") }
-                            slots[slotIndex] = key
-                            viewModel.topSlots = slots
-                            viewModel.saveGridSettings()
-                        },
-                        dragPaths: rowDragPaths
-                    )
-                    .contextMenu {
-                        videoContextMenu(for: item.video)
+                        .onAppear {
+                            if item.video.hasThumbnail {
+                                viewModel.loadThumbnail(videoId: item.video.id)
+                            }
+                            if index >= displayRows.count - 5 && viewModel.hasMore {
+                                viewModel.loadMore()
+                            }
+                        }
+
+                    case .horizontalStack(let representative, let children):
+                        let allItems = [representative] + children
+                        ScrollView(.horizontal, showsIndicators: true) {
+                            HStack(alignment: .top, spacing: 4) {
+                                ForEach(Array(allItems.enumerated()), id: \.element.id) { idx, stackItem in
+                                    VideoListHorizontalCardView(
+                                        item: stackItem,
+                                        thumbnail: viewModel.thumbnails[stackItem.video.id],
+                                        thumbnailHeight: thumbnailHeight,
+                                        topSlots: viewModel.topSlots,
+                                        isPrimarySelected: viewModel.selectedVideoId == stackItem.video.id,
+                                        isInMultiSelection: viewModel.selectedVideoIds.contains(stackItem.video.id),
+                                        isAnchor: viewModel.anchorVideoId == stackItem.video.id && viewModel.selectedVideoIds.count > 1,
+                                        isRepresentative: idx == 0,
+                                        onStackToggle: {
+                                            viewModel.toggleStackExpansion(stackItem.video.groupId)
+                                        },
+                                        onClick: { shift, toggle in
+                                            handleClick(item: stackItem, rendered: rendered, shift: shift, toggle: toggle)
+                                        },
+                                        onDoubleClick: {
+                                            viewModel.openVideoInExternal(path: stackItem.video.openPath)
+                                        },
+                                        onSetRating: { rating in
+                                            viewModel.setRating(rating, for: [stackItem.video.id])
+                                        }
+                                    )
+                                    .contextMenu {
+                                        videoContextMenu(for: stackItem.video)
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                        }
+                        .onAppear {
+                            for si in allItems where si.video.hasThumbnail {
+                                viewModel.loadThumbnail(videoId: si.video.id)
+                            }
+                            if index >= displayRows.count - 5 && viewModel.hasMore {
+                                viewModel.loadMore()
+                            }
+                        }
                     }
-                    .onAppear {
-                        if item.video.hasThumbnail {
-                            viewModel.loadThumbnail(videoId: item.video.id)
-                        }
-                        // Load more when nearing the end (only count non-children)
-                        if !item.isStackChild && index >= rendered.count - 5 && viewModel.hasMore {
-                            viewModel.loadMore()
-                        }
-                    }
-                    // No inter-row Divider here — each row's Lightroom
-                    // container now has its own outer border, so an extra
-                    // divider between rows would double up.
                 }
 
                 if viewModel.isLoading && !viewModel.videos.isEmpty {
@@ -126,6 +170,47 @@ struct ListView: View {
             }
             .padding(.vertical, 4)
         }
+    }
+
+    // MARK: - Horizontal stack helpers
+
+    private enum ListDisplayRow {
+        case single(GridItemRow)
+        /// An expanded stack: the representative plus its loaded members,
+        /// rendered side-by-side in a horizontally-scrollable strip.
+        case horizontalStack(representative: GridItemRow, children: [GridItemRow])
+
+        /// Stable key for SwiftUI's `ForEach`.
+        var key: String {
+            switch self {
+            case .single(let item):
+                return item.video.id
+            case .horizontalStack(let rep, _):
+                return "hstack:\(rep.video.id)"
+            }
+        }
+    }
+
+    private func buildListDisplayRows(_ rendered: [GridItemRow]) -> [ListDisplayRow] {
+        var result: [ListDisplayRow] = []
+        var i = 0
+        while i < rendered.count {
+            let item = rendered[i]
+            if item.isExpandedRepresentative {
+                var children: [GridItemRow] = []
+                var j = i + 1
+                while j < rendered.count && rendered[j].isStackChild {
+                    children.append(rendered[j])
+                    j += 1
+                }
+                result.append(.horizontalStack(representative: item, children: children))
+                i = j
+            } else {
+                result.append(.single(item))
+                i += 1
+            }
+        }
+        return result
     }
 
     private var emptyState: some View {
@@ -732,6 +817,191 @@ struct VideoListRowView: View {
     // above (`topBandColor`, `rowMiddleBackground`, `bottomBandColor`,
     // `cardBorderColor`) — those mirror the grid card so list rows and
     // grid cards share visual language.
+}
+
+// MARK: - VideoListHorizontalCardView
+
+/// Compact card used inside the horizontal stack expansion strip.
+/// Shows the same three-band card (top stat / thumbnail / rating) as
+/// `VideoListRowView` but at a fixed `thumbnailHeight`-wide square
+/// footprint, with the filename label below. No info column alongside —
+/// the strip itself communicates that these are stack members.
+struct VideoListHorizontalCardView: View {
+    let item: GridItemRow
+    let thumbnail: NSImage?
+    var thumbnailHeight: CGFloat = 100
+    var topSlots: [String] = []
+    let isPrimarySelected: Bool
+    let isInMultiSelection: Bool
+    let isAnchor: Bool
+    /// `true` for the first card in the strip (the representative).
+    let isRepresentative: Bool
+    let onStackToggle: () -> Void
+    let onClick: (_ shift: Bool, _ toggle: Bool) -> Void
+    let onDoubleClick: () -> Void
+    var onSetRating: (_ rating: Int) -> Void = { _ in }
+
+    private var video: VideoSummary { item.video }
+    private var cardWidth: CGFloat { thumbnailHeight }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            cardContainer
+                .frame(width: cardWidth)
+                .overlay(
+                    Rectangle()
+                        .stroke(cardBorderColor, lineWidth: 1)
+                        .allowsHitTesting(false)
+                )
+            Text(video.filename)
+                .font(.system(size: 10))
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .frame(width: cardWidth, alignment: .leading)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) { onDoubleClick() }
+        .onTapGesture {
+            let mods = ModifierSnapshot.lastMouseDownModifiers
+            let shift = mods.contains(.shift)
+            let toggle = mods.contains(.command) || mods.contains(.control)
+            onClick(shift, toggle)
+        }
+        .onDrag {
+            DragExport.provider(for: video.openPath)
+        }
+    }
+
+    private var cardContainer: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            topBandView
+                .frame(maxWidth: .infinity)
+                .frame(height: 22)
+                .background(topBandColor)
+            Rectangle()
+                .fill(bandDividerColor)
+                .frame(height: 1)
+                .allowsHitTesting(false)
+            thumbnailArea
+                .frame(width: cardWidth, height: thumbnailHeight)
+                .background(thumbnailBackground)
+            Rectangle()
+                .fill(bandDividerColor)
+                .frame(height: 1)
+                .allowsHitTesting(false)
+            ratingBand
+                .frame(maxWidth: .infinity)
+                .frame(height: 22)
+                .background(bottomBandColor)
+        }
+    }
+
+    @ViewBuilder
+    private var topBandView: some View {
+        let slots = padSlots(topSlots)
+        HStack(spacing: 4) {
+            if isRepresentative {
+                Button(action: onStackToggle) {
+                    Image(systemName: "chevron.up")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(Color.black.opacity(0.7))
+                }
+                .buttonStyle(.plain)
+                .frame(width: 14, height: 14)
+                .help("Collapse this stack")
+            }
+            let stat = GridStatKey(rawValue: slots[0]) ?? .none
+            let value = stat == .none ? "" : stat.value(for: video)
+            Text(value)
+                .font(.system(size: 10))
+                .foregroundColor(Color.black.opacity(0.85))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 6)
+    }
+
+    @ViewBuilder
+    private var thumbnailArea: some View {
+        ZStack {
+            Rectangle()
+                .fill(Color.black)
+                .overlay {
+                    if let image = thumbnail {
+                        Image(nsImage: image)
+                            .resizable()
+                            .scaledToFit()
+                    } else {
+                        Image(systemName: "film")
+                            .font(.system(size: 18))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .frame(width: cardWidth, height: thumbnailHeight)
+                .cornerRadius(4)
+        }
+    }
+
+    @ViewBuilder
+    private var ratingBand: some View {
+        HStack(spacing: 2) {
+            ForEach(1...5, id: \.self) { position in
+                ZStack {
+                    if position <= video.rating {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 9))
+                            .foregroundColor(.black)
+                    } else {
+                        Image(systemName: "circle.fill")
+                            .font(.system(size: 3))
+                            .foregroundColor(Color(white: 0.35))
+                    }
+                }
+                .frame(width: 16, height: 16)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if video.rating == position { onSetRating(0) } else { onSetRating(position) }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func padSlots(_ raw: [String]) -> [String] {
+        var slots = raw
+        while slots.count < 4 { slots.append("") }
+        if slots.count > 4 { slots = Array(slots.prefix(4)) }
+        return slots
+    }
+
+    // MARK: Band colors (mirrors VideoListRowView)
+
+    private var topBandColor: Color {
+        if isAnchor || (isPrimarySelected && !isInMultiSelection) { return Color(white: 0.94) }
+        if isInMultiSelection { return Color(white: 0.84) }
+        return Color(white: 0.70)
+    }
+    private var thumbnailBackground: Color {
+        let label = ColorLabel(video.colorLabel)
+        if isAnchor || (isPrimarySelected && !isInMultiSelection) { return Color(white: 0.94) }
+        if isInMultiSelection { return Color(white: 0.84) }
+        if label != .none { return label.dimmed }
+        return Color(white: 0.52)
+    }
+    private var bottomBandColor: Color {
+        if isAnchor || (isPrimarySelected && !isInMultiSelection) { return Color(white: 0.94) }
+        if isInMultiSelection { return Color(white: 0.84) }
+        return Color(white: 0.60)
+    }
+    private var bandDividerColor: Color {
+        if isAnchor || isPrimarySelected || isInMultiSelection { return Color.black.opacity(0.10) }
+        return Color.black.opacity(0.35)
+    }
+    private var cardBorderColor: Color {
+        if isAnchor || isPrimarySelected || isInMultiSelection { return Color.white.opacity(0.6) }
+        return Color.black.opacity(0.5)
+    }
 }
 
 #Preview {

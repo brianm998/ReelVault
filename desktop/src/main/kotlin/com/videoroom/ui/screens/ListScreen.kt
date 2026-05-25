@@ -77,6 +77,10 @@ fun ListScreen(
         )
     }
 
+    val displayRows: List<ListDisplayRow> = remember(rendered) {
+        buildListDisplayRows(rendered)
+    }
+
     Column(modifier = modifier.fillMaxSize()) {
         // Error banner
         if (error.value != null) {
@@ -147,115 +151,232 @@ fun ListScreen(
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     items(
-                        count = rendered.size,
+                        count = displayRows.size,
                         key = { index ->
-                            val item = rendered[index]
-                            if (item.isStackChild) "child:${item.video.id}" else item.video.id
+                            when (val row = displayRows[index]) {
+                                is ListDisplayRow.Single ->
+                                    if (row.item.isStackChild) "child:${row.item.video.id}"
+                                    else row.item.video.id
+                                is ListDisplayRow.HorizontalStack ->
+                                    "hstack:${row.representative.video.id}"
+                            }
                         }
                     ) { index ->
-                        val item = rendered[index]
-                        val video = item.video
-                        val isPrimary = selectedVideoId.value == video.id
-                        val isInMultiSelect = video.id in selectedVideoIds.value
-                        val isAnchor = anchorVideoId.value == video.id &&
-                                       selectedVideoIds.value.size > 1
+                        when (val row = displayRows[index]) {
+                            is ListDisplayRow.Single -> {
+                                val item = row.item
+                                val video = item.video
+                                val isPrimary = selectedVideoId.value == video.id
+                                val isInMultiSelect = video.id in selectedVideoIds.value
+                                val isAnchor = anchorVideoId.value == video.id &&
+                                               selectedVideoIds.value.size > 1
 
-                        // Trigger thumbnail load when row appears
-                        LaunchedEffect(video.id) {
-                            if (video.hasThumbnail) {
-                                viewModel.loadThumbnail(video.id)
-                            }
-                        }
-
-                        val contextMenuState = remember {
-                            androidx.compose.foundation.ContextMenuState()
-                        }
-
-                        ContextMenuArea(
-                            state = contextMenuState,
-                            items = {
-                                val multi = selectedVideoIds.value
-                                val targets = if (video.id in multi && multi.size > 1) {
-                                    videos.value.filter { it.id in multi }.map { it.openPath }
-                                } else {
-                                    listOf(video.openPath)
+                                LaunchedEffect(video.id) {
+                                    if (video.hasThumbnail) {
+                                        viewModel.loadThumbnail(video.id)
+                                    }
                                 }
-                                val ratingTargets: List<String> =
-                                    if (video.id in multi && multi.size > 1) multi.toList()
-                                    else listOf(video.id)
-                                buildVideoContextMenu(
-                                    targetFiles = targets,
-                                    onConfigureEditors = onConfigureEditors,
-                                    stackVideoId = video.id.takeIf { video.isInGroup },
-                                    stackGroupId = video.groupId.takeIf { video.isInGroup },
-                                    onRemoveFromStack = { vid, gid ->
-                                        viewModel.removeFromStack(vid, gid)
-                                    },
-                                    onUnstack = { gid ->
-                                        viewModel.unstackGroup(gid)
-                                    },
-                                    proxyableVideoId = video.id.takeIf { !video.isProxy },
-                                    onCreateProxy = { vid -> viewModel.requestCreateProxy(vid) },
-                                    videoPath = video.path,
-                                    libraryLocations = viewModel.libraryLocations.value,
-                                    onGoToFolder = { path -> viewModel.setLocationFilter(path) },
-                                    ratingTargetIds = ratingTargets,
-                                    onSetRating = { rating, ids -> viewModel.setRating(rating, ids) },
-                                    onSetColorLabel = { label, ids -> viewModel.setColorLabel(label, ids) },
-                                    stackMasterCandidate =
-                                        if (video.isInGroup && video.id != video.groupPreferredId)
-                                            video.id to video.groupId
-                                        else null,
-                                    onSetStackMaster = { vid, gid -> viewModel.setStackMaster(vid, gid) },
-                                )
-                            }
-                        ) {
-                            VideoListRow(
-                                item = item,
-                                isSelected = isPrimary,
-                                isInMultiSelection = isInMultiSelect,
-                                isAnchor = isAnchor,
-                                thumbnailBytes = thumbnails.value[video.id],
-                                thumbnailHeight = thumbnailHeight,
-                                visibleColumns = listColumns.value,
-                                topSlots = topSlots.value,
-                                onClick = { shiftFromEvent, toggleFromEvent ->
-                                    val shift = shiftFromEvent || shiftPressed
-                                    val toggle = toggleFromEvent
-                                    when {
-                                        shift -> {
-                                            val anchorId = anchorVideoId.value ?: video.id
-                                            val rangeIds = computeVisualRange(rendered, anchorId, video.id)
-                                            viewModel.selectRange(video, rangeIds)
+
+                                val contextMenuState = remember {
+                                    androidx.compose.foundation.ContextMenuState()
+                                }
+
+                                ContextMenuArea(
+                                    state = contextMenuState,
+                                    items = {
+                                        val multi = selectedVideoIds.value
+                                        val targets = if (video.id in multi && multi.size > 1) {
+                                            videos.value.filter { it.id in multi }.map { it.openPath }
+                                        } else {
+                                            listOf(video.openPath)
                                         }
-                                        toggle -> viewModel.toggleVideoSelection(video)
-                                        else -> viewModel.selectVideo(video)
+                                        val ratingTargets: List<String> =
+                                            if (video.id in multi && multi.size > 1) multi.toList()
+                                            else listOf(video.id)
+                                        buildVideoContextMenu(
+                                            targetFiles = targets,
+                                            onConfigureEditors = onConfigureEditors,
+                                            stackVideoId = video.id.takeIf { video.isInGroup },
+                                            stackGroupId = video.groupId.takeIf { video.isInGroup },
+                                            onRemoveFromStack = { vid, gid ->
+                                                viewModel.removeFromStack(vid, gid)
+                                            },
+                                            onUnstack = { gid ->
+                                                viewModel.unstackGroup(gid)
+                                            },
+                                            proxyableVideoId = video.id.takeIf { !video.isProxy },
+                                            onCreateProxy = { vid -> viewModel.requestCreateProxy(vid) },
+                                            videoPath = video.path,
+                                            libraryLocations = viewModel.libraryLocations.value,
+                                            onGoToFolder = { path -> viewModel.setLocationFilter(path) },
+                                            ratingTargetIds = ratingTargets,
+                                            onSetRating = { rating, ids -> viewModel.setRating(rating, ids) },
+                                            onSetColorLabel = { label, ids -> viewModel.setColorLabel(label, ids) },
+                                            stackMasterCandidate =
+                                                if (video.isInGroup && video.id != video.groupPreferredId)
+                                                    video.id to video.groupId
+                                                else null,
+                                            onSetStackMaster = { vid, gid -> viewModel.setStackMaster(vid, gid) },
+                                        )
                                     }
-                                    onVideoSelect(video)
-                                },
-                                onDoubleClick = { viewModel.openVideoInExternal(video.openPath) },
-                                onSetRating = { rating -> viewModel.setRating(rating, listOf(video.id)) },
-                                onPickStatSlot = { slotIndex, key ->
-                                    viewModel.updateGridTopSlot(slotIndex, key)
-                                },
-                                dragPaths = run {
-                                    val multi = selectedVideoIds.value
-                                    if (video.id in multi && multi.size > 1) {
-                                        videos.value.filter { it.id in multi }.map { it.openPath }
-                                    } else {
-                                        listOf(video.openPath)
+                                ) {
+                                    VideoListRow(
+                                        item = item,
+                                        isSelected = isPrimary,
+                                        isInMultiSelection = isInMultiSelect,
+                                        isAnchor = isAnchor,
+                                        thumbnailBytes = thumbnails.value[video.id],
+                                        thumbnailHeight = thumbnailHeight,
+                                        visibleColumns = listColumns.value,
+                                        topSlots = topSlots.value,
+                                        onStackToggle = { viewModel.toggleStackExpansion(video.groupId) },
+                                        onClick = { shiftFromEvent, toggleFromEvent ->
+                                            val shift = shiftFromEvent || shiftPressed
+                                            val toggle = toggleFromEvent
+                                            when {
+                                                shift -> {
+                                                    val anchorId = anchorVideoId.value ?: video.id
+                                                    val rangeIds = computeVisualRange(rendered, anchorId, video.id)
+                                                    viewModel.selectRange(video, rangeIds)
+                                                }
+                                                toggle -> viewModel.toggleVideoSelection(video)
+                                                else -> viewModel.selectVideo(video)
+                                            }
+                                            onVideoSelect(video)
+                                        },
+                                        onDoubleClick = { viewModel.openVideoInExternal(video.openPath) },
+                                        onSetRating = { rating -> viewModel.setRating(rating, listOf(video.id)) },
+                                        onPickStatSlot = { slotIndex, key ->
+                                            viewModel.updateGridTopSlot(slotIndex, key)
+                                        },
+                                        dragPaths = run {
+                                            val multi = selectedVideoIds.value
+                                            if (video.id in multi && multi.size > 1) {
+                                                videos.value.filter { it.id in multi }.map { it.openPath }
+                                            } else {
+                                                listOf(video.openPath)
+                                            }
+                                        }
+                                    )
+                                }
+
+                                if (index >= displayRows.size - 5 && hasMore.value) {
+                                    LaunchedEffect(Unit) { viewModel.loadMore() }
+                                }
+                            }
+
+                            is ListDisplayRow.HorizontalStack -> {
+                                val allItems = listOf(row.representative) + row.children
+
+                                LaunchedEffect(allItems.map { it.video.id }) {
+                                    allItems.forEach { si ->
+                                        if (si.video.hasThumbnail) viewModel.loadThumbnail(si.video.id)
                                     }
                                 }
-                            )
-                        }
 
-                        // Load more when near the end
-                        if (!item.isStackChild &&
-                            index == rendered.size - 5 &&
-                            hasMore.value
-                        ) {
-                            LaunchedEffect(Unit) {
-                                viewModel.loadMore()
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState())
+                                        .padding(
+                                            start = VideoRoomSpacing.Small,
+                                            end = VideoRoomSpacing.Small,
+                                            top = VideoRoomSpacing.XSmall,
+                                            bottom = VideoRoomSpacing.XSmall,
+                                        ),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    allItems.forEachIndexed { idx, stackItem ->
+                                        val video = stackItem.video
+                                        val isPrimary = selectedVideoId.value == video.id
+                                        val isInMultiSelect = video.id in selectedVideoIds.value
+                                        val isAnchor = anchorVideoId.value == video.id &&
+                                                       selectedVideoIds.value.size > 1
+
+                                        val contextMenuState = remember(video.id) {
+                                            androidx.compose.foundation.ContextMenuState()
+                                        }
+
+                                        ContextMenuArea(
+                                            state = contextMenuState,
+                                            items = {
+                                                val multi = selectedVideoIds.value
+                                                val targets = if (video.id in multi && multi.size > 1) {
+                                                    videos.value.filter { it.id in multi }.map { it.openPath }
+                                                } else {
+                                                    listOf(video.openPath)
+                                                }
+                                                val ratingTargets: List<String> =
+                                                    if (video.id in multi && multi.size > 1) multi.toList()
+                                                    else listOf(video.id)
+                                                buildVideoContextMenu(
+                                                    targetFiles = targets,
+                                                    onConfigureEditors = onConfigureEditors,
+                                                    stackVideoId = video.id.takeIf { video.isInGroup },
+                                                    stackGroupId = video.groupId.takeIf { video.isInGroup },
+                                                    onRemoveFromStack = { vid, gid ->
+                                                        viewModel.removeFromStack(vid, gid)
+                                                    },
+                                                    onUnstack = { gid ->
+                                                        viewModel.unstackGroup(gid)
+                                                    },
+                                                    proxyableVideoId = video.id.takeIf { !video.isProxy },
+                                                    onCreateProxy = { vid -> viewModel.requestCreateProxy(vid) },
+                                                    videoPath = video.path,
+                                                    libraryLocations = viewModel.libraryLocations.value,
+                                                    onGoToFolder = { path -> viewModel.setLocationFilter(path) },
+                                                    ratingTargetIds = ratingTargets,
+                                                    onSetRating = { rating, ids -> viewModel.setRating(rating, ids) },
+                                                    onSetColorLabel = { label, ids -> viewModel.setColorLabel(label, ids) },
+                                                    stackMasterCandidate =
+                                                        if (video.isInGroup && video.id != video.groupPreferredId)
+                                                            video.id to video.groupId
+                                                        else null,
+                                                    onSetStackMaster = { vid, gid -> viewModel.setStackMaster(vid, gid) },
+                                                )
+                                            }
+                                        ) {
+                                            VideoListHorizontalCard(
+                                                item = stackItem,
+                                                isSelected = isPrimary,
+                                                isInMultiSelection = isInMultiSelect,
+                                                isAnchor = isAnchor,
+                                                thumbnailBytes = thumbnails.value[video.id],
+                                                thumbnailHeight = thumbnailHeight,
+                                                topSlots = topSlots.value,
+                                                isRepresentative = idx == 0,
+                                                onStackToggle = {
+                                                    viewModel.toggleStackExpansion(video.groupId)
+                                                },
+                                                onClick = { shiftFromEvent, toggleFromEvent ->
+                                                    val shift = shiftFromEvent || shiftPressed
+                                                    val toggle = toggleFromEvent
+                                                    when {
+                                                        shift -> {
+                                                            val anchorId = anchorVideoId.value ?: video.id
+                                                            val rangeIds = computeVisualRange(rendered, anchorId, video.id)
+                                                            viewModel.selectRange(video, rangeIds)
+                                                        }
+                                                        toggle -> viewModel.toggleVideoSelection(video)
+                                                        else -> viewModel.selectVideo(video)
+                                                    }
+                                                    onVideoSelect(video)
+                                                },
+                                                onDoubleClick = {
+                                                    viewModel.openVideoInExternal(video.openPath)
+                                                },
+                                                onSetRating = { rating ->
+                                                    viewModel.setRating(rating, listOf(video.id))
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if (index >= displayRows.size - 5 && hasMore.value) {
+                                    LaunchedEffect(Unit) { viewModel.loadMore() }
+                                }
                             }
                         }
                     }
@@ -304,6 +425,7 @@ fun VideoListRow(
     visibleColumns: Set<String> = emptySet(),
     /** Same 4 catalog-scoped top-of-card stat-slot choices the grid uses. */
     topSlots: List<String> = emptyList(),
+    onStackToggle: () -> Unit = {},
     onClick: (shiftPressed: Boolean, togglePressed: Boolean) -> Unit = { _, _ -> },
     onDoubleClick: () -> Unit = {},
     /** Fired when one of the five rating positions is clicked. */
@@ -481,6 +603,27 @@ fun VideoListRow(
                         modifier = Modifier.size(24.dp),
                         tint = MaterialTheme.colorScheme.outline
                     )
+                }
+                // Stack count badge for collapsed group representatives.
+                if (video.isInGroup) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(3.dp)
+                            .background(
+                                Color.Black.copy(alpha = 0.6f),
+                                shape = MaterialTheme.shapes.extraSmall
+                            )
+                            .clickable(onClick = onStackToggle)
+                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "${video.groupSize}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
             Box(
@@ -698,3 +841,221 @@ private fun Modifier.shiftAwareRowClickable(
 /** Minimum pointer travel (px) before a press-and-move is treated as a
  *  drag-out gesture in [VideoListRow]. */
 private const val LIST_ROW_DRAG_THRESHOLD_PX = 8f
+
+// ─── Horizontal stack expansion ──────────────────────────────────────────────
+
+private sealed class ListDisplayRow {
+    data class Single(val item: GridItem) : ListDisplayRow()
+    /** An expanded stack: representative + already-loaded children laid out horizontally. */
+    data class HorizontalStack(
+        val representative: GridItem,
+        val children: List<GridItem>
+    ) : ListDisplayRow()
+}
+
+private fun buildListDisplayRows(rendered: List<GridItem>): List<ListDisplayRow> {
+    val result = mutableListOf<ListDisplayRow>()
+    var i = 0
+    while (i < rendered.size) {
+        val item = rendered[i]
+        if (item.isExpandedRepresentative) {
+            val children = mutableListOf<GridItem>()
+            var j = i + 1
+            while (j < rendered.size && rendered[j].isStackChild) {
+                children.add(rendered[j])
+                j++
+            }
+            result.add(ListDisplayRow.HorizontalStack(item, children))
+            i = j
+        } else {
+            result.add(ListDisplayRow.Single(item))
+            i++
+        }
+    }
+    return result
+}
+
+/** Compact card used inside the horizontal stack expansion strip. Shows the
+ *  same top band / thumbnail / rating band as [VideoListRow] but at a fixed
+ *  [thumbnailHeight]-wide footprint with the filename below. */
+@Composable
+private fun VideoListHorizontalCard(
+    item: GridItem,
+    isSelected: Boolean = false,
+    isInMultiSelection: Boolean = false,
+    isAnchor: Boolean = false,
+    thumbnailBytes: ByteArray? = null,
+    thumbnailHeight: Dp = 80.dp,
+    topSlots: List<String> = emptyList(),
+    isRepresentative: Boolean = false,
+    onStackToggle: () -> Unit = {},
+    onClick: (shiftPressed: Boolean, togglePressed: Boolean) -> Unit = { _, _ -> },
+    onDoubleClick: () -> Unit = {},
+    onSetRating: (Int) -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    val video = item.video
+    val cardWidth: Dp = thumbnailHeight
+
+    val colorLabelEnum = com.videoroom.data.models.ColorLabel.from(video.colorLabel)
+    val topBandColor = when {
+        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFFF0F0F0)
+        isInMultiSelection -> Color(0xFFD7D7D7)
+        else -> Color(0xFFB3B3B3)
+    }
+    val thumbnailBackground = when {
+        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFFF0F0F0)
+        isInMultiSelection -> Color(0xFFD7D7D7)
+        colorLabelEnum != com.videoroom.data.models.ColorLabel.None -> colorLabelEnum.dimmed
+        else -> Color(0xFF858585)
+    }
+    val bottomBandColor = when {
+        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFFF0F0F0)
+        isInMultiSelection -> Color(0xFFD7D7D7)
+        else -> Color(0xFF999999)
+    }
+    val bandDividerColor = when {
+        isAnchor || isSelected || isInMultiSelection -> Color.Black.copy(alpha = 0.10f)
+        else -> Color.Black.copy(alpha = 0.35f)
+    }
+    val cardBorderColor = when {
+        isAnchor || isSelected || isInMultiSelection -> Color.White.copy(alpha = 0.6f)
+        else -> Color.Black.copy(alpha = 0.4f)
+    }
+
+    val thumbnailImage = remember(thumbnailBytes) {
+        thumbnailBytes?.let { bytes ->
+            try { SkiaImage.makeFromEncoded(bytes).toComposeImageBitmap() } catch (e: Exception) { null }
+        }
+    }
+
+    val paddedSlots: List<String> = run {
+        val s = topSlots.toMutableList()
+        while (s.size < 4) s.add("")
+        if (s.size > 4) s.subList(4, s.size).clear()
+        s
+    }
+
+    Column(
+        modifier = modifier
+            .width(cardWidth)
+            .shiftAwareRowClickable(onClick = onClick, onDoubleClick = onDoubleClick),
+        horizontalAlignment = Alignment.Start
+    ) {
+        Column(
+            modifier = Modifier
+                .width(cardWidth)
+                .border(1.dp, cardBorderColor)
+        ) {
+            // Top band — first stat slot, with collapse chevron for the representative.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(22.dp)
+                    .background(topBandColor)
+                    .padding(horizontal = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isRepresentative) {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clickable(onClick = onStackToggle),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowUp,
+                            contentDescription = "Collapse stack",
+                            modifier = Modifier.size(14.dp),
+                            tint = Color.Black.copy(alpha = 0.7f)
+                        )
+                    }
+                    Spacer(Modifier.width(2.dp))
+                }
+                val stat = com.videoroom.data.models.GridStatKey.fromRaw(paddedSlots.getOrElse(0) { "" })
+                Text(
+                    text = if (stat == com.videoroom.data.models.GridStatKey.None) "" else stat.valueFor(video),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.Black.copy(alpha = 0.85f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(bandDividerColor))
+            // Thumbnail
+            Box(
+                modifier = Modifier
+                    .size(cardWidth, thumbnailHeight)
+                    .background(thumbnailBackground),
+                contentAlignment = Alignment.Center
+            ) {
+                if (thumbnailImage != null) {
+                    Image(
+                        bitmap = thumbnailImage,
+                        contentDescription = video.filename,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Movie,
+                        contentDescription = "No thumbnail",
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.outline
+                    )
+                }
+            }
+            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(bandDividerColor))
+            // Rating band
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(22.dp)
+                    .background(bottomBandColor),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                for (position in 1..5) {
+                    Box(
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clickable {
+                                if (video.rating == position) onSetRating(0)
+                                else onSetRating(position)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (position <= video.rating) {
+                            Icon(
+                                imageVector = Icons.Filled.Star,
+                                contentDescription = "Rating $position",
+                                tint = Color.Black,
+                                modifier = Modifier.size(9.dp)
+                            )
+                        } else {
+                            Box(
+                                Modifier
+                                    .size(3.dp)
+                                    .background(
+                                        Color(0xFF595959),
+                                        shape = androidx.compose.foundation.shape.CircleShape
+                                    )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        // Filename label below the card
+        Text(
+            text = video.filename,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .width(cardWidth)
+                .padding(top = 2.dp)
+        )
+    }
+}

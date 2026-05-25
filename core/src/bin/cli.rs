@@ -10,11 +10,9 @@ use prettytable::{Table, Row, Cell};
 
 use videoroom_core::db::Database;
 use videoroom_core::metadata::MetadataExtractor;
-use videoroom_core::thumbnails::ThumbnailGenerator;
 use videoroom_core::indexing::IndexingEngine;
 use videoroom_core::post_index;
 use videoroom_core::search::SearchEngine;
-use videoroom_core::config::Config;
 
 #[derive(Parser)]
 #[command(name = "videoroom-cli")]
@@ -397,7 +395,7 @@ fn cmd_thumbnail(_file: &std::path::Path, _output: &std::path::Path) -> anyhow::
 }
 
 async fn cmd_stats(db: &Database) -> anyhow::Result<()> {
-    let (videos, total_videos) = db.list_videos(1, 0)?;
+    let (_videos, total_videos) = db.list_videos(1, 0)?;
     let tags = db.list_tags()?;
     let collections = db.list_collections()?;
     let locations = db.list_library_locations()?;
@@ -649,7 +647,7 @@ fn get_cache_path() -> anyhow::Result<PathBuf> {
 }
 
 fn format_date_ms(timestamp_ms: i64) -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::time::SystemTime;
     let duration = std::time::Duration::from_millis(timestamp_ms as u64);
     match SystemTime::UNIX_EPOCH.checked_add(duration) {
         Some(time) => {
@@ -660,13 +658,3 @@ fn format_date_ms(timestamp_ms: i64) -> String {
     }
 }
 
-// Add this helper for the thumbnail command
-trait ThumbnailGenHelper {
-    fn generate(&self, video_id: &str);
-}
-
-impl ThumbnailGenHelper for String {
-    fn generate(&self, _video_id: &str) {
-        // Placeholder for actual implementation
-    }
-}
