@@ -803,11 +803,9 @@ struct VideoCardView: View {
                 let withinThumbnail = thumbnailWidth > 0
                     && location.y >= 0
                     && location.y <= thumbHeight
-                if withinThumbnail {
-                    // First entry into the thumbnail kicks off lazy
-                    // scrub-frame loading. `onHoverEnter` is idempotent
-                    // so calling it repeatedly is fine, but gating on
-                    // the previous nil keeps the log/Grpc call quieter.
+                // Scrub-frame tracking is suppressed while playing so the
+                // thumbnail base layer stays static beneath the player surface.
+                if withinThumbnail && !isPlaying {
                     if hoverX == nil { onHoverEnter() }
                     hoverX = location.x
                 } else {

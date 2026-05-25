@@ -29,10 +29,12 @@ struct AVPlayerNSView: NSViewRepresentable {
     func makeNSView(context: Context) -> AVPlayerView {
         let view = AVPlayerView()
         view.player = player
-        view.controlsStyle = .inline
-        // Make the AVPlayerView's backing CALayer transparent so whatever is
-        // stacked beneath it (thumbnail / ScrubPreview) shows through until
-        // the first video frame is decoded and composited.
+        // No built-in transport controls — we render our own X button in the
+        // card overlay. This also removes the dark rounded-corner control bar
+        // that used to overwrite the thumbnail area when playback started.
+        view.controlsStyle = .none
+        // Transparent CALayer so the thumbnail beneath shows through until the
+        // first decoded frame composites over it — no black flash on load.
         view.wantsLayer = true
         view.layer?.backgroundColor = .clear
         return view

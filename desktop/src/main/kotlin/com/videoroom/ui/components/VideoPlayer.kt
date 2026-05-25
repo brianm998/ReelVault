@@ -348,6 +348,12 @@ class ComposeVideoPlayer {
             logger.warn("load({}) ignored: component is null (init failed)", path)
             return
         }
+        // Clear stale frame synchronously so callers that show the thumbnail
+        // beneath the player surface see the thumbnail while the new video
+        // buffers — not the last frame of the previous video.
+        frame.value = null
+        renderingHealthy.value = false
+        frameCount = 0L
         val file = java.io.File(path)
         logger.info("load(path={}, playImmediately={}): exists={} readable={} size={}",
             path, playImmediately, file.exists(), file.canRead(),
@@ -518,23 +524,21 @@ class ComposeVideoPlayer {
      * Compose surface for the player. Reads the most-recent rendered frame
      * from [frame] and draws it in a Compose `Image` composable. No Swing
      * heavyweight component, no Canvas, no NSView wrangling.
+     *
+     * Returns without drawing anything when no frame has been decoded yet so
+     * callers that layer this surface on top of a thumbnail see the thumbnail
+     * until the first frame arrives — no black flash, no stale frame from a
+     * previous video.
      */
     @Composable
     fun Surface(modifier: Modifier = Modifier) {
-        val bitmap = frame.value
-        Box(
-            modifier = modifier
-                .background(androidx.compose.ui.graphics.Color.Black)
-        ) {
-            if (bitmap != null) {
-                Image(
-                    bitmap = bitmap,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit,
-                )
-            }
-        }
+        val bitmap = frame.value ?: return
+        Image(
+            bitmap = bitmap,
+            contentDescription = null,
+            modifier = modifier,
+            contentScale = ContentScale.Fit,
+        )
     }
 
     companion object {

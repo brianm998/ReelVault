@@ -217,8 +217,11 @@ fun VideoCard(
     }
 
     // Choose which image to display: a scrub frame if we have one + position;
-    // otherwise the regular thumbnail.
+    // otherwise the regular thumbnail.  While a video is playing inline the
+    // thumbnail is shown as the base layer beneath the player surface, so
+    // we pin it to the static thumbnail and skip the scrub logic.
     val displayedImage = run {
+        if (isPlayingInline) return@run thumbnailImage
         val x = hoverX
         val width = thumbSize.width
         if (x != null && width > 0 && scrubImages.any { it != null }) {
@@ -518,19 +521,21 @@ fun VideoCard(
                         .onSizeChanged { thumbSize = it }
                         // Track cursor position over the thumbnail to drive
                         // Lightroom-style scrubbing. The X coordinate is mapped
-                        // onto the scrub-frame array (0..N-1).
+                        // onto the scrub-frame array (0..N-1). Scrubbing is
+                        // suppressed while a video is playing inline so the
+                        // player surface takes priority.
                         .onPointerEvent(PointerEventType.Enter) {
-                            onHoverEnter()
-                            it.changes.firstOrNull()?.position?.let { p -> hoverX = p.x }
-                            // Tooltip motion-tracking lives on the *outer*
-                            // wrapping Box (above) so it sees every move on
-                            // the whole card, not just the thumbnail. No
-                            // tooltip work to do here.
+                            if (!isPlayingInline) {
+                                onHoverEnter()
+                                it.changes.firstOrNull()?.position?.let { p -> hoverX = p.x }
+                            }
                         }
                         .onPointerEvent(PointerEventType.Move) {
-                            val p = it.changes.firstOrNull()?.position
-                            if (p != null && hoverX != p.x) {
-                                hoverX = p.x
+                            if (!isPlayingInline) {
+                                val p = it.changes.firstOrNull()?.position
+                                if (p != null && hoverX != p.x) {
+                                    hoverX = p.x
+                                }
                             }
                         }
                         .onPointerEvent(PointerEventType.Exit) {
@@ -538,16 +543,11 @@ fun VideoCard(
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                if (isPlayingInline && inlinePlayer?.available == true) {
-                    // Live video surface — replaces thumbnail while playing.
-                    inlinePlayer.Surface(modifier = Modifier.fillMaxSize())
-                    // Health-check overlay: if libvlc renders nothing (black
-                    // surface) for > 3 s, show install instructions over it.
-                    VlcUnavailableOverlay(player = inlinePlayer)
-                } else if (isPlayingInline) {
-                    // libvlc not found — show install instructions immediately.
-                    VlcUnavailableOverlay()
-                } else if (displayedImage != null) {
+                // Base layer: thumbnail (or placeholder) always visible.
+                // When playing, this shows through the player surface until
+                // the first frame is decoded, preventing any black flash or
+                // stale frame from a previous video.
+                if (displayedImage != null) {
                     Image(
                         bitmap = displayedImage,
                         contentDescription = video.filename,
@@ -567,6 +567,17 @@ fun VideoCard(
                         modifier = Modifier.size(48.dp),
                         tint = MaterialTheme.colorScheme.outline
                     )
+                }
+                // Player surface layered on top. Surface() renders nothing
+                // (returns early) until the first frame of the new video is
+                // decoded, so the thumbnail above stays visible during
+                // buffering with no dark background behind the video.
+                if (isPlayingInline && inlinePlayer?.available == true) {
+                    inlinePlayer.Surface(modifier = Modifier.fillMaxSize())
+                    VlcUnavailableOverlay(player = inlinePlayer)
+                } else if (isPlayingInline) {
+                    // libvlc not found — show install instructions immediately.
+                    VlcUnavailableOverlay()
                 }
 
                 // Play-button overlay — visible on hover when:
