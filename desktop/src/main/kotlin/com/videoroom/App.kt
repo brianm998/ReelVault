@@ -37,6 +37,7 @@ import com.videoroom.ui.components.PanelPrefs
 import com.videoroom.ui.components.PanelResizeHandle
 import com.videoroom.ui.screens.InfoOverlayState
 import com.videoroom.ui.screens.OpenCatalogDialog
+import com.videoroom.ui.theme.AccentScheme
 import com.videoroom.ui.theme.VideoRoomTheme
 import com.videoroom.ui.theme.VideoRoomSpacing
 import com.videoroom.viewmodel.GridViewModel
@@ -361,12 +362,19 @@ fun VideoRoomApp(
     // Smaller value → more columns when there's space; larger → fewer, bigger cards.
     var thumbnailWidth by remember { mutableStateOf(220.dp) }
 
+    // Accent color scheme — persisted via Java Preferences.
+    val uiPrefs = remember { java.util.prefs.Preferences.userRoot().node("com/videoroom/ui") }
+    var accentScheme by remember {
+        mutableStateOf(AccentScheme.fromString(uiPrefs.get("accentScheme", null)))
+    }
     // External editors preferences dialog visibility.
     var showEditorsDialog by remember { mutableStateOf(false) }
     // Live-updates / file-watcher settings dialog visibility.
     var showWatchSettingsDialog by remember { mutableStateOf(false) }
     // Inline-playback / proxy-resolution preferences dialog visibility.
     var showPlaybackSettingsDialog by remember { mutableStateOf(false) }
+    // Appearance (accent color scheme) dialog visibility.
+    var showAppearanceDialog by remember { mutableStateOf(false) }
     // Camera-names editor dialog visibility (internal → marketing).
     var showCameraNamesDialog by remember { mutableStateOf(false) }
     // Library removal confirmation. Non-null while the "Are you sure?" dialog is shown.
@@ -621,7 +629,7 @@ fun VideoRoomApp(
     }
 
     // VideoRoom is dark-mode only — light mode is intentionally not offered.
-    VideoRoomTheme {
+    VideoRoomTheme(accentScheme = accentScheme) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -640,6 +648,7 @@ fun VideoRoomApp(
                         onConfigureEditors = { showEditorsDialog = true },
                         onConfigureWatcher = { showWatchSettingsDialog = true },
                         onConfigureCameraNames = { showCameraNamesDialog = true },
+                        onConfigureAppearance = { showAppearanceDialog = true },
                         onOpenCatalog = {
                             openDialogIsStartup = false
                             showOpenCatalogDialog = true
@@ -1069,6 +1078,18 @@ fun VideoRoomApp(
                 // Help dialog
                 if (showHelpDialog) {
                     HelpDialog(onDismiss = { showHelpDialog = false })
+                }
+
+                // Appearance (accent color scheme) dialog
+                if (showAppearanceDialog) {
+                    com.videoroom.ui.screens.AppearanceSettingsDialog(
+                        currentScheme = accentScheme,
+                        onSchemeChange = { scheme ->
+                            accentScheme = scheme
+                            uiPrefs.put("accentScheme", scheme.name)
+                        },
+                        onDismiss = { showAppearanceDialog = false }
+                    )
                 }
 
                 // Live-updates / watcher preferences dialog
@@ -1659,6 +1680,8 @@ fun VideoRoomTopBar(
     onConfigureWatcher: () -> Unit = {},
     /** Opens the camera-names editor dialog. */
     onConfigureCameraNames: () -> Unit = {},
+    /** Opens the appearance (accent color scheme) dialog. */
+    onConfigureAppearance: () -> Unit = {},
     onOpenCatalog: () -> Unit = {},
     onCloseCatalog: () -> Unit = {},
     onOpenRecent: (String) -> Unit = {},
@@ -1980,6 +2003,19 @@ fun VideoRoomTopBar(
                             Icon(
                                 imageVector = Icons.Default.CreateNewFolder,
                                 contentDescription = "Add Library Location"
+                            )
+                        }
+                    }
+
+                    // Appearance (accent color scheme) button
+                    com.videoroom.ui.components.Tooltip(
+                        text = "Choose the accent color scheme for the interface " +
+                            "(Purple or Blue)."
+                    ) {
+                        IconButton(onClick = onConfigureAppearance) {
+                            Icon(
+                                imageVector = Icons.Default.Palette,
+                                contentDescription = "Appearance"
                             )
                         }
                     }

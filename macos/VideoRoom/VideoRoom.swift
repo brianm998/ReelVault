@@ -20,10 +20,21 @@ struct VideoRoomApp: App {
     /// items can drive it.
     @StateObject private var appState = AppState()
 
+    /// Persisted accent scheme. "blue" matches the macOS system default;
+    /// "purple" is the classic VideoRoom palette. Changing this rewires
+    /// the `.accentColor()` on the root view so every `.accentColor`
+    /// reference across the whole app picks up the new tint immediately.
+    @AppStorage("accentScheme") private var accentScheme: String = "blue"
+
+    private var resolvedAccentColor: Color {
+        accentScheme == "purple" ? .purple : .blue
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(appState)
+                .accentColor(resolvedAccentColor)
                 // Title shows the current catalog name. SwiftUI's
                 // `navigationTitle` propagates up to the window chrome.
                 .navigationTitle(appState.currentCatalogName.isEmpty
