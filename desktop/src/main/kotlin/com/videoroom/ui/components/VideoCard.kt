@@ -504,11 +504,12 @@ fun VideoCard(
 
                 // Stop button — top-end, overlaid on the live player.
                 if (isPlayingInline) {
-                    com.videoroom.ui.components.Tooltip(text = "Stop playback") {
+                    com.videoroom.ui.components.Tooltip(
+                        text = "Stop playback",
+                        modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
+                    ) {
                         Box(
                             modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(4.dp)
                                 .size(28.dp)
                                 .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(50))
                                 .pointerInput(onStopPlayback) {
@@ -544,11 +545,12 @@ fun VideoCard(
                         isStackChild -> "Member of a stack of ${video.groupSize} variants"
                         else -> "Expand this stack to see all ${video.groupSize} variants inline"
                     }
-                    com.videoroom.ui.components.Tooltip(text = stackTip) {
+                    com.videoroom.ui.components.Tooltip(
+                        text = stackTip,
+                        modifier = Modifier.align(Alignment.TopStart).padding(VideoRoomSpacing.Small),
+                    ) {
                     Surface(
                         modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(VideoRoomSpacing.Small)
                             // Consume pointer down so the parent card click handler doesn't fire.
                             .pointerInput(onStackBadgeClick) {
                                 awaitEachGesture {
