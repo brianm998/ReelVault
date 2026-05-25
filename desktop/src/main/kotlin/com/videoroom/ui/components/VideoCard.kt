@@ -40,13 +40,10 @@ import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.videoroom.LocalAppWindow
 import com.videoroom.data.models.VideoSummary
@@ -83,11 +80,6 @@ fun VideoCard(
     /** Fired when the cursor enters the thumbnail area; used to lazily load
      *  scrub frames the first time the user hovers this card. */
     onHoverEnter: () -> Unit = {},
-    /** When `true`, the stationary-tooltip popup is suppressed regardless
-     *  of dwell time — used by the caller to hide the popup while a
-     *  context menu is open (which would otherwise render the help
-     *  popup on top of the menu after the dwell elapsed). */
-    suppressTooltip: Boolean = false,
     /** `true` when this card is the one currently playing inline. The
      *  thumbnail is replaced with [inlinePlayer]'s video surface. */
     isPlayingInline: Boolean = false,
@@ -165,57 +157,6 @@ fun VideoCard(
     var hoverX by remember { mutableStateOf<Float?>(null) }
     var thumbSize by remember { mutableStateOf(IntSize.Zero) }
 
-    // Stationary-tooltip dwell. Every Enter/Move event bumps
-    // `motionTickMs` to the current clock; a LaunchedEffect keyed on that
-    // value waits [TOOLTIP_DWELL_MS] and then sets `tooltipVisible`.
-    //
-    // Each new motion cancels the in-flight effect (the LaunchedEffect
-    // restart-on-key behavior) and starts a fresh 2-second wait, so the
-    // popup only ever surfaces after the cursor has actually been still
-    // the full dwell. `motionTickMs = 0` means "no motion observed yet"
-    // (also used on Exit) and skips the timer entirely.
-    //
-    // Once the tooltip is showing, subsequent motion within the card does
-    // NOT dismiss it. This matters because a card with inline video playback
-    // recomposes every frame; the natural micro-tremor of a user's hovering
-    // cursor used to fire Move events every few seconds, restarting the
-    // dwell timer and visibly flickering the tooltip in and out. The
-    // tooltip now stays visible until the cursor leaves the card.
-    var motionTickMs by remember { mutableStateOf(0L) }
-    var tooltipVisible by remember { mutableStateOf(false) }
-    var lastPointerPos by remember { mutableStateOf<Offset?>(null) }
-    LaunchedEffect(motionTickMs, suppressTooltip, isPlayingInline) {
-        // Suppress the tooltip outright while a video is playing inline.
-        // The embedded VLC surface fires spurious Enter/Exit cycles on
-        // the outer card Box during playback, which kept toggling
-        // `tooltipVisible` and producing a visible flash every ~2 s.
-        // The user is watching the video at that point — a help popup
-        // over it is unwelcome anyway — so the cleanest fix is to keep
-        // the tooltip down for the full duration of playback.
-        if (suppressTooltip || isPlayingInline || motionTickMs == 0L) {
-            tooltipVisible = false
-            return@LaunchedEffect
-        }
-        // Already showing — motion within the card shouldn't dismiss it.
-        if (tooltipVisible) return@LaunchedEffect
-        delay(TOOLTIP_DWELL_MS)
-        // Re-check after the dwell in case the cursor left, the menu
-        // opened, or playback started while we were sleeping.
-        if (motionTickMs > 0L && !suppressTooltip && !isPlayingInline) {
-            tooltipVisible = true
-        }
-    }
-    // While the context menu is open the parent flips `suppressTooltip`
-    // to true. Reset the motion clock too so that, once the menu closes,
-    // the tooltip stays hidden until the user actually moves the cursor
-    // again — otherwise a still-since-before-the-menu cursor would
-    // trigger the dwell as soon as the menu dismissed.
-    LaunchedEffect(suppressTooltip) {
-        if (suppressTooltip) {
-            motionTickMs = 0L
-        }
-    }
-
     // Choose which image to display: a scrub frame if we have one + position;
     // otherwise the regular thumbnail.  While a video is playing inline the
     // thumbnail is shown as the base layer beneath the player surface, so
@@ -234,47 +175,6 @@ fun VideoCard(
     }
 
     val isInExpandedStack = isStackExpanded || isStackChild
-
-    // Rich tooltip text shown when the user hovers the card. Built once per
-    // change to the inputs so we don't allocate on every recomposition.
-    val cardTooltip = remember(video, isStackChild, isStackExpanded) {
-        buildString {
-            append(video.filename)
-            append('\n')
-            append(video.resolution)
-            append(" • ")
-            append(video.durationFormatted)
-            if (video.codecVideo.isNotEmpty()) {
-                append(" • ")
-                append(video.codecVideo)
-            }
-            if (video.fps > 0) {
-                append(" • ")
-                append(video.fps.toInt())
-                append(" fps")
-            }
-            append('\n')
-            append(
-                if (video.sizeMB >= 1024) {
-                    String.format("%.2f GB", video.sizeMB / 1024.0)
-                } else {
-                    String.format("%.1f MB", video.sizeMB)
-                }
-            )
-            if (video.isInGroup) {
-                append('\n')
-                if (isStackChild) {
-                    append("Member of a stack of ${video.groupSize} variants.")
-                } else if (isStackExpanded) {
-                    append("Stack of ${video.groupSize} (expanded). Click the stack badge to collapse.")
-                } else {
-                    append("Stack of ${video.groupSize}. Click the stack badge to expand.")
-                }
-            }
-            append('\n')
-            append("Click to select, Shift-click to multi-select, double-click to open.")
-        }
-    }
 
     // Border priority:
     //   anchor (multi-select anchor) > primary > multi-selection > hover > stack > default
@@ -398,28 +298,6 @@ fun VideoCard(
                         }
                     }
                 }
-            }
-            .onPointerEvent(PointerEventType.Enter) { event ->
-                val p = event.changes.firstOrNull()?.position
-                lastPointerPos = p
-                // Entry counts as motion — the user might immediately
-                // scrub, and we don't want a popup flashing over the
-                // first frame.
-                motionTickMs = System.currentTimeMillis()
-            }
-            .onPointerEvent(PointerEventType.Move) { event ->
-                val p = event.changes.firstOrNull()?.position
-                if (p != null && p != lastPointerPos) {
-                    lastPointerPos = p
-                    motionTickMs = System.currentTimeMillis()
-                }
-            }
-            .onPointerEvent(PointerEventType.Exit) {
-                lastPointerPos = null
-                // Reset to "no motion observed" so the dwell timer
-                // doesn't fire while the cursor is off the card.
-                motionTickMs = 0L
-                tooltipVisible = false
             }
     ) {
     // Lightroom-style three-band layout: top stat band, square thumbnail in
@@ -590,57 +468,63 @@ fun VideoCard(
                 //     rather than nothing happening on click.
                 val canPlayInline = video.playableNatively || video.hasProxies
                 if (!isPlayingInline && isHovered && (canPlayInline || !playEnabled)) {
-                    Box(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .background(
-                                Color.Black.copy(alpha = if (playEnabled) 0.55f else 0.35f),
-                                RoundedCornerShape(50)
-                            )
-                            .pointerInput(onPlayClick, playEnabled) {
-                                awaitEachGesture {
-                                    val down = awaitFirstDown(requireUnconsumed = false)
-                                    down.consume()
-                                    val up = waitForUpOrCancellation()
-                                    if (up != null) { up.consume(); onPlayClick() }
-                                }
-                            },
-                        contentAlignment = Alignment.Center
+                    com.videoroom.ui.components.Tooltip(
+                        text = if (playEnabled) "Play inline" else "Install VLC to enable inline playback"
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = if (playEnabled) "Play inline" else "VLC not installed",
-                            modifier = Modifier.size(30.dp),
-                            // Dimmed when VLC is absent to signal the disabled state.
-                            tint = if (playEnabled) Color.White else Color.White.copy(alpha = 0.45f),
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(52.dp)
+                                .background(
+                                    Color.Black.copy(alpha = if (playEnabled) 0.55f else 0.35f),
+                                    RoundedCornerShape(50)
+                                )
+                                .pointerInput(onPlayClick, playEnabled) {
+                                    awaitEachGesture {
+                                        val down = awaitFirstDown(requireUnconsumed = false)
+                                        down.consume()
+                                        val up = waitForUpOrCancellation()
+                                        if (up != null) { up.consume(); onPlayClick() }
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = if (playEnabled) "Play inline" else "VLC not installed",
+                                modifier = Modifier.size(30.dp),
+                                // Dimmed when VLC is absent to signal the disabled state.
+                                tint = if (playEnabled) Color.White else Color.White.copy(alpha = 0.45f),
+                            )
+                        }
                     }
                 }
 
                 // Stop button — top-end, overlaid on the live player.
                 if (isPlayingInline) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(4.dp)
-                            .size(28.dp)
-                            .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(50))
-                            .pointerInput(onStopPlayback) {
-                                awaitEachGesture {
-                                    val down = awaitFirstDown(requireUnconsumed = false)
-                                    down.consume()
-                                    val up = waitForUpOrCancellation()
-                                    if (up != null) { up.consume(); onStopPlayback() }
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Stop playback",
-                            modifier = Modifier.size(16.dp),
-                            tint = Color.White,
-                        )
+                    com.videoroom.ui.components.Tooltip(text = "Stop playback") {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(4.dp)
+                                .size(28.dp)
+                                .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(50))
+                                .pointerInput(onStopPlayback) {
+                                    awaitEachGesture {
+                                        val down = awaitFirstDown(requireUnconsumed = false)
+                                        down.consume()
+                                        val up = waitForUpOrCancellation()
+                                        if (up != null) { up.consume(); onStopPlayback() }
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Stop playback",
+                                modifier = Modifier.size(16.dp),
+                                tint = Color.White,
+                            )
+                        }
                     }
                 }
 
@@ -652,6 +536,12 @@ fun VideoCard(
                 // Clicking the badge toggles expansion of the stack.
                 if (video.isInGroup) {
                     val badgeIsChild = isStackChild
+                    val stackTip = when {
+                        isStackExpanded -> "Collapse this stack of ${video.groupSize} videos back to one card"
+                        isStackChild -> "Member of a stack of ${video.groupSize} variants"
+                        else -> "Expand this stack to see all ${video.groupSize} variants inline"
+                    }
+                    com.videoroom.ui.components.Tooltip(text = stackTip) {
                     Surface(
                         modifier = Modifier
                             .align(Alignment.TopStart)
@@ -701,6 +591,7 @@ fun VideoCard(
                             )
                         }
                     }
+                    } // Tooltip
                 }
 
                 // Bottom-right icon row — at-a-glance status (keyword,
@@ -713,33 +604,41 @@ fun VideoCard(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     if (video.tags.isNotEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .size(18.dp)
-                                .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
-                            contentAlignment = Alignment.Center
+                        com.videoroom.ui.components.Tooltip(
+                            text = "${video.tags.size} keyword${if (video.tags.size == 1) "" else "s"}: ${video.tags.joinToString(", ")}"
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Sell,
-                                contentDescription = "${video.tags.size} keyword(s)",
-                                modifier = Modifier.size(10.dp),
-                                tint = Color.White
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Sell,
+                                    contentDescription = "${video.tags.size} keyword(s)",
+                                    modifier = Modifier.size(10.dp),
+                                    tint = Color.White
+                                )
+                            }
                         }
                     }
                     if (video.hasProxies) {
-                        Box(
-                            modifier = Modifier
-                                .size(18.dp)
-                                .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
-                            contentAlignment = Alignment.Center
+                        com.videoroom.ui.components.Tooltip(
+                            text = "${video.proxyCount} proxy/proxies available for inline playback"
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.PictureInPicture,
-                                contentDescription = "${video.proxyCount} proxy/proxies",
-                                modifier = Modifier.size(10.dp),
-                                tint = Color.White
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PictureInPicture,
+                                    contentDescription = "${video.proxyCount} proxy/proxies",
+                                    modifier = Modifier.size(10.dp),
+                                    tint = Color.White
+                                )
+                            }
                         }
                     }
                 }
@@ -772,19 +671,23 @@ fun VideoCard(
                             .height(bottomSpace),
                         contentAlignment = Alignment.Center
                     ) {
-                        Surface(
-                            color = Color(0xFFB8722E).copy(alpha = 0.9f),
-                            shape = MaterialTheme.shapes.small,
+                        com.videoroom.ui.components.Tooltip(
+                            text = "This video exceeds the inline-playback height limit. Right-click to create a lower-resolution proxy."
                         ) {
-                            Text(
-                                text = "Too large to play here",
-                                modifier = Modifier.padding(
-                                    horizontal = VideoRoomSpacing.Small,
-                                    vertical = 2.dp,
-                                ),
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelSmall,
-                            )
+                            Surface(
+                                color = Color(0xFFB8722E).copy(alpha = 0.9f),
+                                shape = MaterialTheme.shapes.small,
+                            ) {
+                                Text(
+                                    text = "Too large to play here",
+                                    modifier = Modifier.padding(
+                                        horizontal = VideoRoomSpacing.Small,
+                                        vertical = 2.dp,
+                                    ),
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
+                            }
                         }
                     }
                 }
@@ -800,6 +703,9 @@ fun VideoCard(
         )
 
         // ── Bottom rating band ───────────────────────────────────────
+        com.videoroom.ui.components.Tooltip(
+            text = "Click a star to rate 1–5. Click the current rating again to clear it."
+        ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -852,34 +758,9 @@ fun VideoCard(
                 if (position < 5) Spacer(modifier = Modifier.width(6.dp))
             }
         }
+        } // Tooltip
     }
 
-        // Stationary-tooltip popup. Sits inside the wrapping Box so it
-        // shares the card's coordinate space; `Popup` itself doesn't
-        // intercept pointer events from the underlying card, so the
-        // user can keep moving the cursor and it'll dismiss naturally.
-        if (tooltipVisible && cardTooltip.isNotBlank()) {
-            Popup(
-                alignment = Alignment.BottomStart,
-                // Push it just below the card so it doesn't overlap the
-                // thumbnail content the user is scrubbing.
-                offset = IntOffset(0, 8),
-                properties = PopupProperties(focusable = false),
-            ) {
-                Surface(
-                    color = MaterialTheme.colorScheme.inverseSurface,
-                    shape = MaterialTheme.shapes.small,
-                    shadowElevation = 4.dp,
-                ) {
-                    Text(
-                        text = cardTooltip,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.inverseOnSurface,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
-                    )
-                }
-            }
-        }
     }
 }
 
@@ -915,6 +796,7 @@ private fun RowScope.StatCell(
     // appears below the cell. `Modifier.clickable` consumes the press
     // so the outer card-level `shiftAwareClickable` doesn't *also*
     // re-select the card on the same press.
+    com.videoroom.ui.components.Tooltip(text = "Click to choose what this slot shows") {
     Box(
         modifier = Modifier
             .weight(weight)
@@ -961,6 +843,7 @@ private fun RowScope.StatCell(
             }
         }
     }
+    } // Tooltip
 }
 
 /**
@@ -1003,13 +886,6 @@ private fun Modifier.shiftAwareClickable(
         }
     }
 }
-
-/// Time (ms) the cursor must sit motionless over a card before its help
-/// popup surfaces. Matches the macOS client's `tooltipDwell`. Two seconds
-/// is long enough that a user actively scrubbing — even with brief
-/// frame-inspecting pauses — won't trigger the popup, and short enough
-/// that an intentional rest to read the help feels responsive.
-private const val TOOLTIP_DWELL_MS = 2000L
 
 /** Minimum pointer travel (in pixels) before a press-and-move is treated as
  *  a drag-out gesture.  8 px matches the drag threshold used by most desktop

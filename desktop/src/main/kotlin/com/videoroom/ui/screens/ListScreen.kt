@@ -584,23 +584,30 @@ fun VideoListRow(
                 }
                 // Stack count badge for collapsed group representatives.
                 if (video.isInGroup) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(3.dp)
-                            .background(
-                                Color.Black.copy(alpha = 0.6f),
-                                shape = MaterialTheme.shapes.extraSmall
-                            )
-                            .clickable(onClick = onStackToggle)
-                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                    Tooltip(
+                        text = if (item.isExpandedRepresentative)
+                            "Collapse this stack of ${video.groupSize} videos"
+                        else
+                            "Expand this stack to see all ${video.groupSize} variants"
                     ) {
-                        Text(
-                            text = "${video.groupSize}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(3.dp)
+                                .background(
+                                    Color.Black.copy(alpha = 0.6f),
+                                    shape = MaterialTheme.shapes.extraSmall
+                                )
+                                .clickable(onClick = onStackToggle)
+                                .padding(horizontal = 4.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "${video.groupSize}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
@@ -611,6 +618,7 @@ fun VideoListRow(
                     .background(bandDividerColor)
             )
             // Bottom rating band: 5 star/dot positions.
+            Tooltip(text = "Click a star to rate 1–5. Click the current rating again to clear it.") {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -649,6 +657,7 @@ fun VideoListRow(
                     }
                 }
             }
+            } // Tooltip
         }
 
         Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))

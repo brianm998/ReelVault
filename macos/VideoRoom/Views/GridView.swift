@@ -445,20 +445,6 @@ struct VideoCardView: View {
     @State private var isHovered = false
     @State private var hoverX: CGFloat? = nil
     @State private var thumbnailWidth: CGFloat = 0
-    /// `true` when our custom card-tooltip popup is currently visible.
-    /// Toggled by the dwell timer below — never directly by hover.
-    @State private var tooltipVisible: Bool = false
-    /// The pending "show tooltip" task. Each cursor-motion event cancels
-    /// the in-flight task (if any) and schedules a fresh one, so
-    /// continuous scrubbing leaves the popup hidden indefinitely. When
-    /// the user stops moving, the most-recently-scheduled task fires
-    /// exactly 2 seconds later.
-    @State private var tooltipShowTask: DispatchWorkItem? = nil
-    /// Last cursor position seen in the card's outer `onContinuousHover`.
-    /// Used to ignore .active phases that re-fire without an actual move
-    /// (focus changes, window activation, etc.), which would otherwise
-    /// reset the dwell timer for free.
-    @State private var lastTooltipCursor: CGPoint? = nil
 
     /// Which top-stat-band slot (0..3) currently has its picker popover
     /// open. `nil` means no picker is showing. Tracked as a single
@@ -469,96 +455,11 @@ struct VideoCardView: View {
     private var video: VideoSummary { item.video }
     private var isInExpandedStack: Bool { item.isExpandedRepresentative || item.isStackChild }
 
-    /// Styled bubble that renders the rich help text. Sits in an
-    /// `.overlay` below the card; positioning is handled by the caller.
-    private var tooltipPopup: some View {
-        Text(cardHelp)
-            .font(.system(size: 11))
-            .foregroundColor(.primary)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(Color(NSColor.controlBackgroundColor))
-                    .shadow(color: Color.black.opacity(0.25), radius: 6, x: 0, y: 2)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
-            )
-            // Cap the bubble at a comfortable reading width so very long
-            // filenames don't stretch it off the edge of the window.
-            .frame(maxWidth: 360, alignment: .leading)
-            .fixedSize(horizontal: false, vertical: true)
-    }
-
-    /// Cancel any pending tooltip-show task and hide the popup right now.
-    /// Called on every cursor-motion event over the card, and on
-    /// hover-exit — so the popup only ever surfaces after the cursor has
-    /// genuinely stopped moving for the full dwell period.
-    private func resetTooltipTimer() {
-        tooltipShowTask?.cancel()
-        tooltipShowTask = nil
-        tooltipVisible = false
-    }
-
-    /// Schedule the tooltip to appear `Self.tooltipDwell` seconds from
-    /// now. Re-armed on every motion event; the most recently scheduled
-    /// task is the one that fires, so continuous scrubbing never
-    /// produces a popup.
-    private func scheduleTooltipShow() {
-        resetTooltipTimer()
-        let task = DispatchWorkItem {
-            tooltipVisible = true
-        }
-        tooltipShowTask = task
-        DispatchQueue.main.asyncAfter(
-            deadline: .now() + VideoCardView.tooltipDwell,
-            execute: task
-        )
-    }
-
-    /// Dwell in seconds before the custom tooltip popup is allowed to
-    /// appear after the cursor stops moving. Two seconds matches the
-    /// product spec — long enough to absorb purposeful pauses mid-scrub,
-    /// short enough that an intentional rest surfaces the info quickly.
-    static let tooltipDwell: TimeInterval = 2.0
-
     /// Inset around the thumbnail inside the square photo area, mirroring
     /// the visible margin that surrounds each photo in Lightroom. Keeps
     /// the photo's full frame visible (no edge-cropping) and gives the
     /// colour-label tint behind it room to read.
     private var photoPadding: CGFloat { 8 }
-
-    /// Multi-line help text shown when the user hovers the card. Pulls together
-    /// the most useful at-a-glance facts about this video so the user doesn't
-    /// have to select it just to see the basics.
-    private var cardHelp: String {
-        var lines: [String] = []
-        lines.append(video.filename)
-
-        var techParts: [String] = []
-        techParts.append(video.resolution)
-        techParts.append(video.durationFormatted)
-        if !video.codecVideo.isEmpty { techParts.append(video.codecVideo) }
-        if video.fps > 0 { techParts.append("\(Int(video.fps)) fps") }
-        lines.append(techParts.joined(separator: " • "))
-
-        lines.append(video.sizeFormatted)
-
-        if video.isInGroup {
-            if item.isStackChild {
-                lines.append("Member of a stack of \(video.groupSize) variants.")
-            } else if item.isExpandedRepresentative {
-                lines.append("Stack of \(video.groupSize) (expanded). Click the stack badge to collapse.")
-            } else {
-                lines.append("Stack of \(video.groupSize). Click the stack badge to expand.")
-            }
-        }
-
-        lines.append("Click to select, Shift-click to multi-select, double-click to open.")
-        return lines.joined(separator: "\n")
-    }
 
     /// Drag preview shown under the cursor while dragging out of VideoRoom.
     /// Displays the card thumbnail (or a placeholder), the filename, and a
@@ -733,6 +634,7 @@ struct VideoCardView: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 26)
                 .background(bottomBandColor)
+                .help("Click a star to rate 1–5; click the current rating again to clear it")
         }
         // Hover tint applied as a SwiftUI overlay so SwiftUI handles
         // compositing in the correct appearance context. Non-hit-
@@ -754,21 +656,6 @@ struct VideoCardView: View {
                 .stroke(cardBorderColor, lineWidth: 1)
                 .allowsHitTesting(false)
         )
-        // Custom popup tooltip — we own the timing end-to-end rather
-        // than relying on NSView's system tooltip, whose delay isn't
-        // tunable per-view and was either firing during scrubs or
-        // refusing to appear at all when we tried to suppress it. The
-        // overlay sits just below the card with .allowsHitTesting(false)
-        // so it doesn't steal clicks. Card-level onContinuousHover (next
-        // modifier) drives the visibility timer.
-        .overlay(alignment: .bottom) {
-            if tooltipVisible {
-                tooltipPopup
-                    .offset(y: 8)
-                    .allowsHitTesting(false)
-                    .transition(.opacity.animation(.easeIn(duration: 0.12)))
-            }
-        }
         // Card-level motion tracking. Fires for moves anywhere on the
         // card — over the thumbnail (where we map x → scrub frame) and
         // over the info area below (which only contributes to the
@@ -790,10 +677,6 @@ struct VideoCardView: View {
                 // phases while a button is held, so hover state stays true for
                 // the full press+release cycle.
                 isHovered = true
-                if lastTooltipCursor != location {
-                    lastTooltipCursor = location
-                    scheduleTooltipShow()
-                }
                 // Map card-local cursor → scrub frame. The thumbnail
                 // occupies the top 16:9 region of the card. When the
                 // cursor is over that region, expose its x to the
@@ -813,28 +696,8 @@ struct VideoCardView: View {
                 }
             case .ended:
                 isHovered = false
-                lastTooltipCursor = nil
-                resetTooltipTimer()
                 hoverX = nil
             }
-        }
-        // While *any* AppKit menu is tracking the cursor — context
-        // menus, menu-bar menus, anything backed by NSMenu — kill the
-        // tooltip and cancel its pending show. The popup would render
-        // on top of the menu and was particularly noticeable when the
-        // user right-clicked, stayed still while reading the menu
-        // options, and the 2-second dwell elapsed.
-        //
-        // Notifications fire from any NSMenu in the app, so a single
-        // observer per card is enough. We deliberately don't *restart*
-        // the timer on `didEndTracking` — the user has to move the
-        // cursor again to re-arm, which matches the rest of the
-        // dwell semantics.
-        .onReceive(NotificationCenter.default.publisher(
-            for: NSMenu.didBeginTrackingNotification
-        )) { _ in
-            resetTooltipTimer()
-            lastTooltipCursor = nil
         }
         // AVPlayer lifecycle. `.onChange` fires *after* the first render
         // in which `isPlaying` is already true, so `avPlayer` would be nil
@@ -1065,6 +928,7 @@ struct VideoCardView: View {
             ) {
                 statPickerMenu(slotIndex: slotIndex, currentStat: stat)
             }
+            .help("Click to choose which stat is shown in this slot")
     }
 
     /// The picker content rendered inside the popover. A vertical
@@ -1255,6 +1119,7 @@ struct VideoCardView: View {
                                 .clipShape(Circle())
                         }
                         .buttonStyle(.plain)
+                        .help("Play this video inline")
                     }
                 }
                 // Stop button — top-trailing corner while playing.
@@ -1270,6 +1135,7 @@ struct VideoCardView: View {
                         }
                         .buttonStyle(.plain)
                         .padding(5)
+                        .help("Stop inline playback")
                     }
                 }
                 .background(

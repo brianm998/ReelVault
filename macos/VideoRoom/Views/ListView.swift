@@ -476,6 +476,7 @@ struct VideoListRowView: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 22)
                 .background(bottomBandColor)
+                .help("Click a star to rate 1–5; click the current rating again to clear it")
         }
     }
 
@@ -583,6 +584,7 @@ struct VideoListRowView: View {
             ) {
                 statPickerMenu(slotIndex: slotIndex, currentStat: stat)
             }
+            .help("Click to choose which stat is shown in this slot")
     }
 
     @ViewBuilder
@@ -899,6 +901,7 @@ struct VideoListHorizontalCardView: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 22)
                 .background(bottomBandColor)
+                .help("Click a star to rate 1–5; click the current rating again to clear it")
         }
     }
 

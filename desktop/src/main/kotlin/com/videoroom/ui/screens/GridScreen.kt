@@ -380,7 +380,6 @@ fun GridScreen(
                                     viewModel.toggleStackExpansion(video.groupId)
                                 },
                                 onHoverEnter = { viewModel.loadScrubFrames(video.id) },
-                                suppressTooltip = isContextMenuOpen,
                                 dragPaths = run {
                                     val multi = selectedVideoIds.value
                                     if (video.id in multi && multi.size > 1) {
