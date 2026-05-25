@@ -934,7 +934,9 @@ class GridViewModel: ObservableObject {
         NSLog("[GridViewModel] loadScrubFrames begin video=%@", videoId)
         Task {
             defer { scrubLoading.remove(videoId) }
-            let frames = await repository.getScrubFrames(videoId: videoId, count: 10)
+            let rawCount = UserDefaults.standard.integer(forKey: "scrubFrameCount")
+            let count = rawCount > 0 ? rawCount : 10
+            let frames = await repository.getScrubFrames(videoId: videoId, count: count)
             let nonNil = frames.filter { $0 != nil }.count
             NSLog(
                 "[GridViewModel] loadScrubFrames done video=%@ got=%d/%d",

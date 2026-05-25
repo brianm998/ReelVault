@@ -358,12 +358,15 @@ fun VideoRoomApp(
     // Convenience accessors for the active view-mode live further down,
     // after `viewMode` itself is declared — Kotlin can't forward-reference.
 
-    // Thumbnail size controls the minimum column width for the adaptive grid.
-    // Smaller value → more columns when there's space; larger → fewer, bigger cards.
-    var thumbnailWidth by remember { mutableStateOf(220.dp) }
-
     // Accent color scheme — persisted via Java Preferences.
     val uiPrefs = remember { java.util.prefs.Preferences.userRoot().node("com/videoroom/ui") }
+
+    // Thumbnail size controls the minimum column width for the adaptive grid.
+    // Smaller value → more columns when there's space; larger → fewer, bigger cards.
+    // Persisted to the same uiPrefs node so the user's last size survives restarts.
+    var thumbnailWidth by remember {
+        mutableStateOf(uiPrefs.getFloat("thumbnailWidth", 220f).dp)
+    }
     var accentScheme by remember {
         mutableStateOf(AccentScheme.fromString(uiPrefs.get("accentScheme", null)))
     }
@@ -1065,7 +1068,10 @@ fun VideoRoomApp(
                         sortAscending = sortAsc.value,
                         onSortChange = { field, ascending -> gridViewModel.setSort(field, ascending) },
                         thumbnailWidth = thumbnailWidth,
-                        onThumbnailWidthChange = { thumbnailWidth = it },
+                        onThumbnailWidthChange = {
+                            thumbnailWidth = it
+                            uiPrefs.putFloat("thumbnailWidth", it.value)
+                        },
                     )
                 }
                 // External editors preferences dialog

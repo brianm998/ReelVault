@@ -3,26 +3,39 @@
 
 import SwiftUI
 
-/// Sheet that lets the user choose between the Blue and Purple accent
-/// color schemes. The choice is persisted to `UserDefaults` and applied
-/// to the whole window via `.accentColor()` on the root view.
+/// Appearance & Browse settings: accent color scheme, scrub-frame count,
+/// and reference information about the other configurable values.
+///
+/// Changes to `accentScheme` and `scrubFrameCount` are written to
+/// `UserDefaults` immediately via `@AppStorage` — no Save button needed.
+/// `GridViewModel.loadScrubFrames` reads `scrubFrameCount` each time it
+/// fetches frames, so the new value takes effect on the next card hover
+/// without a restart.
 struct AppearanceSettingsDialog: View {
     @Binding var isPresented: Bool
 
     /// Raw string persisted in UserDefaults: "blue" or "purple".
     @AppStorage("accentScheme") private var accentScheme: String = "blue"
 
+    /// Number of scrub frames fetched per video. Stored as `Int` but
+    /// displayed as a segmented picker over the fixed set of valid values.
+    /// `UserDefaults.integer(forKey:)` returns 0 when no value is stored;
+    /// `GridViewModel` treats 0 as "use the default (10)".
+    @AppStorage("scrubFrameCount") private var scrubFrameCount: Int = 10
+
+    private let scrubOptions = [4, 6, 8, 10, 15, 20]
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Header
+            // ── Header ─────────────────────────────────────────────────
             HStack {
                 Image(systemName: "paintpalette")
                     .font(.title2)
                     .foregroundColor(.accentColor)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Appearance")
+                    Text("Appearance & Browse")
                         .font(.headline)
-                    Text("Choose the accent color scheme for the interface")
+                    Text("Color scheme and scrub-preview settings")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -31,8 +44,12 @@ struct AppearanceSettingsDialog: View {
 
             Divider()
 
-            // Color scheme picker
-            VStack(alignment: .leading, spacing: 8) {
+            // ── Accent color ────────────────────────────────────────────
+            Text("Accent color")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+
+            VStack(alignment: .leading, spacing: 6) {
                 ForEach(AccentSchemeOption.allCases) { option in
                     Button {
                         accentScheme = option.rawValue
@@ -75,7 +92,46 @@ struct AppearanceSettingsDialog: View {
 
             Divider()
 
-            // Dismiss button
+            // ── Scrub frames per video ──────────────────────────────────
+            Text("Scrub frames per video")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+
+            Picker("", selection: $scrubFrameCount) {
+                ForEach(scrubOptions, id: \.self) { n in
+                    Text("\(n)").tag(n)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+
+            Text("How many still frames VideoRoom samples from each video for the hover scrub preview. More frames = smoother scrubbing but more memory and daemon traffic. Changes take effect the next time you hover a card that hasn't been sampled yet.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+            Divider()
+
+            // ── Thumbnail size (reference) ──────────────────────────────
+            Text("Thumbnail size")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+
+            Text("Use the size slider in the bottom toolbar to adjust how large card thumbnails appear in Grid and List modes (range: 120 – 400 pt, default: 220 pt). Your last-used size is remembered across launches.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+            Divider()
+
+            // ── Proxy & playback gate (reference) ──────────────────────
+            Text("Proxy & playback settings")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+
+            Text("The maximum inline-playback resolution and the default proxy height are configured in the Playback & Proxies sheet (toolbar → Playback & Proxies…). VideoRoom uses these to decide which videos show a \"Too large to play here\" badge and what resolution newly-created proxies target.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+            // ── Dismiss ─────────────────────────────────────────────────
             HStack {
                 Spacer()
                 Button("Done") { isPresented = false }
@@ -83,7 +139,7 @@ struct AppearanceSettingsDialog: View {
             }
         }
         .padding(20)
-        .frame(width: 360)
+        .frame(width: 420)
     }
 }
 

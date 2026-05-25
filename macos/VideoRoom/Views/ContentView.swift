@@ -25,7 +25,9 @@ struct ContentView: View {
         PanelPrefs.loadExpandeds(side: .left)
     @State private var rightPanelExpandeds: [ViewMode: Bool] =
         PanelPrefs.loadExpandeds(side: .right)
-    @State private var thumbnailWidth: CGFloat = 220
+    // Thumbnail size — persisted to UserDefaults so the user's last size
+    // survives restarts. Falls back to 220 pt when no preference is stored.
+    @AppStorage("thumbnailWidth") private var thumbnailWidth: Double = 220
     @State private var showAddLibrarySheet = false
     @State private var showHelpSheet = false
     @State private var showEditorsSheet = false
@@ -746,7 +748,7 @@ struct ContentView: View {
                 GridView(
                     viewModel: gridViewModel,
                     detailViewModel: detailViewModel,
-                    thumbnailMinWidth: thumbnailWidth,
+                    thumbnailMinWidth: CGFloat(thumbnailWidth),
                     onConfigureEditors: { showEditorsSheet = true }
                 )
                 .frame(maxWidth: .infinity)
@@ -758,7 +760,7 @@ struct ContentView: View {
                     // matches its grid-mode counterpart in size, so the
                     // size slider scales both views in lockstep instead
                     // of leaving list-mode cards half the width.
-                    thumbnailHeight: thumbnailWidth,
+                    thumbnailHeight: CGFloat(thumbnailWidth),
                     onConfigureEditors: { showEditorsSheet = true }
                 )
                 .frame(maxWidth: .infinity)

@@ -13,11 +13,16 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import org.slf4j.LoggerFactory
+import java.util.prefs.Preferences
 
 class GridViewModel(
     private val repository: VideoRepository
 ) {
     private val logger = LoggerFactory.getLogger(GridViewModel::class.java)
+
+    /** Local UI preferences shared with the settings dialogs. */
+    private val uiPrefs: Preferences =
+        Preferences.userRoot().node("com/videoroom/ui")
     private val viewModelScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     // State
@@ -1204,7 +1209,8 @@ class GridViewModel(
         scrubLoading.add(videoId)
         viewModelScope.launch {
             try {
-                val frames = repository.getScrubFrames(videoId, count = 10)
+                val count = uiPrefs.getInt("scrubFrameCount", 10)
+                val frames = repository.getScrubFrames(videoId, count = count)
                 if (frames.any { it != null }) {
                     _scrubFrames.value = _scrubFrames.value + (videoId to frames)
                 }
