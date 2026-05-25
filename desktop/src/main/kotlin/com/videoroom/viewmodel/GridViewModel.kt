@@ -1244,6 +1244,18 @@ class GridViewModel(
             return
         }
 
+        // Proxies are stand-ins for their masters and must not also belong to a
+        // stack — that would let the same file appear in two roles at once.
+        val proxyIds = _videos.value
+            .filter { it.id in ids && it.isProxy }
+            .map { it.id }
+        if (proxyIds.isNotEmpty()) {
+            _error.value = "Proxy videos cannot be added to a stack. " +
+                "Deselect the ${if (proxyIds.size == 1) "proxy" else "${proxyIds.size} proxies"} " +
+                "and try again."
+            return
+        }
+
         val anchor = _anchorVideoId.value
         val preferred = if (anchor != null && anchor in ids) anchor else ids.first()
         viewModelScope.launch {

@@ -1091,6 +1091,17 @@ class GridViewModel: ObservableObject {
             error = "Select at least 2 videos (Shift+click or Cmd+click) to create a group"
             return
         }
+
+        // Proxies are stand-ins for their masters and must not also belong to a
+        // stack — that would let the same file appear in two roles at once.
+        let idSet = Set(ids)
+        let proxyCount = videos.filter { idSet.contains($0.id) && $0.isProxy }.count
+        if proxyCount > 0 {
+            let noun = proxyCount == 1 ? "proxy" : "\(proxyCount) proxies"
+            error = "Proxy videos cannot be added to a stack. Deselect the \(noun) and try again."
+            return
+        }
+
         let preferred = anchorVideoId.flatMap { id in ids.contains(id) ? id : nil } ?? ids.first!
         Task {
             isLoading = true

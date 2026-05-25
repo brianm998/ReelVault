@@ -1029,6 +1029,12 @@ impl Database {
     // VIDEO GROUPS (Lightroom-style "stacks")
 
     /// Create a new group, set members' group_id, and return the new group's ID.
+    ///
+    /// Returns [`VideoRoomError::InvalidRequest`] if any of the supplied
+    /// `video_ids` are proxy videos (i.e. have a non-null `proxy_of`). A proxy
+    /// is a derived, lower-resolution stand-in for its master; including it in a
+    /// stack would create a confusing double-identity where the same file shows
+    /// up both as a stack member and as a proxy badge on its master's card.
     pub fn create_group(
         &self,
         name: Option<&str>,
@@ -1039,9 +1045,29 @@ impl Database {
         if video_ids.is_empty() {
             return Err(VideoRoomError::InvalidRequest("Group must contain at least one video".to_string()));
         }
+        let conn = self.get_connection()?;
+
+        // Reject any video that is already a proxy of another video.
+        for vid in video_ids {
+            let proxy_of: Option<String> = conn
+                .query_row(
+                    "SELECT proxy_of FROM videos WHERE id = ?",
+                    params![vid],
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+                .flatten();
+
+            if proxy_of.is_some() {
+                return Err(VideoRoomError::InvalidRequest(format!(
+                    "Video {vid} is a proxy and cannot be added to a stack"
+                )));
+            }
+        }
+
         let group_id = Uuid::new_v4().to_string();
         let preferred = preferred_video_id.unwrap_or(&video_ids[0]);
-        let conn = self.get_connection()?;
 
         conn.execute(
             "INSERT INTO video_groups (id, name, base_name, preferred_video_id) VALUES (?, ?, ?, ?)",
