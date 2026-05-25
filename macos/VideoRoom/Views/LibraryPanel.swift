@@ -179,6 +179,7 @@ private struct LocationRow: View {
             .padding(.vertical, 6)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(isSelected ? Color.accentColor.opacity(0.18) : Color.clear)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .help(tooltip)
