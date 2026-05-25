@@ -10,15 +10,23 @@
 //!    we group candidate videos by `(parent_dir, camera_model, fps,
 //!    frame_count)` and within each group compare every pair's
 //!    thumbnails. If the medium thumbnail and all available scrub
-//!    frames score > 0.9 average similarity, the lower-resolution
-//!    member is marked as a proxy of the higher-resolution one
-//!    (`videos.proxy_of` set).
+//!    frames score > 0.9 average similarity AND the two filenames share
+//!    the same `name_part` (the stem chunk before the codec section),
+//!    the lower-resolution member is marked as a proxy of the
+//!    higher-resolution one (`videos.proxy_of` set).
 //!
 //!    Why those gates? Same-fps/same-frame-count is a strong "this is
 //!    literally the same recording" signal — even a re-encode preserves
 //!    both. Pixel-level thumbnail comparison then disambiguates between
 //!    two clips that happened to share those properties (e.g. two
 //!    similar-duration takes from the same camera at the same fps).
+//!    The name_part equality gate is what stops cross-lineage links
+//!    inside a stack — auto-grouping correctly collapses a "plain" take
+//!    and its `-aurora`/`-topaz`/… post-processed siblings into one
+//!    stack, but each lineage has its own independent proxy chain.
+//!    Without that gate, the 720p of the plain take would erroneously
+//!    score ≥ 0.96 against the UHQ of the `-aurora` master and get
+//!    cross-linked.
 //!
 //! 2. **On-demand creation** ([`create_proxy`]). When the client asks
 //!    for a proxy at a specific height, we invoke ffmpeg with
@@ -275,13 +283,34 @@ pub(crate) fn is_master_of(master: &ProxyDetectCandidate, candidate: &ProxyDetec
     false
 }
 
-/// Frame-count / camera-model gates shared between batch detection
-/// and the incremental post-index worker. The pixel-count and
+/// Name-prefix / frame-count / camera-model gates shared between batch
+/// detection and the incremental post-index worker. The pixel-count and
 /// same-resolution-size gates are handled by [`is_master_of`].
+///
+/// The name-prefix gate is what keeps proxy links honest inside a stack.
+/// Auto-grouping collapses post-processing siblings (a "plain" take and a
+/// `-aurora`/`-topaz`/… variant of the same source) into one stack via
+/// `canonical_base`, which is correct — they belong together. But each
+/// lineage in that stack has its own proxy chain: the 720p of the plain
+/// take is *not* a proxy of the `-aurora` UHQ master, even though the
+/// dHash similarity is ≥ 0.99 (post-processing rarely changes thumbnails
+/// enough to drop below the proxy threshold). Requiring matching
+/// `name_part`s — the stem chunk before the codec/resolution boundary —
+/// is the disambiguating signal: it survives "plain → 720p" but separates
+/// "plain → -aurora". This deliberately follows the user-stated rule
+/// "similar names + matching frames + different sizes ⇒ proxy" by treating
+/// `name_part` equality as the operational definition of "similar names".
 pub(crate) fn proxy_pair_gates_pass(
     master: &ProxyDetectCandidate,
     candidate: &ProxyDetectCandidate,
 ) -> bool {
+    // Name-prefix gate: refuse to cross-link proxies between
+    // sibling lineages inside a stack. See module comment above.
+    if crate::grouping::name_part_of_filename(&master.filename)
+        != crate::grouping::name_part_of_filename(&candidate.filename)
+    {
+        return false;
+    }
     // Frame-count gate (with tolerance): allow ±5% or ±10 frames.
     if master.frame_count > 0 && candidate.frame_count > 0 {
         let max_fc = master.frame_count.max(candidate.frame_count);
@@ -499,4 +528,85 @@ pub fn create_proxy(
     });
 
     Ok(proxy_id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::ProxyDetectCandidate;
+
+    fn mk(filename: &str, w: i32, h: i32, fc: i64, size_mb: i64) -> ProxyDetectCandidate {
+        ProxyDetectCandidate {
+            id: filename.to_string(),
+            filename: filename.to_string(),
+            path: format!("/tmp/{}", filename),
+            parent_dir: "/tmp".into(),
+            group_id: None,
+            width: w,
+            height: h,
+            fps: 30.0,
+            frame_count: fc,
+            camera_model: String::new(),
+            file_size_bytes: size_mb * 1_048_576,
+        }
+    }
+
+    // Within one stack ("plain" lineage + "-aurora" lineage of the same shot),
+    // the master of one lineage must not adopt a proxy from another. Without
+    // the name_part gate, frame matching alone would link them because
+    // -aurora is just a noise-reduction pass over the plain take.
+    #[test]
+    fn proxy_gate_rejects_cross_lineage_pair() {
+        let master_aurora = mk(
+            "05_16_2026-a7sii-1-aurora_ProRes-444_Rec.709F_OriRes_30_UHQ.mov",
+            4240, 2832, 900, 4000,
+        );
+        let proxy_plain = mk(
+            "05_16_2026-a7sii-1_ProRes-422_Rec.709F_720p_30_MQ.mov",
+            1080, 720, 900, 80,
+        );
+        // Frame counts match, camera_model empty on both — every gate but
+        // name_part would let this through.
+        assert!(!proxy_pair_gates_pass(&master_aurora, &proxy_plain));
+    }
+
+    // Same-lineage pair (one master, one of its proxies) must still pass.
+    #[test]
+    fn proxy_gate_accepts_same_lineage_pair() {
+        let master = mk(
+            "05_16_2026-a7sii-1_ProRes-444_Rec.709F_OriRes_30_UHQ.mov",
+            4240, 2832, 900, 4000,
+        );
+        let proxy = mk(
+            "05_16_2026-a7sii-1_ProRes-422_Rec.709F_720p_30_MQ.mov",
+            1080, 720, 900, 80,
+        );
+        assert!(proxy_pair_gates_pass(&master, &proxy));
+    }
+
+    // VideoRoom's own generated-proxy naming convention
+    // (`<orig_stem>_proxy_<H>p.<ext>`) must still pass the name_part gate
+    // — `_proxy` is itself the `_<letter>` codec-section boundary, so both
+    // sides reduce to the same name_part.
+    #[test]
+    fn proxy_gate_accepts_generated_proxy_naming() {
+        let master = mk("IMG_1234.mov", 3840, 2160, 600, 800);
+        let generated = mk("IMG_1234_proxy_720p.mp4", 1280, 720, 600, 40);
+        assert!(proxy_pair_gates_pass(&master, &generated));
+    }
+
+    // Sibling lineages further down the post-processing chain
+    // (`-aurora` vs `-aurora-star-v-0_10_8`) must also be separated.
+    #[test]
+    fn proxy_gate_rejects_deeper_lineage_split() {
+        let aurora = mk(
+            "04_18_2026-a9-2-aurora_ProRes-444_Rec.709F_OriRes_30_UHQ.mov",
+            6000, 4000, 900, 4000,
+        );
+        let star_v = mk(
+            "04_18_2026-a9-2-aurora-star-v-0_10_8_ProRes-422_Rec.709F_720p_30_MQ.mov",
+            1080, 720, 900, 80,
+        );
+        assert!(!proxy_pair_gates_pass(&aurora, &star_v));
+    }
 }
