@@ -72,6 +72,7 @@ struct GridView: View {
         )
 
         return ScrollView {
+            ScrollViewReader { proxy in
             // Lightroom-style: edge-to-edge cards with zero gutters so the
             // grid reads as a dense filmstrip. The `spacing: 0` on both axes
             // here is the crucial half of the layout; the card itself drops
@@ -134,6 +135,7 @@ struct GridView: View {
                         },
                         dragPaths: cardDragPaths
                     )
+                    .id(item.video.id)
                     .contextMenu {
                         videoContextMenu(for: item.video)
                     }
@@ -154,8 +156,15 @@ struct GridView: View {
                         .gridCellColumns(99)
                 }
             }
+            // Scroll to the selected video when switching to this view.
+            .onAppear {
+                if let id = viewModel.selectedVideoId {
+                    proxy.scrollTo(id, anchor: .center)
+                }
+            }
             // Intentionally no .padding(...) here — the Lightroom-style grid
             // fills the viewport flush to the edge.
+            } // ScrollViewReader
         }
     }
 

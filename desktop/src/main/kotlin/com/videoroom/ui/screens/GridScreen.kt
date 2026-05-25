@@ -7,8 +7,7 @@ package com.videoroom.ui.screens
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -99,6 +98,15 @@ fun GridScreen(
             expandedGroupIds.value,
             expandedMembers.value
         )
+    }
+
+    val gridState = rememberLazyGridState()
+    // Scroll to the selected video when this view is first composed, e.g.
+    // immediately after switching from list mode.
+    LaunchedEffect(Unit) {
+        val selectedId = selectedVideoId.value ?: return@LaunchedEffect
+        val idx = rendered.indexOfFirst { it.video.id == selectedId }
+        if (idx >= 0) gridState.scrollToItem(idx)
     }
 
     // Show when the user taps play but libvlc isn't installed.
@@ -214,6 +222,7 @@ fun GridScreen(
                     // Adaptive: as many columns as fit at the given minimum
                     // width. Cards expand from there to fill available space.
                     columns = GridCells.Adaptive(minSize = thumbnailMinWidth),
+                    state = gridState,
                     modifier = Modifier.fillMaxSize(),
                     // Lightroom-style: zero spacing between cards so the grid
                     // reads as a dense edge-to-edge filmstrip. No content

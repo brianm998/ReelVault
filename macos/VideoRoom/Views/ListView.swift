@@ -59,6 +59,7 @@ struct ListView: View {
         let displayRows = buildListDisplayRows(rendered)
 
         return ScrollView {
+            ScrollViewReader { proxy in
             LazyVStack(spacing: 0) {
                 ForEach(Array(displayRows.enumerated()), id: \.element.key) { index, displayRow in
                     switch displayRow {
@@ -104,6 +105,7 @@ struct ListView: View {
                             },
                             dragPaths: rowDragPaths
                         )
+                        .id(displayRow.key)
                         .contextMenu {
                             videoContextMenu(for: item.video)
                         }
@@ -151,6 +153,7 @@ struct ListView: View {
                             .padding(.horizontal, 10)
                             .padding(.vertical, 4)
                         }
+                        .id(displayRow.key)
                         .onAppear {
                             for si in allItems where si.video.hasThumbnail {
                                 viewModel.loadThumbnail(videoId: si.video.id)
@@ -169,6 +172,24 @@ struct ListView: View {
                 }
             }
             .padding(.vertical, 4)
+            // Scroll to the selected video when switching to this view.
+            .onAppear {
+                if let selectedId = viewModel.selectedVideoId {
+                    let matchKey = displayRows.first { row in
+                        switch row {
+                        case .single(let item):
+                            return item.video.id == selectedId
+                        case .horizontalStack(let rep, let children):
+                            return rep.video.id == selectedId ||
+                                   children.contains { $0.video.id == selectedId }
+                        }
+                    }?.key
+                    if let key = matchKey {
+                        proxy.scrollTo(key, anchor: .center)
+                    }
+                }
+            }
+            } // ScrollViewReader
         }
     }
 

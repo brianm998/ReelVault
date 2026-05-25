@@ -81,6 +81,22 @@ fun ListScreen(
         buildListDisplayRows(rendered)
     }
 
+    val listState = rememberLazyListState()
+    // Scroll to the selected video when this view is first composed, e.g.
+    // immediately after switching from grid mode.
+    LaunchedEffect(Unit) {
+        val selectedId = selectedVideoId.value ?: return@LaunchedEffect
+        val idx = displayRows.indexOfFirst { row ->
+            when (row) {
+                is ListDisplayRow.Single -> row.item.video.id == selectedId
+                is ListDisplayRow.HorizontalStack ->
+                    row.representative.video.id == selectedId ||
+                    row.children.any { it.video.id == selectedId }
+            }
+        }
+        if (idx >= 0) listState.scrollToItem(idx)
+    }
+
     Column(modifier = modifier.fillMaxSize()) {
         // Error banner
         if (error.value != null) {
@@ -146,6 +162,7 @@ fun ListScreen(
                 }
             } else {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(VideoRoomSpacing.Small),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
