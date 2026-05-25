@@ -922,11 +922,17 @@ fun VideoRoomApp(
                         // collapsed the strip itself absorbs all clicks.
                         if (leftPanelExpanded) {
                             PanelResizeHandle(isLeftPanel = true) { dragDeltaPx ->
-                                // Convert pixels → dp once for the
-                                // accumulator. `dp.value` is dp scaled
-                                // to display density which is what the
-                                // pointer event already reports.
-                                setLeftPanelWidth(leftPanelWidth + dragDeltaPx)
+                                // Read the panel's *current* width from the
+                                // state map fresh on each drag event rather
+                                // than the captured `leftPanelWidth` val.
+                                // Without this fresh read, fast drags lose
+                                // events to a stale snapshot: every event
+                                // computes `(stale_width + this_event's_delta)`
+                                // and only the latest event wins, so the
+                                // cursor sails ahead of the panel.
+                                val current = leftPanelWidths[viewMode]
+                                    ?: PanelPrefs.DEFAULT_WIDTH
+                                setLeftPanelWidth(current + dragDeltaPx)
                             }
                         }
 
@@ -956,7 +962,13 @@ fun VideoRoomApp(
                                     detailViewModel.setCurrentVideo(video)
                                     detailViewModel.loadMetadata(video.id)
                                 },
-                                thumbnailHeight = (thumbnailWidth.value / 2).coerceIn(60f, 200f).dp,
+                                // Same slider value the grid uses — a
+                                // list-mode card matches its grid-mode
+                                // counterpart in size, so the size slider
+                                // scales both views in lockstep instead
+                                // of leaving list-mode cards half the
+                                // width.
+                                thumbnailHeight = thumbnailWidth,
                                 onConfigureEditors = { showEditorsDialog = true },
                                 modifier = Modifier.weight(1f).fillMaxHeight()
                             )
@@ -983,7 +995,13 @@ fun VideoRoomApp(
                         // negates the delta sign internally.
                         if (rightPanelExpanded) {
                             PanelResizeHandle(isLeftPanel = false) { dragDeltaPx ->
-                                setRightPanelWidth(rightPanelWidth - dragDeltaPx)
+                                // See the left-panel handler for the
+                                // explanation — read the current width
+                                // from the state map per-event so the
+                                // panel keeps pace with a fast drag.
+                                val current = rightPanelWidths[viewMode]
+                                    ?: PanelPrefs.DEFAULT_WIDTH
+                                setRightPanelWidth(current - dragDeltaPx)
                             }
                         }
 

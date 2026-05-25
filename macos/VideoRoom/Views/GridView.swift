@@ -451,6 +451,12 @@ struct VideoCardView: View {
     /// reset the dwell timer for free.
     @State private var lastTooltipCursor: CGPoint? = nil
 
+    /// Which top-stat-band slot (0..3) currently has its picker popover
+    /// open. `nil` means no picker is showing. Tracked as a single
+    /// optional so only one slot's popover can be open at a time and
+    /// clicks on one slot dismiss any other.
+    @State private var openSlotPickerIndex: Int? = nil
+
     private var video: VideoSummary { item.video }
     private var isInExpandedStack: Bool { item.isExpandedRepresentative || item.isStackChild }
 
@@ -1018,42 +1024,79 @@ struct VideoCardView: View {
     /// affordance comes from the cell's tappability, not a visible arrow.
     @ViewBuilder
     private func statCell(slotIndex: Int, key: String, alignTrailing: Bool) -> some View {
+        // Plain Text + onTapGesture + popover instead of a SwiftUI
+        // `Menu`. The borderless-button `Menu` style on macOS adds
+        // asymmetric internal padding around its label — visible as
+        // leading-edge offsets that differ between bold (slot 0) and
+        // regular (other slots) text, plus reserved trailing space
+        // for the now-hidden disclosure chevron that pushes
+        // "trailing"-aligned cells away from the card's right edge.
+        // Owning the popover ourselves makes the text sit flush
+        // against the cell's frame, so the four values line up
+        // exactly with the band's edges.
         let stat = GridStatKey(rawValue: key) ?? .none
         let value = stat.value(for: video)
         let displayed: String = {
             if stat == .none { return "—" }
             return value      // empty if this video has no data for the chosen stat
         }()
-        Menu {
+        Text(displayed)
+            .font(.system(size: 10, weight: slotIndex == 0 ? .semibold : .regular))
+            .foregroundColor(stat == .none ? Color.black.opacity(0.4) : Color.black.opacity(0.85))
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
+            .frame(minHeight: 14)
+            .contentShape(Rectangle())
+            .onTapGesture { openSlotPickerIndex = slotIndex }
+            .popover(
+                isPresented: Binding(
+                    get: { openSlotPickerIndex == slotIndex },
+                    set: { if !$0 { openSlotPickerIndex = nil } }
+                ),
+                arrowEdge: .bottom
+            ) {
+                statPickerMenu(slotIndex: slotIndex, currentStat: stat)
+            }
+    }
+
+    /// The picker content rendered inside the popover. A vertical
+    /// list of every `GridStatKey` choice with a leading checkmark on
+    /// the currently-selected one. Each row is a `.plain`-style
+    /// Button so the rows feel like menu items without any borderless-
+    /// menu chrome leaking back in.
+    @ViewBuilder
+    private func statPickerMenu(slotIndex: Int, currentStat: GridStatKey) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
             ForEach(GridStatKey.allCases) { choice in
                 Button {
                     onPickStatSlot(slotIndex, choice.rawValue)
+                    openSlotPickerIndex = nil
                 } label: {
-                    if choice == stat {
-                        Label(choice.displayName, systemImage: "checkmark")
-                    } else {
+                    HStack(spacing: 6) {
+                        // Reserve a constant 14 pt for the checkmark
+                        // gutter so all rows line up regardless of
+                        // whether they're the current choice.
+                        Group {
+                            if choice == currentStat {
+                                Image(systemName: "checkmark")
+                            } else {
+                                Color.clear
+                            }
+                        }
+                        .frame(width: 14, height: 14)
                         Text(choice.displayName)
+                        Spacer(minLength: 0)
                     }
+                    .contentShape(Rectangle())
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
                 }
+                .buttonStyle(.plain)
             }
-        } label: {
-            Text(displayed)
-                .font(.system(size: 10, weight: slotIndex == 0 ? .semibold : .regular))
-                .foregroundColor(stat == .none ? Color.black.opacity(0.4) : Color.black.opacity(0.85))
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
-                .frame(minHeight: 14)
-                .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        // Force the Menu itself to take half the HStack width — without this
-        // the .borderlessButton style collapses to the label's intrinsic size,
-        // which would leave a gap between adjacent cells (and make trailing
-        // alignment have nothing to push against on the right cells).
-        .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
-        .fixedSize(horizontal: false, vertical: true)
+        .frame(minWidth: 180)
+        .padding(.vertical, 4)
     }
 
     /// Ensure we always render four cells even if the server / VM hands us

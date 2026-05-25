@@ -741,7 +741,11 @@ struct ContentView: View {
                 ListView(
                     viewModel: gridViewModel,
                     detailViewModel: detailViewModel,
-                    thumbnailHeight: thumbnailWidth / 2,
+                    // Same slider value the grid uses — a list-mode card
+                    // matches its grid-mode counterpart in size, so the
+                    // size slider scales both views in lockstep instead
+                    // of leaving list-mode cards half the width.
+                    thumbnailHeight: thumbnailWidth,
                     onConfigureEditors: { showEditorsSheet = true }
                 )
                 .frame(maxWidth: .infinity)
@@ -1412,8 +1416,19 @@ struct PanelResizeHandle: View {
                     NSCursor.pop()
                 }
             }
+            // `coordinateSpace: .global` is the fix for the "panel
+            // jumps back and forth while dragging" bug. With the
+            // default `.local` space, SwiftUI reports `translation`
+            // relative to the handle's own coordinate system — and
+            // because the handle moves with the panel's edge as the
+            // panel resizes, the local origin keeps shifting,
+            // turning a smooth drag into a jittery feedback loop
+            // where each event applies an inconsistent delta. Global
+            // coordinates stay fixed to the window, so the
+            // translation accumulates cleanly from the gesture's
+            // start position.
             .gesture(
-                DragGesture(minimumDistance: 0)
+                DragGesture(minimumDistance: 0, coordinateSpace: .global)
                     .onChanged { value in
                         if startWidth == nil { startWidth = currentWidth }
                         guard let start = startWidth else { return }

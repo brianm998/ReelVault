@@ -272,6 +272,9 @@ struct VideoListRowView: View {
     var dragPaths: [String] = []
 
     @State private var isHovered = false
+    /// Top-stat-band slot whose picker popover is currently open, or
+    /// `nil` if none. Same single-source pattern as the grid card.
+    @State private var openSlotPickerIndex: Int? = nil
 
     private var video: VideoSummary { item.video }
     private var isStackChild: Bool { item.isStackChild }
@@ -458,37 +461,66 @@ struct VideoListRowView: View {
 
     @ViewBuilder
     private func statCell(slotIndex: Int, key: String, alignTrailing: Bool) -> some View {
+        // Same popover-driven approach as the grid card — see
+        // `LightroomCard.statCell` for the explanation of why we
+        // ditch SwiftUI's `Menu` here. TL;DR: borderless-button menus
+        // add invisible internal padding that misaligns the values
+        // with the card's edges.
         let stat = GridStatKey(rawValue: key) ?? .none
         let value = stat.value(for: video)
         let displayed: String = {
             if stat == .none { return "—" }
             return value
         }()
-        Menu {
+        Text(displayed)
+            .font(.system(size: 10, weight: slotIndex == 0 ? .semibold : .regular))
+            .foregroundColor(stat == .none ? Color.black.opacity(0.4) : Color.black.opacity(0.85))
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
+            .frame(minHeight: 14)
+            .contentShape(Rectangle())
+            .onTapGesture { openSlotPickerIndex = slotIndex }
+            .popover(
+                isPresented: Binding(
+                    get: { openSlotPickerIndex == slotIndex },
+                    set: { if !$0 { openSlotPickerIndex = nil } }
+                ),
+                arrowEdge: .bottom
+            ) {
+                statPickerMenu(slotIndex: slotIndex, currentStat: stat)
+            }
+    }
+
+    @ViewBuilder
+    private func statPickerMenu(slotIndex: Int, currentStat: GridStatKey) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
             ForEach(GridStatKey.allCases) { choice in
                 Button {
                     onPickStatSlot(slotIndex, choice.rawValue)
+                    openSlotPickerIndex = nil
                 } label: {
-                    if choice == stat {
-                        Label(choice.displayName, systemImage: "checkmark")
-                    } else {
+                    HStack(spacing: 6) {
+                        Group {
+                            if choice == currentStat {
+                                Image(systemName: "checkmark")
+                            } else {
+                                Color.clear
+                            }
+                        }
+                        .frame(width: 14, height: 14)
                         Text(choice.displayName)
+                        Spacer(minLength: 0)
                     }
+                    .contentShape(Rectangle())
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
                 }
+                .buttonStyle(.plain)
             }
-        } label: {
-            Text(displayed)
-                .font(.system(size: 10, weight: slotIndex == 0 ? .semibold : .regular))
-                .foregroundColor(stat == .none ? Color.black.opacity(0.4) : Color.black.opacity(0.85))
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
-                .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
-        .fixedSize(horizontal: false, vertical: true)
+        .frame(minWidth: 180)
+        .padding(.vertical, 4)
     }
 
     /// Bottom band: 5 tappable star/dot positions, matching the grid card's
