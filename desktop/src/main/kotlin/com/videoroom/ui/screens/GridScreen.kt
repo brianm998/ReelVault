@@ -72,7 +72,11 @@ fun GridScreen(
     // Use the proxy override path when set (oversize videos), otherwise
     // fall back to the video's own openPath.
     LaunchedEffect(playingVideoId.value) {
-        val id = playingVideoId.value ?: return@LaunchedEffect
+        val id = playingVideoId.value ?: run {
+            // Playback was stopped — make sure audio stops too.
+            inlinePlayer.stop()
+            return@LaunchedEffect
+        }
         val path = playingVideoPath.value
             ?: videos.value.find { it.id == id }?.openPath
             ?: run {
