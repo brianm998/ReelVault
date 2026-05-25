@@ -66,6 +66,7 @@ fun GridScreen(
     DisposableEffect(Unit) { onDispose { inlinePlayer.release() } }
 
     val playingVideoPath = viewModel.playingVideoPath.collectAsState()
+    val activeProxyCreations = viewModel.activeProxyCreations.collectAsState()
 
     // Start playback whenever playingVideoId changes to a non-null value.
     // Use the proxy override path when set (oversize videos), otherwise
@@ -394,6 +395,7 @@ fun GridScreen(
                                 topSlots = viewModel.topSlots.collectAsState().value,
                                 onSetRating = { rating -> viewModel.setRating(rating, listOf(video.id)) },
                                 onPickStatSlot = { slotIndex, key -> viewModel.updateGridTopSlot(slotIndex, key) },
+                                proxyCreationState = activeProxyCreations.value[video.id],
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }

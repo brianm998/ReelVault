@@ -133,7 +133,8 @@ struct GridView: View {
                             viewModel.topSlots = slots
                             viewModel.saveGridSettings()
                         },
-                        dragPaths: cardDragPaths
+                        dragPaths: cardDragPaths,
+                        proxyCreationState: viewModel.activeProxyCreations[item.video.id]
                     )
                     .id(item.video.id)
                     .contextMenu {
@@ -437,6 +438,8 @@ struct VideoCardView: View {
     /// of a multi-selection, every selected file is included so the receiving
     /// app gets the full set in one drop.
     var dragPaths: [String] = []
+    /// Active proxy generation state for this video, or nil when idle.
+    var proxyCreationState: GridViewModel.ProxyCreationState? = nil
 
     /// AVPlayer kept alive for the lifetime of this view instance. Created
     /// on first play, released when `isPlaying` goes false.
@@ -594,8 +597,37 @@ struct VideoCardView: View {
                 // photo area's bottom edge. Same GeometryReader trick as
                 // the colour-label frame; the badge sits flat in the
                 // empty space below the video rather than overlapping it.
+                .overlay(alignment: .bottomLeading) {
+                    if let state = proxyCreationState {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Creating proxy…")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(.white)
+                                .lineLimit(1)
+                            if state.progressPercent > 0 {
+                                ProgressView(value: state.progressPercent, total: 100)
+                                    .progressViewStyle(.linear)
+                                    .tint(.white)
+                                    .frame(minWidth: 80, maxWidth: 160)
+                                    .scaleEffect(x: 1, y: 0.6, anchor: .center)
+                            } else {
+                                ProgressView()
+                                    .progressViewStyle(.linear)
+                                    .tint(.white)
+                                    .frame(minWidth: 80, maxWidth: 160)
+                                    .scaleEffect(x: 1, y: 0.6, anchor: .center)
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(Color(red: 0.05, green: 0.23, blue: 0.43).opacity(0.88))
+                        .cornerRadius(4)
+                        .padding(6)
+                        .allowsHitTesting(false)
+                    }
+                }
                 .overlay {
-                    if !video.playableNatively && !video.hasProxies {
+                    if !video.playableNatively && !video.hasProxies && proxyCreationState == nil {
                         GeometryReader { geo in
                             let aspect: CGFloat = (video.width > 0 && video.height > 0)
                                 ? CGFloat(video.width) / CGFloat(video.height)

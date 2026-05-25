@@ -208,13 +208,19 @@ class GridViewModel: ObservableObject {
 
     // MARK: - Proxy management
 
+    struct ProxyCreationState {
+        let videoId: String
+        let progressPercent: Double
+        let status: String
+        let message: String
+    }
+
     /// Surfaces the "Create proxy" sheet for `videoId`. The actual sheet
     /// is hosted by ContentView; we just publish the request via this
     /// `@Published` property and clear it once acknowledged.
     @Published var proxyCreationVideoId: String?
-    /// Sticky banner during proxy generation. Set to "Generating
-    /// 720p proxy…" while the stream runs; cleared on completion.
-    @Published var proxyCreationStatus: String?
+    /// Per-video progress state for active proxy generation jobs.
+    @Published var activeProxyCreations: [String: ProxyCreationState] = [:]
 
     /// Called by the grid's right-click menu. Just publishes the
     /// request — the sheet hosted by ContentView observes
@@ -232,14 +238,17 @@ class GridViewModel: ObservableObject {
 
     /// Kick off proxy generation against the server. Awaits the stream
     /// to completion and refreshes the grid so the new proxy badge
-    /// appears on the source. Surfaces progress through
-    /// `proxyCreationStatus`. Also clears `proxyCreationVideoId` so
+    /// appears on the source. Surfaces per-video progress through
+    /// `activeProxyCreations`. Also clears `proxyCreationVideoId` so
     /// the picker sheet dismisses.
     func startProxyCreation(videoId: String, targetHeight: Int) {
-        proxyCreationStatus = targetHeight > 0
-            ? "Generating \(targetHeight)p proxy…"
-            : "Generating proxy at server default…"
         proxyCreationVideoId = nil
+        activeProxyCreations[videoId] = ProxyCreationState(
+            videoId: videoId,
+            progressPercent: 0,
+            status: "started",
+            message: targetHeight > 0 ? "Generating \(targetHeight)p proxy…" : "Generating proxy…"
+        )
         Task {
             let stream = repository.generateProxy(
                 videoId: videoId,
@@ -247,20 +256,26 @@ class GridViewModel: ObservableObject {
             )
             do {
                 for try await event in stream {
-                    if !event.message.isEmpty {
-                        proxyCreationStatus = event.message
-                    }
                     if event.status == "complete" {
-                        proxyCreationStatus = nil
-                        // Refresh so the proxy badge shows up on the
-                        // source card.
+                        activeProxyCreations.removeValue(forKey: videoId)
                         loadVideos()
                     } else if event.status == "error" {
-                        proxyCreationStatus = "Proxy failed: \(event.message)"
+                        activeProxyCreations.removeValue(forKey: videoId)
+                    } else {
+                        let prev = activeProxyCreations[videoId]
+                        let delta = event.percent - (prev?.progressPercent ?? 0)
+                        if prev == nil || prev?.status != event.status || delta >= 1.0 {
+                            activeProxyCreations[videoId] = ProxyCreationState(
+                                videoId: videoId,
+                                progressPercent: event.percent,
+                                status: event.status,
+                                message: event.message
+                            )
+                        }
                     }
                 }
             } catch {
-                proxyCreationStatus = "Proxy failed: \(error.localizedDescription)"
+                activeProxyCreations.removeValue(forKey: videoId)
             }
         }
     }

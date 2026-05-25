@@ -483,7 +483,11 @@ fun DetailScreen(
                 val proxies = viewModel.proxies.collectAsState()
                 val selectedProxyId = viewModel.selectedProxyId.collectAsState()
                 val currentSummary = viewModel.currentSummary.collectAsState()
-                if (proxies.value.isNotEmpty()) {
+                val activeProxyCreations = gridViewModel.activeProxyCreations.collectAsState()
+                val currentVideoId = currentSummary.value?.id
+                val activeProxyCreation = if (currentVideoId != null)
+                    activeProxyCreations.value[currentVideoId] else null
+                if (proxies.value.isNotEmpty() || activeProxyCreation != null) {
                     Spacer(modifier = Modifier.height(VideoRoomSpacing.Large))
 
                     Row(
@@ -491,11 +495,59 @@ fun DetailScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = "Proxies (${proxies.value.size})",
+                            text = if (activeProxyCreation != null && proxies.value.isEmpty())
+                                "Proxies" else "Proxies (${proxies.value.size})",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f),
                         )
+                    }
+
+                    // In-progress proxy creation indicator — shown while
+                    // ffmpeg is encoding so the user knows it's working.
+                    if (activeProxyCreation != null) {
+                        Spacer(modifier = Modifier.height(VideoRoomSpacing.XSmall))
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = androidx.compose.ui.graphics.Color(0xFF0D3B6E).copy(alpha = 0.12f),
+                            shape = MaterialTheme.shapes.small,
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(VideoRoomSpacing.Small)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = activeProxyCreation.message.ifBlank { "Generating proxy…" },
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                    if (activeProxyCreation.progressPercent > 0) {
+                                        Text(
+                                            text = "${activeProxyCreation.progressPercent.toInt()}%",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                if (activeProxyCreation.progressPercent > 0) {
+                                    LinearProgressIndicator(
+                                        progress = { (activeProxyCreation.progressPercent / 100.0).toFloat() },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                } else {
+                                    LinearProgressIndicator(
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     // Surface the "master too large to play here" notice
@@ -525,6 +577,7 @@ fun DetailScreen(
                         }
                     }
 
+                    if (proxies.value.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
                     Column(
                         modifier = Modifier
@@ -630,6 +683,7 @@ fun DetailScreen(
                             }
                         }
                     }
+                    } // if proxies.value.isNotEmpty()
 
                     // "Add selected as proxy" affordance — visible when
                     // the multi-selection contains exactly one OTHER

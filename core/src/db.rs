@@ -281,6 +281,22 @@ impl Database {
         Ok(result)
     }
 
+    pub fn get_video_frame_count(&self, video_id: &str) -> i64 {
+        let conn = match self.get_connection() {
+            Ok(c) => c,
+            Err(_) => return 0,
+        };
+        conn.query_row(
+            "SELECT COALESCE(frame_count, 0) FROM metadata WHERE video_id = ?",
+            [video_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .ok()
+        .flatten()
+        .unwrap_or(0)
+    }
+
     pub fn get_video_by_path(&self, path: &str) -> Result<Option<VideoRecord>> {
         let conn = self.get_connection()?;
 

@@ -246,9 +246,19 @@ class GridViewModel(
 
     // --- Proxy management ---
 
-    /** Sticky banner during proxy generation. Cleared on completion. */
-    private val _proxyCreationStatus = MutableStateFlow<String?>(null)
-    val proxyCreationStatus: StateFlow<String?> = _proxyCreationStatus.asStateFlow()
+    /** Live state for a proxy being generated for a single video. */
+    data class ProxyCreationState(
+        val videoId: String,
+        val progressPercent: Double,
+        val status: String,
+        val message: String,
+    )
+
+    /** Map of videoId → active proxy generation state. Multiple proxies
+     *  can be queued concurrently (one per coroutine). Entries are removed
+     *  on completion or error. */
+    private val _activeProxyCreations = MutableStateFlow<Map<String, ProxyCreationState>>(emptyMap())
+    val activeProxyCreations: StateFlow<Map<String, ProxyCreationState>> = _activeProxyCreations.asStateFlow()
 
     /** Set to the video the user wants to create a proxy of. App.kt
      *  hosts a sheet that observes this state and shows the resolution
@@ -269,34 +279,61 @@ class GridViewModel(
     }
 
     /**
-     * Kick off proxy generation. Awaits the stream to completion and
-     * refreshes the grid so the new proxy badge appears on the source.
-     * Clears `proxyCreationVideoId` so the picker dismisses.
+     * Kick off proxy generation. Streams real encoding progress into
+     * [activeProxyCreations] so cards and the detail panel can show a
+     * live progress bar. Refreshes the grid on completion so the proxy
+     * badge appears on the source card. Clears [proxyCreationVideoId]
+     * so the resolution picker dismisses.
      */
     fun startProxyCreation(videoId: String, targetHeight: Int) {
         _proxyCreationVideoId.value = null
-        _proxyCreationStatus.value = if (targetHeight > 0)
-            "Generating ${targetHeight}p proxy…"
-        else
-            "Generating proxy at server default…"
+        _activeProxyCreations.update { current ->
+            current + (videoId to ProxyCreationState(
+                videoId = videoId,
+                progressPercent = 0.0,
+                status = "started",
+                message = if (targetHeight > 0) "Generating ${targetHeight}p proxy…"
+                          else "Generating proxy…",
+            ))
+        }
         viewModelScope.launch {
             try {
                 repository.generateProxy(videoId = videoId, targetHeight = targetHeight)
                     .collect { event ->
-                        if (event.message.isNotBlank()) {
-                            _proxyCreationStatus.value = event.message
-                        }
-                        if (event.status == "complete") {
-                            _proxyCreationStatus.value = null
-                            // Refresh so the new proxy badge appears.
-                            loadVideos()
-                        } else if (event.status == "error") {
-                            _proxyCreationStatus.value = "Proxy failed: ${event.message}"
+                        when (event.status) {
+                            "complete" -> {
+                                _activeProxyCreations.update { it - videoId }
+                                loadVideos()
+                            }
+                            "error" -> {
+                                _activeProxyCreations.update { it - videoId }
+                                logger.warn("Proxy generation error for {}: {}", videoId, event.message)
+                            }
+                            else -> {
+                                // Only push a UI update when the progress
+                                // changes by ≥1 percentage point. This caps
+                                // recompositions to ~85 during encoding instead
+                                // of one per ffmpeg output frame, which prevents
+                                // excessive recompositions from causing
+                                // spurious pointer-exit events on card overlays.
+                                val prev = _activeProxyCreations.value[videoId]
+                                val percentDelta = event.progressPercent - (prev?.progressPercent ?: 0.0)
+                                if (prev == null || prev.status != event.status || percentDelta >= 1.0) {
+                                    _activeProxyCreations.update { current ->
+                                        current + (videoId to ProxyCreationState(
+                                            videoId = videoId,
+                                            progressPercent = event.progressPercent,
+                                            status = event.status,
+                                            message = event.message,
+                                        ))
+                                    }
+                                }
+                            }
                         }
                     }
             } catch (e: Exception) {
-                logger.warn("Proxy generation failed", e)
-                _proxyCreationStatus.value = "Proxy failed: ${e.message ?: e.javaClass.simpleName}"
+                logger.warn("Proxy generation failed for {}", videoId, e)
+                _activeProxyCreations.update { it - videoId }
             }
         }
     }

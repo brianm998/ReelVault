@@ -463,10 +463,18 @@ pub fn create_proxy(
     // Bound concurrent ffmpeg invocations the same way scan does.
     let _permit = crate::concurrency::acquire_ffmpeg_permit();
 
+    // Total frame count drives the encoding progress percentage.
+    // Falls back gracefully to 0 when metadata isn't available yet.
+    let total_frames = db.get_video_frame_count(source_id);
+
     // Build the ffmpeg command. `-y` to overwrite if a partial file is
-    // left over from a prior interrupted run.
+    // left over from a prior interrupted run. `-progress pipe:1` writes
+    // machine-readable key=value progress lines to stdout so we can
+    // stream real frame-by-frame progress back through the gRPC channel.
+    // `-nostats` suppresses the interleaved per-frame stat lines that
+    // would otherwise clutter stdout.
     let scale_filter = format!("scale=-2:{}", target_height);
-    let status = std::process::Command::new("ffmpeg")
+    let mut child = std::process::Command::new("ffmpeg")
         .args([
             "-y",
             "-i",
@@ -479,21 +487,59 @@ pub fn create_proxy(
             "fast",
             "-crf",
             "23",
+            "-pix_fmt",
+            "yuv420p",
             "-c:a",
             "aac",
             "-b:a",
             "128k",
             "-movflags",
             "+faststart",
+            "-progress",
+            "pipe:1",
+            "-nostats",
             output_path.to_string_lossy().as_ref(),
         ])
-        .status()
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::inherit())
+        .spawn()
         .map_err(|e| crate::error::VideoRoomError::FfmpegError(format!("spawn ffmpeg: {}", e)))?;
 
-    if !status.success() {
+    // Parse stdout for `frame=N` progress lines and forward them as
+    // "encoding" events. The 0-85% band is reserved for encoding;
+    // "indexing" and "complete" cover 90-100% after ffmpeg exits.
+    let stdout = child.stdout.take().expect("stdout was piped");
+    use std::io::BufRead;
+    for line in std::io::BufReader::new(stdout).lines().flatten() {
+        if let Some(frame_str) = line.strip_prefix("frame=") {
+            if let Ok(frame) = frame_str.trim().parse::<i64>() {
+                let percent = if total_frames > 0 {
+                    ((frame as f64 / total_frames as f64) * 85.0).min(85.0)
+                } else {
+                    // Unknown total — pulse between 5% and 50% so the
+                    // bar moves without making up a completion claim.
+                    ((frame % 10) as f64 * 4.5 + 5.0).min(50.0)
+                };
+                on_progress(&CreateProxyProgress {
+                    status: "encoding".into(),
+                    progress_percent: percent,
+                    message: if total_frames > 0 {
+                        format!("Encoding… {:.0}%", percent)
+                    } else {
+                        format!("Encoding… frame {}", frame)
+                    },
+                });
+            }
+        }
+    }
+
+    let exit_status = child
+        .wait()
+        .map_err(|e| crate::error::VideoRoomError::FfmpegError(format!("wait ffmpeg: {}", e)))?;
+    if !exit_status.success() {
         return Err(crate::error::VideoRoomError::FfmpegError(format!(
             "ffmpeg exited with status {}",
-            status,
+            exit_status,
         )));
     }
 

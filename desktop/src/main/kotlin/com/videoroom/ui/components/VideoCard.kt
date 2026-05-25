@@ -123,6 +123,9 @@ fun VideoCard(
     /** Fired when the user right-clicks a top stat slot and picks a new
      *  stat key. Receives (slotIndex 0..3, GridStatKey.raw). */
     onPickStatSlot: (Int, String) -> Unit = { _, _ -> },
+    /** Non-null when a proxy is actively being generated for this video.
+     *  Triggers a progress overlay in the lower-left of the thumbnail. */
+    proxyCreationState: com.videoroom.viewmodel.GridViewModel.ProxyCreationState? = null,
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -643,6 +646,46 @@ fun VideoCard(
                     }
                 }
 
+                // Proxy-creation progress overlay — bottom-left corner.
+                // Visible while a proxy is being generated for this video.
+                if (proxyCreationState != null) {
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(6.dp),
+                        color = Color(0xFF0D3B6E).copy(alpha = 0.88f),
+                        shape = MaterialTheme.shapes.small,
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                .widthIn(min = 80.dp, max = 160.dp)
+                        ) {
+                            Text(
+                                text = "Creating proxy…",
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1,
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
+                            if (proxyCreationState.progressPercent > 0) {
+                                LinearProgressIndicator(
+                                    progress = { (proxyCreationState.progressPercent / 100.0).toFloat() },
+                                    modifier = Modifier.fillMaxWidth().height(3.dp),
+                                    color = Color.White,
+                                    trackColor = Color.White.copy(alpha = 0.3f),
+                                )
+                            } else {
+                                LinearProgressIndicator(
+                                    modifier = Modifier.fillMaxWidth().height(3.dp),
+                                    color = Color.White,
+                                    trackColor = Color.White.copy(alpha = 0.3f),
+                                )
+                            }
+                        }
+                    }
+                }
+
                 // ("Too large to play here" badge moved out of the inner
                 //  padded box — it now sits in the letterbox area
                 //  *below* the video, positioned by the outer
@@ -656,7 +699,7 @@ fun VideoCard(
                 // gap is sizeable; for portrait / square clips it
                 // collapses to just the 8 dp bottom padding so the
                 // badge sits flush against the band divider.
-                if (!video.playableNatively && !video.hasProxies) {
+                if (!video.playableNatively && !video.hasProxies && proxyCreationState == null) {
                     val aspect = if (video.width > 0 && video.height > 0)
                         video.width.toFloat() / video.height.toFloat() else 1f
                     val available = (maxHeight - photoPadding * 2).coerceAtLeast(0.dp)

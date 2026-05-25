@@ -308,22 +308,53 @@ struct DetailView: View {
             }
 
             // Proxies section — shown whenever the catalog has any
-            // proxies attached to the current video. Mirrors the stack
-            // section: filename + height + size per row, plus the auto-
-            // detected flag.
+            // proxies attached to the current video, OR while a proxy
+            // is actively being generated for it.
             //
             // In Loupe mode each row is clickable: it tells the
             // detail-view player to swap to that proxy. In Grid/List
             // mode rows are read-only because inline playback always
             // picks the smallest proxy automatically.
-            if !viewModel.proxies.isEmpty {
+            let activeProxyCreation: GridViewModel.ProxyCreationState? = {
+                guard let vid = viewModel.currentSummary?.id else { return nil }
+                return gridViewModel.activeProxyCreations[vid]
+            }()
+            if !viewModel.proxies.isEmpty || activeProxyCreation != nil {
                 Divider()
                 HStack {
-                    Text("Proxies (\(viewModel.proxies.count))")
+                    Text(viewModel.proxies.isEmpty ? "Proxies" : "Proxies (\(viewModel.proxies.count))")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     Spacer()
                 }
+                if let state = activeProxyCreation {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(state.message.isEmpty ? "Generating proxy…" : state.message)
+                                .font(.system(size: 10))
+                                .foregroundColor(.primary)
+                            Spacer()
+                            if state.progressPercent > 0 {
+                                Text("\(Int(state.progressPercent))%")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        if state.progressPercent > 0 {
+                            ProgressView(value: state.progressPercent, total: 100)
+                                .progressViewStyle(.linear)
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            ProgressView()
+                                .progressViewStyle(.linear)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .padding(8)
+                    .background(Color.accentColor.opacity(0.12))
+                    .cornerRadius(4)
+                }
+                if !viewModel.proxies.isEmpty {
                 if let summary = viewModel.currentSummary, !summary.playableNatively {
                     // Surface the "master too large to play here"
                     // notice immediately above the proxy list — these
@@ -393,6 +424,7 @@ struct DetailView: View {
                 .background(Color(.windowBackgroundColor).opacity(0.5))
                 .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color(.separatorColor)))
                 .cornerRadius(4)
+                } // if !viewModel.proxies.isEmpty
             }
 
             // "Add selected as proxy" button — surfaces when the user
