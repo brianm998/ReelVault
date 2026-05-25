@@ -3,7 +3,6 @@
 
 use crate::db::Database;
 use crate::error::{Result, VideoRoomError};
-use rusqlite::params;
 
 #[derive(Debug, Clone)]
 pub struct SearchResult {
@@ -54,7 +53,6 @@ impl SearchEngine {
             .prepare(&sql)
             .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
 
-        let mut param_index = 1;
         let mut params_vec: Vec<&dyn rusqlite::ToSql> = vec![&like_query, &like_query];
 
         // Add tag parameters

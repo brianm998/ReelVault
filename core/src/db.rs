@@ -2,7 +2,7 @@
 // Copyright (C) 2026 VideoRoom Contributors
 
 use crate::error::{Result, VideoRoomError};
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use rusqlite::{params, Connection, OptionalExtension};
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;

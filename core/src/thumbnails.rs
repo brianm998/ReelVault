@@ -6,7 +6,6 @@ use crate::db::Database;
 use crate::error::{Result, VideoRoomError};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use uuid::Uuid;
 
 pub struct ThumbnailGenerator;
 

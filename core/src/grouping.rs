@@ -197,7 +197,7 @@ impl UnionFind {
 /// Run auto-grouping over all ungrouped videos. Returns (groups_created, videos_grouped).
 pub fn auto_group(db: &Database, options: &AutoGroupOptions) -> Result<(i32, i32)> {
     // Only consider videos that aren't already in a group
-    let mut candidates: Vec<AutoGroupCandidate> = db
+    let candidates: Vec<AutoGroupCandidate> = db
         .list_for_auto_grouping()?
         .into_iter()
         .filter(|c| c.group_id.is_none())

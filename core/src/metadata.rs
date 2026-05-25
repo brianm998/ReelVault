@@ -4,10 +4,8 @@
 use crate::error::{Result, VideoRoomError};
 use crate::db::Database;
 use serde::{Deserialize, Serialize, Deserializer};
-use serde_with::serde_as;
 use std::path::Path;
 use std::process::Command;
-use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VideoMetadata {

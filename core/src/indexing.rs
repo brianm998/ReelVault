@@ -7,7 +7,7 @@ use crate::metadata::MetadataExtractor;
 use crate::post_index;
 use crate::thumbnails::ThumbnailGenerator;
 use rayon::prelude::*;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::Arc;
 use walkdir::WalkDir;
