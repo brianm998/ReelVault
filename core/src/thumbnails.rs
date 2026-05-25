@@ -76,6 +76,9 @@ impl ThumbnailGenerator {
             "0".to_string()
         };
 
+        let color_info = probe_color_info(video_path);
+        let vf = build_thumbnail_vf(&color_info, "scale=min(400\\,iw):-1");
+
         let _permit = acquire_ffmpeg_permit();
         let output = Command::new("ffmpeg")
             .args(&[
@@ -88,7 +91,7 @@ impl ThumbnailGenerator {
                 "-vframes",
                 "1",
                 "-vf",
-                "scale=min(400\\,iw):-1",
+                &vf,
                 "-q:v",
                 "5",
                 temp_path.to_str().unwrap_or(""),
@@ -194,6 +197,11 @@ impl ThumbnailGenerator {
             return Ok(());
         }
 
+        // Probe color info once — applied to every scrub frame from this video.
+        let color_info = probe_color_info(video_path);
+        let scrub_scale = format!("scale=min({}\\,iw):-1", Self::SCRUB_WIDTH);
+        let vf = build_thumbnail_vf(&color_info, &scrub_scale);
+
         let count = Self::SCRUB_FRAME_COUNT;
         for i in 0..count {
             let output = cache_dir.join(format!("{}_scrub_{}.jpg", video_id, i));
@@ -226,7 +234,7 @@ impl ThumbnailGenerator {
                     "-frames:v",
                     "1",
                     "-vf",
-                    &format!("scale=min({}\\,iw):-1", Self::SCRUB_WIDTH),
+                    &vf,
                     "-q:v",
                     "6",
                     "-y",
@@ -252,6 +260,179 @@ impl ThumbnailGenerator {
             }
         }
         Ok(())
+    }
+}
+
+/// Color metadata probed from a single video stream — used to decide whether
+/// thumbnail extraction needs a tonemap/colorspace conversion step.
+#[derive(Debug, Default, Clone)]
+struct ColorInfo {
+    codec_name: String,
+    pix_fmt: String,
+    color_space: String,
+    color_transfer: String,
+    color_primaries: String,
+}
+
+/// Run ffprobe once to fetch the fields needed by [`build_thumbnail_vf`].
+/// Cheap (~30ms) and tolerant of failure — on any error the returned
+/// `ColorInfo` is all-empty, which makes [`build_thumbnail_vf`] fall back
+/// to the plain scale filter (preserving prior behavior).
+fn probe_color_info(video_path: &Path) -> ColorInfo {
+    let mut info = ColorInfo::default();
+    let output = Command::new("ffprobe")
+        .args(&[
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=codec_name,pix_fmt,color_space,color_transfer,color_primaries",
+            "-of",
+            "default=nw=1",
+            video_path.to_str().unwrap_or(""),
+        ])
+        .output();
+    let Ok(out) = output else { return info };
+    if !out.status.success() {
+        return info;
+    }
+    let text = String::from_utf8_lossy(&out.stdout);
+    for line in text.lines() {
+        if let Some((k, v)) = line.split_once('=') {
+            let v = v.trim().to_string();
+            match k.trim() {
+                "codec_name" => info.codec_name = v,
+                "pix_fmt" => info.pix_fmt = v,
+                "color_space" => info.color_space = v,
+                "color_transfer" => info.color_transfer = v,
+                "color_primaries" => info.color_primaries = v,
+                _ => {}
+            }
+        }
+    }
+    info
+}
+
+/// Build the `-vf` chain for thumbnail extraction.
+///
+/// For ordinary Rec.709 / sRGB SDR sources we keep the prior behavior:
+/// just the caller-supplied scale filter. For log-encoded or wide-gamut
+/// sources (ProRes RAW, BT.2020, HLG/PQ HDR, V-Log) we prepend a
+/// `colorspace`/`tonemap` step so the resulting JPEG matches what
+/// playback shows instead of baking the log curve into 8-bit sRGB.
+///
+/// This ffmpeg build (8.x on macOS Homebrew) ships without `zscale`, so
+/// proper PQ/HLG → SDR tonemapping isn't available. We approximate by
+/// running PQ/HLG through `colorspace` as if it were `bt2020-10` — not a
+/// real tonemap, but better than leaving the EOTF baked into the JPEG.
+/// True `tonemap` is used for ProRes RAW since its decoder emits linear
+/// scene-referred floats that the filter can consume directly.
+fn build_thumbnail_vf(ci: &ColorInfo, scale_filter: &str) -> String {
+    match tonemap_prefix(ci) {
+        Some(prefix) => format!("{},{}", prefix, scale_filter),
+        None => scale_filter.to_string(),
+    }
+}
+
+fn tonemap_prefix(ci: &ColorInfo) -> Option<String> {
+    let trc = ci.color_transfer.as_str();
+    let prim = ci.color_primaries.as_str();
+    let space = ci.color_space.as_str();
+    let codec = ci.codec_name.as_str();
+    let pix = ci.pix_fmt.as_str();
+
+    // ProRes RAW: decoder emits scene-referred linear data. `tonemap` is
+    // the right tool; `format=gbrpf32le` ensures the filter sees linear
+    // float RGB regardless of the decoder's native output layout.
+    if codec == "prores_raw" || pix.starts_with("gbrpf32") {
+        return Some(
+            "format=gbrpf32le,tonemap=tonemap=hable:desat=0,format=yuv420p".to_string(),
+        );
+    }
+
+    // HDR transfer functions the `colorspace` filter can't natively
+    // invert (PQ / HLG / DCI). Without zscale we can't do a real
+    // tonemap; treat as bt2020-10 so the inverse gamma at least lands
+    // in a reasonable display range. Still better than baking the
+    // EOTF into the JPEG.
+    let unsupported_hdr_trc = matches!(trc, "smpte2084" | "arib-std-b67" | "smpte428");
+    if unsupported_hdr_trc {
+        return Some(
+            "colorspace=all=bt709:iall=bt2020:itrc=bt2020-10,format=yuv420p".to_string(),
+        );
+    }
+
+    // BT.2020 wide-gamut SDR or explicit log/linear transfer.
+    let wide_gamut = prim == "bt2020"
+        || space == "bt2020nc"
+        || space == "bt2020c"
+        || matches!(trc, "bt2020-10" | "bt2020-12" | "linear" | "vlog");
+    if wide_gamut {
+        let itrc = match trc {
+            "linear" | "bt2020-10" | "bt2020-12" | "vlog" => trc,
+            _ => "bt2020-10",
+        };
+        return Some(format!(
+            "colorspace=all=bt709:iall=bt2020:itrc={},format=yuv420p",
+            itrc
+        ));
+    }
+
+    None
+}
+
+#[cfg(test)]
+mod color_tests {
+    use super::*;
+
+    fn ci(codec: &str, pix: &str, space: &str, trc: &str, prim: &str) -> ColorInfo {
+        ColorInfo {
+            codec_name: codec.into(),
+            pix_fmt: pix.into(),
+            color_space: space.into(),
+            color_transfer: trc.into(),
+            color_primaries: prim.into(),
+        }
+    }
+
+    #[test]
+    fn sdr_rec709_passes_through_unchanged() {
+        let info = ci("h264", "yuv420p", "bt709", "bt709", "bt709");
+        let vf = build_thumbnail_vf(&info, "scale=400:-1");
+        assert_eq!(vf, "scale=400:-1");
+    }
+
+    #[test]
+    fn sdr_smpte170m_passes_through_unchanged() {
+        // The "BT2020F"-named ProRes proxies on disk actually carry
+        // smpte170m/bt709 tags — they must NOT be tone-mapped.
+        let info = ci("prores", "yuv422p10le", "smpte170m", "bt709", "smpte170m");
+        let vf = build_thumbnail_vf(&info, "scale=400:-1");
+        assert_eq!(vf, "scale=400:-1");
+    }
+
+    #[test]
+    fn prores_raw_triggers_tonemap() {
+        let info = ci("prores_raw", "gbrpf32le", "", "", "");
+        let vf = build_thumbnail_vf(&info, "scale=400:-1");
+        assert!(vf.starts_with("format=gbrpf32le,tonemap="));
+        assert!(vf.ends_with("scale=400:-1"));
+    }
+
+    #[test]
+    fn bt2020_pq_uses_colorspace_fallback() {
+        let info = ci("hevc", "yuv420p10le", "bt2020nc", "smpte2084", "bt2020");
+        let vf = build_thumbnail_vf(&info, "scale=400:-1");
+        assert!(vf.contains("colorspace=all=bt709:iall=bt2020"));
+        assert!(vf.ends_with("scale=400:-1"));
+    }
+
+    #[test]
+    fn bt2020_sdr_uses_colorspace_with_native_trc() {
+        let info = ci("hevc", "yuv420p10le", "bt2020nc", "bt2020-10", "bt2020");
+        let vf = build_thumbnail_vf(&info, "scale=400:-1");
+        assert!(vf.contains("itrc=bt2020-10"));
     }
 }
 
