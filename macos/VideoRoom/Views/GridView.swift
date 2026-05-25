@@ -508,8 +508,17 @@ struct VideoCardView: View {
     }
 
     /// The image to actually display: a scrub frame if we're hovering and have
-    /// scrub data, otherwise the regular thumbnail.
+    /// scrub data, otherwise the regular thumbnail. During playback the card
+    /// snaps to frame 0 (or the static thumbnail) and stops responding to
+    /// hover/scrub so the still image under the player surface doesn't shift
+    /// while the video runs.
     private var displayedImage: NSImage? {
+        if isPlaying {
+            if let first = scrubFrames.first, let img = first {
+                return img
+            }
+            return thumbnail
+        }
         if let x = hoverX, thumbnailWidth > 0, !scrubFrames.isEmpty {
             let frac = max(0, min(1, x / thumbnailWidth))
             let idx = min(scrubFrames.count - 1, Int(frac * CGFloat(scrubFrames.count)))
@@ -592,40 +601,6 @@ struct VideoCardView: View {
                         .allowsHitTesting(false)
                     }
                 }
-                // "Too large to play here" — vertical-centered in the
-                // letterbox gap between the video's bottom edge and the
-                // photo area's bottom edge. Same GeometryReader trick as
-                // the colour-label frame; the badge sits flat in the
-                // empty space below the video rather than overlapping it.
-                .overlay(alignment: .bottomLeading) {
-                    if let state = proxyCreationState {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("Creating proxy…")
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundColor(.white)
-                                .lineLimit(1)
-                            if state.progressPercent > 0 {
-                                ProgressView(value: state.progressPercent, total: 100)
-                                    .progressViewStyle(.linear)
-                                    .tint(.white)
-                                    .frame(minWidth: 80, maxWidth: 160)
-                                    .scaleEffect(x: 1, y: 0.6, anchor: .center)
-                            } else {
-                                ProgressView()
-                                    .progressViewStyle(.linear)
-                                    .tint(.white)
-                                    .frame(minWidth: 80, maxWidth: 160)
-                                    .scaleEffect(x: 1, y: 0.6, anchor: .center)
-                            }
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .background(Color(red: 0.05, green: 0.23, blue: 0.43).opacity(0.88))
-                        .cornerRadius(4)
-                        .padding(6)
-                        .allowsHitTesting(false)
-                    }
-                }
                 .overlay {
                     if !video.playableNatively && !video.hasProxies && proxyCreationState == nil {
                         GeometryReader { geo in
@@ -667,6 +642,36 @@ struct VideoCardView: View {
                 .frame(height: 26)
                 .background(bottomBandColor)
                 .help("Click a star to rate 1–5; click the current rating again to clear it")
+            // Proxy-creation progress strip — dedicated band beneath the
+            // rating row, present only while a proxy is being generated.
+            if let state = proxyCreationState {
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Creating proxy…")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                        if state.progressPercent > 0 {
+                            ProgressView(value: state.progressPercent, total: 100)
+                                .progressViewStyle(.linear)
+                                .tint(.white)
+                                .frame(minWidth: 80, maxWidth: 160)
+                                .scaleEffect(x: 1, y: 0.6, anchor: .center)
+                        } else {
+                            ProgressView()
+                                .progressViewStyle(.linear)
+                                .tint(.white)
+                                .frame(minWidth: 80, maxWidth: 160)
+                                .scaleEffect(x: 1, y: 0.6, anchor: .center)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color(red: 0.05, green: 0.23, blue: 0.43).opacity(0.88))
+                .allowsHitTesting(false)
+            }
         }
         // Hover tint applied as a SwiftUI overlay so SwiftUI handles
         // compositing in the correct appearance context. Non-hit-
@@ -1141,7 +1146,7 @@ struct VideoCardView: View {
                 // bug where `.contentShape(Circle().size(…))` positions the
                 // hit region at the view's top-left corner, not its centre.
                 .overlay(alignment: .center) {
-                    if !isPlaying && isHovered {
+                    if !isPlaying && isPrimarySelected && isHovered {
                         Button(action: onPlayClick) {
                             Image(systemName: "play.fill")
                                 .font(.system(size: 18))
@@ -1159,14 +1164,14 @@ struct VideoCardView: View {
                     if isPlaying {
                         Button(action: onStopPlayback) {
                             Image(systemName: "xmark")
-                                .font(.system(size: 10, weight: .bold))
+                                .font(.system(size: 12, weight: .bold))
                                 .foregroundColor(.white)
-                                .frame(width: 22, height: 22)
+                                .frame(width: 28, height: 28)
                                 .background(Color.black.opacity(0.65))
                                 .clipShape(Circle())
                         }
                         .buttonStyle(.plain)
-                        .padding(5)
+                        .padding(4)
                         .help("Stop inline playback")
                     }
                 }

@@ -4,47 +4,54 @@
 import SwiftUI
 import AVKit
 
-/// NSViewRepresentable wrapper around AVPlayerView.
+/// NSViewRepresentable that hosts an `AVPlayerLayer` directly inside a plain
+/// `NSView` — no `AVPlayerView`, no AVKit chrome.
 ///
-/// SwiftUI's `VideoPlayer` struct works by creating a private subclass called
-/// `VideoPlayerView` whose superclass is `AVPlayerView` (mangled Swift name
-/// `So12AVPlayerViewC`). On some macOS + Swift runtime combinations the
-/// demangler fails at launch time:
+/// We previously used `AVPlayerView` with `controlsStyle = .none`, but
+/// `AVPlayerView` keeps an opaque black layer behind its video content even
+/// with controls disabled, which paints over the still thumbnail rendered
+/// beneath the player while the first frame is decoding. Hosting an
+/// `AVPlayerLayer` ourselves lets us keep the entire backing layer clear so
+/// the thumbnail shows through during buffering and any letterbox area stays
+/// transparent during playback.
 ///
-///     failed to demangle superclass of VideoPlayerView from mangled name
-///     'So12AVPlayerViewC': unknown error
-///     Abort trap: 6
-///
-/// The crash happens because the Swift runtime attempts to demangle the
-/// Objective-C bridged class name `AVPlayerView` before the AVKit framework
-/// has been fully loaded into the process.
-///
-/// This wrapper bypasses the issue entirely by instantiating `AVPlayerView`
-/// directly — no private subclass, no demangling required. The resulting
-/// visual appearance is identical: an AVPlayerView with inline transport
-/// controls, same as `VideoPlayer`.
+/// (The older `AVPlayerView` approach also avoided a Swift-runtime crash that
+/// only affected SwiftUI's `VideoPlayer` struct — instantiating `AVPlayerView`
+/// directly was enough to dodge it. Going one level lower to `AVPlayerLayer`
+/// likewise avoids the demangling path.)
 struct AVPlayerNSView: NSViewRepresentable {
     let player: AVPlayer
 
-    func makeNSView(context: Context) -> AVPlayerView {
-        let view = AVPlayerView()
-        view.player = player
-        // No built-in transport controls — we render our own X button in the
-        // card overlay. This also removes the dark rounded-corner control bar
-        // that used to overwrite the thumbnail area when playback started.
-        view.controlsStyle = .none
-        // Transparent CALayer so the thumbnail beneath shows through until the
-        // first decoded frame composites over it — no black flash on load.
+    func makeNSView(context: Context) -> PlayerHostView {
+        let view = PlayerHostView()
         view.wantsLayer = true
         view.layer?.backgroundColor = .clear
+        view.player = player
         return view
     }
 
-    func updateNSView(_ nsView: AVPlayerView, context: Context) {
-        // Guard against pointer equality to avoid redundant KVO
-        // notifications from AVPlayerView when the player hasn't changed.
+    func updateNSView(_ nsView: PlayerHostView, context: Context) {
         if nsView.player !== player {
             nsView.player = player
+        }
+    }
+
+    /// NSView whose backing layer *is* an `AVPlayerLayer`. The layer's
+    /// background is kept clear (AVPlayerLayer defaults to opaque black) so
+    /// the SwiftUI thumbnail beneath stays visible while the first frame
+    /// decodes, and any letterbox bars show through to the card's photo
+    /// background instead of a black bar.
+    final class PlayerHostView: NSView {
+        override func makeBackingLayer() -> CALayer {
+            let layer = AVPlayerLayer()
+            layer.videoGravity = .resizeAspect
+            layer.backgroundColor = .clear
+            return layer
+        }
+
+        var player: AVPlayer? {
+            get { (layer as? AVPlayerLayer)?.player }
+            set { (layer as? AVPlayerLayer)?.player = newValue }
         }
     }
 }
