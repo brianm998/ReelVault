@@ -245,7 +245,6 @@ fun ListScreen(
                                         thumbnailBytes = thumbnails.value[video.id],
                                         thumbnailHeight = thumbnailHeight,
                                         visibleColumns = listColumns.value,
-                                        topSlots = topSlots.value,
                                         onStackToggle = { viewModel.toggleStackExpansion(video.groupId) },
                                         onClick = { shiftFromEvent, toggleFromEvent ->
                                             val shift = shiftFromEvent || shiftPressed
@@ -263,9 +262,6 @@ fun ListScreen(
                                         },
                                         onDoubleClick = { viewModel.openVideoInExternal(video.openPath) },
                                         onSetRating = { rating -> viewModel.setRating(rating, listOf(video.id)) },
-                                        onPickStatSlot = { slotIndex, key ->
-                                            viewModel.updateGridTopSlot(slotIndex, key)
-                                        },
                                         dragPaths = run {
                                             val multi = selectedVideoIds.value
                                             if (video.id in multi && multi.size > 1) {
@@ -440,15 +436,11 @@ fun VideoListRow(
     thumbnailBytes: ByteArray? = null,
     thumbnailHeight: Dp = 80.dp,
     visibleColumns: Set<String> = emptySet(),
-    /** Same 4 catalog-scoped top-of-card stat-slot choices the grid uses. */
-    topSlots: List<String> = emptyList(),
     onStackToggle: () -> Unit = {},
     onClick: (shiftPressed: Boolean, togglePressed: Boolean) -> Unit = { _, _ -> },
     onDoubleClick: () -> Unit = {},
     /** Fired when one of the five rating positions is clicked. */
     onSetRating: (Int) -> Unit = {},
-    /** Fired when the user picks a different stat key for one of the four top slots. */
-    onPickStatSlot: (Int, String) -> Unit = { _, _ -> },
     /**
      * File paths to transfer when the user drags this row out to an external
      * app. When empty, the row's own [item.video.openPath] is used.
@@ -479,11 +471,6 @@ fun VideoListRow(
     // grid cards share visual language. The middle row picks up the
     // colour-label tint when unselected; the bands stay neutral.
     val colorLabelEnum = com.videoroom.data.models.ColorLabel.from(video.colorLabel)
-    val topBandColor = when {
-        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFFF0F0F0)
-        isInMultiSelection -> Color(0xFFD7D7D7)
-        else -> Color(0xFFB3B3B3)
-    }
     val rowMiddleBackground = when {
         isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFFF0F0F0)
         isInMultiSelection -> Color(0xFFD7D7D7)
@@ -503,13 +490,6 @@ fun VideoListRow(
     val cardBorderColor = when {
         isAnchor || isSelected || isInMultiSelection -> Color.White.copy(alpha = 0.6f)
         else -> Color.Black.copy(alpha = 0.4f)
-    }
-
-    val paddedSlots: List<String> = run {
-        val s = topSlots.toMutableList()
-        while (s.size < 4) s.add("")
-        if (s.size > 4) s.subList(4, s.size).clear()
-        s
     }
 
     // Card width matches `thumbnailHeight` so the card is a strict
@@ -575,31 +555,12 @@ fun VideoListRow(
                 .width(cardWidth)
                 .border(1.dp, cardBorderColor)
         ) {
-            // Top stat band — single horizontal row of 4 configurable cells.
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(22.dp)
-                    .background(topBandColor)
-                    .padding(horizontal = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                ListRowStatCell(0, paddedSlots[0], video, onPickStatSlot, alignEnd = false, weight = 1f)
-                ListRowStatCell(1, paddedSlots[1], video, onPickStatSlot, alignEnd = false, weight = 1f)
-                ListRowStatCell(2, paddedSlots[2], video, onPickStatSlot, alignEnd = false, weight = 1f)
-                ListRowStatCell(3, paddedSlots[3], video, onPickStatSlot, alignEnd = true, weight = 1f)
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(bandDividerColor)
-            )
             // Square thumbnail (cardWidth × thumbnailHeight).
             Box(
                 modifier = Modifier
                     .size(cardWidth, thumbnailHeight)
-                    .background(rowMiddleBackground),
+                    .background(rowMiddleBackground)
+                    .padding(8.dp),
                 contentAlignment = Alignment.Center
             ) {
                 if (thumbnailImage != null) {

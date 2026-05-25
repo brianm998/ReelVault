@@ -407,16 +407,16 @@ struct VideoListRowView: View {
             }
             cardContainer
                 .frame(width: cardWidth)
+                .overlay(
+                    Rectangle()
+                        .stroke(cardBorderColor, lineWidth: 1)
+                        .allowsHitTesting(false)
+                )
             infoColumn
             Spacer(minLength: 0)
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 10)
-        .overlay(
-            Rectangle()
-                .stroke(cardBorderColor, lineWidth: 1)
-                .allowsHitTesting(false)
-        )
         .contentShape(Rectangle())
         .onHover { hovered in isHovered = hovered }
         .onTapGesture(count: 2) { onDoubleClick() }
@@ -459,25 +459,12 @@ struct VideoListRowView: View {
         }
     }
 
-    /// Middle band: the existing horizontal layout (thumbnail + info
-    /// columns). Lifted out of `body` so the surrounding three-band
-    /// wrapper stays readable.
-    ///
-    /// The Lightroom-style three-band card. Same vertical structure as
-    /// the grid card — top stat band, square video, bottom rating band
-    /// — but sized to `cardWidth` so it never grows wider than its
-    /// grid-mode counterpart. The middle band contains only the
-    /// thumbnail; textual metadata lives in `infoColumn` to the right.
+    /// Compact card on the leading edge of the list row: square thumbnail
+    /// area (same proportions as the grid card) plus the bottom rating band.
+    /// Textual metadata lives in `infoColumn` to the right, so the card
+    /// never carries redundant data.
     private var cardContainer: some View {
         VStack(alignment: .leading, spacing: 0) {
-            topStatBand
-                .frame(maxWidth: .infinity)
-                .frame(height: 22)
-                .background(topBandColor)
-            Rectangle()
-                .fill(bandDividerColor)
-                .frame(height: 1)
-                .allowsHitTesting(false)
             thumbnailArea
                 .frame(width: cardWidth, height: thumbnailHeight)
                 .background(rowMiddleBackground)
@@ -731,21 +718,19 @@ struct VideoListRowView: View {
         // cropped — matching the grid card's behaviour for non-
         // square clips.
         ZStack(alignment: .topLeading) {
-            Rectangle()
-                .fill(Color.black)
-                .overlay {
-                    if let image = thumbnail {
-                        Image(nsImage: image)
-                            .resizable()
-                            .scaledToFit()
-                    } else {
-                        Image(systemName: "film")
-                            .font(.system(size: 18))
-                            .foregroundColor(.secondary)
-                    }
+            Group {
+                if let image = thumbnail {
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .padding(8)
+                } else {
+                    Image(systemName: "film")
+                        .font(.system(size: 18))
+                        .foregroundColor(.secondary)
                 }
-                .frame(width: cardWidth, height: thumbnailHeight)
-                .cornerRadius(4)
+            }
+            .frame(width: cardWidth, height: thumbnailHeight)
 
             // Stack badge
             if video.isInGroup {
