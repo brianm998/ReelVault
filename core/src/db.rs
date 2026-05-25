@@ -1604,6 +1604,47 @@ impl Database {
             params![original_id, confidence, auto_detected as i32, proxy_id],
         )
         .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+
+        // A proxy must not also belong to a stack. If this video is currently
+        // in a group, evict it now. If the group collapses to a single member
+        // after the eviction, dissolve the group entirely so the last remaining
+        // member becomes a standalone card.
+        let group_id: Option<String> = conn
+            .query_row(
+                "SELECT group_id FROM videos WHERE id = ?",
+                [proxy_id],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .flatten();
+
+        if let Some(gid) = group_id {
+            conn.execute(
+                "UPDATE videos SET group_id = NULL WHERE id = ?",
+                [proxy_id],
+            )
+            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+
+            let remaining: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM videos WHERE group_id = ?",
+                    [&gid],
+                    |row| row.get(0),
+                )
+                .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+
+            if remaining <= 1 {
+                conn.execute(
+                    "UPDATE videos SET group_id = NULL WHERE group_id = ?",
+                    [&gid],
+                )
+                .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+                conn.execute("DELETE FROM video_groups WHERE id = ?", [&gid])
+                    .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            }
+        }
+
         Ok(())
     }
 
