@@ -56,6 +56,23 @@ fn name_part(stem: &str) -> &str {
     stem
 }
 
+/// Extract the post-processing-aware name prefix from a filename — the
+/// portion of the stem before the codec/resolution metadata section.
+///
+/// Different resolutions of one processed take (the "lineage") share this
+/// prefix; sibling lineages within a stack do not. Examples:
+///   * `04_18_2026-a9-2_ProRes-444_OriRes.mov`        → `04_18_2026-a9-2`
+///   * `04_18_2026-a9-2_ProRes-422_720p.mov`          → `04_18_2026-a9-2`
+///   * `04_18_2026-a9-2-aurora_ProRes-444_OriRes.mov` → `04_18_2026-a9-2-aurora`
+///
+/// Used by the proxy detector as a filename-equality gate so a 720p of one
+/// lineage can't get linked to a UHQ of a sibling lineage just because
+/// post-processing left the visuals near-identical (and so thumbnail
+/// similarity passes).
+pub(crate) fn name_part_of_filename(filename: &str) -> &str {
+    name_part(stem(filename))
+}
+
 /// Reduce a filename to its "canonical base" — the date+camera+clip prefix
 /// that all variants of one source clip share, with post-processing
 /// suffixes (`-aurora`, `-topaz`, etc.) stripped.
