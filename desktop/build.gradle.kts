@@ -125,6 +125,15 @@ compose.desktop {
             vendor = "VideoRoom"
             copyright = "2024 VideoRoom Contributors"
 
+            macOS {
+                // jpackage requires MAJOR > 0 in the DMG's package + build
+                // versions; Deb/Msi accept 0.x. Compose validates every
+                // declared format at configuration time, so this is needed
+                // on Linux/Windows CI too (not just when building a DMG).
+                dmgPackageVersion = "1.0.0"
+                dmgPackageBuildVersion = "1.0.0"
+            }
+
             // When release-desktop.sh places the compiled videoroom-core binary in
             // desktop/release-bin/, the packaging step bundles it alongside the
             // application jar. ServerLauncher.kt looks for the binary at
