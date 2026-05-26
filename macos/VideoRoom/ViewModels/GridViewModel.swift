@@ -1017,7 +1017,8 @@ class GridViewModel: ObservableObject {
                     groupPreferredId: videoId, groupPreferredPath: v.groupPreferredPath,
                     proxyCount: v.proxyCount, proxyOf: v.proxyOf,
                     playableNatively: v.playableNatively,
-                    rating: v.rating, colorLabel: v.colorLabel
+                    rating: v.rating, colorLabel: v.colorLabel,
+                    cameraModel: v.cameraModel, cameraDisplayName: v.cameraDisplayName
                 )
             }
             return v

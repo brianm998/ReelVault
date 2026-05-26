@@ -327,11 +327,14 @@ impl VideoRoomService {
 
     fn build_video_summary(&self, video_id: &str, filename: &str, path: &str,
                            size_bytes: i64, indexed_at: i64) -> VideoSummary {
-        // Try to get metadata for the video
+        // Try to get metadata for the video. Camera model is included so
+        // the grid's configurable "Camera" top-of-card stat slot can
+        // render without a per-video VideoMetadata roundtrip.
         let conn = self.db.get_connection().ok();
         let meta = conn.and_then(|c| {
             c.query_row(
-                "SELECT duration_ms, width, height, fps, codec_video, codec_audio, creation_date
+                "SELECT duration_ms, width, height, fps, codec_video, codec_audio,
+                        creation_date, camera_model
                  FROM metadata WHERE video_id = ?",
                 [video_id],
                 |row| {
@@ -343,6 +346,7 @@ impl VideoRoomService {
                         row.get::<_, Option<String>>(4)?,
                         row.get::<_, Option<String>>(5)?,
                         row.get::<_, Option<i64>>(6)?,
+                        row.get::<_, Option<String>>(7)?,
                     ))
                 },
             ).ok()
@@ -350,8 +354,27 @@ impl VideoRoomService {
 
         let tags = self.db.get_video_tags(video_id).unwrap_or_default();
 
-        let (duration_ms, width, height, fps, codec_video, codec_audio, creation_date) =
-            meta.unwrap_or((0, 0, 0, 0.0, None, None, None));
+        let (duration_ms, width, height, fps, codec_video, codec_audio, creation_date,
+             camera_model) =
+            meta.unwrap_or((0, 0, 0, 0.0, None, None, None, None));
+
+        // Resolve the marketing-friendly camera name the same way
+        // build_video_metadata does — user overrides on top of the
+        // built-in mapping table, falling back to the raw EXIF string
+        // when no mapping is known. Clients detect "no mapping" by
+        // comparing the two and may hide the affordance that flips
+        // between them.
+        let camera_model_str = camera_model.unwrap_or_default();
+        let camera_display_name = if camera_model_str.is_empty() {
+            String::new()
+        } else {
+            let custom_overrides = self.load_custom_camera_names();
+            crate::camera_names::marketing_name_for_with_custom(
+                &camera_model_str,
+                &custom_overrides,
+            )
+            .unwrap_or_else(|| camera_model_str.clone())
+        };
 
         // Check if thumbnail exists
         let thumb_path = self.config.thumbnail_cache_path.join(format!("{}_medium.jpg", video_id));
@@ -421,6 +444,8 @@ impl VideoRoomService {
                 || height <= self.config.max_native_playback_height,
             rating,
             color_label,
+            camera_model: camera_model_str,
+            camera_display_name,
         }
     }
 }

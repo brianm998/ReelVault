@@ -40,6 +40,15 @@ struct VideoSummary: Identifiable, Hashable {
     /// Lightroom-style color label — one of "", "red", "yellow", "green",
     /// "blue", "purple". Surfaces as the band-color around the card.
     let colorLabel: String
+    /// Raw EXIF camera body string (e.g. "SONY ILCE-7RM3"). Empty when the
+    /// file has no camera metadata. Carried on the summary so the grid's
+    /// configurable "Camera" top-of-card stat slot renders without a
+    /// per-video VideoMetadata roundtrip.
+    let cameraModel: String
+    /// Marketing-friendly camera name resolved by the daemon (e.g.
+    /// "Sony a7R III"). Falls back to `cameraModel` when no mapping is
+    /// known. UI uses this for display.
+    let cameraDisplayName: String
 
     var isInGroup: Bool { !groupId.isEmpty && groupSize > 1 }
     var hasProxies: Bool { proxyCount > 0 }
@@ -83,7 +92,8 @@ struct VideoSummary: Identifiable, Hashable {
             groupPreferredId: groupPreferredId, groupPreferredPath: groupPreferredPath,
             proxyCount: proxyCount, proxyOf: proxyOf,
             playableNatively: playableNatively,
-            rating: newRating, colorLabel: colorLabel
+            rating: newRating, colorLabel: colorLabel,
+            cameraModel: cameraModel, cameraDisplayName: cameraDisplayName
         )
     }
 
@@ -100,7 +110,8 @@ struct VideoSummary: Identifiable, Hashable {
             groupPreferredId: groupPreferredId, groupPreferredPath: groupPreferredPath,
             proxyCount: proxyCount, proxyOf: proxyOf,
             playableNatively: playableNatively,
-            rating: rating, colorLabel: newLabel
+            rating: rating, colorLabel: newLabel,
+            cameraModel: cameraModel, cameraDisplayName: cameraDisplayName
         )
     }
 }
@@ -463,11 +474,15 @@ enum GridStatKey: String, CaseIterable, Identifiable, Hashable {
             return video.bitrateKbps >= 1000
                 ? String(format: "%.1f Mbps", Double(video.bitrateKbps) / 1000)
                 : "\(video.bitrateKbps) kbps"
-        case .cameraModel, .lensModel:
-            // VideoSummary doesn't carry camera/lens — the field exists on
-            // VideoMetadata. The card uses a separate lookup; if we have no
-            // cached metadata we render the stat as blank. The cache is
-            // populated by GridViewModel once the user selects a video.
+        case .cameraModel:
+            // VideoSummary now carries the camera body (display name with
+            // user-override mapping resolved, falling back to the raw EXIF
+            // string when no mapping exists) so the grid card renders the
+            // "Camera" slot without a per-video metadata roundtrip.
+            return video.cameraDisplayName.isEmpty ? video.cameraModel : video.cameraDisplayName
+        case .lensModel:
+            // Still on VideoMetadata, not the summary — render blank
+            // until/unless a future change surfaces it the same way.
             return ""
         case .captureDate:
             if video.creationDate <= 0 { return "" }

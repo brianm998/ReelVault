@@ -200,6 +200,14 @@ message VideoSummary {
   // band and color_label as the band's tint.
   int32 rating = 22;
   string color_label = 23;
+  // Camera body. Surfaced on the summary so the grid's configurable
+  // top-of-card "Camera" stat slot can render without a per-video
+  // VideoMetadata roundtrip. `camera_model` is the raw EXIF string
+  // (e.g. "SONY ILCE-7RM3"); `camera_display_name` is the resolved
+  // marketing name (e.g. "Sony a7R III") with user overrides applied,
+  // falling back to `camera_model` when no mapping exists.
+  string camera_model = 24;
+  string camera_display_name = 25;
 }
 
 message ListVideosResponse {

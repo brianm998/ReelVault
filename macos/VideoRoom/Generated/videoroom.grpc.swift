@@ -18,13 +18,13 @@ import GRPCProtobuf
 
 /// Namespace containing generated types for the "videoroom.VideoRoom" service.
 @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-internal enum Videoroom_VideoRoom: Sendable {
+internal enum Videoroom_VideoRoom {
     /// Service descriptor for the "videoroom.VideoRoom" service.
     internal static let descriptor = GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom")
     /// Namespace for method metadata.
-    internal enum Method: Sendable {
+    internal enum Method {
         /// Namespace for "ListVideos" metadata.
-        internal enum ListVideos: Sendable {
+        internal enum ListVideos {
             /// Request type for "ListVideos".
             internal typealias Input = Videoroom_ListVideosRequest
             /// Response type for "ListVideos".
@@ -36,7 +36,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "SearchVideos" metadata.
-        internal enum SearchVideos: Sendable {
+        internal enum SearchVideos {
             /// Request type for "SearchVideos".
             internal typealias Input = Videoroom_SearchRequest
             /// Response type for "SearchVideos".
@@ -48,7 +48,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "GetMetadata" metadata.
-        internal enum GetMetadata: Sendable {
+        internal enum GetMetadata {
             /// Request type for "GetMetadata".
             internal typealias Input = Videoroom_GetMetadataRequest
             /// Response type for "GetMetadata".
@@ -60,7 +60,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "GetThumbnail" metadata.
-        internal enum GetThumbnail: Sendable {
+        internal enum GetThumbnail {
             /// Request type for "GetThumbnail".
             internal typealias Input = Videoroom_GetThumbnailRequest
             /// Response type for "GetThumbnail".
@@ -72,7 +72,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "AddLibraryLocation" metadata.
-        internal enum AddLibraryLocation: Sendable {
+        internal enum AddLibraryLocation {
             /// Request type for "AddLibraryLocation".
             internal typealias Input = Videoroom_AddLocationRequest
             /// Response type for "AddLibraryLocation".
@@ -84,7 +84,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "RemoveLibraryLocation" metadata.
-        internal enum RemoveLibraryLocation: Sendable {
+        internal enum RemoveLibraryLocation {
             /// Request type for "RemoveLibraryLocation".
             internal typealias Input = Videoroom_RemoveLocationRequest
             /// Response type for "RemoveLibraryLocation".
@@ -96,7 +96,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "ListLibraryLocations" metadata.
-        internal enum ListLibraryLocations: Sendable {
+        internal enum ListLibraryLocations {
             /// Request type for "ListLibraryLocations".
             internal typealias Input = Videoroom_ListLocationsRequest
             /// Response type for "ListLibraryLocations".
@@ -108,7 +108,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "ScanLibrary" metadata.
-        internal enum ScanLibrary: Sendable {
+        internal enum ScanLibrary {
             /// Request type for "ScanLibrary".
             internal typealias Input = Videoroom_ScanLibraryRequest
             /// Response type for "ScanLibrary".
@@ -120,7 +120,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "GetScanStatus" metadata.
-        internal enum GetScanStatus: Sendable {
+        internal enum GetScanStatus {
             /// Request type for "GetScanStatus".
             internal typealias Input = Videoroom_GetScanStatusRequest
             /// Response type for "GetScanStatus".
@@ -132,7 +132,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "CreateTag" metadata.
-        internal enum CreateTag: Sendable {
+        internal enum CreateTag {
             /// Request type for "CreateTag".
             internal typealias Input = Videoroom_CreateTagRequest
             /// Response type for "CreateTag".
@@ -144,7 +144,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "DeleteTag" metadata.
-        internal enum DeleteTag: Sendable {
+        internal enum DeleteTag {
             /// Request type for "DeleteTag".
             internal typealias Input = Videoroom_DeleteTagRequest
             /// Response type for "DeleteTag".
@@ -156,7 +156,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "ListTags" metadata.
-        internal enum ListTags: Sendable {
+        internal enum ListTags {
             /// Request type for "ListTags".
             internal typealias Input = Videoroom_ListTagsRequest
             /// Response type for "ListTags".
@@ -168,7 +168,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "TagVideos" metadata.
-        internal enum TagVideos: Sendable {
+        internal enum TagVideos {
             /// Request type for "TagVideos".
             internal typealias Input = Videoroom_TagVideosRequest
             /// Response type for "TagVideos".
@@ -180,7 +180,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "UntagVideos" metadata.
-        internal enum UntagVideos: Sendable {
+        internal enum UntagVideos {
             /// Request type for "UntagVideos".
             internal typealias Input = Videoroom_UntagVideosRequest
             /// Response type for "UntagVideos".
@@ -192,7 +192,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "CreateCollection" metadata.
-        internal enum CreateCollection: Sendable {
+        internal enum CreateCollection {
             /// Request type for "CreateCollection".
             internal typealias Input = Videoroom_CreateCollectionRequest
             /// Response type for "CreateCollection".
@@ -204,7 +204,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "DeleteCollection" metadata.
-        internal enum DeleteCollection: Sendable {
+        internal enum DeleteCollection {
             /// Request type for "DeleteCollection".
             internal typealias Input = Videoroom_DeleteCollectionRequest
             /// Response type for "DeleteCollection".
@@ -216,7 +216,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "ListCollections" metadata.
-        internal enum ListCollections: Sendable {
+        internal enum ListCollections {
             /// Request type for "ListCollections".
             internal typealias Input = Videoroom_ListCollectionsRequest
             /// Response type for "ListCollections".
@@ -228,7 +228,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "AddToCollection" metadata.
-        internal enum AddToCollection: Sendable {
+        internal enum AddToCollection {
             /// Request type for "AddToCollection".
             internal typealias Input = Videoroom_AddToCollectionRequest
             /// Response type for "AddToCollection".
@@ -240,7 +240,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "RemoveFromCollection" metadata.
-        internal enum RemoveFromCollection: Sendable {
+        internal enum RemoveFromCollection {
             /// Request type for "RemoveFromCollection".
             internal typealias Input = Videoroom_RemoveFromCollectionRequest
             /// Response type for "RemoveFromCollection".
@@ -252,7 +252,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "UpdateVideoNotes" metadata.
-        internal enum UpdateVideoNotes: Sendable {
+        internal enum UpdateVideoNotes {
             /// Request type for "UpdateVideoNotes".
             internal typealias Input = Videoroom_UpdateNotesRequest
             /// Response type for "UpdateVideoNotes".
@@ -264,7 +264,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "DeleteVideo" metadata.
-        internal enum DeleteVideo: Sendable {
+        internal enum DeleteVideo {
             /// Request type for "DeleteVideo".
             internal typealias Input = Videoroom_DeleteVideoRequest
             /// Response type for "DeleteVideo".
@@ -276,7 +276,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "ListGroupMembers" metadata.
-        internal enum ListGroupMembers: Sendable {
+        internal enum ListGroupMembers {
             /// Request type for "ListGroupMembers".
             internal typealias Input = Videoroom_ListGroupMembersRequest
             /// Response type for "ListGroupMembers".
@@ -288,7 +288,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "CreateGroup" metadata.
-        internal enum CreateGroup: Sendable {
+        internal enum CreateGroup {
             /// Request type for "CreateGroup".
             internal typealias Input = Videoroom_CreateGroupRequest
             /// Response type for "CreateGroup".
@@ -300,7 +300,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "UngroupVideo" metadata.
-        internal enum UngroupVideo: Sendable {
+        internal enum UngroupVideo {
             /// Request type for "UngroupVideo".
             internal typealias Input = Videoroom_UngroupVideoRequest
             /// Response type for "UngroupVideo".
@@ -312,7 +312,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "SetGroupPreferred" metadata.
-        internal enum SetGroupPreferred: Sendable {
+        internal enum SetGroupPreferred {
             /// Request type for "SetGroupPreferred".
             internal typealias Input = Videoroom_SetGroupPreferredRequest
             /// Response type for "SetGroupPreferred".
@@ -324,7 +324,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "AutoGroupVideos" metadata.
-        internal enum AutoGroupVideos: Sendable {
+        internal enum AutoGroupVideos {
             /// Request type for "AutoGroupVideos".
             internal typealias Input = Videoroom_AutoGroupRequest
             /// Response type for "AutoGroupVideos".
@@ -336,7 +336,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "GenerateProxy" metadata.
-        internal enum GenerateProxy: Sendable {
+        internal enum GenerateProxy {
             /// Request type for "GenerateProxy".
             internal typealias Input = Videoroom_GenerateProxyRequest
             /// Response type for "GenerateProxy".
@@ -348,7 +348,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "ListProxies" metadata.
-        internal enum ListProxies: Sendable {
+        internal enum ListProxies {
             /// Request type for "ListProxies".
             internal typealias Input = Videoroom_ListProxiesRequest
             /// Response type for "ListProxies".
@@ -360,7 +360,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "SetProxyOf" metadata.
-        internal enum SetProxyOf: Sendable {
+        internal enum SetProxyOf {
             /// Request type for "SetProxyOf".
             internal typealias Input = Videoroom_SetProxyOfRequest
             /// Response type for "SetProxyOf".
@@ -372,7 +372,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "RemoveProxyLink" metadata.
-        internal enum RemoveProxyLink: Sendable {
+        internal enum RemoveProxyLink {
             /// Request type for "RemoveProxyLink".
             internal typealias Input = Videoroom_RemoveProxyLinkRequest
             /// Response type for "RemoveProxyLink".
@@ -384,7 +384,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "DetectProxies" metadata.
-        internal enum DetectProxies: Sendable {
+        internal enum DetectProxies {
             /// Request type for "DetectProxies".
             internal typealias Input = Videoroom_DetectProxiesRequest
             /// Response type for "DetectProxies".
@@ -396,7 +396,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "GetFilterOptions" metadata.
-        internal enum GetFilterOptions: Sendable {
+        internal enum GetFilterOptions {
             /// Request type for "GetFilterOptions".
             internal typealias Input = Videoroom_GetFilterOptionsRequest
             /// Response type for "GetFilterOptions".
@@ -408,7 +408,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "GetStatus" metadata.
-        internal enum GetStatus: Sendable {
+        internal enum GetStatus {
             /// Request type for "GetStatus".
             internal typealias Input = Videoroom_GetStatusRequest
             /// Response type for "GetStatus".
@@ -420,7 +420,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "GetConfig" metadata.
-        internal enum GetConfig: Sendable {
+        internal enum GetConfig {
             /// Request type for "GetConfig".
             internal typealias Input = Videoroom_GetConfigRequest
             /// Response type for "GetConfig".
@@ -432,7 +432,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "UpdateConfig" metadata.
-        internal enum UpdateConfig: Sendable {
+        internal enum UpdateConfig {
             /// Request type for "UpdateConfig".
             internal typealias Input = Videoroom_UpdateConfigRequest
             /// Response type for "UpdateConfig".
@@ -444,7 +444,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "OpenCatalog" metadata.
-        internal enum OpenCatalog: Sendable {
+        internal enum OpenCatalog {
             /// Request type for "OpenCatalog".
             internal typealias Input = Videoroom_OpenCatalogRequest
             /// Response type for "OpenCatalog".
@@ -456,7 +456,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "CloseCatalog" metadata.
-        internal enum CloseCatalog: Sendable {
+        internal enum CloseCatalog {
             /// Request type for "CloseCatalog".
             internal typealias Input = Videoroom_CloseCatalogRequest
             /// Response type for "CloseCatalog".
@@ -468,7 +468,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "GetCurrentCatalog" metadata.
-        internal enum GetCurrentCatalog: Sendable {
+        internal enum GetCurrentCatalog {
             /// Request type for "GetCurrentCatalog".
             internal typealias Input = Videoroom_GetCurrentCatalogRequest
             /// Response type for "GetCurrentCatalog".
@@ -480,7 +480,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "UpdateVideoLocation" metadata.
-        internal enum UpdateVideoLocation: Sendable {
+        internal enum UpdateVideoLocation {
             /// Request type for "UpdateVideoLocation".
             internal typealias Input = Videoroom_UpdateVideoLocationRequest
             /// Response type for "UpdateVideoLocation".
@@ -492,7 +492,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "ListVideosWithLocations" metadata.
-        internal enum ListVideosWithLocations: Sendable {
+        internal enum ListVideosWithLocations {
             /// Request type for "ListVideosWithLocations".
             internal typealias Input = Videoroom_ListVideosWithLocationsRequest
             /// Response type for "ListVideosWithLocations".
@@ -504,7 +504,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "ListNamedLocations" metadata.
-        internal enum ListNamedLocations: Sendable {
+        internal enum ListNamedLocations {
             /// Request type for "ListNamedLocations".
             internal typealias Input = Videoroom_ListNamedLocationsRequest
             /// Response type for "ListNamedLocations".
@@ -516,7 +516,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "UpsertNamedLocation" metadata.
-        internal enum UpsertNamedLocation: Sendable {
+        internal enum UpsertNamedLocation {
             /// Request type for "UpsertNamedLocation".
             internal typealias Input = Videoroom_UpsertNamedLocationRequest
             /// Response type for "UpsertNamedLocation".
@@ -528,7 +528,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "DeleteNamedLocation" metadata.
-        internal enum DeleteNamedLocation: Sendable {
+        internal enum DeleteNamedLocation {
             /// Request type for "DeleteNamedLocation".
             internal typealias Input = Videoroom_DeleteNamedLocationRequest
             /// Response type for "DeleteNamedLocation".
@@ -540,7 +540,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "UpdateVideoCaptureDate" metadata.
-        internal enum UpdateVideoCaptureDate: Sendable {
+        internal enum UpdateVideoCaptureDate {
             /// Request type for "UpdateVideoCaptureDate".
             internal typealias Input = Videoroom_UpdateVideoCaptureDateRequest
             /// Response type for "UpdateVideoCaptureDate".
@@ -552,7 +552,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "UpdateVideoRating" metadata.
-        internal enum UpdateVideoRating: Sendable {
+        internal enum UpdateVideoRating {
             /// Request type for "UpdateVideoRating".
             internal typealias Input = Videoroom_UpdateVideoRatingRequest
             /// Response type for "UpdateVideoRating".
@@ -564,7 +564,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "UpdateVideoColorLabel" metadata.
-        internal enum UpdateVideoColorLabel: Sendable {
+        internal enum UpdateVideoColorLabel {
             /// Request type for "UpdateVideoColorLabel".
             internal typealias Input = Videoroom_UpdateVideoColorLabelRequest
             /// Response type for "UpdateVideoColorLabel".
@@ -576,7 +576,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "GetGridSettings" metadata.
-        internal enum GetGridSettings: Sendable {
+        internal enum GetGridSettings {
             /// Request type for "GetGridSettings".
             internal typealias Input = Videoroom_GetGridSettingsRequest
             /// Response type for "GetGridSettings".
@@ -588,7 +588,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "UpdateGridSettings" metadata.
-        internal enum UpdateGridSettings: Sendable {
+        internal enum UpdateGridSettings {
             /// Request type for "UpdateGridSettings".
             internal typealias Input = Videoroom_GridSettings
             /// Response type for "UpdateGridSettings".
@@ -600,7 +600,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "SubscribeCatalogEvents" metadata.
-        internal enum SubscribeCatalogEvents: Sendable {
+        internal enum SubscribeCatalogEvents {
             /// Request type for "SubscribeCatalogEvents".
             internal typealias Input = Videoroom_SubscribeCatalogEventsRequest
             /// Response type for "SubscribeCatalogEvents".
@@ -612,7 +612,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "GetWatchSettings" metadata.
-        internal enum GetWatchSettings: Sendable {
+        internal enum GetWatchSettings {
             /// Request type for "GetWatchSettings".
             internal typealias Input = Videoroom_GetWatchSettingsRequest
             /// Response type for "GetWatchSettings".
@@ -624,7 +624,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "UpdateWatchSettings" metadata.
-        internal enum UpdateWatchSettings: Sendable {
+        internal enum UpdateWatchSettings {
             /// Request type for "UpdateWatchSettings".
             internal typealias Input = Videoroom_WatchSettings
             /// Response type for "UpdateWatchSettings".
@@ -636,7 +636,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "ListCameraNameMappings" metadata.
-        internal enum ListCameraNameMappings: Sendable {
+        internal enum ListCameraNameMappings {
             /// Request type for "ListCameraNameMappings".
             internal typealias Input = Videoroom_ListCameraNameMappingsRequest
             /// Response type for "ListCameraNameMappings".
@@ -648,7 +648,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             )
         }
         /// Namespace for "SetCameraNameMapping" metadata.
-        internal enum SetCameraNameMapping: Sendable {
+        internal enum SetCameraNameMapping {
             /// Request type for "SetCameraNameMapping".
             internal typealias Input = Videoroom_SetCameraNameMappingRequest
             /// Response type for "SetCameraNameMapping".

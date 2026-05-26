@@ -936,7 +936,9 @@ class VideoRepository: ObservableObject {
             proxyOf: p.proxyOf,
             playableNatively: p.playableNatively,
             rating: Int(p.rating),
-            colorLabel: p.colorLabel
+            colorLabel: p.colorLabel,
+            cameraModel: p.cameraModel,
+            cameraDisplayName: p.cameraDisplayName.isEmpty ? p.cameraModel : p.cameraDisplayName
         )
     }
 

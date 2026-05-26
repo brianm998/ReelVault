@@ -274,6 +274,22 @@ nonisolated struct Videoroom_VideoSummary: @unchecked Sendable {
     set {_uniqueStorage()._colorLabel = newValue}
   }
 
+  /// Camera body. Surfaced on the summary so the grid's configurable
+  /// top-of-card "Camera" stat slot can render without a per-video
+  /// VideoMetadata roundtrip. `camera_model` is the raw EXIF string
+  /// (e.g. "SONY ILCE-7RM3"); `camera_display_name` is the resolved
+  /// marketing name (e.g. "Sony a7R III") with user overrides applied,
+  /// falling back to `camera_model` when no mapping exists.
+  var cameraModel: String {
+    get {_storage._cameraModel}
+    set {_uniqueStorage()._cameraModel = newValue}
+  }
+
+  var cameraDisplayName: String {
+    get {_storage._cameraDisplayName}
+    set {_uniqueStorage()._cameraDisplayName = newValue}
+  }
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -2086,7 +2102,7 @@ nonisolated extension Videoroom_ListVideosRequest: SwiftProtobuf.Message, SwiftP
 
 nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".VideoSummary"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0\u{3}proxy_count\0\u{3}proxy_of\0\u{3}playable_natively\0\u{1}rating\0\u{3}color_label\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0\u{3}proxy_count\0\u{3}proxy_of\0\u{3}playable_natively\0\u{1}rating\0\u{3}color_label\0\u{3}camera_model\0\u{3}camera_display_name\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -2112,6 +2128,8 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
     var _playableNatively: Bool = false
     var _rating: Int32 = 0
     var _colorLabel: String = String()
+    var _cameraModel: String = String()
+    var _cameraDisplayName: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2145,6 +2163,8 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
       _playableNatively = source._playableNatively
       _rating = source._rating
       _colorLabel = source._colorLabel
+      _cameraModel = source._cameraModel
+      _cameraDisplayName = source._cameraDisplayName
     }
   }
 
@@ -2186,6 +2206,8 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
         case 21: try { try decoder.decodeSingularBoolField(value: &_storage._playableNatively) }()
         case 22: try { try decoder.decodeSingularInt32Field(value: &_storage._rating) }()
         case 23: try { try decoder.decodeSingularStringField(value: &_storage._colorLabel) }()
+        case 24: try { try decoder.decodeSingularStringField(value: &_storage._cameraModel) }()
+        case 25: try { try decoder.decodeSingularStringField(value: &_storage._cameraDisplayName) }()
         default: break
         }
       }
@@ -2263,6 +2285,12 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
       if !_storage._colorLabel.isEmpty {
         try visitor.visitSingularStringField(value: _storage._colorLabel, fieldNumber: 23)
       }
+      if !_storage._cameraModel.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._cameraModel, fieldNumber: 24)
+      }
+      if !_storage._cameraDisplayName.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._cameraDisplayName, fieldNumber: 25)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2295,6 +2323,8 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
         if _storage._playableNatively != rhs_storage._playableNatively {return false}
         if _storage._rating != rhs_storage._rating {return false}
         if _storage._colorLabel != rhs_storage._colorLabel {return false}
+        if _storage._cameraModel != rhs_storage._cameraModel {return false}
+        if _storage._cameraDisplayName != rhs_storage._cameraDisplayName {return false}
         return true
       }
       if !storagesAreEqual {return false}

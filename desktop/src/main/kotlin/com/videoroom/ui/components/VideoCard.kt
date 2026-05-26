@@ -829,18 +829,22 @@ private fun RowScope.StatCell(
     //   • Slot is unset (`stat == None`) → show "—" so the user
     //     knows the cell is configurable.
     //   • Slot is set but this clip has no data for the chosen stat
-    //     (e.g. picked "Camera model" on a clip with no EXIF) →
-    //     render nothing so it's clear the slot IS configured, just
-    //     the data is missing for this particular video.
+    //     (e.g. picked "Camera" on a clip with no EXIF) → also show
+    //     "—" so the cell remains a discoverable click target. The
+    //     muted text colour of `None` is kept only for truly-unset
+    //     slots so a fully-configured grid still reads as configured.
     val displayed: String =
-        if (stat == com.videoroom.data.models.GridStatKey.None) "—" else value
+        if (value.isEmpty()) "—" else value
     var expanded by remember { mutableStateOf(false) }
-    // Plain left-click opens the picker via a `DropdownMenu`. The Box
-    // owns the click handler; the menu is anchored to its bounds so it
-    // appears below the cell. `Modifier.clickable` consumes the press
-    // so the outer card-level `shiftAwareClickable` doesn't *also*
-    // re-select the card on the same press.
-    com.videoroom.ui.components.Tooltip(text = "Click to choose what this slot shows") {
+    // Weight + heightIn + clickable on the same Box so the cell always
+    // claims its share of the row and the click target is the whole
+    // cell — not just the text glyphs. (The previous structure put the
+    // Tooltip wrapper between this Box and its RowScope parent, which
+    // dropped Modifier.weight on the floor and collapsed empty cells to
+    // zero-width.) The Tooltip wraps only the Text inside so its hover
+    // hint still reaches the user without affecting layout flow.
+    // `Modifier.clickable` consumes the press so the outer card-level
+    // `shiftAwareClickable` doesn't *also* re-select the card.
     Box(
         modifier = Modifier
             .weight(weight)
@@ -848,25 +852,27 @@ private fun RowScope.StatCell(
             .clickable { expanded = true },
         contentAlignment = if (alignEnd) Alignment.CenterEnd else Alignment.CenterStart
     ) {
-        Text(
-            text = displayed,
-            style = if (slotIndex == 0) {
-                MaterialTheme.typography.labelMedium
-            } else {
-                MaterialTheme.typography.labelSmall
-            },
-            color = if (stat == com.videoroom.data.models.GridStatKey.None)
-                Color.Black.copy(alpha = 0.4f)
-            else
-                Color.Black.copy(alpha = 0.85f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = if (alignEnd) {
-                androidx.compose.ui.text.style.TextAlign.End
-            } else {
-                androidx.compose.ui.text.style.TextAlign.Start
-            }
-        )
+        com.videoroom.ui.components.Tooltip(text = "Click to choose what this slot shows") {
+            Text(
+                text = displayed,
+                style = if (slotIndex == 0) {
+                    MaterialTheme.typography.labelMedium
+                } else {
+                    MaterialTheme.typography.labelSmall
+                },
+                color = if (stat == com.videoroom.data.models.GridStatKey.None)
+                    Color.Black.copy(alpha = 0.4f)
+                else
+                    Color.Black.copy(alpha = 0.85f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = if (alignEnd) {
+                    androidx.compose.ui.text.style.TextAlign.End
+                } else {
+                    androidx.compose.ui.text.style.TextAlign.Start
+                }
+            )
+        }
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false }
@@ -887,7 +893,6 @@ private fun RowScope.StatCell(
             }
         }
     }
-    } // Tooltip
 }
 
 /**

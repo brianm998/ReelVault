@@ -104,6 +104,8 @@ class VideoRepository(
             playableNatively = proto.playableNatively,
             rating = proto.rating,
             colorLabel = proto.colorLabel,
+            cameraModel = proto.cameraModel,
+            cameraDisplayName = proto.cameraDisplayName.ifEmpty { proto.cameraModel },
         )
     }
 

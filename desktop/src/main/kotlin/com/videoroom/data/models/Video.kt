@@ -40,6 +40,15 @@ data class VideoSummary(
     /** Lightroom-style colour label — "" | red | yellow | green | blue | purple.
      *  Drives the band-tint around the card in the grid. */
     val colorLabel: String = "",
+    /** Raw EXIF camera body string (e.g. "SONY ILCE-7RM3"). Empty when
+     *  the file has no camera metadata. Carried on the summary so the
+     *  grid's "Camera" top-of-card stat slot renders without a per-video
+     *  VideoMetadata roundtrip. */
+    val cameraModel: String = "",
+    /** Marketing-friendly camera name resolved by the daemon (e.g.
+     *  "Sony a7R III"). Falls back to [cameraModel] when no mapping
+     *  exists. UI uses this for display. */
+    val cameraDisplayName: String = "",
 ) {
     val isInGroup: Boolean get() = groupId.isNotEmpty() && groupSize > 1
     val hasProxies: Boolean get() = proxyCount > 0
@@ -355,8 +364,8 @@ enum class GridStatKey(val raw: String, val displayName: String) {
         AudioCodec       -> video.codecAudio
         Fps              -> if (video.fps > 0) "%.0f fps".format(video.fps) else ""
         Bitrate          -> ""  // VideoSummary doesn't carry bitrate today
-        CameraModel,
-        LensModel        -> ""  // Both live on VideoMetadata, not the summary
+        CameraModel      -> video.cameraDisplayName.ifEmpty { video.cameraModel }
+        LensModel        -> ""  // Still on VideoMetadata, not the summary
         CaptureDate      -> if (video.creationDate > 0) {
             val instant = java.time.Instant.ofEpochMilli(video.creationDate)
             java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")
