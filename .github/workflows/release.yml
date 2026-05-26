@@ -135,6 +135,22 @@ jobs:
         shell: bash
         run: ./release-desktop.sh --core-bin "$DAEMON_BIN" --out dist/desktop
 
+      # jpackage writes its real diagnostics to per-task log files instead of
+      # stdout, so a CI failure shows only "Exit code: 1". Dump them here.
+      - name: Show jpackage logs on failure
+        if: failure()
+        shell: bash
+        run: |
+          LOGS_DIR=desktop/build/compose/logs
+          if [[ -d "$LOGS_DIR" ]]; then
+            find "$LOGS_DIR" -type f | while read -r f; do
+              echo "===== $f ====="
+              cat "$f"
+            done
+          else
+            echo "No logs at $LOGS_DIR"
+          fi
+
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-${{ matrix.name }}

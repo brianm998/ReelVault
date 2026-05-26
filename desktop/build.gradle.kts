@@ -126,12 +126,13 @@ compose.desktop {
             copyright = "2024 VideoRoom Contributors"
 
             macOS {
-                // jpackage requires MAJOR > 0 in the DMG's package + build
-                // versions; Deb/Msi accept 0.x. Compose validates every
-                // declared format at configuration time, so this is needed
-                // on Linux/Windows CI too (not just when building a DMG).
-                dmgPackageVersion = "1.0.0"
-                dmgPackageBuildVersion = "1.0.0"
+                // jpackage on macOS requires MAJOR > 0 in CFBundleVersion /
+                // CFBundleShortVersionString — both when building the .app
+                // (createDistributable, --type app-image) and the DMG
+                // (packageDmg). Deb/Msi accept 0.x. Override the whole
+                // macOS chain until we ship 1.0.
+                packageVersion = "1.0.0"
+                packageBuildVersion = "1.0.0"
             }
 
             // When release-desktop.sh places the compiled videoroom-core binary in
