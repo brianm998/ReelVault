@@ -1148,8 +1148,6 @@ nonisolated struct Videoroom_ConfigResponse: Sendable {
 
   var enableAutoTagging: Bool = false
 
-  var externalEditors: [Videoroom_ExternalEditor] = []
-
   /// Largest height (in pixels) we'll attempt to play natively in-grid.
   /// Videos taller than this are marked "too large to play here" and the
   /// user is offered the option to make a proxy. Default 2160 (4K).
@@ -1157,26 +1155,6 @@ nonisolated struct Videoroom_ConfigResponse: Sendable {
 
   /// Default height (px) for newly-generated proxies. Default 720.
   var proxyTargetHeight: Int32 = 0
-
-  var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  init() {}
-}
-
-nonisolated struct Videoroom_ExternalEditor: Sendable {
-  // SwiftProtobuf.Message conformance is added in an extension below. See the
-  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-  // methods supported on all messages.
-
-  var id: String = String()
-
-  var name: String = String()
-
-  var executablePath: String = String()
-
-  var arguments: [String] = []
-
-  var platforms: [String] = []
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -4147,7 +4125,7 @@ nonisolated extension Videoroom_GetConfigRequest: SwiftProtobuf.Message, SwiftPr
 
 nonisolated extension Videoroom_ConfigResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ConfigResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}proxy_threshold_scale\0\u{3}thumbnail_cache_path\0\u{3}max_concurrent_jobs\0\u{3}enable_auto_tagging\0\u{3}external_editors\0\u{3}max_native_playback_height\0\u{3}proxy_target_height\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}proxy_threshold_scale\0\u{3}thumbnail_cache_path\0\u{3}max_concurrent_jobs\0\u{3}enable_auto_tagging\0\u{4}\u{2}max_native_playback_height\0\u{3}proxy_target_height\0\u{b}external_editors\0\u{c}\u{5}\u{1}")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4159,7 +4137,6 @@ nonisolated extension Videoroom_ConfigResponse: SwiftProtobuf.Message, SwiftProt
       case 2: try { try decoder.decodeSingularStringField(value: &self.thumbnailCachePath) }()
       case 3: try { try decoder.decodeSingularInt32Field(value: &self.maxConcurrentJobs) }()
       case 4: try { try decoder.decodeSingularBoolField(value: &self.enableAutoTagging) }()
-      case 5: try { try decoder.decodeRepeatedMessageField(value: &self.externalEditors) }()
       case 6: try { try decoder.decodeSingularInt32Field(value: &self.maxNativePlaybackHeight) }()
       case 7: try { try decoder.decodeSingularInt32Field(value: &self.proxyTargetHeight) }()
       default: break
@@ -4180,9 +4157,6 @@ nonisolated extension Videoroom_ConfigResponse: SwiftProtobuf.Message, SwiftProt
     if self.enableAutoTagging != false {
       try visitor.visitSingularBoolField(value: self.enableAutoTagging, fieldNumber: 4)
     }
-    if !self.externalEditors.isEmpty {
-      try visitor.visitRepeatedMessageField(value: self.externalEditors, fieldNumber: 5)
-    }
     if self.maxNativePlaybackHeight != 0 {
       try visitor.visitSingularInt32Field(value: self.maxNativePlaybackHeight, fieldNumber: 6)
     }
@@ -4197,59 +4171,8 @@ nonisolated extension Videoroom_ConfigResponse: SwiftProtobuf.Message, SwiftProt
     if lhs.thumbnailCachePath != rhs.thumbnailCachePath {return false}
     if lhs.maxConcurrentJobs != rhs.maxConcurrentJobs {return false}
     if lhs.enableAutoTagging != rhs.enableAutoTagging {return false}
-    if lhs.externalEditors != rhs.externalEditors {return false}
     if lhs.maxNativePlaybackHeight != rhs.maxNativePlaybackHeight {return false}
     if lhs.proxyTargetHeight != rhs.proxyTargetHeight {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
-}
-
-nonisolated extension Videoroom_ExternalEditor: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ExternalEditor"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{3}executable_path\0\u{1}arguments\0\u{1}platforms\0")
-
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
-      case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
-      case 3: try { try decoder.decodeSingularStringField(value: &self.executablePath) }()
-      case 4: try { try decoder.decodeRepeatedStringField(value: &self.arguments) }()
-      case 5: try { try decoder.decodeRepeatedStringField(value: &self.platforms) }()
-      default: break
-      }
-    }
-  }
-
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    if !self.id.isEmpty {
-      try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
-    }
-    if !self.name.isEmpty {
-      try visitor.visitSingularStringField(value: self.name, fieldNumber: 2)
-    }
-    if !self.executablePath.isEmpty {
-      try visitor.visitSingularStringField(value: self.executablePath, fieldNumber: 3)
-    }
-    if !self.arguments.isEmpty {
-      try visitor.visitRepeatedStringField(value: self.arguments, fieldNumber: 4)
-    }
-    if !self.platforms.isEmpty {
-      try visitor.visitRepeatedStringField(value: self.platforms, fieldNumber: 5)
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  static func ==(lhs: Videoroom_ExternalEditor, rhs: Videoroom_ExternalEditor) -> Bool {
-    if lhs.id != rhs.id {return false}
-    if lhs.name != rhs.name {return false}
-    if lhs.executablePath != rhs.executablePath {return false}
-    if lhs.arguments != rhs.arguments {return false}
-    if lhs.platforms != rhs.platforms {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

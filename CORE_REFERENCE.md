@@ -95,7 +95,6 @@ Config struct contains:
 - `thumbnail_cache_path` (platform-specific)
 - `max_concurrent_jobs` (default: 4)
 - `enable_auto_tagging` (future: AI features)
-- `external_editors` (list of configured editors)
 
 ### `service.rs` — gRPC Service Implementation
 Implements all gRPC methods defined in `proto/videoroom.proto`.

@@ -12,7 +12,6 @@ pub struct Config {
     pub thumbnail_cache_path: PathBuf,
     pub max_concurrent_jobs: i32,
     pub enable_auto_tagging: bool,
-    pub external_editors: Vec<ExternalEditor>,
     /// Maximum number of concurrent ffmpeg/ffprobe processes the server will
     /// run at once. Bounds disk/network bandwidth — important for SAN-backed
     /// libraries. 0 disables the throttle. Default = 4.
@@ -43,15 +42,6 @@ pub struct Config {
     /// or changed files into the same settle queue. Set to 0 to disable
     /// the poll fallback entirely. Default = 30 000 ms (30 s).
     pub watch_poll_interval_ms: i64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExternalEditor {
-    pub id: String,
-    pub name: String,
-    pub executable_path: String,
-    pub arguments: Vec<String>,
-    pub platforms: Vec<String>,
 }
 
 /// A user-supplied override for the built-in camera-name mapping table
@@ -107,10 +97,6 @@ impl Config {
             .parse::<i32>()
             .unwrap_or(cpu_default);
 
-        let editors_json = Self::get_config_value(&conn, "external_editors", "{}")?;
-        let external_editors: Vec<ExternalEditor> = serde_json::from_str(&editors_json)
-            .unwrap_or_else(|_| Vec::new());
-
         let max_native_playback_height = Self::get_config_value(&conn, "max_native_playback_height", "2160")?
             .parse::<i32>()
             .unwrap_or(2160)
@@ -140,7 +126,6 @@ impl Config {
             thumbnail_cache_path,
             max_concurrent_jobs: max_jobs,
             enable_auto_tagging: auto_tagging,
-            external_editors,
             max_concurrent_ffmpeg: max_ffmpeg,
             max_native_playback_height,
             proxy_target_height,
@@ -162,10 +147,6 @@ impl Config {
         Self::set_config_value(&conn, "watch_enabled", &self.watch_enabled.to_string())?;
         Self::set_config_value(&conn, "watch_write_settle_ms", &self.watch_write_settle_ms.to_string())?;
         Self::set_config_value(&conn, "watch_poll_interval_ms", &self.watch_poll_interval_ms.to_string())?;
-
-        if let Ok(editors_json) = serde_json::to_string(&self.external_editors) {
-            Self::set_config_value(&conn, "external_editors", &editors_json)?;
-        }
 
         Ok(())
     }
@@ -202,7 +183,6 @@ impl Config {
             thumbnail_cache_path: cache,
             max_concurrent_jobs: 4,
             enable_auto_tagging: false,
-            external_editors: Vec::new(),
             max_concurrent_ffmpeg: crate::concurrency::default_max_concurrent_ffmpeg() as i32,
             max_native_playback_height: 2160,
             proxy_target_height: 720,

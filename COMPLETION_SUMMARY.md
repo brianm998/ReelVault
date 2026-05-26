@@ -322,8 +322,7 @@ cd macos && swift run VideoRoom
 2. **Desktop**: Requires Java 17+ and Gradle build system
 3. **macOS**: Requires proto file compilation (see PROTO_SETUP.md)
 4. **Both**: No QuickLook/Finder integration yet
-5. **Both**: No external editor launching yet
-6. **Both**: No proxy video support for 8K files
+5. **Both**: No proxy video support for 8K files
 
 ## Deployment Path
 

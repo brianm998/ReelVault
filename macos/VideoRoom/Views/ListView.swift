@@ -8,7 +8,6 @@ struct ListView: View {
     @ObservedObject var viewModel: GridViewModel
     @ObservedObject var detailViewModel: DetailViewModel
     var thumbnailHeight: CGFloat = 100
-    var onConfigureEditors: () -> Void = {}
 
     var body: some View {
         ZStack {
@@ -286,26 +285,15 @@ struct ListView: View {
         let resolvedFiles = targetFiles.isEmpty ? [video.openPath] : targetFiles
         let n = resolvedFiles.count
 
-        let registry = EditorRegistry.shared
-
         Button(n == 1 ? "Open with Default Player" : "Open \(n) videos with Default Player") {
-            for path in resolvedFiles { registry.openWithDefault(path) }
+            for path in resolvedFiles {
+                NSWorkspace.shared.open(URL(fileURLWithPath: path))
+            }
         }
 
         if n == 1 {
             Button("Reveal in Finder") {
-                registry.revealInFinder(resolvedFiles[0])
-            }
-        }
-
-        let available = registry.availableEditors
-        if !available.isEmpty {
-            Divider()
-            ForEach(available, id: \.editor.id) { (editor, _) in
-                let suffix = (n > 1 && editor.supportsFileArgs) ? " (\(n) videos)" : ""
-                Button("Open with \(editor.name)\(suffix)") {
-                    registry.launch(editor, files: resolvedFiles)
-                }
+                NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: resolvedFiles[0])])
             }
         }
 
@@ -328,7 +316,7 @@ struct ListView: View {
             }
             .help(video.playableNatively
                 ? "Create a lower-resolution version of this video, saved alongside it."
-                : "This video is above the inline-playback ceiling. Create a lower-resolution proxy so VideoRoom can play it without falling back to an external editor.")
+                : "This video is above the inline-playback ceiling. Create a lower-resolution proxy so VideoRoom can play it inline.")
         }
 
         // "Go to Folder in Library" — longest-prefix match against all
@@ -342,12 +330,6 @@ struct ListView: View {
                 viewModel.setLocationFilter(loc.path)
             }
             .help("Filter the library panel to show only videos from \(loc.path)")
-        }
-
-        Divider()
-
-        Button("Configure External Editors…") {
-            onConfigureEditors()
         }
     }
 }

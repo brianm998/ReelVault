@@ -47,7 +47,6 @@ fun ListScreen(
     viewModel: GridViewModel,
     onVideoSelect: (VideoSummary) -> Unit,
     thumbnailHeight: Dp = 80.dp,
-    onConfigureEditors: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val videos = viewModel.videos.collectAsState()
@@ -212,7 +211,6 @@ fun ListScreen(
                                             else listOf(video.id)
                                         buildVideoContextMenu(
                                             targetFiles = targets,
-                                            onConfigureEditors = onConfigureEditors,
                                             stackVideoId = video.id.takeIf { video.isInGroup },
                                             stackGroupId = video.groupId.takeIf { video.isInGroup },
                                             onRemoveFromStack = { vid, gid ->
@@ -325,7 +323,6 @@ fun ListScreen(
                                                     else listOf(video.id)
                                                 buildVideoContextMenu(
                                                     targetFiles = targets,
-                                                    onConfigureEditors = onConfigureEditors,
                                                     stackVideoId = video.id.takeIf { video.isInGroup },
                                                     stackGroupId = video.groupId.takeIf { video.isInGroup },
                                                     onRemoveFromStack = { vid, gid ->

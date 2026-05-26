@@ -21,10 +21,9 @@ VideoRoom helps you:
 - **Inspect** detailed metadata: codec, resolution, FPS, bitrate, color space,
   HDR, EXIF, GPS, camera/lens model.
 - **Organize** with free-form notes, keywords, and multi-select operations.
-- **Launch** videos in external editors — DaVinci Resolve, Kdenlive, Shotcut,
-  Lightworks, OpenShot, Blender, Premiere Pro, Final Cut Pro, CapCut,
-  Filmora — picked from a right-click menu on any video card. Multi-select
-  to open several at once.
+- **Hand off** clips to external editors by drag-and-drop — drag one or more
+  cards straight from the grid into DaVinci Resolve, Final Cut Pro, Premiere
+  Pro, or any app that accepts file drops.
 - **Multi-catalog** workflows: open / close / switch SQLite catalogs from a
   File menu, with a recent-catalogs list and per-catalog window titles.
 
@@ -97,12 +96,10 @@ NSWorkspace-driven editor launches.
       to reverse direction.
 - [x] Tag/keyword management: create on the fly, apply to multi-selection,
       filter the grid by clicking the `>` chevron.
-- [x] Right-click context menu on every card: Open with Default Player,
-      Reveal in Finder/Explorer, Open with any configured editor, and
-      "Configure External Editors…" — operates on the full multi-selection.
-- [x] External Editors preferences dialog: catalog of 10 supported editors
-      with license badges, install detection, custom-path override, and
-      vendor-homepage links.
+- [x] Right-click context menu on every card: Open with Default Player and
+      Reveal in Finder/Explorer — operates on the full multi-selection.
+- [x] Drag-and-drop hand-off: drag selected cards into any app that accepts
+      file drops (DaVinci Resolve, Final Cut Pro, Premiere Pro, etc.).
 - [x] Multi-catalog flow: File menu with Open / Close / Open Recent,
       first-launch "open a catalog" sheet, persistent recents list, window
       title showing the open catalog's name.

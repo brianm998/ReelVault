@@ -21,8 +21,6 @@ struct GridView: View {
     @ObservedObject var viewModel: GridViewModel
     @ObservedObject var detailViewModel: DetailViewModel
     let thumbnailMinWidth: CGFloat
-    /// Invoked by the context menu's "Configure External Editors…" entry.
-    var onConfigureEditors: () -> Void = {}
 
     var body: some View {
         ZStack {
@@ -224,26 +222,15 @@ struct GridView: View {
         let resolvedFiles = targetFiles.isEmpty ? [video.openPath] : targetFiles
         let n = resolvedFiles.count
 
-        let registry = EditorRegistry.shared
-
         Button(n == 1 ? "Open with Default Player" : "Open \(n) videos with Default Player") {
-            for path in resolvedFiles { registry.openWithDefault(path) }
+            for path in resolvedFiles {
+                NSWorkspace.shared.open(URL(fileURLWithPath: path))
+            }
         }
 
         if n == 1 {
             Button("Reveal in Finder") {
-                registry.revealInFinder(resolvedFiles[0])
-            }
-        }
-
-        let available = registry.availableEditors
-        if !available.isEmpty {
-            Divider()
-            ForEach(available, id: \.editor.id) { (editor, _) in
-                let suffix = (n > 1 && editor.supportsFileArgs) ? " (\(n) videos)" : ""
-                Button("Open with \(editor.name)\(suffix)") {
-                    registry.launch(editor, files: resolvedFiles)
-                }
+                NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: resolvedFiles[0])])
             }
         }
 
@@ -276,7 +263,7 @@ struct GridView: View {
             }
             .help(video.playableNatively
                 ? "Create a lower-resolution version of this video, saved alongside it. Useful for moving the source to slower storage while keeping fast inline playback in VideoRoom."
-                : "This video is above the inline-playback ceiling. Create a lower-resolution proxy so VideoRoom can play it without falling back to an external editor.")
+                : "This video is above the inline-playback ceiling. Create a lower-resolution proxy so VideoRoom can play it inline.")
         }
 
         // "Go to Folder in Library" — identify the library location whose
@@ -329,12 +316,6 @@ struct GridView: View {
                 viewModel.setStackMaster(videoId: video.id, groupId: video.groupId)
             }
             .help("Make this video the representative shown when the stack is collapsed in the grid.")
-        }
-
-        Divider()
-
-        Button("Configure External Editors…") {
-            onConfigureEditors()
         }
     }
 }

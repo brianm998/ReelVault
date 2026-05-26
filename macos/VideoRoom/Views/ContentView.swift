@@ -30,7 +30,6 @@ struct ContentView: View {
     @AppStorage("thumbnailWidth") private var thumbnailWidth: Double = 220
     @State private var showAddLibrarySheet = false
     @State private var showHelpSheet = false
-    @State private var showEditorsSheet = false
     @State private var showWatchSettingsSheet = false
     @State private var showPlaybackSettingsSheet = false
     @State private var showCameraNamesSheet = false
@@ -174,9 +173,6 @@ struct ContentView: View {
                 },
                 onCancel: { gridViewModel.cancelProxyCreation() }
             )
-        }
-        .sheet(isPresented: $showEditorsSheet) {
-            ExternalEditorsDialog(isPresented: $showEditorsSheet)
         }
         .sheet(isPresented: $showCameraNamesSheet) {
             CameraNamesView()
@@ -422,15 +418,6 @@ struct ContentView: View {
             .help(gridViewModel.selectedVideoIds.count >= 2
                   ? "Stack the \(gridViewModel.selectedVideoIds.count) selected videos into a group (⌘G). One representative will be shown in the grid; click its stack badge to expand."
                   : "Shift-click or ⌘-click two or more videos in the grid to enable grouping.")
-
-            // External Editors preferences
-            Button {
-                showEditorsSheet = true
-            } label: {
-                Image(systemName: "wrench.and.screwdriver")
-            }
-            .buttonStyle(.borderless)
-            .help("Configure which external video editors are available in the right-click \"Open with\" menu. See free/paid status and download links for each supported editor.")
 
             // Playback + proxy resolution preferences. Distinct from
             // the watcher settings (separate concept) and from the
@@ -748,8 +735,7 @@ struct ContentView: View {
                 GridView(
                     viewModel: gridViewModel,
                     detailViewModel: detailViewModel,
-                    thumbnailMinWidth: CGFloat(thumbnailWidth),
-                    onConfigureEditors: { showEditorsSheet = true }
+                    thumbnailMinWidth: CGFloat(thumbnailWidth)
                 )
                 .frame(maxWidth: .infinity)
             case .list:
@@ -760,8 +746,7 @@ struct ContentView: View {
                     // matches its grid-mode counterpart in size, so the
                     // size slider scales both views in lockstep instead
                     // of leaving list-mode cards half the width.
-                    thumbnailHeight: CGFloat(thumbnailWidth),
-                    onConfigureEditors: { showEditorsSheet = true }
+                    thumbnailHeight: CGFloat(thumbnailWidth)
                 )
                 .frame(maxWidth: .infinity)
             case .detail:

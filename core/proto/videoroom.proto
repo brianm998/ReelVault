@@ -524,21 +524,17 @@ message ConfigResponse {
   string thumbnail_cache_path = 2;
   int32 max_concurrent_jobs = 3;
   bool enable_auto_tagging = 4;
-  repeated ExternalEditor external_editors = 5;
+  // Reserved: field 5 previously held `repeated ExternalEditor external_editors`,
+  // removed when the external-editor launching feature was retired in favor of
+  // drag-and-drop export.
+  reserved 5;
+  reserved "external_editors";
   // Largest height (in pixels) we'll attempt to play natively in-grid.
   // Videos taller than this are marked "too large to play here" and the
   // user is offered the option to make a proxy. Default 2160 (4K).
   int32 max_native_playback_height = 6;
   // Default height (px) for newly-generated proxies. Default 720.
   int32 proxy_target_height = 7;
-}
-
-message ExternalEditor {
-  string id = 1;
-  string name = 2;
-  string executable_path = 3;
-  repeated string arguments = 4;
-  repeated string platforms = 5;
 }
 
 message UpdateConfigRequest {

@@ -137,7 +137,6 @@ The macOS client will connect to `localhost:50051` via gRPC.
 | Cmd+, | Open preferences |
 | Escape | Deselect video |
 | Arrow Keys | Navigate grid (future) |
-| Enter | Open in external editor (future) |
 
 ## Performance Considerations
 

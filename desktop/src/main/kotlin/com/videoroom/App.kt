@@ -370,8 +370,6 @@ fun VideoRoomApp(
     var accentScheme by remember {
         mutableStateOf(AccentScheme.fromString(uiPrefs.get("accentScheme", null)))
     }
-    // External editors preferences dialog visibility.
-    var showEditorsDialog by remember { mutableStateOf(false) }
     // Live-updates / file-watcher settings dialog visibility.
     var showWatchSettingsDialog by remember { mutableStateOf(false) }
     // Inline-playback / proxy-resolution preferences dialog visibility.
@@ -648,7 +646,6 @@ fun VideoRoomApp(
                         onRequestAddLibrary = { showAddLibraryDialog = true },
                         onSearchFocusChanged = onSearchFocusChanged,
                         onGroupSelected = { gridViewModel.groupSelectedVideos() },
-                        onConfigureEditors = { showEditorsDialog = true },
                         onConfigureWatcher = { showWatchSettingsDialog = true },
                         onConfigureCameraNames = { showCameraNamesDialog = true },
                         onConfigureAppearance = { showAppearanceDialog = true },
@@ -963,7 +960,6 @@ fun VideoRoomApp(
                                     detailViewModel.loadMetadata(video.id)
                                 },
                                 thumbnailMinWidth = thumbnailWidth,
-                                onConfigureEditors = { showEditorsDialog = true },
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxHeight()
@@ -981,7 +977,6 @@ fun VideoRoomApp(
                                 // of leaving list-mode cards half the
                                 // width.
                                 thumbnailHeight = thumbnailWidth,
-                                onConfigureEditors = { showEditorsDialog = true },
                                 modifier = Modifier.weight(1f).fillMaxHeight()
                             )
                             ViewMode.DETAIL -> DetailViewScreen(
@@ -1074,13 +1069,6 @@ fun VideoRoomApp(
                         },
                     )
                 }
-                // External editors preferences dialog
-                if (showEditorsDialog) {
-                    com.videoroom.ui.screens.ExternalEditorsDialog(
-                        onDismiss = { showEditorsDialog = false }
-                    )
-                }
-
                 // Help dialog
                 if (showHelpDialog) {
                     HelpDialog(onDismiss = { showHelpDialog = false })
@@ -1465,10 +1453,9 @@ fun HelpDialog(onDismiss: () -> Unit) {
                         )
                     }
 
-                    HelpSection(icon = Icons.Default.OpenInNew, title = "External editors") {
+                    HelpSection(icon = Icons.Default.OpenInNew, title = "Hand off to an editor") {
                         HelpBullets(listOf(
                             "Drag one or more cards from the grid or list directly into DaVinci Resolve, Final Cut Pro, Premiere Pro, or any app that accepts file drops",
-                            "Configure editors via the wrench icon in the top bar — enable specific apps and check installation status",
                             "Double-click a row in List view to open it with the system's default media player",
                         ))
                     }
@@ -1681,7 +1668,6 @@ fun VideoRoomTopBar(
     onSearch: (String) -> Unit,
     onRequestAddLibrary: () -> Unit,
     onGroupSelected: () -> Unit = {},
-    onConfigureEditors: () -> Unit = {},
     /** Opens the watcher (live-updates) preferences dialog. */
     onConfigureWatcher: () -> Unit = {},
     /** Opens the camera-names editor dialog. */
@@ -1889,20 +1875,6 @@ fun VideoRoomTopBar(
                                     modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
                                 )
                             }
-                        }
-                    }
-
-                    // External editors preferences
-                    com.videoroom.ui.components.Tooltip(
-                        text = "Configure which external video editors are available " +
-                            "in the right-click \"Open with\" menu. See free/paid status " +
-                            "and download links for each supported editor."
-                    ) {
-                        IconButton(onClick = onConfigureEditors) {
-                            Icon(
-                                imageVector = Icons.Default.Build,
-                                contentDescription = "External Editors"
-                            )
                         }
                     }
 

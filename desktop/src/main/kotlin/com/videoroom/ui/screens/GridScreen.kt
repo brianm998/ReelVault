@@ -18,13 +18,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.videoroom.data.editors.EditorRegistry
-import com.videoroom.data.editors.ExternalEditor
 import com.videoroom.data.models.LibraryLocation
 import com.videoroom.data.models.VideoSummary
 import com.videoroom.ui.components.ComposeVideoPlayer
 import com.videoroom.ui.components.VideoCard
 import com.videoroom.ui.theme.VideoRoomSpacing
+import com.videoroom.util.openWithDefault
+import com.videoroom.util.revealInFileManager
 import com.videoroom.viewmodel.GridViewModel
 import org.slf4j.LoggerFactory
 
@@ -36,8 +36,6 @@ fun GridScreen(
     onVideoSelect: (VideoSummary) -> Unit,
     /** Minimum width of each grid cell — also controls how many columns appear. */
     thumbnailMinWidth: androidx.compose.ui.unit.Dp = 220.dp,
-    /** Opens the "External Editors" preferences dialog from the context menu. */
-    onConfigureEditors: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val videos = viewModel.videos.collectAsState()
@@ -285,7 +283,6 @@ fun GridScreen(
                                     else listOf(video.id)
                                 buildVideoContextMenu(
                                     targetFiles = targets,
-                                    onConfigureEditors = onConfigureEditors,
                                     // Stack actions are surfaced only when
                                     // the right-clicked card itself is in a
                                     // stack — even within a multi-selection,
@@ -468,13 +465,10 @@ internal fun computeVisualRange(
  * a multi-selection, this is every selected file; otherwise just the one card.
  *
  * Compose Desktop's [ContextMenuItem] doesn't support submenus, so we render a
- * flat list. Disabled editors and editors that aren't installed are silently
- * omitted — the "Configure External Editors…" entry at the bottom is the
- * canonical way to enable more.
+ * flat list.
  */
 internal fun buildVideoContextMenu(
     targetFiles: List<String>,
-    onConfigureEditors: () -> Unit,
     /** Video ID of the right-clicked card *if* it sits in a stack — null
      *  otherwise. Used to surface "Remove from stack" / "Unstack". */
     stackVideoId: String? = null,
@@ -512,31 +506,17 @@ internal fun buildVideoContextMenu(
     onSetStackMaster: ((String, String) -> Unit)? = null,
 ): List<androidx.compose.foundation.ContextMenuItem> {
     val items = mutableListOf<androidx.compose.foundation.ContextMenuItem>()
-    val registry = EditorRegistry.Default
     val n = targetFiles.size
-    val plural = if (n == 1) "" else "s"
 
     items += androidx.compose.foundation.ContextMenuItem(
         label = if (n == 1) "Open with Default Player" else "Open $n videos with Default Player"
     ) {
-        targetFiles.forEach { registry.openWithDefault(it) }
+        targetFiles.forEach { openWithDefault(it) }
     }
 
     if (n == 1) {
         items += androidx.compose.foundation.ContextMenuItem("Reveal in File Manager") {
-            registry.revealInFileManager(targetFiles.first())
-        }
-    }
-
-    // One entry per enabled+installed external editor.
-    val available = registry.availableEditors()
-    if (available.isNotEmpty()) {
-        available.forEach { (editor, _) ->
-            items += androidx.compose.foundation.ContextMenuItem(
-                label = "Open with ${editor.name}" + (if (n > 1 && editor.supportsFileArgs) " ($n video$plural)" else "")
-            ) {
-                registry.launch(editor, targetFiles)
-            }
+            revealInFileManager(targetFiles.first())
         }
     }
 
@@ -609,10 +589,6 @@ internal fun buildVideoContextMenu(
         items += androidx.compose.foundation.ContextMenuItem("Set as Stack Master") {
             onSetStackMaster(vid, gid)
         }
-    }
-
-    items += androidx.compose.foundation.ContextMenuItem("Configure External Editors…") {
-        onConfigureEditors()
     }
 
     return items

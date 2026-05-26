@@ -414,12 +414,10 @@ self.error = "Failed to load videos: \(error.localizedDescription)"
 
 1. **Thumbnails**: Fetched but not displayed yet (requires proto integration)
 2. **Finder Integration**: QuickLook and Finder extensions not implemented
-3. **External Editors**: Launching external apps not yet wired
-4. **Keyboard Navigation**: Arrow keys and vim keys not implemented
-5. **Drag & Drop**: File dragging not supported
-6. **Library Management**: Add location UI not implemented
-7. **Smart Collections**: Filter UI not implemented
-8. **Proxies**: No proxy video support for 8K+ files
+3. **Keyboard Navigation**: Arrow keys and vim keys not implemented
+4. **Library Management**: Add location UI not implemented
+5. **Smart Collections**: Filter UI not implemented
+6. **Proxies**: No proxy video support for 8K+ files
 
 ## Future Enhancements
 

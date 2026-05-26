@@ -1694,25 +1694,11 @@ impl VideoRoomTrait for VideoRoomService {
         &self,
         _request: Request<GetConfigRequest>,
     ) -> std::result::Result<Response<ConfigResponse>, Status> {
-        let external_editors = self
-            .config
-            .external_editors
-            .iter()
-            .map(|e| ExternalEditor {
-                id: e.id.clone(),
-                name: e.name.clone(),
-                executable_path: e.executable_path.clone(),
-                arguments: e.arguments.clone(),
-                platforms: e.platforms.clone(),
-            })
-            .collect();
-
         Ok(Response::new(ConfigResponse {
             proxy_threshold_scale: self.config.proxy_threshold_scale,
             thumbnail_cache_path: self.config.thumbnail_cache_path.to_string_lossy().to_string(),
             max_concurrent_jobs: self.config.max_concurrent_jobs,
             enable_auto_tagging: self.config.enable_auto_tagging,
-            external_editors,
             max_native_playback_height: self.config.max_native_playback_height,
             proxy_target_height: self.config.proxy_target_height,
         }))

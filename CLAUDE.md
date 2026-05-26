@@ -11,7 +11,7 @@ The core philosophy: **fast, native browsing of massive video collections withou
 - Metadata extractor and organizer
 - Tag, collection, and search engine
 - Thumbnail preview generator
-- External editor launcher
+- Drag-and-drop hand-off to external editors (no launching from VideoRoom)
 - Cross-platform (macOS, Linux, Windows)
 
 ## What VideoRoom Is NOT
@@ -191,7 +191,6 @@ CREATE VIRTUAL TABLE video_search USING fts5(
   - Tag management
   - Basic search
 - [ ] Tagging and collections
-- [ ] External editor launching
 - [ ] Auto-update via GitHub releases
 
 ### Phase 2 — Polish
@@ -290,38 +289,11 @@ service VideoRoom {
   
   // Thumbnails
   rpc GetThumbnail(GetThumbnailRequest) returns (stream ThumbnailData);
-  
-  // External Editors
-  rpc LaunchEditor(LaunchEditorRequest) returns (Response);
 }
 ```
 
----
-
-## External Editor Configuration
-
-Store in a config file (JSON):
-
-```json
-{
-  "externalEditors": [
-    {
-      "id": "davinci-resolve",
-      "name": "DaVinci Resolve",
-      "executablePath": "/Applications/DaVinci Resolve.app/Contents/MacOS/DaVinci Resolve",
-      "arguments": ["{filepath}"],
-      "platforms": ["macos", "linux", "windows"]
-    },
-    {
-      "id": "premiere",
-      "name": "Adobe Premiere Pro",
-      "executablePath": "C:\\Program Files\\Adobe\\Adobe Premiere Pro\\Adobe Premiere Pro.exe",
-      "arguments": ["{filepath}"],
-      "platforms": ["windows"]
-    }
-  ]
-}
-```
+Editor hand-off is done via drag-and-drop from the grid into the target
+application — VideoRoom does not launch external editors itself.
 
 ---
 
@@ -359,7 +331,7 @@ Design the core to support:
 2. **Rust backend**: Type safety, performance, cross-platform
 3. **Two frontends**: macOS gets native Swift, others get Compose
 4. **No editing**: Clarity of purpose, easier to maintain
-5. **External editor launch**: Reuse existing professional tools
+5. **Drag-and-drop hand-off**: Reuse existing professional tools by dragging clips out of VideoRoom; the app does not launch editors itself
 6. **Proxy generation (configurable)**: Performance on 8K+ footage
 
 ---
