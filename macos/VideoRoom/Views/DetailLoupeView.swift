@@ -248,10 +248,12 @@ struct DetailLoupeView: View {
         // visual and 100ms granularity is plenty.
         let interval = CMTime(seconds: 0.1, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
         timeObserver = p.addPeriodicTimeObserver(forInterval: interval, queue: .main) { time in
-            currentTimeSec = time.seconds.isFinite ? time.seconds : 0
-            if let item = p.currentItem {
-                let dur = item.duration.seconds
-                if dur.isFinite && dur > 0 { durationSec = dur }
+            MainActor.assumeIsolated {
+                currentTimeSec = time.seconds.isFinite ? time.seconds : 0
+                if let item = p.currentItem {
+                    let dur = item.duration.seconds
+                    if dur.isFinite && dur > 0 { durationSec = dur }
+                }
             }
         }
     }

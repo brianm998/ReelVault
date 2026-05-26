@@ -161,10 +161,10 @@ class GridViewModel: ObservableObject {
         catalogEventsTask?.cancel()
         catalogEventsTask = Task { [weak self] in
             guard let self else { return }
-            let stream = await self.repository.subscribeCatalogEvents()
+            let stream = self.repository.subscribeCatalogEvents()
             for await event in stream {
                 if Task.isCancelled { break }
-                await self.handleCatalogEvent(event)
+                self.handleCatalogEvent(event)
             }
             // Stream ended. If we still have a catalog open and the user
             // hasn't disabled live updates, retry once after a short
@@ -1096,6 +1096,31 @@ class GridViewModel: ObservableObject {
                 for m in members where m.hasThumbnail { loadThumbnail(videoId: m.id) }
             } catch {
                 NSLog("Failed to load group members: \(error)")
+            }
+        }
+    }
+
+    /// Tracks groupIds whose members are currently being prefetched, so the
+    /// list-row views can fire-and-forget on appear without flooding the
+    /// daemon with duplicate ListGroupMembers RPCs.
+    private var stackMembersLoading: Set<String> = []
+
+    /// Populate `expandedGroupMembers` for `groupId` without expanding the
+    /// stack. Used by the list view to render the names of a collapsed
+    /// stack's members in the row's info column alongside the other
+    /// details. The cache is shared with `toggleStackExpansion` so a
+    /// subsequent expand reuses the already-fetched members.
+    func ensureStackMembersLoaded(_ groupId: String) {
+        guard !groupId.isEmpty else { return }
+        if expandedGroupMembers[groupId] != nil { return }
+        if !stackMembersLoading.insert(groupId).inserted { return }
+        Task {
+            defer { stackMembersLoading.remove(groupId) }
+            do {
+                let (members, _) = try await repository.listGroupMembers(groupId: groupId)
+                expandedGroupMembers[groupId] = members
+            } catch {
+                NSLog("Failed to preload group members: \(error)")
             }
         }
     }

@@ -612,7 +612,7 @@ private struct NativeVerticalSlider: NSViewRepresentable {
         var parent: NativeVerticalSlider
         init(_ parent: NativeVerticalSlider) { self.parent = parent }
 
-        @objc func valueChanged(_ sender: NSSlider) {
+        @objc @MainActor func valueChanged(_ sender: NSSlider) {
             parent.value = sender.doubleValue
         }
     }
