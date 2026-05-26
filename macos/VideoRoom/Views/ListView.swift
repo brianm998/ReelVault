@@ -3,6 +3,7 @@
 
 import SwiftUI
 import AppKit
+import AVKit
 
 struct ListView: View {
     @ObservedObject var viewModel: GridViewModel
@@ -102,7 +103,16 @@ struct ListView: View {
                                 viewModel.topSlots = slots
                                 viewModel.saveGridSettings()
                             },
-                            dragPaths: rowDragPaths
+                            dragPaths: rowDragPaths,
+                            isPlaying: viewModel.playingVideoId == item.video.id,
+                            playPath: viewModel.playingVideoId == item.video.id
+                                ? viewModel.playingVideoPath : nil,
+                            onPlayClick: {
+                                viewModel.playVideoPreferProxy(videoId: item.video.id)
+                            },
+                            onStopPlayback: {
+                                viewModel.stopPlayback()
+                            }
                         )
                         .id(displayRow.key)
                         .contextMenu {
@@ -358,8 +368,14 @@ struct VideoListRowView: View {
     /// of a multi-selection, every selected file is included so the receiving
     /// app gets the full set in one drop.
     var dragPaths: [String] = []
+    var isPlaying: Bool = false
+    /// Override URL for inline playback (proxy path). nil → `video.openPath`.
+    var playPath: String? = nil
+    var onPlayClick: () -> Void = {}
+    var onStopPlayback: () -> Void = {}
 
     @State private var isHovered = false
+    @State private var avPlayer: AVPlayer? = nil
     /// Top-stat-band slot whose picker popover is currently open, or
     /// `nil` if none. Same single-source pattern as the grid card.
     @State private var openSlotPickerIndex: Int? = nil
@@ -438,6 +454,27 @@ struct VideoListRowView: View {
             .background(Color(.windowBackgroundColor))
             .cornerRadius(6)
             .shadow(radius: 2)
+        }
+        .onChange(of: isPlaying) { _, playing in
+            if playing {
+                let url = URL(fileURLWithPath: playPath ?? video.openPath)
+                let player = AVPlayer(url: url)
+                player.automaticallyWaitsToMinimizeStalling = false
+                player.play()
+                avPlayer = player
+            } else {
+                avPlayer?.pause()
+                avPlayer = nil
+            }
+        }
+        .onAppear {
+            if isPlaying && avPlayer == nil {
+                let url = URL(fileURLWithPath: playPath ?? video.openPath)
+                let player = AVPlayer(url: url)
+                player.automaticallyWaitsToMinimizeStalling = false
+                player.play()
+                avPlayer = player
+            }
         }
     }
 
@@ -715,6 +752,45 @@ struct VideoListRowView: View {
                 }
             }
             .frame(width: cardWidth, height: thumbnailHeight)
+            // Player surface layered on top of the thumbnail.
+            .overlay {
+                if isPlaying, let player = avPlayer {
+                    AVPlayerNSView(player: player)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
+                }
+            }
+            // Play button — center of thumbnail when hovered + selected + not playing.
+            .overlay(alignment: .center) {
+                if !isPlaying && isPrimarySelected && isHovered {
+                    Button(action: onPlayClick) {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white)
+                            .frame(width: 36, height: 36)
+                            .background(Color.black.opacity(0.55))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Play this video inline")
+                }
+            }
+            // Stop button — top-trailing corner while playing.
+            .overlay(alignment: .topTrailing) {
+                if isPlaying {
+                    Button(action: onStopPlayback) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 22, height: 22)
+                            .background(Color.black.opacity(0.65))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(3)
+                    .help("Stop inline playback")
+                }
+            }
 
             // Stack badge
             if video.isInGroup {

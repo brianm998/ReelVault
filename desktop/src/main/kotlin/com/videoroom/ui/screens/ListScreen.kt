@@ -9,8 +9,11 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -32,7 +35,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 import com.videoroom.LocalAppWindow
 import com.videoroom.LocalShiftPressed
 import com.videoroom.data.models.VideoSummary
+import com.videoroom.ui.components.ComposeVideoPlayer
 import com.videoroom.ui.components.Tooltip
+import com.videoroom.ui.components.VlcUnavailableOverlay
 import com.videoroom.ui.theme.VideoRoomSpacing
 import com.videoroom.util.FileDragSource
 import com.videoroom.viewmodel.GridViewModel
@@ -63,6 +68,19 @@ fun ListScreen(
     val shiftPressed = LocalShiftPressed.current
     val listColumns = viewModel.listColumns.collectAsState()
     val topSlots = viewModel.topSlots.collectAsState()
+    val playingVideoId = viewModel.playingVideoId.collectAsState()
+    val playingVideoPath = viewModel.playingVideoPath.collectAsState()
+    val vlcAvailable = remember { ComposeVideoPlayer.isLibVlcAvailable }
+    val inlinePlayer = remember { ComposeVideoPlayer() }
+    DisposableEffect(Unit) { onDispose { inlinePlayer.release() } }
+    LaunchedEffect(playingVideoId.value) {
+        val id = playingVideoId.value ?: run { inlinePlayer.stop(); return@LaunchedEffect }
+        val path = playingVideoPath.value
+            ?: videos.value.find { it.id == id }?.openPath
+            ?: return@LaunchedEffect
+        inlinePlayer.load(path, playImmediately = true)
+    }
+    var showVlcErrorDialog by remember { mutableStateOf(false) }
 
     val rendered: List<GridItem> = remember(
         videos.value,
@@ -94,6 +112,47 @@ fun ListScreen(
             }
         }
         if (idx >= 0) listState.scrollToItem(idx)
+    }
+
+    if (showVlcErrorDialog) {
+        val osName = System.getProperty("os.name") ?: ""
+        val url = when {
+            osName.contains("Mac", ignoreCase = true) ->
+                "https://www.videolan.org/vlc/download-macosx.html"
+            osName.contains("Windows", ignoreCase = true) ->
+                "https://www.videolan.org/vlc/download-windows.html"
+            else -> "https://www.videolan.org/vlc/"
+        }
+        AlertDialog(
+            onDismissRequest = { showVlcErrorDialog = false },
+            icon = {
+                Icon(
+                    Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { Text("VLC not installed") },
+            text = {
+                Text(
+                    "Inline video playback requires VLC (libvlc) to be installed " +
+                    "on this machine."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    java.awt.Desktop.getDesktop().browse(java.net.URI(url))
+                    showVlcErrorDialog = false
+                }) {
+                    Text("Download VLC")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showVlcErrorDialog = false }) {
+                    Text("Dismiss")
+                }
+            }
+        )
     }
 
     Column(modifier = modifier.fillMaxSize()) {
@@ -267,7 +326,20 @@ fun ListScreen(
                                             } else {
                                                 listOf(video.openPath)
                                             }
-                                        }
+                                        },
+                                        isPlayingInline = playingVideoId.value == video.id,
+                                        inlinePlayer = inlinePlayer,
+                                        playEnabled = vlcAvailable,
+                                        onPlayClick = {
+                                            when {
+                                                !vlcAvailable           -> showVlcErrorDialog = true
+                                                !inlinePlayer.available -> showVlcErrorDialog = true
+                                                video.playableNatively  -> viewModel.playVideo(video.id)
+                                                video.proxyCount > 0    -> viewModel.playVideoPreferProxy(video.id)
+                                                else                    -> viewModel.requestCreateProxy(video.id)
+                                            }
+                                        },
+                                        onStopPlayback = { viewModel.stopPlayback() },
                                     )
                                 }
 
@@ -443,6 +515,11 @@ fun VideoListRow(
      * app. When empty, the row's own [item.video.openPath] is used.
      */
     dragPaths: List<String> = emptyList(),
+    isPlayingInline: Boolean = false,
+    inlinePlayer: ComposeVideoPlayer? = null,
+    playEnabled: Boolean = true,
+    onPlayClick: () -> Unit = {},
+    onStopPlayback: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val video = item.video
@@ -463,6 +540,9 @@ fun VideoListRow(
 
     // FileDragSource is stateless between gestures.
     val fileDragSource = remember { FileDragSource() }
+
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
 
     // Lightroom band palette — mirrors the grid card so list rows and
     // grid cards share visual language. The middle row picks up the
@@ -500,6 +580,7 @@ fun VideoListRow(
     // gestures so clicking anywhere selects the video.
     val outerModifier = modifier
         .fillMaxWidth()
+        .hoverable(interactionSource)
         // Drag-out: detect drag motion in Compose and hand off to AWT.
         .pointerInput(dragPaths, video.openPath) {
             awaitEachGesture {
@@ -578,6 +659,72 @@ fun VideoListRow(
                         modifier = Modifier.size(24.dp),
                         tint = MaterialTheme.colorScheme.outline
                     )
+                }
+                // Player surface layered on top of thumbnail.
+                if (isPlayingInline && inlinePlayer?.available == true) {
+                    inlinePlayer.Surface(modifier = Modifier.fillMaxSize())
+                    VlcUnavailableOverlay(player = inlinePlayer)
+                } else if (isPlayingInline) {
+                    VlcUnavailableOverlay()
+                }
+                // Play-button overlay — visible on hover when selected and not playing.
+                val canPlayInline = video.playableNatively || video.hasProxies
+                if (!isPlayingInline && isSelected && isHovered && (canPlayInline || !playEnabled)) {
+                    Tooltip(text = if (playEnabled) "Play inline" else "Install VLC to enable inline playback") {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(
+                                    Color.Black.copy(alpha = if (playEnabled) 0.55f else 0.35f),
+                                    RoundedCornerShape(50)
+                                )
+                                .pointerInput(onPlayClick, playEnabled) {
+                                    awaitEachGesture {
+                                        val down = awaitFirstDown(requireUnconsumed = false)
+                                        down.consume()
+                                        val up = waitForUpOrCancellation()
+                                        if (up != null) { up.consume(); onPlayClick() }
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = if (playEnabled) "Play inline" else "VLC not installed",
+                                modifier = Modifier.size(20.dp),
+                                tint = if (playEnabled) Color.White else Color.White.copy(alpha = 0.45f),
+                            )
+                        }
+                    }
+                }
+                // Stop button — top-end corner while playing.
+                if (isPlayingInline) {
+                    Tooltip(
+                        text = "Stop playback",
+                        modifier = Modifier.align(Alignment.TopEnd).padding(3.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(22.dp)
+                                .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(50))
+                                .pointerInput(onStopPlayback) {
+                                    awaitEachGesture {
+                                        val down = awaitFirstDown(requireUnconsumed = false)
+                                        down.consume()
+                                        val up = waitForUpOrCancellation()
+                                        if (up != null) { up.consume(); onStopPlayback() }
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Stop playback",
+                                modifier = Modifier.size(12.dp),
+                                tint = Color.White,
+                            )
+                        }
+                    }
                 }
                 // Stack count badge for collapsed group representatives.
                 if (video.isInGroup) {
