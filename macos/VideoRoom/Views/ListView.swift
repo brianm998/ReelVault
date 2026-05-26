@@ -74,6 +74,12 @@ struct ListView: View {
                             }
                             return [item.video.openPath]
                         }()
+                        let stackMemberFilenames: [String] = {
+                            guard item.video.isInGroup else { return [] }
+                            return (viewModel.expandedGroupMembers[item.video.groupId] ?? [])
+                                .filter { $0.id != item.video.id }
+                                .map { $0.filename }
+                        }()
                         VideoListRowView(
                             item: item,
                             thumbnail: viewModel.thumbnails[item.video.id],
@@ -83,6 +89,7 @@ struct ListView: View {
                             isInMultiSelection: viewModel.selectedVideoIds.contains(item.video.id),
                             isAnchor: viewModel.anchorVideoId == item.video.id && viewModel.selectedVideoIds.count > 1,
                             topSlots: viewModel.topSlots,
+                            stackMemberFilenames: stackMemberFilenames,
                             onClick: { shift, toggle in
                                 handleClick(item: item, rendered: rendered, shift: shift, toggle: toggle)
                             },
@@ -121,6 +128,12 @@ struct ListView: View {
                         .onAppear {
                             if item.video.hasThumbnail {
                                 viewModel.loadThumbnail(videoId: item.video.id)
+                            }
+                            if item.video.isInGroup {
+                                // Collapsed stack reps surface their members
+                                // in the info column; cache is shared with
+                                // the expand path.
+                                viewModel.ensureStackMembersLoaded(item.video.groupId)
                             }
                             if index >= displayRows.count - 5 && viewModel.hasMore {
                                 viewModel.loadMore()
@@ -357,6 +370,11 @@ struct VideoListRowView: View {
     /// Same four catalog-scoped top-of-card stat-slot choices the grid uses.
     /// Each entry is a `GridStatKey.rawValue`; unknown strings render as blank.
     var topSlots: [String] = []
+    /// Filenames of the other members of this row's stack — empty when the
+    /// video isn't in a stack or the members haven't been fetched yet.
+    /// Rendered in the info column on collapsed-stack reps so the user
+    /// can see what the stack contains without expanding it.
+    var stackMemberFilenames: [String] = []
     let onClick: (_ shift: Bool, _ toggle: Bool) -> Void
     let onDoubleClick: () -> Void
     let onStackBadgeClick: () -> Void
@@ -551,6 +569,19 @@ struct VideoListRowView: View {
                 .padding(.vertical, 2)
                 .background(Color(red: 0.25, green: 0.55, blue: 0.55))
                 .cornerRadius(4)
+            }
+
+            // Collapsed stack: list the other members of the stack so the
+            // user can see what's inside without expanding. Skipped when
+            // the row is expanded (members are shown as cards instead) or
+            // when the prefetch hasn't completed yet.
+            if !isInExpandedStack && !stackMemberFilenames.isEmpty {
+                Text("Stack: \(stackMemberFilenames.joined(separator: ", "))")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .lineLimit(3)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(.top, 2)
@@ -919,11 +950,15 @@ struct VideoListHorizontalCardView: View {
                         .stroke(cardBorderColor, lineWidth: 1)
                         .allowsHitTesting(false)
                 )
+            // Stack-member names are usually long enough that the truncated
+            // cardWidth-bound label clips them — hovering reveals the full
+            // name without needing to expand the card.
             Text(video.filename)
                 .font(.system(size: 10))
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .frame(width: cardWidth, alignment: .leading)
+                .help(video.filename)
         }
         .contentShape(Rectangle())
         .onTapGesture(count: 2) { onDoubleClick() }

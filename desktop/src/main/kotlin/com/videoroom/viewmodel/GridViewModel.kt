@@ -1223,6 +1223,35 @@ class GridViewModel(
         }
     }
 
+    /** Tracks groupIds whose members are currently being prefetched, so the
+     *  list-row composables can fire-and-forget from LaunchedEffect without
+     *  flooding the daemon with duplicate ListGroupMembers RPCs. */
+    private val stackMembersLoading = mutableSetOf<String>()
+
+    /**
+     * Populate [expandedGroupMembers] for [groupId] without expanding the
+     * stack. Used by the list view to render the names of a collapsed
+     * stack's members in the row's info column alongside the other
+     * details. The cache is shared with [toggleStackExpansion] so a
+     * subsequent expand reuses the already-fetched members.
+     */
+    fun ensureStackMembersLoaded(groupId: String) {
+        if (groupId.isEmpty()) return
+        if (_expandedGroupMembers.value.containsKey(groupId)) return
+        if (!stackMembersLoading.add(groupId)) return
+        viewModelScope.launch {
+            try {
+                val (members, _) = repository.listGroupMembers(groupId)
+                _expandedGroupMembers.value =
+                    _expandedGroupMembers.value + (groupId to members)
+            } catch (e: Exception) {
+                logger.warn("Failed to preload members for group $groupId", e)
+            } finally {
+                stackMembersLoading.remove(groupId)
+            }
+        }
+    }
+
     /** Collapse all expanded stacks (useful when sort/filter changes). */
     private fun collapseAllStacks() {
         _expandedGroupIds.value = emptySet()

@@ -252,6 +252,16 @@ fun ListScreen(
                                     }
                                 }
 
+                                // Collapsed stack reps surface their members
+                                // alongside the row's other details, so trigger
+                                // a one-shot prefetch when the row scrolls into
+                                // view. Cache is shared with the expand path.
+                                if (video.isInGroup) {
+                                    LaunchedEffect(video.groupId) {
+                                        viewModel.ensureStackMembersLoaded(video.groupId)
+                                    }
+                                }
+
                                 val contextMenuState = remember {
                                     androidx.compose.foundation.ContextMenuState()
                                 }
@@ -302,6 +312,12 @@ fun ListScreen(
                                         thumbnailBytes = thumbnails.value[video.id],
                                         thumbnailHeight = thumbnailHeight,
                                         visibleColumns = listColumns.value,
+                                        stackMemberFilenames = if (video.isInGroup) {
+                                            expandedMembers.value[video.groupId]
+                                                ?.filter { it.id != video.id }
+                                                ?.map { it.filename }
+                                                ?: emptyList()
+                                        } else emptyList(),
                                         onStackToggle = { viewModel.toggleStackExpansion(video.groupId) },
                                         onClick = { shiftFromEvent, toggleFromEvent ->
                                             val shift = shiftFromEvent || shiftPressed
@@ -505,6 +521,13 @@ fun VideoListRow(
     thumbnailBytes: ByteArray? = null,
     thumbnailHeight: Dp = 80.dp,
     visibleColumns: Set<String> = emptySet(),
+    /**
+     * Filenames of the other members of this row's stack — empty when
+     * the video isn't in a stack or the members haven't been fetched
+     * yet. Rendered in the info column on collapsed-stack reps so the
+     * user can see what the stack contains without expanding it.
+     */
+    stackMemberFilenames: List<String> = emptyList(),
     onStackToggle: () -> Unit = {},
     onClick: (shiftPressed: Boolean, togglePressed: Boolean) -> Unit = { _, _ -> },
     onDoubleClick: () -> Unit = {},
@@ -874,6 +897,20 @@ fun VideoListRow(
                     )
                 }
             }
+            // Collapsed stack: list the other members of the stack so the
+            // user can see what's inside without expanding. Skipped when
+            // the row is expanded (members are shown as cards instead) or
+            // when the prefetch hasn't completed yet.
+            if (!isInExpandedStack && stackMemberFilenames.isNotEmpty()) {
+                Text(
+                    text = "Stack: ${stackMemberFilenames.joinToString(", ")}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 }
@@ -1177,16 +1214,21 @@ private fun VideoListHorizontalCard(
                 }
             }
         }
-        // Filename label below the card
-        Text(
-            text = video.filename,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .width(cardWidth)
-                .padding(top = 2.dp)
-        )
+        // Filename label below the card. Wrapped in a Tooltip because
+        // stack-member names are usually long enough that the truncated
+        // cardWidth-bound label clips them — hovering reveals the full
+        // name without needing to expand the card.
+        com.videoroom.ui.components.Tooltip(text = video.filename) {
+            Text(
+                text = video.filename,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .width(cardWidth)
+                    .padding(top = 2.dp)
+            )
+        }
     }
 }
