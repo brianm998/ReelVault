@@ -47,7 +47,7 @@ impl MetadataExtractor {
         // can saturate a SAN if too many run at once.
         let _permit = crate::concurrency::acquire_ffmpeg_permit();
         let output = Command::new("ffprobe")
-            .args(&[
+            .args([
                 "-v",
                 "error",
                 "-show_format",

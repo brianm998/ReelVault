@@ -440,7 +440,7 @@ fn sweep_pending(
                     .lock()
                     .map(|mut m| {
                         let prev = m.insert(path.clone(), size_now);
-                        prev.map_or(true, |prev_size| prev_size != size_now)
+                        prev != Some(size_now)
                     })
                     .unwrap_or(true);
                 if first_failure {

@@ -1206,6 +1206,7 @@ impl Database {
     ///
     /// All filters AND together — a video must pass every non-empty filter to
     /// be included. `filter_capture_year == 0` means "no year filter".
+    #[allow(clippy::too_many_arguments)]
     pub fn list_videos_grouped(
         &self,
         limit: i64,
@@ -1307,8 +1308,7 @@ impl Database {
         let (tag_clause, tag_count_param) = if tag_ids.is_empty() {
             (String::new(), 0i64)
         } else {
-            let placeholders = std::iter::repeat("?")
-                .take(tag_ids.len())
+            let placeholders = std::iter::repeat_n("?", tag_ids.len())
                 .collect::<Vec<_>>()
                 .join(", ");
             // EXISTS subquery — counts how many of the requested tags this
@@ -1717,6 +1717,7 @@ impl Database {
     /// List every proxy linked to `video_id` via the proxy_links
     /// junction table. Returns the proxy rows + the link's confidence
     /// + auto-detected flag, sorted by descending pixel count so the
+    ///
     /// highest-res proxy comes first.
     pub fn list_proxies(&self, video_id: &str) -> Result<Vec<ProxyRecord>> {
         let conn = self.get_connection()?;

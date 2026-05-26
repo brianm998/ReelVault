@@ -44,7 +44,7 @@ impl SearchEngine {
                 }
                 sql.push_str("vt.tag_id = ?");
             }
-            sql.push_str(")");
+            sql.push(')');
         }
 
         sql.push_str(" ORDER BY v.indexed_at DESC LIMIT ? OFFSET ?");
@@ -89,7 +89,7 @@ impl SearchEngine {
                     }
                     tag_sql.push_str("vt.tag_id = ?");
                 }
-                tag_sql.push_str(")");
+                tag_sql.push(')');
                 tag_sql
             } else {
                 String::new()

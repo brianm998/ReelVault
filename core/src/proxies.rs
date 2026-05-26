@@ -204,8 +204,8 @@ fn run_detection(
                 .or_insert_with(|| thumb_images_for(thumbnail_cache, &candidate.id))
                 .clone();
 
-            for i in 0..j {
-                let master = members[i].clone();
+            for master in members.iter().take(j) {
+                let master = master.clone();
                 if !is_master_of(&master, &candidate) {
                     continue;
                 }
@@ -231,7 +231,7 @@ fn run_detection(
                     confidence = %format!("{:.3}", conf),
                     "proxy pair compared",
                 );
-                if conf >= 0.5 && conf < PROXY_SIMILARITY_THRESHOLD {
+                if (0.5..PROXY_SIMILARITY_THRESHOLD).contains(&conf) {
                     tracing::info!(
                         "Near-miss proxy pair (conf {:.3} < {:.2} threshold): {} [{}×{}] vs {} [{}×{}]",
                         conf,
@@ -444,6 +444,7 @@ pub struct CreateProxyProgress {
 /// `re_index_after`: when true, the new file is also indexed normally so
 /// the videos row exists before we try to link it. Set to false only if
 /// you're going to call `scan_single_file` immediately afterwards.
+#[allow(clippy::too_many_arguments)]
 pub fn create_proxy(
     db: &Database,
     source_id: &str,
@@ -510,7 +511,7 @@ pub fn create_proxy(
     // "indexing" and "complete" cover 90-100% after ffmpeg exits.
     let stdout = child.stdout.take().expect("stdout was piped");
     use std::io::BufRead;
-    for line in std::io::BufReader::new(stdout).lines().flatten() {
+    for line in std::io::BufReader::new(stdout).lines().map_while(|l| l.ok()) {
         if let Some(frame_str) = line.strip_prefix("frame=") {
             if let Ok(frame) = frame_str.trim().parse::<i64>() {
                 let percent = if total_frames > 0 {

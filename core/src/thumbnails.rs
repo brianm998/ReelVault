@@ -81,7 +81,7 @@ impl ThumbnailGenerator {
 
         let _permit = acquire_ffmpeg_permit();
         let output = Command::new("ffmpeg")
-            .args(&[
+            .args([
                 "-v",
                 "error",
                 "-ss",
@@ -117,7 +117,7 @@ impl ThumbnailGenerator {
         let output_path = cache_dir.join(format!("{}_{}.jpg", video_id, size_name));
 
         let output = Command::new("ffmpeg")
-            .args(&[
+            .args([
                 "-v",
                 "error",
                 "-i",
@@ -156,7 +156,7 @@ impl ThumbnailGenerator {
 
         if path.exists() {
             let data = std::fs::read(&path)
-                .map_err(|e| VideoRoomError::IoError(e))?;
+                .map_err(VideoRoomError::IoError)?;
             Ok(Some(data))
         } else {
             Ok(None)
@@ -224,7 +224,7 @@ impl ThumbnailGenerator {
             // a slot for another concurrent ffmpeg run.
             let _permit = acquire_ffmpeg_permit();
             let result = Command::new("ffmpeg")
-                .args(&[
+                .args([
                     "-v",
                     "error",
                     "-ss",
@@ -281,7 +281,7 @@ struct ColorInfo {
 fn probe_color_info(video_path: &Path) -> ColorInfo {
     let mut info = ColorInfo::default();
     let output = Command::new("ffprobe")
-        .args(&[
+        .args([
             "-v",
             "error",
             "-select_streams",
@@ -457,7 +457,7 @@ impl ProxyGenerator {
 
         // Calculate new dimensions
         let output = Command::new("ffprobe")
-            .args(&[
+            .args([
                 "-v",
                 "error",
                 "-select_streams",
@@ -494,7 +494,7 @@ impl ProxyGenerator {
         let filter = format!("scale={}:{}", new_width, new_height);
 
         let output = Command::new("ffmpeg")
-            .args(&[
+            .args([
                 "-v",
                 "error",
                 "-i",

@@ -732,11 +732,11 @@ fun VideoListRow(
                         text = if (item.isExpandedRepresentative)
                             "Collapse this stack of ${video.groupSize} videos"
                         else
-                            "Expand this stack to see all ${video.groupSize} variants"
+                            "Expand this stack to see all ${video.groupSize} variants",
+                        modifier = Modifier.align(Alignment.TopStart),
                     ) {
                         Box(
                             modifier = Modifier
-                                .align(Alignment.TopEnd)
                                 .padding(3.dp)
                                 .background(
                                     Color.Black.copy(alpha = 0.6f),

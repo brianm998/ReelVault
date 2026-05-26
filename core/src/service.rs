@@ -18,6 +18,7 @@ use tonic::{Request, Response, Status};
 
 // Import generated protobuf code
 pub mod videoroom {
+    #![allow(clippy::doc_lazy_continuation)]
     tonic::include_proto!("videoroom");
 }
 
@@ -2159,7 +2160,7 @@ impl VideoRoomTrait for VideoRoomService {
         let mut mappings = Vec::new();
         let mut builtin_entries: Vec<(&'static str, &'static str)> =
             crate::camera_names::builtin_entries().collect();
-        builtin_entries.sort_by(|a, b| a.0.to_ascii_uppercase().cmp(&b.0.to_ascii_uppercase()));
+        builtin_entries.sort_by_key(|a| a.0.to_ascii_uppercase());
         for (internal, marketing) in builtin_entries {
             let key = crate::camera_names::normalise(internal);
             let overridden = custom_by_normalised.remove(&key);
@@ -2182,7 +2183,7 @@ impl VideoRoomTrait for VideoRoomService {
         //    stable across calls.
         let mut custom_only: Vec<(String, String)> =
             custom_by_normalised.into_values().collect();
-        custom_only.sort_by(|a, b| a.0.to_ascii_uppercase().cmp(&b.0.to_ascii_uppercase()));
+        custom_only.sort_by_key(|a| a.0.to_ascii_uppercase());
         for (raw_internal, marketing) in custom_only {
             mappings.push(CameraNameMapping {
                 internal: raw_internal,
