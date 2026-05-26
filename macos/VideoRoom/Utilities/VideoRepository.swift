@@ -461,22 +461,32 @@ class VideoRepository: ObservableObject {
     /// Fetch all scrub frames for [videoId] in parallel. Returns an array
     /// of [count] entries; individual entries may be nil if a frame failed.
     func getScrubFrames(videoId: String, count: Int = 10) async -> [NSImage?] {
-        await withTaskGroup(of: (Int, NSImage?).self) { group in
+        let frames = await withTaskGroup(of: (Int, Data?).self) { group in
             for i in 0..<count {
                 group.addTask { [self] in
-                    let image = try? await self.getThumbnail(videoId: videoId, size: "scrub_\(i)")
-                    return (i, image)
+                    let data = try? await self.getThumbnailData(videoId: videoId, size: "scrub_\(i)")
+                    return (i, data)
                 }
             }
-            var result: [NSImage?] = Array(repeating: nil, count: count)
-            for await (i, image) in group {
-                result[i] = image
+            var result: [(Int, Data?)] = []
+            for await pair in group {
+                result.append(pair)
             }
             return result
         }
+        var images: [NSImage?] = Array(repeating: nil, count: count)
+        for (i, data) in frames {
+            images[i] = data.flatMap { NSImage(data: $0) }
+        }
+        return images
     }
 
     func getThumbnail(videoId: String, size: String = "medium") async throws -> NSImage? {
+        let data = try await getThumbnailData(videoId: videoId, size: size)
+        return NSImage(data: data)
+    }
+
+    private func getThumbnailData(videoId: String, size: String) async throws -> Data {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
 
         var request = Videoroom_GetThumbnailRequest()
@@ -488,7 +498,7 @@ class VideoRepository: ObservableObject {
             for try await chunk in response.messages {
                 data.append(chunk.data)
             }
-            return NSImage(data: data)
+            return data
         }
     }
 
