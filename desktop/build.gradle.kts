@@ -1,3 +1,5 @@
+import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+
 plugins {
     kotlin("jvm") version "1.9.22"
     id("org.jetbrains.compose") version "1.6.1"
@@ -113,6 +115,10 @@ compose.desktop {
             "--add-opens=java.desktop/sun.lwawt.macosx=ALL-UNNAMED",
         )
         nativeDistributions {
+            // Without this, packageDistributionForCurrentOS has nothing to do
+            // and silently produces no artifacts (CI fails uploading an empty dir).
+            targetFormats(TargetFormat.Dmg, TargetFormat.Deb, TargetFormat.Msi)
+
             packageName = "VideoRoom"
             packageVersion = "0.1.0"
             description = "Video library manager and cataloging tool"

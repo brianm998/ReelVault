@@ -213,7 +213,6 @@ sign_app() {
             "${bundle}/Contents/Resources/videoroom-core"
     fi
     codesign --force --options runtime \
-        --entitlements /dev/null \
         --sign "$identity" \
         --deep \
         "$bundle"
