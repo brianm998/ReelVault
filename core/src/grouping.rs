@@ -35,7 +35,9 @@ fn stem(filename: &str) -> &str {
 /// Extract the "name part" of a filename stem — everything before the codec
 /// metadata section. Typical pattern from professional cameras:
 ///
-///     <date>-<camera>-<clip>[-<suffix>...]_<codec>_<rec>_<resolution>_…
+/// ```text
+/// <date>-<camera>-<clip>[-<suffix>...]_<codec>_<rec>_<resolution>_...
+/// ```
 ///
 /// Dates often embed underscores (e.g. `04_18_2026`), so we can't just split
 /// on the first `_`. Instead we look for an underscore followed by a letter
