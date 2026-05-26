@@ -26,6 +26,10 @@ build/
 .env
 .env.local
 
+# Release staging directories (build outputs, not source)
+/dist/
+desktop/release-bin/
+
 # Database & Cache
 *.db
 *.sqlite

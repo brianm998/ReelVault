@@ -1,0 +1,207 @@
+name: Release
+
+# Triggered by a `v*` tag push (e.g. `git tag v0.2.0 && git push --tags`).
+# Can also be run manually via Actions → "Run workflow" to test the pipeline
+# without creating a tag — the release-publish job is skipped in that case.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g. 0.1.0). Defaults to value in Cargo.toml.'
+        required: false
+
+permissions:
+  contents: write   # needed by the release-publish job
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ── Resolve the release version once; all other jobs read it ──────────────
+  version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      tag: ${{ steps.ver.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: ver
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            V="${GITHUB_REF_NAME#v}"
+          elif [[ -n "${{ inputs.version }}" ]]; then
+            V="${{ inputs.version }}"
+          else
+            V="$(grep '^version' core/Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')"
+          fi
+          echo "version=$V"  >> "$GITHUB_OUTPUT"
+          echo "tag=v$V"     >> "$GITHUB_OUTPUT"
+
+  # ── Build the Rust core daemon for every target platform ──────────────────
+  core:
+    name: Core / ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux-x86_64,    os: ubuntu-latest     }
+          - { name: linux-aarch64,   os: ubuntu-24.04-arm  }
+          - { name: macos-universal, os: macos-latest      }
+          - { name: windows-x86_64,  os: windows-latest    }
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-registry-${{ hashFiles('core/Cargo.toml') }}
+
+      - name: Build and package
+        shell: bash
+        run: >
+          ./release-core.sh --native
+          --version "${{ needs.version.outputs.version }}"
+          --out dist/core
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: core-${{ matrix.name }}
+          path: dist/core/
+          if-no-files-found: error
+
+  # ── Build Kotlin Compose desktop packages (native per OS) ─────────────────
+  desktop:
+    name: Desktop / ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    needs: [version, core]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: macos,   os: macos-latest,   core-artifact: core-macos-universal, core-bin: videoroom-core     }
+          - { name: linux,   os: ubuntu-latest,  core-artifact: core-linux-x86_64,    core-bin: videoroom-core     }
+          - { name: windows, os: windows-latest, core-artifact: core-windows-x86_64,  core-bin: videoroom-core.exe }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ matrix.os }}-${{ hashFiles('desktop/build.gradle.kts', 'desktop/settings.gradle.kts') }}
+          restore-keys: gradle-${{ matrix.os }}-
+
+      # Linux .deb packaging requires fakeroot and binutils.
+      - name: Install Linux packaging prerequisites
+        if: matrix.name == 'linux'
+        run: sudo apt-get install -y fakeroot binutils
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.core-artifact }}
+          path: core-dist/
+
+      - name: Extract core binary
+        shell: bash
+        run: |
+          cd core-dist
+          for f in *.tar.gz; do [[ -f "$f" ]] && tar xzf "$f"; done
+          for f in *.zip;    do [[ -f "$f" ]] && 7z x "$f" -y; done
+          cd ..
+          DAEMON=$(find core-dist -name "${{ matrix.core-bin }}" -type f | head -1)
+          echo "DAEMON_BIN=${DAEMON}" >> "$GITHUB_ENV"
+
+      - name: Build and package
+        shell: bash
+        run: ./release-desktop.sh --core-bin "$DAEMON_BIN" --out dist/desktop
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.name }}
+          path: dist/desktop/
+          if-no-files-found: error
+
+  # ── Build SwiftUI macOS app ───────────────────────────────────────────────
+  app-macos:
+    name: macOS App (Swift)
+    runs-on: macos-latest
+    needs: [version, core]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: macos/.build
+          key: swift-${{ hashFiles('macos/Package.resolved') }}
+          restore-keys: swift-
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: core-macos-universal
+          path: core-dist/
+
+      - name: Extract core binary
+        shell: bash
+        run: |
+          cd core-dist && tar xzf *.tar.gz && cd ..
+          DAEMON=$(find core-dist -name "videoroom-core" -type f | head -1)
+          echo "DAEMON_BIN=${DAEMON}" >> "$GITHUB_ENV"
+
+      - name: Build .app and .dmg
+        run: |
+          ./release-macos.sh \
+            --core-bin "$DAEMON_BIN" \
+            --version  "${{ needs.version.outputs.version }}" \
+            --out      dist/macos
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-macos
+          path: dist/macos/*.dmg
+          if-no-files-found: error
+
+  # ── Publish draft GitHub Release with all artifacts ───────────────────────
+  # Skipped on workflow_dispatch (no tag) so you can test the build pipeline
+  # without accidentally creating a half-baked release.
+  release-publish:
+    name: Publish Release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [version, core, desktop, app-macos]
+    permissions:
+      contents: write
+
+    steps:
+      # Download every artifact into release-artifacts/<artifact-name>/
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts/
+
+      - name: List release artifacts
+        run: find release-artifacts -type f | sort
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name:              ${{ needs.version.outputs.tag }}
+          name:                  VideoRoom ${{ needs.version.outputs.version }}
+          draft:                 true    # review before publishing
+          generate_release_notes: true
+          files:                 release-artifacts/**/*

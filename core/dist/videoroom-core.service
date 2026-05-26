@@ -1,0 +1,50 @@
+# VideoRoom Core — systemd service unit
+#
+# Install:
+#   sudo cp videoroom-core.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now videoroom-core
+#
+# Uninstall:
+#   sudo systemctl disable --now videoroom-core
+#   sudo rm /etc/systemd/system/videoroom-core.service
+#   sudo systemctl daemon-reload
+#
+# Logs (pick one):
+#   journalctl -u videoroom-core -f
+#   tail -f /var/log/videoroom/videoroom-core.log
+
+[Unit]
+Description=VideoRoom Core Daemon
+Documentation=https://github.com/videoroom/videoroom
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/videoroom-core --system-daemon --port 50051
+
+# Restart on failure with a short back-off.
+Restart=on-failure
+RestartSec=5s
+
+# Run as a dedicated system user. Create it with:
+#   sudo useradd --system --no-create-home --shell /usr/sbin/nologin videoroom
+User=videoroom
+Group=videoroom
+
+# systemd creates these directories and sets ownership automatically.
+StateDirectory=videoroom       # /var/lib/videoroom  — catalog
+LogsDirectory=videoroom        # /var/log/videoroom  — log file
+RuntimeDirectory=videoroom     # /run/videoroom      — PID file
+
+# Override the default PID file location to the RuntimeDirectory.
+ExecStartPost=/bin/sh -c 'echo $MAINPID > /run/videoroom/videoroom-core.pid'
+
+# Let journald capture structured output as well.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=videoroom-core
+
+[Install]
+WantedBy=multi-user.target

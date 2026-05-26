@@ -118,6 +118,16 @@ compose.desktop {
             description = "Video library manager and cataloging tool"
             vendor = "VideoRoom"
             copyright = "2024 VideoRoom Contributors"
+
+            // When release-desktop.sh places the compiled videoroom-core binary in
+            // desktop/release-bin/, the packaging step bundles it alongside the
+            // application jar. ServerLauncher.kt looks for the binary at
+            // <jar dir>/videoroom-core[.exe] — that's where Compose puts
+            // appResourcesRootDir files on every platform.
+            val releaseBin = project.layout.projectDirectory.dir("release-bin")
+            if (releaseBin.asFile.exists()) {
+                appResourcesRootDir.set(releaseBin)
+            }
         }
     }
 }
