@@ -33,6 +33,7 @@
 use crate::db::Database;
 use crate::error::Result;
 use crate::indexing::{is_supported_video_extension, IndexingEngine, ScanFileOutcome};
+use crate::post_index;
 use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -413,6 +414,20 @@ fn sweep_pending(
         }
     }
 
+    if ready.is_empty() {
+        return;
+    }
+
+    // Mirror the scan_directory path: proxy detection and auto-grouping must
+    // run for watcher-triggered additions just as they do for explicit scans.
+    // Spawn the pool once for the whole batch so workers can run in parallel
+    // while the main loop iterates over (the typically small) ready list.
+    let post_index = post_index::spawn(
+        Arc::clone(db),
+        thumbnail_cache.to_path_buf(),
+        post_index::Options { auto_group: true, detect_proxies: true },
+    );
+
     for (path, _pf) in ready {
         // Final stat check: if the file no longer exists (deleted between
         // settling and now), publish a removal instead of scanning.
@@ -425,10 +440,12 @@ fn sweep_pending(
         match IndexingEngine::scan_single_file(db.as_ref(), &path, thumbnail_cache, None) {
             Ok((video_id, ScanFileOutcome::Added)) => {
                 tracing::info!("Watcher added: {}", path.display());
+                post_index.submit(video_id.clone());
                 let _ = events.send(CatalogChange::VideoAdded { video_id, path });
             }
             Ok((video_id, ScanFileOutcome::Modified)) => {
                 tracing::info!("Watcher refreshed: {}", path.display());
+                post_index.submit(video_id.clone());
                 let _ = events.send(CatalogChange::VideoModified { video_id, path });
             }
             Err(e) => {
@@ -460,6 +477,9 @@ fn sweep_pending(
             }
         }
     }
+
+    // Block until all proxy/group decisions are written before the next sweep.
+    post_index.finish();
 }
 
 /// Poll-fallback for paths where the OS-level watcher can't deliver events
