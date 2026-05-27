@@ -910,7 +910,7 @@ private fun Modifier.shiftAwareClickable(
 ): Modifier = this.pointerInput(onClick, onDoubleClick) {
     awaitEachGesture {
         // 1) Wait for the first pointer down.
-        awaitFirstDown(requireUnconsumed = false)
+        awaitFirstDown(requireUnconsumed = true)
         // currentEvent is the pointer event that just delivered the down change.
         val mods = currentEvent.keyboardModifiers
         val shiftAtDown = mods.isShiftPressed

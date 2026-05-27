@@ -165,6 +165,14 @@ struct ListView: View {
                                         },
                                         onSetRating: { rating in
                                             viewModel.setRating(rating, for: [stackItem.video.id])
+                                        },
+                                        onPickStatSlot: { slotIndex, key in
+                                            guard slotIndex >= 0, slotIndex < 4 else { return }
+                                            var slots = viewModel.topSlots
+                                            while slots.count < 4 { slots.append("") }
+                                            slots[slotIndex] = key
+                                            viewModel.topSlots = slots
+                                            viewModel.saveGridSettings()
                                         }
                                     )
                                     .contextMenu {
@@ -576,10 +584,9 @@ struct VideoListRowView: View {
             // the row is expanded (members are shown as cards instead) or
             // when the prefetch hasn't completed yet.
             if !isInExpandedStack && !stackMemberFilenames.isEmpty {
-                Text("Stack: \(stackMemberFilenames.joined(separator: ", "))")
+                Text("Stack:\n\(stackMemberFilenames.joined(separator: "\n"))")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
-                    .lineLimit(3)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -937,6 +944,9 @@ struct VideoListHorizontalCardView: View {
     let onClick: (_ shift: Bool, _ toggle: Bool) -> Void
     let onDoubleClick: () -> Void
     var onSetRating: (_ rating: Int) -> Void = { _ in }
+    var onPickStatSlot: (_ slotIndex: Int, _ key: String) -> Void = { _, _ in }
+
+    @State private var openSlotPickerIndex: Int? = nil
 
     private var video: VideoSummary { item.video }
     private var cardWidth: CGFloat { thumbnailHeight }
@@ -1013,15 +1023,59 @@ struct VideoListHorizontalCardView: View {
                 .help("Collapse this stack")
             }
             let stat = GridStatKey(rawValue: slots[0]) ?? .none
-            let value = stat == .none ? "" : stat.value(for: video)
-            Text(value)
-                .font(.system(size: 10))
-                .foregroundColor(Color.black.opacity(0.85))
+            let value = stat.value(for: video)
+            let displayed = value.isEmpty ? "—" : value
+            Text(displayed)
+                .font(.system(size: 10, weight: .regular))
+                .foregroundColor(stat == .none ? Color.black.opacity(0.4) : Color.black.opacity(0.85))
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .onTapGesture { openSlotPickerIndex = 0 }
+                .popover(
+                    isPresented: Binding(
+                        get: { openSlotPickerIndex == 0 },
+                        set: { if !$0 { openSlotPickerIndex = nil } }
+                    ),
+                    arrowEdge: .bottom
+                ) {
+                    statPickerMenu(slotIndex: 0, currentStat: stat)
+                }
+                .help("Click to choose which stat is shown in this slot")
         }
         .padding(.horizontal, 6)
+    }
+
+    @ViewBuilder
+    private func statPickerMenu(slotIndex: Int, currentStat: GridStatKey) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(GridStatKey.allCases) { choice in
+                Button {
+                    onPickStatSlot(slotIndex, choice.rawValue)
+                    openSlotPickerIndex = nil
+                } label: {
+                    HStack(spacing: 6) {
+                        Group {
+                            if choice == currentStat {
+                                Image(systemName: "checkmark")
+                            } else {
+                                Color.clear
+                            }
+                        }
+                        .frame(width: 14, height: 14)
+                        Text(choice.displayName)
+                        Spacer(minLength: 0)
+                    }
+                    .contentShape(Rectangle())
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(minWidth: 180)
+        .padding(.vertical, 4)
     }
 
     @ViewBuilder

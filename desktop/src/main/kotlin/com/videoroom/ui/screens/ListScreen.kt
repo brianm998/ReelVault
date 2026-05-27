@@ -447,6 +447,9 @@ fun ListScreen(
                                                 onStackToggle = {
                                                     viewModel.toggleStackExpansion(video.groupId)
                                                 },
+                                                onPickStatSlot = { slotIndex, key ->
+                                                    viewModel.updateGridTopSlot(slotIndex, key)
+                                                },
                                                 onClick = { shiftFromEvent, toggleFromEvent ->
                                                     val shift = shiftFromEvent || shiftPressed
                                                     val toggle = toggleFromEvent
@@ -903,11 +906,9 @@ fun VideoListRow(
             // when the prefetch hasn't completed yet.
             if (!isInExpandedStack && stackMemberFilenames.isNotEmpty()) {
                 Text(
-                    text = "Stack: ${stackMemberFilenames.joinToString(", ")}",
+                    text = "Stack:\n${stackMemberFilenames.joinToString("\n")}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -929,8 +930,7 @@ private fun RowScope.ListRowStatCell(
 ) {
     val stat = com.videoroom.data.models.GridStatKey.fromRaw(key)
     val value = stat.valueFor(video)
-    val displayed: String =
-        if (stat == com.videoroom.data.models.GridStatKey.None) "—" else value
+    val displayed: String = if (value.isEmpty()) "—" else value
     var expanded by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier
@@ -985,7 +985,7 @@ private fun Modifier.shiftAwareRowClickable(
     onDoubleClick: () -> Unit
 ): Modifier = this.pointerInput(onClick, onDoubleClick) {
     awaitEachGesture {
-        awaitFirstDown(requireUnconsumed = false)
+        awaitFirstDown(requireUnconsumed = true)
         val mods = currentEvent.keyboardModifiers
         val shiftAtDown = mods.isShiftPressed
         val toggleAtDown = mods.isMetaPressed || mods.isCtrlPressed
@@ -1057,6 +1057,7 @@ private fun VideoListHorizontalCard(
     topSlots: List<String> = emptyList(),
     isRepresentative: Boolean = false,
     onStackToggle: () -> Unit = {},
+    onPickStatSlot: (Int, String) -> Unit = { _, _ -> },
     onClick: (shiftPressed: Boolean, togglePressed: Boolean) -> Unit = { _, _ -> },
     onDoubleClick: () -> Unit = {},
     onSetRating: (Int) -> Unit = {},
@@ -1140,13 +1141,13 @@ private fun VideoListHorizontalCard(
                     }
                     Spacer(Modifier.width(2.dp))
                 }
-                val stat = com.videoroom.data.models.GridStatKey.fromRaw(paddedSlots.getOrElse(0) { "" })
-                Text(
-                    text = if (stat == com.videoroom.data.models.GridStatKey.None) "" else stat.valueFor(video),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.Black.copy(alpha = 0.85f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                ListRowStatCell(
+                    slotIndex = 0,
+                    key = paddedSlots.getOrElse(0) { "" },
+                    video = video,
+                    onPick = onPickStatSlot,
+                    alignEnd = false,
+                    weight = 1f
                 )
             }
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(bandDividerColor))

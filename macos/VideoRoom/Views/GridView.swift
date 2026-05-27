@@ -925,8 +925,8 @@ struct VideoCardView: View {
         let stat = GridStatKey(rawValue: key) ?? .none
         let value = stat.value(for: video)
         let displayed: String = {
-            if stat == .none { return "—" }
-            return value      // empty if this video has no data for the chosen stat
+            if value.isEmpty { return "—" }
+            return value
         }()
         Text(displayed)
             .font(.system(size: 10, weight: slotIndex == 0 ? .semibold : .regular))
