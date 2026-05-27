@@ -22,11 +22,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isShiftPressed
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -63,6 +67,7 @@ fun ListScreen(
     val totalCount = viewModel.totalCount.collectAsState()
     val error = viewModel.error.collectAsState()
     val thumbnails = viewModel.thumbnails.collectAsState()
+    val scrubFrames = viewModel.scrubFrames.collectAsState()
     val expandedGroupIds = viewModel.expandedGroupIds.collectAsState()
     val expandedMembers = viewModel.expandedGroupMembers.collectAsState()
     val shiftPressed = LocalShiftPressed.current
@@ -310,6 +315,7 @@ fun ListScreen(
                                         isInMultiSelection = isInMultiSelect,
                                         isAnchor = isAnchor,
                                         thumbnailBytes = thumbnails.value[video.id],
+                                        scrubFrames = scrubFrames.value[video.id] ?: emptyList(),
                                         thumbnailHeight = thumbnailHeight,
                                         visibleColumns = listColumns.value,
                                         stackMemberFilenames = if (video.isInGroup) {
@@ -319,6 +325,7 @@ fun ListScreen(
                                                 ?: emptyList()
                                         } else emptyList(),
                                         onStackToggle = { viewModel.toggleStackExpansion(video.groupId) },
+                                        onHoverEnter = { viewModel.loadScrubFrames(video.id) },
                                         onClick = { shiftFromEvent, toggleFromEvent ->
                                             val shift = shiftFromEvent || shiftPressed
                                             val toggle = toggleFromEvent
@@ -441,6 +448,7 @@ fun ListScreen(
                                                 isInMultiSelection = isInMultiSelect,
                                                 isAnchor = isAnchor,
                                                 thumbnailBytes = thumbnails.value[video.id],
+                                                scrubFrames = scrubFrames.value[video.id] ?: emptyList(),
                                                 thumbnailHeight = thumbnailHeight,
                                                 topSlots = topSlots.value,
                                                 isRepresentative = idx == 0,
@@ -450,6 +458,7 @@ fun ListScreen(
                                                 onPickStatSlot = { slotIndex, key ->
                                                     viewModel.updateGridTopSlot(slotIndex, key)
                                                 },
+                                                onHoverEnter = { viewModel.loadScrubFrames(video.id) },
                                                 onClick = { shiftFromEvent, toggleFromEvent ->
                                                     val shift = shiftFromEvent || shiftPressed
                                                     val toggle = toggleFromEvent
@@ -522,6 +531,7 @@ fun VideoListRow(
     isInMultiSelection: Boolean = false,
     isAnchor: Boolean = false,
     thumbnailBytes: ByteArray? = null,
+    scrubFrames: List<ByteArray?> = emptyList(),
     thumbnailHeight: Dp = 80.dp,
     visibleColumns: Set<String> = emptySet(),
     /**
@@ -532,6 +542,7 @@ fun VideoListRow(
      */
     stackMemberFilenames: List<String> = emptyList(),
     onStackToggle: () -> Unit = {},
+    onHoverEnter: () -> Unit = {},
     onClick: (shiftPressed: Boolean, togglePressed: Boolean) -> Unit = { _, _ -> },
     onDoubleClick: () -> Unit = {},
     /** Fired when one of the five rating positions is clicked. */
@@ -558,6 +569,30 @@ fun VideoListRow(
             } catch (e: Exception) {
                 null
             }
+        }
+    }
+
+    val scrubImages = remember(scrubFrames) {
+        scrubFrames.map { bytes ->
+            bytes?.let {
+                try { SkiaImage.makeFromEncoded(it).toComposeImageBitmap() } catch (_: Exception) { null }
+            }
+        }
+    }
+
+    var hoverX by remember { mutableStateOf<Float?>(null) }
+    var thumbSize by remember { mutableStateOf(IntSize.Zero) }
+
+    val displayedImage = run {
+        if (isPlayingInline) return@run thumbnailImage
+        val x = hoverX
+        val width = thumbSize.width
+        if (x != null && width > 0 && scrubImages.any { it != null }) {
+            val frac = (x / width).coerceIn(0f, 1f)
+            val idx = (frac * scrubImages.size).toInt().coerceIn(0, scrubImages.size - 1)
+            scrubImages[idx] ?: thumbnailImage
+        } else {
+            thumbnailImage
         }
     }
 
@@ -664,12 +699,26 @@ fun VideoListRow(
                 modifier = Modifier
                     .size(cardWidth, thumbnailHeight)
                     .background(rowMiddleBackground)
-                    .padding(8.dp),
+                    .padding(8.dp)
+                    .onSizeChanged { thumbSize = it }
+                    .onPointerEvent(PointerEventType.Enter) {
+                        if (!isPlayingInline) {
+                            onHoverEnter()
+                            it.changes.firstOrNull()?.position?.let { p -> hoverX = p.x }
+                        }
+                    }
+                    .onPointerEvent(PointerEventType.Move) {
+                        if (!isPlayingInline) {
+                            val p = it.changes.firstOrNull()?.position
+                            if (p != null && hoverX != p.x) hoverX = p.x
+                        }
+                    }
+                    .onPointerEvent(PointerEventType.Exit) { hoverX = null },
                 contentAlignment = Alignment.Center
             ) {
-                if (thumbnailImage != null) {
+                if (displayedImage != null) {
                     Image(
-                        bitmap = thumbnailImage,
+                        bitmap = displayedImage,
                         contentDescription = video.filename,
                         modifier = Modifier.fillMaxSize(),
                         // `Fit` (not `Crop`) so non-square footage
@@ -1053,11 +1102,13 @@ private fun VideoListHorizontalCard(
     isInMultiSelection: Boolean = false,
     isAnchor: Boolean = false,
     thumbnailBytes: ByteArray? = null,
+    scrubFrames: List<ByteArray?> = emptyList(),
     thumbnailHeight: Dp = 80.dp,
     topSlots: List<String> = emptyList(),
     isRepresentative: Boolean = false,
     onStackToggle: () -> Unit = {},
     onPickStatSlot: (Int, String) -> Unit = { _, _ -> },
+    onHoverEnter: () -> Unit = {},
     onClick: (shiftPressed: Boolean, togglePressed: Boolean) -> Unit = { _, _ -> },
     onDoubleClick: () -> Unit = {},
     onSetRating: (Int) -> Unit = {},
@@ -1095,6 +1146,27 @@ private fun VideoListHorizontalCard(
     val thumbnailImage = remember(thumbnailBytes) {
         thumbnailBytes?.let { bytes ->
             try { SkiaImage.makeFromEncoded(bytes).toComposeImageBitmap() } catch (e: Exception) { null }
+        }
+    }
+
+    val scrubImages = remember(scrubFrames) {
+        scrubFrames.map { bytes ->
+            bytes?.let {
+                try { SkiaImage.makeFromEncoded(it).toComposeImageBitmap() } catch (_: Exception) { null }
+            }
+        }
+    }
+    var hoverX by remember { mutableStateOf<Float?>(null) }
+    var thumbSize by remember { mutableStateOf(IntSize.Zero) }
+    val displayedImage = run {
+        val x = hoverX
+        val width = thumbSize.width
+        if (x != null && width > 0 && scrubImages.any { it != null }) {
+            val frac = (x / width).coerceIn(0f, 1f)
+            val idx = (frac * scrubImages.size).toInt().coerceIn(0, scrubImages.size - 1)
+            scrubImages[idx] ?: thumbnailImage
+        } else {
+            thumbnailImage
         }
     }
 
@@ -1155,12 +1227,22 @@ private fun VideoListHorizontalCard(
             Box(
                 modifier = Modifier
                     .size(cardWidth, thumbnailHeight)
-                    .background(thumbnailBackground),
+                    .background(thumbnailBackground)
+                    .onSizeChanged { thumbSize = it }
+                    .onPointerEvent(PointerEventType.Enter) {
+                        onHoverEnter()
+                        it.changes.firstOrNull()?.position?.let { p -> hoverX = p.x }
+                    }
+                    .onPointerEvent(PointerEventType.Move) {
+                        val p = it.changes.firstOrNull()?.position
+                        if (p != null && hoverX != p.x) hoverX = p.x
+                    }
+                    .onPointerEvent(PointerEventType.Exit) { hoverX = null },
                 contentAlignment = Alignment.Center
             ) {
-                if (thumbnailImage != null) {
+                if (displayedImage != null) {
                     Image(
-                        bitmap = thumbnailImage,
+                        bitmap = displayedImage,
                         contentDescription = video.filename,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Fit

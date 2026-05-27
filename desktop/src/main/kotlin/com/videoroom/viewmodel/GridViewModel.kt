@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import org.slf4j.LoggerFactory
 import java.util.prefs.Preferences
 
@@ -1077,6 +1079,17 @@ class GridViewModel(
     private val _scrubFrames = MutableStateFlow<Map<String, List<ByteArray?>>>(emptyMap())
     val scrubFrames: StateFlow<Map<String, List<ByteArray?>>> = _scrubFrames.asStateFlow()
 
+    // Limits concurrent thumbnail fetches. A large grid can have 30-50+
+    // cards enter the viewport at once; without a cap, each fires its own
+    // gRPC streaming call, which can overwhelm the connection and cause
+    // some streams to return empty — silently dropping thumbnails.
+    private val thumbnailSemaphore = Semaphore(8)
+
+    // In-flight guard for thumbnail fetches — mirrors scrubLoading below.
+    // Prevents duplicate concurrent launches when the same video ID is
+    // requested more than once before the first fetch completes.
+    private val thumbnailLoading = mutableSetOf<String>()
+
     // Tracks which video IDs are currently being loaded so we don't fire
     // duplicate requests if the user hovers in/out repeatedly.
     private val scrubLoading = mutableSetOf<String>()
@@ -1259,11 +1272,28 @@ class GridViewModel(
 
     fun loadThumbnail(videoId: String) {
         if (_thumbnails.value.containsKey(videoId)) return
-
+        if (videoId in thumbnailLoading) return
+        thumbnailLoading.add(videoId)
         viewModelScope.launch {
-            val data = repository.getThumbnail(videoId, "medium")
-            if (data != null) {
-                _thumbnails.value = _thumbnails.value + (videoId to data)
+            try {
+                // Retry up to 3 times with short back-off. The first attempt
+                // can fail with an empty gRPC stream when many cards load
+                // simultaneously (connection under load) or when a newly-added
+                // video's thumbnail file hasn't been flushed yet.
+                var attempt = 0
+                while (attempt <= 2 && !_thumbnails.value.containsKey(videoId)) {
+                    val data = thumbnailSemaphore.withPermit {
+                        repository.getThumbnail(videoId, "medium")
+                    }
+                    if (data != null) {
+                        _thumbnails.update { it + (videoId to data) }
+                        break
+                    }
+                    attempt++
+                    if (attempt <= 2) delay(500L * attempt)
+                }
+            } finally {
+                thumbnailLoading.remove(videoId)
             }
         }
     }

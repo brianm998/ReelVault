@@ -68,6 +68,12 @@ class GridViewModel: ObservableObject {
     @Published var scrubFrames: [String: [NSImage?]] = [:]
     private var scrubLoading: Set<String> = []
 
+    // Thumbnail fetch concurrency control — mirrors the scrubLoading pattern.
+    // Caps simultaneous gRPC thumbnail streams so a large grid entering view
+    // at once can't overwhelm the connection and drop some fetches silently.
+    private let thumbnailSemaphore = ThumbnailSemaphore(8)
+    private var thumbnailLoading: Set<String> = []
+
     // Stack expansion
     @Published var expandedGroupIds: Set<String> = []
     @Published var expandedGroupMembers: [String: [VideoSummary]] = [:]
@@ -933,9 +939,26 @@ class GridViewModel: ObservableObject {
 
     func loadThumbnail(videoId: String) {
         if thumbnails[videoId] != nil { return }
+        if thumbnailLoading.contains(videoId) { return }
+        thumbnailLoading.insert(videoId)
         Task {
-            if let image = try? await repository.getThumbnail(videoId: videoId, size: "medium") {
-                thumbnails[videoId] = image
+            defer { thumbnailLoading.remove(videoId) }
+            // Retry up to 3 times with short back-off. The first attempt can
+            // fail with an empty gRPC stream when many cards load simultaneously
+            // (connection under load) or when a newly-added video's thumbnail
+            // file hasn't been flushed yet.
+            for attempt in 0..<3 {
+                if thumbnails[videoId] != nil { return }
+                await thumbnailSemaphore.acquire()
+                let image = try? await repository.getThumbnail(videoId: videoId, size: "medium")
+                await thumbnailSemaphore.release()
+                if let image {
+                    thumbnails[videoId] = image
+                    return
+                }
+                if attempt < 2 {
+                    try? await Task.sleep(nanoseconds: UInt64(500_000_000) * UInt64(attempt + 1))
+                }
             }
         }
     }
@@ -1510,4 +1533,31 @@ struct GeoFilter: Equatable {
     let latitude: Double
     let longitude: Double
     let radiusKm: Double
+}
+
+/// Async counting semaphore used to cap concurrent thumbnail gRPC streams.
+/// Callers `await acquire()` to take a permit and `await release()` to return
+/// one. Waiting callers are resumed in FIFO order.
+private actor ThumbnailSemaphore {
+    private var available: Int
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    init(_ count: Int) { self.available = count }
+
+    func acquire() async {
+        if available > 0 {
+            available -= 1
+        } else {
+            await withCheckedContinuation { waiters.append($0) }
+        }
+    }
+
+    func release() {
+        if let next = waiters.first {
+            waiters.removeFirst()
+            next.resume()
+        } else {
+            available += 1
+        }
+    }
 }

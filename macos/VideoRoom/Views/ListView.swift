@@ -111,6 +111,10 @@ struct ListView: View {
                                 viewModel.saveGridSettings()
                             },
                             dragPaths: rowDragPaths,
+                            scrubFrames: viewModel.scrubFrames[item.video.id] ?? [],
+                            onHoverEnter: {
+                                viewModel.loadScrubFrames(videoId: item.video.id)
+                            },
                             isPlaying: viewModel.playingVideoId == item.video.id,
                             playPath: viewModel.playingVideoId == item.video.id
                                 ? viewModel.playingVideoPath : nil,
@@ -173,6 +177,10 @@ struct ListView: View {
                                             slots[slotIndex] = key
                                             viewModel.topSlots = slots
                                             viewModel.saveGridSettings()
+                                        },
+                                        scrubFrames: viewModel.scrubFrames[stackItem.video.id] ?? [],
+                                        onHoverEnter: {
+                                            viewModel.loadScrubFrames(videoId: stackItem.video.id)
                                         }
                                     )
                                     .contextMenu {
@@ -394,6 +402,8 @@ struct VideoListRowView: View {
     /// of a multi-selection, every selected file is included so the receiving
     /// app gets the full set in one drop.
     var dragPaths: [String] = []
+    var scrubFrames: [NSImage?] = []
+    var onHoverEnter: () -> Void = {}
     var isPlaying: Bool = false
     /// Override URL for inline playback (proxy path). nil → `video.openPath`.
     var playPath: String? = nil
@@ -401,6 +411,7 @@ struct VideoListRowView: View {
     var onStopPlayback: () -> Void = {}
 
     @State private var isHovered = false
+    @State private var hoverX: CGFloat? = nil
     @State private var avPlayer: AVPlayer? = nil
     /// Top-stat-band slot whose picker popover is currently open, or
     /// `nil` if none. Same single-source pattern as the grid card.
@@ -416,6 +427,20 @@ struct VideoListRowView: View {
     /// card's middle band is a square at `thumbnailHeight`, so the card
     /// itself is the same width — never wider than a grid card.
     private var cardWidth: CGFloat { thumbnailHeight }
+
+    /// The image to display: a scrub frame when hovering + have scrub data,
+    /// otherwise the static thumbnail. Mirrors `VideoCardView.displayedImage`.
+    private var displayedImage: NSImage? {
+        if isPlaying {
+            return scrubFrames.first.flatMap { $0 } ?? thumbnail
+        }
+        if let x = hoverX, cardWidth > 0, !scrubFrames.isEmpty {
+            let frac = max(0, min(1, x / cardWidth))
+            let idx = min(scrubFrames.count - 1, Int(frac * CGFloat(scrubFrames.count)))
+            return scrubFrames[idx] ?? thumbnail
+        }
+        return thumbnail
+    }
 
     var body: some View {
         // Outer layout: a compact Lightroom-style card on the leading
@@ -442,7 +467,6 @@ struct VideoListRowView: View {
         .padding(.vertical, 6)
         .padding(.horizontal, 10)
         .contentShape(Rectangle())
-        .onHover { hovered in isHovered = hovered }
         .onTapGesture(count: 2) { onDoubleClick() }
         .onTapGesture {
             let mods = ModifierSnapshot.lastMouseDownModifiers
@@ -522,6 +546,21 @@ struct VideoListRowView: View {
                 .frame(height: 22)
                 .background(bottomBandColor)
                 .help("Click a star to rate 1–5; click the current rating again to clear it")
+        }
+        .onContinuousHover { phase in
+            switch phase {
+            case .active(let location):
+                isHovered = true
+                if !isPlaying && location.y <= thumbnailHeight {
+                    if hoverX == nil { onHoverEnter() }
+                    hoverX = location.x
+                } else {
+                    hoverX = nil
+                }
+            case .ended:
+                isHovered = false
+                hoverX = nil
+            }
         }
     }
 
@@ -778,7 +817,7 @@ struct VideoListRowView: View {
         // square clips.
         ZStack(alignment: .topLeading) {
             Group {
-                if let image = thumbnail {
+                if let image = displayedImage {
                     Image(nsImage: image)
                         .resizable()
                         .scaledToFit()
@@ -945,11 +984,23 @@ struct VideoListHorizontalCardView: View {
     let onDoubleClick: () -> Void
     var onSetRating: (_ rating: Int) -> Void = { _ in }
     var onPickStatSlot: (_ slotIndex: Int, _ key: String) -> Void = { _, _ in }
+    var scrubFrames: [NSImage?] = []
+    var onHoverEnter: () -> Void = {}
 
     @State private var openSlotPickerIndex: Int? = nil
+    @State private var hoverX: CGFloat? = nil
 
     private var video: VideoSummary { item.video }
     private var cardWidth: CGFloat { thumbnailHeight }
+
+    private var displayedImage: NSImage? {
+        if let x = hoverX, cardWidth > 0, !scrubFrames.isEmpty {
+            let frac = max(0, min(1, x / cardWidth))
+            let idx = min(scrubFrames.count - 1, Int(frac * CGFloat(scrubFrames.count)))
+            return scrubFrames[idx] ?? thumbnail
+        }
+        return thumbnail
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -1084,7 +1135,7 @@ struct VideoListHorizontalCardView: View {
             Rectangle()
                 .fill(Color.black)
                 .overlay {
-                    if let image = thumbnail {
+                    if let image = displayedImage {
                         Image(nsImage: image)
                             .resizable()
                             .scaledToFit()
@@ -1096,6 +1147,17 @@ struct VideoListHorizontalCardView: View {
                 }
                 .frame(width: cardWidth, height: thumbnailHeight)
                 .cornerRadius(4)
+        }
+        .onContinuousHover { phase in
+            switch phase {
+            case .active(let location):
+                if cardWidth > 0 {
+                    if hoverX == nil { onHoverEnter() }
+                    hoverX = location.x
+                }
+            case .ended:
+                hoverX = nil
+            }
         }
     }
 
