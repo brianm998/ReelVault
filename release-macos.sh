@@ -115,16 +115,27 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Build the Swift binary in release mode
+# Build the Swift binary in release mode (universal: arm64 + x86_64)
 # ---------------------------------------------------------------------------
-echo "==> Building VideoRoom (release)…"
-(cd "$MACOS_DIR" && swift build -c release --product VideoRoom 2>&1)
+echo "==> Building VideoRoom (release, arm64)…"
+(cd "$MACOS_DIR" && swift build -c release --arch arm64 --product VideoRoom 2>&1)
 
+echo "==> Building VideoRoom (release, x86_64)…"
+(cd "$MACOS_DIR" && swift build -c release --arch x86_64 --product VideoRoom 2>&1)
+
+ARM_BIN="${MACOS_DIR}/.build/arm64-apple-macosx/release/VideoRoom"
+X86_BIN="${MACOS_DIR}/.build/x86_64-apple-macosx/release/VideoRoom"
 SWIFT_BIN="${MACOS_DIR}/.build/release/VideoRoom"
-if [[ ! -f "$SWIFT_BIN" ]]; then
-    echo "Error: swift build succeeded but binary not found at ${SWIFT_BIN}." >&2
+
+if [[ ! -f "$ARM_BIN" || ! -f "$X86_BIN" ]]; then
+    echo "Error: one or both architecture builds failed." >&2
     exit 1
 fi
+
+echo "==> Linking universal binary (arm64 + x86_64)…"
+mkdir -p "$(dirname "$SWIFT_BIN")"
+lipo -create "$ARM_BIN" "$X86_BIN" -output "$SWIFT_BIN"
+lipo -info "$SWIFT_BIN"
 
 # ---------------------------------------------------------------------------
 # Assemble the .app bundle
@@ -185,7 +196,7 @@ cat > "${APP_BUNDLE}/Contents/Info.plist" << EOF
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>LSMinimumSystemVersion</key>
-    <string>15.0</string>
+    <string>13.0</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSPrincipalClass</key>
@@ -254,16 +265,29 @@ if [[ "$NOTARIZE" -eq 1 ]]; then
         echo "Error: --notarize requires --sign <Developer ID Identity>." >&2
         exit 1
     fi
-    if [[ -z "${APPLE_ID:-}" || -z "${APPLE_TEAM_ID:-}" ]]; then
-        echo "Error: set APPLE_ID and APPLE_TEAM_ID env vars for notarization." >&2
-        exit 1
-    fi
+    : "${APPLE_ID:?Error: set APPLE_ID env var for notarization}"
+    : "${APPLE_TEAM_ID:?Error: set APPLE_TEAM_ID env var for notarization}"
+
+    # Apple requires the DMG itself to be signed before submission.
+    echo "==> Signing DMG…"
+    codesign --force --sign "$SIGN_IDENTITY" "$DMG_PATH"
+
     echo "==> Submitting to Apple Notary Service…"
-    xcrun notarytool submit "$DMG_PATH" \
-        --apple-id "$APPLE_ID" \
-        --team-id  "$APPLE_TEAM_ID" \
-        --keychain-profile "VideoRoom-Notarize" \
-        --wait
+    # CI: set APPLE_APP_PASSWORD env var (app-specific password from appleid.apple.com).
+    # Local: falls back to a saved keychain profile named "VideoRoom-Notarize".
+    if [[ -n "${APPLE_APP_PASSWORD:-}" ]]; then
+        xcrun notarytool submit "$DMG_PATH" \
+            --apple-id "$APPLE_ID" \
+            --team-id  "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --wait
+    else
+        xcrun notarytool submit "$DMG_PATH" \
+            --apple-id         "$APPLE_ID" \
+            --team-id          "$APPLE_TEAM_ID" \
+            --keychain-profile "VideoRoom-Notarize" \
+            --wait
+    fi
     echo "==> Stapling notarization ticket…"
     xcrun stapler staple "$DMG_PATH"
 fi

@@ -20,6 +20,13 @@
 #   --core-bin PATH   Path to the videoroom-core binary to bundle.
 #                     If omitted, the script searches the usual build locations
 #                     and warns if nothing is found.
+#   --sign IDENTITY   Developer ID Application identity for code signing.
+#                     (e.g. "Developer ID Application: Acme (TEAMID)")
+#                     Omit to skip signing (local / unsigned builds only).
+#   --notarize        Submit the DMG to Apple Notary Service after signing.
+#                     Requires --sign, and APPLE_ID, APPLE_TEAM_ID, and either
+#                     APPLE_APP_PASSWORD env vars (CI) or a "VideoRoom-Notarize"
+#                     keychain profile (local).
 #   --out DIR         Output directory (default: dist/desktop)
 #   --help            Show this message
 #
@@ -40,6 +47,8 @@ CORE_DIR="${SCRIPT_DIR}/core"
 # Defaults
 # ---------------------------------------------------------------------------
 CORE_BIN=""
+SIGN_IDENTITY=""
+NOTARIZE=0
 OUT_DIR="${SCRIPT_DIR}/dist/desktop"
 
 # ---------------------------------------------------------------------------
@@ -48,9 +57,11 @@ OUT_DIR="${SCRIPT_DIR}/dist/desktop"
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --core-bin) CORE_BIN="$2"; shift 2 ;;
+        --sign)     SIGN_IDENTITY="$2"; shift 2 ;;
+        --notarize) NOTARIZE=1; shift ;;
         --out)      OUT_DIR="$2"; shift 2 ;;
         --help|-h)
-            sed -n '2,/^set -/p' "$0" | head -n 40
+            sed -n '2,/^set -/p' "$0" | head -n 50
             exit 0
             ;;
         *) echo "Unknown option: $1" >&2; exit 1 ;;
@@ -125,6 +136,9 @@ echo "==> Package version: ${VERSION}"
 # ---------------------------------------------------------------------------
 mkdir -p "$OUT_DIR"
 
+# Export for build.gradle.kts signing block
+[[ -n "$SIGN_IDENTITY" ]] && export APPLE_SIGN_IDENTITY="$SIGN_IDENTITY"
+
 (cd "$DESKTOP_DIR" && \
     CARGO_TERM_COLOR=always \
     ./gradlew packageDistributionForCurrentOS --no-daemon 2>&1)
@@ -172,6 +186,42 @@ esac
 # Clean up the staging directory
 # ---------------------------------------------------------------------------
 rm -rf "$RELEASE_BIN_DIR"
+
+# ---------------------------------------------------------------------------
+# macOS DMG signing + notarization
+# ---------------------------------------------------------------------------
+if [[ "$OS" == "Darwin" && "$NOTARIZE" -eq 1 ]]; then
+    if [[ -z "$SIGN_IDENTITY" ]]; then
+        echo "Error: --notarize requires --sign <Developer ID Identity>." >&2
+        exit 1
+    fi
+    : "${APPLE_ID:?Error: set APPLE_ID env var for notarization}"
+    : "${APPLE_TEAM_ID:?Error: set APPLE_TEAM_ID env var for notarization}"
+
+    shopt -s nullglob
+    for DMG_PATH in "${OUT_DIR}"/*.dmg; do
+        echo "==> Signing DMG: $(basename "$DMG_PATH")…"
+        codesign --force --sign "$SIGN_IDENTITY" "$DMG_PATH"
+
+        echo "==> Submitting to Apple Notary Service…"
+        if [[ -n "${APPLE_APP_PASSWORD:-}" ]]; then
+            xcrun notarytool submit "$DMG_PATH" \
+                --apple-id "$APPLE_ID" \
+                --team-id  "$APPLE_TEAM_ID" \
+                --password "$APPLE_APP_PASSWORD" \
+                --wait
+        else
+            xcrun notarytool submit "$DMG_PATH" \
+                --apple-id         "$APPLE_ID" \
+                --team-id          "$APPLE_TEAM_ID" \
+                --keychain-profile "VideoRoom-Notarize" \
+                --wait
+        fi
+        echo "==> Stapling notarization ticket…"
+        xcrun stapler staple "$DMG_PATH"
+    done
+    shopt -u nullglob
+fi
 
 # ---------------------------------------------------------------------------
 # Summary

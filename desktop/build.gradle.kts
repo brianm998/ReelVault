@@ -133,6 +133,15 @@ compose.desktop {
                 // macOS chain until we ship 1.0.
                 packageVersion = "1.0.0"
                 packageBuildVersion = "1.0.0"
+
+                // Sign the app bundle when APPLE_SIGN_IDENTITY is set.
+                // Full identity string: "Developer ID Application: Name (TEAMID)"
+                System.getenv("APPLE_SIGN_IDENTITY")?.takeIf { it.isNotBlank() }?.let { id ->
+                    signing {
+                        sign.set(true)
+                        identity.set(id)
+                    }
+                }
             }
 
             // When release-desktop.sh places the compiled videoroom-core binary in
