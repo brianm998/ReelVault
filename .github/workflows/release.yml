@@ -172,8 +172,13 @@ jobs:
                  "Found Application=${APP_N}, Installer=${PKG_N} (need 1 of each)."
             exit 1
           fi
+          # Extract the identity strings directly from the cert — no separate secret needed.
+          SIGN_APP=$(security find-identity -v "$KC" \
+            | grep "Developer ID Application:.*${TEAM}" | head -1 \
+            | sed 's/.*"\(.*\)".*/\1/')
           rm -f "$P12"
-          echo "has_cert=true" >> "$GITHUB_OUTPUT"
+          echo "has_cert=true"             >> "$GITHUB_OUTPUT"
+          echo "sign_identity=${SIGN_APP}" >> "$GITHUB_OUTPUT"
 
       - name: Stage App Store Connect API key
         if: runner.os == 'macOS'
@@ -188,14 +193,13 @@ jobs:
       - name: Build and package
         shell: bash
         env:
-          SIGN_IDENTITY: ${{ secrets.APPLE_SIGN_IDENTITY }}
           APPLE_API_KEY_PATH: ${{ runner.temp }}/private_keys/AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
         run: |
           SIGN_ARGS=()
-          if [[ -n "${SIGN_IDENTITY:-}" && "${{ steps.cert.outputs.has_cert }}" == "true" ]]; then
-            SIGN_ARGS+=(--sign "$SIGN_IDENTITY" --notarize)
+          if [[ "${{ steps.cert.outputs.has_cert }}" == "true" ]]; then
+            SIGN_ARGS+=(--sign "${{ steps.cert.outputs.sign_identity }}" --notarize)
           fi
           ./release-desktop.sh --core-bin "$DAEMON_BIN" --out dist/desktop "${SIGN_ARGS[@]}"
 
@@ -293,8 +297,13 @@ jobs:
                  "Found Application=${APP_N}, Installer=${PKG_N} (need 1 of each)."
             exit 1
           fi
+          # Extract the identity strings directly from the cert — no separate secret needed.
+          SIGN_APP=$(security find-identity -v "$KC" \
+            | grep "Developer ID Application:.*${TEAM}" | head -1 \
+            | sed 's/.*"\(.*\)".*/\1/')
           rm -f "$P12"
-          echo "has_cert=true" >> "$GITHUB_OUTPUT"
+          echo "has_cert=true"        >> "$GITHUB_OUTPUT"
+          echo "sign_identity=${SIGN_APP}" >> "$GITHUB_OUTPUT"
 
       - name: Stage App Store Connect API key
         env:
@@ -307,14 +316,13 @@ jobs:
 
       - name: Build .app and .pkg
         env:
-          SIGN_IDENTITY: ${{ secrets.APPLE_SIGN_IDENTITY }}
           APPLE_API_KEY_PATH: ${{ runner.temp }}/private_keys/AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
         run: |
           SIGN_ARGS=()
-          if [[ "${{ steps.cert.outputs.has_cert }}" == "true" && -n "$SIGN_IDENTITY" ]]; then
-            SIGN_ARGS+=(--sign "$SIGN_IDENTITY" --notarize)
+          if [[ "${{ steps.cert.outputs.has_cert }}" == "true" ]]; then
+            SIGN_ARGS+=(--sign "${{ steps.cert.outputs.sign_identity }}" --notarize)
           fi
           ./release-macos.sh \
             --core-bin "$DAEMON_BIN" \
