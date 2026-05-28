@@ -116,16 +116,22 @@ jobs:
           TEAM="${{ secrets.APPLE_TEAM_ID }}"
           PKG_N=$(security find-identity -v "$KC" \
             | grep -c "Developer ID Installer:.*${TEAM}" || true)
-          if [[ "$PKG_N" -lt 1 ]]; then
-            echo "::error::Missing Developer ID Installer identity for team ${TEAM}."
+          APP_N=$(security find-identity -v "$KC" \
+            | grep -c "Developer ID Application:.*${TEAM}" || true)
+          if [[ "$PKG_N" -lt 1 || "$APP_N" -lt 1 ]]; then
+            echo "::error::Missing Developer ID identities for team ${TEAM} (Installer: ${PKG_N}, Application: ${APP_N})."
             exit 1
           fi
           SIGN_PKG=$(security find-identity -v "$KC" \
             | grep "Developer ID Installer:.*${TEAM}" | head -1 \
             | sed 's/.*"\(.*\)".*/\1/')
+          SIGN_APP=$(security find-identity -v "$KC" \
+            | grep "Developer ID Application:.*${TEAM}" | head -1 \
+            | sed 's/.*"\(.*\)".*/\1/')
           rm -f "$P12"
           echo "has_cert=true"       >> "$GITHUB_OUTPUT"
           echo "sign_pkg=${SIGN_PKG}" >> "$GITHUB_OUTPUT"
+          echo "sign_app=${SIGN_APP}" >> "$GITHUB_OUTPUT"
 
       - name: Stage App Store Connect API key
         if: matrix.name == 'macos-universal'
@@ -140,9 +146,11 @@ jobs:
       - name: Build and package
         shell: bash
         env:
-          # macOS: sign the .pkg inline via pkgbuild --sign.
+          # macOS: sign the .pkg inline via pkgbuild --sign, and sign each
+          # Mach-O binary with the Application identity before packaging.
           # Empty on Linux/Windows (steps.cert didn't run → empty output).
           SIGN_PKG: ${{ steps.cert.outputs.sign_pkg }}
+          SIGN_APP: ${{ steps.cert.outputs.sign_app }}
           APPLE_API_KEY_PATH: ${{ runner.temp }}/private_keys/AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}

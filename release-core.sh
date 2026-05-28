@@ -238,6 +238,22 @@ EOF
             cp "${LIPO_OUT}/release/videoroom-cli"  "${PKG_STAGE}/usr/local/bin/"
             chmod 755 "${PKG_STAGE}/usr/local/bin/videoroom-core"
             chmod 755 "${PKG_STAGE}/usr/local/bin/videoroom-cli"
+
+            # Codesign binaries with Hardened Runtime before pkgbuild.
+            # Apple notarization rejects packages containing Mach-O binaries that
+            # are not signed with a Developer ID Application cert + --options runtime
+            # + --timestamp, even if the .pkg wrapper is signed with Installer cert.
+            if [[ -n "${SIGN_APP:-}" ]]; then
+                echo "  Code-signing binaries with hardened runtime…"
+                for bin in \
+                    "${PKG_STAGE}/usr/local/bin/videoroom-core" \
+                    "${PKG_STAGE}/usr/local/bin/videoroom-cli"; do
+                    codesign --force --options runtime --timestamp \
+                        --sign "${SIGN_APP}" "$bin"
+                    echo "    Signed: $(basename "$bin")"
+                done
+            fi
+
             PKGBUILD_ARGS=(
                 --root             "${PKG_STAGE}"
                 --identifier       "com.videoroom.core"
