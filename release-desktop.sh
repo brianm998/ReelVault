@@ -208,8 +208,45 @@ if [[ "$OS" == "Darwin" ]]; then
 </plist>
 PLIST
 
-        # Sign all Mach-O binaries inside-out (sorted so nested items precede
-        # the directories that contain them when we reach the bundle itself).
+        # Step 1 — Sign Mach-O binaries that live *inside* JAR files.
+        #
+        # Apple's notarization scanner unpacks ZIP/JAR archives and validates
+        # every Mach-O binary it finds.  Several gRPC, JNA, and Skiko JARs
+        # ship macOS native libraries (.jnilib / .dylib) that must be signed
+        # with a valid Developer ID certificate before the PKG is submitted.
+        #
+        # Strategy: for each JAR in the bundle that contains native libs,
+        #   1. extract to a temp dir
+        #   2. codesign every Mach-O found inside
+        #   3. repack in-place with `jar cf`
+        echo "  Signing native libs inside JARs…"
+        while IFS= read -r jarfile; do
+            # Quick check: does this JAR contain any native lib entries?
+            if ! jar tf "$jarfile" 2>/dev/null | grep -qiE '\.(jnilib|dylib|so)$'; then
+                continue
+            fi
+            echo "    $(basename "$jarfile")"
+            TD="$(mktemp -d)"
+            # Extract; skip if the JAR is corrupt or unreadable.
+            if ! (cd "$TD" && jar xf "$jarfile") 2>/dev/null; then
+                rm -rf "$TD"
+                continue
+            fi
+            find "$TD" -type f | while IFS= read -r f; do
+                if file -b "$f" 2>/dev/null | grep -q 'Mach-O'; then
+                    codesign --force --options runtime --timestamp \
+                        --entitlements "$ENTS_FILE" \
+                        --sign "$SIGN_IDENTITY" "$f" 2>/dev/null || true
+                fi
+            done
+            # Repack in-place (jar cf writes to the given path).
+            (cd "$TD" && jar cf "$jarfile" .) 2>/dev/null || true
+            rm -rf "$TD"
+        done < <(find "$APP_BUNDLE" -name "*.jar" -type f)
+
+        # Step 2 — Sign loose Mach-O binaries inside-out (sorted so nested
+        # items precede the directories that contain them).
+        echo "  Signing loose Mach-O binaries…"
         find "$APP_BUNDLE" -type f | sort | while IFS= read -r f; do
             if file -b "$f" 2>/dev/null | grep -q 'Mach-O'; then
                 codesign --force --options runtime --timestamp \
@@ -218,7 +255,7 @@ PLIST
             fi
         done
 
-        # Sign the bundle itself last.
+        # Step 3 — Sign the bundle itself last.
         codesign --force --options runtime --timestamp \
             --entitlements "$ENTS_FILE" \
             --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
