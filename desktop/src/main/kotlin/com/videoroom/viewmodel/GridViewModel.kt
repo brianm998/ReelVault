@@ -1029,10 +1029,17 @@ class GridViewModel(
         if (videoIds.isEmpty()) return
         viewModelScope.launch {
             val finalIds = expandForCollapsedStacks(videoIds)
-            // Optimistic update so the location badge appears immediately.
+            // Optimistic update so the location badge appears immediately —
+            // both on the grid representatives and on cached stack members
+            // (so the badge shows on every card when the stack is expanded).
             val idSet = finalIds.toSet()
             _videos.value = _videos.value.map { v ->
                 if (v.id in idSet) v.copy(gpsLatitude = latitude, gpsLongitude = longitude) else v
+            }
+            _expandedGroupMembers.value = _expandedGroupMembers.value.mapValues { (_, members) ->
+                members.map { v ->
+                    if (v.id in idSet) v.copy(gpsLatitude = latitude, gpsLongitude = longitude) else v
+                }
             }
             var ok = 0
             for (id in finalIds) {
@@ -1115,10 +1122,17 @@ class GridViewModel(
         viewModelScope.launch {
             try {
                 val finalIds = expandForCollapsedStacks(videoIds)
-                // Optimistic update so the keyword badge appears immediately.
+                // Optimistic update so the keyword badge appears immediately —
+                // mirrored into the cached stack members so the badge also
+                // shows on every member when the stack is expanded next.
                 val idSet = finalIds.toSet()
                 _videos.value = _videos.value.map { v ->
                     if (v.id in idSet && name !in v.tags) v.copy(tags = v.tags + name) else v
+                }
+                _expandedGroupMembers.value = _expandedGroupMembers.value.mapValues { (_, members) ->
+                    members.map { v ->
+                        if (v.id in idSet && name !in v.tags) v.copy(tags = v.tags + name) else v
+                    }
                 }
                 val tag = repository.createTag(name)
                 if (tag == null) {
@@ -1145,12 +1159,19 @@ class GridViewModel(
         viewModelScope.launch {
             try {
                 val finalIds = expandForCollapsedStacks(videoIds)
-                // Optimistic update so the badge clears immediately.
+                // Optimistic update so the badge clears immediately — also
+                // applied to the cached stack members so the change reflects
+                // when the stack is expanded.
                 val tagName = _tags.value.firstOrNull { it.id == tagId }?.name
                 if (tagName != null) {
                     val idSet = finalIds.toSet()
                     _videos.value = _videos.value.map { v ->
                         if (v.id in idSet) v.copy(tags = v.tags - tagName) else v
+                    }
+                    _expandedGroupMembers.value = _expandedGroupMembers.value.mapValues { (_, members) ->
+                        members.map { v ->
+                            if (v.id in idSet) v.copy(tags = v.tags - tagName) else v
+                        }
                     }
                 }
                 if (!repository.untagVideos(finalIds, tagId)) {
