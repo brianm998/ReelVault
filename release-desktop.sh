@@ -178,37 +178,53 @@ if [[ "$OS" == "Darwin" ]]; then
         exit 1
     fi
 
-    # Code-sign inside-out: dylibs first, then JDK runtime, then main exe, then bundle.
+    # Code-sign with JVM-compatible entitlements.
+    #
+    # The bundled JDK requires three entitlements under Hardened Runtime:
+    #   allow-jit                      — JIT compiler needs W+X memory pages
+    #   allow-unsigned-executable-memory — extra fallback for older JVM paths
+    #   disable-library-validation     — JVM loads third-party native dylibs
+    #
+    # We sign every Mach-O file in the bundle (detected via `file`, not by
+    # extension — the JDK runtime includes extension-less executables) before
+    # signing the bundle wrapper itself.
     if [[ -n "$SIGN_IDENTITY" ]]; then
         echo "==> Signing app bundle…"
 
-        # 1. Dynamic libraries / JNI objects anywhere in the bundle
-        find "$APP_BUNDLE" -type f \( -name "*.dylib" -o -name "*.so" -o -name "*.jnilib" \) \
-          | while IFS= read -r f; do
-              codesign --force --options runtime --timestamp \
-                  --sign "$SIGN_IDENTITY" "$f" 2>/dev/null || true
-            done
+        ENTS_FILE="$(mktemp /tmp/videoroom-entitlements.XXXXXX.plist)"
+        cat > "$ENTS_FILE" << 'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+        "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+</dict>
+</plist>
+PLIST
 
-        # 2. Executables inside the bundled JDK runtime
-        if [[ -d "$APP_BUNDLE/Contents/runtime" ]]; then
-            find "$APP_BUNDLE/Contents/runtime" -type f -perm +111 2>/dev/null \
-              | while IFS= read -r f; do
-                  codesign --force --options runtime --timestamp \
-                      --sign "$SIGN_IDENTITY" "$f" 2>/dev/null || true
-                done
-        fi
+        # Sign all Mach-O binaries inside-out (sorted so nested items precede
+        # the directories that contain them when we reach the bundle itself).
+        find "$APP_BUNDLE" -type f | sort | while IFS= read -r f; do
+            if file -b "$f" 2>/dev/null | grep -q 'Mach-O'; then
+                codesign --force --options runtime --timestamp \
+                    --entitlements "$ENTS_FILE" \
+                    --sign "$SIGN_IDENTITY" "$f" 2>/dev/null || true
+            fi
+        done
 
-        # 3. Main application executable(s)
-        find "$APP_BUNDLE/Contents/MacOS" -type f \
-          | while IFS= read -r f; do
-              codesign --force --options runtime --timestamp \
-                  --sign "$SIGN_IDENTITY" "$f"
-            done
-
-        # 4. The bundle itself
+        # Sign the bundle itself last.
         codesign --force --options runtime --timestamp \
+            --entitlements "$ENTS_FILE" \
             --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
         echo "  Signed: $APP_BUNDLE"
+
+        rm -f "$ENTS_FILE"
     fi
 
     # pkgbuild: wrap the (optionally signed) .app into an installer .pkg.
@@ -279,19 +295,44 @@ if [[ "$OS" == "Darwin" && "$NOTARIZE" -eq 1 ]]; then
     shopt -s nullglob
     for PKG_PATH in "${OUT_DIR}"/*.pkg; do
         echo "==> Submitting to Apple Notary Service: $(basename "$PKG_PATH")…"
-        # CI: App Store Connect API key.
-        # Local fallback: "VideoRoom-Notarize" keychain profile.
+
+        # Capture full output; notarytool exits 0 even for Invalid status,
+        # so we parse the status line ourselves.
+        NOTARY_OUT=""
         if [[ -n "${APPLE_API_KEY_PATH:-}" ]]; then
-            xcrun notarytool submit "$PKG_PATH" \
+            NOTARY_OUT=$(xcrun notarytool submit "$PKG_PATH" \
                 --key    "$APPLE_API_KEY_PATH" \
                 --key-id "$APPLE_API_KEY_ID" \
                 --issuer "$APPLE_API_ISSUER_ID" \
-                --wait
+                --wait 2>&1) || true
         else
-            xcrun notarytool submit "$PKG_PATH" \
+            NOTARY_OUT=$(xcrun notarytool submit "$PKG_PATH" \
                 --keychain-profile "VideoRoom-Notarize" \
-                --wait
+                --wait 2>&1) || true
         fi
+        echo "$NOTARY_OUT"
+
+        NOTARY_STATUS=$(echo "$NOTARY_OUT" | grep -E '^\s+status:' | tail -1 | awk '{print $2}')
+        SUBMISSION_ID=$(echo "$NOTARY_OUT" | grep -E '^\s+id:' | head -1 | awk '{print $2}')
+
+        if [[ "$NOTARY_STATUS" != "Accepted" ]]; then
+            echo "::error::Notarization returned '${NOTARY_STATUS}' (id: ${SUBMISSION_ID})" >&2
+            # Fetch the detailed log so CI shows exactly which files failed.
+            if [[ -n "$SUBMISSION_ID" ]]; then
+                echo "==> Fetching notarization log for ${SUBMISSION_ID}…"
+                if [[ -n "${APPLE_API_KEY_PATH:-}" ]]; then
+                    xcrun notarytool log "$SUBMISSION_ID" \
+                        --key    "$APPLE_API_KEY_PATH" \
+                        --key-id "$APPLE_API_KEY_ID" \
+                        --issuer "$APPLE_API_ISSUER_ID" 2>&1 || true
+                else
+                    xcrun notarytool log "$SUBMISSION_ID" \
+                        --keychain-profile "VideoRoom-Notarize" 2>&1 || true
+                fi
+            fi
+            exit 1
+        fi
+
         echo "==> Stapling notarization ticket…"
         xcrun stapler staple "$PKG_PATH"
     done
