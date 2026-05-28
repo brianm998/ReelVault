@@ -117,7 +117,9 @@ compose.desktop {
         nativeDistributions {
             // Without this, packageDistributionForCurrentOS has nothing to do
             // and silently produces no artifacts (CI fails uploading an empty dir).
-            targetFormats(TargetFormat.Dmg, TargetFormat.Deb, TargetFormat.Msi)
+            // Pkg (not Dmg) on macOS — jpackage creates an installer that is then
+            // productsigned + notarized by release-desktop.sh.
+            targetFormats(TargetFormat.Pkg, TargetFormat.Deb, TargetFormat.Msi)
 
             packageName = "VideoRoom"
             packageVersion = "0.1.0"

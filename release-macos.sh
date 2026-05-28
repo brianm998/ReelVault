@@ -10,18 +10,20 @@
 # Options:
 #   --core-bin PATH        Path to the videoroom-core binary to embed.
 #                          Defaults to searching standard build locations.
-#   --sign IDENTITY        Developer ID Application certificate CN for
-#                          codesigning (e.g. "Developer ID Application: Acme").
-#                          Omit for ad-hoc signing (local use only).
-#   --notarize             Submit the .dmg to Apple Notary Service after signing.
-#                          Requires --sign, APPLE_ID and APPLE_TEAM_ID env vars,
-#                          and an app-specific password in the keychain.
+#   --sign IDENTITY        Developer ID Application identity for app signing.
+#                          (e.g. "Developer ID Application: Acme (TEAMID)")
+#                          Omit for ad-hoc signing (local / test builds only).
+#   --notarize             Sign, package, and notarize a distributable .pkg.
+#                          Requires --sign and either:
+#                            CI:    APPLE_API_KEY_PATH, APPLE_API_KEY_ID,
+#                                   APPLE_API_ISSUER_ID env vars
+#                            Local: a "VideoRoom-Notarize" keychain profile
 #   --version X.Y.Z        Override the bundle version (default: Package.swift).
 #   --out DIR              Output directory (default: dist/macos)
 #   --help                 Show this message
 #
 # Requirements:
-#   - macOS with Xcode Command Line Tools (swift, codesign, hdiutil)
+#   - macOS with Xcode Command Line Tools (swift, codesign, pkgbuild)
 #   - Run on macOS only — SwiftUI targets macOS exclusively.
 
 set -euo pipefail
@@ -65,7 +67,7 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
     exit 1
 fi
 
-for cmd in swift codesign hdiutil; do
+for cmd in swift codesign pkgbuild; do
     if ! command -v "$cmd" &>/dev/null; then
         echo "Error: '$cmd' not found. Install Xcode Command Line Tools." >&2
         exit 1
@@ -210,86 +212,92 @@ echo "  Bundle: ${APP_BUNDLE}"
 # ---------------------------------------------------------------------------
 # Code signing
 # ---------------------------------------------------------------------------
+# Derive the Developer ID Installer identity from the Application identity.
+SIGN_PKG="${SIGN_IDENTITY/Developer ID Application/Developer ID Installer}"
+
 sign_app() {
     local bundle="$1"
     local identity="${2:--}"   # "-" means ad-hoc
     local label="ad-hoc"
-    [[ "$identity" != "-" ]] && label="Developer ID: ${identity}"
+    [[ "$identity" != "-" ]] && label="${identity}"
 
-    echo "==> Signing (${label})…"
-    # Sign the daemon first, then the outer bundle.
+    echo "==> Signing app bundle (${label})…"
+    # Sign nested binaries inside-out before signing the outer bundle.
+    # --options runtime enables Hardened Runtime (required for notarization).
+    # --timestamp embeds a secure timestamp (also required by Apple's notary).
     if [[ -f "${bundle}/Contents/Resources/videoroom-core" ]]; then
-        codesign --force --options runtime \
+        codesign --force --options runtime --timestamp \
             --sign "$identity" \
             "${bundle}/Contents/Resources/videoroom-core"
     fi
-    codesign --force --options runtime \
+    codesign --force --options runtime --timestamp \
         --sign "$identity" \
-        --deep \
         "$bundle"
 }
 
 if [[ -n "$SIGN_IDENTITY" ]]; then
     sign_app "$APP_BUNDLE" "$SIGN_IDENTITY"
 else
-    echo "==> Ad-hoc signing (no --sign provided; distributable only within macOS)…"
+    echo "==> Ad-hoc signing (no --sign provided; local/test use only)…"
     sign_app "$APP_BUNDLE" "-"
 fi
 
 # ---------------------------------------------------------------------------
-# Create .dmg
+# Create .pkg
 # ---------------------------------------------------------------------------
-DMG_NAME="${APP_NAME}-v${VERSION}-macOS.dmg"
-DMG_PATH="${OUT_DIR}/${DMG_NAME}"
-STAGING="$(mktemp -d)"
+PKG_NAME="${APP_NAME}-v${VERSION}-macOS.pkg"
+PKG_PATH="${OUT_DIR}/${PKG_NAME}"
 
-echo "==> Creating ${DMG_NAME}…"
-cp -r "$APP_BUNDLE" "${STAGING}/"
-ln -s /Applications "${STAGING}/Applications"
-
-hdiutil create \
-    -volname "$APP_NAME" \
-    -srcfolder "$STAGING" \
-    -ov \
-    -format UDZO \
-    "$DMG_PATH"
-
-rm -rf "$STAGING"
-echo "  -> ${DMG_PATH}"
+echo "==> Creating ${PKG_NAME}…"
+# pkgbuild --component signs the installer component with the Developer ID
+# Installer identity (different cert from the app's Application identity).
+if [[ -n "$SIGN_PKG" && "$SIGN_PKG" != "-" ]]; then
+    pkgbuild \
+        --component  "$APP_BUNDLE" \
+        --install-location /Applications \
+        --identifier "com.videoroom.app" \
+        --version    "${VERSION}" \
+        --sign       "$SIGN_PKG" \
+        "$PKG_PATH"
+else
+    pkgbuild \
+        --component  "$APP_BUNDLE" \
+        --install-location /Applications \
+        --identifier "com.videoroom.app" \
+        --version    "${VERSION}" \
+        "$PKG_PATH"
+fi
+echo "  -> ${PKG_PATH}"
 
 # ---------------------------------------------------------------------------
 # Notarization (optional — requires Apple Developer account credentials)
 # ---------------------------------------------------------------------------
-if [[ "$NOTARIZE" -eq 1 ]]; then
-    if [[ -z "$SIGN_IDENTITY" ]]; then
-        echo "Error: --notarize requires --sign <Developer ID Identity>." >&2
-        exit 1
-    fi
-    : "${APPLE_ID:?Error: set APPLE_ID env var for notarization}"
-    : "${APPLE_TEAM_ID:?Error: set APPLE_TEAM_ID env var for notarization}"
-
-    # Apple requires the DMG itself to be signed before submission.
-    echo "==> Signing DMG…"
-    codesign --force --sign "$SIGN_IDENTITY" "$DMG_PATH"
-
-    echo "==> Submitting to Apple Notary Service…"
-    # CI: set APPLE_APP_PASSWORD env var (app-specific password from appleid.apple.com).
-    # Local: falls back to a saved keychain profile named "VideoRoom-Notarize".
-    if [[ -n "${APPLE_APP_PASSWORD:-}" ]]; then
-        xcrun notarytool submit "$DMG_PATH" \
-            --apple-id "$APPLE_ID" \
-            --team-id  "$APPLE_TEAM_ID" \
-            --password "$APPLE_APP_PASSWORD" \
+notarize_submit() {
+    local artifact="$1"
+    # CI: App Store Connect API key (APPLE_API_KEY_PATH / _KEY_ID / _ISSUER_ID).
+    # Local fallback: pre-configured "VideoRoom-Notarize" keychain profile.
+    if [[ -n "${APPLE_API_KEY_PATH:-}" ]]; then
+        xcrun notarytool submit "$artifact" \
+            --key        "$APPLE_API_KEY_PATH" \
+            --key-id     "$APPLE_API_KEY_ID" \
+            --issuer     "$APPLE_API_ISSUER_ID" \
             --wait
     else
-        xcrun notarytool submit "$DMG_PATH" \
-            --apple-id         "$APPLE_ID" \
-            --team-id          "$APPLE_TEAM_ID" \
+        xcrun notarytool submit "$artifact" \
             --keychain-profile "VideoRoom-Notarize" \
             --wait
     fi
+}
+
+if [[ "$NOTARIZE" -eq 1 ]]; then
+    if [[ -z "$SIGN_IDENTITY" ]]; then
+        echo "Error: --notarize requires --sign <Developer ID Application Identity>." >&2
+        exit 1
+    fi
+    echo "==> Submitting to Apple Notary Service…"
+    notarize_submit "$PKG_PATH"
     echo "==> Stapling notarization ticket…"
-    xcrun stapler staple "$DMG_PATH"
+    xcrun stapler staple "$PKG_PATH"
 fi
 
 # ---------------------------------------------------------------------------

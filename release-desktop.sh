@@ -166,7 +166,7 @@ BUILD_MAIN="${DESKTOP_DIR}/build/compose/binaries/main"
 
 case "$OS" in
     Darwin)
-        copy_artifacts "${BUILD_MAIN}/dmg" "*.dmg"
+        copy_artifacts "${BUILD_MAIN}/pkg" "*.pkg"
         ;;
     Linux)
         copy_artifacts "${BUILD_MAIN}/deb" "*.deb"
@@ -188,37 +188,41 @@ esac
 rm -rf "$RELEASE_BIN_DIR"
 
 # ---------------------------------------------------------------------------
-# macOS DMG signing + notarization
+# macOS .pkg signing + notarization
 # ---------------------------------------------------------------------------
 if [[ "$OS" == "Darwin" && "$NOTARIZE" -eq 1 ]]; then
     if [[ -z "$SIGN_IDENTITY" ]]; then
-        echo "Error: --notarize requires --sign <Developer ID Identity>." >&2
+        echo "Error: --notarize requires --sign <Developer ID Application Identity>." >&2
         exit 1
     fi
-    : "${APPLE_ID:?Error: set APPLE_ID env var for notarization}"
-    : "${APPLE_TEAM_ID:?Error: set APPLE_TEAM_ID env var for notarization}"
+    # Derive the Developer ID Installer identity from the Application identity.
+    SIGN_PKG="${SIGN_IDENTITY/Developer ID Application/Developer ID Installer}"
 
     shopt -s nullglob
-    for DMG_PATH in "${OUT_DIR}"/*.dmg; do
-        echo "==> Signing DMG: $(basename "$DMG_PATH")…"
-        codesign --force --sign "$SIGN_IDENTITY" "$DMG_PATH"
+    for PKG_PATH in "${OUT_DIR}"/*.pkg; do
+        echo "==> Re-signing pkg with Developer ID Installer: $(basename "$PKG_PATH")…"
+        # jpackage's pkg contains a signed .app but the pkg wrapper itself is
+        # unsigned. productsign adds the Developer ID Installer signature.
+        SIGNED="${PKG_PATH%.pkg}-signed.pkg"
+        productsign --sign "$SIGN_PKG" "$PKG_PATH" "$SIGNED"
+        mv -f "$SIGNED" "$PKG_PATH"
 
         echo "==> Submitting to Apple Notary Service…"
-        if [[ -n "${APPLE_APP_PASSWORD:-}" ]]; then
-            xcrun notarytool submit "$DMG_PATH" \
-                --apple-id "$APPLE_ID" \
-                --team-id  "$APPLE_TEAM_ID" \
-                --password "$APPLE_APP_PASSWORD" \
+        # CI: App Store Connect API key.
+        # Local fallback: "VideoRoom-Notarize" keychain profile.
+        if [[ -n "${APPLE_API_KEY_PATH:-}" ]]; then
+            xcrun notarytool submit "$PKG_PATH" \
+                --key    "$APPLE_API_KEY_PATH" \
+                --key-id "$APPLE_API_KEY_ID" \
+                --issuer "$APPLE_API_ISSUER_ID" \
                 --wait
         else
-            xcrun notarytool submit "$DMG_PATH" \
-                --apple-id         "$APPLE_ID" \
-                --team-id          "$APPLE_TEAM_ID" \
+            xcrun notarytool submit "$PKG_PATH" \
                 --keychain-profile "VideoRoom-Notarize" \
                 --wait
         fi
         echo "==> Stapling notarization ticket…"
-        xcrun stapler staple "$DMG_PATH"
+        xcrun stapler staple "$PKG_PATH"
     done
     shopt -u nullglob
 fi
