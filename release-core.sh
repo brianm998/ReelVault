@@ -228,6 +228,28 @@ EOF
             (cd "$OUT_DIR" && tar czf "${PKG}.tar.gz" "${PKG}/")
             rm -rf "$PKG_DIR"
             echo "  -> ${OUT_DIR}/${PKG}.tar.gz"
+
+            # ── macOS .pkg installer ──────────────────────────────────────────
+            echo "  Packaging ${PKG}.pkg…"
+            PKG_STAGE="${OUT_DIR}/.pkgroot"
+            rm -rf "${PKG_STAGE}"
+            mkdir -p "${PKG_STAGE}/usr/local/bin"
+            cp "${LIPO_OUT}/release/videoroom-core" "${PKG_STAGE}/usr/local/bin/"
+            cp "${LIPO_OUT}/release/videoroom-cli"  "${PKG_STAGE}/usr/local/bin/"
+            chmod 755 "${PKG_STAGE}/usr/local/bin/videoroom-core"
+            chmod 755 "${PKG_STAGE}/usr/local/bin/videoroom-cli"
+            PKGBUILD_ARGS=(
+                --root             "${PKG_STAGE}"
+                --identifier       "com.videoroom.core"
+                --version          "${VERSION}"
+                --install-location /
+            )
+            # Sign if a Developer ID Installer identity is available via env var.
+            # In CI, SIGN_PKG is set after the keychain is imported.
+            [[ -n "${SIGN_PKG:-}" ]] && PKGBUILD_ARGS+=(--sign "${SIGN_PKG}")
+            pkgbuild "${PKGBUILD_ARGS[@]}" "${OUT_DIR}/${PKG}.pkg"
+            rm -rf "${PKG_STAGE}"
+            echo "  -> ${OUT_DIR}/${PKG}.pkg"
             ;;
         Linux)
             case "$HOST_ARCH" in
@@ -237,6 +259,34 @@ EOF
                     rustup target add x86_64-unknown-linux-gnu 2>/dev/null || true
                     build_target "x86_64-unknown-linux-gnu" 0
                     package_target "x86_64-unknown-linux-gnu" "linux-x86_64"
+
+                    # ── Linux .deb package ───────────────────────────────────
+                    echo "  Packaging videoroom-core_${VERSION}_amd64.deb…"
+                    DEB_STEM="videoroom-core_${VERSION}_amd64"
+                    DEB_STAGE="${OUT_DIR}/.debroot"
+                    rm -rf "${DEB_STAGE}"
+                    mkdir -p "${DEB_STAGE}/DEBIAN"
+                    mkdir -p "${DEB_STAGE}/usr/local/bin"
+                    cp "${CORE_DIR}/target/x86_64-unknown-linux-gnu/release/videoroom-core" \
+                        "${DEB_STAGE}/usr/local/bin/"
+                    cp "${CORE_DIR}/target/x86_64-unknown-linux-gnu/release/videoroom-cli" \
+                        "${DEB_STAGE}/usr/local/bin/"
+                    chmod 755 "${DEB_STAGE}/usr/local/bin/"*
+                    cat > "${DEB_STAGE}/DEBIAN/control" << CTRL
+Package: videoroom-core
+Version: ${VERSION}
+Architecture: amd64
+Maintainer: Brian Martin
+Depends: libc6 (>= 2.17)
+Section: video
+Priority: optional
+Description: VideoRoom Core Daemon
+ gRPC daemon for the VideoRoom video cataloging application.
+CTRL
+                    dpkg-deb --build --root-owner-group \
+                        "${DEB_STAGE}" "${OUT_DIR}/${DEB_STEM}.deb"
+                    rm -rf "${DEB_STAGE}"
+                    echo "  -> ${OUT_DIR}/${DEB_STEM}.deb"
                     ;;
                 aarch64)
                     echo ""
@@ -244,6 +294,34 @@ EOF
                     rustup target add aarch64-unknown-linux-gnu 2>/dev/null || true
                     build_target "aarch64-unknown-linux-gnu" 0
                     package_target "aarch64-unknown-linux-gnu" "linux-aarch64"
+
+                    # ── Linux .deb package ───────────────────────────────────
+                    echo "  Packaging videoroom-core_${VERSION}_arm64.deb…"
+                    DEB_STEM="videoroom-core_${VERSION}_arm64"
+                    DEB_STAGE="${OUT_DIR}/.debroot"
+                    rm -rf "${DEB_STAGE}"
+                    mkdir -p "${DEB_STAGE}/DEBIAN"
+                    mkdir -p "${DEB_STAGE}/usr/local/bin"
+                    cp "${CORE_DIR}/target/aarch64-unknown-linux-gnu/release/videoroom-core" \
+                        "${DEB_STAGE}/usr/local/bin/"
+                    cp "${CORE_DIR}/target/aarch64-unknown-linux-gnu/release/videoroom-cli" \
+                        "${DEB_STAGE}/usr/local/bin/"
+                    chmod 755 "${DEB_STAGE}/usr/local/bin/"*
+                    cat > "${DEB_STAGE}/DEBIAN/control" << CTRL
+Package: videoroom-core
+Version: ${VERSION}
+Architecture: arm64
+Maintainer: Brian Martin
+Depends: libc6 (>= 2.17)
+Section: video
+Priority: optional
+Description: VideoRoom Core Daemon
+ gRPC daemon for the VideoRoom video cataloging application.
+CTRL
+                    dpkg-deb --build --root-owner-group \
+                        "${DEB_STAGE}" "${OUT_DIR}/${DEB_STEM}.deb"
+                    rm -rf "${DEB_STAGE}"
+                    echo "  -> ${OUT_DIR}/${DEB_STEM}.deb"
                     ;;
                 *)
                     echo "Error: unsupported Linux arch: ${HOST_ARCH}" >&2; exit 1 ;;
@@ -256,13 +334,42 @@ EOF
             rustup target add x86_64-pc-windows-msvc 2>/dev/null || true
             build_target "x86_64-pc-windows-msvc" 0
             package_target "x86_64-pc-windows-msvc" "windows-x86_64" ".exe"
+
+            # ── Windows Setup.exe ─────────────────────────────────────────────
+            MAKENSIS_CMD="$(command -v makensis.exe 2>/dev/null \
+                || command -v makensis 2>/dev/null || true)"
+            if [[ -n "$MAKENSIS_CMD" ]]; then
+                echo "  Packaging Windows Setup.exe…"
+                WIN_STEM="videoroom-core-v${VERSION}-windows-x86_64"
+                WIN_STAGE="${OUT_DIR}/${WIN_STEM}"
+                mkdir -p "${WIN_STAGE}"
+                cp "${CORE_DIR}/target/x86_64-pc-windows-msvc/release/videoroom-core.exe" \
+                    "${WIN_STAGE}/"
+                cp "${CORE_DIR}/target/x86_64-pc-windows-msvc/release/videoroom-cli.exe" \
+                    "${WIN_STAGE}/"
+                SETUP_OUT="${OUT_DIR}/${WIN_STEM}-Setup.exe"
+                NSI_SCRIPT="${SCRIPT_DIR}/releases/videoroom_core_installer.nsi"
+                "$MAKENSIS_CMD" \
+                    "-DAPP_VERSION=${VERSION}" \
+                    "-DARCH=x64" \
+                    "-DPKG_DIR=$(cygpath -w "${WIN_STAGE}")" \
+                    "-DOUTPUT_FILE=$(cygpath -w "${SETUP_OUT}")" \
+                    "$(cygpath -w "${NSI_SCRIPT}")"
+                rm -rf "${WIN_STAGE}"
+                echo "  -> ${SETUP_OUT}"
+            else
+                echo "  WARNING: makensis not found — skipping Setup.exe" \
+                     "(install NSIS to build it)"
+            fi
             ;;
         *)
             echo "Error: unrecognised host OS '${HOST_OS}' for --native mode." >&2; exit 1 ;;
     esac
     echo ""
     echo "==> Release artifacts in ${OUT_DIR}:"
-    ls -lh "${OUT_DIR}"/*.tar.gz "${OUT_DIR}"/*.zip 2>/dev/null || true
+    ls -lh "${OUT_DIR}"/*.tar.gz "${OUT_DIR}"/*.zip \
+           "${OUT_DIR}"/*.pkg    "${OUT_DIR}"/*.deb \
+           "${OUT_DIR}"/*-Setup.exe 2>/dev/null || true
     echo ""
     echo "Done."
     exit 0

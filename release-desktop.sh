@@ -4,10 +4,10 @@
 # ┌──────────────────────────────────────────────────────────────────────┐
 # │ IMPORTANT: Compose Desktop native distributions are platform-bound.  │
 # │                                                                      │
-# │  macOS   .dmg  — run this script on macOS                           │
+# │  macOS   .pkg  — run this script on macOS                           │
 # │  Linux   .deb  — run this script on a Debian/Ubuntu host            │
 # │  Linux   .rpm  — run this script on a RHEL/Fedora host              │
-# │  Windows .msi  — run this script on a Windows host (or CI)          │
+# │  Windows .exe  — run this script on a Windows host (or CI)          │
 # │                                                                      │
 # │ You cannot cross-compile Compose Desktop distributions. Use a CI    │
 # │ matrix (e.g. GitHub Actions) to build all three in parallel.        │
@@ -23,9 +23,9 @@
 #   --sign IDENTITY   Developer ID Application identity for code signing.
 #                     (e.g. "Developer ID Application: Acme (TEAMID)")
 #                     Omit to skip signing (local / unsigned builds only).
-#   --notarize        Submit the DMG to Apple Notary Service after signing.
-#                     Requires --sign, and APPLE_ID, APPLE_TEAM_ID, and either
-#                     APPLE_APP_PASSWORD env vars (CI) or a "VideoRoom-Notarize"
+#   --notarize        Submit the .pkg to Apple Notary Service after signing.
+#                     Requires --sign and APPLE_API_KEY_PATH, APPLE_API_KEY_ID,
+#                     APPLE_API_ISSUER_ID env vars (CI) or a "VideoRoom-Notarize"
 #                     keychain profile (local).
 #   --out DIR         Output directory (default: dist/desktop)
 #   --help            Show this message
@@ -35,7 +35,7 @@
 # Prerequisites:
 #   - JDK 21+ on PATH (JAVA_HOME or jenv)
 #   - On Linux: dpkg-deb (for .deb) and/or rpmbuild (for .rpm)
-#   - On Windows: WiX Toolset 3.x for .msi (Compose Desktop uses it)
+#   - On Windows: WiX 3.x is bundled with JDK 17+ jpackage (no separate install)
 
 set -euo pipefail
 
@@ -304,8 +304,7 @@ else
             copy_artifacts "${BUILD_MAIN}/rpm" "*.rpm" 2>/dev/null || true
             ;;
         MINGW*|CYGWIN*|MSYS*)
-            copy_artifacts "${BUILD_MAIN}/msi" "*.msi"
-            copy_artifacts "${BUILD_MAIN}/exe" "*.exe" 2>/dev/null || true
+            copy_artifacts "${BUILD_MAIN}/exe" "*.exe"
             ;;
         *)
             echo "Unexpected platform '${OS}'; copying everything from ${BUILD_MAIN}" >&2
