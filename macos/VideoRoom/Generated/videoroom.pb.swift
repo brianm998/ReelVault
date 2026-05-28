@@ -290,6 +290,18 @@ nonisolated struct Videoroom_VideoSummary: @unchecked Sendable {
     set {_uniqueStorage()._cameraDisplayName = newValue}
   }
 
+  /// GPS coordinates from embedded EXIF/metadata. Both are 0.0 when no
+  /// location data is present.
+  var gpsLatitude: Double {
+    get {_storage._gpsLatitude}
+    set {_uniqueStorage()._gpsLatitude = newValue}
+  }
+
+  var gpsLongitude: Double {
+    get {_storage._gpsLongitude}
+    set {_uniqueStorage()._gpsLongitude = newValue}
+  }
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -2102,7 +2114,7 @@ nonisolated extension Videoroom_ListVideosRequest: SwiftProtobuf.Message, SwiftP
 
 nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".VideoSummary"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0\u{3}proxy_count\0\u{3}proxy_of\0\u{3}playable_natively\0\u{1}rating\0\u{3}color_label\0\u{3}camera_model\0\u{3}camera_display_name\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0\u{3}proxy_count\0\u{3}proxy_of\0\u{3}playable_natively\0\u{1}rating\0\u{3}color_label\0\u{3}camera_model\0\u{3}camera_display_name\0\u{3}gps_latitude\0\u{3}gps_longitude\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -2130,6 +2142,8 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
     var _colorLabel: String = String()
     var _cameraModel: String = String()
     var _cameraDisplayName: String = String()
+    var _gpsLatitude: Double = 0
+    var _gpsLongitude: Double = 0
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2165,6 +2179,8 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
       _colorLabel = source._colorLabel
       _cameraModel = source._cameraModel
       _cameraDisplayName = source._cameraDisplayName
+      _gpsLatitude = source._gpsLatitude
+      _gpsLongitude = source._gpsLongitude
     }
   }
 
@@ -2208,6 +2224,8 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
         case 23: try { try decoder.decodeSingularStringField(value: &_storage._colorLabel) }()
         case 24: try { try decoder.decodeSingularStringField(value: &_storage._cameraModel) }()
         case 25: try { try decoder.decodeSingularStringField(value: &_storage._cameraDisplayName) }()
+        case 26: try { try decoder.decodeSingularDoubleField(value: &_storage._gpsLatitude) }()
+        case 27: try { try decoder.decodeSingularDoubleField(value: &_storage._gpsLongitude) }()
         default: break
         }
       }
@@ -2291,6 +2309,12 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
       if !_storage._cameraDisplayName.isEmpty {
         try visitor.visitSingularStringField(value: _storage._cameraDisplayName, fieldNumber: 25)
       }
+      if _storage._gpsLatitude.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._gpsLatitude, fieldNumber: 26)
+      }
+      if _storage._gpsLongitude.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._gpsLongitude, fieldNumber: 27)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2325,6 +2349,8 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
         if _storage._colorLabel != rhs_storage._colorLabel {return false}
         if _storage._cameraModel != rhs_storage._cameraModel {return false}
         if _storage._cameraDisplayName != rhs_storage._cameraDisplayName {return false}
+        if _storage._gpsLatitude != rhs_storage._gpsLatitude {return false}
+        if _storage._gpsLongitude != rhs_storage._gpsLongitude {return false}
         return true
       }
       if !storagesAreEqual {return false}

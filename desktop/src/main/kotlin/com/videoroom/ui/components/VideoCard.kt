@@ -701,11 +701,8 @@ fun VideoCard(
 
                 // "Too large to play here" marker — sits in the letterbox
                 // gap between the video's bottom edge and the photo area's
-                // bottom edge, ABOVE the icon row at the very bottom. For
-                // landscape clips that gap is sizeable; for portrait / square
-                // clips it collapses to just the 8 dp bottom padding so the
-                // badge is hidden (those clips rarely exceed the playback
-                // height limit anyway).
+                // bottom edge. Centred vertically in that gap; hidden when
+                // there is less than 20 dp of space (portrait/square clips).
                 if (!video.playableNatively && !video.hasProxies && proxyCreationState == null) {
                     val aspect = if (video.width > 0 && video.height > 0)
                         video.width.toFloat() / video.height.toFloat() else 1f
@@ -713,19 +710,21 @@ fun VideoCard(
                     val videoH = if (aspect >= 1f) available / aspect else available
                     val topLetterbox = ((available - videoH) / 2f).coerceAtLeast(0.dp)
                     val videoBottom = photoPadding + topLetterbox + videoH
-                    // Reserve the bottom 26 dp for the icon row (18 dp icon + 6 dp
-                    // padding + 2 dp buffer) so the banner never overlaps the badges.
                     val iconClearance = 26.dp
-                    val bannerAreaTop = (videoBottom + 2.dp)
-                    val bannerAreaBottom = (maxHeight - iconClearance).coerceAtLeast(bannerAreaTop)
-                    val bannerHeight = (bannerAreaBottom - bannerAreaTop).coerceAtLeast(0.dp)
-                    if (bannerHeight >= 12.dp) {
+                    val gapTop = videoBottom + 2.dp
+                    val gapBottom = (maxHeight - iconClearance).coerceAtLeast(gapTop)
+                    val gapHeight = (gapBottom - gapTop).coerceAtLeast(0.dp)
+                    if (gapHeight >= 20.dp) {
+                        // Centre the banner pill in the letterbox gap without
+                        // height-constraining it — giving the Box a fixed height
+                        // passes max-height to the Surface and squishes the text.
+                        val badgeHalfHeight = 9.dp
+                        val topOffset = gapTop + (gapHeight / 2) - badgeHalfHeight
                         Box(
                             modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .offset(y = bannerAreaTop)
-                                .fillMaxWidth()
-                                .height(bannerHeight),
+                                .align(Alignment.TopCenter)
+                                .offset(y = topOffset)
+                                .wrapContentSize(),
                             contentAlignment = Alignment.Center
                         ) {
                             com.videoroom.ui.components.Tooltip(
