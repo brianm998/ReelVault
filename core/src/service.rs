@@ -334,7 +334,7 @@ impl VideoRoomService {
         let meta = conn.and_then(|c| {
             c.query_row(
                 "SELECT duration_ms, width, height, fps, codec_video, codec_audio,
-                        creation_date, camera_model
+                        creation_date, camera_model, gps_lat, gps_lon
                  FROM metadata WHERE video_id = ?",
                 [video_id],
                 |row| {
@@ -347,6 +347,8 @@ impl VideoRoomService {
                         row.get::<_, Option<String>>(5)?,
                         row.get::<_, Option<i64>>(6)?,
                         row.get::<_, Option<String>>(7)?,
+                        row.get::<_, Option<f64>>(8)?,
+                        row.get::<_, Option<f64>>(9)?,
                     ))
                 },
             ).ok()
@@ -355,8 +357,8 @@ impl VideoRoomService {
         let tags = self.db.get_video_tags(video_id).unwrap_or_default();
 
         let (duration_ms, width, height, fps, codec_video, codec_audio, creation_date,
-             camera_model) =
-            meta.unwrap_or((0, 0, 0, 0.0, None, None, None, None));
+             camera_model, gps_lat, gps_lon) =
+            meta.unwrap_or((0, 0, 0, 0.0, None, None, None, None, None, None));
 
         // Resolve the marketing-friendly camera name the same way
         // build_video_metadata does — user overrides on top of the
@@ -446,6 +448,8 @@ impl VideoRoomService {
             color_label,
             camera_model: camera_model_str,
             camera_display_name,
+            gps_latitude: gps_lat.unwrap_or(0.0),
+            gps_longitude: gps_lon.unwrap_or(0.0),
         }
     }
 }
