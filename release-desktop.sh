@@ -132,20 +132,13 @@ VERSION="$(grep 'packageVersion' "${DESKTOP_DIR}/build.gradle.kts" \
 echo "==> Package version: ${VERSION}"
 
 # ---------------------------------------------------------------------------
-# Build the native distribution for the current platform
+# Build and package (platform-specific)
 # ---------------------------------------------------------------------------
 mkdir -p "$OUT_DIR"
 
-# Export for build.gradle.kts signing block
-[[ -n "$SIGN_IDENTITY" ]] && export APPLE_SIGN_IDENTITY="$SIGN_IDENTITY"
+BUILD_MAIN="${DESKTOP_DIR}/build/compose/binaries/main"
 
-(cd "$DESKTOP_DIR" && \
-    CARGO_TERM_COLOR=always \
-    ./gradlew packageDistributionForCurrentOS --no-daemon 2>&1)
-
-# ---------------------------------------------------------------------------
-# Copy the output artifact(s) into OUT_DIR
-# ---------------------------------------------------------------------------
+# helper: copy glob-matched files into OUT_DIR (used by Linux / Windows)
 copy_artifacts() {
     local src_dir="$1"
     local glob="$2"
@@ -162,25 +155,111 @@ copy_artifacts() {
     done
 }
 
-BUILD_MAIN="${DESKTOP_DIR}/build/compose/binaries/main"
+if [[ "$OS" == "Darwin" ]]; then
+    # -----------------------------------------------------------------------
+    # macOS — two-phase approach:
+    #   1. createDistributable → VideoRoom.app  (jpackage --type app-image)
+    #   2. codesign the bundle (dylibs → JDK runtime → main exe → bundle)
+    #   3. pkgbuild to wrap into a signed installer .pkg
+    #
+    # We bypass Gradle's packagePkg / packageDistributionForCurrentOS because
+    # jpackage's PKG bundler fails on pre-signed app images (missing .package
+    # sentinel → "Bundler 'Mac PKG Package' failed to produce a package").
+    # -----------------------------------------------------------------------
 
-case "$OS" in
-    Darwin)
-        copy_artifacts "${BUILD_MAIN}/pkg" "*.pkg"
-        ;;
-    Linux)
-        copy_artifacts "${BUILD_MAIN}/deb" "*.deb"
-        copy_artifacts "${BUILD_MAIN}/rpm" "*.rpm" 2>/dev/null || true
-        ;;
-    MINGW*|CYGWIN*|MSYS*)
-        copy_artifacts "${BUILD_MAIN}/msi" "*.msi"
-        copy_artifacts "${BUILD_MAIN}/exe" "*.exe" 2>/dev/null || true
-        ;;
-    *)
-        echo "Unexpected platform '${OS}'; copying everything from ${BUILD_MAIN}" >&2
-        cp -r "${BUILD_MAIN}"/* "$OUT_DIR/" 2>/dev/null || true
-        ;;
-esac
+    echo "==> Building distributable app bundle…"
+    (cd "$DESKTOP_DIR" && \
+        CARGO_TERM_COLOR=always \
+        ./gradlew createDistributable --no-daemon 2>&1)
+
+    APP_BUNDLE="${BUILD_MAIN}/app/VideoRoom.app"
+    if [[ ! -d "$APP_BUNDLE" ]]; then
+        echo "Error: app bundle not found at ${APP_BUNDLE}" >&2
+        exit 1
+    fi
+
+    # Code-sign inside-out: dylibs first, then JDK runtime, then main exe, then bundle.
+    if [[ -n "$SIGN_IDENTITY" ]]; then
+        echo "==> Signing app bundle…"
+
+        # 1. Dynamic libraries / JNI objects anywhere in the bundle
+        find "$APP_BUNDLE" -type f \( -name "*.dylib" -o -name "*.so" -o -name "*.jnilib" \) \
+          | while IFS= read -r f; do
+              codesign --force --options runtime --timestamp \
+                  --sign "$SIGN_IDENTITY" "$f" 2>/dev/null || true
+            done
+
+        # 2. Executables inside the bundled JDK runtime
+        if [[ -d "$APP_BUNDLE/Contents/runtime" ]]; then
+            find "$APP_BUNDLE/Contents/runtime" -type f -perm +111 2>/dev/null \
+              | while IFS= read -r f; do
+                  codesign --force --options runtime --timestamp \
+                      --sign "$SIGN_IDENTITY" "$f" 2>/dev/null || true
+                done
+        fi
+
+        # 3. Main application executable(s)
+        find "$APP_BUNDLE/Contents/MacOS" -type f \
+          | while IFS= read -r f; do
+              codesign --force --options runtime --timestamp \
+                  --sign "$SIGN_IDENTITY" "$f"
+            done
+
+        # 4. The bundle itself
+        codesign --force --options runtime --timestamp \
+            --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
+        echo "  Signed: $APP_BUNDLE"
+    fi
+
+    # pkgbuild: wrap the (optionally signed) .app into an installer .pkg.
+    # Signing the pkg with Developer ID Installer happens here so notarytool
+    # receives an already-signed pkg (no productsign step needed later).
+    SIGN_PKG="${SIGN_IDENTITY/Developer ID Application/Developer ID Installer}"
+    PKG_NAME="VideoRoom-${VERSION}.pkg"
+    PKG_PATH="${OUT_DIR}/${PKG_NAME}"
+
+    echo "==> Creating installer: ${PKG_NAME}…"
+    if [[ -n "$SIGN_IDENTITY" && -n "$SIGN_PKG" ]]; then
+        pkgbuild \
+            --component        "$APP_BUNDLE" \
+            --install-location /Applications \
+            --identifier       "com.videoroom.app" \
+            --version          "$VERSION" \
+            --sign             "$SIGN_PKG" \
+            "$PKG_PATH"
+    else
+        pkgbuild \
+            --component        "$APP_BUNDLE" \
+            --install-location /Applications \
+            --identifier       "com.videoroom.app" \
+            --version          "$VERSION" \
+            "$PKG_PATH"
+    fi
+    echo "  -> ${PKG_PATH}"
+
+else
+    # -----------------------------------------------------------------------
+    # Linux / Windows: standard Gradle native packaging
+    # -----------------------------------------------------------------------
+    (cd "$DESKTOP_DIR" && \
+        CARGO_TERM_COLOR=always \
+        ./gradlew packageDistributionForCurrentOS --no-daemon 2>&1)
+
+    case "$OS" in
+        Linux)
+            copy_artifacts "${BUILD_MAIN}/deb" "*.deb"
+            copy_artifacts "${BUILD_MAIN}/rpm" "*.rpm" 2>/dev/null || true
+            ;;
+        MINGW*|CYGWIN*|MSYS*)
+            copy_artifacts "${BUILD_MAIN}/msi" "*.msi"
+            copy_artifacts "${BUILD_MAIN}/exe" "*.exe" 2>/dev/null || true
+            ;;
+        *)
+            echo "Unexpected platform '${OS}'; copying everything from ${BUILD_MAIN}" >&2
+            cp -r "${BUILD_MAIN}"/* "$OUT_DIR/" 2>/dev/null || true
+            ;;
+    esac
+fi
 
 # ---------------------------------------------------------------------------
 # Clean up the staging directory
@@ -188,26 +267,18 @@ esac
 rm -rf "$RELEASE_BIN_DIR"
 
 # ---------------------------------------------------------------------------
-# macOS .pkg signing + notarization
+# macOS notarization
+# The .pkg is already signed by pkgbuild above; only notarize + staple here.
 # ---------------------------------------------------------------------------
 if [[ "$OS" == "Darwin" && "$NOTARIZE" -eq 1 ]]; then
     if [[ -z "$SIGN_IDENTITY" ]]; then
         echo "Error: --notarize requires --sign <Developer ID Application Identity>." >&2
         exit 1
     fi
-    # Derive the Developer ID Installer identity from the Application identity.
-    SIGN_PKG="${SIGN_IDENTITY/Developer ID Application/Developer ID Installer}"
 
     shopt -s nullglob
     for PKG_PATH in "${OUT_DIR}"/*.pkg; do
-        echo "==> Re-signing pkg with Developer ID Installer: $(basename "$PKG_PATH")…"
-        # jpackage's pkg contains a signed .app but the pkg wrapper itself is
-        # unsigned. productsign adds the Developer ID Installer signature.
-        SIGNED="${PKG_PATH%.pkg}-signed.pkg"
-        productsign --sign "$SIGN_PKG" "$PKG_PATH" "$SIGNED"
-        mv -f "$SIGNED" "$PKG_PATH"
-
-        echo "==> Submitting to Apple Notary Service…"
+        echo "==> Submitting to Apple Notary Service: $(basename "$PKG_PATH")…"
         # CI: App Store Connect API key.
         # Local fallback: "VideoRoom-Notarize" keychain profile.
         if [[ -n "${APPLE_API_KEY_PATH:-}" ]]; then
