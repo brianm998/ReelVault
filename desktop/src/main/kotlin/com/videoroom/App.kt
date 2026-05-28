@@ -692,7 +692,7 @@ fun VideoRoomApp(
                             // Pre-load on catalog open keeps this fast in
                             // steady state.
                             scope.launch {
-                                gridViewModel.loadVideoLocationsAsync()
+                                gridViewModel.loadVideoLocationsFilteredAsync()
                                 gridViewModel.loadNamedLocationsAsync()
                                 showGlobalMap = true
                             }
@@ -1057,7 +1057,7 @@ fun VideoRoomApp(
                         // and opens the global map focused on that video.
                         val onCardLocationClick: (Double, Double) -> Unit = { lat, lon ->
                             scope.launch {
-                                gridViewModel.loadVideoLocationsAsync()
+                                gridViewModel.loadVideoLocationsFilteredAsync()
                                 gridViewModel.loadNamedLocationsAsync()
                                 globalMapFocusLocation = lat to lon
                                 showGlobalMap = true

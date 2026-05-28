@@ -408,6 +408,9 @@ class GridViewModel: ObservableObject {
             totalCount = total
             hasMore = Int64(videos.count) < total
             isLoading = false
+
+            // Keep map locations in sync with the active grid filters.
+            Task { await loadVideoLocationsFilteredAsync() }
         } catch {
             self.error = "Failed to load videos: \(error.localizedDescription)"
             isLoading = false
@@ -1438,6 +1441,56 @@ class GridViewModel: ObservableObject {
     /// pre-load to keep the call fast in steady state.
     func loadVideoLocationsAsync() async {
         videoLocations = await repository.listVideosWithLocations()
+    }
+
+    /// Load GPS-tagged videos matching the current grid filters and update `videoLocations`.
+    /// Uses a large page size to minimise round-trips. Does NOT apply `filterLocation`
+    /// so the pin list is not constrained by an active proximity circle.
+    func loadVideoLocationsFiltered() {
+        Task { await loadVideoLocationsFilteredAsync() }
+    }
+
+    func loadVideoLocationsFilteredAsync() async {
+        let batchSize: Int32 = 500
+        let filterTagIds = filterTagId.isEmpty ? [] : [filterTagId]
+        var accumulated: [VideoLocation] = []
+        var offset: Int32 = 0
+        do {
+            while true {
+                let (page, total) = try await repository.listVideos(
+                    limit: batchSize,
+                    offset: offset,
+                    searchQuery: "",
+                    sortBy: sortBy,
+                    sortAscending: sortAscending,
+                    locationPath: selectedLocationPath,
+                    filterTagIds: filterTagIds,
+                    filterCamera: filterCamera,
+                    filterLens: filterLens,
+                    filterCodec: filterCodec,
+                    filterCaptureYear: filterCaptureYear,
+                    geoFilter: nil,
+                    filterMinRating: filterMinRating,
+                    filterColorLabel: filterColorLabel
+                )
+                for v in page where v.hasLocation {
+                    accumulated.append(VideoLocation(
+                        id: v.id,
+                        filename: v.filename,
+                        path: v.path,
+                        latitude: v.gpsLatitude,
+                        longitude: v.gpsLongitude,
+                        altitude: 0.0,
+                        hasThumbnail: v.hasThumbnail
+                    ))
+                }
+                offset += Int32(page.count)
+                if page.isEmpty || Int64(offset) >= total { break }
+            }
+            videoLocations = accumulated
+        } catch {
+            // Silently ignore — the existing locations remain in place.
+        }
     }
 
     /// Refresh the catalog's named-location list. Called whenever a sheet

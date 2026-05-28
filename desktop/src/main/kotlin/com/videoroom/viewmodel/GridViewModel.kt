@@ -451,6 +451,9 @@ class GridViewModel(
 
                 logger.info("Loaded ${videosList.size} videos, total: $totalCount" +
                     if (locationPathFilter.isNotEmpty()) " (filtered to $locationPathFilter)" else "")
+
+                // Keep map locations in sync with the active grid filters.
+                launch { loadVideoLocationsFilteredAsync() }
             } catch (e: Exception) {
                 _error.value = "Failed to load videos: ${e.message}"
                 _isLoading.value = false
@@ -863,6 +866,56 @@ class GridViewModel(
             logger.info("Loaded ${_videoLocations.value.size} geotagged videos")
         } catch (e: Exception) {
             logger.error("Failed to load video locations", e)
+        }
+    }
+
+    /** Load GPS-tagged videos that match the current grid filters and update [videoLocations].
+     *  Uses a large page size to minimise round-trips. Does NOT apply [_filterLocation] so
+     *  the map pin list is unaffected by an active proximity circle — the map itself draws
+     *  the circle. */
+    fun loadVideoLocationsFiltered() {
+        viewModelScope.launch { loadVideoLocationsFilteredAsync() }
+    }
+
+    suspend fun loadVideoLocationsFilteredAsync() {
+        try {
+            val batchSize = 500
+            val accumulated = mutableListOf<com.videoroom.data.models.VideoLocation>()
+            var offset = 0
+            while (true) {
+                val (page, total) = repository.listVideos(
+                    limit = batchSize,
+                    offset = offset,
+                    sortBy = sortBy,
+                    sortAscending = sortAscending,
+                    filterTags = filterTags,
+                    collectionId = collectionId,
+                    locationPath = locationPathFilter,
+                    filterCamera = _filterCamera.value,
+                    filterLens = _filterLens.value,
+                    filterCodec = _filterCodec.value,
+                    filterCaptureYear = _filterCaptureYear.value,
+                    geoFilter = null,
+                    filterMinRating = _filterMinRating.value,
+                    filterColorLabel = _filterColorLabel.value,
+                )
+                page.filter { it.hasLocation }.forEach { v ->
+                    accumulated += com.videoroom.data.models.VideoLocation(
+                        id = v.id,
+                        filename = v.filename,
+                        path = v.path,
+                        latitude = v.gpsLatitude,
+                        longitude = v.gpsLongitude,
+                        hasThumbnail = v.hasThumbnail
+                    )
+                }
+                offset += page.size
+                if (page.isEmpty() || offset >= total) break
+            }
+            _videoLocations.value = accumulated
+            logger.info("Loaded ${accumulated.size} geotagged videos (filtered)")
+        } catch (e: Exception) {
+            logger.error("Failed to load filtered video locations", e)
         }
     }
 

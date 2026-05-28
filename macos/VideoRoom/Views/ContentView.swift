@@ -548,7 +548,7 @@ struct ContentView: View {
                 // pre-load; the worst case (cold catalog) is a few hundred
                 // ms of perceived button delay before the sheet animates in.
                 Task {
-                    await gridViewModel.loadVideoLocationsAsync()
+                    await gridViewModel.loadVideoLocationsFilteredAsync()
                     await gridViewModel.loadNamedLocationsAsync()
                     showGlobalMapSheet = true
                 }
@@ -802,7 +802,7 @@ struct ContentView: View {
                     thumbnailMinWidth: CGFloat(thumbnailWidth),
                     onLocationClick: { lat, lon in
                         Task {
-                            await gridViewModel.loadVideoLocationsAsync()
+                            await gridViewModel.loadVideoLocationsFilteredAsync()
                             await gridViewModel.loadNamedLocationsAsync()
                             globalMapFocusCoord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
                             showGlobalMapSheet = true
@@ -821,7 +821,7 @@ struct ContentView: View {
                     thumbnailHeight: CGFloat(thumbnailWidth),
                     onLocationClick: { lat, lon in
                         Task {
-                            await gridViewModel.loadVideoLocationsAsync()
+                            await gridViewModel.loadVideoLocationsFilteredAsync()
                             await gridViewModel.loadNamedLocationsAsync()
                             globalMapFocusCoord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
                             showGlobalMapSheet = true
