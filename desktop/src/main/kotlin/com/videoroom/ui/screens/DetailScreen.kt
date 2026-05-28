@@ -347,6 +347,56 @@ fun DetailScreen(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(VideoRoomSpacing.Large))
+
+                // Notes section
+                Text(
+                    text = "Notes",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                com.videoroom.ui.components.Tooltip(
+                    text = "Free-form notes about this video. Saved automatically and " +
+                        "searchable from the top-bar search field."
+                ) {
+                    TextField(
+                        value = notes.value,
+                        onValueChange = { viewModel.updateNotes(it) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(80.dp),
+                        placeholder = { Text("Add notes...") },
+                        colors = TextFieldDefaults.colors(
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(VideoRoomSpacing.Large))
+
+                // Keywords / Tags section
+                KeywordsSection(
+                    primaryVideoTags = metadata.value!!.tags,
+                    allTags = gridViewModel.tags.collectAsState().value,
+                    selectedVideoIds = gridViewModel.selectedVideoIds.collectAsState().value
+                        .ifEmpty { listOf(metadata.value!!.id) },
+                    activeFilterTagId = gridViewModel.filterTagId.collectAsState().value,
+                    onApplyKeyword = { name, ids ->
+                        gridViewModel.applyKeyword(name, ids) {
+                            metadata.value?.id?.let { id -> viewModel.loadMetadata(id) }
+                        }
+                    },
+                    onRemoveKeywordByName = { name, ids ->
+                        val tagId = gridViewModel.tags.value.firstOrNull { it.name == name }?.id
+                        if (tagId != null) {
+                            gridViewModel.removeKeyword(tagId, ids) {
+                                metadata.value?.id?.let { id -> viewModel.loadMetadata(id) }
+                            }
+                        }
+                    },
+                    onFilterByTag = { gridViewModel.setTagFilter(it) }
+                )
+
                 // Group / Stack section
                 if (groupMembers.value.size > 1) {
                     Spacer(modifier = Modifier.height(VideoRoomSpacing.Large))
@@ -722,57 +772,6 @@ fun DetailScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(VideoRoomSpacing.Large))
-
-                // Notes section
-                Text(
-                    text = "Notes",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                com.videoroom.ui.components.Tooltip(
-                    text = "Free-form notes about this video. Saved automatically and " +
-                        "searchable from the top-bar search field."
-                ) {
-                    TextField(
-                        value = notes.value,
-                        onValueChange = { viewModel.updateNotes(it) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(80.dp),
-                        placeholder = { Text("Add notes...") },
-                        colors = TextFieldDefaults.colors(
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(VideoRoomSpacing.Large))
-
-                // Keywords / Tags section ---------------------------------
-                KeywordsSection(
-                    primaryVideoTags = metadata.value!!.tags,
-                    allTags = gridViewModel.tags.collectAsState().value,
-                    selectedVideoIds = gridViewModel.selectedVideoIds.collectAsState().value
-                        .ifEmpty { listOf(metadata.value!!.id) },
-                    activeFilterTagId = gridViewModel.filterTagId.collectAsState().value,
-                    onApplyKeyword = { name, ids ->
-                        gridViewModel.applyKeyword(name, ids) {
-                            // After tagging, reload the primary video's metadata
-                            // so its "Currently applied" chips refresh.
-                            metadata.value?.id?.let { id -> viewModel.loadMetadata(id) }
-                        }
-                    },
-                    onRemoveKeywordByName = { name, ids ->
-                        val tagId = gridViewModel.tags.value.firstOrNull { it.name == name }?.id
-                        if (tagId != null) {
-                            gridViewModel.removeKeyword(tagId, ids) {
-                                metadata.value?.id?.let { id -> viewModel.loadMetadata(id) }
-                            }
-                        }
-                    },
-                    onFilterByTag = { gridViewModel.setTagFilter(it) }
-                )
             }
         } else {
             // Loading
