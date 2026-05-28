@@ -1041,7 +1041,8 @@ class GridViewModel: ObservableObject {
                     proxyCount: v.proxyCount, proxyOf: v.proxyOf,
                     playableNatively: v.playableNatively,
                     rating: v.rating, colorLabel: v.colorLabel,
-                    cameraModel: v.cameraModel, cameraDisplayName: v.cameraDisplayName
+                    cameraModel: v.cameraModel, cameraDisplayName: v.cameraDisplayName,
+                    gpsLatitude: v.gpsLatitude, gpsLongitude: v.gpsLongitude
                 )
             }
             return v

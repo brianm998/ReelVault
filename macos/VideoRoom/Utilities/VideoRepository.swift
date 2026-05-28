@@ -938,7 +938,9 @@ class VideoRepository: ObservableObject {
             rating: Int(p.rating),
             colorLabel: p.colorLabel,
             cameraModel: p.cameraModel,
-            cameraDisplayName: p.cameraDisplayName.isEmpty ? p.cameraModel : p.cameraDisplayName
+            cameraDisplayName: p.cameraDisplayName.isEmpty ? p.cameraModel : p.cameraDisplayName,
+            gpsLatitude: p.gpsLatitude,
+            gpsLongitude: p.gpsLongitude
         )
     }
 

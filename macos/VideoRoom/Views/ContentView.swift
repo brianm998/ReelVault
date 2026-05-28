@@ -46,6 +46,9 @@ struct ContentView: View {
     @State private var openCatalogIsStartup = false
     @State private var currentCatalog: CatalogInfo = .closed
     @State private var showGlobalMapSheet = false
+    /// When non-nil, the map sheet opens centred on this coordinate instead of
+    /// auto-fitting all pins. Set when the user taps a card's location badge.
+    @State private var globalMapFocusCoord: CLLocationCoordinate2D? = nil
     /// Non-nil → LocationPicker sheet is presenting for these video IDs.
     @State private var locationPickerTargets: [String]? = nil
     @State private var locationPickerInitial: CLLocationCoordinate2D? = nil
@@ -190,11 +193,16 @@ struct ContentView: View {
         .sheet(isPresented: $showGlobalMapSheet) {
             GlobalMapView(
                 locations: gridViewModel.videoLocations,
-                onDismiss: { showGlobalMapSheet = false },
+                onDismiss: {
+                    showGlobalMapSheet = false
+                    globalMapFocusCoord = nil
+                },
                 onLocationPick: { lat, lon, radius in
                     gridViewModel.setLocationFilter(latitude: lat, longitude: lon, radiusKm: radius)
                     showGlobalMapSheet = false
-                }
+                    globalMapFocusCoord = nil
+                },
+                focusedCoordinate: globalMapFocusCoord
             )
         }
         .sheet(item: Binding(
@@ -735,7 +743,15 @@ struct ContentView: View {
                 GridView(
                     viewModel: gridViewModel,
                     detailViewModel: detailViewModel,
-                    thumbnailMinWidth: CGFloat(thumbnailWidth)
+                    thumbnailMinWidth: CGFloat(thumbnailWidth),
+                    onLocationClick: { lat, lon in
+                        Task {
+                            await gridViewModel.loadVideoLocationsAsync()
+                            await gridViewModel.loadNamedLocationsAsync()
+                            globalMapFocusCoord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+                            showGlobalMapSheet = true
+                        }
+                    }
                 )
                 .frame(maxWidth: .infinity)
             case .list:
@@ -746,7 +762,15 @@ struct ContentView: View {
                     // matches its grid-mode counterpart in size, so the
                     // size slider scales both views in lockstep instead
                     // of leaving list-mode cards half the width.
-                    thumbnailHeight: CGFloat(thumbnailWidth)
+                    thumbnailHeight: CGFloat(thumbnailWidth),
+                    onLocationClick: { lat, lon in
+                        Task {
+                            await gridViewModel.loadVideoLocationsAsync()
+                            await gridViewModel.loadNamedLocationsAsync()
+                            globalMapFocusCoord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+                            showGlobalMapSheet = true
+                        }
+                    }
                 )
                 .frame(maxWidth: .infinity)
             case .detail:

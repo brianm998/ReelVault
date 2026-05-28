@@ -49,10 +49,17 @@ data class VideoSummary(
      *  "Sony a7R III"). Falls back to [cameraModel] when no mapping
      *  exists. UI uses this for display. */
     val cameraDisplayName: String = "",
+    /** GPS latitude from embedded EXIF/metadata. 0.0 when absent. Carried
+     *  on the summary so the grid card can show a location badge without a
+     *  per-video VideoMetadata round-trip. */
+    val gpsLatitude: Double = 0.0,
+    /** GPS longitude from embedded EXIF/metadata. 0.0 when absent. */
+    val gpsLongitude: Double = 0.0,
 ) {
     val isInGroup: Boolean get() = groupId.isNotEmpty() && groupSize > 1
     val hasProxies: Boolean get() = proxyCount > 0
     val isProxy: Boolean get() = proxyOf.isNotEmpty()
+    val hasLocation: Boolean get() = gpsLatitude != 0.0 || gpsLongitude != 0.0
     /// Path that should be opened when user double-clicks; falls back to own path
     val openPath: String get() = if (groupPreferredPath.isNotEmpty()) groupPreferredPath else path
 

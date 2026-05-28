@@ -208,6 +208,12 @@ message VideoSummary {
   // falling back to `camera_model` when no mapping exists.
   string camera_model = 24;
   string camera_display_name = 25;
+  // GPS coordinates extracted from the video's embedded EXIF/metadata.
+  // Both fields are 0.0 when the video has no embedded location. Carried
+  // here so the grid card can show a location badge without a per-video
+  // VideoMetadata round-trip.
+  double gps_latitude = 26;
+  double gps_longitude = 27;
 }
 
 message ListVideosResponse {

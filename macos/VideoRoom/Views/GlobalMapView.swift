@@ -17,6 +17,10 @@ struct GlobalMapView: View {
     /// proximity filter. `radiusKm` scales with the cluster size — tight box
     /// for a single video, wider for big clusters.
     let onLocationPick: (_ latitude: Double, _ longitude: Double, _ radiusKm: Double) -> Void
+    /// When non-nil, the map opens centred on this coordinate with a tight
+    /// zoom (≈ neighbourhood view) instead of auto-fitting all pins. Used
+    /// when the user taps a specific video's location badge.
+    var focusedCoordinate: CLLocationCoordinate2D? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -32,9 +36,9 @@ struct GlobalMapView: View {
                 .foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            // Center on the centroid so the user lands somewhere useful
-            // instead of empty ocean.
-            let center: CLLocationCoordinate2D = {
+            // When focused on a specific video, centre there at a tight zoom.
+            // Otherwise centre on the centroid and let autoFitPins frame all pins.
+            let center: CLLocationCoordinate2D = focusedCoordinate ?? {
                 guard !locations.isEmpty else {
                     return CLLocationCoordinate2D(latitude: 25, longitude: 0)
                 }
@@ -53,12 +57,13 @@ struct GlobalMapView: View {
                     )
                 },
                 initialCenter: center,
-                initialZoomMeters: locations.isEmpty ? 20_000_000 : 4_000_000,
-                // Auto-frame the bbox of the loaded pins so dense
-                // catalogs zoom in and globally-spread ones zoom out —
-                // and we recover gracefully even when `locations`
-                // arrives over gRPC *after* the sheet has presented.
-                autoFitPins: true,
+                // Tight zoom when focused on a single video (≈ 5 km across);
+                // world-scale when empty; moderate bbox-fitting otherwise.
+                initialZoomMeters: focusedCoordinate != nil ? 5_000
+                    : (locations.isEmpty ? 20_000_000 : 4_000_000),
+                // Disable auto-fit when the caller wants a specific location
+                // centred — auto-fit would jump to the full-collection bbox.
+                autoFitPins: focusedCoordinate == nil,
                 onPinClick: { pin in
                     // Cluster pins widen the proximity filter so the grid
                     // picks up every member video; single pins stay tight.

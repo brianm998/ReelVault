@@ -382,6 +382,10 @@ fun VideoRoomApp(
     var pendingRemoveLocation by remember { mutableStateOf<com.videoroom.data.models.LibraryLocation?>(null) }
     // Global-map dialog visibility.
     var showGlobalMap by remember { mutableStateOf(false) }
+    // When non-null, the map opens focused on this (lat, lon) instead of
+    // fitting the full pin bounding-box. Set when the user taps a video
+    // card's location badge; cleared when the dialog is dismissed.
+    var globalMapFocusLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     // Location-picker state. `videoIdsForLocationPicker` non-null means the
     // dialog is open and operates on that set of video ids.
     var videoIdsForLocationPicker by remember { mutableStateOf<List<String>?>(null) }
@@ -952,6 +956,18 @@ fun VideoRoomApp(
                         )
 
                         // Middle area — grid, list, or single-video loupe.
+                        // Shared handler: tapping a card's location badge
+                        // loads all video locations (if not yet loaded)
+                        // and opens the global map focused on that video.
+                        val onCardLocationClick: (Double, Double) -> Unit = { lat, lon ->
+                            scope.launch {
+                                gridViewModel.loadVideoLocationsAsync()
+                                gridViewModel.loadNamedLocationsAsync()
+                                globalMapFocusLocation = lat to lon
+                                showGlobalMap = true
+                            }
+                        }
+
                         when (viewMode) {
                             ViewMode.GRID -> GridScreen(
                                 viewModel = gridViewModel,
@@ -960,6 +976,7 @@ fun VideoRoomApp(
                                     detailViewModel.loadMetadata(video.id)
                                 },
                                 thumbnailMinWidth = thumbnailWidth,
+                                onLocationClick = onCardLocationClick,
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxHeight()
@@ -977,6 +994,7 @@ fun VideoRoomApp(
                                 // of leaving list-mode cards half the
                                 // width.
                                 thumbnailHeight = thumbnailWidth,
+                                onLocationClick = onCardLocationClick,
                                 modifier = Modifier.weight(1f).fillMaxHeight()
                             )
                             ViewMode.DETAIL -> DetailViewScreen(
@@ -1141,11 +1159,16 @@ fun VideoRoomApp(
                     val locs = gridViewModel.videoLocations.collectAsState()
                     com.videoroom.ui.screens.GlobalMapDialog(
                         locations = locs.value,
-                        onDismiss = { showGlobalMap = false },
+                        onDismiss = {
+                            showGlobalMap = false
+                            globalMapFocusLocation = null
+                        },
                         onLocationPick = { lat, lon, radius ->
                             gridViewModel.setLocationFilter(lat, lon, radius)
                             showGlobalMap = false
-                        }
+                            globalMapFocusLocation = null
+                        },
+                        focusedLocation = globalMapFocusLocation,
                     )
                 }
 

@@ -106,6 +106,8 @@ class VideoRepository(
             colorLabel = proto.colorLabel,
             cameraModel = proto.cameraModel,
             cameraDisplayName = proto.cameraDisplayName.ifEmpty { proto.cameraModel },
+            gpsLatitude = proto.gpsLatitude,
+            gpsLongitude = proto.gpsLongitude,
         )
     }
 

@@ -34,6 +34,11 @@ fun GlobalMapDialog(
      *  proximity filter. The radius is derived from the cluster size — a
      *  single pin gets a tight 0.5km box, larger clusters get wider boxes. */
     onLocationPick: (latitude: Double, longitude: Double, radiusKm: Double) -> Unit,
+    /** When non-null, the map opens centered on this (lat, lon) with a
+     *  tight zoom (zoom level 12 ≈ city-block view) instead of the
+     *  bounding-box framing of all pins. Used when the user taps a
+     *  specific video's location badge. */
+    focusedLocation: Pair<Double, Double>? = null,
 ) {
     val pins = remember(locations) {
         locations.map { loc ->
@@ -47,13 +52,13 @@ fun GlobalMapDialog(
         }
     }
 
-    // Frame the bounding box of every loaded location so the map opens at
-    // a zoom that actually shows all the pins. The earlier centroid +
-    // fixed-zoom approach was way too tight for sparsely-spread libraries
-    // — clicking the map button on a globally-shot collection would land
-    // the camera at street level near one of the cities.
-    val (initLat, initLon, initZoom) = remember(locations) {
-        if (locations.isEmpty()) {
+    // When focused on a specific video's location, centre there at zoom 12
+    // (city-block / neighbourhood view). Otherwise frame the bounding box
+    // of all loaded pins so the map opens at a useful zoom level.
+    val (initLat, initLon, initZoom) = remember(locations, focusedLocation) {
+        if (focusedLocation != null) {
+            Triple(focusedLocation.first, focusedLocation.second, 12)
+        } else if (locations.isEmpty()) {
             Triple(0.0, 0.0, 2)
         } else {
             bboxFraming(locations.map { it.latitude to it.longitude })

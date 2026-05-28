@@ -9,6 +9,7 @@ struct ListView: View {
     @ObservedObject var viewModel: GridViewModel
     @ObservedObject var detailViewModel: DetailViewModel
     var thumbnailHeight: CGFloat = 100
+    var onLocationClick: ((Double, Double) -> Void)? = nil
 
     var body: some View {
         ZStack {
@@ -123,7 +124,8 @@ struct ListView: View {
                             },
                             onStopPlayback: {
                                 viewModel.stopPlayback()
-                            }
+                            },
+                            onLocationClick: onLocationClick
                         )
                         .id(displayRow.key)
                         .contextMenu {
@@ -181,7 +183,8 @@ struct ListView: View {
                                         scrubFrames: viewModel.scrubFrames[stackItem.video.id] ?? [],
                                         onHoverEnter: {
                                             viewModel.loadScrubFrames(videoId: stackItem.video.id)
-                                        }
+                                        },
+                                        onLocationClick: onLocationClick
                                     )
                                     .contextMenu {
                                         videoContextMenu(for: stackItem.video)
@@ -409,6 +412,8 @@ struct VideoListRowView: View {
     var playPath: String? = nil
     var onPlayClick: () -> Void = {}
     var onStopPlayback: () -> Void = {}
+    /// Fired when the user clicks the location badge. Receives (latitude, longitude).
+    var onLocationClick: ((Double, Double) -> Void)? = nil
 
     @State private var isHovered = false
     @State private var hoverX: CGFloat? = nil
@@ -907,6 +912,30 @@ struct VideoListRowView: View {
                 }
                 .padding(4)
             }
+
+            // Bottom-left location badge — shown when the video has GPS
+            // coordinates. Tapping opens the global map focused on this video.
+            if video.hasLocation, let handler = onLocationClick {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Button {
+                            handler(video.gpsLatitude, video.gpsLongitude)
+                        } label: {
+                            Image(systemName: "location.fill")
+                                .font(.system(size: 9))
+                                .foregroundColor(.white)
+                                .padding(3)
+                                .background(Color.black.opacity(0.55))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .help("Recorded at \(String(format: "%.4f", video.gpsLatitude)), \(String(format: "%.4f", video.gpsLongitude)) — click to show on map")
+                        Spacer()
+                    }
+                }
+                .padding(4)
+            }
         }
         .opacity(isStackChild ? 0.85 : 1.0)
     }
@@ -986,6 +1015,7 @@ struct VideoListHorizontalCardView: View {
     var onPickStatSlot: (_ slotIndex: Int, _ key: String) -> Void = { _, _ in }
     var scrubFrames: [NSImage?] = []
     var onHoverEnter: () -> Void = {}
+    var onLocationClick: ((Double, Double) -> Void)? = nil
 
     @State private var openSlotPickerIndex: Int? = nil
     @State private var hoverX: CGFloat? = nil
@@ -1147,6 +1177,26 @@ struct VideoListHorizontalCardView: View {
                 }
                 .frame(width: cardWidth, height: thumbnailHeight)
                 .cornerRadius(4)
+
+            if video.hasLocation, let handler = onLocationClick {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Button { handler(video.gpsLatitude, video.gpsLongitude) } label: {
+                            Image(systemName: "location.fill")
+                                .font(.system(size: 9))
+                                .foregroundColor(.white)
+                                .padding(3)
+                                .background(Color.black.opacity(0.55))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .help("Recorded at \(String(format: "%.4f", video.gpsLatitude)), \(String(format: "%.4f", video.gpsLongitude)) — click to show on map")
+                        Spacer()
+                    }
+                }
+                .padding(4)
+            }
         }
         .onContinuousHover { phase in
             switch phase {

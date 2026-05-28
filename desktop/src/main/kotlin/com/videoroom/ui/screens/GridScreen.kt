@@ -36,6 +36,10 @@ fun GridScreen(
     onVideoSelect: (VideoSummary) -> Unit,
     /** Minimum width of each grid cell — also controls how many columns appear. */
     thumbnailMinWidth: androidx.compose.ui.unit.Dp = 220.dp,
+    /** Fired when the user clicks the location badge on a video card. The
+     *  doubles are (latitude, longitude). Callers should open the global
+     *  map focused on that coordinate. */
+    onLocationClick: ((Double, Double) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val videos = viewModel.videos.collectAsState()
@@ -393,6 +397,7 @@ fun GridScreen(
                                 onSetRating = { rating -> viewModel.setRating(rating, listOf(video.id)) },
                                 onPickStatSlot = { slotIndex, key -> viewModel.updateGridTopSlot(slotIndex, key) },
                                 proxyCreationState = activeProxyCreations.value[video.id],
+                                onLocationClick = onLocationClick,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }

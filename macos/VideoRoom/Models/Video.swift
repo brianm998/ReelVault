@@ -49,10 +49,17 @@ struct VideoSummary: Identifiable, Hashable {
     /// "Sony a7R III"). Falls back to `cameraModel` when no mapping is
     /// known. UI uses this for display.
     let cameraDisplayName: String
+    /// GPS latitude from embedded EXIF/metadata. 0.0 when absent. Carried
+    /// on the summary so the grid card can show a location badge without a
+    /// per-video VideoMetadata round-trip.
+    let gpsLatitude: Double
+    /// GPS longitude from embedded EXIF/metadata. 0.0 when absent.
+    let gpsLongitude: Double
 
     var isInGroup: Bool { !groupId.isEmpty && groupSize > 1 }
     var hasProxies: Bool { proxyCount > 0 }
     var isProxy: Bool { !proxyOf.isEmpty }
+    var hasLocation: Bool { abs(gpsLatitude) > 1e-6 || abs(gpsLongitude) > 1e-6 }
     /// Path to open on double-click — preferred member if in a group, else this video.
     var openPath: String { groupPreferredPath.isEmpty ? path : groupPreferredPath }
 
@@ -93,7 +100,8 @@ struct VideoSummary: Identifiable, Hashable {
             proxyCount: proxyCount, proxyOf: proxyOf,
             playableNatively: playableNatively,
             rating: newRating, colorLabel: colorLabel,
-            cameraModel: cameraModel, cameraDisplayName: cameraDisplayName
+            cameraModel: cameraModel, cameraDisplayName: cameraDisplayName,
+            gpsLatitude: gpsLatitude, gpsLongitude: gpsLongitude
         )
     }
 
@@ -111,7 +119,8 @@ struct VideoSummary: Identifiable, Hashable {
             proxyCount: proxyCount, proxyOf: proxyOf,
             playableNatively: playableNatively,
             rating: rating, colorLabel: newLabel,
-            cameraModel: cameraModel, cameraDisplayName: cameraDisplayName
+            cameraModel: cameraModel, cameraDisplayName: cameraDisplayName,
+            gpsLatitude: gpsLatitude, gpsLongitude: gpsLongitude
         )
     }
 }

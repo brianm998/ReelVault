@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -56,6 +57,10 @@ fun ListScreen(
     viewModel: GridViewModel,
     onVideoSelect: (VideoSummary) -> Unit,
     thumbnailHeight: Dp = 80.dp,
+    /** Fired when the user clicks the location badge on a video card. The
+     *  doubles are (latitude, longitude). Callers should open the global
+     *  map focused on that coordinate. */
+    onLocationClick: ((Double, Double) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val videos = viewModel.videos.collectAsState()
@@ -363,6 +368,7 @@ fun ListScreen(
                                             }
                                         },
                                         onStopPlayback = { viewModel.stopPlayback() },
+                                        onLocationClick = onLocationClick,
                                     )
                                 }
 
@@ -547,6 +553,10 @@ fun VideoListRow(
     onDoubleClick: () -> Unit = {},
     /** Fired when one of the five rating positions is clicked. */
     onSetRating: (Int) -> Unit = {},
+    /** Fired when the user clicks the location badge. The doubles are
+     *  (latitude, longitude). Callers should open the global map focused
+     *  on that coordinate. */
+    onLocationClick: ((Double, Double) -> Unit)? = null,
     /**
      * File paths to transfer when the user drags this row out to an external
      * app. When empty, the row's own [item.video.openPath] is used.
@@ -825,6 +835,44 @@ fun VideoListRow(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+                // Bottom-left location badge — shown when the video has GPS
+                // coordinates embedded. Tapping fires [onLocationClick] so
+                // the caller can open the global map focused on this video.
+                if (video.hasLocation && onLocationClick != null) {
+                    Tooltip(
+                        text = "Recorded at %.4f, %.4f — click to show on map".format(
+                            video.gpsLatitude, video.gpsLongitude
+                        ),
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(6.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50))
+                                .pointerInput(video.gpsLatitude, video.gpsLongitude) {
+                                    awaitEachGesture {
+                                        val down = awaitFirstDown(requireUnconsumed = false)
+                                        down.consume()
+                                        val up = waitForUpOrCancellation()
+                                        if (up != null) {
+                                            up.consume()
+                                            onLocationClick(video.gpsLatitude, video.gpsLongitude)
+                                        }
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = "Show on map",
+                                modifier = Modifier.size(11.dp),
+                                tint = Color.White
                             )
                         }
                     }

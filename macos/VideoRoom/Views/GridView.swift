@@ -21,6 +21,7 @@ struct GridView: View {
     @ObservedObject var viewModel: GridViewModel
     @ObservedObject var detailViewModel: DetailViewModel
     let thumbnailMinWidth: CGFloat
+    var onLocationClick: ((Double, Double) -> Void)? = nil
 
     var body: some View {
         ZStack {
@@ -132,7 +133,8 @@ struct GridView: View {
                             viewModel.saveGridSettings()
                         },
                         dragPaths: cardDragPaths,
-                        proxyCreationState: viewModel.activeProxyCreations[item.video.id]
+                        proxyCreationState: viewModel.activeProxyCreations[item.video.id],
+                        onLocationClick: onLocationClick
                     )
                     .id(item.video.id)
                     .contextMenu {
@@ -421,6 +423,10 @@ struct VideoCardView: View {
     var dragPaths: [String] = []
     /// Active proxy generation state for this video, or nil when idle.
     var proxyCreationState: GridViewModel.ProxyCreationState? = nil
+    /// Fired when the user clicks the location badge on a card that has GPS
+    /// coordinates. Receives (latitude, longitude). Callers should open the
+    /// global map focused on that coordinate.
+    var onLocationClick: ((Double, Double) -> Void)? = nil
 
     /// AVPlayer kept alive for the lifetime of this view instance. Created
     /// on first play, released when `isPlaying` goes false.
@@ -597,17 +603,24 @@ struct VideoCardView: View {
                             // the photo-area's coordinate space.
                             let topLetterbox = max(0, (available - videoH) / 2)
                             let videoBottom = photoPadding + topLetterbox + videoH
-                            // Centre of the space below the video, capped
-                            // so we don't dip into the bottom band divider.
-                            let badgeCentreY = (videoBottom + photoH) / 2
-                            Text("Too large to play here")
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 2)
-                                .background(Color(red: 0.72, green: 0.45, blue: 0.18).opacity(0.9))
-                                .cornerRadius(4)
-                                .position(x: geo.size.width / 2, y: badgeCentreY)
+                            // Reserve 32 pt at the bottom for the icon row
+                            // (18 pt icon + 6 pt padding inside thumbnailArea
+                            // + 8 pt photoPadding = 32 pt from photo area
+                            // bottom) so the banner never overlaps the badges.
+                            let iconClearance: CGFloat = 32
+                            let bannerAreaTop = videoBottom + 2
+                            let bannerAreaBottom = max(bannerAreaTop, photoH - iconClearance)
+                            let bannerCentreY = (bannerAreaTop + bannerAreaBottom) / 2
+                            if bannerAreaBottom - bannerAreaTop >= 12 {
+                                Text("Too large to play here")
+                                    .font(.system(size: 9, weight: .medium))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
+                                    .background(Color(red: 0.72, green: 0.45, blue: 0.18).opacity(0.9))
+                                    .cornerRadius(4)
+                                    .position(x: geo.size.width / 2, y: bannerCentreY)
+                            }
                         }
                         .allowsHitTesting(false)
                     }
@@ -1181,6 +1194,31 @@ struct VideoCardView: View {
                     .help(item.isExpandedRepresentative
                           ? "Collapse this stack of \(video.groupSize) videos back to one card."
                           : "Expand this stack to see all \(video.groupSize) variants inline.")
+            }
+
+            // Bottom-left location badge — shown when the video has GPS
+            // coordinates embedded. Tapping opens the global map focused on
+            // this video's position.
+            if video.hasLocation, let handler = onLocationClick {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Button {
+                            handler(video.gpsLatitude, video.gpsLongitude)
+                        } label: {
+                            Image(systemName: "location.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white)
+                                .padding(3)
+                                .background(Color.black.opacity(0.55))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .help("Recorded at \(String(format: "%.4f", video.gpsLatitude)), \(String(format: "%.4f", video.gpsLongitude)) — click to show on map")
+                        Spacer()
+                    }
+                }
+                .padding(6)
             }
 
             // Bottom-right icon row — Lightroom-style. The old proxy / resolution /

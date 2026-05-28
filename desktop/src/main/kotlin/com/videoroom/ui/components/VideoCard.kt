@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.PictureInPicture
 import androidx.compose.material.icons.filled.PlayArrow
@@ -116,6 +117,10 @@ fun VideoCard(
      *  [com.videoroom.data.models.GridStatKey.raw] value; unknown strings
      *  render as blank. Padded / truncated internally to exactly four. */
     topSlots: List<String> = com.videoroom.data.models.defaultGridTopSlots,
+    /** Fired when the user clicks the location badge on a card that has GPS
+     *  coordinates. The two doubles are (latitude, longitude). Callers
+     *  should open the global map focused on that coordinate. */
+    onLocationClick: ((Double, Double) -> Unit)? = null,
     /** Fired when one of the five rating positions is clicked. Receives the
      *  new rating (0..5). Callers translate "click same position twice" into
      *  a clear (rating - 1). */
@@ -599,9 +604,9 @@ fun VideoCard(
                     } // Tooltip
                 }
 
-                // Bottom-right icon row — at-a-glance status (keyword,
-                // proxy). Lightroom-equivalent placement: small mono
-                // icons over the thumbnail's bottom-right corner.
+                // Bottom-right icon row — at-a-glance status (keyword, proxy).
+                // Lightroom-equivalent placement: small mono icons over the
+                // thumbnail's bottom-right corner.
                 Row(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
@@ -648,6 +653,45 @@ fun VideoCard(
                     }
                 }
 
+                // Bottom-left location badge — shown when the video has GPS
+                // coordinates. Tapping it fires [onLocationClick] so the
+                // caller can open the global map focused on this video.
+                if (video.hasLocation && onLocationClick != null) {
+                    com.videoroom.ui.components.Tooltip(
+                        text = "Recorded at %.4f, %.4f — click to show on map".format(
+                            video.gpsLatitude, video.gpsLongitude
+                        ),
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(6.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50))
+                                .pointerInput(video.gpsLatitude, video.gpsLongitude) {
+                                    awaitEachGesture {
+                                        val down = awaitFirstDown(requireUnconsumed = false)
+                                        down.consume()
+                                        val up = waitForUpOrCancellation()
+                                        if (up != null) {
+                                            up.consume()
+                                            onLocationClick(video.gpsLatitude, video.gpsLongitude)
+                                        }
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = "Show on map",
+                                modifier = Modifier.size(11.dp),
+                                tint = Color.White
+                            )
+                        }
+                    }
+                }
+
                 // ("Too large to play here" badge moved out of the inner
                 //  padded box — it now sits in the letterbox area
                 //  *below* the video, positioned by the outer
@@ -655,12 +699,13 @@ fun VideoCard(
                 //  area's full dimensions.)
                 } // inner padded thumbnail Box
 
-                // "Too large to play here" marker — sits in the
-                // letterbox gap between the video's bottom edge and the
-                // photo area's bottom edge. For landscape clips that
-                // gap is sizeable; for portrait / square clips it
-                // collapses to just the 8 dp bottom padding so the
-                // badge sits flush against the band divider.
+                // "Too large to play here" marker — sits in the letterbox
+                // gap between the video's bottom edge and the photo area's
+                // bottom edge, ABOVE the icon row at the very bottom. For
+                // landscape clips that gap is sizeable; for portrait / square
+                // clips it collapses to just the 8 dp bottom padding so the
+                // badge is hidden (those clips rarely exceed the playback
+                // height limit anyway).
                 if (!video.playableNatively && !video.hasProxies && proxyCreationState == null) {
                     val aspect = if (video.width > 0 && video.height > 0)
                         video.width.toFloat() / video.height.toFloat() else 1f
@@ -668,30 +713,38 @@ fun VideoCard(
                     val videoH = if (aspect >= 1f) available / aspect else available
                     val topLetterbox = ((available - videoH) / 2f).coerceAtLeast(0.dp)
                     val videoBottom = photoPadding + topLetterbox + videoH
-                    val bottomSpace = (maxHeight - videoBottom).coerceAtLeast(0.dp)
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .height(bottomSpace),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        com.videoroom.ui.components.Tooltip(
-                            text = "This video exceeds the inline-playback height limit. Right-click to create a lower-resolution proxy."
+                    // Reserve the bottom 26 dp for the icon row (18 dp icon + 6 dp
+                    // padding + 2 dp buffer) so the banner never overlaps the badges.
+                    val iconClearance = 26.dp
+                    val bannerAreaTop = (videoBottom + 2.dp)
+                    val bannerAreaBottom = (maxHeight - iconClearance).coerceAtLeast(bannerAreaTop)
+                    val bannerHeight = (bannerAreaBottom - bannerAreaTop).coerceAtLeast(0.dp)
+                    if (bannerHeight >= 12.dp) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .offset(y = bannerAreaTop)
+                                .fillMaxWidth()
+                                .height(bannerHeight),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Surface(
-                                color = Color(0xFFB8722E).copy(alpha = 0.9f),
-                                shape = MaterialTheme.shapes.small,
+                            com.videoroom.ui.components.Tooltip(
+                                text = "This video exceeds the inline-playback height limit. Right-click to create a lower-resolution proxy."
                             ) {
-                                Text(
-                                    text = "Too large to play here",
-                                    modifier = Modifier.padding(
-                                        horizontal = VideoRoomSpacing.Small,
-                                        vertical = 2.dp,
-                                    ),
-                                    color = Color.White,
-                                    style = MaterialTheme.typography.labelSmall,
-                                )
+                                Surface(
+                                    color = Color(0xFFB8722E).copy(alpha = 0.9f),
+                                    shape = MaterialTheme.shapes.small,
+                                ) {
+                                    Text(
+                                        text = "Too large to play here",
+                                        modifier = Modifier.padding(
+                                            horizontal = VideoRoomSpacing.Small,
+                                            vertical = 2.dp,
+                                        ),
+                                        color = Color.White,
+                                        style = MaterialTheme.typography.labelSmall,
+                                    )
+                                }
                             }
                         }
                     }
