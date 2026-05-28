@@ -964,7 +964,8 @@ class GridViewModel(
 
     /** Persist a new GPS location on every video in [videoIds]. After all
      *  writes complete the grid is reloaded so EXIF + filter dropdowns
-     *  refresh. */
+     *  refresh. When a target video belongs to a collapsed stack the
+     *  location is applied to all members of that stack. */
     fun setVideoLocations(
         videoIds: List<String>,
         latitude: Double,
@@ -974,15 +975,27 @@ class GridViewModel(
     ) {
         if (videoIds.isEmpty()) return
         viewModelScope.launch {
+            val finalIds = expandForCollapsedStacks(videoIds)
+            // Optimistic update so the location badge appears immediately.
+            val idSet = finalIds.toSet()
+            _videos.value = _videos.value.map { v ->
+                if (v.id in idSet) v.copy(gpsLatitude = latitude, gpsLongitude = longitude) else v
+            }
             var ok = 0
-            for (id in videoIds) {
+            for (id in finalIds) {
                 if (repository.updateVideoLocation(id, latitude, longitude, 0.0, writeToFile)) ok++
             }
-            logger.info("Updated location on $ok/${videoIds.size} video(s)")
+            logger.info("Updated location on $ok/${finalIds.size} video(s)")
             loadVideoLocations()
             loadVideos()
             onComplete()
         }
+    }
+
+    /** Remove the GPS location from every video in [videoIds]. Clearing is
+     *  done by writing lat/lon 0.0 which the catalog treats as "no location". */
+    fun clearVideoLocations(videoIds: List<String>, onComplete: () -> Unit = {}) {
+        setVideoLocations(videoIds, 0.0, 0.0, false, onComplete)
     }
 
     /** Persist a new capture timestamp (Unix ms, UTC) on every video in
@@ -1008,21 +1021,58 @@ class GridViewModel(
     }
 
     /**
+     * Expand [videoIds] so that any video in a COLLAPSED stack is replaced
+     * by all of its stack members. Videos in an expanded stack or not in a
+     * stack are left as-is. Used by keyword and location operations so the
+     * action fans out to every member when the user acts on a collapsed card.
+     */
+    private suspend fun expandForCollapsedStacks(videoIds: List<String>): List<String> {
+        val result = mutableSetOf<String>()
+        for (id in videoIds) {
+            val video = _videos.value.firstOrNull { it.id == id }
+            if (video != null && video.isInGroup && video.groupId !in _expandedGroupIds.value) {
+                val groupId = video.groupId
+                val cached = _expandedGroupMembers.value[groupId]
+                val members = cached ?: try {
+                    val (m, _) = repository.listGroupMembers(groupId)
+                    _expandedGroupMembers.value = _expandedGroupMembers.value + (groupId to m)
+                    m
+                } catch (e: Exception) { null }
+                if (members != null) {
+                    members.forEach { result.add(it.id) }
+                } else {
+                    result.add(id)
+                }
+            } else {
+                result.add(id)
+            }
+        }
+        return result.toList()
+    }
+
+    /**
      * Apply [keyword] to every video in [videoIds]. If the tag doesn't exist yet
      * it's created. Refreshes the tag list (for updated counts) and the
-     * detail-panel metadata afterwards.
+     * detail-panel metadata afterwards. When a target video belongs to a
+     * collapsed stack the keyword is applied to all members of that stack.
      */
     fun applyKeyword(keyword: String, videoIds: List<String>, onComplete: () -> Unit = {}) {
         val name = keyword.trim()
         if (name.isEmpty() || videoIds.isEmpty()) return
         viewModelScope.launch {
             try {
+                val finalIds = expandForCollapsedStacks(videoIds)
+                // Optimistic update so the keyword badge appears immediately.
+                val idSet = finalIds.toSet()
+                _videos.value = _videos.value.map { v ->
+                    if (v.id in idSet && name !in v.tags) v.copy(tags = v.tags + name) else v
+                }
                 val tag = repository.createTag(name)
                 if (tag == null) {
                     _error.value = "Failed to create/get tag '$name'"
                     return@launch
                 }
-                if (!repository.tagVideos(videoIds, tag.id)) {
+                if (!repository.tagVideos(finalIds, tag.id)) {
                     _error.value = "Failed to apply '$name'"
                     return@launch
                 }
@@ -1035,12 +1085,22 @@ class GridViewModel(
         }
     }
 
-    /** Remove [tagId] from every video in [videoIds]. */
+    /** Remove [tagId] from every video in [videoIds]. When a target video
+     *  belongs to a collapsed stack the keyword is removed from all members. */
     fun removeKeyword(tagId: String, videoIds: List<String>, onComplete: () -> Unit = {}) {
         if (tagId.isEmpty() || videoIds.isEmpty()) return
         viewModelScope.launch {
             try {
-                if (!repository.untagVideos(videoIds, tagId)) {
+                val finalIds = expandForCollapsedStacks(videoIds)
+                // Optimistic update so the badge clears immediately.
+                val tagName = _tags.value.firstOrNull { it.id == tagId }?.name
+                if (tagName != null) {
+                    val idSet = finalIds.toSet()
+                    _videos.value = _videos.value.map { v ->
+                        if (v.id in idSet) v.copy(tags = v.tags - tagName) else v
+                    }
+                }
+                if (!repository.untagVideos(finalIds, tagId)) {
                     _error.value = "Failed to remove tag"
                     return@launch
                 }
