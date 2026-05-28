@@ -306,6 +306,42 @@ fun DetailScreen(
                     }
                 }
 
+                // "Remove location" button — only shown when a GPS coordinate
+                // is already set. Lets the user undo a mis-tagged location.
+                if (hasGps) {
+                    Spacer(modifier = Modifier.height(VideoRoomSpacing.XSmall))
+                    com.videoroom.ui.components.Tooltip(
+                        text = "Clear the GPS coordinate from this video. " +
+                            "Applies to every video currently selected."
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                val selected = gridViewModel.selectedVideoIds.value
+                                val targets = if (selected.size > 1 && metadata.value!!.id in selected) {
+                                    selected
+                                } else {
+                                    listOf(metadata.value!!.id)
+                                }
+                                gridViewModel.clearVideoLocations(targets) {
+                                    metadata.value?.id?.let { id -> viewModel.loadMetadata(id) }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOff,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
+                            Text(
+                                "Remove location",
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                    }
+                }
+
                 // "Set / Change capture date" button. Same pattern as the
                 // location button: works on the multi-selection when the
                 // current video is part of it.

@@ -215,6 +215,29 @@ struct DetailView: View {
                   ? "Replace the existing GPS coordinate via an interactive map."
                   : "Open a map and pin where this video was captured. Applies to every video currently selected.")
 
+            // "Remove location" button — only shown when a GPS coordinate
+            // is already set. Lets the user undo a mis-tagged location.
+            if hasGps {
+                Button {
+                    let selected = gridViewModel.selectedVideoIds
+                    let targets: [String] = (selected.count > 1 && selected.contains(metadata.id))
+                        ? Array(selected) : [metadata.id]
+                    gridViewModel.clearVideoLocations(videoIds: targets) {
+                        if let id = viewModel.metadata?.id {
+                            viewModel.loadMetadata(videoId: id)
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "mappin.slash")
+                        Text("Remove location")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .help("Clear the GPS coordinate from this video. Applies to every video currently selected.")
+            }
+
             // "Set / Change capture date" button — works on the
             // multi-selection just like the location button.
             let hasDate = metadata.creationDate > 0
