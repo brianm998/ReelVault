@@ -334,7 +334,7 @@ impl VideoRoomService {
         let meta = conn.and_then(|c| {
             c.query_row(
                 "SELECT duration_ms, width, height, fps, codec_video, codec_audio,
-                        creation_date, camera_model, gps_lat, gps_lon
+                        creation_date, camera_model, gps_latitude, gps_longitude
                  FROM metadata WHERE video_id = ?",
                 [video_id],
                 |row| {
