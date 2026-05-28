@@ -538,11 +538,19 @@ class GridViewModel: ObservableObject {
         Task {
             do {
                 let finalIds = await expandForCollapsedStacks(videoIds)
-                // Optimistic update so the keyword badge appears immediately.
+                // Optimistic update so the keyword badge appears immediately —
+                // mirrored into the cached stack members so the badge also
+                // shows on every member when the stack is expanded next.
                 let idSet = Set(finalIds)
                 videos = videos.map { v in
                     idSet.contains(v.id) && !v.tags.contains(name)
                         ? v.withTags(v.tags + [name]) : v
+                }
+                expandedGroupMembers = expandedGroupMembers.mapValues { members in
+                    members.map { v in
+                        idSet.contains(v.id) && !v.tags.contains(name)
+                            ? v.withTags(v.tags + [name]) : v
+                    }
                 }
                 guard let tag = try await repository.createTag(name: name) else {
                     error = "Failed to create or find tag '\(name)'"
@@ -565,12 +573,19 @@ class GridViewModel: ObservableObject {
         Task {
             do {
                 let finalIds = await expandForCollapsedStacks(videoIds)
-                // Optimistic update so the badge clears immediately.
+                // Optimistic update so the badge clears immediately — also
+                // applied to the cached stack members so the change reflects
+                // when the stack is expanded.
                 let tagName = tags.first(where: { $0.id == tagId })?.name
                 if let tagName {
                     let idSet = Set(finalIds)
                     videos = videos.map { v in
                         idSet.contains(v.id) ? v.withTags(v.tags.filter { $0 != tagName }) : v
+                    }
+                    expandedGroupMembers = expandedGroupMembers.mapValues { members in
+                        members.map { v in
+                            idSet.contains(v.id) ? v.withTags(v.tags.filter { $0 != tagName }) : v
+                        }
                     }
                 }
                 if !(try await repository.untagVideos(videoIds: finalIds, tagId: tagId)) {
@@ -1583,10 +1598,17 @@ class GridViewModel: ObservableObject {
         guard !videoIds.isEmpty else { return }
         Task {
             let finalIds = await expandForCollapsedStacks(videoIds)
-            // Optimistic update so the location badge appears immediately.
+            // Optimistic update so the location badge appears immediately —
+            // both on the grid representatives and on cached stack members
+            // (so the badge shows on every card when the stack is expanded).
             let idSet = Set(finalIds)
             videos = videos.map { v in
                 idSet.contains(v.id) ? v.withLocation(latitude: latitude, longitude: longitude) : v
+            }
+            expandedGroupMembers = expandedGroupMembers.mapValues { members in
+                members.map { v in
+                    idSet.contains(v.id) ? v.withLocation(latitude: latitude, longitude: longitude) : v
+                }
             }
             var ok = 0
             for id in finalIds {
