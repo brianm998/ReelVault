@@ -92,7 +92,6 @@ jobs:
       matrix:
         include:
           - { name: macos-arm64, os: macos-latest,   core-artifact: core-macos-universal, core-bin: videoroom-core     }
-          - { name: macos-intel, os: macos-13,        core-artifact: core-macos-universal, core-bin: videoroom-core     }
           - { name: linux,       os: ubuntu-latest,   core-artifact: core-linux-x86_64,    core-bin: videoroom-core     }
           - { name: windows,     os: windows-latest,  core-artifact: core-windows-x86_64,  core-bin: videoroom-core.exe }
 
