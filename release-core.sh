@@ -368,8 +368,8 @@ CTRL
                 "$MAKENSIS_CMD" \
                     "-DAPP_VERSION=${VERSION}" \
                     "-DARCH=x64" \
-                    "-DPKG_DIR=$(cygpath -w "${WIN_STAGE}")" \
-                    "-DOUTPUT_FILE=$(cygpath -w "${SETUP_OUT}")" \
+                    "-DPKG_DIR=$(cygpath -wa "${WIN_STAGE}")" \
+                    "-DOUTPUT_FILE=$(cygpath -wa "${SETUP_OUT}")" \
                     "$(cygpath -w "${NSI_SCRIPT}")"
                 rm -rf "${WIN_STAGE}"
                 echo "  -> ${SETUP_OUT}"
