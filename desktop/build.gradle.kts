@@ -7,7 +7,9 @@ plugins {
 }
 
 group = "com.videoroom"
-version = "0.1.0"
+// Version is read from the root VERSION file — the single source of truth.
+// Update that file (and AppVersion.kt + macos/VideoRoom/Info.plist) when bumping.
+version = rootProject.file("../VERSION").readText().trim()
 
 repositories {
     mavenCentral()
