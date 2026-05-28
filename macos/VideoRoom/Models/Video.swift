@@ -105,6 +105,44 @@ struct VideoSummary: Identifiable, Hashable {
         )
     }
 
+    /// Return a copy of self with `tags` replaced.
+    func withTags(_ newTags: [String]) -> VideoSummary {
+        VideoSummary(
+            id: id, filename: filename, path: path,
+            width: width, height: height, durationMs: durationMs,
+            fps: fps, codecVideo: codecVideo, codecAudio: codecAudio,
+            bitrateKbps: bitrateKbps, sizeBytes: sizeBytes,
+            indexedAt: indexedAt, creationDate: creationDate,
+            tags: newTags, hasThumbnail: hasThumbnail,
+            groupId: groupId, groupSize: groupSize,
+            groupPreferredId: groupPreferredId, groupPreferredPath: groupPreferredPath,
+            proxyCount: proxyCount, proxyOf: proxyOf,
+            playableNatively: playableNatively,
+            rating: rating, colorLabel: colorLabel,
+            cameraModel: cameraModel, cameraDisplayName: cameraDisplayName,
+            gpsLatitude: gpsLatitude, gpsLongitude: gpsLongitude
+        )
+    }
+
+    /// Return a copy of self with GPS coordinates replaced.
+    func withLocation(latitude: Double, longitude: Double) -> VideoSummary {
+        VideoSummary(
+            id: id, filename: filename, path: path,
+            width: width, height: height, durationMs: durationMs,
+            fps: fps, codecVideo: codecVideo, codecAudio: codecAudio,
+            bitrateKbps: bitrateKbps, sizeBytes: sizeBytes,
+            indexedAt: indexedAt, creationDate: creationDate,
+            tags: tags, hasThumbnail: hasThumbnail,
+            groupId: groupId, groupSize: groupSize,
+            groupPreferredId: groupPreferredId, groupPreferredPath: groupPreferredPath,
+            proxyCount: proxyCount, proxyOf: proxyOf,
+            playableNatively: playableNatively,
+            rating: rating, colorLabel: colorLabel,
+            cameraModel: cameraModel, cameraDisplayName: cameraDisplayName,
+            gpsLatitude: latitude, gpsLongitude: longitude
+        )
+    }
+
     /// Return a copy of self with `colorLabel` replaced.
     func withColorLabel(_ newLabel: String) -> VideoSummary {
         VideoSummary(

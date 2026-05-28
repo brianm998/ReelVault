@@ -64,6 +64,9 @@ struct ContentView: View {
     /// Monotonically-incrementing token passed to DetailLoupeView. Each
     /// increment triggers a play/pause toggle inside the loupe.
     @State private var detailPlayToggle: Int = 0
+    /// Non-nil when a newer GitHub release has been detected.
+    /// Dismissed by the user; rechecked every 24 h.
+    @State private var pendingUpdate: ReleaseInfo? = nil
 
     @EnvironmentObject private var appState: AppState
     @ObservedObject private var recents = RecentCatalogs.shared
@@ -91,6 +94,18 @@ struct ContentView: View {
         // VideoRoom is dark-mode only — light mode is intentionally not offered.
         .preferredColorScheme(.dark)
         .task { await setupConnection() }
+        // Check for updates at startup and every 24 h. Network failures are
+        // silently swallowed — never show an error banner for a background check.
+        .task {
+            while true {
+                if let release = await UpdateChecker.checkLatestRelease(
+                    owner: AppVersion.githubOwner, repo: AppVersion.githubRepo),
+                   UpdateChecker.isNewer(release.version, than: AppVersion.current) {
+                    pendingUpdate = release
+                }
+                try? await Task.sleep(for: .seconds(24 * 60 * 60))
+            }
+        }
         // Install an app-level NSEvent monitor so keyboard shortcuts work even
         // when no SwiftUI view holds explicit focus. This is more reliable than
         // `.onKeyPress` for app-wide hotkeys.
@@ -321,9 +336,50 @@ struct ContentView: View {
             topBar
             scanBanner
             scanResultBanner
+            updateBanner
             locationFilterBanner
             mainContent
             bottomBar
+        }
+    }
+
+    @ViewBuilder
+    private var updateBanner: some View {
+        if let release = pendingUpdate {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.up.circle.fill")
+                    .foregroundColor(.accentColor)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("VideoRoom \(release.version) is available")
+                        .font(.callout)
+                    Text("You are running \(AppVersion.current)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                Button {
+                    if let url = URL(string: release.releaseUrl) {
+                        NSWorkspace.shared.open(url)
+                    }
+                } label: {
+                    Label("Download", systemImage: "arrow.down.circle")
+                        .font(.caption)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .help("Open the GitHub releases page to download \(release.version)")
+
+                Button {
+                    pendingUpdate = nil
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Dismiss this update notification")
+            }
+            .padding(8)
+            .background(Color.accentColor.opacity(0.12))
         }
     }
 
@@ -492,7 +548,7 @@ struct ContentView: View {
                 // pre-load; the worst case (cold catalog) is a few hundred
                 // ms of perceived button delay before the sheet animates in.
                 Task {
-                    await gridViewModel.loadVideoLocationsAsync()
+                    await gridViewModel.loadVideoLocationsFilteredAsync()
                     await gridViewModel.loadNamedLocationsAsync()
                     showGlobalMapSheet = true
                 }
@@ -746,7 +802,7 @@ struct ContentView: View {
                     thumbnailMinWidth: CGFloat(thumbnailWidth),
                     onLocationClick: { lat, lon in
                         Task {
-                            await gridViewModel.loadVideoLocationsAsync()
+                            await gridViewModel.loadVideoLocationsFilteredAsync()
                             await gridViewModel.loadNamedLocationsAsync()
                             globalMapFocusCoord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
                             showGlobalMapSheet = true
@@ -765,7 +821,7 @@ struct ContentView: View {
                     thumbnailHeight: CGFloat(thumbnailWidth),
                     onLocationClick: { lat, lon in
                         Task {
-                            await gridViewModel.loadVideoLocationsAsync()
+                            await gridViewModel.loadVideoLocationsFilteredAsync()
                             await gridViewModel.loadNamedLocationsAsync()
                             globalMapFocusCoord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
                             showGlobalMapSheet = true

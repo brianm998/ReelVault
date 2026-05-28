@@ -175,32 +175,11 @@ fun LocationPickerDialog(
                 )
                 Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
 
-                if (secondaryLocations.isNotEmpty()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(
-                            checked = showExisting,
-                            onCheckedChange = { showExisting = it },
-                        )
-                        Column {
-                            Text(
-                                text = "Show ${secondaryLocations.size} already-known " +
-                                    "location" + if (secondaryLocations.size == 1) "" else "s",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                            Text(
-                                text = "Faint gray pins are existing GPS coordinates from " +
-                                    "other videos. Click one to re-use it for the " +
-                                    "selected video" +
-                                    if (targetVideoIds.size == 1) "." else "s.",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
-                }
-
+                // Map is placed before the secondary-locations toggle so that
+                // the toggle appearing/disappearing (when locations load async)
+                // does not shift the MapView's slot position in the Column and
+                // cause Compose to recreate the SwingPanel — which would reset
+                // the viewport back to the initial center.
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -231,6 +210,32 @@ fun LocationPickerDialog(
                 }
 
                 Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
+
+                if (secondaryLocations.isNotEmpty()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = showExisting,
+                            onCheckedChange = { showExisting = it },
+                        )
+                        Column {
+                            Text(
+                                text = "Show ${secondaryLocations.size} already-known " +
+                                    "location" + if (secondaryLocations.size == 1) "" else "s",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                text = "Faint gray pins are existing GPS coordinates from " +
+                                    "other videos. Click one to re-use it for the " +
+                                    "selected video" +
+                                    if (targetVideoIds.size == 1) "." else "s.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(VideoRoomSpacing.Small))
+                }
 
                 candidateReadout(
                     pinLat = pinLat,

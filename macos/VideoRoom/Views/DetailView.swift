@@ -215,6 +215,29 @@ struct DetailView: View {
                   ? "Replace the existing GPS coordinate via an interactive map."
                   : "Open a map and pin where this video was captured. Applies to every video currently selected.")
 
+            // "Remove location" button — only shown when a GPS coordinate
+            // is already set. Lets the user undo a mis-tagged location.
+            if hasGps {
+                Button {
+                    let selected = gridViewModel.selectedVideoIds
+                    let targets: [String] = (selected.count > 1 && selected.contains(metadata.id))
+                        ? Array(selected) : [metadata.id]
+                    gridViewModel.clearVideoLocations(videoIds: targets) {
+                        if let id = viewModel.metadata?.id {
+                            viewModel.loadMetadata(videoId: id)
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "mappin.slash")
+                        Text("Remove location")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .help("Clear the GPS coordinate from this video. Applies to every video currently selected.")
+            }
+
             // "Set / Change capture date" button — works on the
             // multi-selection just like the location button.
             let hasDate = metadata.creationDate > 0
@@ -235,6 +258,55 @@ struct DetailView: View {
             .help(hasDate
                   ? "Replace this video's recorded date and time with a calendar pick."
                   : "Pick the day (and optionally time) this video was captured. Applies to every video currently selected.")
+
+            Divider()
+
+            // Notes
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Notes")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                TextEditor(text: Binding(
+                    get: { viewModel.notes },
+                    set: { viewModel.updateNotes($0) }
+                ))
+                .font(.caption)
+                .frame(height: 80)
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color(.separatorColor)))
+                .cornerRadius(4)
+                .help("Free-form notes about this video. Saved automatically and searchable from the top-bar search field.")
+            }
+
+            Divider()
+
+            // Keywords
+            KeywordsSection(
+                primaryVideoTags: metadata.tags,
+                allTags: gridViewModel.tags,
+                selectedVideoIds: gridViewModel.selectedVideoIds.isEmpty
+                    ? [metadata.id]
+                    : gridViewModel.selectedVideoIds,
+                activeFilterTagId: gridViewModel.filterTagId,
+                onApplyKeyword: { name, ids in
+                    gridViewModel.applyKeyword(name, to: ids) {
+                        if let id = viewModel.metadata?.id {
+                            viewModel.loadMetadata(videoId: id)
+                        }
+                    }
+                },
+                onRemoveKeywordByName: { name, ids in
+                    if let tagId = gridViewModel.tags.first(where: { $0.name == name })?.id {
+                        gridViewModel.removeKeyword(tagId: tagId, from: ids) {
+                            if let id = viewModel.metadata?.id {
+                                viewModel.loadMetadata(videoId: id)
+                            }
+                        }
+                    }
+                },
+                onFilterByTag: { gridViewModel.setTagFilter($0) }
+            )
+
+            Divider()
 
             // Stack / group section
             if viewModel.groupMembers.count > 1 {
@@ -451,53 +523,6 @@ struct DetailView: View {
                 }
             }
 
-            Divider()
-
-            // Notes
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Notes")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                TextEditor(text: Binding(
-                    get: { viewModel.notes },
-                    set: { viewModel.updateNotes($0) }
-                ))
-                .font(.caption)
-                .frame(height: 80)
-                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color(.separatorColor)))
-                .cornerRadius(4)
-                .help("Free-form notes about this video. Saved automatically and searchable from the top-bar search field.")
-            }
-
-            Divider()
-
-            // Keywords
-            KeywordsSection(
-                primaryVideoTags: metadata.tags,
-                allTags: gridViewModel.tags,
-                selectedVideoIds: gridViewModel.selectedVideoIds.isEmpty
-                    ? [metadata.id]
-                    : gridViewModel.selectedVideoIds,
-                activeFilterTagId: gridViewModel.filterTagId,
-                onApplyKeyword: { name, ids in
-                    gridViewModel.applyKeyword(name, to: ids) {
-                        // Reload primary's metadata so its applied-mark refreshes.
-                        if let id = viewModel.metadata?.id {
-                            viewModel.loadMetadata(videoId: id)
-                        }
-                    }
-                },
-                onRemoveKeywordByName: { name, ids in
-                    if let tagId = gridViewModel.tags.first(where: { $0.name == name })?.id {
-                        gridViewModel.removeKeyword(tagId: tagId, from: ids) {
-                            if let id = viewModel.metadata?.id {
-                                viewModel.loadMetadata(videoId: id)
-                            }
-                        }
-                    }
-                },
-                onFilterByTag: { gridViewModel.setTagFilter($0) }
-            )
         }
     }
 

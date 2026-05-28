@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import com.videoroom.data.ReleaseInfo
+import com.videoroom.data.UpdateChecker
 import com.videoroom.data.models.CatalogInfo
 import com.videoroom.data.repository.VideoRepository
 import com.videoroom.data.server.RecentCatalogs
@@ -43,6 +45,7 @@ import com.videoroom.ui.theme.VideoRoomSpacing
 import com.videoroom.viewmodel.GridViewModel
 import com.videoroom.viewmodel.DetailViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
@@ -402,6 +405,10 @@ fun VideoRoomApp(
     // Help dialog visibility.
     var showHelpDialog by remember { mutableStateOf(false) }
 
+    // Update-available banner. Non-null when a newer GitHub release is found.
+    // Dismissed by the user; rechecked every 24 h (and once at startup).
+    var pendingUpdate by remember { mutableStateOf<ReleaseInfo?>(null) }
+
     // Top-level view mode. GRID is the default catalog view; DETAIL is the
     // single-video loupe with in-app playback.
     var viewMode by remember { mutableStateOf(ViewMode.GRID) }
@@ -623,6 +630,21 @@ fun VideoRoomApp(
 
     LaunchedEffect(Unit) { attemptConnect() }
 
+    // Check for updates at startup and every 24 h. A null result (network
+    // failure, pre-release repo, etc.) is silently ignored — never block
+    // the user with an error banner over a background check.
+    LaunchedEffect(Unit) {
+        while (true) {
+            val release = UpdateChecker.checkLatestRelease(
+                AppVersion.GITHUB_OWNER, AppVersion.GITHUB_REPO
+            )
+            if (release != null && UpdateChecker.isNewer(release.version, AppVersion.CURRENT)) {
+                pendingUpdate = release
+            }
+            delay(24L * 60 * 60 * 1_000)
+        }
+    }
+
     DisposableEffect(Unit) {
         onDispose {
             gridViewModel.onDestroy()
@@ -670,7 +692,7 @@ fun VideoRoomApp(
                             // Pre-load on catalog open keeps this fast in
                             // steady state.
                             scope.launch {
-                                gridViewModel.loadVideoLocationsAsync()
+                                gridViewModel.loadVideoLocationsFilteredAsync()
                                 gridViewModel.loadNamedLocationsAsync()
                                 showGlobalMap = true
                             }
@@ -774,6 +796,80 @@ fun VideoRoomApp(
                                             contentDescription = "Dismiss",
                                             modifier = Modifier.size(16.dp)
                                         )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Update-available banner — shown when a newer GitHub release is detected.
+                    pendingUpdate?.let { release ->
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.secondaryContainer
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = VideoRoomSpacing.Medium,
+                                             vertical = VideoRoomSpacing.Small),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Upgrade,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                    Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
+                                    Column {
+                                        Text(
+                                            text = "VideoRoom ${release.version} is available",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                                        )
+                                        Text(
+                                            text = "You are running ${AppVersion.CURRENT}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.75f)
+                                        )
+                                    }
+                                }
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(VideoRoomSpacing.Small),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    com.videoroom.ui.components.Tooltip(text = "Open the GitHub releases page to download ${release.version}") {
+                                        TextButton(
+                                            onClick = {
+                                                try {
+                                                    java.awt.Desktop.getDesktop()
+                                                        .browse(java.net.URI(release.releaseUrl))
+                                                } catch (_: Exception) {}
+                                            }
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Download,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Download", style = MaterialTheme.typography.labelMedium)
+                                        }
+                                    }
+                                    com.videoroom.ui.components.Tooltip(text = "Dismiss this update notification") {
+                                        IconButton(
+                                            onClick = { pendingUpdate = null },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Close,
+                                                contentDescription = "Dismiss",
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -961,7 +1057,7 @@ fun VideoRoomApp(
                         // and opens the global map focused on that video.
                         val onCardLocationClick: (Double, Double) -> Unit = { lat, lon ->
                             scope.launch {
-                                gridViewModel.loadVideoLocationsAsync()
+                                gridViewModel.loadVideoLocationsFilteredAsync()
                                 gridViewModel.loadNamedLocationsAsync()
                                 globalMapFocusLocation = lat to lon
                                 showGlobalMap = true

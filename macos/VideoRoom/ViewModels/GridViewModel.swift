@@ -408,6 +408,9 @@ class GridViewModel: ObservableObject {
             totalCount = total
             hasMore = Int64(videos.count) < total
             isLoading = false
+
+            // Keep map locations in sync with the active grid filters.
+            Task { await loadVideoLocationsFilteredAsync() }
         } catch {
             self.error = "Failed to load videos: \(error.localizedDescription)"
             isLoading = false
@@ -497,19 +500,55 @@ class GridViewModel: ObservableObject {
         if changed { reloadFromTop() }
     }
 
+    /// Expand `videoIds` so that any video in a COLLAPSED stack is replaced
+    /// by all of its stack members. Videos in an expanded stack or not in a
+    /// stack are left as-is. Used by keyword and location operations.
+    private func expandForCollapsedStacks(_ videoIds: [String]) async -> [String] {
+        var result = Set<String>()
+        for id in videoIds {
+            guard let video = videos.first(where: { $0.id == id }),
+                  video.isInGroup,
+                  !expandedGroupIds.contains(video.groupId) else {
+                result.insert(id)
+                continue
+            }
+            let groupId = video.groupId
+            if let cached = expandedGroupMembers[groupId] {
+                cached.forEach { result.insert($0.id) }
+            } else {
+                do {
+                    let (members, _) = try await repository.listGroupMembers(groupId: groupId)
+                    expandedGroupMembers[groupId] = members
+                    members.forEach { result.insert($0.id) }
+                } catch {
+                    result.insert(id)
+                }
+            }
+        }
+        return Array(result)
+    }
+
     /// Apply [keyword] to all videos in [videoIds]. Creates the tag if it
     /// doesn't exist. Refreshes the tag list (for new counts) and the
-    /// optional [onComplete] handler runs afterwards.
+    /// optional [onComplete] handler runs afterwards. When a target video
+    /// belongs to a collapsed stack the keyword is applied to all members.
     func applyKeyword(_ keyword: String, to videoIds: [String], onComplete: @escaping () -> Void = {}) {
         let name = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty, !videoIds.isEmpty else { return }
         Task {
             do {
+                let finalIds = await expandForCollapsedStacks(videoIds)
+                // Optimistic update so the keyword badge appears immediately.
+                let idSet = Set(finalIds)
+                videos = videos.map { v in
+                    idSet.contains(v.id) && !v.tags.contains(name)
+                        ? v.withTags(v.tags + [name]) : v
+                }
                 guard let tag = try await repository.createTag(name: name) else {
                     error = "Failed to create or find tag '\(name)'"
                     return
                 }
-                if !(try await repository.tagVideos(videoIds: videoIds, tagId: tag.id)) {
+                if !(try await repository.tagVideos(videoIds: finalIds, tagId: tag.id)) {
                     error = "Failed to apply '\(name)'"
                     return
                 }
@@ -525,7 +564,16 @@ class GridViewModel: ObservableObject {
         guard !tagId.isEmpty, !videoIds.isEmpty else { return }
         Task {
             do {
-                if !(try await repository.untagVideos(videoIds: videoIds, tagId: tagId)) {
+                let finalIds = await expandForCollapsedStacks(videoIds)
+                // Optimistic update so the badge clears immediately.
+                let tagName = tags.first(where: { $0.id == tagId })?.name
+                if let tagName {
+                    let idSet = Set(finalIds)
+                    videos = videos.map { v in
+                        idSet.contains(v.id) ? v.withTags(v.tags.filter { $0 != tagName }) : v
+                    }
+                }
+                if !(try await repository.untagVideos(videoIds: finalIds, tagId: tagId)) {
                     error = "Failed to remove tag"
                     return
                 }
@@ -1395,6 +1443,56 @@ class GridViewModel: ObservableObject {
         videoLocations = await repository.listVideosWithLocations()
     }
 
+    /// Load GPS-tagged videos matching the current grid filters and update `videoLocations`.
+    /// Uses a large page size to minimise round-trips. Does NOT apply `filterLocation`
+    /// so the pin list is not constrained by an active proximity circle.
+    func loadVideoLocationsFiltered() {
+        Task { await loadVideoLocationsFilteredAsync() }
+    }
+
+    func loadVideoLocationsFilteredAsync() async {
+        let batchSize: Int32 = 500
+        let filterTagIds = filterTagId.isEmpty ? [] : [filterTagId]
+        var accumulated: [VideoLocation] = []
+        var offset: Int32 = 0
+        do {
+            while true {
+                let (page, total) = try await repository.listVideos(
+                    limit: batchSize,
+                    offset: offset,
+                    searchQuery: "",
+                    sortBy: sortBy,
+                    sortAscending: sortAscending,
+                    locationPath: selectedLocationPath,
+                    filterTagIds: filterTagIds,
+                    filterCamera: filterCamera,
+                    filterLens: filterLens,
+                    filterCodec: filterCodec,
+                    filterCaptureYear: filterCaptureYear,
+                    geoFilter: nil,
+                    filterMinRating: filterMinRating,
+                    filterColorLabel: filterColorLabel
+                )
+                for v in page where v.hasLocation {
+                    accumulated.append(VideoLocation(
+                        id: v.id,
+                        filename: v.filename,
+                        path: v.path,
+                        latitude: v.gpsLatitude,
+                        longitude: v.gpsLongitude,
+                        altitude: 0.0,
+                        hasThumbnail: v.hasThumbnail
+                    ))
+                }
+                offset += Int32(page.count)
+                if page.isEmpty || Int64(offset) >= total { break }
+            }
+            videoLocations = accumulated
+        } catch {
+            // Silently ignore — the existing locations remain in place.
+        }
+    }
+
     /// Refresh the catalog's named-location list. Called whenever a sheet
     /// needs to display or resolve names — cheap (typically a few hundred
     /// rows at most) so we never paginate.
@@ -1472,7 +1570,9 @@ class GridViewModel: ObservableObject {
     }
 
     /// Persist a new GPS location on every video in `videoIds`. After all
-    /// writes complete the grid and global-map are reloaded.
+    /// writes complete the grid and global-map are reloaded. When a target
+    /// video belongs to a collapsed stack the location is applied to all
+    /// members of that stack.
     func setVideoLocations(
         videoIds: [String],
         latitude: Double,
@@ -1482,8 +1582,14 @@ class GridViewModel: ObservableObject {
     ) {
         guard !videoIds.isEmpty else { return }
         Task {
+            let finalIds = await expandForCollapsedStacks(videoIds)
+            // Optimistic update so the location badge appears immediately.
+            let idSet = Set(finalIds)
+            videos = videos.map { v in
+                idSet.contains(v.id) ? v.withLocation(latitude: latitude, longitude: longitude) : v
+            }
             var ok = 0
-            for id in videoIds {
+            for id in finalIds {
                 let success = await repository.updateVideoLocation(
                     videoId: id,
                     latitude: latitude,
@@ -1493,11 +1599,18 @@ class GridViewModel: ObservableObject {
                 )
                 if success { ok += 1 }
             }
-            NSLog("Updated location on \(ok)/\(videoIds.count) video(s)")
+            NSLog("Updated location on \(ok)/\(finalIds.count) video(s)")
             videoLocations = await repository.listVideosWithLocations()
             await loadCurrentPage(replace: true)
             onComplete()
         }
+    }
+
+    /// Remove the GPS location from every video in `videoIds`. Clearing is
+    /// done by writing lat/lon 0.0 which the catalog treats as "no location".
+    func clearVideoLocations(videoIds: [String], onComplete: @escaping () -> Void = {}) {
+        setVideoLocations(videoIds: videoIds, latitude: 0.0, longitude: 0.0,
+                          writeToFile: false, onComplete: onComplete)
     }
 
     /// Persist a new capture timestamp (Unix ms, UTC) on every video in

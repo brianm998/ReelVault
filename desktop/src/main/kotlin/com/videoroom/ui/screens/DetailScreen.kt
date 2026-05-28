@@ -306,6 +306,42 @@ fun DetailScreen(
                     }
                 }
 
+                // "Remove location" button — only shown when a GPS coordinate
+                // is already set. Lets the user undo a mis-tagged location.
+                if (hasGps) {
+                    Spacer(modifier = Modifier.height(VideoRoomSpacing.XSmall))
+                    com.videoroom.ui.components.Tooltip(
+                        text = "Clear the GPS coordinate from this video. " +
+                            "Applies to every video currently selected."
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                val selected = gridViewModel.selectedVideoIds.value
+                                val targets = if (selected.size > 1 && metadata.value!!.id in selected) {
+                                    selected
+                                } else {
+                                    listOf(metadata.value!!.id)
+                                }
+                                gridViewModel.clearVideoLocations(targets) {
+                                    metadata.value?.id?.let { id -> viewModel.loadMetadata(id) }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOff,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
+                            Text(
+                                "Remove location",
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                    }
+                }
+
                 // "Set / Change capture date" button. Same pattern as the
                 // location button: works on the multi-selection when the
                 // current video is part of it.
@@ -346,6 +382,56 @@ fun DetailScreen(
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(VideoRoomSpacing.Large))
+
+                // Notes section
+                Text(
+                    text = "Notes",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                com.videoroom.ui.components.Tooltip(
+                    text = "Free-form notes about this video. Saved automatically and " +
+                        "searchable from the top-bar search field."
+                ) {
+                    TextField(
+                        value = notes.value,
+                        onValueChange = { viewModel.updateNotes(it) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(80.dp),
+                        placeholder = { Text("Add notes...") },
+                        colors = TextFieldDefaults.colors(
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(VideoRoomSpacing.Large))
+
+                // Keywords / Tags section
+                KeywordsSection(
+                    primaryVideoTags = metadata.value!!.tags,
+                    allTags = gridViewModel.tags.collectAsState().value,
+                    selectedVideoIds = gridViewModel.selectedVideoIds.collectAsState().value
+                        .ifEmpty { listOf(metadata.value!!.id) },
+                    activeFilterTagId = gridViewModel.filterTagId.collectAsState().value,
+                    onApplyKeyword = { name, ids ->
+                        gridViewModel.applyKeyword(name, ids) {
+                            metadata.value?.id?.let { id -> viewModel.loadMetadata(id) }
+                        }
+                    },
+                    onRemoveKeywordByName = { name, ids ->
+                        val tagId = gridViewModel.tags.value.firstOrNull { it.name == name }?.id
+                        if (tagId != null) {
+                            gridViewModel.removeKeyword(tagId, ids) {
+                                metadata.value?.id?.let { id -> viewModel.loadMetadata(id) }
+                            }
+                        }
+                    },
+                    onFilterByTag = { gridViewModel.setTagFilter(it) }
+                )
 
                 // Group / Stack section
                 if (groupMembers.value.size > 1) {
@@ -722,57 +808,6 @@ fun DetailScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(VideoRoomSpacing.Large))
-
-                // Notes section
-                Text(
-                    text = "Notes",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                com.videoroom.ui.components.Tooltip(
-                    text = "Free-form notes about this video. Saved automatically and " +
-                        "searchable from the top-bar search field."
-                ) {
-                    TextField(
-                        value = notes.value,
-                        onValueChange = { viewModel.updateNotes(it) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(80.dp),
-                        placeholder = { Text("Add notes...") },
-                        colors = TextFieldDefaults.colors(
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(VideoRoomSpacing.Large))
-
-                // Keywords / Tags section ---------------------------------
-                KeywordsSection(
-                    primaryVideoTags = metadata.value!!.tags,
-                    allTags = gridViewModel.tags.collectAsState().value,
-                    selectedVideoIds = gridViewModel.selectedVideoIds.collectAsState().value
-                        .ifEmpty { listOf(metadata.value!!.id) },
-                    activeFilterTagId = gridViewModel.filterTagId.collectAsState().value,
-                    onApplyKeyword = { name, ids ->
-                        gridViewModel.applyKeyword(name, ids) {
-                            // After tagging, reload the primary video's metadata
-                            // so its "Currently applied" chips refresh.
-                            metadata.value?.id?.let { id -> viewModel.loadMetadata(id) }
-                        }
-                    },
-                    onRemoveKeywordByName = { name, ids ->
-                        val tagId = gridViewModel.tags.value.firstOrNull { it.name == name }?.id
-                        if (tagId != null) {
-                            gridViewModel.removeKeyword(tagId, ids) {
-                                metadata.value?.id?.let { id -> viewModel.loadMetadata(id) }
-                            }
-                        }
-                    },
-                    onFilterByTag = { gridViewModel.setTagFilter(it) }
-                )
             }
         } else {
             // Loading
