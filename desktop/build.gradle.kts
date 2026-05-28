@@ -133,6 +133,7 @@ compose.desktop {
                 // (createDistributable, --type app-image) and the DMG
                 // (packageDmg). Deb/Msi accept 0.x. Override the whole
                 // macOS chain until we ship 1.0.
+                bundleID = "com.videoroom.app"
                 packageVersion = "1.0.0"
                 packageBuildVersion = "1.0.0"
 
