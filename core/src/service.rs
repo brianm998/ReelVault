@@ -521,6 +521,7 @@ impl VideoRoomTrait for VideoRoomService {
                 geo_filter,
                 req.filter_min_rating,
                 &req.filter_color_label,
+                if req.collection_id.is_empty() { None } else { Some(req.collection_id.as_str()) },
             )
             .map_err(Status::from)?;
 
@@ -1155,6 +1156,7 @@ impl VideoRoomTrait for VideoRoomService {
             name: req.name,
             is_smart: req.is_smart,
             video_count: 0,
+            filter_json: req.filter_json,
         }))
     }
 
@@ -1185,6 +1187,7 @@ impl VideoRoomTrait for VideoRoomService {
                 name: c.name.clone(),
                 is_smart: c.is_smart,
                 video_count: 0,
+                filter_json: c.filter_json.clone().unwrap_or_default(),
             })
             .collect();
 

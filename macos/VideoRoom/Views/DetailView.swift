@@ -308,6 +308,25 @@ struct DetailView: View {
 
             Divider()
 
+            // Collections
+            CollectionsSection(
+                videoCollectionIds: metadata.collections,
+                allCollections: gridViewModel.collections,
+                selectedVideoIds: gridViewModel.selectedVideoIds.isEmpty
+                    ? [metadata.id]
+                    : gridViewModel.selectedVideoIds,
+                selectedCollectionId: gridViewModel.selectedCollectionId,
+                onAddToCollection: { colId, ids in
+                    gridViewModel.addToCollection(videoIds: ids, collectionId: colId)
+                },
+                onRemoveFromCollection: { colId, ids in
+                    gridViewModel.removeFromCollection(videoIds: ids, collectionId: colId)
+                },
+                onFilterByCollection: { gridViewModel.setCollectionFilter($0) }
+            )
+
+            Divider()
+
             // Stack / group section
             if viewModel.groupMembers.count > 1 {
                 Divider()
@@ -818,5 +837,95 @@ struct KeywordsSection: View {
             return "'\(tag.name)' is on the current video. Click to remove it from the \(n) selected video\(plural)."
         }
         return "Click to apply '\(tag.name)' to the \(n) selected video\(plural)."
+    }
+}
+
+// MARK: - Collections section
+
+/// Right-panel "Collections" block — shows all manual collections with a
+/// check badge on ones the primary video belongs to. Clicking a checked row
+/// removes the video; clicking an unchecked row adds it. A ">" chevron on
+/// the left scopes the grid to that collection.
+struct CollectionsSection: View {
+    let videoCollectionIds: [String]
+    let allCollections: [Collection]
+    let selectedVideoIds: [String]
+    let selectedCollectionId: String?
+    let onAddToCollection: (_ collectionId: String, _ videoIds: [String]) -> Void
+    let onRemoveFromCollection: (_ collectionId: String, _ videoIds: [String]) -> Void
+    let onFilterByCollection: (String?) -> Void
+
+    private var videoColSet: Set<String> { Set(videoCollectionIds) }
+    private var manualCollections: [Collection] { allCollections.filter { !$0.isSmart } }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Collections")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+                if selectedCollectionId != nil {
+                    Button("Clear filter") { onFilterByCollection(nil) }
+                        .font(.caption)
+                        .help("Stop filtering the grid by the current collection.")
+                }
+            }
+
+            if manualCollections.isEmpty {
+                Text("No collections yet. Use the + in the left panel.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                ForEach(manualCollections) { col in
+                    let isInCol = videoColSet.contains(col.id)
+                    let isActive = col.id == selectedCollectionId
+                    HStack(spacing: 4) {
+                        // ">" chevron to scope the grid to this collection.
+                        Button {
+                            onFilterByCollection(isActive ? nil : col.id)
+                        } label: {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 10))
+                                .foregroundColor(isActive ? .accentColor : .secondary)
+                                .frame(width: 14)
+                        }
+                        .buttonStyle(.plain)
+                        .help(isActive
+                            ? "Currently filtering by '\(col.name)'. Click again to clear."
+                            : "Filter the grid to show only videos in '\(col.name)'.")
+
+                        Button {
+                            if isInCol {
+                                onRemoveFromCollection(col.id, selectedVideoIds)
+                            } else {
+                                onAddToCollection(col.id, selectedVideoIds)
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                if isInCol {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 10, weight: .semibold))
+                                        .foregroundColor(.accentColor)
+                                }
+                                Text(col.name)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(isInCol ? .accentColor : .primary)
+                                    .lineLimit(1)
+                                Spacer(minLength: 4)
+                                Text("(\(col.videoCount))")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .help(isInCol
+                            ? "Remove selected video(s) from '\(col.name)'."
+                            : "Add selected video(s) to '\(col.name)'.")
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

@@ -244,7 +244,72 @@ struct Collection: Identifiable, Hashable {
     let id: String
     let name: String
     let isSmart: Bool
+    var filterJson: String = ""
     let videoCount: Int64
+}
+
+struct SmartCollectionFilters {
+    var camera: String = ""
+    var lens: String = ""
+    var codec: String = ""
+    var captureYear: Int32 = 0
+    var minRating: Int32 = 0
+    var colorLabel: String = ""
+    var tagIds: [String] = []
+
+    func toJson() -> String {
+        func esc(_ s: String) -> String { "\"\(s.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\""))\"" }
+        let tagsJson = tagIds.map { esc($0) }.joined(separator: ",")
+        return #"{"camera":\#(esc(camera)),"lens":\#(esc(lens)),"codec":\#(esc(codec)),"captureYear":\#(captureYear),"minRating":\#(minRating),"colorLabel":\#(esc(colorLabel)),"tagIds":[\#(tagsJson)]}"#
+    }
+
+    static func from(json: String) -> SmartCollectionFilters? {
+        guard !json.isEmpty else { return nil }
+        func strVal(_ key: String) -> String {
+            guard let r = json.range(of: "\"\(key)\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"",
+                                     options: .regularExpression) else { return "" }
+            let matched = String(json[r])
+            // Extract the value between the second pair of quotes.
+            let parts = matched.components(separatedBy: "\"")
+            guard parts.count >= 4 else { return "" }
+            return parts[3]
+                .replacingOccurrences(of: "\\\"", with: "\"")
+                .replacingOccurrences(of: "\\\\", with: "\\")
+        }
+        func intVal(_ key: String) -> Int32 {
+            guard let r = json.range(of: "\"\(key)\"\\s*:\\s*([0-9]+)",
+                                     options: .regularExpression) else { return 0 }
+            let matched = String(json[r])
+            let digits = matched.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
+            return Int32(digits) ?? 0
+        }
+        var tagIds: [String] = []
+        if let ar = json.range(of: "\"tagIds\"\\s*:\\s*\\[([^\\]]*)\\]", options: .regularExpression) {
+            let arrStr = String(json[ar])
+            // Extract quoted strings inside the array.
+            var scanning = arrStr
+            while let qStart = scanning.range(of: "\"") {
+                scanning = String(scanning[qStart.upperBound...])
+                var val = ""
+                var escaped = false
+                var done = false
+                for ch in scanning {
+                    if escaped { val.append(ch); escaped = false }
+                    else if ch == "\\" { escaped = true }
+                    else if ch == "\"" { done = true; break }
+                    else { val.append(ch) }
+                }
+                if done { tagIds.append(val) }
+                if let next = scanning.range(of: "\"") {
+                    scanning = String(scanning[next.upperBound...])
+                } else { break }
+            }
+        }
+        return SmartCollectionFilters(camera: strVal("camera"), lens: strVal("lens"),
+                                      codec: strVal("codec"), captureYear: intVal("captureYear"),
+                                      minRating: intVal("minRating"), colorLabel: strVal("colorLabel"),
+                                      tagIds: tagIds)
+    }
 }
 
 struct LibraryLocation: Identifiable, Hashable {

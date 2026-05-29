@@ -864,6 +864,8 @@ nonisolated struct Videoroom_CollectionResponse: Sendable {
 
   var videoCount: Int64 = 0
 
+  var filterJson: String = String()
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -3485,7 +3487,7 @@ nonisolated extension Videoroom_CreateCollectionRequest: SwiftProtobuf.Message, 
 
 nonisolated extension Videoroom_CollectionResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".CollectionResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{3}is_smart\0\u{3}video_count\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{3}is_smart\0\u{3}video_count\0\u{3}filter_json\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3497,6 +3499,7 @@ nonisolated extension Videoroom_CollectionResponse: SwiftProtobuf.Message, Swift
       case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
       case 3: try { try decoder.decodeSingularBoolField(value: &self.isSmart) }()
       case 4: try { try decoder.decodeSingularInt64Field(value: &self.videoCount) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.filterJson) }()
       default: break
       }
     }
@@ -3515,6 +3518,9 @@ nonisolated extension Videoroom_CollectionResponse: SwiftProtobuf.Message, Swift
     if self.videoCount != 0 {
       try visitor.visitSingularInt64Field(value: self.videoCount, fieldNumber: 4)
     }
+    if !self.filterJson.isEmpty {
+      try visitor.visitSingularStringField(value: self.filterJson, fieldNumber: 5)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3523,6 +3529,7 @@ nonisolated extension Videoroom_CollectionResponse: SwiftProtobuf.Message, Swift
     if lhs.name != rhs.name {return false}
     if lhs.isSmart != rhs.isSmart {return false}
     if lhs.videoCount != rhs.videoCount {return false}
+    if lhs.filterJson != rhs.filterJson {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

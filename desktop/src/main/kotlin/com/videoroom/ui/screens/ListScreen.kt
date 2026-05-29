@@ -311,6 +311,11 @@ fun ListScreen(
                                                     video.id to video.groupId
                                                 else null,
                                             onSetStackMaster = { vid, gid -> viewModel.setStackMaster(vid, gid) },
+                                            collections = viewModel.collections.value,
+                                            collectionTargetIds = ratingTargets,
+                                            videoCollections = emptyList(),
+                                            onAddToCollection = { colId, ids -> viewModel.addToCollection(ids, colId) },
+                                            onRemoveFromCollection = { colId, ids -> viewModel.removeFromCollection(ids, colId) },
                                         )
                                     }
                                 ) {
@@ -445,6 +450,11 @@ fun ListScreen(
                                                             video.id to video.groupId
                                                         else null,
                                                     onSetStackMaster = { vid, gid -> viewModel.setStackMaster(vid, gid) },
+                                                    collections = viewModel.collections.value,
+                                                    collectionTargetIds = ratingTargets,
+                                                    videoCollections = emptyList(),
+                                                    onAddToCollection = { colId, ids -> viewModel.addToCollection(ids, colId) },
+                                                    onRemoveFromCollection = { colId, ids -> viewModel.removeFromCollection(ids, colId) },
                                                 )
                                             }
                                         ) {

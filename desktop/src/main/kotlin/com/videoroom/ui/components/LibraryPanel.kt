@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
@@ -18,21 +19,22 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.outlined.FolderSpecial
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.videoroom.data.models.Collection
 import com.videoroom.data.models.LibraryLocation
 import com.videoroom.ui.theme.VideoRoomSpacing
 
 /**
  * Left-side panel that lists scanned library locations with their video counts
  * and lets the user filter the grid to a single location. An "All Videos" entry
- * at the top clears any filter.
+ * at the top clears any filter. A Collections section below lets the user browse
+ * and manage named (and smart) collections.
  */
 @Composable
 fun LibraryPanel(
@@ -48,8 +50,17 @@ fun LibraryPanel(
     /** Set of paths currently being rescanned; shows spinner instead of rescan button. */
     rescanningPaths: Set<String> = emptySet(),
     onCollapse: () -> Unit = {},
+    collections: List<Collection> = emptyList(),
+    selectedCollectionId: String? = null,
+    onSelectCollection: ((String?) -> Unit)? = null,
+    onCreateCollection: ((name: String) -> Unit)? = null,
+    onCreateSmartCollection: (() -> Unit)? = null,
+    onDeleteCollection: ((Collection) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    var showNewCollectionDialog by remember { mutableStateOf(false) }
+    var newCollectionName by remember { mutableStateOf("") }
+
     Column(
         modifier = modifier
             .fillMaxHeight()
@@ -101,15 +112,18 @@ fun LibraryPanel(
         }
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            // "All videos" entry — clears the location filter
+            // "All videos" entry — clears both location and collection filters
             item {
                 LocationRow(
                     icon = Icons.Default.VideoLibrary,
                     label = "All Videos",
                     count = totalVideosAcrossLibrary,
-                    isSelected = selectedPath.isEmpty(),
+                    isSelected = selectedPath.isEmpty() && selectedCollectionId == null,
                     tooltip = "Show every video in your library, across all scanned folders.",
-                    onClick = { onSelect("") }
+                    onClick = {
+                        onSelect("")
+                        onSelectCollection?.invoke(null)
+                    }
                 )
             }
 
@@ -148,13 +162,152 @@ fun LibraryPanel(
                         isSelected = loc.path == selectedPath,
                         tooltip = "Show only videos from ${loc.path} (${loc.videoCount} videos). " +
                             "Right-click to remove from library.",
-                        onClick = { onSelect(loc.path) },
+                        onClick = {
+                            onSelect(loc.path)
+                            onSelectCollection?.invoke(null)
+                        },
                         onRescan = onRescan?.let { cb -> { cb(loc) } },
                         isRescanning = loc.path in rescanningPaths
                     )
                 }
             }
+
+            // ---- Collections section ----
+            item {
+                HorizontalDivider(
+                    modifier = Modifier.padding(
+                        horizontal = VideoRoomSpacing.Small,
+                        vertical = VideoRoomSpacing.Small
+                    ),
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            start = VideoRoomSpacing.XSmall,
+                            end = VideoRoomSpacing.XSmall,
+                            top = VideoRoomSpacing.XSmall,
+                            bottom = 2.dp
+                        ),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (onCreateCollection != null) {
+                        Tooltip(text = "Create a new empty collection.") {
+                            IconButton(
+                                onClick = {
+                                    newCollectionName = ""
+                                    showNewCollectionDialog = true
+                                },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "New collection",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                    Text(
+                        text = "COLLECTIONS",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (onCreateSmartCollection != null) {
+                        Tooltip(text = "Save the current active filters as a smart collection.") {
+                            IconButton(
+                                onClick = onCreateSmartCollection,
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AutoAwesome,
+                                    contentDescription = "Save as smart collection",
+                                    modifier = Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (collections.isEmpty()) {
+                item {
+                    Text(
+                        text = "No collections yet",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.padding(
+                            horizontal = VideoRoomSpacing.Medium + 18.dp,
+                            vertical = VideoRoomSpacing.XSmall
+                        )
+                    )
+                }
+            } else {
+                items(collections, key = { it.id }) { col ->
+                    ContextMenuArea(
+                        items = {
+                            buildList {
+                                if (onDeleteCollection != null) {
+                                    add(ContextMenuItem("Delete collection…") { onDeleteCollection(col) })
+                                }
+                            }
+                        }
+                    ) {
+                        LocationRow(
+                            icon = if (col.isSmart) Icons.Default.AutoAwesome else Icons.Outlined.FolderSpecial,
+                            label = col.name,
+                            count = col.videoCount,
+                            isSelected = col.id == selectedCollectionId,
+                            tooltip = if (col.isSmart)
+                                "Smart collection — filters videos automatically. Right-click to delete."
+                            else
+                                "${col.videoCount} video${if (col.videoCount == 1L) "" else "s"}. Right-click to delete.",
+                            onClick = {
+                                onSelect("")
+                                onSelectCollection?.invoke(col.id)
+                            }
+                        )
+                    }
+                }
+            }
         }
+    }
+
+    if (showNewCollectionDialog) {
+        AlertDialog(
+            onDismissRequest = { showNewCollectionDialog = false },
+            title = { Text("New Collection") },
+            text = {
+                TextField(
+                    value = newCollectionName,
+                    onValueChange = { newCollectionName = it },
+                    placeholder = { Text("Collection name") },
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val name = newCollectionName.trim()
+                        if (name.isNotEmpty()) {
+                            onCreateCollection?.invoke(name)
+                        }
+                        showNewCollectionDialog = false
+                    }
+                ) { Text("Create") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNewCollectionDialog = false }) { Text("Cancel") }
+            }
+        )
     }
 }
 

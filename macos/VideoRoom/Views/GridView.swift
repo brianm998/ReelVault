@@ -319,6 +319,34 @@ struct GridView: View {
             }
             .help("Make this video the representative shown when the stack is collapsed in the grid.")
         }
+
+        // Collection membership. Swift menus support real submenus so we group
+        // Add / Remove under two separate Menu items.
+        let manualCollections = viewModel.collections.filter { !$0.isSmart }
+        let videoColIds = Set<String>()
+        let addableCollections = manualCollections.filter { !videoColIds.contains($0.id) }
+        let removableCollections = manualCollections.filter { videoColIds.contains($0.id) }
+        if !addableCollections.isEmpty || !removableCollections.isEmpty {
+            Divider()
+        }
+        if !addableCollections.isEmpty {
+            Menu("Add to Collection") {
+                ForEach(addableCollections) { col in
+                    Button(col.name) {
+                        viewModel.addToCollection(videoIds: targetIds, collectionId: col.id)
+                    }
+                }
+            }
+        }
+        if !removableCollections.isEmpty {
+            Menu("Remove from Collection") {
+                ForEach(removableCollections) { col in
+                    Button(col.name) {
+                        viewModel.removeFromCollection(videoIds: targetIds, collectionId: col.id)
+                    }
+                }
+            }
+        }
     }
 }
 

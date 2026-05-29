@@ -414,6 +414,7 @@ message CollectionResponse {
   string name = 2;
   bool is_smart = 3;
   int64 video_count = 4;
+  string filter_json = 5;
 }
 
 message DeleteCollectionRequest {

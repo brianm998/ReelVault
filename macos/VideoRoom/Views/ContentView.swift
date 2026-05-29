@@ -61,6 +61,9 @@ struct ContentView: View {
     @State private var infoOverlay: InfoOverlayState = .none
     /// Non-nil while the "Remove library location?" confirmation alert is shown.
     @State private var locationToRemove: LibraryLocation? = nil
+    @State private var collectionToDelete: Collection? = nil
+    @State private var showSmartCollectionSheet = false
+    @State private var smartCollectionName = ""
     /// Monotonically-incrementing token passed to DetailLoupeView. Each
     /// increment triggers a play/pause toggle inside the loupe.
     @State private var detailPlayToggle: Int = 0
@@ -755,7 +758,18 @@ struct ContentView: View {
                     onRemoveLocation: { locationToRemove = $0 },
                     onRescan: { loc in gridViewModel.rescanLibrary(path: loc.path) },
                     rescanningPaths: Set(gridViewModel.rescanningPaths),
-                    onCollapse: { setLeftPanelExpanded(false) }
+                    onCollapse: { setLeftPanelExpanded(false) },
+                    collections: gridViewModel.collections,
+                    selectedCollectionId: gridViewModel.selectedCollectionId,
+                    onSelectCollection: { gridViewModel.setCollectionFilter($0) },
+                    onCreateCollection: { name in
+                        gridViewModel.createCollection(name: name, isSmart: false)
+                    },
+                    onCreateSmartCollection: {
+                        smartCollectionName = ""
+                        showSmartCollectionSheet = true
+                    },
+                    onDeleteCollection: { collectionToDelete = $0 }
                 )
                 .alert(
                     "Remove library location?",
@@ -774,6 +788,36 @@ struct ContentView: View {
                     let n = loc.videoCount
                     let word = n == 1 ? "video" : "videos"
                     Text("\(n) \(word) from \"\(loc.path)\" will be removed from your catalog. The files on disk will not be deleted.")
+                }
+                .alert(
+                    "Delete collection?",
+                    isPresented: Binding(
+                        get: { collectionToDelete != nil },
+                        set: { if !$0 { collectionToDelete = nil } }
+                    ),
+                    presenting: collectionToDelete
+                ) { col in
+                    Button("Delete", role: .destructive) {
+                        gridViewModel.deleteCollection(id: col.id)
+                        collectionToDelete = nil
+                    }
+                    Button("Cancel", role: .cancel) { collectionToDelete = nil }
+                } message: { col in
+                    Text("\"\(col.name)\" will be permanently deleted. The videos in it will not be affected.")
+                }
+                .sheet(isPresented: $showSmartCollectionSheet) {
+                    SmartCollectionNameSheet(
+                        name: $smartCollectionName,
+                        onSave: { name in
+                            gridViewModel.createCollection(
+                                name: name,
+                                isSmart: true,
+                                filterJson: gridViewModel.buildSmartCollectionFilterJson()
+                            )
+                            showSmartCollectionSheet = false
+                        },
+                        onCancel: { showSmartCollectionSheet = false }
+                    )
                 }
                 .frame(width: leftPanelWidth)
                 // Drag handle on the inner edge — drag right to widen,
@@ -1007,6 +1051,7 @@ struct ContentView: View {
         gridViewModel.loadVideos()
         gridViewModel.loadLibraryLocations()
         gridViewModel.loadTags()
+        gridViewModel.loadCollections()
         gridViewModel.loadFilterOptions()
         // Per-catalog grid layout — the four top-of-card stat slots.
         gridViewModel.loadGridSettings()
@@ -1524,4 +1569,35 @@ struct PanelResizeHandle: View {
 
 #Preview {
     ContentView()
+}
+
+private struct SmartCollectionNameSheet: View {
+    @Binding var name: String
+    let onSave: (String) -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Save as Smart Collection")
+                .font(.headline)
+            Text("Captures the current filter settings (camera, codec, rating, etc.) as a smart collection that updates automatically.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            TextField("Collection name", text: $name)
+                .textFieldStyle(.roundedBorder)
+            HStack {
+                Spacer()
+                Button("Cancel", action: onCancel)
+                    .keyboardShortcut(.cancelAction)
+                Button("Save") {
+                    let trimmed = name.trimmingCharacters(in: .whitespaces)
+                    if !trimmed.isEmpty { onSave(trimmed) }
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+        .padding(24)
+        .frame(minWidth: 360)
+    }
 }

@@ -316,6 +316,11 @@ fun GridScreen(
                                             video.id to video.groupId
                                         else null,
                                     onSetStackMaster = { vid, gid -> viewModel.setStackMaster(vid, gid) },
+                                    collections = viewModel.collections.value,
+                                    collectionTargetIds = ratingTargets,
+                                    videoCollections = emptyList(),
+                                    onAddToCollection = { colId, ids -> viewModel.addToCollection(ids, colId) },
+                                    onRemoveFromCollection = { colId, ids -> viewModel.removeFromCollection(ids, colId) },
                                 )
                             }
                         ) {
@@ -509,6 +514,14 @@ internal fun buildVideoContextMenu(
      *  "Set as Stack Master". */
     stackMasterCandidate: Pair<String, String>? = null,
     onSetStackMaster: ((String, String) -> Unit)? = null,
+    /** All known collections, for the "Add to Collection" submenu. */
+    collections: List<com.videoroom.data.models.Collection> = emptyList(),
+    /** Video IDs to apply collection operations to (same set as ratingTargetIds). */
+    collectionTargetIds: List<String> = emptyList(),
+    /** Collections the right-clicked video already belongs to (for "Remove from Collection"). */
+    videoCollections: List<String> = emptyList(),
+    onAddToCollection: ((collectionId: String, videoIds: List<String>) -> Unit)? = null,
+    onRemoveFromCollection: ((collectionId: String, videoIds: List<String>) -> Unit)? = null,
 ): List<androidx.compose.foundation.ContextMenuItem> {
     val items = mutableListOf<androidx.compose.foundation.ContextMenuItem>()
     val n = targetFiles.size
@@ -593,6 +606,31 @@ internal fun buildVideoContextMenu(
         val (vid, gid) = stackMasterCandidate
         items += androidx.compose.foundation.ContextMenuItem("Set as Stack Master") {
             onSetStackMaster(vid, gid)
+        }
+    }
+
+    // Collection membership. Compose Desktop ContextMenuItem doesn't support
+    // true submenus, so we render each collection as a flat menu item with a
+    // "›" prefix to suggest the grouping.
+    if (onAddToCollection != null && collections.isNotEmpty() && collectionTargetIds.isNotEmpty()) {
+        val manualCollections = collections.filter { !it.isSmart }
+        if (manualCollections.isNotEmpty()) {
+            manualCollections.forEach { col ->
+                val alreadyIn = col.id in videoCollections
+                if (!alreadyIn) {
+                    items += androidx.compose.foundation.ContextMenuItem("Add to Collection › ${col.name}") {
+                        onAddToCollection(col.id, collectionTargetIds)
+                    }
+                }
+            }
+        }
+    }
+    if (onRemoveFromCollection != null && videoCollections.isNotEmpty() && collectionTargetIds.isNotEmpty()) {
+        val collectionsContaining = collections.filter { it.id in videoCollections }
+        collectionsContaining.forEach { col ->
+            items += androidx.compose.foundation.ContextMenuItem("Remove from Collection › ${col.name}") {
+                onRemoveFromCollection(col.id, collectionTargetIds)
+            }
         }
     }
 

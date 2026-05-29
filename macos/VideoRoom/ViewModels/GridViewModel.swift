@@ -30,6 +30,13 @@ class GridViewModel: ObservableObject {
     @Published var tags: [Tag] = []
     @Published var filterTagId: String = ""  // "" = no filter
 
+    // Collections
+    @Published var collections: [Collection] = []
+    @Published var selectedCollectionId: String? = nil
+    /// The collection ID to pass to listVideos (nil for smart collections
+    /// whose filters are applied via individual filter fields instead).
+    private var collectionIdFilter: String? = nil
+
     // Top-bar dropdown filters and their distinct-value options.
     @Published var filterCamera: String = ""
     @Published var filterLens: String = ""
@@ -398,7 +405,8 @@ class GridViewModel: ObservableObject {
                 filterCaptureYear: filterCaptureYear,
                 geoFilter: geo,
                 filterMinRating: filterMinRating,
-                filterColorLabel: filterColorLabel
+                filterColorLabel: filterColorLabel,
+                collectionId: collectionIdFilter
             )
             if replace {
                 videos = results
@@ -429,6 +437,100 @@ class GridViewModel: ObservableObject {
         guard selectedLocationPath != path else { return }
         selectedLocationPath = path
         reloadFromTop()
+    }
+
+    // MARK: - Collections
+
+    func loadCollections() {
+        Task {
+            do {
+                collections = try await repository.listCollections().sorted { $0.name.lowercased() < $1.name.lowercased() }
+            } catch {
+                NSLog("Failed to load collections: \(error)")
+            }
+        }
+    }
+
+    func setCollectionFilter(_ id: String?) {
+        selectedCollectionId = id
+        guard let id = id, let col = collections.first(where: { $0.id == id }) else {
+            collectionIdFilter = nil
+            reloadFromTop()
+            return
+        }
+        if col.isSmart, !col.filterJson.isEmpty,
+           let f = SmartCollectionFilters.from(json: col.filterJson) {
+            // Smart collection: apply its saved filters as individual fields.
+            collectionIdFilter = nil
+            filterCamera = f.camera
+            filterLens = f.lens
+            filterCodec = f.codec
+            filterCaptureYear = f.captureYear
+            filterMinRating = f.minRating
+            filterColorLabel = f.colorLabel
+            filterTagId = f.tagIds.first ?? ""
+        } else {
+            collectionIdFilter = id
+        }
+        reloadFromTop()
+    }
+
+    func createCollection(name: String, isSmart: Bool, filterJson: String = "") {
+        Task {
+            do {
+                _ = try await repository.createCollection(name: name, isSmart: isSmart, filterJson: filterJson)
+                loadCollections()
+            } catch {
+                NSLog("Failed to create collection: \(error)")
+            }
+        }
+    }
+
+    func deleteCollection(id: String) {
+        Task {
+            do {
+                _ = try await repository.deleteCollection(id: id)
+                if selectedCollectionId == id { setCollectionFilter(nil) }
+                loadCollections()
+            } catch {
+                NSLog("Failed to delete collection: \(error)")
+            }
+        }
+    }
+
+    func addToCollection(videoIds: [String], collectionId: String) {
+        Task {
+            do {
+                _ = try await repository.addToCollection(videoIds: videoIds, collectionId: collectionId)
+                loadCollections()
+            } catch {
+                NSLog("Failed to add to collection: \(error)")
+            }
+        }
+    }
+
+    func removeFromCollection(videoIds: [String], collectionId: String) {
+        Task {
+            do {
+                _ = try await repository.removeFromCollection(videoIds: videoIds, collectionId: collectionId)
+                loadCollections()
+            } catch {
+                NSLog("Failed to remove from collection: \(error)")
+            }
+        }
+    }
+
+    func buildSmartCollectionFilterJson() -> String {
+        let f = SmartCollectionFilters(
+            camera: filterCamera,
+            lens: filterLens,
+            codec: filterCodec,
+            captureYear: filterCaptureYear,
+            minRating: filterMinRating,
+            colorLabel: filterColorLabel,
+            tagIds: filterTagId.isEmpty ? [] : [filterTagId]
+        )
+        return f.toJson()
     }
 
     // MARK: - Keywords / tags

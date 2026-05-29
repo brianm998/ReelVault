@@ -383,6 +383,11 @@ fun VideoRoomApp(
     var showCameraNamesDialog by remember { mutableStateOf(false) }
     // Library removal confirmation. Non-null while the "Are you sure?" dialog is shown.
     var pendingRemoveLocation by remember { mutableStateOf<com.videoroom.data.models.LibraryLocation?>(null) }
+    // Collection deletion confirmation. Non-null while the "Are you sure?" dialog is shown.
+    var pendingDeleteCollection by remember { mutableStateOf<com.videoroom.data.models.Collection?>(null) }
+    // Smart-collection name dialog.
+    var showSmartCollectionDialog by remember { mutableStateOf(false) }
+    var smartCollectionName by remember { mutableStateOf("") }
     // Global-map dialog visibility.
     var showGlobalMap by remember { mutableStateOf(false) }
     // When non-null, the map opens focused on this (lat, lon) instead of
@@ -523,6 +528,7 @@ fun VideoRoomApp(
         gridViewModel.loadVideos()
         gridViewModel.loadLibraryLocations()
         gridViewModel.loadTags()
+        gridViewModel.loadCollections()
         gridViewModel.loadFilterOptions()
         // Per-catalog grid layout — the four top-of-card stat slots.
         gridViewModel.loadGridSettings()
@@ -970,10 +976,107 @@ fun VideoRoomApp(
                                 onRescan = { loc -> gridViewModel.rescanLibrary(loc.path) },
                                 rescanningPaths = gridViewModel.rescanningPaths.collectAsState().value,
                                 onCollapse = { setLeftPanelExpanded(false) },
+                                collections = gridViewModel.collections.collectAsState().value,
+                                selectedCollectionId = gridViewModel.selectedCollectionId.collectAsState().value,
+                                onSelectCollection = { id -> gridViewModel.setCollection(id) },
+                                onCreateCollection = { name ->
+                                    gridViewModel.createCollection(name, isSmart = false)
+                                },
+                                onCreateSmartCollection = {
+                                    smartCollectionName = ""
+                                    showSmartCollectionDialog = true
+                                },
+                                onDeleteCollection = { col -> pendingDeleteCollection = col },
                                 modifier = Modifier
                                     .width(leftPanelWidth.dp)
                                     .fillMaxHeight()
                             )
+
+                            // Delete-collection confirmation dialog
+                            pendingDeleteCollection?.let { col ->
+                                AlertDialog(
+                                    onDismissRequest = { pendingDeleteCollection = null },
+                                    icon = {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    },
+                                    title = { Text("Delete collection?") },
+                                    text = {
+                                        Text(
+                                            "\"${col.name}\" will be permanently deleted. " +
+                                            "The videos in it will not be affected.",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    },
+                                    confirmButton = {
+                                        Button(
+                                            onClick = {
+                                                gridViewModel.deleteCollection(col.id)
+                                                pendingDeleteCollection = null
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.error
+                                            )
+                                        ) { Text("Delete") }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { pendingDeleteCollection = null }) {
+                                            Text("Cancel")
+                                        }
+                                    }
+                                )
+                            }
+
+                            // Smart-collection name dialog
+                            if (showSmartCollectionDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showSmartCollectionDialog = false },
+                                    title = { Text("Save as Smart Collection") },
+                                    text = {
+                                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            Text(
+                                                "This will capture the current filter settings " +
+                                                "(camera, codec, rating, etc.) as a smart collection.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            TextField(
+                                                value = smartCollectionName,
+                                                onValueChange = { smartCollectionName = it },
+                                                placeholder = { Text("Collection name") },
+                                                singleLine = true,
+                                                colors = TextFieldDefaults.colors(
+                                                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                                                )
+                                            )
+                                        }
+                                    },
+                                    confirmButton = {
+                                        TextButton(
+                                            onClick = {
+                                                val name = smartCollectionName.trim()
+                                                if (name.isNotEmpty()) {
+                                                    gridViewModel.createCollection(
+                                                        name,
+                                                        isSmart = true,
+                                                        filterJson = gridViewModel.buildSmartCollectionFilterJson()
+                                                    )
+                                                }
+                                                showSmartCollectionDialog = false
+                                            }
+                                        ) { Text("Save") }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { showSmartCollectionDialog = false }) {
+                                            Text("Cancel")
+                                        }
+                                    }
+                                )
+                            }
 
                             // Remove-library confirmation dialog
                             pendingRemoveLocation?.let { loc ->

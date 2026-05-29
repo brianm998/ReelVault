@@ -1233,6 +1233,9 @@ impl Database {
         // exact-match against the video's color_label.
         filter_min_rating: i32,
         filter_color_label: &str,
+        // Manual collection membership filter. When `Some`, restricts results
+        // to videos that are members of the given collection.
+        filter_collection_id: Option<&str>,
     ) -> Result<(Vec<VideoRecord>, i64)> {
         let conn = self.get_connection()?;
 
@@ -1368,8 +1371,14 @@ impl Database {
             " AND COALESCE(um.color_label, '') = ?"
         };
 
+        let collection_clause = if filter_collection_id.is_some() {
+            " AND v.id IN (SELECT video_id FROM collection_members WHERE collection_id = ?)"
+        } else {
+            ""
+        };
+
         // Helper to bind all dynamic params in order:
-        // [location_param?, tag_id_1, tag_id_2, ..., tag_count?, camera?, lens?, codec?, year?, geo_min_lat?, geo_max_lat?, geo_min_lon?, geo_max_lon?]
+        // [location_param?, tag_id_1, tag_id_2, ..., tag_count?, camera?, lens?, codec?, year?, geo_min_lat?, geo_max_lat?, geo_min_lon?, geo_max_lon?, rating?, color?, collection_id?]
         let mut bind: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
         if let Some(p) = &location_param {
             bind.push(Box::new(p.clone()));
@@ -1404,13 +1413,16 @@ impl Database {
         if !filter_color_label.is_empty() {
             bind.push(Box::new(filter_color_label.to_string()));
         }
+        if let Some(cid) = filter_collection_id {
+            bind.push(Box::new(cid.to_string()));
+        }
 
         // ---- COUNT(*) ----
         let count_sql = format!(
             "SELECT COUNT(*) FROM videos v
              LEFT JOIN metadata m ON v.id = m.video_id
              LEFT JOIN video_user_marks um ON v.id = um.video_id
-             WHERE ({}){}{}{}{}{}{}{}{}{}",
+             WHERE ({}){}{}{}{}{}{}{}{}{}{}",
             representative_filter,
             location_clause,
             tag_clause,
@@ -1420,7 +1432,8 @@ impl Database {
             year_clause,
             geo_clause,
             rating_clause,
-            color_clause
+            color_clause,
+            collection_clause
         );
         let count_params: Vec<&dyn rusqlite::ToSql> =
             bind.iter().map(|b| b.as_ref() as &dyn rusqlite::ToSql).collect();
@@ -1434,7 +1447,7 @@ impl Database {
              FROM videos v
              LEFT JOIN metadata m ON v.id = m.video_id
              LEFT JOIN video_user_marks um ON v.id = um.video_id
-             WHERE ({}){}{}{}{}{}{}{}{}{}
+             WHERE ({}){}{}{}{}{}{}{}{}{}{}
              ORDER BY {} LIMIT ? OFFSET ?",
             representative_filter,
             location_clause,
@@ -1446,6 +1459,7 @@ impl Database {
             geo_clause,
             rating_clause,
             color_clause,
+            collection_clause,
             order_by
         );
 

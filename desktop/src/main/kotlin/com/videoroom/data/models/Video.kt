@@ -165,6 +165,56 @@ data class Collection(
     val videoCount: Long = 0
 )
 
+/** Saved filter criteria for a smart collection. */
+data class SmartCollectionFilters(
+    val camera: String = "",
+    val lens: String = "",
+    val codec: String = "",
+    val captureYear: Int = 0,
+    val minRating: Int = 0,
+    val colorLabel: String = "",
+    val tagIds: List<String> = emptyList()
+) {
+    fun toJson(): String = buildString {
+        append("{")
+        append("\"camera\":${camera.jsonStr()}")
+        append(",\"lens\":${lens.jsonStr()}")
+        append(",\"codec\":${codec.jsonStr()}")
+        append(",\"captureYear\":$captureYear")
+        append(",\"minRating\":$minRating")
+        append(",\"colorLabel\":${colorLabel.jsonStr()}")
+        append(",\"tagIds\":[${tagIds.joinToString(",") { it.jsonStr() }}]")
+        append("}")
+    }
+
+    companion object {
+        fun fromJson(json: String): SmartCollectionFilters {
+            fun str(key: String): String {
+                val m = Regex(""""$key"\s*:\s*"((?:[^"\\]|\\.)*)"""").find(json)
+                return m?.groupValues?.get(1)?.replace("\\\"", "\"")?.replace("\\\\", "\\") ?: ""
+            }
+            fun int(key: String): Int {
+                return Regex(""""$key"\s*:\s*(\d+)""").find(json)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+            }
+            val tagIds = Regex(""""tagIds"\s*:\s*\[([^\]]*)]""").find(json)
+                ?.groupValues?.get(1)
+                ?.let { Regex(""""((?:[^"\\]|\\.)*)"""").findAll(it).map { m -> m.groupValues[1] }.toList() }
+                ?: emptyList()
+            return SmartCollectionFilters(
+                camera = str("camera"),
+                lens = str("lens"),
+                codec = str("codec"),
+                captureYear = int("captureYear"),
+                minRating = int("minRating"),
+                colorLabel = str("colorLabel"),
+                tagIds = tagIds
+            )
+        }
+
+        private fun String.jsonStr() = "\"${replace("\\", "\\\\").replace("\"", "\\\"")}\""
+    }
+}
+
 data class LibraryLocation(
     val path: String,
     val recursive: Boolean = true,

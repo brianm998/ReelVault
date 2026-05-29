@@ -729,12 +729,13 @@ class VideoRepository(
         }
     }
 
-    suspend fun createCollection(name: String, isSmart: Boolean = false): VideoCollection? = withContext(Dispatchers.IO) {
+    suspend fun createCollection(name: String, isSmart: Boolean = false, filterJson: String = ""): VideoCollection? = withContext(Dispatchers.IO) {
         val s = stub ?: return@withContext null
         try {
             val request = Videoroom.CreateCollectionRequest.newBuilder()
                 .setName(name)
                 .setIsSmart(isSmart)
+                .setFilterJson(filterJson)
                 .build()
             val response = s.createCollection(request)
             VideoCollection(
@@ -778,6 +779,33 @@ class VideoRepository(
             s.addToCollection(request).success
         } catch (e: Exception) {
             logger.error("Failed to add to collection: ${e.message}", e)
+            false
+        }
+    }
+
+    suspend fun removeFromCollection(videoIds: List<String>, collectionId: String): Boolean = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext false
+        try {
+            val request = Videoroom.RemoveFromCollectionRequest.newBuilder()
+                .setCollectionId(collectionId)
+                .addAllVideoIds(videoIds)
+                .build()
+            s.removeFromCollection(request).success
+        } catch (e: Exception) {
+            logger.error("Failed to remove from collection: ${e.message}", e)
+            false
+        }
+    }
+
+    suspend fun deleteCollection(collectionId: String): Boolean = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext false
+        try {
+            val request = Videoroom.DeleteCollectionRequest.newBuilder()
+                .setCollectionId(collectionId)
+                .build()
+            s.deleteCollection(request).success
+        } catch (e: Exception) {
+            logger.error("Failed to delete collection: ${e.message}", e)
             false
         }
     }

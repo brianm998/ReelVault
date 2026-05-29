@@ -3,9 +3,9 @@
 
 import SwiftUI
 
-/// Left-side panel listing scanned library locations with their video counts.
-/// Clicking a row filters the grid to that location; the "All Videos" row
-/// clears the filter.
+/// Left-side panel listing scanned library locations and collections.
+/// Clicking a location row filters the grid to that path; clicking a
+/// collection row scopes the grid to that collection; "All Videos" clears both.
 struct LibraryPanel: View {
     let locations: [LibraryLocation]
     let selectedPath: String
@@ -20,6 +20,16 @@ struct LibraryPanel: View {
     /// Set of paths currently being rescanned; drives the spinner in each row.
     var rescanningPaths: Set<String> = []
     let onCollapse: () -> Void
+
+    var collections: [Collection] = []
+    var selectedCollectionId: String? = nil
+    var onSelectCollection: ((String?) -> Void)? = nil
+    var onCreateCollection: ((String) -> Void)? = nil
+    var onCreateSmartCollection: (() -> Void)? = nil
+    var onDeleteCollection: ((Collection) -> Void)? = nil
+
+    @State private var showNewCollectionAlert = false
+    @State private var newCollectionName = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -48,17 +58,19 @@ struct LibraryPanel: View {
             .padding(.top, 12)
             .padding(.bottom, 8)
 
-            // Use a List so we get native swipe-to-delete and the built-in
-            // context-menu affordance without extra hit-testing work.
             List {
+                // "All Videos" — clears both location and collection filters.
                 LocationRow(
                     systemImage: "film.stack",
                     label: "All Videos",
                     sublabel: nil,
                     count: totalVideos,
-                    isSelected: selectedPath.isEmpty,
+                    isSelected: selectedPath.isEmpty && selectedCollectionId == nil,
                     tooltip: "Show every video in your library, across all scanned folders.",
-                    onClick: { onSelect("") }
+                    onClick: {
+                        onSelect("")
+                        onSelectCollection?(nil)
+                    }
                 )
                 .listRowInsets(EdgeInsets())
 
@@ -76,36 +88,116 @@ struct LibraryPanel: View {
                         count: loc.videoCount,
                         isSelected: loc.path == selectedPath,
                         tooltip: "Show only videos from \(loc.path) (\(loc.videoCount) videos).\nRight-click or swipe left to remove.",
-                        onClick: { onSelect(loc.path) },
+                        onClick: {
+                            onSelect(loc.path)
+                            onSelectCollection?(nil)
+                        },
                         onRescan: onRescan != nil ? { onRescan!(loc) } : nil,
                         isRescanning: rescanningPaths.contains(loc.path)
                     )
                     .listRowInsets(EdgeInsets())
-                    // Swipe-left reveals the destructive Remove action.
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         if let remove = onRemoveLocation {
-                            Button(role: .destructive) {
-                                remove(loc)
-                            } label: {
+                            Button(role: .destructive) { remove(loc) } label: {
                                 Label("Remove", systemImage: "trash")
                             }
                         }
                     }
-                    // Right-click context menu.
                     .contextMenu {
                         if let remove = onRemoveLocation {
-                            Button(role: .destructive) {
-                                remove(loc)
-                            } label: {
+                            Button(role: .destructive) { remove(loc) } label: {
                                 Label("Remove from Library…", systemImage: "trash")
                             }
                         }
                     }
                 }
+
+                // ── Collections section ──────────────────────────────────
+                Section {
+                    if collections.isEmpty {
+                        Text("No collections yet")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .padding(.leading, 30)
+                            .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
+                    } else {
+                        ForEach(collections) { col in
+                            LocationRow(
+                                systemImage: col.isSmart ? "sparkles" : "folder.badge.plus",
+                                label: col.name,
+                                sublabel: nil,
+                                count: col.videoCount,
+                                isSelected: col.id == selectedCollectionId,
+                                tooltip: col.isSmart
+                                    ? "Smart collection — filters videos automatically. Right-click to delete."
+                                    : "\(col.videoCount) video\(col.videoCount == 1 ? "" : "s"). Right-click to delete.",
+                                onClick: {
+                                    onSelect("")
+                                    onSelectCollection?(col.id)
+                                }
+                            )
+                            .listRowInsets(EdgeInsets())
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                if let del = onDeleteCollection {
+                                    Button(role: .destructive) { del(col) } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
+                            }
+                            .contextMenu {
+                                if let del = onDeleteCollection {
+                                    Button(role: .destructive) { del(col) } label: {
+                                        Label("Delete Collection…", systemImage: "trash")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } header: {
+                    HStack(spacing: 4) {
+                        if onCreateCollection != nil {
+                            Button {
+                                newCollectionName = ""
+                                showNewCollectionAlert = true
+                            } label: {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Create a new empty collection")
+                        }
+                        Text("COLLECTIONS")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        if onCreateSmartCollection != nil {
+                            Button(action: { onCreateSmartCollection?() }) {
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Save current filters as a smart collection")
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.top, 6)
+                    .padding(.bottom, 2)
+                }
+                .listSectionSeparator(.hidden)
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .background(Color(.controlBackgroundColor))
+            .alert("New Collection", isPresented: $showNewCollectionAlert) {
+                TextField("Collection name", text: $newCollectionName)
+                Button("Create") {
+                    let name = newCollectionName.trimmingCharacters(in: .whitespaces)
+                    if !name.isEmpty { onCreateCollection?(name) }
+                }
+                Button("Cancel", role: .cancel) {}
+            }
         }
         .frame(maxHeight: .infinity)
         .background(Color(.controlBackgroundColor))

@@ -160,7 +160,9 @@ class VideoRepository: ObservableObject {
         /// 0 = no rating filter; 1..5 = "show videos with at least this rating".
         filterMinRating: Int32 = 0,
         /// "" = no colour filter; otherwise exact-match the colour label.
-        filterColorLabel: String = ""
+        filterColorLabel: String = "",
+        /// nil = no collection filter; otherwise restrict to members of this collection.
+        collectionId: String? = nil
     ) async throws -> (videos: [VideoSummary], totalCount: Int64) {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
 
@@ -193,6 +195,7 @@ class VideoRepository: ObservableObject {
         }
         request.filterMinRating = filterMinRating
         request.filterColorLabel = filterColorLabel
+        if let cid = collectionId { request.collectionID = cid }
         let response = try await client.listVideos(request)
         return (response.videos.map(Self.makeSummary), response.totalCount)
     }
@@ -447,6 +450,54 @@ class VideoRepository: ObservableObject {
         request.videoIds = videoIds
         request.tagID = tagId
         let response = try await client.untagVideos(request)
+        return response.success
+    }
+
+    // MARK: - Collections
+
+    func listCollections() async throws -> [Collection] {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        let response = try await client.listCollections(Videoroom_ListCollectionsRequest())
+        return response.collections.map {
+            Collection(id: $0.id, name: $0.name, isSmart: $0.isSmart,
+                       filterJson: $0.filterJson, videoCount: $0.videoCount)
+        }
+    }
+
+    func createCollection(name: String, isSmart: Bool = false, filterJson: String = "") async throws -> Collection? {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        var request = Videoroom_CreateCollectionRequest()
+        request.name = name
+        request.isSmart = isSmart
+        request.filterJson = filterJson
+        let response = try await client.createCollection(request)
+        return Collection(id: response.id, name: response.name, isSmart: response.isSmart,
+                          filterJson: filterJson, videoCount: response.videoCount)
+    }
+
+    func deleteCollection(id: String) async throws -> Bool {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        var request = Videoroom_DeleteCollectionRequest()
+        request.collectionID = id
+        let response = try await client.deleteCollection(request)
+        return response.success
+    }
+
+    func addToCollection(videoIds: [String], collectionId: String) async throws -> Bool {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        var request = Videoroom_AddToCollectionRequest()
+        request.collectionID = collectionId
+        request.videoIds = videoIds
+        let response = try await client.addToCollection(request)
+        return response.success
+    }
+
+    func removeFromCollection(videoIds: [String], collectionId: String) async throws -> Bool {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        var request = Videoroom_RemoveFromCollectionRequest()
+        request.collectionID = collectionId
+        request.videoIds = videoIds
+        let response = try await client.removeFromCollection(request)
         return response.success
     }
 

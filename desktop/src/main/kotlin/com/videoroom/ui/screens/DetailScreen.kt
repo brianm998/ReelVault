@@ -433,6 +433,24 @@ fun DetailScreen(
                     onFilterByTag = { gridViewModel.setTagFilter(it) }
                 )
 
+                Spacer(modifier = Modifier.height(VideoRoomSpacing.Large))
+
+                // Collections section
+                CollectionsSection(
+                    videoCollectionIds = metadata.value!!.collections,
+                    allCollections = gridViewModel.collections.collectAsState().value,
+                    selectedVideoIds = gridViewModel.selectedVideoIds.collectAsState().value
+                        .ifEmpty { listOf(metadata.value!!.id) },
+                    selectedCollectionId = gridViewModel.selectedCollectionId.collectAsState().value,
+                    onAddToCollection = { collectionId, ids ->
+                        gridViewModel.addToCollection(ids, collectionId)
+                    },
+                    onRemoveFromCollection = { collectionId, ids ->
+                        gridViewModel.removeFromCollection(ids, collectionId)
+                    },
+                    onFilterByCollection = { gridViewModel.setCollection(it) }
+                )
+
                 // Group / Stack section
                 if (groupMembers.value.size > 1) {
                     Spacer(modifier = Modifier.height(VideoRoomSpacing.Large))
@@ -1184,6 +1202,146 @@ fun KeywordsSection(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Right-panel Collections block:
+ *   * Lists all known collections. Rows belonging to the current video are
+ *     highlighted with a check; clicking them removes the video from that
+ *     collection. Rows not belonging show with a "+" affordance on hover;
+ *     clicking adds the video.
+ *   * A ">" chevron on the left sets the grid filter to that collection.
+ */
+@Composable
+fun CollectionsSection(
+    videoCollectionIds: List<String>,
+    allCollections: List<com.videoroom.data.models.Collection>,
+    selectedVideoIds: List<String>,
+    selectedCollectionId: String?,
+    onAddToCollection: (collectionId: String, videoIds: List<String>) -> Unit,
+    onRemoveFromCollection: (collectionId: String, videoIds: List<String>) -> Unit,
+    onFilterByCollection: (collectionId: String?) -> Unit
+) {
+    val videoColSet = remember(videoCollectionIds) { videoCollectionIds.toSet() }
+    val manualCollections = remember(allCollections) { allCollections.filter { !it.isSmart } }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "Collections",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+            if (selectedCollectionId != null) {
+                com.videoroom.ui.components.Tooltip(text = "Stop filtering the grid by the current collection.") {
+                    TextButton(onClick = { onFilterByCollection(null) }) {
+                        Text("Clear filter", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
+
+        if (manualCollections.isEmpty()) {
+            Text(
+                text = "No collections yet. Use the + in the left panel.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                manualCollections.forEach { col ->
+                    val isInCollection = col.id in videoColSet
+                    val isActiveFilter = col.id == selectedCollectionId
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        com.videoroom.ui.components.Tooltip(
+                            text = if (isActiveFilter)
+                                "Currently filtering the grid by '${col.name}'. Click again to clear."
+                            else
+                                "Filter the grid to show only videos in '${col.name}'."
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    onFilterByCollection(if (isActiveFilter) null else col.id)
+                                },
+                                modifier = Modifier.size(22.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ChevronRight,
+                                    contentDescription = "Filter by ${col.name}",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = if (isActiveFilter)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        com.videoroom.ui.components.Tooltip(
+                            text = if (isInCollection)
+                                "Remove selected video(s) from '${col.name}'."
+                            else
+                                "Add selected video(s) to '${col.name}'."
+                        ) {
+                            TextButton(
+                                onClick = {
+                                    if (isInCollection) {
+                                        onRemoveFromCollection(col.id, selectedVideoIds)
+                                    } else {
+                                        onAddToCollection(col.id, selectedVideoIds)
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                    horizontal = 4.dp, vertical = 0.dp
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (isInCollection) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                    }
+                                    Text(
+                                        text = col.name,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (isInCollection)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.weight(1f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = "(${col.videoCount})",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
                         }
                     }
                 }

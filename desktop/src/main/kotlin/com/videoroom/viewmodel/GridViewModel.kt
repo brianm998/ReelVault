@@ -82,6 +82,12 @@ class GridViewModel(
     private val _filterTagId = MutableStateFlow("")  // "" = no tag filter
     val filterTagId: StateFlow<String> = _filterTagId.asStateFlow()
 
+    private val _collections = MutableStateFlow<List<com.videoroom.data.models.Collection>>(emptyList())
+    val collections: StateFlow<List<com.videoroom.data.models.Collection>> = _collections.asStateFlow()
+
+    private val _selectedCollectionId = MutableStateFlow<String?>(null)
+    val selectedCollectionId: StateFlow<String?> = _selectedCollectionId.asStateFlow()
+
     // Top-bar dropdown filters. The empty string / 0 means "no filter (---)".
     private val _filterCamera = MutableStateFlow("")
     val filterCamera: StateFlow<String> = _filterCamera.asStateFlow()
@@ -1193,8 +1199,93 @@ class GridViewModel(
     }
 
     fun setCollection(id: String?) {
-        collectionId = id
+        _selectedCollectionId.value = id
+        val col = _collections.value.firstOrNull { it.id == id }
+        if (col != null && col.isSmart && col.filterJson.isNotBlank()) {
+            // Smart collection: apply its saved filters to the individual filter
+            // fields. The grid is driven by the filters, not by collection_id.
+            val f = com.videoroom.data.models.SmartCollectionFilters.fromJson(col.filterJson)
+            collectionId = null
+            _filterCamera.value = f.camera
+            _filterLens.value = f.lens
+            _filterCodec.value = f.codec
+            _filterCaptureYear.value = f.captureYear
+            _filterMinRating.value = f.minRating
+            _filterColorLabel.value = f.colorLabel
+            filterTags = f.tagIds
+            _filterTagId.value = f.tagIds.firstOrNull() ?: ""
+        } else {
+            collectionId = id
+        }
         loadVideos()
+    }
+
+    fun loadCollections() {
+        viewModelScope.launch {
+            try {
+                _collections.value = repository.listCollections().sortedBy { it.name.lowercase() }
+            } catch (e: Exception) {
+                logger.warn("Failed to load collections", e)
+            }
+        }
+    }
+
+    fun createCollection(name: String, isSmart: Boolean, filterJson: String = "") {
+        viewModelScope.launch {
+            try {
+                repository.createCollection(name, isSmart, filterJson)
+                loadCollections()
+            } catch (e: Exception) {
+                _error.value = "Failed to create collection: ${e.message}"
+            }
+        }
+    }
+
+    fun deleteCollection(id: String) {
+        viewModelScope.launch {
+            try {
+                repository.deleteCollection(id)
+                if (_selectedCollectionId.value == id) setCollection(null)
+                loadCollections()
+            } catch (e: Exception) {
+                _error.value = "Failed to delete collection: ${e.message}"
+            }
+        }
+    }
+
+    fun addToCollection(videoIds: List<String>, collectionId: String) {
+        viewModelScope.launch {
+            try {
+                repository.addToCollection(videoIds, collectionId)
+                loadCollections()
+            } catch (e: Exception) {
+                _error.value = "Failed to add to collection: ${e.message}"
+            }
+        }
+    }
+
+    fun removeFromCollection(videoIds: List<String>, collectionId: String) {
+        viewModelScope.launch {
+            try {
+                repository.removeFromCollection(videoIds, collectionId)
+                loadCollections()
+            } catch (e: Exception) {
+                _error.value = "Failed to remove from collection: ${e.message}"
+            }
+        }
+    }
+
+    fun buildSmartCollectionFilterJson(): String {
+        val tagId = _filterTagId.value
+        return com.videoroom.data.models.SmartCollectionFilters(
+            camera = _filterCamera.value,
+            lens = _filterLens.value,
+            codec = _filterCodec.value,
+            captureYear = _filterCaptureYear.value,
+            minRating = _filterMinRating.value,
+            colorLabel = _filterColorLabel.value,
+            tagIds = if (tagId.isEmpty()) emptyList() else listOf(tagId)
+        ).toJson()
     }
 
     fun clearError() {
