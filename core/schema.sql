@@ -85,10 +85,11 @@ CREATE INDEX IF NOT EXISTS idx_metadata_resolution ON metadata(width, height);
 CREATE INDEX IF NOT EXISTS idx_metadata_fps ON metadata(fps);
 CREATE INDEX IF NOT EXISTS idx_metadata_duration ON metadata(duration_ms);
 CREATE INDEX IF NOT EXISTS idx_metadata_codec_video ON metadata(codec_video);
-CREATE INDEX IF NOT EXISTS idx_metadata_iso ON metadata(iso);
-CREATE INDEX IF NOT EXISTS idx_metadata_aperture ON metadata(aperture);
-CREATE INDEX IF NOT EXISTS idx_metadata_exposure_time ON metadata(exposure_time_s);
-CREATE INDEX IF NOT EXISTS idx_metadata_focal_length ON metadata(focal_length_mm);
+-- NOTE: indexes on XMP/EXIF columns (iso, aperture, exposure_time_s,
+-- focal_length_mm) are created via the migrations array in db.rs so that
+-- they run AFTER the ALTER TABLE ADD COLUMN steps on existing catalogs.
+-- Do NOT add them here — schema.sql runs before migrations and would fail
+-- on any catalog that pre-dates those columns.
 
 -- Thumbnails
 CREATE TABLE IF NOT EXISTS thumbnails (
