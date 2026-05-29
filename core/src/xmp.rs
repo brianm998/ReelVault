@@ -337,7 +337,10 @@ fn scrape_iso(xml: &str) -> Option<i64> {
 /// values like `1.8` are also accepted — some writers normalize to
 /// decimal even though the XMP spec calls for rational. Returns
 /// `None` for unparseable or zero-denominator values.
-fn parse_rational(s: &str) -> Option<f64> {
+///
+/// Exposed `pub(crate)` so the udta-tag extraction in metadata.rs can
+/// reuse it — the two paths see the same input forms.
+pub(crate) fn parse_rational(s: &str) -> Option<f64> {
     let t = s.trim();
     if let Some((num, den)) = t.split_once('/') {
         let n: f64 = num.trim().parse().ok()?;
@@ -373,7 +376,9 @@ fn parse_exif_datetime(s: &str) -> Option<i64> {
 }
 
 /// EXIF `ExposureMode` integer code → human-readable label.
-fn exposure_mode_label(v: &str) -> String {
+/// `pub(crate)` so the udta extractor in metadata.rs uses the same
+/// translation table as the XMP path.
+pub(crate) fn exposure_mode_label(v: &str) -> String {
     match v.trim() {
         "0" => "Auto".to_string(),
         "1" => "Manual".to_string(),
@@ -383,7 +388,7 @@ fn exposure_mode_label(v: &str) -> String {
 }
 
 /// EXIF `ExposureProgram` integer code → human-readable label.
-fn exposure_program_label(v: &str) -> String {
+pub(crate) fn exposure_program_label(v: &str) -> String {
     match v.trim() {
         "0" => "Not defined".to_string(),
         "1" => "Manual".to_string(),
@@ -399,7 +404,7 @@ fn exposure_program_label(v: &str) -> String {
 }
 
 /// EXIF `WhiteBalance` integer code → human-readable label.
-fn white_balance_label(v: &str) -> String {
+pub(crate) fn white_balance_label(v: &str) -> String {
     match v.trim() {
         "0" => "Auto".to_string(),
         "1" => "Manual".to_string(),

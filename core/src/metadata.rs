@@ -120,14 +120,40 @@ impl MetadataExtractor {
                 creation_date = Some(ts);
             }
         }
-        // Pull the new EXIF columns out of the XMP (or leave NULL).
-        let xmp_iso = xmp.as_ref().and_then(|x| x.iso);
-        let xmp_aperture = xmp.as_ref().and_then(|x| x.aperture);
-        let xmp_exposure_time_s = xmp.as_ref().and_then(|x| x.exposure_time_s);
-        let xmp_focal_length_mm = xmp.as_ref().and_then(|x| x.focal_length_mm);
-        let xmp_exposure_mode = xmp.as_ref().and_then(|x| x.exposure_mode.clone());
-        let xmp_exposure_program = xmp.as_ref().and_then(|x| x.exposure_program.clone());
-        let xmp_white_balance = xmp.as_ref().and_then(|x| x.white_balance.clone());
+        // Photo-EXIF columns. Two independent sources, in priority order:
+        //   1. The XMP packet (richer; written by tools that follow the
+        //      XMP-EXIF standard — Premiere, Lightroom, exiftool).
+        //   2. QuickTime udta key=value tags (what ffmpeg's
+        //      `-metadata iso=100 -movflags use_metadata_tags` produces,
+        //      and what older encoders or post-processing tools tend to
+        //      emit when they don't bother with XMP).
+        //
+        // Field-by-field merge: XMP wins where it provides a value;
+        // otherwise we fall back to udta. Each field is independent so a
+        // video carrying lens-via-XMP and ISO-via-udta gets both. Key
+        // names accepted on the udta side are intentionally generous —
+        // see the helpers below for the full list — because there's no
+        // standard for these tag names in MP4/MOV udta and writers vary.
+        let final_iso = xmp.as_ref().and_then(|x| x.iso)
+            .or_else(|| Self::udta_int(&format.tags, &video_stream.tags, ISO_KEYS));
+        let final_aperture = xmp.as_ref().and_then(|x| x.aperture)
+            .or_else(|| Self::udta_rational(&format.tags, &video_stream.tags, FNUMBER_KEYS));
+        let final_exposure_time_s = xmp.as_ref().and_then(|x| x.exposure_time_s)
+            .or_else(|| Self::udta_rational(&format.tags, &video_stream.tags, EXPOSURE_TIME_KEYS));
+        let final_focal_length_mm = xmp.as_ref().and_then(|x| x.focal_length_mm)
+            .or_else(|| Self::udta_rational(&format.tags, &video_stream.tags, FOCAL_LENGTH_KEYS));
+        let final_exposure_mode = xmp.as_ref().and_then(|x| x.exposure_mode.clone())
+            .or_else(|| Self::udta_enum_label(
+                &format.tags, &video_stream.tags, EXPOSURE_MODE_KEYS,
+                crate::xmp::exposure_mode_label));
+        let final_exposure_program = xmp.as_ref().and_then(|x| x.exposure_program.clone())
+            .or_else(|| Self::udta_enum_label(
+                &format.tags, &video_stream.tags, EXPOSURE_PROGRAM_KEYS,
+                crate::xmp::exposure_program_label));
+        let final_white_balance = xmp.as_ref().and_then(|x| x.white_balance.clone())
+            .or_else(|| Self::udta_enum_label(
+                &format.tags, &video_stream.tags, WHITE_BALANCE_KEYS,
+                crate::xmp::white_balance_label));
 
         // Audio info
         let audio_stream = probe_output.streams
@@ -205,13 +231,13 @@ impl MetadataExtractor {
                 creation_date,
                 camera_model,
                 lens_model,
-                xmp_iso,
-                xmp_aperture,
-                xmp_exposure_time_s,
-                xmp_focal_length_mm,
-                xmp_exposure_mode,
-                xmp_exposure_program,
-                xmp_white_balance,
+                final_iso,
+                final_aperture,
+                final_exposure_time_s,
+                final_focal_length_mm,
+                final_exposure_mode,
+                final_exposure_program,
+                final_white_balance,
                 metadata_json
             ],
         )
@@ -467,7 +493,126 @@ impl MetadataExtractor {
                 .map(|dt| dt.timestamp_millis())
         })
     }
+
+    // ----- udta-tag photo-EXIF extraction --------------------------------
+    //
+    // MP4/MOV `udta` atoms can carry arbitrary key=value tags — this is
+    // what ffmpeg writes with `-metadata iso=100 -movflags
+    // use_metadata_tags`, and what some camera firmware and post-
+    // processing tools use to forward photo-EXIF without going to the
+    // trouble of building an XMP packet. There's no standard for the
+    // key *names* though, so writers diverge wildly — `iso`, `ISO`,
+    // `iso_speed`, `com.apple.quicktime.iso`, etc. The helpers below
+    // try a generous list of forms for each field and pick the first
+    // one that parses. The lookup is case-insensitive (FFProbeTagMap
+    // lowercases its lookups), so casing variants don't need to be
+    // listed separately.
+
+    /// Try each key in `keys` against the format tags and the video
+    /// stream tags; return the first that parses as an integer.
+    fn udta_int(
+        format_tags: &Option<FFProbeTagMap>,
+        stream_tags: &Option<FFProbeTagMap>,
+        keys: &[&str],
+    ) -> Option<i64> {
+        for key in keys {
+            for tags in [format_tags, stream_tags] {
+                if let Some(s) = Self::extract_tag(tags, key) {
+                    if let Ok(n) = s.trim().parse::<i64>() {
+                        return Some(n);
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// Same shape as [`udta_int`], but parses EXIF rationals (`1/4000`)
+    /// or decimal floats. Shares the rational parser with [`crate::xmp`]
+    /// so udta and XMP land on identical numeric values.
+    fn udta_rational(
+        format_tags: &Option<FFProbeTagMap>,
+        stream_tags: &Option<FFProbeTagMap>,
+        keys: &[&str],
+    ) -> Option<f64> {
+        for key in keys {
+            for tags in [format_tags, stream_tags] {
+                if let Some(s) = Self::extract_tag(tags, key) {
+                    if let Some(v) = crate::xmp::parse_rational(&s) {
+                        return Some(v);
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// Enum-style EXIF field (ExposureMode, ExposureProgram,
+    /// WhiteBalance). The udta value can arrive as either:
+    ///   - The raw EXIF integer code (`1` for Manual) — typical when
+    ///     ffmpeg wrote it from an exiftool source. We translate via
+    ///     the matching `*_label` helper in xmp.rs so udta and XMP
+    ///     produce identical strings.
+    ///   - A human-readable word (`Manual`, `Auto`, …) — common when
+    ///     ffmpeg's `-metadata` was given a string directly. We
+    ///     pass these through verbatim after trimming.
+    fn udta_enum_label(
+        format_tags: &Option<FFProbeTagMap>,
+        stream_tags: &Option<FFProbeTagMap>,
+        keys: &[&str],
+        label: fn(&str) -> String,
+    ) -> Option<String> {
+        for key in keys {
+            for tags in [format_tags, stream_tags] {
+                if let Some(s) = Self::extract_tag(tags, key) {
+                    let v = s.trim();
+                    if v.is_empty() {
+                        continue;
+                    }
+                    // Integer code path
+                    if v.parse::<i64>().is_ok() {
+                        return Some(label(v));
+                    }
+                    // Plain-word path
+                    return Some(v.to_string());
+                }
+            }
+        }
+        None
+    }
 }
+
+// Lists of accepted udta tag names per EXIF field. Lookups are
+// case-insensitive, so we only enumerate one casing per spelling.
+// Order matters only in that the first matching key wins — we list
+// the ffmpeg-canonical name first, then more exotic variants seen in
+// the wild.
+const ISO_KEYS: &[&str] = &[
+    "iso", "iso_speed", "iso_speed_ratings", "isospeed",
+    "com.apple.quicktime.iso", "exif_iso",
+];
+const FNUMBER_KEYS: &[&str] = &[
+    "fnumber", "f_number", "aperture", "apertureval",
+    "com.apple.quicktime.fnumber", "com.apple.quicktime.aperture",
+    "exif_fnumber",
+];
+const EXPOSURE_TIME_KEYS: &[&str] = &[
+    "exposure_time", "exposuretime", "shutter_speed", "shutter_speed_value",
+    "shutterspeed", "com.apple.quicktime.exposuretime",
+    "com.apple.quicktime.shutterspeed",
+];
+const FOCAL_LENGTH_KEYS: &[&str] = &[
+    "focal_length", "focallength", "com.apple.quicktime.focallength",
+];
+const EXPOSURE_MODE_KEYS: &[&str] = &[
+    "exposure_mode", "exposuremode", "com.apple.quicktime.exposuremode",
+];
+const EXPOSURE_PROGRAM_KEYS: &[&str] = &[
+    "exposure_program", "exposureprogram", "com.apple.quicktime.exposureprogram",
+];
+const WHITE_BALANCE_KEYS: &[&str] = &[
+    "white_balance", "whitebalance", "com.apple.quicktime.whitebalance",
+];
 
 // FFprobe output structures
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -654,5 +799,165 @@ pub(crate) fn combine_make_model(make: Option<&str>, model: Option<&str>) -> Opt
         (None, Some(model)) => Some(model.to_string()),
         (Some(make), None) => Some(make.to_string()),
         (None, None) => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    /// Build an `Option<FFProbeTagMap>` from a slice of (key, value)
+    /// pairs. The map's `get` is case-insensitive so we lowercase keys
+    /// here to match what ffprobe actually emits in its JSON.
+    fn tags(pairs: &[(&str, &str)]) -> Option<FFProbeTagMap> {
+        let mut m = HashMap::new();
+        for (k, v) in pairs {
+            m.insert(k.to_lowercase(), v.to_string());
+        }
+        Some(FFProbeTagMap(m))
+    }
+
+    #[test]
+    fn udta_int_finds_iso_under_any_known_key() {
+        assert_eq!(
+            MetadataExtractor::udta_int(&tags(&[("iso", "100")]), &None, ISO_KEYS),
+            Some(100)
+        );
+        assert_eq!(
+            MetadataExtractor::udta_int(
+                &tags(&[("com.apple.quicktime.iso", "1600")]), &None, ISO_KEYS),
+            Some(1600)
+        );
+        // Falls through to stream tags when format tags lack the key.
+        assert_eq!(
+            MetadataExtractor::udta_int(
+                &None, &tags(&[("iso_speed", "400")]), ISO_KEYS),
+            Some(400)
+        );
+        // Unknown key: nothing matches → None.
+        assert_eq!(
+            MetadataExtractor::udta_int(
+                &tags(&[("not_iso", "999")]), &None, ISO_KEYS),
+            None
+        );
+    }
+
+    #[test]
+    fn udta_rational_accepts_both_decimal_and_fraction() {
+        // f-number as decimal
+        assert_eq!(
+            MetadataExtractor::udta_rational(
+                &tags(&[("fnumber", "1.8")]), &None, FNUMBER_KEYS),
+            Some(1.8)
+        );
+        // exposure time as rational
+        let v = MetadataExtractor::udta_rational(
+            &tags(&[("exposure_time", "1/4000")]), &None, EXPOSURE_TIME_KEYS)
+            .unwrap();
+        assert!((v - 0.00025).abs() < 1e-9);
+        // exposure time as plain seconds
+        assert_eq!(
+            MetadataExtractor::udta_rational(
+                &tags(&[("shutter_speed", "20")]), &None, EXPOSURE_TIME_KEYS),
+            Some(20.0)
+        );
+    }
+
+    #[test]
+    fn udta_enum_label_handles_integer_code_and_word() {
+        // Integer code path — translated to label via xmp.rs helper.
+        assert_eq!(
+            MetadataExtractor::udta_enum_label(
+                &tags(&[("exposure_mode", "1")]), &None, EXPOSURE_MODE_KEYS,
+                crate::xmp::exposure_mode_label),
+            Some("Manual".to_string())
+        );
+        // Plain word: pass-through.
+        assert_eq!(
+            MetadataExtractor::udta_enum_label(
+                &tags(&[("white_balance", "Daylight")]), &None, WHITE_BALANCE_KEYS,
+                crate::xmp::white_balance_label),
+            Some("Daylight".to_string())
+        );
+        // Empty string is ignored — no spurious label.
+        assert_eq!(
+            MetadataExtractor::udta_enum_label(
+                &tags(&[("exposure_program", "")]), &None, EXPOSURE_PROGRAM_KEYS,
+                crate::xmp::exposure_program_label),
+            None
+        );
+    }
+
+    /// End-to-end check: encode a 1-second clip with udta photo-EXIF
+    /// tags via ffmpeg, run MetadataExtractor::extract on it, and
+    /// verify the udta helpers find every field. Skipped when ffmpeg
+    /// isn't available so CI machines without media tooling still
+    /// pass the pure-helper tests above.
+    #[test]
+    fn round_trip_through_ffmpeg_udta() {
+        use std::process::Command;
+
+        if !MetadataExtractor::ffmpeg_available() || !MetadataExtractor::ffprobe_available() {
+            eprintln!("skipping round_trip_through_ffmpeg_udta: ffmpeg/ffprobe not available");
+            return;
+        }
+
+        let tmp = tempfile::tempdir().expect("tmpdir");
+        let path = tmp.path().join("clip.mov");
+
+        let status = Command::new("ffmpeg")
+            .args([
+                "-nostdin", "-loglevel", "error", "-y",
+                "-f", "lavfi",
+                "-i", "testsrc=duration=1:size=320x240:rate=30",
+                "-c:v", "prores_ks",
+                // The combination that lets ffmpeg pass arbitrary
+                // udta keys through into the output container.
+                "-movflags", "use_metadata_tags",
+                "-metadata", "iso=100",
+                "-metadata", "fnumber=1.8",
+                "-metadata", "exposure_time=1/4000",
+                "-metadata", "focal_length=14",
+                "-metadata", "exposure_mode=Manual",
+                "-metadata", "white_balance=Auto",
+            ])
+            .arg(&path)
+            .status()
+            .expect("ffmpeg spawn");
+        assert!(status.success(), "ffmpeg failed to write fixture");
+
+        let probe = MetadataExtractor::extract(&path).expect("ffprobe ok");
+        let format_tags = &probe.format.tags;
+        // Video stream is index 0 here but parse_probe_output already
+        // takes care of picking the right one — just use the index for
+        // the test.
+        let stream_tags = &probe.streams[0].tags;
+
+        assert_eq!(
+            MetadataExtractor::udta_int(format_tags, stream_tags, ISO_KEYS),
+            Some(100)
+        );
+        let aperture = MetadataExtractor::udta_rational(
+            format_tags, stream_tags, FNUMBER_KEYS).unwrap();
+        assert!((aperture - 1.8).abs() < 1e-9);
+        let exp = MetadataExtractor::udta_rational(
+            format_tags, stream_tags, EXPOSURE_TIME_KEYS).unwrap();
+        assert!((exp - 1.0 / 4000.0).abs() < 1e-9);
+        let focal = MetadataExtractor::udta_rational(
+            format_tags, stream_tags, FOCAL_LENGTH_KEYS).unwrap();
+        assert!((focal - 14.0).abs() < 1e-9);
+        assert_eq!(
+            MetadataExtractor::udta_enum_label(
+                format_tags, stream_tags, EXPOSURE_MODE_KEYS,
+                crate::xmp::exposure_mode_label),
+            Some("Manual".to_string())
+        );
+        assert_eq!(
+            MetadataExtractor::udta_enum_label(
+                format_tags, stream_tags, WHITE_BALANCE_KEYS,
+                crate::xmp::white_balance_label),
+            Some("Auto".to_string())
+        );
     }
 }
