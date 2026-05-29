@@ -991,7 +991,12 @@ class VideoRepository: ObservableObject {
             cameraModel: p.cameraModel,
             cameraDisplayName: p.cameraDisplayName.isEmpty ? p.cameraModel : p.cameraDisplayName,
             gpsLatitude: p.gpsLatitude,
-            gpsLongitude: p.gpsLongitude
+            gpsLongitude: p.gpsLongitude,
+            lensModel: p.lensModel,
+            iso: Int(p.iso),
+            aperture: p.aperture,
+            exposureTimeS: p.exposureTimeS,
+            focalLengthMm: p.focalLengthMm
         )
     }
 
@@ -1023,7 +1028,14 @@ class VideoRepository: ObservableObject {
             tags: p.tags,
             collections: p.collections,
             rating: Int(p.rating),
-            colorLabel: p.colorLabel
+            colorLabel: p.colorLabel,
+            iso: Int(p.iso),
+            aperture: p.aperture,
+            exposureTimeS: p.exposureTimeS,
+            focalLengthMm: p.focalLengthMm,
+            exposureMode: p.exposureMode,
+            exposureProgram: p.exposureProgram,
+            whiteBalance: p.whiteBalance
         )
     }
 

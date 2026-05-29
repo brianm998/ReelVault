@@ -2277,6 +2277,10 @@ fun BottomBar(
         "bitrate" to "Bitrate",
         "camera" to "Camera",
         "lens" to "Lens",
+        "iso" to "ISO",
+        "aperture" to "Aperture",
+        "exposure_time" to "Exposure Time",
+        "focal_length" to "Focal Length",
         "keyword" to "Keyword",
     )
     val currentSortLabel = sortOptions.firstOrNull { it.first == currentSort }?.second ?: currentSort

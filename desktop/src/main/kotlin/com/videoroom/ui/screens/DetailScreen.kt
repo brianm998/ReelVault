@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.videoroom.ViewMode
+import com.videoroom.data.models.GridStatKey
 import com.videoroom.ui.theme.VideoRoomSpacing
 import com.videoroom.viewmodel.DetailViewModel
 
@@ -217,10 +218,18 @@ fun DetailScreen(
 
                 // EXIF / Camera section
                 val hasGps = metadata.value!!.gpsLatitude != 0.0 || metadata.value!!.gpsLongitude != 0.0
+                val hasShotEXIF = metadata.value!!.iso > 0 ||
+                                  metadata.value!!.aperture > 0.0 ||
+                                  metadata.value!!.exposureTimeS > 0.0 ||
+                                  metadata.value!!.focalLengthMm > 0.0 ||
+                                  metadata.value!!.exposureMode.isNotEmpty() ||
+                                  metadata.value!!.exposureProgram.isNotEmpty() ||
+                                  metadata.value!!.whiteBalance.isNotEmpty()
                 val hasExif = metadata.value!!.cameraModel.isNotEmpty() ||
                               metadata.value!!.lensModel.isNotEmpty() ||
                               hasGps ||
-                              metadata.value!!.creationDate > 0
+                              metadata.value!!.creationDate > 0 ||
+                              hasShotEXIF
                 if (hasExif) {
                     Spacer(modifier = Modifier.height(VideoRoomSpacing.Medium))
                     Text(
@@ -236,6 +245,27 @@ fun DetailScreen(
                     }
                     if (metadata.value!!.lensModel.isNotEmpty()) {
                         MetadataItem("Lens", metadata.value!!.lensModel)
+                    }
+                    if (metadata.value!!.focalLengthMm > 0.0) {
+                        MetadataItem("Focal Length", "%.0f mm".format(metadata.value!!.focalLengthMm))
+                    }
+                    if (metadata.value!!.aperture > 0.0) {
+                        MetadataItem("Aperture", "f/%.1f".format(metadata.value!!.aperture))
+                    }
+                    if (metadata.value!!.exposureTimeS > 0.0) {
+                        MetadataItem("Exposure", GridStatKey.formatExposureTime(metadata.value!!.exposureTimeS))
+                    }
+                    if (metadata.value!!.iso > 0) {
+                        MetadataItem("ISO", metadata.value!!.iso.toString())
+                    }
+                    if (metadata.value!!.exposureProgram.isNotEmpty()) {
+                        MetadataItem("Exposure Program", metadata.value!!.exposureProgram)
+                    }
+                    if (metadata.value!!.exposureMode.isNotEmpty()) {
+                        MetadataItem("Exposure Mode", metadata.value!!.exposureMode)
+                    }
+                    if (metadata.value!!.whiteBalance.isNotEmpty()) {
+                        MetadataItem("White Balance", metadata.value!!.whiteBalance)
                     }
                     if (metadata.value!!.creationDate > 0) {
                         MetadataItem("Captured", metadata.value!!.creationDateFormatted)

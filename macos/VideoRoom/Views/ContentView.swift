@@ -614,6 +614,10 @@ struct ContentView: View {
                         sortMenuItem(label: "Bitrate",        key: "bitrate")
                         sortMenuItem(label: "Camera",         key: "camera")
                         sortMenuItem(label: "Lens",           key: "lens")
+                        sortMenuItem(label: "ISO",            key: "iso")
+                        sortMenuItem(label: "Aperture",       key: "aperture")
+                        sortMenuItem(label: "Exposure Time",  key: "exposure_time")
+                        sortMenuItem(label: "Focal Length",   key: "focal_length")
                         sortMenuItem(label: "Keyword",        key: "keyword")
                     } label: {
                         HStack(spacing: 4) {
@@ -676,6 +680,10 @@ struct ContentView: View {
         case "bitrate":       return "Bitrate"
         case "camera":        return "Camera"
         case "lens":          return "Lens"
+        case "iso":           return "ISO"
+        case "aperture":      return "Aperture"
+        case "exposure_time": return "Exposure Time"
+        case "focal_length":  return "Focal Length"
         case "keyword":       return "Keyword"
         default:              return key
         }

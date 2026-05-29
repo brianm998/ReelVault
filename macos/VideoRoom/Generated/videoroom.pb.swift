@@ -43,7 +43,12 @@ nonisolated struct Videoroom_ListVideosRequest: @unchecked Sendable {
     set {_uniqueStorage()._offset = newValue}
   }
 
-  /// "name", "date_added", "duration", etc.
+  /// Sort token. Recognized values (case-insensitive):
+  ///   "name" / "filename", "date_added" / "indexed_at",
+  ///   "creation_date" / "shot_date" / "capture_date",
+  ///   "duration", "size", "resolution", "fps", "codec", "bitrate",
+  ///   "camera", "lens", "keyword", "rating", "color",
+  ///   "iso", "aperture", "exposure_time", "focal_length".
   var sortBy: String {
     get {_storage._sortBy}
     set {_uniqueStorage()._sortBy = newValue}
@@ -290,8 +295,10 @@ nonisolated struct Videoroom_VideoSummary: @unchecked Sendable {
     set {_uniqueStorage()._cameraDisplayName = newValue}
   }
 
-  /// GPS coordinates from embedded EXIF/metadata. Both are 0.0 when no
-  /// location data is present.
+  /// GPS coordinates extracted from the video's embedded EXIF/metadata.
+  /// Both fields are 0.0 when the video has no embedded location. Carried
+  /// here so the grid card can show a location badge without a per-video
+  /// VideoMetadata round-trip.
   var gpsLatitude: Double {
     get {_storage._gpsLatitude}
     set {_uniqueStorage()._gpsLatitude = newValue}
@@ -300,6 +307,38 @@ nonisolated struct Videoroom_VideoSummary: @unchecked Sendable {
   var gpsLongitude: Double {
     get {_storage._gpsLongitude}
     set {_uniqueStorage()._gpsLongitude = newValue}
+  }
+
+  /// Photo-EXIF subset surfaced on the summary so the grid can sort and
+  /// filter by these without a per-row VideoMetadata round-trip. Sourced
+  /// from the video's embedded XMP packet (see xmp.rs); all-zero / empty
+  /// when the video carries no XMP. Lens is the Adobe-canonical
+  /// `aux:Lens` string; the rest mirror the standard EXIF semantics.
+  var lensModel: String {
+    get {_storage._lensModel}
+    set {_uniqueStorage()._lensModel = newValue}
+  }
+
+  var iso: Int32 {
+    get {_storage._iso}
+    set {_uniqueStorage()._iso = newValue}
+  }
+
+  /// f-number, e.g. 1.8
+  var aperture: Double {
+    get {_storage._aperture}
+    set {_uniqueStorage()._aperture = newValue}
+  }
+
+  /// seconds; 1/4000 -> 0.00025
+  var exposureTimeS: Double {
+    get {_storage._exposureTimeS}
+    set {_uniqueStorage()._exposureTimeS = newValue}
+  }
+
+  var focalLengthMm: Double {
+    get {_storage._focalLengthMm}
+    set {_uniqueStorage()._focalLengthMm = newValue}
   }
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -540,6 +579,52 @@ nonisolated struct Videoroom_VideoMetadata: @unchecked Sendable {
   var cameraDisplayName: String {
     get {_storage._cameraDisplayName}
     set {_uniqueStorage()._cameraDisplayName = newValue}
+  }
+
+  /// Photo-EXIF fields recovered from the video's embedded XMP packet
+  /// (parsed by xmp.rs). Each is "absent" in a domain-specific way: a
+  /// zero or empty string means the video didn't carry that field.
+  ///
+  ///   - iso, aperture, exposure_time_s, focal_length_mm: numerics that
+  ///     enable sort/filter. Aperture is the f-number (e.g. 1.8);
+  ///     exposure_time_s is seconds (1/4000 -> 0.00025).
+  ///   - exposure_mode / exposure_program / white_balance: short
+  ///     human-readable strings translated from their EXIF integer
+  ///     codes ("Manual", "Aperture-priority", "Auto", …) — the raw
+  ///     codes are not exposed, since the client never needs them.
+  var iso: Int32 {
+    get {_storage._iso}
+    set {_uniqueStorage()._iso = newValue}
+  }
+
+  var aperture: Double {
+    get {_storage._aperture}
+    set {_uniqueStorage()._aperture = newValue}
+  }
+
+  var exposureTimeS: Double {
+    get {_storage._exposureTimeS}
+    set {_uniqueStorage()._exposureTimeS = newValue}
+  }
+
+  var focalLengthMm: Double {
+    get {_storage._focalLengthMm}
+    set {_uniqueStorage()._focalLengthMm = newValue}
+  }
+
+  var exposureMode: String {
+    get {_storage._exposureMode}
+    set {_uniqueStorage()._exposureMode = newValue}
+  }
+
+  var exposureProgram: String {
+    get {_storage._exposureProgram}
+    set {_uniqueStorage()._exposureProgram = newValue}
+  }
+
+  var whiteBalance: String {
+    get {_storage._whiteBalance}
+    set {_uniqueStorage()._whiteBalance = newValue}
   }
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -2116,7 +2201,7 @@ nonisolated extension Videoroom_ListVideosRequest: SwiftProtobuf.Message, SwiftP
 
 nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".VideoSummary"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0\u{3}proxy_count\0\u{3}proxy_of\0\u{3}playable_natively\0\u{1}rating\0\u{3}color_label\0\u{3}camera_model\0\u{3}camera_display_name\0\u{3}gps_latitude\0\u{3}gps_longitude\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0\u{3}proxy_count\0\u{3}proxy_of\0\u{3}playable_natively\0\u{1}rating\0\u{3}color_label\0\u{3}camera_model\0\u{3}camera_display_name\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}lens_model\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -2146,6 +2231,11 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
     var _cameraDisplayName: String = String()
     var _gpsLatitude: Double = 0
     var _gpsLongitude: Double = 0
+    var _lensModel: String = String()
+    var _iso: Int32 = 0
+    var _aperture: Double = 0
+    var _exposureTimeS: Double = 0
+    var _focalLengthMm: Double = 0
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2183,6 +2273,11 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
       _cameraDisplayName = source._cameraDisplayName
       _gpsLatitude = source._gpsLatitude
       _gpsLongitude = source._gpsLongitude
+      _lensModel = source._lensModel
+      _iso = source._iso
+      _aperture = source._aperture
+      _exposureTimeS = source._exposureTimeS
+      _focalLengthMm = source._focalLengthMm
     }
   }
 
@@ -2228,6 +2323,11 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
         case 25: try { try decoder.decodeSingularStringField(value: &_storage._cameraDisplayName) }()
         case 26: try { try decoder.decodeSingularDoubleField(value: &_storage._gpsLatitude) }()
         case 27: try { try decoder.decodeSingularDoubleField(value: &_storage._gpsLongitude) }()
+        case 28: try { try decoder.decodeSingularStringField(value: &_storage._lensModel) }()
+        case 29: try { try decoder.decodeSingularInt32Field(value: &_storage._iso) }()
+        case 30: try { try decoder.decodeSingularDoubleField(value: &_storage._aperture) }()
+        case 31: try { try decoder.decodeSingularDoubleField(value: &_storage._exposureTimeS) }()
+        case 32: try { try decoder.decodeSingularDoubleField(value: &_storage._focalLengthMm) }()
         default: break
         }
       }
@@ -2317,6 +2417,21 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
       if _storage._gpsLongitude.bitPattern != 0 {
         try visitor.visitSingularDoubleField(value: _storage._gpsLongitude, fieldNumber: 27)
       }
+      if !_storage._lensModel.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._lensModel, fieldNumber: 28)
+      }
+      if _storage._iso != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._iso, fieldNumber: 29)
+      }
+      if _storage._aperture.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._aperture, fieldNumber: 30)
+      }
+      if _storage._exposureTimeS.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._exposureTimeS, fieldNumber: 31)
+      }
+      if _storage._focalLengthMm.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._focalLengthMm, fieldNumber: 32)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2353,6 +2468,11 @@ nonisolated extension Videoroom_VideoSummary: SwiftProtobuf.Message, SwiftProtob
         if _storage._cameraDisplayName != rhs_storage._cameraDisplayName {return false}
         if _storage._gpsLatitude != rhs_storage._gpsLatitude {return false}
         if _storage._gpsLongitude != rhs_storage._gpsLongitude {return false}
+        if _storage._lensModel != rhs_storage._lensModel {return false}
+        if _storage._iso != rhs_storage._iso {return false}
+        if _storage._aperture != rhs_storage._aperture {return false}
+        if _storage._exposureTimeS != rhs_storage._exposureTimeS {return false}
+        if _storage._focalLengthMm != rhs_storage._focalLengthMm {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -2514,7 +2634,7 @@ nonisolated extension Videoroom_GetMetadataRequest: SwiftProtobuf.Message, Swift
 
 nonisolated extension Videoroom_VideoMetadata: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".VideoMetadata"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0\u{1}rating\0\u{3}color_label\0\u{3}camera_display_name\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0\u{1}rating\0\u{3}color_label\0\u{3}camera_display_name\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}exposure_mode\0\u{3}exposure_program\0\u{3}white_balance\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -2548,6 +2668,13 @@ nonisolated extension Videoroom_VideoMetadata: SwiftProtobuf.Message, SwiftProto
     var _rating: Int32 = 0
     var _colorLabel: String = String()
     var _cameraDisplayName: String = String()
+    var _iso: Int32 = 0
+    var _aperture: Double = 0
+    var _exposureTimeS: Double = 0
+    var _focalLengthMm: Double = 0
+    var _exposureMode: String = String()
+    var _exposureProgram: String = String()
+    var _whiteBalance: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2589,6 +2716,13 @@ nonisolated extension Videoroom_VideoMetadata: SwiftProtobuf.Message, SwiftProto
       _rating = source._rating
       _colorLabel = source._colorLabel
       _cameraDisplayName = source._cameraDisplayName
+      _iso = source._iso
+      _aperture = source._aperture
+      _exposureTimeS = source._exposureTimeS
+      _focalLengthMm = source._focalLengthMm
+      _exposureMode = source._exposureMode
+      _exposureProgram = source._exposureProgram
+      _whiteBalance = source._whiteBalance
     }
   }
 
@@ -2638,6 +2772,13 @@ nonisolated extension Videoroom_VideoMetadata: SwiftProtobuf.Message, SwiftProto
         case 29: try { try decoder.decodeSingularInt32Field(value: &_storage._rating) }()
         case 30: try { try decoder.decodeSingularStringField(value: &_storage._colorLabel) }()
         case 31: try { try decoder.decodeSingularStringField(value: &_storage._cameraDisplayName) }()
+        case 32: try { try decoder.decodeSingularInt32Field(value: &_storage._iso) }()
+        case 33: try { try decoder.decodeSingularDoubleField(value: &_storage._aperture) }()
+        case 34: try { try decoder.decodeSingularDoubleField(value: &_storage._exposureTimeS) }()
+        case 35: try { try decoder.decodeSingularDoubleField(value: &_storage._focalLengthMm) }()
+        case 36: try { try decoder.decodeSingularStringField(value: &_storage._exposureMode) }()
+        case 37: try { try decoder.decodeSingularStringField(value: &_storage._exposureProgram) }()
+        case 38: try { try decoder.decodeSingularStringField(value: &_storage._whiteBalance) }()
         default: break
         }
       }
@@ -2739,6 +2880,27 @@ nonisolated extension Videoroom_VideoMetadata: SwiftProtobuf.Message, SwiftProto
       if !_storage._cameraDisplayName.isEmpty {
         try visitor.visitSingularStringField(value: _storage._cameraDisplayName, fieldNumber: 31)
       }
+      if _storage._iso != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._iso, fieldNumber: 32)
+      }
+      if _storage._aperture.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._aperture, fieldNumber: 33)
+      }
+      if _storage._exposureTimeS.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._exposureTimeS, fieldNumber: 34)
+      }
+      if _storage._focalLengthMm.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._focalLengthMm, fieldNumber: 35)
+      }
+      if !_storage._exposureMode.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._exposureMode, fieldNumber: 36)
+      }
+      if !_storage._exposureProgram.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._exposureProgram, fieldNumber: 37)
+      }
+      if !_storage._whiteBalance.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._whiteBalance, fieldNumber: 38)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2779,6 +2941,13 @@ nonisolated extension Videoroom_VideoMetadata: SwiftProtobuf.Message, SwiftProto
         if _storage._rating != rhs_storage._rating {return false}
         if _storage._colorLabel != rhs_storage._colorLabel {return false}
         if _storage._cameraDisplayName != rhs_storage._cameraDisplayName {return false}
+        if _storage._iso != rhs_storage._iso {return false}
+        if _storage._aperture != rhs_storage._aperture {return false}
+        if _storage._exposureTimeS != rhs_storage._exposureTimeS {return false}
+        if _storage._focalLengthMm != rhs_storage._focalLengthMm {return false}
+        if _storage._exposureMode != rhs_storage._exposureMode {return false}
+        if _storage._exposureProgram != rhs_storage._exposureProgram {return false}
+        if _storage._whiteBalance != rhs_storage._whiteBalance {return false}
         return true
       }
       if !storagesAreEqual {return false}

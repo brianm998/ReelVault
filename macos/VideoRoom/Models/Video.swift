@@ -55,6 +55,19 @@ struct VideoSummary: Identifiable, Hashable {
     let gpsLatitude: Double
     /// GPS longitude from embedded EXIF/metadata. 0.0 when absent.
     let gpsLongitude: Double
+    /// Lens designation from the video's embedded XMP packet (`aux:Lens`).
+    /// Empty when the file has no XMP. Surfaced on the summary so the grid
+    /// can both sort by lens and display it in a configurable stat slot
+    /// without a per-row VideoMetadata round-trip.
+    let lensModel: String
+    /// ISO from embedded XMP. 0 when absent.
+    let iso: Int
+    /// F-number from embedded XMP (e.g. 1.8). 0.0 when absent.
+    let aperture: Double
+    /// Exposure time in seconds from embedded XMP. 0.0 when absent.
+    let exposureTimeS: Double
+    /// Focal length in millimeters from embedded XMP. 0.0 when absent.
+    let focalLengthMm: Double
 
     var isInGroup: Bool { !groupId.isEmpty && groupSize > 1 }
     var hasProxies: Bool { proxyCount > 0 }
@@ -101,7 +114,9 @@ struct VideoSummary: Identifiable, Hashable {
             playableNatively: playableNatively,
             rating: newRating, colorLabel: colorLabel,
             cameraModel: cameraModel, cameraDisplayName: cameraDisplayName,
-            gpsLatitude: gpsLatitude, gpsLongitude: gpsLongitude
+            gpsLatitude: gpsLatitude, gpsLongitude: gpsLongitude,
+            lensModel: lensModel, iso: iso, aperture: aperture,
+            exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm
         )
     }
 
@@ -120,7 +135,9 @@ struct VideoSummary: Identifiable, Hashable {
             playableNatively: playableNatively,
             rating: rating, colorLabel: colorLabel,
             cameraModel: cameraModel, cameraDisplayName: cameraDisplayName,
-            gpsLatitude: gpsLatitude, gpsLongitude: gpsLongitude
+            gpsLatitude: gpsLatitude, gpsLongitude: gpsLongitude,
+            lensModel: lensModel, iso: iso, aperture: aperture,
+            exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm
         )
     }
 
@@ -139,7 +156,9 @@ struct VideoSummary: Identifiable, Hashable {
             playableNatively: playableNatively,
             rating: rating, colorLabel: colorLabel,
             cameraModel: cameraModel, cameraDisplayName: cameraDisplayName,
-            gpsLatitude: latitude, gpsLongitude: longitude
+            gpsLatitude: latitude, gpsLongitude: longitude,
+            lensModel: lensModel, iso: iso, aperture: aperture,
+            exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm
         )
     }
 
@@ -158,7 +177,9 @@ struct VideoSummary: Identifiable, Hashable {
             playableNatively: playableNatively,
             rating: rating, colorLabel: newLabel,
             cameraModel: cameraModel, cameraDisplayName: cameraDisplayName,
-            gpsLatitude: gpsLatitude, gpsLongitude: gpsLongitude
+            gpsLatitude: gpsLatitude, gpsLongitude: gpsLongitude,
+            lensModel: lensModel, iso: iso, aperture: aperture,
+            exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm
         )
     }
 }
@@ -197,6 +218,18 @@ struct VideoMetadata: Identifiable {
     let rating: Int
     /// Lightroom-style color label mirrored from VideoSummary.
     let colorLabel: String
+    /// Photo-EXIF recovered from the video's embedded XMP packet. Each is
+    /// "absent" in a domain-specific way: a zero numeric or empty string
+    /// means the video didn't carry that field. The detail/inspector view
+    /// hides absent rows so a video with no XMP doesn't show seven empty
+    /// rows under EXIF.
+    let iso: Int
+    let aperture: Double
+    let exposureTimeS: Double
+    let focalLengthMm: Double
+    let exposureMode: String
+    let exposureProgram: String
+    let whiteBalance: String
 
     var resolution: String { "\(width)×\(height)" }
 

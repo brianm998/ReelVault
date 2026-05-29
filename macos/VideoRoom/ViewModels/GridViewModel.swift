@@ -1207,7 +1207,9 @@ class GridViewModel: ObservableObject {
                     playableNatively: v.playableNatively,
                     rating: v.rating, colorLabel: v.colorLabel,
                     cameraModel: v.cameraModel, cameraDisplayName: v.cameraDisplayName,
-                    gpsLatitude: v.gpsLatitude, gpsLongitude: v.gpsLongitude
+                    gpsLatitude: v.gpsLatitude, gpsLongitude: v.gpsLongitude,
+                    lensModel: v.lensModel, iso: v.iso, aperture: v.aperture,
+                    exposureTimeS: v.exposureTimeS, focalLengthMm: v.focalLengthMm
                 )
             }
             return v

@@ -188,6 +188,20 @@ impl Database {
             )"),
             ("idx_video_user_marks_rating", "CREATE INDEX IF NOT EXISTS idx_video_user_marks_rating ON video_user_marks(rating)"),
             ("idx_video_user_marks_color",  "CREATE INDEX IF NOT EXISTS idx_video_user_marks_color ON video_user_marks(color_label)"),
+            // Photo-EXIF columns sourced from embedded XMP packets. These
+            // are NULL on older catalogs and on videos that don't carry
+            // XMP; populated by xmp::read_xmp during indexing.
+            ("metadata.iso",              "ALTER TABLE metadata ADD COLUMN iso INTEGER"),
+            ("metadata.aperture",         "ALTER TABLE metadata ADD COLUMN aperture REAL"),
+            ("metadata.exposure_time_s",  "ALTER TABLE metadata ADD COLUMN exposure_time_s REAL"),
+            ("metadata.focal_length_mm",  "ALTER TABLE metadata ADD COLUMN focal_length_mm REAL"),
+            ("metadata.exposure_mode",    "ALTER TABLE metadata ADD COLUMN exposure_mode TEXT"),
+            ("metadata.exposure_program", "ALTER TABLE metadata ADD COLUMN exposure_program TEXT"),
+            ("metadata.white_balance",    "ALTER TABLE metadata ADD COLUMN white_balance TEXT"),
+            ("idx_metadata_iso",          "CREATE INDEX IF NOT EXISTS idx_metadata_iso ON metadata(iso)"),
+            ("idx_metadata_aperture",     "CREATE INDEX IF NOT EXISTS idx_metadata_aperture ON metadata(aperture)"),
+            ("idx_metadata_exposure_time","CREATE INDEX IF NOT EXISTS idx_metadata_exposure_time ON metadata(exposure_time_s)"),
+            ("idx_metadata_focal_length", "CREATE INDEX IF NOT EXISTS idx_metadata_focal_length ON metadata(focal_length_mm)"),
         ];
         for (label, sql) in migrations {
             match conn.execute(sql, []) {
@@ -359,7 +373,14 @@ impl Database {
             "codec" | "codec_video" => format!("COALESCE(m.codec_video, '') {}", direction),
             "bitrate" => format!("COALESCE(m.bitrate, 0) {}", direction),
             "camera" | "camera_model" => format!("COALESCE(m.camera_model, '') {}", direction),
+            "lens" | "lens_model" => format!("COALESCE(m.lens_model, '') {}", direction),
             "creation_date" | "shot_date" => format!("COALESCE(m.creation_date, 0) {}", direction),
+            "iso" => format!("COALESCE(m.iso, 0) {}", direction),
+            "aperture" | "fnumber" => format!("COALESCE(m.aperture, 0) {}", direction),
+            "exposure_time" | "exposure" | "shutter" => {
+                format!("COALESCE(m.exposure_time_s, 0) {}", direction)
+            }
+            "focal_length" | "focal" => format!("COALESCE(m.focal_length_mm, 0) {}", direction),
             _ => format!("v.filename {}", direction),
         };
 
@@ -1266,6 +1287,17 @@ impl Database {
             // sort as 0 / '' respectively.
             "rating" | "stars" => format!("COALESCE(um.rating, 0) {}", direction),
             "color" | "color_label" | "label" => format!("COALESCE(um.color_label, '') {}", direction),
+            // Photo-EXIF sorts. Sourced from the XMP packet embedded in
+            // the video (parsed by xmp.rs at index time). Videos without
+            // XMP sort as 0 — i.e. they cluster at the ascending end of
+            // any numeric EXIF sort, which is the same way "missing"
+            // tags / labels / ratings already sort.
+            "iso" => format!("COALESCE(m.iso, 0) {}", direction),
+            "aperture" | "fnumber" => format!("COALESCE(m.aperture, 0) {}", direction),
+            "exposure_time" | "exposure" | "shutter" => {
+                format!("COALESCE(m.exposure_time_s, 0) {}", direction)
+            }
+            "focal_length" | "focal" => format!("COALESCE(m.focal_length_mm, 0) {}", direction),
             _ => format!("v.filename {}", direction),
         };
 

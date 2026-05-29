@@ -76,6 +76,7 @@ impl MetadataExtractor {
     pub fn store_metadata(
         db: &Database,
         video_id: &str,
+        video_path: &Path,
         probe_output: &FFProbeOutput,
         _file_size: i64,
     ) -> Result<()> {
@@ -94,12 +95,39 @@ impl MetadataExtractor {
             .and_then(|s| s.codec_name.clone());
 
         // Extract EXIF data from tags - check format tags first (where camera/lens usually live for MOV/MP4)
-        let camera_model = Self::build_camera_name(&format.tags)
+        let mut camera_model = Self::build_camera_name(&format.tags)
             .or_else(|| Self::build_camera_name(&video_stream.tags));
-        let lens_model = Self::extract_lens(&format.tags)
+        let mut lens_model = Self::extract_lens(&format.tags)
             .or_else(|| Self::extract_lens(&video_stream.tags));
-        let creation_date = Self::extract_creation_date(&format.tags)
+        let mut creation_date = Self::extract_creation_date(&format.tags)
             .or_else(|| Self::extract_creation_date(&video_stream.tags));
+
+        // Read an XMP packet from the video file, if one is embedded.
+        // ffprobe doesn't see XMP, so this is independent of everything
+        // above. XMP wins for fields it provides (it's the richer
+        // source — full photo-EXIF, vs. ffprobe's container tags).
+        // A read failure is non-fatal: we treat the file as having no
+        // XMP rather than failing the whole metadata extraction.
+        let xmp = crate::xmp::read_xmp(video_path).ok().flatten();
+        if let Some(ref x) = xmp {
+            if let Some(name) = combine_make_model(x.make.as_deref(), x.model.as_deref()) {
+                camera_model = Some(name);
+            }
+            if let Some(ref l) = x.lens {
+                lens_model = Some(l.clone());
+            }
+            if let Some(ts) = x.date_time_original {
+                creation_date = Some(ts);
+            }
+        }
+        // Pull the new EXIF columns out of the XMP (or leave NULL).
+        let xmp_iso = xmp.as_ref().and_then(|x| x.iso);
+        let xmp_aperture = xmp.as_ref().and_then(|x| x.aperture);
+        let xmp_exposure_time_s = xmp.as_ref().and_then(|x| x.exposure_time_s);
+        let xmp_focal_length_mm = xmp.as_ref().and_then(|x| x.focal_length_mm);
+        let xmp_exposure_mode = xmp.as_ref().and_then(|x| x.exposure_mode.clone());
+        let xmp_exposure_program = xmp.as_ref().and_then(|x| x.exposure_program.clone());
+        let xmp_white_balance = xmp.as_ref().and_then(|x| x.white_balance.clone());
 
         // Audio info
         let audio_stream = probe_output.streams
@@ -134,8 +162,9 @@ impl MetadataExtractor {
             "INSERT INTO metadata
              (video_id, duration_ms, frame_count, codec_video, codec_audio, width, height, fps, bitrate,
               color_space, hdr, audio_channels, audio_sample_rate, creation_date, camera_model,
-              lens_model, metadata_json)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              lens_model, iso, aperture, exposure_time_s, focal_length_mm,
+              exposure_mode, exposure_program, white_balance, metadata_json)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(video_id) DO UPDATE SET
              duration_ms=excluded.duration_ms,
              frame_count=excluded.frame_count,
@@ -151,6 +180,13 @@ impl MetadataExtractor {
              creation_date=excluded.creation_date,
              camera_model=excluded.camera_model,
              lens_model=excluded.lens_model,
+             iso=excluded.iso,
+             aperture=excluded.aperture,
+             exposure_time_s=excluded.exposure_time_s,
+             focal_length_mm=excluded.focal_length_mm,
+             exposure_mode=excluded.exposure_mode,
+             exposure_program=excluded.exposure_program,
+             white_balance=excluded.white_balance,
              metadata_json=excluded.metadata_json",
             rusqlite::params![
                 video_id,
@@ -169,6 +205,13 @@ impl MetadataExtractor {
                 creation_date,
                 camera_model,
                 lens_model,
+                xmp_iso,
+                xmp_aperture,
+                xmp_exposure_time_s,
+                xmp_focal_length_mm,
+                xmp_exposure_mode,
+                xmp_exposure_program,
+                xmp_white_balance,
                 metadata_json
             ],
         )
@@ -403,20 +446,7 @@ impl MetadataExtractor {
             .or_else(|| Self::extract_tag(tags, "com.apple.quicktime.make"));
         let model = Self::extract_tag(tags, "model")
             .or_else(|| Self::extract_tag(tags, "com.apple.quicktime.model"));
-
-        match (make, model) {
-            (Some(make), Some(model)) => {
-                // Avoid duplication if model already starts with make
-                if model.to_lowercase().starts_with(&make.to_lowercase()) {
-                    Some(model)
-                } else {
-                    Some(format!("{} {}", make, model))
-                }
-            }
-            (None, Some(model)) => Some(model),
-            (Some(make), None) => Some(make),
-            (None, None) => None,
-        }
+        combine_make_model(make.as_deref(), model.as_deref())
     }
 
     /// Look for lens info in various tag formats used by different cameras.
@@ -603,5 +633,26 @@ impl FFProbeTagMap {
     pub fn get(&self, key: &str) -> Option<&String> {
         self.0.get(&key.to_lowercase())
             .or_else(|| self.0.get(key))
+    }
+}
+
+/// Combine optional `make` and `model` strings into a single human-readable
+/// camera name. Shared between the FFprobe-tag path (which pulls them out
+/// of a `FFProbeTagMap`) and the XMP path (which pulls them out of a
+/// parsed `XmpMetadata`). If the model already starts with the make
+/// (e.g. some Canon bodies report make="Canon" model="Canon EOS R5"), we
+/// don't repeat the prefix.
+pub(crate) fn combine_make_model(make: Option<&str>, model: Option<&str>) -> Option<String> {
+    match (make, model) {
+        (Some(make), Some(model)) => {
+            if model.to_lowercase().starts_with(&make.to_lowercase()) {
+                Some(model.to_string())
+            } else {
+                Some(format!("{} {}", make, model))
+            }
+        }
+        (None, Some(model)) => Some(model.to_string()),
+        (Some(make), None) => Some(make.to_string()),
+        (None, None) => None,
     }
 }
