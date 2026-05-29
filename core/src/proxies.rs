@@ -26,7 +26,13 @@
 //!    stack, but each lineage has its own independent proxy chain.
 //!    Without that gate, the 720p of the plain take would erroneously
 //!    score ≥ 0.96 against the UHQ of the `-aurora` master and get
-//!    cross-linked.
+//!    cross-linked. The aspect-ratio gate handles a different false-
+//!    positive: alternate-crop renders of the same source (e.g. a
+//!    `_2160p_` 16:9 cut and a `_2160w_` 3:2 cut) share the name_part
+//!    and the frame count, but they're sibling crops, not a
+//!    master/proxy pair. Comparing width:height ratios with 5%
+//!    tolerance lets the genuine same-aspect resolution proxies
+//!    through while rejecting the cross-aspect false matches.
 //!
 //! 2. **On-demand creation** ([`create_proxy`]). When the client asks
 //!    for a proxy at a specific height, we invoke ffmpeg with
@@ -311,6 +317,22 @@ pub(crate) fn proxy_pair_gates_pass(
     {
         return false;
     }
+    // Aspect-ratio gate: a legitimate proxy preserves the source's
+    // framing — same crop, just fewer pixels. Sibling renders that
+    // change the aspect (e.g. a 16:9 `_2160p_` cut and a 3:2 `_2160w_`
+    // cut of the same source) share the name_part and the frame count
+    // but are NOT in a master/proxy relationship; they belong in the
+    // same *stack* as alternative crops. Without this gate they'd
+    // get linked because the thumbnails still score above the 0.96
+    // similarity threshold (same source frames, just different fields
+    // of view).
+    //
+    // 5% tolerance absorbs pixel-rounding drift (e.g. 1920×1080 vs
+    // 854×480, both nominally 16:9) while clearly rejecting
+    // 16:9 (1.778) vs 3:2 (1.500), which differ by ~16%.
+    if !aspect_ratio_matches(master, candidate) {
+        return false;
+    }
     // Frame-count gate (with tolerance): allow ±5% or ±10 frames.
     if master.frame_count > 0 && candidate.frame_count > 0 {
         let max_fc = master.frame_count.max(candidate.frame_count);
@@ -329,6 +351,26 @@ pub(crate) fn proxy_pair_gates_pass(
         return false;
     }
     true
+}
+
+/// True when two candidates share the same aspect ratio within 5%.
+/// Missing dimensions on either side return `true` — let the other
+/// gates make the call when we have no aspect to compare.
+fn aspect_ratio_matches(a: &ProxyDetectCandidate, b: &ProxyDetectCandidate) -> bool {
+    if a.width <= 0 || a.height <= 0 || b.width <= 0 || b.height <= 0 {
+        return true;
+    }
+    let ar_a = a.width as f64 / a.height as f64;
+    let ar_b = b.width as f64 / b.height as f64;
+    let max_ar = ar_a.max(ar_b);
+    let min_ar = ar_a.min(ar_b);
+    // Guard against pathological zero — already excluded above, but
+    // the max() makes the divide explicit.
+    if max_ar <= 0.0 {
+        return true;
+    }
+    let rel_diff = (max_ar - min_ar) / max_ar;
+    rel_diff <= 0.05
 }
 
 // ---- Public thumbnail comparison API -----------------------------------
@@ -655,5 +697,41 @@ mod tests {
             1080, 720, 900, 80,
         );
         assert!(!proxy_pair_gates_pass(&aurora, &star_v));
+    }
+
+    /// `_2160p_` (16:9) and `_2160w_` (3:2) are alternate-crop renders
+    /// of the same source — same name_part, same frame count, same
+    /// camera. Without the aspect-ratio gate they'd erroneously link
+    /// as proxy/master because the thumbnails of the same source frames
+    /// score well above the similarity threshold. The aspect mismatch
+    /// (1.778 vs 1.500) is the only signal that distinguishes them.
+    #[test]
+    fn proxy_gate_rejects_aspect_ratio_mismatch() {
+        let p_landscape = mk(
+            "07_27_2024-a9-1-aurora-topaz_ProRes-422_Rec.709F_2160p_30_MQ.mov",
+            3840, 2160, 900, 800, // 16:9
+        );
+        let w_widescreen = mk(
+            "07_27_2024-a9-1-aurora-topaz_ProRes-422_Rec.709F_2160w_30_MQ.mov",
+            2160, 1440, 900, 600, // 3:2
+        );
+        assert!(!proxy_pair_gates_pass(&p_landscape, &w_widescreen));
+        // Symmetric — order shouldn't matter.
+        assert!(!proxy_pair_gates_pass(&w_widescreen, &p_landscape));
+    }
+
+    /// A real proxy pair (same source, same aspect, smaller resolution)
+    /// must still pass even when the aspect ratios are not numerically
+    /// identical — pixel rounding routinely drifts the computed ratio
+    /// by a fraction of a percent.
+    #[test]
+    fn proxy_gate_allows_aspect_rounding_drift() {
+        // Both nominally 16:9, but the proxy is exported at a height
+        // that doesn't round-trip exactly. 854/480 = 1.7792 vs
+        // 1920/1080 = 1.7778 — diff of 0.08%, well under the 5%
+        // tolerance.
+        let master = mk("foo_ProRes-444_Rec.709F_2160p_30_UHQ.mov", 1920, 1080, 600, 1000);
+        let proxy = mk("foo_ProRes-422_Rec.709F_480p_30_MQ.mov", 854, 480, 600, 100);
+        assert!(proxy_pair_gates_pass(&master, &proxy));
     }
 }
