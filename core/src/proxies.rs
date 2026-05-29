@@ -32,7 +32,9 @@
 //!    (2160×1440, 3:2) — share the source's "2160" identifier across
 //!    axes. They're sibling renders, not a master/proxy pair. Rule:
 //!    if any dimension of the master appears as a dimension of the
-//!    candidate (either axis), reject the link.
+//!    candidate (either axis), reject the link — *unless* both
+//!    dimensions match exactly, which is the codec-proxy signature
+//!    (UHQ vs MQ at the same crop and resolution) and gets through.
 //!
 //! 2. **On-demand creation** ([`create_proxy`]). When the client asks
 //!    for a proxy at a specific height, we invoke ffmpeg with
@@ -353,14 +355,32 @@ pub(crate) fn proxy_pair_gates_pass(
     true
 }
 
-/// True when any numeric dimension of `a` appears as a dimension of
-/// `b` (either axis). A genuine resolution proxy shrinks both axes,
-/// so two videos that share a value here are at the same nominal
-/// "tier" of one another — sibling renders, not a master/proxy pair.
-/// Missing dimensions on either side return `false` — let the other
-/// gates make the call when we have no dimensions to compare.
+/// True when a numeric dimension is shared across axes between two
+/// non-dimensionally-identical videos.
+///
+/// The intent is to catch alternate-crop sibling renders that sit at
+/// the same nominal resolution tier — e.g. `_2160p_` (3840×2160) and
+/// `_2160w_` (2160×1440), where the value 2160 appears in
+/// master.height and candidate.width. Those videos share a name_part
+/// and a frame count and visually-near-identical thumbnails, so the
+/// other gates would let them link, but they aren't actually a
+/// master/proxy pair — they're sibling renders of the same source at
+/// different crops.
+///
+/// Codec-quality proxies — same crop, same resolution, smaller file
+/// (e.g. ProRes-444 UHQ vs ProRes-422 MQ both at 3840×2160) — must
+/// still pass. Hence the "non-dimensionally-identical" qualifier:
+/// when both width and height match exactly, we're not looking at
+/// sibling crops, we're looking at a codec proxy.
+///
+/// Missing dimensions on either side return `false` so other gates
+/// can make the call.
 fn shares_dimension_value(a: &ProxyDetectCandidate, b: &ProxyDetectCandidate) -> bool {
     if a.width <= 0 || a.height <= 0 || b.width <= 0 || b.height <= 0 {
+        return false;
+    }
+    // Codec proxy at the same exact resolution — let it through.
+    if a.width == b.width && a.height == b.height {
         return false;
     }
     a.width == b.width
@@ -749,5 +769,25 @@ mod tests {
             2160, 1440, 600, 600,
         );
         assert!(proxy_pair_gates_pass(&master, &proxy));
+    }
+
+    /// Codec proxy: same crop, same resolution, smaller file (e.g.
+    /// ProRes-444 UHQ vs ProRes-422 MQ both at 3840×2160). Both
+    /// dimensions match — but on the SAME axis (width=width AND
+    /// height=height), which is the codec-proxy signature, not the
+    /// sibling-crop signature. The gate must let these through;
+    /// is_master_of's "same pixels, ≥ 2.5× larger file" rule is what
+    /// confirms the codec-proxy relationship is genuine.
+    #[test]
+    fn proxy_gate_allows_codec_proxy_same_dimensions() {
+        let uhq = mk(
+            "foo_ProRes-444_Rec.709F_OriRes_30_UHQ.mov",
+            3840, 2160, 900, 4000,
+        );
+        let mq = mk(
+            "foo_ProRes-422_Rec.709F_OriRes_30_MQ.mov",
+            3840, 2160, 900, 800,
+        );
+        assert!(proxy_pair_gates_pass(&uhq, &mq));
     }
 }
