@@ -55,7 +55,12 @@
       "Bash(ffprobe -v error -show_format -of json test_xmp.mov)",
       "Bash(exiftool test_xmp.mov)",
       "Bash(exiftool -b -XMP test_xmp.mov)",
-      "Bash(cargo test *)"
+      "Bash(cargo test *)",
+      "Bash(protoc --version)",
+      "Bash(protoc-gen-swift --version)",
+      "Bash(protoc --swift_out=macos/VideoRoom/Generated --grpc-swift_out=macos/VideoRoom/Generated -Icore/proto core/proto/videoroom.proto)",
+      "Bash(./gradlew compileKotlin --quiet)",
+      "Bash(echo \"exit=$?\")"
     ]
   }
 }

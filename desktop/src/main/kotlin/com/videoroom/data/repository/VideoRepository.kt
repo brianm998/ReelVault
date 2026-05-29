@@ -108,6 +108,11 @@ class VideoRepository(
             cameraDisplayName = proto.cameraDisplayName.ifEmpty { proto.cameraModel },
             gpsLatitude = proto.gpsLatitude,
             gpsLongitude = proto.gpsLongitude,
+            lensModel = proto.lensModel,
+            iso = proto.iso,
+            aperture = proto.aperture,
+            exposureTimeS = proto.exposureTimeS,
+            focalLengthMm = proto.focalLengthMm,
         )
     }
 
@@ -144,6 +149,13 @@ class VideoRepository(
             isOnline = proto.isOnline,
             rating = proto.rating,
             colorLabel = proto.colorLabel,
+            iso = proto.iso,
+            aperture = proto.aperture,
+            exposureTimeS = proto.exposureTimeS,
+            focalLengthMm = proto.focalLengthMm,
+            exposureMode = proto.exposureMode,
+            exposureProgram = proto.exposureProgram,
+            whiteBalance = proto.whiteBalance,
         )
     }
 

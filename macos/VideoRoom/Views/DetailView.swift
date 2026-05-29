@@ -149,10 +149,18 @@ struct DetailView: View {
 
             // EXIF section
             let hasGps = metadata.gpsLat != 0 || metadata.gpsLon != 0
+            let hasShotEXIF = metadata.iso > 0
+                || metadata.aperture > 0
+                || metadata.exposureTimeS > 0
+                || metadata.focalLengthMm > 0
+                || !metadata.exposureMode.isEmpty
+                || !metadata.exposureProgram.isEmpty
+                || !metadata.whiteBalance.isEmpty
             let hasExif = !metadata.cameraModel.isEmpty
                 || !metadata.lensModel.isEmpty
                 || metadata.creationDate > 0
                 || hasGps
+                || hasShotEXIF
             if hasExif {
                 Divider()
                 Text("EXIF")
@@ -167,6 +175,33 @@ struct DetailView: View {
                     }
                     if !metadata.lensModel.isEmpty {
                         MetadataItemView(label: "Lens", value: metadata.lensModel)
+                    }
+                    if metadata.focalLengthMm > 0 {
+                        MetadataItemView(
+                            label: "Focal Length",
+                            value: String(format: "%.0f mm", metadata.focalLengthMm))
+                    }
+                    if metadata.aperture > 0 {
+                        MetadataItemView(
+                            label: "Aperture",
+                            value: String(format: "f/%.1f", metadata.aperture))
+                    }
+                    if metadata.exposureTimeS > 0 {
+                        MetadataItemView(
+                            label: "Exposure",
+                            value: formatExposureTime(metadata.exposureTimeS))
+                    }
+                    if metadata.iso > 0 {
+                        MetadataItemView(label: "ISO", value: String(metadata.iso))
+                    }
+                    if !metadata.exposureProgram.isEmpty {
+                        MetadataItemView(label: "Exposure Program", value: metadata.exposureProgram)
+                    }
+                    if !metadata.exposureMode.isEmpty {
+                        MetadataItemView(label: "Exposure Mode", value: metadata.exposureMode)
+                    }
+                    if !metadata.whiteBalance.isEmpty {
+                        MetadataItemView(label: "White Balance", value: metadata.whiteBalance)
                     }
                     if metadata.creationDate > 0 {
                         MetadataItemView(label: "Captured", value: metadata.creationDateFormatted)
@@ -819,4 +854,16 @@ struct KeywordsSection: View {
         }
         return "Click to apply '\(tag.name)' to the \(n) selected video\(plural)."
     }
+}
+
+/// Format an EXIF exposure time. Sub-second exposures render as "1/Nth"
+/// with N rounded to the nearest standard shutter step, matching how a
+/// photographer reads them. Anything ≥ 1 s renders as "X.X s".
+func formatExposureTime(_ seconds: Double) -> String {
+    if seconds <= 0 { return "" }
+    if seconds >= 1.0 {
+        return String(format: "%.1f s", seconds)
+    }
+    let denom = Int((1.0 / seconds).rounded())
+    return "1/\(denom)"
 }

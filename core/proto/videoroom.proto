@@ -135,7 +135,13 @@ service VideoRoom {
 message ListVideosRequest {
   int32 limit = 1;
   int32 offset = 2;
-  string sort_by = 3;  // "name", "date_added", "duration", etc.
+  // Sort token. Recognized values (case-insensitive):
+  //   "name" / "filename", "date_added" / "indexed_at",
+  //   "creation_date" / "shot_date" / "capture_date",
+  //   "duration", "size", "resolution", "fps", "codec", "bitrate",
+  //   "camera", "lens", "keyword", "rating", "color",
+  //   "iso", "aperture", "exposure_time", "focal_length".
+  string sort_by = 3;
   bool sort_ascending = 4;
   repeated string filter_tags = 5;
   string collection_id = 6;
@@ -214,6 +220,16 @@ message VideoSummary {
   // VideoMetadata round-trip.
   double gps_latitude = 26;
   double gps_longitude = 27;
+  // Photo-EXIF subset surfaced on the summary so the grid can sort and
+  // filter by these without a per-row VideoMetadata round-trip. Sourced
+  // from the video's embedded XMP packet (see xmp.rs); all-zero / empty
+  // when the video carries no XMP. Lens is the Adobe-canonical
+  // `aux:Lens` string; the rest mirror the standard EXIF semantics.
+  string lens_model = 28;
+  int32 iso = 29;
+  double aperture = 30;          // f-number, e.g. 1.8
+  double exposure_time_s = 31;   // seconds; 1/4000 -> 0.00025
+  double focal_length_mm = 32;
 }
 
 message ListVideosResponse {
@@ -291,6 +307,24 @@ message VideoMetadata {
   // mapping is known — clients can detect "no mapping" by checking
   // whether the two fields match.
   string camera_display_name = 31;
+  // Photo-EXIF fields recovered from the video's embedded XMP packet
+  // (parsed by xmp.rs). Each is "absent" in a domain-specific way: a
+  // zero or empty string means the video didn't carry that field.
+  //
+  //   - iso, aperture, exposure_time_s, focal_length_mm: numerics that
+  //     enable sort/filter. Aperture is the f-number (e.g. 1.8);
+  //     exposure_time_s is seconds (1/4000 -> 0.00025).
+  //   - exposure_mode / exposure_program / white_balance: short
+  //     human-readable strings translated from their EXIF integer
+  //     codes ("Manual", "Aperture-priority", "Auto", …) — the raw
+  //     codes are not exposed, since the client never needs them.
+  int32 iso = 32;
+  double aperture = 33;
+  double exposure_time_s = 34;
+  double focal_length_mm = 35;
+  string exposure_mode = 36;
+  string exposure_program = 37;
+  string white_balance = 38;
 }
 
 message GetThumbnailRequest {

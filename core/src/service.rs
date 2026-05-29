@@ -231,7 +231,9 @@ impl VideoRoomService {
                     duration_ms, codec_video, codec_audio, width, height,
                     fps, bitrate, color_space, hdr, audio_channels, audio_sample_rate,
                     creation_date, camera_model, lens_model, gps_latitude, gps_longitude,
-                    gps_altitude
+                    gps_altitude,
+                    iso, aperture, exposure_time_s, focal_length_mm,
+                    exposure_mode, exposure_program, white_balance
                  FROM metadata WHERE video_id = ?",
                 [video_id],
                 |row| {
@@ -253,6 +255,13 @@ impl VideoRoomService {
                         row.get::<_, Option<f64>>(14)?,
                         row.get::<_, Option<f64>>(15)?,
                         row.get::<_, Option<f64>>(16)?,
+                        row.get::<_, Option<i64>>(17)?,
+                        row.get::<_, Option<f64>>(18)?,
+                        row.get::<_, Option<f64>>(19)?,
+                        row.get::<_, Option<f64>>(20)?,
+                        row.get::<_, Option<String>>(21)?,
+                        row.get::<_, Option<String>>(22)?,
+                        row.get::<_, Option<String>>(23)?,
                     ))
                 },
             )
@@ -272,8 +281,11 @@ impl VideoRoomService {
 
         let (duration_ms, codec_video, codec_audio, width, height, fps, bitrate,
              color_space, hdr, audio_channels, audio_sample_rate, creation_date,
-             camera_model, lens_model, gps_lat, gps_lon, gps_alt) =
-            row.unwrap_or((0, None, None, 0, 0, 0.0, 0, None, false, 0, 0, None, None, None, None, None, None));
+             camera_model, lens_model, gps_lat, gps_lon, gps_alt,
+             iso, aperture, exposure_time_s, focal_length_mm,
+             exposure_mode, exposure_program, white_balance) =
+            row.unwrap_or((0, None, None, 0, 0, 0.0, 0, None, false, 0, 0, None, None, None, None, None, None,
+                           None, None, None, None, None, None, None));
 
         let camera_model_str = camera_model.unwrap_or_default();
         // Resolve marketing name with the user's custom overrides
@@ -322,6 +334,13 @@ impl VideoRoomService {
             rating,
             color_label,
             camera_display_name,
+            iso: iso.unwrap_or(0) as i32,
+            aperture: aperture.unwrap_or(0.0),
+            exposure_time_s: exposure_time_s.unwrap_or(0.0),
+            focal_length_mm: focal_length_mm.unwrap_or(0.0),
+            exposure_mode: exposure_mode.unwrap_or_default(),
+            exposure_program: exposure_program.unwrap_or_default(),
+            white_balance: white_balance.unwrap_or_default(),
         })
     }
 
@@ -334,7 +353,8 @@ impl VideoRoomService {
         let meta = conn.and_then(|c| {
             c.query_row(
                 "SELECT duration_ms, width, height, fps, codec_video, codec_audio,
-                        creation_date, camera_model, gps_latitude, gps_longitude
+                        creation_date, camera_model, gps_latitude, gps_longitude,
+                        lens_model, iso, aperture, exposure_time_s, focal_length_mm
                  FROM metadata WHERE video_id = ?",
                 [video_id],
                 |row| {
@@ -349,6 +369,11 @@ impl VideoRoomService {
                         row.get::<_, Option<String>>(7)?,
                         row.get::<_, Option<f64>>(8)?,
                         row.get::<_, Option<f64>>(9)?,
+                        row.get::<_, Option<String>>(10)?,
+                        row.get::<_, Option<i64>>(11)?,
+                        row.get::<_, Option<f64>>(12)?,
+                        row.get::<_, Option<f64>>(13)?,
+                        row.get::<_, Option<f64>>(14)?,
                     ))
                 },
             ).ok()
@@ -357,8 +382,10 @@ impl VideoRoomService {
         let tags = self.db.get_video_tags(video_id).unwrap_or_default();
 
         let (duration_ms, width, height, fps, codec_video, codec_audio, creation_date,
-             camera_model, gps_lat, gps_lon) =
-            meta.unwrap_or((0, 0, 0, 0.0, None, None, None, None, None, None));
+             camera_model, gps_lat, gps_lon, lens_model, iso, aperture,
+             exposure_time_s, focal_length_mm) =
+            meta.unwrap_or((0, 0, 0, 0.0, None, None, None, None, None, None,
+                            None, None, None, None, None));
 
         // Resolve the marketing-friendly camera name the same way
         // build_video_metadata does — user overrides on top of the
@@ -450,6 +477,11 @@ impl VideoRoomService {
             camera_display_name,
             gps_latitude: gps_lat.unwrap_or(0.0),
             gps_longitude: gps_lon.unwrap_or(0.0),
+            lens_model: lens_model.unwrap_or_default(),
+            iso: iso.unwrap_or(0) as i32,
+            aperture: aperture.unwrap_or(0.0),
+            exposure_time_s: exposure_time_s.unwrap_or(0.0),
+            focal_length_mm: focal_length_mm.unwrap_or(0.0),
         }
     }
 }

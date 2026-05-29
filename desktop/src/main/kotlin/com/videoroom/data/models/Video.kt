@@ -6,6 +6,7 @@ package com.videoroom.data.models
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlin.math.roundToInt
 
 data class VideoSummary(
     val id: String,
@@ -55,6 +56,19 @@ data class VideoSummary(
     val gpsLatitude: Double = 0.0,
     /** GPS longitude from embedded EXIF/metadata. 0.0 when absent. */
     val gpsLongitude: Double = 0.0,
+    /** Lens designation from the video's embedded XMP packet (`aux:Lens`).
+     *  Empty when the file has no XMP. Surfaced on the summary so the grid
+     *  can both sort by lens and display it in a configurable stat slot
+     *  without a per-row VideoMetadata round-trip. */
+    val lensModel: String = "",
+    /** ISO from embedded XMP. 0 when absent. */
+    val iso: Int = 0,
+    /** F-number from embedded XMP (e.g. 1.8). 0.0 when absent. */
+    val aperture: Double = 0.0,
+    /** Exposure time in seconds from embedded XMP. 0.0 when absent. */
+    val exposureTimeS: Double = 0.0,
+    /** Focal length in millimeters from embedded XMP. 0.0 when absent. */
+    val focalLengthMm: Double = 0.0,
 ) {
     val isInGroup: Boolean get() = groupId.isNotEmpty() && groupSize > 1
     val hasProxies: Boolean get() = proxyCount > 0
@@ -117,6 +131,18 @@ data class VideoMetadata(
     val rating: Int = 0,
     /** Lightroom-style colour label mirrored from VideoSummary. */
     val colorLabel: String = "",
+    /** Photo-EXIF recovered from the video's embedded XMP packet. Each is
+     *  "absent" in a domain-specific way: a zero numeric or empty string
+     *  means the video didn't carry that field. The detail/inspector view
+     *  hides absent rows so a video with no XMP doesn't show seven empty
+     *  rows under EXIF. */
+    val iso: Int = 0,
+    val aperture: Double = 0.0,
+    val exposureTimeS: Double = 0.0,
+    val focalLengthMm: Double = 0.0,
+    val exposureMode: String = "",
+    val exposureProgram: String = "",
+    val whiteBalance: String = "",
 ) {
     val resolution: String get() = "$width x $height"
     val durationFormatted: String get() {
@@ -357,7 +383,11 @@ enum class GridStatKey(val raw: String, val displayName: String) {
     CameraModel    ("camera_model",      "Camera"),
     LensModel      ("lens_model",        "Lens"),
     CaptureDate    ("capture_date",      "Capture date"),
-    CaptureYear    ("capture_year",      "Capture year");
+    CaptureYear    ("capture_year",      "Capture year"),
+    Iso            ("iso",               "ISO"),
+    Aperture       ("aperture",          "Aperture"),
+    ExposureTime   ("exposure_time",     "Exposure"),
+    FocalLength    ("focal_length",      "Focal length");
 
     /** Resolve this stat against a [VideoSummary] into the display string. */
     fun valueFor(video: VideoSummary): String = when (this) {
@@ -372,7 +402,7 @@ enum class GridStatKey(val raw: String, val displayName: String) {
         Fps              -> if (video.fps > 0) "%.0f fps".format(video.fps) else ""
         Bitrate          -> ""  // VideoSummary doesn't carry bitrate today
         CameraModel      -> video.cameraDisplayName.ifEmpty { video.cameraModel }
-        LensModel        -> ""  // Still on VideoMetadata, not the summary
+        LensModel        -> video.lensModel
         CaptureDate      -> if (video.creationDate > 0) {
             val instant = java.time.Instant.ofEpochMilli(video.creationDate)
             java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -384,6 +414,10 @@ enum class GridStatKey(val raw: String, val displayName: String) {
             java.time.ZonedDateTime.ofInstant(instant, java.time.ZoneId.systemDefault())
                 .year.toString()
         } else ""
+        Iso              -> if (video.iso > 0) "ISO ${video.iso}" else ""
+        Aperture         -> if (video.aperture > 0) "f/%.1f".format(video.aperture) else ""
+        ExposureTime     -> formatExposureTime(video.exposureTimeS)
+        FocalLength      -> if (video.focalLengthMm > 0) "%.0f mm".format(video.focalLengthMm) else ""
     }
 
     companion object {
@@ -406,6 +440,25 @@ enum class GridStatKey(val raw: String, val displayName: String) {
             h < 2160   -> "1440p"
             h < 4320   -> "4K"
             else       -> "8K"
+        }
+
+        /** Format an EXIF exposure time. Sub-second exposures render as
+         *  "1/Nth" with N rounded to the nearest standard shutter step
+         *  (60/125/250/500/1000/2000/4000), matching how a photographer
+         *  reads them. Anything ≥ 1 s renders as "X.X s". */
+        fun formatExposureTime(seconds: Double): String {
+            if (seconds <= 0.0) return ""
+            return if (seconds >= 1.0) {
+                "%.1f s".format(seconds)
+            } else {
+                val denom = (1.0 / seconds).let { d ->
+                    // Snap to a tidy nearest integer; for very fast shutters
+                    // the floating reconstruction is rarely exact (1/4000
+                    // round-trips through f64 as 4000.000…).
+                    d.roundToInt()
+                }
+                "1/$denom"
+            }
         }
     }
 }

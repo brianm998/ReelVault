@@ -373,7 +373,14 @@ impl Database {
             "codec" | "codec_video" => format!("COALESCE(m.codec_video, '') {}", direction),
             "bitrate" => format!("COALESCE(m.bitrate, 0) {}", direction),
             "camera" | "camera_model" => format!("COALESCE(m.camera_model, '') {}", direction),
+            "lens" | "lens_model" => format!("COALESCE(m.lens_model, '') {}", direction),
             "creation_date" | "shot_date" => format!("COALESCE(m.creation_date, 0) {}", direction),
+            "iso" => format!("COALESCE(m.iso, 0) {}", direction),
+            "aperture" | "fnumber" => format!("COALESCE(m.aperture, 0) {}", direction),
+            "exposure_time" | "exposure" | "shutter" => {
+                format!("COALESCE(m.exposure_time_s, 0) {}", direction)
+            }
+            "focal_length" | "focal" => format!("COALESCE(m.focal_length_mm, 0) {}", direction),
             _ => format!("v.filename {}", direction),
         };
 
@@ -1277,6 +1284,17 @@ impl Database {
             // sort as 0 / '' respectively.
             "rating" | "stars" => format!("COALESCE(um.rating, 0) {}", direction),
             "color" | "color_label" | "label" => format!("COALESCE(um.color_label, '') {}", direction),
+            // Photo-EXIF sorts. Sourced from the XMP packet embedded in
+            // the video (parsed by xmp.rs at index time). Videos without
+            // XMP sort as 0 — i.e. they cluster at the ascending end of
+            // any numeric EXIF sort, which is the same way "missing"
+            // tags / labels / ratings already sort.
+            "iso" => format!("COALESCE(m.iso, 0) {}", direction),
+            "aperture" | "fnumber" => format!("COALESCE(m.aperture, 0) {}", direction),
+            "exposure_time" | "exposure" | "shutter" => {
+                format!("COALESCE(m.exposure_time_s, 0) {}", direction)
+            }
+            "focal_length" | "focal" => format!("COALESCE(m.focal_length_mm, 0) {}", direction),
             _ => format!("v.filename {}", direction),
         };
 
