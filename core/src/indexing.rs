@@ -325,7 +325,7 @@ impl IndexingEngine {
         };
 
         // (Re-)store metadata (UPSERT)
-        MetadataExtractor::store_metadata(db, &video_id, &probe_output, file_size.unwrap_or(0))?;
+        MetadataExtractor::store_metadata(db, &video_id, video_path, &probe_output, file_size.unwrap_or(0))?;
 
         // If ffprobe didn't supply a creation_date but the caller asked us to
         // infer one from the filename, do that now. We only fill the date when

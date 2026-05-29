@@ -36,7 +36,26 @@
       "Bash(curl -sk https://www.gnu.org/licenses/gpl-3.0.txt -o /tmp/gpl-3.0.txt)",
       "Bash(git config *)",
       "Bash(chmod +x /tmp/add_spdx.sh)",
-      "Bash(/tmp/add_spdx.sh)"
+      "Bash(/tmp/add_spdx.sh)",
+      "Bash(ls ~/Pictures/timelapses/ 2>/dev/null | head -10)",
+      "Bash(ls ~/Pictures/timelapses/2026/ 2>/dev/null | head -20)",
+      "Bash(ls ~/Pictures/timelapses/2026/2026-video/ 2>/dev/null | head -20)",
+      "Bash(echo \"=== EXIFTOOL OUTPUT ===\")",
+      "Bash(exiftool /Users/brian/Pictures/timelapses/2026/2026-video/01_18_2026-a7riii-1_ProRes-422_Rec.709F_2160p_30_MQ.mov)",
+      "Bash(python3)",
+      "Read(//private/tmp/**)",
+      "Bash(rm -f test_*.mov)",
+      "Bash(ffmpeg -nostdin -loglevel error -y -f lavfi -i \"testsrc=duration=1:size=320x240:rate=30\" -c:v prores_ks test_base.mov)",
+      "Bash(ffmpeg -nostdin -loglevel error -y -i test_base.mov -c copy -movflags use_metadata_tags -metadata make=Sony -metadata model=ILCE-7RM3 -metadata 'lens_model=FE 14mm F1.8 GM' -metadata iso=100 -metadata fnumber=1.8 -metadata exposure_time=0.5 -metadata focal_length=14 -metadata exposure_mode=Manual -metadata white_balance=Auto test_udta.mov)",
+      "Bash(ffprobe -v error -show_format -of json test_udta.mov)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(f' {k}={v}'\\) for k,v in \\(d['format'].get\\('tags'\\) or {}\\).items\\(\\)]\")",
+      "Bash(exiftool test_udta.mov)",
+      "Bash(cp test_base.mov test_xmp.mov)",
+      "Bash(exiftool -overwrite_original -XMP-tiff:Make=Sony -XMP-tiff:Model=ILCE-7RM3 '-XMP-aux:Lens=FE 14mm F1.8 GM' -XMP-exif:ISO=100 -XMP-exif:FNumber=1.8 -XMP-exif:ExposureTime=0.5 -XMP-exif:FocalLength=14 -XMP-exif:ExposureMode=Manual -XMP-exif:WhiteBalance=0 test_xmp.mov)",
+      "Bash(ffprobe -v error -show_format -of json test_xmp.mov)",
+      "Bash(exiftool test_xmp.mov)",
+      "Bash(exiftool -b -XMP test_xmp.mov)",
+      "Bash(cargo test *)"
     ]
   }
 }

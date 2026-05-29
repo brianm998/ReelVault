@@ -44,7 +44,7 @@ CREATE INDEX IF NOT EXISTS idx_videos_path ON videos(path);
 CREATE INDEX IF NOT EXISTS idx_videos_hash ON videos(hash);
 CREATE INDEX IF NOT EXISTS idx_videos_indexed_at ON videos(indexed_at);
 
--- Video metadata (technical details from FFprobe)
+-- Video metadata (technical details from FFprobe + photo-EXIF from embedded XMP)
 CREATE TABLE IF NOT EXISTS metadata (
   video_id TEXT PRIMARY KEY,
   duration_ms INTEGER,
@@ -65,6 +65,17 @@ CREATE TABLE IF NOT EXISTS metadata (
   gps_latitude REAL,
   gps_longitude REAL,
   gps_altitude REAL,
+  -- Photo-style EXIF, sourced from an embedded XMP packet (read by xmp.rs).
+  -- These are populated for videos whose encoder wrote XMP-EXIF into the
+  -- MP4/MOV (e.g. via exiftool); NULL otherwise. ffprobe doesn't surface
+  -- XMP, so these columns are independent of the ffprobe-derived ones.
+  iso INTEGER,
+  aperture REAL,
+  exposure_time_s REAL,
+  focal_length_mm REAL,
+  exposure_mode TEXT,
+  exposure_program TEXT,
+  white_balance TEXT,
   metadata_json TEXT,
   extracted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(video_id) REFERENCES videos(id) ON DELETE CASCADE
@@ -74,6 +85,10 @@ CREATE INDEX IF NOT EXISTS idx_metadata_resolution ON metadata(width, height);
 CREATE INDEX IF NOT EXISTS idx_metadata_fps ON metadata(fps);
 CREATE INDEX IF NOT EXISTS idx_metadata_duration ON metadata(duration_ms);
 CREATE INDEX IF NOT EXISTS idx_metadata_codec_video ON metadata(codec_video);
+CREATE INDEX IF NOT EXISTS idx_metadata_iso ON metadata(iso);
+CREATE INDEX IF NOT EXISTS idx_metadata_aperture ON metadata(aperture);
+CREATE INDEX IF NOT EXISTS idx_metadata_exposure_time ON metadata(exposure_time_s);
+CREATE INDEX IF NOT EXISTS idx_metadata_focal_length ON metadata(focal_length_mm);
 
 -- Thumbnails
 CREATE TABLE IF NOT EXISTS thumbnails (

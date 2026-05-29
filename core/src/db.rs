@@ -188,6 +188,20 @@ impl Database {
             )"),
             ("idx_video_user_marks_rating", "CREATE INDEX IF NOT EXISTS idx_video_user_marks_rating ON video_user_marks(rating)"),
             ("idx_video_user_marks_color",  "CREATE INDEX IF NOT EXISTS idx_video_user_marks_color ON video_user_marks(color_label)"),
+            // Photo-EXIF columns sourced from embedded XMP packets. These
+            // are NULL on older catalogs and on videos that don't carry
+            // XMP; populated by xmp::read_xmp during indexing.
+            ("metadata.iso",              "ALTER TABLE metadata ADD COLUMN iso INTEGER"),
+            ("metadata.aperture",         "ALTER TABLE metadata ADD COLUMN aperture REAL"),
+            ("metadata.exposure_time_s",  "ALTER TABLE metadata ADD COLUMN exposure_time_s REAL"),
+            ("metadata.focal_length_mm",  "ALTER TABLE metadata ADD COLUMN focal_length_mm REAL"),
+            ("metadata.exposure_mode",    "ALTER TABLE metadata ADD COLUMN exposure_mode TEXT"),
+            ("metadata.exposure_program", "ALTER TABLE metadata ADD COLUMN exposure_program TEXT"),
+            ("metadata.white_balance",    "ALTER TABLE metadata ADD COLUMN white_balance TEXT"),
+            ("idx_metadata_iso",          "CREATE INDEX IF NOT EXISTS idx_metadata_iso ON metadata(iso)"),
+            ("idx_metadata_aperture",     "CREATE INDEX IF NOT EXISTS idx_metadata_aperture ON metadata(aperture)"),
+            ("idx_metadata_exposure_time","CREATE INDEX IF NOT EXISTS idx_metadata_exposure_time ON metadata(exposure_time_s)"),
+            ("idx_metadata_focal_length", "CREATE INDEX IF NOT EXISTS idx_metadata_focal_length ON metadata(focal_length_mm)"),
         ];
         for (label, sql) in migrations {
             match conn.execute(sql, []) {
