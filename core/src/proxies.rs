@@ -26,7 +26,13 @@
 //!    stack, but each lineage has its own independent proxy chain.
 //!    Without that gate, the 720p of the plain take would erroneously
 //!    score ≥ 0.96 against the UHQ of the `-aurora` master and get
-//!    cross-linked.
+//!    cross-linked. The shared-dimension gate handles a different
+//!    false-positive: alternate-resolution-tier renders of the same
+//!    source — e.g. `_2160p_` (3840×2160, 16:9) and `_2160w_`
+//!    (2160×1440, 3:2) — share the source's "2160" identifier across
+//!    axes. They're sibling renders, not a master/proxy pair. Rule:
+//!    if any dimension of the master appears as a dimension of the
+//!    candidate (either axis), reject the link.
 //!
 //! 2. **On-demand creation** ([`create_proxy`]). When the client asks
 //!    for a proxy at a specific height, we invoke ffmpeg with
@@ -311,6 +317,22 @@ pub(crate) fn proxy_pair_gates_pass(
     {
         return false;
     }
+    // Shared-dimension gate: a legitimate resolution proxy strictly
+    // shrinks the source — fewer pixels in BOTH axes. Sibling renders
+    // that share a dimension value across axes (e.g. a `_2160p_`
+    // 3840×2160 cut and a `_2160w_` 2160×1440 cut of the same
+    // timelapse, where the "2160" appears in master.height and
+    // candidate.width) are alternate crops at the same nominal
+    // resolution tier, not a master/proxy pair. The thumbnails of
+    // such pairs still score above the 0.96 similarity threshold
+    // because the underlying source frames are identical — only the
+    // crop window differs — so without this gate the auto-detector
+    // happily links them. Rule: reject when any value in
+    // {master.width, master.height} also appears in
+    // {candidate.width, candidate.height}.
+    if shares_dimension_value(master, candidate) {
+        return false;
+    }
     // Frame-count gate (with tolerance): allow ±5% or ±10 frames.
     if master.frame_count > 0 && candidate.frame_count > 0 {
         let max_fc = master.frame_count.max(candidate.frame_count);
@@ -329,6 +351,22 @@ pub(crate) fn proxy_pair_gates_pass(
         return false;
     }
     true
+}
+
+/// True when any numeric dimension of `a` appears as a dimension of
+/// `b` (either axis). A genuine resolution proxy shrinks both axes,
+/// so two videos that share a value here are at the same nominal
+/// "tier" of one another — sibling renders, not a master/proxy pair.
+/// Missing dimensions on either side return `false` — let the other
+/// gates make the call when we have no dimensions to compare.
+fn shares_dimension_value(a: &ProxyDetectCandidate, b: &ProxyDetectCandidate) -> bool {
+    if a.width <= 0 || a.height <= 0 || b.width <= 0 || b.height <= 0 {
+        return false;
+    }
+    a.width == b.width
+        || a.width == b.height
+        || a.height == b.width
+        || a.height == b.height
 }
 
 // ---- Public thumbnail comparison API -----------------------------------
@@ -655,5 +693,61 @@ mod tests {
             1080, 720, 900, 80,
         );
         assert!(!proxy_pair_gates_pass(&aurora, &star_v));
+    }
+
+    /// `_2160p_` (3840×2160) and `_2160w_` (2160×1440) are alternate-
+    /// crop renders of the same timelapse — same name_part, same frame
+    /// count, same camera. Their dimensions don't match on the same
+    /// axis (3840≠2160, 2160≠1440), but the value "2160" appears in
+    /// master.height AND candidate.width — they share a dimension
+    /// across axes, which the shared-dimension gate catches.
+    #[test]
+    fn proxy_gate_rejects_cross_axis_shared_dimension() {
+        let p_variant = mk(
+            "07_27_2024-a9-1-aurora-topaz_ProRes-422_Rec.709F_2160p_30_MQ.mov",
+            3840, 2160, 900, 800,
+        );
+        let w_variant = mk(
+            "07_27_2024-a9-1-aurora-topaz_ProRes-422_Rec.709F_2160w_30_MQ.mov",
+            2160, 1440, 900, 600,
+        );
+        assert!(!proxy_pair_gates_pass(&p_variant, &w_variant));
+        // Symmetric — order shouldn't matter.
+        assert!(!proxy_pair_gates_pass(&w_variant, &p_variant));
+    }
+
+    /// The same cross-axis collision at a smaller tier: `_720p_`
+    /// (1080×720) vs `_720w_` (720×480) share the value "720".
+    /// They're alternate-resolution crops at the "720-tier", not a
+    /// proxy pair.
+    #[test]
+    fn proxy_gate_rejects_720_tier_cross_axis_collision() {
+        let p720 = mk(
+            "07_27_2024-a9-1-aurora-topaz_ProRes-422_Rec.709F_720p_30_MQ.mov",
+            1080, 720, 900, 80,
+        );
+        let w720 = mk(
+            "07_27_2024-a9-1-aurora-topaz_ProRes-422_Rec.709F_720w_30_MQ.mov",
+            720, 480, 900, 50,
+        );
+        assert!(!proxy_pair_gates_pass(&p720, &w720));
+    }
+
+    /// A real proxy pair — strict shrink in BOTH axes, no shared
+    /// dimension value — must still pass. This is the canonical
+    /// "master vs lower-res proxy of the same crop" case.
+    #[test]
+    fn proxy_gate_allows_strict_resolution_shrink() {
+        // 6000×4000 (OriRes) → 2160×1440 (2160w) — same 3:2 aspect,
+        // smaller in both axes, no shared dimension value.
+        let master = mk(
+            "foo_ProRes-444_Rec.709F_OriRes_30_UHQ.mov",
+            6000, 4000, 600, 4000,
+        );
+        let proxy = mk(
+            "foo_ProRes-422_Rec.709F_2160w_30_MQ.mov",
+            2160, 1440, 600, 600,
+        );
+        assert!(proxy_pair_gates_pass(&master, &proxy));
     }
 }
