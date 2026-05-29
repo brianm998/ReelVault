@@ -32,8 +32,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "ListVideos".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "ListVideos",
-                type: .unary
+                method: "ListVideos"
             )
         }
         /// Namespace for "SearchVideos" metadata.
@@ -45,8 +44,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "SearchVideos".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "SearchVideos",
-                type: .unary
+                method: "SearchVideos"
             )
         }
         /// Namespace for "GetMetadata" metadata.
@@ -58,8 +56,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "GetMetadata".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "GetMetadata",
-                type: .unary
+                method: "GetMetadata"
             )
         }
         /// Namespace for "GetThumbnail" metadata.
@@ -71,8 +68,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "GetThumbnail".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "GetThumbnail",
-                type: .serverStreaming
+                method: "GetThumbnail"
             )
         }
         /// Namespace for "AddLibraryLocation" metadata.
@@ -84,8 +80,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "AddLibraryLocation".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "AddLibraryLocation",
-                type: .unary
+                method: "AddLibraryLocation"
             )
         }
         /// Namespace for "RemoveLibraryLocation" metadata.
@@ -97,8 +92,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "RemoveLibraryLocation".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "RemoveLibraryLocation",
-                type: .unary
+                method: "RemoveLibraryLocation"
             )
         }
         /// Namespace for "ListLibraryLocations" metadata.
@@ -110,8 +104,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "ListLibraryLocations".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "ListLibraryLocations",
-                type: .unary
+                method: "ListLibraryLocations"
             )
         }
         /// Namespace for "ScanLibrary" metadata.
@@ -123,8 +116,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "ScanLibrary".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "ScanLibrary",
-                type: .serverStreaming
+                method: "ScanLibrary"
             )
         }
         /// Namespace for "GetScanStatus" metadata.
@@ -136,8 +128,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "GetScanStatus".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "GetScanStatus",
-                type: .unary
+                method: "GetScanStatus"
             )
         }
         /// Namespace for "CreateTag" metadata.
@@ -149,8 +140,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "CreateTag".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "CreateTag",
-                type: .unary
+                method: "CreateTag"
             )
         }
         /// Namespace for "DeleteTag" metadata.
@@ -162,8 +152,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "DeleteTag".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "DeleteTag",
-                type: .unary
+                method: "DeleteTag"
             )
         }
         /// Namespace for "ListTags" metadata.
@@ -175,8 +164,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "ListTags".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "ListTags",
-                type: .unary
+                method: "ListTags"
             )
         }
         /// Namespace for "TagVideos" metadata.
@@ -188,8 +176,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "TagVideos".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "TagVideos",
-                type: .unary
+                method: "TagVideos"
             )
         }
         /// Namespace for "UntagVideos" metadata.
@@ -201,8 +188,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "UntagVideos".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "UntagVideos",
-                type: .unary
+                method: "UntagVideos"
             )
         }
         /// Namespace for "CreateCollection" metadata.
@@ -214,8 +200,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "CreateCollection".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "CreateCollection",
-                type: .unary
+                method: "CreateCollection"
             )
         }
         /// Namespace for "DeleteCollection" metadata.
@@ -227,8 +212,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "DeleteCollection".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "DeleteCollection",
-                type: .unary
+                method: "DeleteCollection"
             )
         }
         /// Namespace for "ListCollections" metadata.
@@ -240,8 +224,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "ListCollections".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "ListCollections",
-                type: .unary
+                method: "ListCollections"
             )
         }
         /// Namespace for "AddToCollection" metadata.
@@ -253,8 +236,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "AddToCollection".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "AddToCollection",
-                type: .unary
+                method: "AddToCollection"
             )
         }
         /// Namespace for "RemoveFromCollection" metadata.
@@ -266,8 +248,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "RemoveFromCollection".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "RemoveFromCollection",
-                type: .unary
+                method: "RemoveFromCollection"
             )
         }
         /// Namespace for "UpdateVideoNotes" metadata.
@@ -279,8 +260,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "UpdateVideoNotes".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "UpdateVideoNotes",
-                type: .unary
+                method: "UpdateVideoNotes"
             )
         }
         /// Namespace for "DeleteVideo" metadata.
@@ -292,8 +272,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "DeleteVideo".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "DeleteVideo",
-                type: .unary
+                method: "DeleteVideo"
             )
         }
         /// Namespace for "ListGroupMembers" metadata.
@@ -305,8 +284,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "ListGroupMembers".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "ListGroupMembers",
-                type: .unary
+                method: "ListGroupMembers"
             )
         }
         /// Namespace for "CreateGroup" metadata.
@@ -318,8 +296,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "CreateGroup".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "CreateGroup",
-                type: .unary
+                method: "CreateGroup"
             )
         }
         /// Namespace for "UngroupVideo" metadata.
@@ -331,8 +308,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "UngroupVideo".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "UngroupVideo",
-                type: .unary
+                method: "UngroupVideo"
             )
         }
         /// Namespace for "SetGroupPreferred" metadata.
@@ -344,8 +320,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "SetGroupPreferred".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "SetGroupPreferred",
-                type: .unary
+                method: "SetGroupPreferred"
             )
         }
         /// Namespace for "AutoGroupVideos" metadata.
@@ -357,8 +332,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "AutoGroupVideos".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "AutoGroupVideos",
-                type: .unary
+                method: "AutoGroupVideos"
             )
         }
         /// Namespace for "GenerateProxy" metadata.
@@ -370,8 +344,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "GenerateProxy".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "GenerateProxy",
-                type: .serverStreaming
+                method: "GenerateProxy"
             )
         }
         /// Namespace for "ListProxies" metadata.
@@ -383,8 +356,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "ListProxies".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "ListProxies",
-                type: .unary
+                method: "ListProxies"
             )
         }
         /// Namespace for "SetProxyOf" metadata.
@@ -396,8 +368,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "SetProxyOf".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "SetProxyOf",
-                type: .unary
+                method: "SetProxyOf"
             )
         }
         /// Namespace for "RemoveProxyLink" metadata.
@@ -409,8 +380,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "RemoveProxyLink".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "RemoveProxyLink",
-                type: .unary
+                method: "RemoveProxyLink"
             )
         }
         /// Namespace for "DetectProxies" metadata.
@@ -422,8 +392,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "DetectProxies".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "DetectProxies",
-                type: .unary
+                method: "DetectProxies"
             )
         }
         /// Namespace for "GetFilterOptions" metadata.
@@ -435,8 +404,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "GetFilterOptions".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "GetFilterOptions",
-                type: .unary
+                method: "GetFilterOptions"
             )
         }
         /// Namespace for "GetStatus" metadata.
@@ -448,8 +416,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "GetStatus".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "GetStatus",
-                type: .unary
+                method: "GetStatus"
             )
         }
         /// Namespace for "GetConfig" metadata.
@@ -461,8 +428,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "GetConfig".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "GetConfig",
-                type: .unary
+                method: "GetConfig"
             )
         }
         /// Namespace for "UpdateConfig" metadata.
@@ -474,8 +440,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "UpdateConfig".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "UpdateConfig",
-                type: .unary
+                method: "UpdateConfig"
             )
         }
         /// Namespace for "OpenCatalog" metadata.
@@ -487,8 +452,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "OpenCatalog".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "OpenCatalog",
-                type: .unary
+                method: "OpenCatalog"
             )
         }
         /// Namespace for "CloseCatalog" metadata.
@@ -500,8 +464,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "CloseCatalog".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "CloseCatalog",
-                type: .unary
+                method: "CloseCatalog"
             )
         }
         /// Namespace for "GetCurrentCatalog" metadata.
@@ -513,8 +476,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "GetCurrentCatalog".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "GetCurrentCatalog",
-                type: .unary
+                method: "GetCurrentCatalog"
             )
         }
         /// Namespace for "UpdateVideoLocation" metadata.
@@ -526,8 +488,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "UpdateVideoLocation".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "UpdateVideoLocation",
-                type: .unary
+                method: "UpdateVideoLocation"
             )
         }
         /// Namespace for "ListVideosWithLocations" metadata.
@@ -539,8 +500,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "ListVideosWithLocations".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "ListVideosWithLocations",
-                type: .unary
+                method: "ListVideosWithLocations"
             )
         }
         /// Namespace for "ListNamedLocations" metadata.
@@ -552,8 +512,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "ListNamedLocations".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "ListNamedLocations",
-                type: .unary
+                method: "ListNamedLocations"
             )
         }
         /// Namespace for "UpsertNamedLocation" metadata.
@@ -565,8 +524,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "UpsertNamedLocation".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "UpsertNamedLocation",
-                type: .unary
+                method: "UpsertNamedLocation"
             )
         }
         /// Namespace for "DeleteNamedLocation" metadata.
@@ -578,8 +536,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "DeleteNamedLocation".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "DeleteNamedLocation",
-                type: .unary
+                method: "DeleteNamedLocation"
             )
         }
         /// Namespace for "UpdateVideoCaptureDate" metadata.
@@ -591,8 +548,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "UpdateVideoCaptureDate".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "UpdateVideoCaptureDate",
-                type: .unary
+                method: "UpdateVideoCaptureDate"
             )
         }
         /// Namespace for "UpdateVideoRating" metadata.
@@ -604,8 +560,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "UpdateVideoRating".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "UpdateVideoRating",
-                type: .unary
+                method: "UpdateVideoRating"
             )
         }
         /// Namespace for "UpdateVideoColorLabel" metadata.
@@ -617,8 +572,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "UpdateVideoColorLabel".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "UpdateVideoColorLabel",
-                type: .unary
+                method: "UpdateVideoColorLabel"
             )
         }
         /// Namespace for "GetGridSettings" metadata.
@@ -630,8 +584,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "GetGridSettings".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "GetGridSettings",
-                type: .unary
+                method: "GetGridSettings"
             )
         }
         /// Namespace for "UpdateGridSettings" metadata.
@@ -643,8 +596,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "UpdateGridSettings".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "UpdateGridSettings",
-                type: .unary
+                method: "UpdateGridSettings"
             )
         }
         /// Namespace for "SubscribeCatalogEvents" metadata.
@@ -656,8 +608,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "SubscribeCatalogEvents".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "SubscribeCatalogEvents",
-                type: .serverStreaming
+                method: "SubscribeCatalogEvents"
             )
         }
         /// Namespace for "GetWatchSettings" metadata.
@@ -669,8 +620,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "GetWatchSettings".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "GetWatchSettings",
-                type: .unary
+                method: "GetWatchSettings"
             )
         }
         /// Namespace for "UpdateWatchSettings" metadata.
@@ -682,8 +632,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "UpdateWatchSettings".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "UpdateWatchSettings",
-                type: .unary
+                method: "UpdateWatchSettings"
             )
         }
         /// Namespace for "ListCameraNameMappings" metadata.
@@ -695,8 +644,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "ListCameraNameMappings".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "ListCameraNameMappings",
-                type: .unary
+                method: "ListCameraNameMappings"
             )
         }
         /// Namespace for "SetCameraNameMapping" metadata.
@@ -708,8 +656,7 @@ internal enum Videoroom_VideoRoom: Sendable {
             /// Descriptor for "SetCameraNameMapping".
             internal static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "videoroom.VideoRoom"),
-                method: "SetCameraNameMapping",
-                type: .unary
+                method: "SetCameraNameMapping"
             )
         }
         /// Descriptors for all methods in the "videoroom.VideoRoom" service.
