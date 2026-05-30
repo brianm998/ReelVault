@@ -1943,7 +1943,11 @@ fun VideoRoomTopBar(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = VideoRoomSpacing.Medium),
+                    // Only pad the trailing edge — the leading edge already
+                    // gets Material3's title-slot inset, and adding 16dp on
+                    // top of that pushes the brand mark visibly farther
+                    // from the window edge than the SwiftUI client.
+                    .padding(end = VideoRoomSpacing.Medium),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
