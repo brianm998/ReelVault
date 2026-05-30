@@ -27,13 +27,13 @@ let package = Package(
             path: "VideoRoom",
             exclude: ["Info.plist"],
             resources: [
-                // Bundled so AppDelegate can load it at startup and set
-                // NSApp.applicationIconImage — required for `swift run`
-                // (raw binary), where macOS otherwise shows the generic
-                // "exec" Dock icon. The packaged .app reads the same file
-                // from Contents/Resources via CFBundleIconFile=AppIcon;
-                // release-macos.sh copies it there directly.
-                .process("Resources/AppIcon.icns"),
+                // Bundle everything under Resources/ — the .icns drives
+                // NSApp.applicationIconImage at launch (required for
+                // `swift run`, where macOS otherwise shows the generic
+                // "exec" Dock icon), and the AppIcon-titlebar-*.png
+                // variants drive the in-app brand mark that tracks the
+                // accent-color scheme.
+                .process("Resources"),
             ],
             swiftSettings: [
                 .unsafeFlags(["-suppress-warnings"], .when(configuration: .release))

@@ -28,6 +28,11 @@ struct ContentView: View {
     // Thumbnail size — persisted to UserDefaults so the user's last size
     // survives restarts. Falls back to 220 pt when no preference is stored.
     @AppStorage("thumbnailWidth") private var thumbnailWidth: Double = 220
+    // Mirrors the accent scheme picked in AppearanceSettingsDialog ("blue"
+    // / "purple"). Drives which colour variant of the title-bar brand mark
+    // is shown — the Dock tile itself can't be swapped at runtime, but the
+    // in-app icon can.
+    @AppStorage("accentScheme") private var accentScheme: String = "blue"
     @State private var showAddLibrarySheet = false
     @State private var showHelpSheet = false
     @State private var showWatchSettingsSheet = false
@@ -437,8 +442,26 @@ struct ContentView: View {
         }
     }
 
+    /// Loads the accent-matched titlebar icon from the SPM resource bundle.
+    /// Falls back to an empty image rather than crashing the app if the
+    /// resource ever goes missing.
+    private var titlebarIcon: Image {
+        let name = accentScheme == "purple"
+            ? "AppIcon-titlebar-purple"
+            : "AppIcon-titlebar-blue"
+        if let url = Bundle.module.url(forResource: name, withExtension: "png"),
+           let nsImage = NSImage(contentsOf: url) {
+            return Image(nsImage: nsImage)
+        }
+        return Image(systemName: "film")
+    }
+
     private var topBar: some View {
         HStack(spacing: 12) {
+            titlebarIcon
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 26, height: 26)
             VStack(alignment: .leading, spacing: 0) {
                 Text("VideoRoom")
                     .font(.system(size: 18, weight: .semibold))

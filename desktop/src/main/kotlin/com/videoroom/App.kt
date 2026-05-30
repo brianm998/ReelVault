@@ -79,231 +79,245 @@ val LocalPathFieldFocused = compositionLocalOf { mutableStateOf(false) }
 /** Top-level view mode for the central content area. */
 enum class ViewMode { GRID, LIST, DETAIL }
 
-fun main() = application {
-    // Set the JVM-wide HTTP User-Agent before any networking happens. The
-    // OpenStreetMap tile server (used by the map views) blocks Java's
-    // default `Java/<version>` UA, which is why JXMapViewer renders blank
-    // until this is set. Must happen before the first URLConnection;
-    // setting it here at the top of main() is the safest spot.
+fun main() {
+    // System properties that AWT reads at initialization MUST be set before
+    // `application { }` runs — the Compose entrypoint touches AWT/Swing
+    // classes synchronously, and once those load the values are cached.
+    // An earlier fix that set apple.awt.application.name *inside* the
+    // application{} lambda was too late: the Dock tooltip still read
+    // "java" because AWTAppKitThread had already read the (missing)
+    // property and fallen back to the executable name.
+    if (System.getProperty("apple.awt.application.name").isNullOrEmpty()) {
+        System.setProperty("apple.awt.application.name", "VideoRoom")
+    }
+    // OSM tile server blocks Java's default `Java/<version>` UA — JXMapViewer
+    // renders blank without this. Safe to set before networking starts.
     if (System.getProperty("http.agent").isNullOrEmpty()) {
         System.setProperty(
             "http.agent",
             "VideoRoom/0.1 (+https://github.com/videoroom/videoroom)"
         )
     }
-
-    // Enable Compose Desktop's interop blending so Compose overlays (the
-    // detail-view info dialog and bottom control bar) draw cleanly on top of
-    // the VLCJ video SwingPanel. Without this, on macOS in particular the
-    // Swing surface can z-order above Compose and obscure controls — or, in
-    // older Compose builds, suppress its own paint and produce a black box.
-    // Must be set before the first Window is created.
+    // Compose Desktop's interop blending — read at first Window creation,
+    // so technically fine inside application{} too, but kept here with the
+    // other launch-time properties for symmetry.
     System.setProperty("compose.interop.blending", "true")
 
-    // macOS reads this when AWT initializes to label the menu bar entry
-    // next to the Apple menu — pairs with `-Xdock:name=VideoRoom` in
-    // build.gradle.kts (which covers the Dock tooltip). Must be set
-    // before any AWT/Swing class loads, so it lives at the top of main().
-    if (System.getProperty("apple.awt.application.name").isNullOrEmpty()) {
-        System.setProperty("apple.awt.application.name", "VideoRoom")
-    }
-
-    val windowState = rememberWindowState(
-        size = DpSize(width = 1400.dp, height = 900.dp)
-    )
-
-    var shiftPressed by remember { mutableStateOf(false) }
-    // True when the top-bar search field has focus. Used to suppress
-    // single-key shortcuts ('g', 'd', 'i') so the user can still type those
-    // letters into the search box.
-    val searchFocused = remember { mutableStateOf(false) }
-    // True while a PathCompletingTextField holds focus. Suppresses the
-    // Tab → toggle-panels shortcut so Tab drives path completion instead.
-    val pathFieldFocused = remember { mutableStateOf(false) }
-    // VideoRoomApp registers its "group selected" action here, so the Window-
-    // level key listener can invoke it on Cmd/Ctrl+G regardless of focus.
-    val groupSelectedAction = remember { mutableStateOf<() -> Unit>({}) }
-    // Same pattern for the Tab key panel-toggle.
-    val togglePanelsAction = remember { mutableStateOf<() -> Unit>({}) }
-    // …and for Cmd/Ctrl+A — "select all currently-visible videos".
-    val selectAllAction = remember { mutableStateOf<() -> Unit>({}) }
-    // …and for Cmd/Ctrl+D — "deselect everything".
-    val deselectAllAction = remember { mutableStateOf<() -> Unit>({}) }
-    // Actions for plain 'g' (grid mode), 'd' (detail mode), 'i' (cycle info
-    // overlay). Bound via onPreviewKeyEvent so the search field's plain-key
-    // input still works via the `searchFocused` gate above.
-    val setGridModeAction = remember { mutableStateOf<() -> Unit>({}) }
-    val setListModeAction = remember { mutableStateOf<() -> Unit>({}) }
-    val setDetailModeAction = remember { mutableStateOf<() -> Unit>({}) }
-    val cycleInfoOverlayAction = remember { mutableStateOf<() -> Unit>({}) }
-    // Space bar: toggle inline playback of the selected video.
-    val spacebarAction = remember { mutableStateOf<() -> Unit>({}) }
-    // Lightroom-style rating shortcut (digits 0..5). Carries the rating
-    // value; the handler applies it to the current selection.
-    val setRatingAction = remember { mutableStateOf<(Int) -> Unit>({ _ -> }) }
-    // Lightroom-style colour-label shortcut (digits 6..9 + backtick).
-    // Carries the colour raw value; "" clears.
-    val setColorLabelAction = remember { mutableStateOf<(String) -> Unit>({ _ -> }) }
-    // Title reflects the currently-open catalog (lifted here so Window.title
-    // recomposes when the catalog changes).
-    var currentCatalog by remember { mutableStateOf(CatalogInfo.Closed) }
-    val windowTitle = if (currentCatalog.isOpen) {
-        "VideoRoom — ${currentCatalog.name}"
-    } else {
-        "VideoRoom"
-    }
-
-    Window(
-        onCloseRequest = ::exitApplication,
-        state = windowState,
-        title = windowTitle,
-        icon = painterResource("icons/AppIcon.png"),
-        // onPreviewKeyEvent fires BEFORE focused widgets consume the event,
-        // so it works even when the search TextField is focused.
-        onPreviewKeyEvent = { event ->
-            // Track shift state for the rest of the UI.
-            if (event.key == Key.ShiftLeft || event.key == Key.ShiftRight) {
-                shiftPressed = event.type == KeyEventType.KeyDown
-            }
-            // Cmd+G (macOS) / Ctrl+G (Windows/Linux) → group selected videos.
-            if (event.type == KeyEventType.KeyDown &&
-                event.key == Key.G &&
-                (event.isMetaPressed || event.isCtrlPressed)
-            ) {
-                groupSelectedAction.value()
-                return@Window true // consume so default shortcuts don't also fire
-            }
-            // Tab → toggle both side panels (Lightroom-style).
-            // Guard: when a PathCompletingTextField is focused, Tab must
-            // drive its bash-style path completion — not collapse panels.
-            // pathFieldFocused is set/cleared by the field's onFocusChanged.
-            if (event.type == KeyEventType.KeyDown &&
-                event.key == Key.Tab &&
-                !event.isMetaPressed && !event.isCtrlPressed && !event.isAltPressed &&
-                !pathFieldFocused.value
-            ) {
-                togglePanelsAction.value()
-                return@Window true // consume so focus traversal doesn't also fire
-            }
-            // Single-letter shortcuts: only when no modifier is held AND the
-            // search field isn't focused (so the user can still type 'g', 'd',
-            // or 'i' in the search box).
-            if (event.type == KeyEventType.KeyDown &&
-                !event.isMetaPressed && !event.isCtrlPressed && !event.isAltPressed &&
-                !searchFocused.value
-            ) {
-                when (event.key) {
-                    Key.G -> { setGridModeAction.value(); return@Window true }
-                    Key.L -> { setListModeAction.value(); return@Window true }
-                    Key.D -> { setDetailModeAction.value(); return@Window true }
-                    Key.I -> { cycleInfoOverlayAction.value(); return@Window true }
-                    Key.Spacebar -> { spacebarAction.value(); return@Window true }
-                    // Lightroom-style rating shortcuts (number-row digits).
-                    Key.Zero  -> { setRatingAction.value(0); return@Window true }
-                    Key.One   -> { setRatingAction.value(1); return@Window true }
-                    Key.Two   -> { setRatingAction.value(2); return@Window true }
-                    Key.Three -> { setRatingAction.value(3); return@Window true }
-                    Key.Four  -> { setRatingAction.value(4); return@Window true }
-                    Key.Five  -> { setRatingAction.value(5); return@Window true }
-                    // Lightroom-style colour-label shortcuts. Purple has
-                    // no shortcut by design (right-click only).
-                    Key.Six   -> { setColorLabelAction.value("red");    return@Window true }
-                    Key.Seven -> { setColorLabelAction.value("yellow"); return@Window true }
-                    Key.Eight -> { setColorLabelAction.value("green");  return@Window true }
-                    Key.Nine  -> { setColorLabelAction.value("blue");   return@Window true }
-                    // Backtick / grave clears the colour label. Universal
-                    // fallback via the right-click "Set Color Label →
-                    // None" menu for keyboards where this key is awkward.
-                    Key.Grave -> { setColorLabelAction.value("");       return@Window true }
-                    else -> Unit
+    // Belt-and-suspenders for the Dock tile: set the icon image via
+    // java.awt.Taskbar so the macOS Dock shows the VideoRoom icon even
+    // when launched outside the packaged .app (e.g. `./gradlew run`).
+    // Window(icon = …) sets the per-window icon but doesn't always
+    // propagate to the Dock tile on macOS; Taskbar does.
+    runCatching {
+        if (java.awt.Taskbar.isTaskbarSupported()) {
+            val taskbar = java.awt.Taskbar.getTaskbar()
+            if (taskbar.isSupported(java.awt.Taskbar.Feature.ICON_IMAGE)) {
+                val url = {}.javaClass.classLoader.getResource("icons/AppIcon.png")
+                if (url != null) {
+                    taskbar.iconImage = javax.imageio.ImageIO.read(url)
                 }
-            }
-            false
-        },
-        // onKeyEvent fires AFTER focused widgets — so a focused TextField
-        // (search bar, notes, keyword input) can still handle Cmd/Ctrl+A as
-        // "select all text"; we only catch it when nothing else does.
-        onKeyEvent = { event ->
-            when {
-                event.type != KeyEventType.KeyDown -> false
-                event.key == Key.A &&
-                    (event.isMetaPressed || event.isCtrlPressed) &&
-                    !event.isShiftPressed && !event.isAltPressed -> {
-                    selectAllAction.value()
-                    true
-                }
-                // Cmd/Ctrl+D — deselect every selected video. Same
-                // post-process placement as Cmd+A so a focused TextField
-                // gets first crack (it doesn't actually use Cmd+D, but the
-                // policy is "Window-level shortcuts never steal from a
-                // focused widget").
-                event.key == Key.D &&
-                    (event.isMetaPressed || event.isCtrlPressed) &&
-                    !event.isShiftPressed && !event.isAltPressed -> {
-                    deselectAllAction.value()
-                    true
-                }
-                else -> false
             }
         }
-    ) {
-        // Guarantee a valid Compose focus target at all times.
-        //
-        // Problem: AWT fires a keyTyped event for every key press, independent
-        // of whether the paired keyPressed event was "consumed" by Compose's
-        // onPreviewKeyEvent handler. Compose converts keyTyped into an internal
-        // KeyDown event and routes it through FocusOwnerImpl.dispatchKeyEvent.
-        // When a recomposition is in flight at that instant (common during a
-        // library scan, because gRPC progress events arrive on the EDT and
-        // trigger rapid UI updates), no composable may hold focus yet.
-        // FocusOwnerImpl throws IllegalStateException("Event can't be processed
-        // because we do not have an active focus target"), which on JDK 17+
-        // propagates all the way up EventDispatchThread.pumpEvents and kills
-        // the EDT — crashing the app.
-        //
-        // Fix: this invisible Box is focusable and claims focus exactly once
-        // at window launch. Child composables (search bar, text fields, etc.)
-        // can still take focus normally; when they release it the Box holds it
-        // again as a neutral fallback. The focus system's invariant is never
-        // violated regardless of recomposition timing.
-        val rootFocus = remember { FocusRequester() }
-        LaunchedEffect(Unit) {
-            // requestFocus() must run after the first composition pass so the
-            // node is actually attached to the owner. LaunchedEffect(Unit)
-            // fires after the first frame — exactly the right moment.
-            rootFocus.requestFocus()
+    }
+
+    application {
+        val windowState = rememberWindowState(
+            size = DpSize(width = 1400.dp, height = 900.dp)
+        )
+
+        var shiftPressed by remember { mutableStateOf(false) }
+        // True when the top-bar search field has focus. Used to suppress
+        // single-key shortcuts ('g', 'd', 'i') so the user can still type those
+        // letters into the search box.
+        val searchFocused = remember { mutableStateOf(false) }
+        // True while a PathCompletingTextField holds focus. Suppresses the
+        // Tab → toggle-panels shortcut so Tab drives path completion instead.
+        val pathFieldFocused = remember { mutableStateOf(false) }
+        // VideoRoomApp registers its "group selected" action here, so the Window-
+        // level key listener can invoke it on Cmd/Ctrl+G regardless of focus.
+        val groupSelectedAction = remember { mutableStateOf<() -> Unit>({}) }
+        // Same pattern for the Tab key panel-toggle.
+        val togglePanelsAction = remember { mutableStateOf<() -> Unit>({}) }
+        // …and for Cmd/Ctrl+A — "select all currently-visible videos".
+        val selectAllAction = remember { mutableStateOf<() -> Unit>({}) }
+        // …and for Cmd/Ctrl+D — "deselect everything".
+        val deselectAllAction = remember { mutableStateOf<() -> Unit>({}) }
+        // Actions for plain 'g' (grid mode), 'd' (detail mode), 'i' (cycle info
+        // overlay). Bound via onPreviewKeyEvent so the search field's plain-key
+        // input still works via the `searchFocused` gate above.
+        val setGridModeAction = remember { mutableStateOf<() -> Unit>({}) }
+        val setListModeAction = remember { mutableStateOf<() -> Unit>({}) }
+        val setDetailModeAction = remember { mutableStateOf<() -> Unit>({}) }
+        val cycleInfoOverlayAction = remember { mutableStateOf<() -> Unit>({}) }
+        // Space bar: toggle inline playback of the selected video.
+        val spacebarAction = remember { mutableStateOf<() -> Unit>({}) }
+        // Lightroom-style rating shortcut (digits 0..5). Carries the rating
+        // value; the handler applies it to the current selection.
+        val setRatingAction = remember { mutableStateOf<(Int) -> Unit>({ _ -> }) }
+        // Lightroom-style colour-label shortcut (digits 6..9 + backtick).
+        // Carries the colour raw value; "" clears.
+        val setColorLabelAction = remember { mutableStateOf<(String) -> Unit>({ _ -> }) }
+        // Title reflects the currently-open catalog (lifted here so Window.title
+        // recomposes when the catalog changes).
+        var currentCatalog by remember { mutableStateOf(CatalogInfo.Closed) }
+        val windowTitle = if (currentCatalog.isOpen) {
+            "VideoRoom — ${currentCatalog.name}"
+        } else {
+            "VideoRoom"
         }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .focusRequester(rootFocus)
-                .focusable()
+
+        Window(
+            onCloseRequest = ::exitApplication,
+            state = windowState,
+            title = windowTitle,
+            icon = painterResource("icons/AppIcon.png"),
+            // onPreviewKeyEvent fires BEFORE focused widgets consume the event,
+            // so it works even when the search TextField is focused.
+            onPreviewKeyEvent = { event ->
+                // Track shift state for the rest of the UI.
+                if (event.key == Key.ShiftLeft || event.key == Key.ShiftRight) {
+                    shiftPressed = event.type == KeyEventType.KeyDown
+                }
+                // Cmd+G (macOS) / Ctrl+G (Windows/Linux) → group selected videos.
+                if (event.type == KeyEventType.KeyDown &&
+                    event.key == Key.G &&
+                    (event.isMetaPressed || event.isCtrlPressed)
+                ) {
+                    groupSelectedAction.value()
+                    return@Window true // consume so default shortcuts don't also fire
+                }
+                // Tab → toggle both side panels (Lightroom-style).
+                // Guard: when a PathCompletingTextField is focused, Tab must
+                // drive its bash-style path completion — not collapse panels.
+                // pathFieldFocused is set/cleared by the field's onFocusChanged.
+                if (event.type == KeyEventType.KeyDown &&
+                    event.key == Key.Tab &&
+                    !event.isMetaPressed && !event.isCtrlPressed && !event.isAltPressed &&
+                    !pathFieldFocused.value
+                ) {
+                    togglePanelsAction.value()
+                    return@Window true // consume so focus traversal doesn't also fire
+                }
+                // Single-letter shortcuts: only when no modifier is held AND the
+                // search field isn't focused (so the user can still type 'g', 'd',
+                // or 'i' in the search box).
+                if (event.type == KeyEventType.KeyDown &&
+                    !event.isMetaPressed && !event.isCtrlPressed && !event.isAltPressed &&
+                    !searchFocused.value
+                ) {
+                    when (event.key) {
+                        Key.G -> { setGridModeAction.value(); return@Window true }
+                        Key.L -> { setListModeAction.value(); return@Window true }
+                        Key.D -> { setDetailModeAction.value(); return@Window true }
+                        Key.I -> { cycleInfoOverlayAction.value(); return@Window true }
+                        Key.Spacebar -> { spacebarAction.value(); return@Window true }
+                        // Lightroom-style rating shortcuts (number-row digits).
+                        Key.Zero  -> { setRatingAction.value(0); return@Window true }
+                        Key.One   -> { setRatingAction.value(1); return@Window true }
+                        Key.Two   -> { setRatingAction.value(2); return@Window true }
+                        Key.Three -> { setRatingAction.value(3); return@Window true }
+                        Key.Four  -> { setRatingAction.value(4); return@Window true }
+                        Key.Five  -> { setRatingAction.value(5); return@Window true }
+                        // Lightroom-style colour-label shortcuts. Purple has
+                        // no shortcut by design (right-click only).
+                        Key.Six   -> { setColorLabelAction.value("red");    return@Window true }
+                        Key.Seven -> { setColorLabelAction.value("yellow"); return@Window true }
+                        Key.Eight -> { setColorLabelAction.value("green");  return@Window true }
+                        Key.Nine  -> { setColorLabelAction.value("blue");   return@Window true }
+                        // Backtick / grave clears the colour label. Universal
+                        // fallback via the right-click "Set Color Label →
+                        // None" menu for keyboards where this key is awkward.
+                        Key.Grave -> { setColorLabelAction.value("");       return@Window true }
+                        else -> Unit
+                    }
+                }
+                false
+            },
+            // onKeyEvent fires AFTER focused widgets — so a focused TextField
+            // (search bar, notes, keyword input) can still handle Cmd/Ctrl+A as
+            // "select all text"; we only catch it when nothing else does.
+            onKeyEvent = { event ->
+                when {
+                    event.type != KeyEventType.KeyDown -> false
+                    event.key == Key.A &&
+                        (event.isMetaPressed || event.isCtrlPressed) &&
+                        !event.isShiftPressed && !event.isAltPressed -> {
+                        selectAllAction.value()
+                        true
+                    }
+                    // Cmd/Ctrl+D — deselect every selected video. Same
+                    // post-process placement as Cmd+A so a focused TextField
+                    // gets first crack (it doesn't actually use Cmd+D, but the
+                    // policy is "Window-level shortcuts never steal from a
+                    // focused widget").
+                    event.key == Key.D &&
+                        (event.isMetaPressed || event.isCtrlPressed) &&
+                        !event.isShiftPressed && !event.isAltPressed -> {
+                        deselectAllAction.value()
+                        true
+                    }
+                    else -> false
+                }
+            }
         ) {
-            CompositionLocalProvider(
-                LocalShiftPressed provides shiftPressed,
-                // Expose the AWT window for drag-out support (FileDragSource).
-                // `window` is the ComposeWindow (a JFrame) available in
-                // FrameWindowScope — the lambda body of Window { ... }.
-                LocalAppWindow provides window,
-                // Let PathCompletingTextField signal its focus state so
-                // onPreviewKeyEvent can suppress Tab → panel-toggle.
-                LocalPathFieldFocused provides pathFieldFocused
+            // Guarantee a valid Compose focus target at all times.
+            //
+            // Problem: AWT fires a keyTyped event for every key press, independent
+            // of whether the paired keyPressed event was "consumed" by Compose's
+            // onPreviewKeyEvent handler. Compose converts keyTyped into an internal
+            // KeyDown event and routes it through FocusOwnerImpl.dispatchKeyEvent.
+            // When a recomposition is in flight at that instant (common during a
+            // library scan, because gRPC progress events arrive on the EDT and
+            // trigger rapid UI updates), no composable may hold focus yet.
+            // FocusOwnerImpl throws IllegalStateException("Event can't be processed
+            // because we do not have an active focus target"), which on JDK 17+
+            // propagates all the way up EventDispatchThread.pumpEvents and kills
+            // the EDT — crashing the app.
+            //
+            // Fix: this invisible Box is focusable and claims focus exactly once
+            // at window launch. Child composables (search bar, text fields, etc.)
+            // can still take focus normally; when they release it the Box holds it
+            // again as a neutral fallback. The focus system's invariant is never
+            // violated regardless of recomposition timing.
+            val rootFocus = remember { FocusRequester() }
+            LaunchedEffect(Unit) {
+                // requestFocus() must run after the first composition pass so the
+                // node is actually attached to the owner. LaunchedEffect(Unit)
+                // fires after the first frame — exactly the right moment.
+                rootFocus.requestFocus()
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .focusRequester(rootFocus)
+                    .focusable()
             ) {
-                VideoRoomApp(
-                    onRegisterGroupAction = { groupSelectedAction.value = it },
-                    onRegisterTogglePanelsAction = { togglePanelsAction.value = it },
-                    onRegisterSelectAllAction = { selectAllAction.value = it },
-                    onRegisterDeselectAllAction = { deselectAllAction.value = it },
-                    onRegisterSetGridMode = { setGridModeAction.value = it },
-                    onRegisterSetListMode = { setListModeAction.value = it },
-                    onRegisterSetDetailMode = { setDetailModeAction.value = it },
-                    onRegisterCycleInfoOverlay = { cycleInfoOverlayAction.value = it },
-                    onRegisterSpacebarAction = { spacebarAction.value = it },
-                    onRegisterSetRatingAction = { setRatingAction.value = it },
-                    onRegisterSetColorLabelAction = { setColorLabelAction.value = it },
-                    onSearchFocusChanged = { searchFocused.value = it },
-                    onCatalogChanged = { currentCatalog = it }
-                )
+                CompositionLocalProvider(
+                    LocalShiftPressed provides shiftPressed,
+                    // Expose the AWT window for drag-out support (FileDragSource).
+                    // `window` is the ComposeWindow (a JFrame) available in
+                    // FrameWindowScope — the lambda body of Window { ... }.
+                    LocalAppWindow provides window,
+                    // Let PathCompletingTextField signal its focus state so
+                    // onPreviewKeyEvent can suppress Tab → panel-toggle.
+                    LocalPathFieldFocused provides pathFieldFocused
+                ) {
+                    VideoRoomApp(
+                        onRegisterGroupAction = { groupSelectedAction.value = it },
+                        onRegisterTogglePanelsAction = { togglePanelsAction.value = it },
+                        onRegisterSelectAllAction = { selectAllAction.value = it },
+                        onRegisterDeselectAllAction = { deselectAllAction.value = it },
+                        onRegisterSetGridMode = { setGridModeAction.value = it },
+                        onRegisterSetListMode = { setListModeAction.value = it },
+                        onRegisterSetDetailMode = { setDetailModeAction.value = it },
+                        onRegisterCycleInfoOverlay = { cycleInfoOverlayAction.value = it },
+                        onRegisterSpacebarAction = { spacebarAction.value = it },
+                        onRegisterSetRatingAction = { setRatingAction.value = it },
+                        onRegisterSetColorLabelAction = { setColorLabelAction.value = it },
+                        onSearchFocusChanged = { searchFocused.value = it },
+                        onCatalogChanged = { currentCatalog = it }
+                    )
+                }
             }
         }
     }
@@ -714,6 +728,7 @@ fun VideoRoomApp(
                         },
                         selectedCount = selectedIds.value.size,
                         onShowHelp = { showHelpDialog = true },
+                        accentScheme = accentScheme,
                     )
 
                     // Scan status banner (during scan)
@@ -1916,7 +1931,9 @@ fun VideoRoomTopBar(
     selectedCount: Int = 0,
     onSearchFocusChanged: (Boolean) -> Unit = {},
     /** Opens the full in-app help reference. */
-    onShowHelp: () -> Unit = {}
+    onShowHelp: () -> Unit = {},
+    /** Drives which colour variant of the title-bar icon is shown. */
+    accentScheme: AccentScheme = AccentScheme.Purple,
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var showFileMenu by remember { mutableStateOf(false) }
@@ -1930,10 +1947,28 @@ fun VideoRoomTopBar(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "VideoRoom",
-                    style = MaterialTheme.typography.headlineSmall
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // The accent-tinted variant tracks the user's chosen
+                    // colour scheme. The macOS Dock tile can't be swapped
+                    // at runtime, but the in-app brand mark can.
+                    Image(
+                        painter = painterResource(
+                            when (accentScheme) {
+                                AccentScheme.Blue -> "icons/AppIcon-titlebar-blue.png"
+                                AccentScheme.Purple -> "icons/AppIcon-titlebar-purple.png"
+                            }
+                        ),
+                        contentDescription = null,
+                        modifier = Modifier.size(26.dp)
+                    )
+                    Text(
+                        text = "VideoRoom",
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                }
 
                 Spacer(modifier = Modifier.width(VideoRoomSpacing.Small))
 
