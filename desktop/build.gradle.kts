@@ -116,16 +116,30 @@ compose.desktop {
             "--add-opens=java.desktop/sun.lwawt=ALL-UNNAMED",
             "--add-opens=java.desktop/sun.lwawt.macosx=ALL-UNNAMED",
         )
-        // macOS's Dock tooltip and menu-bar app name come from the JVM's
-        // `-Xdock:name` flag for raw `java` processes (i.e. `./gradlew run`).
-        // Without this, hovering the Dock icon reads "java". The flag is
-        // macOS-only — passing it to a Linux/Windows JVM aborts startup
-        // with "Unrecognized VM option" — so we gate on the build host.
-        // For packaged builds the .app's Info.plist CFBundleName (set by
-        // jpackage from `packageName` below) handles the same job, but the
-        // flag does no harm there either.
+        // macOS Dock tooltip and menu-bar app name. Three knobs:
+        //
+        // * `-Xdock:name=VideoRoom` — parsed by the macOS-aware JVM launcher
+        //   (JBR, OpenJDK with Apple's launcher patches). Sets NSApp's name
+        //   before any Java code runs.
+        // * `-Dapple.awt.application.name=VideoRoom` — read by AWT's native
+        //   Cocoa init when LWCToolkit boots. Setting this as a JVM `-D`
+        //   arg (not via `System.setProperty` in main) is the only reliable
+        //   way to land it before AWT init: the Compose entrypoint touches
+        //   AWT classes synchronously, and once they load the name is
+        //   cached. We tried `System.setProperty` from main() — Dock still
+        //   read "java".
+        // * `-Dcom.apple.mrj.application.apple.menu.about.name=VideoRoom` —
+        //   the legacy MRJ property; some older OpenJDK builds still honour
+        //   only this one. Harmless if ignored.
+        //
+        // All three are macOS-only — `-X` options on a Linux/Windows JVM
+        // abort startup with "Unrecognized VM option". Gate on the host.
         if (org.gradle.internal.os.OperatingSystem.current().isMacOsX) {
-            jvmArgs += "-Xdock:name=VideoRoom"
+            jvmArgs += listOf(
+                "-Xdock:name=VideoRoom",
+                "-Dapple.awt.application.name=VideoRoom",
+                "-Dcom.apple.mrj.application.apple.menu.about.name=VideoRoom",
+            )
         }
         nativeDistributions {
             // Without this, packageDistributionForCurrentOS has nothing to do

@@ -80,16 +80,25 @@ val LocalPathFieldFocused = compositionLocalOf { mutableStateOf(false) }
 enum class ViewMode { GRID, LIST, DETAIL }
 
 fun main() {
-    // System properties that AWT reads at initialization MUST be set before
-    // `application { }` runs — the Compose entrypoint touches AWT/Swing
-    // classes synchronously, and once those load the values are cached.
-    // An earlier fix that set apple.awt.application.name *inside* the
-    // application{} lambda was too late: the Dock tooltip still read
-    // "java" because AWTAppKitThread had already read the (missing)
-    // property and fallen back to the executable name.
+    // apple.awt.application.name drives the macOS Dock tooltip and menu-bar
+    // app label. The reliable place to set it is as a JVM `-D` arg
+    // (configured in build.gradle.kts) — by the time main() runs the
+    // launcher has already initialised parts of AWT/Cocoa, and a runtime
+    // System.setProperty here was empirically too late even though it
+    // happens before application{}. The runtime fallback below is kept as
+    // belt-and-suspenders for the case where the JVM arg got stripped
+    // (some launchers, including the gradle daemon under certain
+    // configurations, mangle quoting on `-D` values).
     if (System.getProperty("apple.awt.application.name").isNullOrEmpty()) {
         System.setProperty("apple.awt.application.name", "VideoRoom")
     }
+    logger.info(
+        "Launching VideoRoom; apple.awt.application.name='{}', " +
+            "-Xdock visible via inputArguments={}",
+        System.getProperty("apple.awt.application.name"),
+        java.lang.management.ManagementFactory.getRuntimeMXBean()
+            .inputArguments.filter { it.startsWith("-Xdock") || it.contains("apple.awt") }
+    )
     // OSM tile server blocks Java's default `Java/<version>` UA — JXMapViewer
     // renders blank without this. Safe to set before networking starts.
     if (System.getProperty("http.agent").isNullOrEmpty()) {
