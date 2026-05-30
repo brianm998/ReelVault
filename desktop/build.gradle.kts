@@ -1,4 +1,6 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import java.io.File
+import java.nio.file.Files
 
 plugins {
     kotlin("jvm") version "1.9.22"
@@ -99,6 +101,59 @@ sourceSets {
     }
 }
 
+// macOS Dock tile says "java" when running an unbundled JVM, because the
+// Dock derives its tooltip from NSRunningApplication.localizedName which
+// reads the executable's path, *not* any property we can set after the
+// JVM has booted. The only knob that actually moves it is a real .app
+// bundle with CFBundleName.
+//
+// For dev runs (`./gradlew run`) we synthesise a throwaway .app inside
+// build/tmp/: the executable inside it is a symlink to the JDK's real
+// `java` binary, plus a minimal Info.plist. macOS treats it as a proper
+// bundle, so the Dock reads "VideoRoom" from CFBundleName. The JVM still
+// runs the same bytecode — only the launch path changes.
+//
+// Packaged builds go through jpackage as before and already produce a
+// VideoRoom.app with the correct Info.plist; this affects only `run`.
+val syncDevLaunchBundle by tasks.registering {
+    onlyIf { org.gradle.internal.os.OperatingSystem.current().isMacOsX }
+    val appDir = layout.buildDirectory.dir("tmp/dev-launch/VideoRoom.app")
+    val iconSrc = file("src/main/resources/icons/AppIcon.icns")
+    outputs.dir(appDir)
+    inputs.file(iconSrc)
+    doLast {
+        val app = appDir.get().asFile
+        val macosDir = File(app, "Contents/MacOS")
+        val resourcesDir = File(app, "Contents/Resources")
+        macosDir.mkdirs()
+        resourcesDir.mkdirs()
+        // Drop a copy of the icon next to the symlink so the Dock can
+        // pick it up via CFBundleIconFile while we're at it.
+        if (iconSrc.exists()) {
+            iconSrc.copyTo(File(resourcesDir, "AppIcon.icns"), overwrite = true)
+        }
+        File(app, "Contents/Info.plist").writeText(
+            """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0">
+            <dict>
+              <key>CFBundleExecutable</key><string>VideoRoom</string>
+              <key>CFBundleName</key><string>VideoRoom</string>
+              <key>CFBundleDisplayName</key><string>VideoRoom</string>
+              <key>CFBundleIdentifier</key><string>com.videoroom.dev</string>
+              <key>CFBundlePackageType</key><string>APPL</string>
+              <key>CFBundleIconFile</key><string>AppIcon</string>
+              <key>NSHighResolutionCapable</key><true/>
+            </dict>
+            </plist>
+            """.trimIndent()
+        )
+        // The symlink target depends on the toolchain, so resolve it
+        // late (in the `run` task's doFirst) — see below.
+    }
+}
+
 compose.desktop {
     application {
         mainClass = "com.videoroom.AppKt"
@@ -187,5 +242,31 @@ compose.desktop {
                 appResourcesRootDir.set(releaseBin)
             }
         }
+    }
+}
+
+// Wire the dev-launch bundle into Compose's `run` task. We resolve the
+// real `java` binary from the configured Java toolchain, symlink it as
+// VideoRoom.app/Contents/MacOS/VideoRoom, and point JavaExec at that
+// symlink. macOS sees the parent .app, reads CFBundleName from
+// Info.plist, and the Dock tooltip displays "VideoRoom" instead of
+// "java". Same JVM, same args — only the launch path changes.
+afterEvaluate {
+    if (!org.gradle.internal.os.OperatingSystem.current().isMacOsX) return@afterEvaluate
+    val runTask = tasks.findByName("run") as? JavaExec ?: return@afterEvaluate
+    runTask.dependsOn(syncDevLaunchBundle)
+    runTask.doFirst {
+        val realJava = runTask.javaLauncher.get().executablePath.asFile
+        val app = layout.buildDirectory
+            .dir("tmp/dev-launch/VideoRoom.app").get().asFile
+        val exe = File(app, "Contents/MacOS/VideoRoom")
+        // Refresh the symlink — toolchain path can change between gradle
+        // invocations (different JDK, version bump, etc.), so re-resolve
+        // every time rather than caching.
+        if (exe.exists() || Files.isSymbolicLink(exe.toPath())) {
+            exe.delete()
+        }
+        Files.createSymbolicLink(exe.toPath(), realJava.toPath())
+        runTask.executable = exe.absolutePath
     }
 }
