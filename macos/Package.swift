@@ -25,7 +25,7 @@ let package = Package(
                 .product(name: "GRPCNIOTransportHTTP2", package: "grpc-swift-nio-transport"),
             ],
             path: "VideoRoom",
-            exclude: ["Info.plist"],
+            exclude: ["Info.plist", "Resources/AppIcon.icns"],
             swiftSettings: [
                 .unsafeFlags(["-suppress-warnings"], .when(configuration: .release))
             ]

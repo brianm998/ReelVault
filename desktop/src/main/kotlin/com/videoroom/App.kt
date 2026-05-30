@@ -19,6 +19,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -148,7 +149,7 @@ fun main() = application {
         onCloseRequest = ::exitApplication,
         state = windowState,
         title = windowTitle,
-        icon = null, // TODO: Add app icon
+        icon = painterResource("icons/AppIcon.png"),
         // onPreviewKeyEvent fires BEFORE focused widgets consume the event,
         // so it works even when the search TextField is focused.
         onPreviewKeyEvent = { event ->

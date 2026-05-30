@@ -129,6 +129,10 @@ compose.desktop {
             vendor = "VideoRoom"
             copyright = "2024 VideoRoom Contributors"
 
+            // App-icon files for jpackage. Compose Desktop expects one
+            // platform-specific file per target OS — picked up at packaging
+            // time and embedded in the .app / installer / .desktop entry.
+            val iconsDir = project.layout.projectDirectory.dir("src/main/resources/icons")
             macOS {
                 // jpackage on macOS requires MAJOR > 0 in CFBundleVersion /
                 // CFBundleShortVersionString — both when building the .app
@@ -139,7 +143,13 @@ compose.desktop {
                 packageVersion = "1.0.0"
                 packageBuildVersion = "1.0.0"
 
-
+                iconFile.set(iconsDir.file("AppIcon.icns").asFile)
+            }
+            linux {
+                iconFile.set(iconsDir.file("AppIcon.png").asFile)
+            }
+            windows {
+                iconFile.set(iconsDir.file("AppIcon.ico").asFile)
             }
 
             // When release-desktop.sh places the compiled videoroom-core binary in
