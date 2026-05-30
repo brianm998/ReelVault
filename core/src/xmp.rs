@@ -356,6 +356,7 @@ pub(crate) fn parse_rational(s: &str) -> Option<f64> {
 /// EXIF `DateTimeOriginal` can arrive in either of two formats:
 ///   - Classic EXIF colon form: `YYYY:MM:DD HH:MM:SS`
 ///   - ISO 8601: `YYYY-MM-DDTHH:MM:SS[.fff][Z|+HH:MM]`
+///
 /// Returns Unix milliseconds (UTC). The colon form has no tz info;
 /// EXIF tradition is to treat the wall clock as local time, but
 /// since we have no way to recover the offset we assume UTC. This
