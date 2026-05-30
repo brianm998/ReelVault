@@ -92,6 +92,12 @@ fun main() {
     if (System.getProperty("apple.awt.application.name").isNullOrEmpty()) {
         System.setProperty("apple.awt.application.name", "VideoRoom")
     }
+    // Set the Dock-tooltip name via NSProcessInfo. The JVM flags
+    // (-Xdock:name, -Dapple.awt.application.name) only update the
+    // menu-bar label — the tooltip on the Dock tile reads
+    // NSProcessInfo.processName, which defaults to "java" for any
+    // raw `java` process. See MacDockName.kt for the full why.
+    com.videoroom.util.MacDockName.set("VideoRoom")
     logger.info(
         "Launching VideoRoom; apple.awt.application.name='{}', " +
             "-Xdock visible via inputArguments={}",
