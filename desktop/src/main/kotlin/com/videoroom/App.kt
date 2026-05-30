@@ -100,6 +100,14 @@ fun main() = application {
     // Must be set before the first Window is created.
     System.setProperty("compose.interop.blending", "true")
 
+    // macOS reads this when AWT initializes to label the menu bar entry
+    // next to the Apple menu — pairs with `-Xdock:name=VideoRoom` in
+    // build.gradle.kts (which covers the Dock tooltip). Must be set
+    // before any AWT/Swing class loads, so it lives at the top of main().
+    if (System.getProperty("apple.awt.application.name").isNullOrEmpty()) {
+        System.setProperty("apple.awt.application.name", "VideoRoom")
+    }
+
     val windowState = rememberWindowState(
         size = DpSize(width = 1400.dp, height = 900.dp)
     )

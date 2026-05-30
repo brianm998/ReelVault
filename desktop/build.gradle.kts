@@ -116,6 +116,17 @@ compose.desktop {
             "--add-opens=java.desktop/sun.lwawt=ALL-UNNAMED",
             "--add-opens=java.desktop/sun.lwawt.macosx=ALL-UNNAMED",
         )
+        // macOS's Dock tooltip and menu-bar app name come from the JVM's
+        // `-Xdock:name` flag for raw `java` processes (i.e. `./gradlew run`).
+        // Without this, hovering the Dock icon reads "java". The flag is
+        // macOS-only — passing it to a Linux/Windows JVM aborts startup
+        // with "Unrecognized VM option" — so we gate on the build host.
+        // For packaged builds the .app's Info.plist CFBundleName (set by
+        // jpackage from `packageName` below) handles the same job, but the
+        // flag does no harm there either.
+        if (org.gradle.internal.os.OperatingSystem.current().isMacOsX) {
+            jvmArgs += "-Xdock:name=VideoRoom"
+        }
         nativeDistributions {
             // Without this, packageDistributionForCurrentOS has nothing to do
             // and silently produces no artifacts (CI fails uploading an empty dir).
