@@ -126,6 +126,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.regular)
         // Bring the window to the front and steal focus from the terminal.
         NSApp.activate(ignoringOtherApps: true)
+
+        // Stamp the Dock tile with our icon. For a packaged .app this is
+        // redundant — macOS reads CFBundleIconFile from Info.plist before
+        // the process even starts — but `swift run` and a raw .build
+        // binary have no bundle metadata, so the Dock shows the generic
+        // green "exec" tile until we override it here.
+        if let url = Bundle.module.url(forResource: "AppIcon", withExtension: "icns"),
+           let icon = NSImage(contentsOf: url) {
+            NSApp.applicationIconImage = icon
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

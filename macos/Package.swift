@@ -25,7 +25,16 @@ let package = Package(
                 .product(name: "GRPCNIOTransportHTTP2", package: "grpc-swift-nio-transport"),
             ],
             path: "VideoRoom",
-            exclude: ["Info.plist", "Resources/AppIcon.icns"],
+            exclude: ["Info.plist"],
+            resources: [
+                // Bundled so AppDelegate can load it at startup and set
+                // NSApp.applicationIconImage — required for `swift run`
+                // (raw binary), where macOS otherwise shows the generic
+                // "exec" Dock icon. The packaged .app reads the same file
+                // from Contents/Resources via CFBundleIconFile=AppIcon;
+                // release-macos.sh copies it there directly.
+                .process("Resources/AppIcon.icns"),
+            ],
             swiftSettings: [
                 .unsafeFlags(["-suppress-warnings"], .when(configuration: .release))
             ]

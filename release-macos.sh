@@ -173,6 +173,28 @@ for ICON in \
     fi
 done
 
+# Copy SPM's per-target resource bundle (VideoRoom_VideoRoom.bundle).
+# Swift's synthesized Bundle.module looks for it next to the executable
+# inside Contents/Resources of the .app — without it, any code that
+# touches Bundle.module fatalErrors at first access (AppDelegate
+# reads AppIcon.icns from there to stamp the Dock tile during dev runs).
+RES_BUNDLE_NAME="VideoRoom_VideoRoom.bundle"
+RES_BUNDLE_SRC=""
+for candidate in \
+    "${MACOS_DIR}/.build/arm64-apple-macosx/release/${RES_BUNDLE_NAME}" \
+    "${MACOS_DIR}/.build/release/${RES_BUNDLE_NAME}"; do
+    if [[ -d "$candidate" ]]; then
+        RES_BUNDLE_SRC="$candidate"
+        break
+    fi
+done
+if [[ -n "$RES_BUNDLE_SRC" ]]; then
+    cp -R "$RES_BUNDLE_SRC" "${APP_BUNDLE}/Contents/Resources/${RES_BUNDLE_NAME}"
+    echo "  Embedded SPM resources: Contents/Resources/${RES_BUNDLE_NAME}"
+else
+    echo "WARNING: ${RES_BUNDLE_NAME} not found — Bundle.module lookups will fail." >&2
+fi
+
 # Info.plist
 BUNDLE_ID="com.videoroom.app"
 cat > "${APP_BUNDLE}/Contents/Info.plist" << EOF
