@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 VideoRoom Contributors
+// Copyright (C) 2026 ReelVault Contributors
 
 use crate::db::Database;
-use crate::error::{Result, VideoRoomError};
+use crate::error::{Result, ReelVaultError};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -119,7 +119,7 @@ impl Config {
             .max(0);
 
         std::fs::create_dir_all(&thumbnail_cache_path)
-            .map_err(|e| VideoRoomError::ConfigError(format!("Failed to create cache directory: {}", e)))?;
+            .map_err(|e| ReelVaultError::ConfigError(format!("Failed to create cache directory: {}", e)))?;
 
         Ok(Config {
             proxy_threshold_scale: proxy_threshold,
@@ -159,7 +159,7 @@ impl Config {
         ) {
             Ok(value) => Ok(value),
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(default.to_string()),
-            Err(e) => Err(VideoRoomError::DatabaseError(e.to_string())),
+            Err(e) => Err(ReelVaultError::DatabaseError(e.to_string())),
         }
     }
 
@@ -169,7 +169,7 @@ impl Config {
              ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP",
             rusqlite::params![key, value, value],
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(())
     }
 
@@ -195,22 +195,22 @@ impl Config {
     fn default_cache_path() -> Result<PathBuf> {
         let cache_dir = if cfg!(target_os = "macos") {
             dirs::home_dir()
-                .ok_or_else(|| VideoRoomError::ConfigError("Could not find home directory".to_string()))?
+                .ok_or_else(|| ReelVaultError::ConfigError("Could not find home directory".to_string()))?
                 .join("Library")
                 .join("Caches")
-                .join("VideoRoom")
+                .join("ReelVault")
         } else if cfg!(target_os = "windows") {
             dirs::cache_dir()
-                .ok_or_else(|| VideoRoomError::ConfigError("Could not find cache directory".to_string()))?
-                .join("VideoRoom")
+                .ok_or_else(|| ReelVaultError::ConfigError("Could not find cache directory".to_string()))?
+                .join("ReelVault")
         } else {
             dirs::cache_dir()
-                .ok_or_else(|| VideoRoomError::ConfigError("Could not find cache directory".to_string()))?
-                .join("videoroom")
+                .ok_or_else(|| ReelVaultError::ConfigError("Could not find cache directory".to_string()))?
+                .join("reelvault")
         };
 
         std::fs::create_dir_all(&cache_dir)
-            .map_err(|e| VideoRoomError::ConfigError(format!("Failed to create cache directory: {}", e)))?;
+            .map_err(|e| ReelVaultError::ConfigError(format!("Failed to create cache directory: {}", e)))?;
 
         Ok(cache_dir)
     }

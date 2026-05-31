@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 VideoRoom Contributors
+// Copyright (C) 2026 ReelVault Contributors
 
 use anyhow::Result;
 use clap::Parser;
@@ -10,17 +10,17 @@ use tokio::net::TcpListener;
 use tokio_stream::wrappers::TcpListenerStream;
 use tonic::transport::Server;
 
-use videoroom_core::config::Config;
-use videoroom_core::db::Database;
-use videoroom_core::service::VideoRoomService;
+use reelvault_core::config::Config;
+use reelvault_core::db::Database;
+use reelvault_core::service::ReelVaultService;
 
-/// VideoRoom backend daemon.
+/// ReelVault backend daemon.
 ///
 /// Serves a gRPC API over loopback. By default it binds port 50051 and opens
 /// the platform-default catalog. Use `--system-daemon` to run as a
 /// launchd/systemd/Windows Service that shares one catalog across all users.
 #[derive(Parser, Debug)]
-#[command(name = "videoroom-core", about, version)]
+#[command(name = "reelvault-core", about, version)]
 struct Args {
     /// SQLite catalog file to open at startup. Use `--no-catalog` to start
     /// without one — the client can call `OpenCatalog` later. If neither is
@@ -35,7 +35,7 @@ struct Args {
     no_catalog: bool,
 
     /// gRPC port to bind. `0` means "let the OS pick" — the actual port is
-    /// printed to stdout as `VIDEOROOM_LISTENING_ON=127.0.0.1:N` so a parent
+    /// printed to stdout as `REELVAULT_LISTENING_ON=127.0.0.1:N` so a parent
     /// process can capture it.
     #[arg(long, default_value_t = 50051u16)]
     port: u16,
@@ -55,17 +55,17 @@ struct Args {
     /// defaults to the platform log directory. Unused in interactive mode
     /// (logs go to stderr).
     ///
-    /// macOS default:   /Library/Logs/VideoRoom/videoroom-core.log
-    /// Linux default:   /var/log/videoroom/videoroom-core.log
-    /// Windows default: C:\ProgramData\VideoRoom\logs\videoroom-core.log
+    /// macOS default:   /Library/Logs/ReelVault/reelvault-core.log
+    /// Linux default:   /var/log/reelvault/reelvault-core.log
+    /// Windows default: C:\ProgramData\ReelVault\logs\reelvault-core.log
     #[arg(long, value_name = "PATH")]
     log_file: Option<PathBuf>,
 
     /// PID file written in `--system-daemon` mode so the service manager can
     /// track the process.
     ///
-    /// macOS/Linux default: /var/run/videoroom-core.pid
-    /// Windows default:     C:\ProgramData\VideoRoom\videoroom-core.pid
+    /// macOS/Linux default: /var/run/reelvault-core.pid
+    /// Windows default:     C:\ProgramData\ReelVault\reelvault-core.pid
     #[arg(long, value_name = "PATH")]
     pid_file: Option<PathBuf>,
 }
@@ -81,14 +81,14 @@ async fn main() -> Result<()> {
         let path = args
             .log_file
             .clone()
-            .unwrap_or_else(|| get_log_dir().join("videoroom-core.log"));
+            .unwrap_or_else(|| get_log_dir().join("reelvault-core.log"));
         Some(path)
     } else {
         None
     };
     let _log_guard = init_logging(log_path.as_deref());
 
-    tracing::info!("VideoRoom Core v{}", env!("CARGO_PKG_VERSION"));
+    tracing::info!("ReelVault Core v{}", env!("CARGO_PKG_VERSION"));
 
     // Write a PID file in system-daemon mode.
     let pid_path: Option<PathBuf> = if args.system_daemon {
@@ -131,7 +131,7 @@ async fn main() -> Result<()> {
     let config = Arc::new(Config::load(db.as_ref()).await?);
     tracing::info!("Cache: {}", config.thumbnail_cache_path.display());
 
-    videoroom_core::concurrency::set_ffmpeg_concurrency_limit(
+    reelvault_core::concurrency::set_ffmpeg_concurrency_limit(
         config.max_concurrent_ffmpeg.max(0) as usize,
     );
     tracing::info!(
@@ -143,7 +143,7 @@ async fn main() -> Result<()> {
         }
     );
 
-    let service = VideoRoomService::new(db, config);
+    let service = ReelVaultService::new(db, config);
     let server = service.into_server();
 
     let host: IpAddr = args
@@ -167,7 +167,7 @@ async fn main() -> Result<()> {
     // This sentinel is parsed by desktop clients that spawn the daemon —
     // keep the prefix stable. It is also useful in service logs for confirming
     // the daemon came up correctly.
-    println!("VIDEOROOM_LISTENING_ON=127.0.0.1:{}", local.port());
+    println!("REELVAULT_LISTENING_ON=127.0.0.1:{}", local.port());
     tracing::info!("gRPC server listening on {}", local);
     if args.system_daemon {
         tracing::info!("Running as system daemon — shared catalog, port {}", local.port());
@@ -240,22 +240,22 @@ fn init_logging(log_file: Option<&Path>) -> Option<tracing_appender::non_blockin
 /// Platform log directory for the system daemon.
 fn get_log_dir() -> PathBuf {
     if cfg!(target_os = "macos") {
-        PathBuf::from("/Library/Logs/VideoRoom")
+        PathBuf::from("/Library/Logs/ReelVault")
     } else if cfg!(target_os = "windows") {
-        PathBuf::from(r"C:\ProgramData\VideoRoom\logs")
+        PathBuf::from(r"C:\ProgramData\ReelVault\logs")
     } else {
-        PathBuf::from("/var/log/videoroom")
+        PathBuf::from("/var/log/reelvault")
     }
 }
 
 /// System-wide catalog path used when `--system-daemon` is set.
 fn get_system_catalog_path() -> Result<PathBuf> {
     let dir = if cfg!(target_os = "macos") {
-        PathBuf::from("/Library/Application Support/VideoRoom")
+        PathBuf::from("/Library/Application Support/ReelVault")
     } else if cfg!(target_os = "windows") {
-        PathBuf::from(r"C:\ProgramData\VideoRoom")
+        PathBuf::from(r"C:\ProgramData\ReelVault")
     } else {
-        PathBuf::from("/var/lib/videoroom")
+        PathBuf::from("/var/lib/reelvault")
     };
     std::fs::create_dir_all(&dir)?;
     Ok(dir.join("catalog.db"))
@@ -268,15 +268,15 @@ fn get_default_db_path() -> Result<PathBuf> {
             .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?
             .join("Library")
             .join("Application Support")
-            .join("VideoRoom")
+            .join("ReelVault")
     } else if cfg!(target_os = "windows") {
         dirs::data_dir()
             .ok_or_else(|| anyhow::anyhow!("Could not determine data directory"))?
-            .join("VideoRoom")
+            .join("ReelVault")
     } else {
         dirs::data_local_dir()
             .ok_or_else(|| anyhow::anyhow!("Could not determine data directory"))?
-            .join("videoroom")
+            .join("reelvault")
     };
     std::fs::create_dir_all(&data_dir)?;
     Ok(data_dir.join("catalog.db"))
@@ -285,9 +285,9 @@ fn get_default_db_path() -> Result<PathBuf> {
 /// Default PID file path for `--system-daemon` mode.
 fn get_pid_file_path() -> PathBuf {
     if cfg!(target_os = "windows") {
-        PathBuf::from(r"C:\ProgramData\VideoRoom\videoroom-core.pid")
+        PathBuf::from(r"C:\ProgramData\ReelVault\reelvault-core.pid")
     } else {
-        PathBuf::from("/var/run/videoroom-core.pid")
+        PathBuf::from("/var/run/reelvault-core.pid")
     }
 }
 

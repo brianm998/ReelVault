@@ -1,14 +1,14 @@
-# VideoRoom
+# ReelVault
 
 A cross-platform video cataloging application inspired by Lightroom — fast,
 native browsing of large video libraries.
 
-**VideoRoom is for organizing, discovering, and managing videos. It is NOT a
+**ReelVault is for organizing, discovering, and managing videos. It is NOT a
 video editor.**
 
 ## Overview
 
-VideoRoom helps you:
+ReelVault helps you:
 
 - **Browse** thousands of videos in a responsive, virtualized grid with
   adjustable thumbnail size.
@@ -32,7 +32,7 @@ VideoRoom helps you:
 ```
 Frontend Clients (Kotlin Compose / SwiftUI)
         ↓ gRPC over loopback
-Rust Backend Daemon (videoroom-core)
+Rust Backend Daemon (reelvault-core)
         ↓
 SQLite Catalog + FFmpeg/FFprobe + Filesystem
 ```
@@ -78,7 +78,7 @@ NSWorkspace-driven editor launches.
 - [x] Library scanning with optional recursion and auto-grouping of variants.
 - [x] CLI flags for `--db-path`, `--no-catalog`, `--port` (with
       OS-assigned-port fallback), and a parseable
-      `VIDEOROOM_LISTENING_ON=…` stdout line for client launchers.
+      `REELVAULT_LISTENING_ON=…` stdout line for client launchers.
 
 **Both clients**
 - [x] Virtualized grid view with adaptive column count and a thumbnail-size
@@ -117,7 +117,7 @@ NSWorkspace-driven editor launches.
 - [ ] GitHub-based auto-update.
 - [ ] CI/CD release pipeline producing signed installers per platform.
 - [ ] Bundling the daemon binary inside the client app bundles (today the
-      launcher finds it via `VIDEOROOM_CORE_BIN` or a cargo dev tree).
+      launcher finds it via `REELVAULT_CORE_BIN` or a cargo dev tree).
 
 ## Getting started
 
@@ -138,22 +138,22 @@ cd core
 cargo build --release
 ```
 
-The binary lands at `core/target/release/videoroom-core`. Run it directly if
+The binary lands at `core/target/release/reelvault-core`. Run it directly if
 you want to drive it yourself, or just let one of the clients spawn it for
 you on first launch:
 
 ```bash
 # Default — use the platform-default catalog on the default port.
-./target/release/videoroom-core
+./target/release/reelvault-core
 
 # Start with no catalog (clients use this mode); print the bound port.
-./target/release/videoroom-core --no-catalog --port 0
+./target/release/reelvault-core --no-catalog --port 0
 
 # Open a specific catalog at startup.
-./target/release/videoroom-core --db-path /path/to/library.db
+./target/release/reelvault-core --db-path /path/to/library.db
 ```
 
-The daemon prints a stable `VIDEOROOM_LISTENING_ON=127.0.0.1:N` line on
+The daemon prints a stable `REELVAULT_LISTENING_ON=127.0.0.1:N` line on
 stdout that the clients parse to discover the assigned port.
 
 ### Run the Kotlin Compose desktop client
@@ -166,11 +166,11 @@ cd desktop
 On first launch the client probes `127.0.0.1:50051` and — if nothing's
 listening — spawns the bundled daemon. Build location lookup order:
 
-1. `$VIDEOROOM_CORE_BIN` (an absolute path to the daemon executable)
+1. `$REELVAULT_CORE_BIN` (an absolute path to the daemon executable)
 2. A binary next to the application jar
-3. `core/target/release/videoroom-core` or `core/target/debug/videoroom-core`
+3. `core/target/release/reelvault-core` or `core/target/debug/reelvault-core`
    in the dev tree
-4. `videoroom-core` on `PATH`
+4. `reelvault-core` on `PATH`
 
 For development, just `cargo build` inside `core/` and the client will pick
 the debug binary up.
@@ -183,7 +183,7 @@ swift run
 ```
 
 Same auto-spawn flow, same binary-lookup order (with the addition of an
-in-bundle `Resources/videoroom-core` path that's used by signed app
+in-bundle `Resources/reelvault-core` path that's used by signed app
 bundles). Use `⌘O` to open a catalog and `⇧⌘W` to close it; the recent list
 lives under `File → Open Recent`.
 
@@ -205,7 +205,7 @@ headers to any new source files (see License below).
 
 ## License
 
-VideoRoom is free software, licensed under the **GNU General Public License,
+ReelVault is free software, licensed under the **GNU General Public License,
 version 3 or (at your option) any later version**. The full license text
 lives in [`LICENSE`](LICENSE); a short copyright notice is in
 [`COPYRIGHT`](COPYRIGHT).
@@ -216,10 +216,10 @@ license programmatically:
 
 ```
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 VideoRoom Contributors
+// Copyright (C) 2026 ReelVault Contributors
 ```
 
-If you distribute a modified version of VideoRoom — or any program that
+If you distribute a modified version of ReelVault — or any program that
 links against the Rust core as a library — the GPL requires you to make
 your source available under the same terms. See the LICENSE file for the
 full set of obligations.

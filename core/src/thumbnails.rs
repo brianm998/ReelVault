@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 VideoRoom Contributors
+// Copyright (C) 2026 ReelVault Contributors
 
 use crate::concurrency::acquire_ffmpeg_permit;
 use crate::db::Database;
-use crate::error::{Result, VideoRoomError};
+use crate::error::{Result, ReelVaultError};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -28,7 +28,7 @@ impl ThumbnailGenerator {
         duration_secs: f64,
     ) -> Result<()> {
         if !Self::ffmpeg_available() {
-            return Err(VideoRoomError::FfmpegError(
+            return Err(ReelVaultError::FfmpegError(
                 "ffmpeg not found in PATH. Please install FFmpeg.".to_string(),
             ));
         }
@@ -97,11 +97,11 @@ impl ThumbnailGenerator {
                 temp_path.to_str().unwrap_or(""),
             ])
             .output()
-            .map_err(|e| VideoRoomError::FfmpegError(format!("Failed to run ffmpeg: {}", e)))?;
+            .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to run ffmpeg: {}", e)))?;
 
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
-            return Err(VideoRoomError::ThumbnailGenerationFailed(error_msg.to_string()));
+            return Err(ReelVaultError::ThumbnailGenerationFailed(error_msg.to_string()));
         }
 
         Ok(temp_path)
@@ -129,11 +129,11 @@ impl ThumbnailGenerator {
                 output_path.to_str().unwrap_or(""),
             ])
             .output()
-            .map_err(|e| VideoRoomError::FfmpegError(format!("Failed to resize thumbnail: {}", e)))?;
+            .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to resize thumbnail: {}", e)))?;
 
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
-            return Err(VideoRoomError::ThumbnailGenerationFailed(error_msg.to_string()));
+            return Err(ReelVaultError::ThumbnailGenerationFailed(error_msg.to_string()));
         }
 
         Ok(())
@@ -156,7 +156,7 @@ impl ThumbnailGenerator {
 
         if path.exists() {
             let data = std::fs::read(&path)
-                .map_err(VideoRoomError::IoError)?;
+                .map_err(ReelVaultError::IoError)?;
             Ok(Some(data))
         } else {
             Ok(None)
@@ -188,7 +188,7 @@ impl ThumbnailGenerator {
         duration_secs: f64,
     ) -> Result<()> {
         if !Self::ffmpeg_available() {
-            return Err(VideoRoomError::FfmpegError(
+            return Err(ReelVaultError::FfmpegError(
                 "ffmpeg not found in PATH".to_string(),
             ));
         }
@@ -450,7 +450,7 @@ impl ProxyGenerator {
         output_path: &Path,
     ) -> Result<()> {
         if !Self::ffmpeg_available() {
-            return Err(VideoRoomError::FfmpegError(
+            return Err(ReelVaultError::FfmpegError(
                 "ffmpeg not found in PATH. Please install FFmpeg.".to_string(),
             ));
         }
@@ -469,24 +469,24 @@ impl ProxyGenerator {
                 video_path.to_str().unwrap_or(""),
             ])
             .output()
-            .map_err(|e| VideoRoomError::FfmpegError(format!("Failed to get video dimensions: {}", e)))?;
+            .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to get video dimensions: {}", e)))?;
 
         if !output.status.success() {
-            return Err(VideoRoomError::FfmpegError("Failed to probe video".to_string()));
+            return Err(ReelVaultError::FfmpegError("Failed to probe video".to_string()));
         }
 
         let dims = String::from_utf8(output.stdout)
-            .map_err(|e| VideoRoomError::FfmpegError(format!("Invalid UTF-8: {}", e)))?;
+            .map_err(|e| ReelVaultError::FfmpegError(format!("Invalid UTF-8: {}", e)))?;
 
         let parts: Vec<&str> = dims.trim().split(',').collect();
         if parts.len() < 2 {
-            return Err(VideoRoomError::FfmpegError("Could not parse video dimensions".to_string()));
+            return Err(ReelVaultError::FfmpegError("Could not parse video dimensions".to_string()));
         }
 
         let width: f64 = parts[0].parse()
-            .map_err(|_| VideoRoomError::FfmpegError("Invalid width".to_string()))?;
+            .map_err(|_| ReelVaultError::FfmpegError("Invalid width".to_string()))?;
         let height: f64 = parts[1].parse()
-            .map_err(|_| VideoRoomError::FfmpegError("Invalid height".to_string()))?;
+            .map_err(|_| ReelVaultError::FfmpegError("Invalid height".to_string()))?;
 
         let new_width = ((width * scale) as i32 / 2) * 2; // Round to even
         let new_height = ((height * scale) as i32 / 2) * 2;
@@ -514,11 +514,11 @@ impl ProxyGenerator {
                 output_path.to_str().unwrap_or(""),
             ])
             .output()
-            .map_err(|e| VideoRoomError::FfmpegError(format!("Failed to generate proxy: {}", e)))?;
+            .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to generate proxy: {}", e)))?;
 
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
-            return Err(VideoRoomError::FfmpegError(error_msg.to_string()));
+            return Err(ReelVaultError::FfmpegError(error_msg.to_string()));
         }
 
         Ok(())

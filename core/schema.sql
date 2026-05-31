@@ -1,4 +1,4 @@
--- VideoRoom Database Schema
+-- ReelVault Database Schema
 -- SQLite with WAL mode for safe concurrent access
 
 -- Library locations

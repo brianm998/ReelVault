@@ -1,0 +1,50 @@
+# ReelVault Core — systemd service unit
+#
+# Install:
+#   sudo cp reelvault-core.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now reelvault-core
+#
+# Uninstall:
+#   sudo systemctl disable --now reelvault-core
+#   sudo rm /etc/systemd/system/reelvault-core.service
+#   sudo systemctl daemon-reload
+#
+# Logs (pick one):
+#   journalctl -u reelvault-core -f
+#   tail -f /var/log/reelvault/reelvault-core.log
+
+[Unit]
+Description=ReelVault Core Daemon
+Documentation=https://github.com/reelvault/reelvault
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/reelvault-core --system-daemon --port 50051
+
+# Restart on failure with a short back-off.
+Restart=on-failure
+RestartSec=5s
+
+# Run as a dedicated system user. Create it with:
+#   sudo useradd --system --no-create-home --shell /usr/sbin/nologin reelvault
+User=reelvault
+Group=reelvault
+
+# systemd creates these directories and sets ownership automatically.
+StateDirectory=reelvault       # /var/lib/reelvault  — catalog
+LogsDirectory=reelvault        # /var/log/reelvault  — log file
+RuntimeDirectory=reelvault     # /run/reelvault      — PID file
+
+# Override the default PID file location to the RuntimeDirectory.
+ExecStartPost=/bin/sh -c 'echo $MAINPID > /run/reelvault/reelvault-core.pid'
+
+# Let journald capture structured output as well.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=reelvault-core
+
+[Install]
+WantedBy=multi-user.target

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 VideoRoom Contributors
+// Copyright (C) 2026 ReelVault Contributors
 
 use crate::config::Config;
 use crate::db::Database;
-use crate::error::{Result, VideoRoomError};
+use crate::error::{Result, ReelVaultError};
 use crate::indexing::IndexingEngine;
 use crate::path_templates::expand_path_templates;
 use crate::search::SearchEngine;
@@ -17,17 +17,17 @@ use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
 
 // Import generated protobuf code
-pub mod videoroom {
+pub mod reelvault {
     #![allow(clippy::doc_lazy_continuation)]
-    tonic::include_proto!("videoroom");
+    tonic::include_proto!("reelvault");
 }
 
-use videoroom::video_room_server::{VideoRoom as VideoRoomTrait, VideoRoomServer};
-use videoroom::*;
+use reelvault::reel_vault_server::{ReelVault as ReelVaultTrait, ReelVaultServer};
+use reelvault::*;
 
-pub use videoroom::video_room_server;
+pub use reelvault::reel_vault_server;
 
-pub struct VideoRoomService {
+pub struct ReelVaultService {
     db: Arc<Database>,
     config: Arc<Config>,
     /// Unix millis at which the currently-open catalog was opened. Reset by
@@ -66,7 +66,7 @@ pub struct WatchSettingsCurrent {
     pub poll_interval_ms: i64,
 }
 
-impl VideoRoomService {
+impl ReelVaultService {
     pub fn new(db: Arc<Database>, config: Arc<Config>) -> Self {
         // If `db` was constructed with an already-open catalog, treat
         // "now" as its open timestamp.
@@ -83,7 +83,7 @@ impl VideoRoomService {
             poll_interval_ms: config.watch_poll_interval_ms,
         };
 
-        let service = VideoRoomService {
+        let service = ReelVaultService {
             db,
             config: Arc::clone(&config),
             opened_at_ms: Arc::new(std::sync::RwLock::new(initial_opened)),
@@ -126,8 +126,8 @@ impl VideoRoomService {
             .clone()
     }
 
-    pub fn into_server(self) -> VideoRoomServer<Self> {
-        VideoRoomServer::new(self)
+    pub fn into_server(self) -> ReelVaultServer<Self> {
+        ReelVaultServer::new(self)
     }
 
     /// Load the user's custom camera-name overrides from the catalog
@@ -206,7 +206,7 @@ impl VideoRoomService {
         entries: &[crate::config::CustomCameraName],
     ) -> Result<()> {
         let json = serde_json::to_string(entries).map_err(|e| {
-            VideoRoomError::DatabaseError(format!("custom_camera_names serialize failed: {e}"))
+            ReelVaultError::DatabaseError(format!("custom_camera_names serialize failed: {e}"))
         })?;
         let conn = self.db.get_connection()?;
         conn.execute(
@@ -214,7 +214,7 @@ impl VideoRoomService {
              ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP",
             rusqlite::params!["custom_camera_names", json, json],
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(())
     }
 
@@ -222,7 +222,7 @@ impl VideoRoomService {
         let db = self.db.as_ref();
         let video = db
             .get_video(video_id)
-            .and_then(|v| v.ok_or_else(|| VideoRoomError::VideoNotFound(video_id.to_string())))?;
+            .and_then(|v| v.ok_or_else(|| ReelVaultError::VideoNotFound(video_id.to_string())))?;
 
         let conn = db.get_connection()?;
         let metadata_row = conn
@@ -487,7 +487,7 @@ impl VideoRoomService {
 }
 
 #[tonic::async_trait]
-impl VideoRoomTrait for VideoRoomService {
+impl ReelVaultTrait for ReelVaultService {
     type ScanLibraryStream = Pin<Box<dyn Stream<Item = std::result::Result<ScanProgress, Status>> + Send>>;
     type GenerateProxyStream = Pin<Box<dyn Stream<Item = std::result::Result<ProxyGenerationProgress, Status>> + Send>>;
     type GetThumbnailStream = Pin<Box<dyn Stream<Item = std::result::Result<ThumbnailChunk, Status>> + Send>>;
@@ -1103,12 +1103,12 @@ impl VideoRoomTrait for VideoRoomService {
     async fn delete_tag(
         &self,
         request: Request<DeleteTagRequest>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
 
         self.db.delete_tag(&req.tag_id).map_err(Status::from)?;
 
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message: "Tag deleted".to_string(),
             error: String::new(),
@@ -1137,14 +1137,14 @@ impl VideoRoomTrait for VideoRoomService {
     async fn tag_videos(
         &self,
         request: Request<TagVideosRequest>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
 
         for video_id in &req.video_ids {
             self.db.tag_video(video_id, &req.tag_id).map_err(Status::from)?;
         }
 
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message: format!("Tagged {} videos", req.video_ids.len()),
             error: String::new(),
@@ -1154,14 +1154,14 @@ impl VideoRoomTrait for VideoRoomService {
     async fn untag_videos(
         &self,
         request: Request<UntagVideosRequest>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
 
         for video_id in &req.video_ids {
             self.db.untag_video(video_id, &req.tag_id).map_err(Status::from)?;
         }
 
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message: format!("Untagged {} videos", req.video_ids.len()),
             error: String::new(),
@@ -1195,11 +1195,11 @@ impl VideoRoomTrait for VideoRoomService {
     async fn delete_collection(
         &self,
         request: Request<DeleteCollectionRequest>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
         self.db.delete_collection(&req.collection_id).map_err(Status::from)?;
 
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message: "Collection deleted".to_string(),
             error: String::new(),
@@ -1231,14 +1231,14 @@ impl VideoRoomTrait for VideoRoomService {
     async fn add_to_collection(
         &self,
         request: Request<AddToCollectionRequest>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
 
         for video_id in &req.video_ids {
             self.db.add_to_collection(&req.collection_id, video_id).map_err(Status::from)?;
         }
 
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message: format!("Added {} videos to collection", req.video_ids.len()),
             error: String::new(),
@@ -1248,14 +1248,14 @@ impl VideoRoomTrait for VideoRoomService {
     async fn remove_from_collection(
         &self,
         request: Request<RemoveFromCollectionRequest>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
 
         for video_id in &req.video_ids {
             self.db.remove_from_collection(&req.collection_id, video_id).map_err(Status::from)?;
         }
 
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message: format!("Removed {} videos from collection", req.video_ids.len()),
             error: String::new(),
@@ -1265,12 +1265,12 @@ impl VideoRoomTrait for VideoRoomService {
     async fn update_video_notes(
         &self,
         request: Request<UpdateNotesRequest>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
 
         self.db.update_notes(&req.video_id, &req.notes).map_err(Status::from)?;
 
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message: "Notes updated".to_string(),
             error: String::new(),
@@ -1279,8 +1279,8 @@ impl VideoRoomTrait for VideoRoomService {
 
     async fn update_video_rating(
         &self,
-        request: Request<videoroom::UpdateVideoRatingRequest>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+        request: Request<reelvault::UpdateVideoRatingRequest>,
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
         if !(0..=5).contains(&req.rating) {
             return Err(Status::invalid_argument(
@@ -1296,7 +1296,7 @@ impl VideoRoomTrait for VideoRoomService {
                 .update_video_rating(id, req.rating)
                 .map_err(Status::from)?;
         }
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message: format!("Rating set to {} on {} video(s)", req.rating, count),
             error: String::new(),
@@ -1305,8 +1305,8 @@ impl VideoRoomTrait for VideoRoomService {
 
     async fn update_video_color_label(
         &self,
-        request: Request<videoroom::UpdateVideoColorLabelRequest>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+        request: Request<reelvault::UpdateVideoColorLabelRequest>,
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
         // Allowed label set kept in sync with the clients' `ColorLabel` enum.
         const ALLOWED: &[&str] = &["", "red", "yellow", "green", "blue", "purple"];
@@ -1326,7 +1326,7 @@ impl VideoRoomTrait for VideoRoomService {
                 .map_err(Status::from)?;
         }
         let displayed_label = if req.color_label.is_empty() { "(none)" } else { req.color_label.as_str() };
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message: format!("Color label '{}' applied to {} video(s)", displayed_label, count),
             error: String::new(),
@@ -1335,8 +1335,8 @@ impl VideoRoomTrait for VideoRoomService {
 
     async fn get_grid_settings(
         &self,
-        _request: Request<videoroom::GetGridSettingsRequest>,
-    ) -> std::result::Result<Response<videoroom::GridSettings>, Status> {
+        _request: Request<reelvault::GetGridSettingsRequest>,
+    ) -> std::result::Result<Response<reelvault::GridSettings>, Status> {
         // Catalog-scoped value lives in the existing `config` table under
         // a stable key. Serialised as a `,`-delimited list of 4 slot keys.
         //
@@ -1361,13 +1361,13 @@ impl VideoRoomTrait for VideoRoomService {
             slots.push(String::new());
         }
         slots.truncate(4);
-        Ok(Response::new(videoroom::GridSettings { top_slots: slots }))
+        Ok(Response::new(reelvault::GridSettings { top_slots: slots }))
     }
 
     async fn update_grid_settings(
         &self,
-        request: Request<videoroom::GridSettings>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+        request: Request<reelvault::GridSettings>,
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
         if req.top_slots.len() != 4 {
             return Err(Status::invalid_argument(
@@ -1378,7 +1378,7 @@ impl VideoRoomTrait for VideoRoomService {
         self.db
             .set_catalog_setting("grid_top_slots", &serialised)
             .map_err(Status::from)?;
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message: "Grid settings saved".to_string(),
             error: String::new(),
@@ -1388,7 +1388,7 @@ impl VideoRoomTrait for VideoRoomService {
     async fn delete_video(
         &self,
         request: Request<DeleteVideoRequest>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
 
         if req.delete_file {
@@ -1399,7 +1399,7 @@ impl VideoRoomTrait for VideoRoomService {
 
         self.db.delete_video(&req.video_id).map_err(Status::from)?;
 
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message: "Video deleted".to_string(),
             error: String::new(),
@@ -1475,10 +1475,10 @@ impl VideoRoomTrait for VideoRoomService {
     async fn ungroup_video(
         &self,
         request: Request<UngroupVideoRequest>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
         self.db.ungroup_video(&req.video_id).map_err(Status::from)?;
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message: "Video ungrouped".to_string(),
             error: String::new(),
@@ -1488,12 +1488,12 @@ impl VideoRoomTrait for VideoRoomService {
     async fn set_group_preferred(
         &self,
         request: Request<SetGroupPreferredRequest>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
         self.db
             .set_group_preferred(&req.group_id, &req.video_id)
             .map_err(Status::from)?;
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message: "Preferred video set".to_string(),
             error: String::new(),
@@ -1636,14 +1636,14 @@ impl VideoRoomTrait for VideoRoomService {
     async fn set_proxy_of(
         &self,
         request: Request<SetProxyOfRequest>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
         if req.proxy_id.is_empty() {
             return Err(Status::invalid_argument("proxy_id is required"));
         }
         if req.original_id.is_empty() {
             self.db.clear_proxy_of(&req.proxy_id).map_err(Status::from)?;
-            return Ok(Response::new(videoroom::Response {
+            return Ok(Response::new(reelvault::Response {
                 success: true,
                 message: "Proxy link cleared".into(),
                 error: String::new(),
@@ -1653,7 +1653,7 @@ impl VideoRoomTrait for VideoRoomService {
         self.db
             .set_proxy_of(&req.proxy_id, &req.original_id, 1.0, false)
             .map_err(Status::from)?;
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message: "Proxy link saved".into(),
             error: String::new(),
@@ -1663,7 +1663,7 @@ impl VideoRoomTrait for VideoRoomService {
     async fn remove_proxy_link(
         &self,
         request: Request<RemoveProxyLinkRequest>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
         if req.master_id.is_empty() || req.proxy_id.is_empty() {
             return Err(Status::invalid_argument(
@@ -1673,7 +1673,7 @@ impl VideoRoomTrait for VideoRoomService {
         self.db
             .remove_proxy_link(&req.master_id, &req.proxy_id)
             .map_err(Status::from)?;
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message: "Proxy link removed".into(),
             error: String::new(),
@@ -1772,7 +1772,7 @@ impl VideoRoomTrait for VideoRoomService {
     async fn update_config(
         &self,
         request: Request<UpdateConfigRequest>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
         // Persist the bits clients can actually change. The full Config
         // struct stays as the load-time snapshot — the values that drive
@@ -1794,7 +1794,7 @@ impl VideoRoomTrait for VideoRoomService {
                 );
             }
         }
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message: "Config updated".to_string(),
             error: String::new(),
@@ -1830,7 +1830,7 @@ impl VideoRoomTrait for VideoRoomService {
     async fn close_catalog(
         &self,
         _request: Request<CloseCatalogRequest>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         self.db.clear_path();
         if let Ok(mut g) = self.opened_at_ms.write() {
             *g = 0;
@@ -1841,7 +1841,7 @@ impl VideoRoomTrait for VideoRoomService {
             let mut guard = self.watcher.lock().await;
             *guard = None;
         }
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message: "Catalog closed".to_string(),
             error: String::new(),
@@ -1859,7 +1859,7 @@ impl VideoRoomTrait for VideoRoomService {
     async fn update_video_location(
         &self,
         request: Request<UpdateVideoLocationRequest>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
         if req.video_id.is_empty() {
             return Err(Status::invalid_argument("video_id is required"));
@@ -1904,7 +1904,7 @@ impl VideoRoomTrait for VideoRoomService {
             }
         }
 
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message: format!(
                 "Location set to {:.6}, {:.6}{}",
@@ -1937,7 +1937,7 @@ impl VideoRoomTrait for VideoRoomService {
     async fn update_video_capture_date(
         &self,
         request: Request<UpdateVideoCaptureDateRequest>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
         if req.video_id.is_empty() {
             return Err(Status::invalid_argument("video_id is required"));
@@ -1977,7 +1977,7 @@ impl VideoRoomTrait for VideoRoomService {
             }
         }
 
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message: format!("Capture date set{}", file_write_message),
             error: String::new(),
@@ -2049,13 +2049,13 @@ impl VideoRoomTrait for VideoRoomService {
     async fn delete_named_location(
         &self,
         request: Request<DeleteNamedLocationRequest>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
         if req.id.is_empty() {
             return Err(Status::invalid_argument("id is required"));
         }
         self.db.delete_named_location(&req.id).map_err(Status::from)?;
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message: "Named location deleted".into(),
             error: String::new(),
@@ -2077,9 +2077,9 @@ impl VideoRoomTrait for VideoRoomService {
         // a separate GetWatchSettings round-trip.
         let settings = *self.watch_settings.read().await;
         let greeting_kind = if settings.enabled {
-            videoroom::catalog_event::Kind::WatcherStarted as i32
+            reelvault::catalog_event::Kind::WatcherStarted as i32
         } else {
-            videoroom::catalog_event::Kind::WatcherDisabled as i32
+            reelvault::catalog_event::Kind::WatcherDisabled as i32
         };
         let _ = tx
             .send(Ok(CatalogEvent {
@@ -2106,7 +2106,7 @@ impl VideoRoomTrait for VideoRoomService {
                     Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
                         let _ = tx
                             .send(Ok(CatalogEvent {
-                                kind: videoroom::catalog_event::Kind::ScanCompleted as i32,
+                                kind: reelvault::catalog_event::Kind::ScanCompleted as i32,
                                 video_id: String::new(),
                                 path: String::new(),
                                 at_ms: now_ms(),
@@ -2143,7 +2143,7 @@ impl VideoRoomTrait for VideoRoomService {
     async fn update_watch_settings(
         &self,
         request: Request<WatchSettings>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
 
         // Guard against absurd values that would either make the
@@ -2187,7 +2187,7 @@ impl VideoRoomTrait for VideoRoomService {
         let handle = self.clone_for_watcher();
         tokio::spawn(async move { handle.restart_watcher().await });
 
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message: format!(
                 "Watch settings updated (enabled={}, settle={}ms, poll={}ms)",
@@ -2263,13 +2263,13 @@ impl VideoRoomTrait for VideoRoomService {
     async fn set_camera_name_mapping(
         &self,
         request: Request<SetCameraNameMappingRequest>,
-    ) -> std::result::Result<Response<videoroom::Response>, Status> {
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
         let req = request.into_inner();
         let internal_raw = req.internal.trim().to_string();
         let marketing = req.marketing.trim().to_string();
 
         if internal_raw.is_empty() {
-            return Ok(Response::new(videoroom::Response {
+            return Ok(Response::new(reelvault::Response {
                 success: false,
                 message: String::new(),
                 error: "internal name must not be blank".to_string(),
@@ -2298,7 +2298,7 @@ impl VideoRoomTrait for VideoRoomService {
         } else {
             format!("Saved custom mapping: \"{internal_raw}\" → \"{marketing}\"")
         };
-        Ok(Response::new(videoroom::Response {
+        Ok(Response::new(reelvault::Response {
             success: true,
             message,
             error: String::new(),
@@ -2428,25 +2428,25 @@ impl ServiceWatcherHandle {
 }
 
 /// Convert a watcher `CatalogChange` into a wire-level proto `CatalogEvent`.
-fn change_to_event(change: &CatalogChange) -> videoroom::CatalogEvent {
-    use videoroom::catalog_event::Kind;
+fn change_to_event(change: &CatalogChange) -> reelvault::CatalogEvent {
+    use reelvault::catalog_event::Kind;
     let at_ms = now_ms();
     match change {
-        CatalogChange::VideoAdded { video_id, path } => videoroom::CatalogEvent {
+        CatalogChange::VideoAdded { video_id, path } => reelvault::CatalogEvent {
             kind: Kind::VideoAdded as i32,
             video_id: video_id.clone(),
             path: path.to_string_lossy().into_owned(),
             at_ms,
             message: String::new(),
         },
-        CatalogChange::VideoModified { video_id, path } => videoroom::CatalogEvent {
+        CatalogChange::VideoModified { video_id, path } => reelvault::CatalogEvent {
             kind: Kind::VideoModified as i32,
             video_id: video_id.clone(),
             path: path.to_string_lossy().into_owned(),
             at_ms,
             message: String::new(),
         },
-        CatalogChange::VideoRemoved { video_id, path } => videoroom::CatalogEvent {
+        CatalogChange::VideoRemoved { video_id, path } => reelvault::CatalogEvent {
             kind: Kind::VideoRemoved as i32,
             video_id: video_id.clone().unwrap_or_default(),
             path: path.to_string_lossy().into_owned(),
@@ -2457,14 +2457,14 @@ fn change_to_event(change: &CatalogChange) -> videoroom::CatalogEvent {
                 .map(str::to_string)
                 .unwrap_or_default(),
         },
-        CatalogChange::ScanStarted { path } => videoroom::CatalogEvent {
+        CatalogChange::ScanStarted { path } => reelvault::CatalogEvent {
             kind: Kind::ScanStarted as i32,
             video_id: String::new(),
             path: path.clone(),
             at_ms,
             message: String::new(),
         },
-        CatalogChange::ScanCompleted { path } => videoroom::CatalogEvent {
+        CatalogChange::ScanCompleted { path } => reelvault::CatalogEvent {
             kind: Kind::ScanCompleted as i32,
             video_id: String::new(),
             path: path.clone(),

@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# VideoRoom macOS (SwiftUI) — release build script
+# ReelVault macOS (SwiftUI) — release build script
 #
 # Builds a signed (or ad-hoc) .app bundle from the SwiftPM project, embeds
-# the videoroom-core daemon, and packages everything in a .dmg for distribution.
+# the reelvault-core daemon, and packages everything in a .dmg for distribution.
 #
 # Usage:
 #   ./release-macos.sh [OPTIONS]
 #
 # Options:
-#   --core-bin PATH        Path to the videoroom-core binary to embed.
+#   --core-bin PATH        Path to the reelvault-core binary to embed.
 #                          Defaults to searching standard build locations.
 #   --sign IDENTITY        Developer ID Application identity for app signing.
 #                          (e.g. "Developer ID Application: Acme (TEAMID)")
@@ -17,7 +17,7 @@
 #                          Requires --sign and either:
 #                            CI:    APPLE_API_KEY_PATH, APPLE_API_KEY_ID,
 #                                   APPLE_API_ISSUER_ID env vars
-#                            Local: a "VideoRoom-Notarize" keychain profile
+#                            Local: a "ReelVault-Notarize" keychain profile
 #   --version X.Y.Z        Override the bundle version (default: Package.swift).
 #   --out DIR              Output directory (default: dist/macos)
 #   --help                 Show this message
@@ -82,19 +82,19 @@ if [[ -z "$VERSION" ]]; then
     VERSION="$(grep -E 'version\s*=\s*"[0-9]' "${MACOS_DIR}/Package.swift" \
         | head -1 | sed 's/.*"\([0-9][^"]*\)".*/\1/' 2>/dev/null || echo "0.1.0")"
 fi
-echo "==> VideoRoom macOS v${VERSION}"
+echo "==> ReelVault macOS v${VERSION}"
 
 # ---------------------------------------------------------------------------
-# Locate the videoroom-core binary
+# Locate the reelvault-core binary
 # ---------------------------------------------------------------------------
 locate_core_bin() {
     local candidates=(
         "${CORE_BIN}"
-        "${CORE_DIR}/target/universal-apple-darwin/release/videoroom-core"
-        "${CORE_DIR}/target/aarch64-apple-darwin/release/videoroom-core"
-        "${CORE_DIR}/target/x86_64-apple-darwin/release/videoroom-core"
-        "${CORE_DIR}/target/release/videoroom-core"
-        "${SCRIPT_DIR}/dist/core/videoroom-core"
+        "${CORE_DIR}/target/universal-apple-darwin/release/reelvault-core"
+        "${CORE_DIR}/target/aarch64-apple-darwin/release/reelvault-core"
+        "${CORE_DIR}/target/x86_64-apple-darwin/release/reelvault-core"
+        "${CORE_DIR}/target/release/reelvault-core"
+        "${SCRIPT_DIR}/dist/core/reelvault-core"
     )
     for c in "${candidates[@]}"; do
         [[ -z "$c" ]] && continue
@@ -111,7 +111,7 @@ if DAEMON_BIN="$(locate_core_bin 2>/dev/null)"; then
     echo "==> Found daemon binary: ${DAEMON_BIN}"
 else
     echo ""
-    echo "WARNING: videoroom-core binary not found — the .app will launch without"
+    echo "WARNING: reelvault-core binary not found — the .app will launch without"
     echo "  a bundled daemon.  Run ./release-core.sh first, or pass --core-bin."
     echo ""
 fi
@@ -119,15 +119,15 @@ fi
 # ---------------------------------------------------------------------------
 # Build the Swift binary in release mode (universal: arm64 + x86_64)
 # ---------------------------------------------------------------------------
-echo "==> Building VideoRoom (release, arm64)…"
-(cd "$MACOS_DIR" && swift build -c release --arch arm64 --product VideoRoom 2>&1)
+echo "==> Building ReelVault (release, arm64)…"
+(cd "$MACOS_DIR" && swift build -c release --arch arm64 --product ReelVault 2>&1)
 
-echo "==> Building VideoRoom (release, x86_64)…"
-(cd "$MACOS_DIR" && swift build -c release --arch x86_64 --product VideoRoom 2>&1)
+echo "==> Building ReelVault (release, x86_64)…"
+(cd "$MACOS_DIR" && swift build -c release --arch x86_64 --product ReelVault 2>&1)
 
-ARM_BIN="${MACOS_DIR}/.build/arm64-apple-macosx/release/VideoRoom"
-X86_BIN="${MACOS_DIR}/.build/x86_64-apple-macosx/release/VideoRoom"
-SWIFT_BIN="${MACOS_DIR}/.build/release/VideoRoom"
+ARM_BIN="${MACOS_DIR}/.build/arm64-apple-macosx/release/ReelVault"
+X86_BIN="${MACOS_DIR}/.build/x86_64-apple-macosx/release/ReelVault"
+SWIFT_BIN="${MACOS_DIR}/.build/release/ReelVault"
 
 if [[ ! -f "$ARM_BIN" || ! -f "$X86_BIN" ]]; then
     echo "Error: one or both architecture builds failed." >&2
@@ -144,7 +144,7 @@ lipo -info "$SWIFT_BIN"
 # ---------------------------------------------------------------------------
 mkdir -p "$OUT_DIR"
 
-APP_NAME="VideoRoom"
+APP_NAME="ReelVault"
 APP_BUNDLE="${OUT_DIR}/${APP_NAME}.app"
 
 echo "==> Assembling ${APP_BUNDLE}…"
@@ -158,27 +158,27 @@ chmod +x "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}"
 
 # Bundle the daemon inside Resources/ — ServerLauncher.swift looks there first.
 if [[ -n "$DAEMON_BIN" ]]; then
-    cp "$DAEMON_BIN" "${APP_BUNDLE}/Contents/Resources/videoroom-core"
-    chmod +x "${APP_BUNDLE}/Contents/Resources/videoroom-core"
-    echo "  Embedded daemon: Contents/Resources/videoroom-core"
+    cp "$DAEMON_BIN" "${APP_BUNDLE}/Contents/Resources/reelvault-core"
+    chmod +x "${APP_BUNDLE}/Contents/Resources/reelvault-core"
+    echo "  Embedded daemon: Contents/Resources/reelvault-core"
 fi
 
 # Copy app icon if it exists
 for ICON in \
-    "${MACOS_DIR}/VideoRoom/Assets.xcassets/AppIcon.appiconset"/*.icns \
-    "${MACOS_DIR}/VideoRoom/Resources/AppIcon.icns"; do
+    "${MACOS_DIR}/ReelVault/Assets.xcassets/AppIcon.appiconset"/*.icns \
+    "${MACOS_DIR}/ReelVault/Resources/AppIcon.icns"; do
     if [[ -f "$ICON" ]]; then
         cp "$ICON" "${APP_BUNDLE}/Contents/Resources/AppIcon.icns"
         break
     fi
 done
 
-# Copy SPM's per-target resource bundle (VideoRoom_VideoRoom.bundle).
+# Copy SPM's per-target resource bundle (ReelVault_ReelVault.bundle).
 # Swift's synthesized Bundle.module looks for it next to the executable
 # inside Contents/Resources of the .app — without it, any code that
 # touches Bundle.module fatalErrors at first access (AppDelegate
 # reads AppIcon.icns from there to stamp the Dock tile during dev runs).
-RES_BUNDLE_NAME="VideoRoom_VideoRoom.bundle"
+RES_BUNDLE_NAME="ReelVault_ReelVault.bundle"
 RES_BUNDLE_SRC=""
 for candidate in \
     "${MACOS_DIR}/.build/arm64-apple-macosx/release/${RES_BUNDLE_NAME}" \
@@ -196,7 +196,7 @@ else
 fi
 
 # Info.plist
-BUNDLE_ID="com.videoroom.app"
+BUNDLE_ID="com.reelvault.app"
 cat > "${APP_BUNDLE}/Contents/Info.plist" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
@@ -249,10 +249,10 @@ sign_app() {
     # Sign nested binaries inside-out before signing the outer bundle.
     # --options runtime enables Hardened Runtime (required for notarization).
     # --timestamp embeds a secure timestamp (also required by Apple's notary).
-    if [[ -f "${bundle}/Contents/Resources/videoroom-core" ]]; then
+    if [[ -f "${bundle}/Contents/Resources/reelvault-core" ]]; then
         codesign --force --options runtime --timestamp \
             --sign "$identity" \
-            "${bundle}/Contents/Resources/videoroom-core"
+            "${bundle}/Contents/Resources/reelvault-core"
     fi
     codesign --force --options runtime --timestamp \
         --sign "$identity" \
@@ -279,7 +279,7 @@ if [[ -n "$SIGN_PKG" && "$SIGN_PKG" != "-" ]]; then
     pkgbuild \
         --component  "$APP_BUNDLE" \
         --install-location /Applications \
-        --identifier "com.videoroom.app" \
+        --identifier "com.reelvault.app" \
         --version    "${VERSION}" \
         --sign       "$SIGN_PKG" \
         "$PKG_PATH"
@@ -287,7 +287,7 @@ else
     pkgbuild \
         --component  "$APP_BUNDLE" \
         --install-location /Applications \
-        --identifier "com.videoroom.app" \
+        --identifier "com.reelvault.app" \
         --version    "${VERSION}" \
         "$PKG_PATH"
 fi
@@ -299,7 +299,7 @@ echo "  -> ${PKG_PATH}"
 notarize_submit() {
     local artifact="$1"
     # CI: App Store Connect API key (APPLE_API_KEY_PATH / _KEY_ID / _ISSUER_ID).
-    # Local fallback: pre-configured "VideoRoom-Notarize" keychain profile.
+    # Local fallback: pre-configured "ReelVault-Notarize" keychain profile.
     if [[ -n "${APPLE_API_KEY_PATH:-}" ]]; then
         xcrun notarytool submit "$artifact" \
             --key        "$APPLE_API_KEY_PATH" \
@@ -308,7 +308,7 @@ notarize_submit() {
             --wait
     else
         xcrun notarytool submit "$artifact" \
-            --keychain-profile "VideoRoom-Notarize" \
+            --keychain-profile "ReelVault-Notarize" \
             --wait
     fi
 }

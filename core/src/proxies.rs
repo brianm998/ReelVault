@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 VideoRoom Contributors
+// Copyright (C) 2026 ReelVault Contributors
 
 //! Proxy discovery and creation.
 //!
@@ -562,7 +562,7 @@ pub fn create_proxy(
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::inherit())
         .spawn()
-        .map_err(|e| crate::error::VideoRoomError::FfmpegError(format!("spawn ffmpeg: {}", e)))?;
+        .map_err(|e| crate::error::ReelVaultError::FfmpegError(format!("spawn ffmpeg: {}", e)))?;
 
     // Parse stdout for `frame=N` progress lines and forward them as
     // "encoding" events. The 0-85% band is reserved for encoding;
@@ -594,9 +594,9 @@ pub fn create_proxy(
 
     let exit_status = child
         .wait()
-        .map_err(|e| crate::error::VideoRoomError::FfmpegError(format!("wait ffmpeg: {}", e)))?;
+        .map_err(|e| crate::error::ReelVaultError::FfmpegError(format!("wait ffmpeg: {}", e)))?;
     if !exit_status.success() {
-        return Err(crate::error::VideoRoomError::FfmpegError(format!(
+        return Err(crate::error::ReelVaultError::FfmpegError(format!(
             "ffmpeg exited with status {}",
             exit_status,
         )));
@@ -616,7 +616,7 @@ pub fn create_proxy(
         let v = db
             .get_video_by_path(output_path.to_str().unwrap_or(""))?
             .ok_or_else(|| {
-                crate::error::VideoRoomError::InternalError(
+                crate::error::ReelVaultError::InternalError(
                     "proxy not indexed yet; pass re_index_after=true".into(),
                 )
             })?;
@@ -689,7 +689,7 @@ mod tests {
         assert!(proxy_pair_gates_pass(&master, &proxy));
     }
 
-    // VideoRoom's own generated-proxy naming convention
+    // ReelVault's own generated-proxy naming convention
     // (`<orig_stem>_proxy_<H>p.<ext>`) must still pass the name_part gate
     // — `_proxy` is itself the `_<letter>` codec-section boundary, so both
     // sides reduce to the same name_part.

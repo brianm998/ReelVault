@@ -1,4 +1,4 @@
-# VideoRoom macOS Client
+# ReelVault macOS Client
 
 A native SwiftUI application for managing and cataloging large video libraries on macOS.
 
@@ -7,14 +7,14 @@ A native SwiftUI application for managing and cataloging large video libraries o
 - macOS 13.0 or later
 - Xcode 14.0 or later
 - Swift 5.9 or later
-- VideoRoom Rust backend running on `localhost:50051`
+- ReelVault Rust backend running on `localhost:50051`
 
 ## Building
 
 ### Using Xcode
 
-1. Open `VideoRoom.xcodeproj` in Xcode
-2. Select the VideoRoom target
+1. Open `ReelVault.xcodeproj` in Xcode
+2. Select the ReelVault target
 3. Build: Cmd+B
 4. Run: Cmd+R
 
@@ -23,7 +23,7 @@ A native SwiftUI application for managing and cataloging large video libraries o
 ```bash
 cd macos
 swift build
-swift run VideoRoom
+swift run ReelVault
 ```
 
 ### Using Make (if available)
@@ -38,8 +38,8 @@ make run
 ### Directory Structure
 
 ```
-VideoRoom/
-├── VideoRoom.swift           # App entry point
+ReelVault/
+├── ReelVault.swift           # App entry point
 ├── Models/
 │   └── Video.swift          # Domain models (VideoSummary, VideoMetadata, etc.)
 ├── ViewModels/
@@ -104,11 +104,11 @@ The application follows **MVVM (Model-View-ViewModel)** architecture:
 
 ## Running Against the Backend
 
-Ensure the VideoRoom Rust backend is running:
+Ensure the ReelVault Rust backend is running:
 
 ```bash
 cd ../core
-cargo run --bin videoroom-core
+cargo run --bin reelvault-core
 ```
 
 The macOS client will connect to `localhost:50051` via gRPC.
@@ -148,11 +148,11 @@ The macOS client will connect to `localhost:50051` via gRPC.
 
 ## Troubleshooting
 
-### "Failed to connect to VideoRoom backend"
+### "Failed to connect to ReelVault backend"
 
 Ensure the Rust backend is running on port 50051:
 ```bash
-cd ../core && cargo run --bin videoroom-core
+cd ../core && cargo run --bin reelvault-core
 ```
 
 ### Grid is slow or janky
@@ -205,4 +205,4 @@ When modifying the client:
 
 ## License
 
-2024 VideoRoom Contributors. All rights reserved.
+2024 ReelVault Contributors. All rights reserved.

@@ -1,20 +1,20 @@
-# VideoRoom: A Cross-Platform Video Cataloging Application
+# ReelVault: A Cross-Platform Video Cataloging Application
 
 ## Project Vision
 
-VideoRoom is a desktop application for organizing, discovering, and managing large video libraries—inspired by Adobe Lightroom, but focused exclusively on **cataloging and discovery rather than editing**.
+ReelVault is a desktop application for organizing, discovering, and managing large video libraries—inspired by Adobe Lightroom, but focused exclusively on **cataloging and discovery rather than editing**.
 
 The core philosophy: **fast, native browsing of massive video collections without bloat**.
 
-## What VideoRoom Is
+## What ReelVault Is
 - A video library manager with fast grid browsing
 - Metadata extractor and organizer
 - Tag, collection, and search engine
 - Thumbnail preview generator
-- Drag-and-drop hand-off to external editors (no launching from VideoRoom)
+- Drag-and-drop hand-off to external editors (no launching from ReelVault)
 - Cross-platform (macOS, Linux, Windows)
 
-## What VideoRoom Is NOT
+## What ReelVault Is NOT
 - A video editor
 - A color grading tool
 - A timeline tool
@@ -215,7 +215,7 @@ CREATE VIRTUAL TABLE video_search USING fts5(
 ### Code Organization
 
 ```
-VideoRoom/
+ReelVault/
 ├── core/                   # Rust daemon
 │   ├── Cargo.toml
 │   ├── src/
@@ -236,8 +236,8 @@ VideoRoom/
 │   │   └── util/
 │   └── resources/
 ├── macos/                # SwiftUI client (post-MVP)
-│   ├── VideoRoom.xcodeproj
-│   └── VideoRoom/
+│   ├── ReelVault.xcodeproj
+│   └── ReelVault/
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── DATABASE.md
@@ -271,7 +271,7 @@ Both clients should share:
 The Rust backend exposes a simple gRPC API for frontends:
 
 ```proto
-service VideoRoom {
+service ReelVault {
   // Query
   rpc ListVideos(ListVideosRequest) returns (ListVideosResponse);
   rpc SearchVideos(SearchRequest) returns (SearchResponse);
@@ -293,7 +293,7 @@ service VideoRoom {
 ```
 
 Editor hand-off is done via drag-and-drop from the grid into the target
-application — VideoRoom does not launch external editors itself.
+application — ReelVault does not launch external editors itself.
 
 ---
 
@@ -331,7 +331,7 @@ Design the core to support:
 2. **Rust backend**: Type safety, performance, cross-platform
 3. **Two frontends**: macOS gets native Swift, others get Compose
 4. **No editing**: Clarity of purpose, easier to maintain
-5. **Drag-and-drop hand-off**: Reuse existing professional tools by dragging clips out of VideoRoom; the app does not launch editors itself
+5. **Drag-and-drop hand-off**: Reuse existing professional tools by dragging clips out of ReelVault; the app does not launch editors itself
 6. **Proxy generation (configurable)**: Performance on 8K+ footage
 
 ---

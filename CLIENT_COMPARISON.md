@@ -1,8 +1,8 @@
-# VideoRoom Client Comparison
+# ReelVault Client Comparison
 
 ## Overview
 
-VideoRoom now features two fully-featured client applications built for different platforms, each optimized for their respective ecosystems while sharing the same Rust backend and core architecture.
+ReelVault now features two fully-featured client applications built for different platforms, each optimized for their respective ecosystems while sharing the same Rust backend and core architecture.
 
 ## Quick Comparison
 
@@ -30,12 +30,12 @@ VideoRoom now features two fully-featured client applications built for differen
 │      Kotlin Compose Desktop     │
 ├─────────────────────────────────┤
 │  App.kt (Window + Theme)        │
-│  ├─ VideoRoomApp()              │
+│  ├─ ReelVaultApp()              │
 │  │  ├─ GridScreen()             │
 │  │  │  └─ VideoCard (4x grid)   │
 │  │  └─ DetailScreen()           │
 │  │     └─ MetadataItem          │
-│  └─ VideoRoomTopBar()           │
+│  └─ ReelVaultTopBar()           │
 ├─────────────────────────────────┤
 │  GridViewModel / DetailViewModel │
 │  (StateFlow + Coroutines)       │
@@ -58,7 +58,7 @@ VideoRoom now features two fully-featured client applications built for differen
 ┌─────────────────────────────────┐
 │      SwiftUI for macOS          │
 ├─────────────────────────────────┤
-│  VideoRoomApp.swift             │
+│  ReelVaultApp.swift             │
 │  └─ ContentView()               │
 │     ├─ GridView()               │
 │     │  └─ VideoCardView (4x)    │
@@ -212,7 +212,7 @@ struct VideoCardView: View {
 #### macOS Steps
 
 1. Add to proto file (`core/proto/video.proto`)
-2. Update `VideoMetadata` in `macos/VideoRoom/Models/Video.swift`
+2. Update `VideoMetadata` in `macos/ReelVault/Models/Video.swift`
 3. Update `DetailView.swift` to display new field with `MetadataItemView()`
 4. Run `swift build` to verify
 
@@ -259,7 +259,7 @@ Both clients can be tested against the same Rust backend:
 ```bash
 # Terminal 1: Start backend
 cd core
-cargo run --bin videoroom-core
+cargo run --bin reelvault-core
 
 # Terminal 2: Run Desktop client
 cd desktop
@@ -267,7 +267,7 @@ cd desktop
 
 # Terminal 3: Run macOS client
 cd macos
-swift run VideoRoom
+swift run ReelVault
 ```
 
 All three can run simultaneously without conflicts.
@@ -280,7 +280,7 @@ All three can run simultaneously without conflicts.
    ```
    gradle nativeDistributions
    ```
-2. Outputs: VideoRoom-0.1.0.dmg, VideoRoom-0.1.0.msi, VideoRoom_0.1.0.exe, videoroom-0.1.0.deb
+2. Outputs: ReelVault-0.1.0.dmg, ReelVault-0.1.0.msi, ReelVault_0.1.0.exe, reelvault-0.1.0.deb
 3. Publish to GitHub Releases
 4. Users download appropriate binary for their OS
 
@@ -364,7 +364,7 @@ This shows how the shared backend drives feature consistency across clients.
 
 ## Conclusion
 
-The VideoRoom project now has two best-in-class client applications:
+The ReelVault project now has two best-in-class client applications:
 
 1. **Desktop Client**: Cross-platform reach with Kotlin Compose
 2. **macOS Client**: Native excellence with SwiftUI

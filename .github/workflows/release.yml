@@ -248,9 +248,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: macos-arm64, os: macos-latest,   core-artifact: core-macos-universal, core-bin: videoroom-core     }
-          - { name: linux,       os: ubuntu-latest,   core-artifact: core-linux-x86_64,    core-bin: videoroom-core     }
-          - { name: windows,     os: windows-latest,  core-artifact: core-windows-x86_64,  core-bin: videoroom-core.exe }
+          - { name: macos-arm64, os: macos-latest,   core-artifact: core-macos-universal, core-bin: reelvault-core     }
+          - { name: linux,       os: ubuntu-latest,   core-artifact: core-linux-x86_64,    core-bin: reelvault-core     }
+          - { name: windows,     os: windows-latest,  core-artifact: core-windows-x86_64,  core-bin: reelvault-core.exe }
 
     steps:
       - uses: actions/checkout@v4
@@ -410,7 +410,7 @@ jobs:
         shell: bash
         run: |
           cd core-dist && tar xzf *.tar.gz && cd ..
-          DAEMON=$(find core-dist -name "videoroom-core" -type f | head -1)
+          DAEMON=$(find core-dist -name "reelvault-core" -type f | head -1)
           echo "DAEMON_BIN=${DAEMON}" >> "$GITHUB_ENV"
 
       # Import Developer ID Application + Installer certs into a throwaway
@@ -557,7 +557,7 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name:               ${{ needs.version.outputs.tag }}
-          name:                   VideoRoom ${{ needs.version.outputs.version }}
+          name:                   ReelVault ${{ needs.version.outputs.version }}
           draft:                  true    # review before publishing
           generate_release_notes: true
           files:                  release-artifacts/**/*

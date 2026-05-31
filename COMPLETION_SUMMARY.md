@@ -1,8 +1,8 @@
-# VideoRoom MVP - Completion Summary
+# ReelVault MVP - Completion Summary
 
 ## Overview
 
-VideoRoom now has a complete three-tier architecture with a Rust backend and two native client applications. All components are production-ready and implement the MVVM pattern consistently across platforms.
+ReelVault now has a complete three-tier architecture with a Rust backend and two native client applications. All components are production-ready and implement the MVVM pattern consistently across platforms.
 
 ## What Was Built
 
@@ -62,7 +62,7 @@ cd desktop
 ```bash
 cd macos
 swift build                    # Build for development
-swift run VideoRoom           # Run the app
+swift run ReelVault           # Run the app
 make build && make run        # Using Makefile
 ```
 
@@ -103,7 +103,7 @@ Identical across both clients:
 ```
 desktop/
 ├── build.gradle.kts              # Gradle configuration
-├── src/main/kotlin/com/videoroom/
+├── src/main/kotlin/com/reelvault/
 │   ├── App.kt                    # Entry point, window setup
 │   ├── data/
 │   │   ├── models/Video.kt       # Domain models
@@ -126,8 +126,8 @@ desktop/
 macos/
 ├── Package.swift                 # SPM configuration
 ├── Makefile                      # Build helpers
-├── VideoRoom/
-│   ├── VideoRoom.swift          # Entry point
+├── ReelVault/
+│   ├── ReelVault.swift          # Entry point
 │   ├── Models/
 │   │   └── Video.swift          # Domain models
 │   ├── ViewModels/
@@ -255,14 +255,14 @@ class VideoRepository {
 
 ### Desktop Client
 ```bash
-cd core && cargo run --bin videoroom-core &
+cd core && cargo run --bin reelvault-core &
 cd desktop && ./gradlew run
 ```
 
 ### macOS Client (after proto generation)
 ```bash
-cd core && cargo run --bin videoroom-core &
-cd macos && swift run VideoRoom
+cd core && cargo run --bin reelvault-core &
+cd macos && swift run ReelVault
 ```
 
 ### Manual Testing Checklist
@@ -332,10 +332,10 @@ cd macos && swift run VideoRoom
 cd desktop && ./gradlew nativeDistributions
 
 # Outputs:
-# - VideoRoom-0.1.0.dmg (macOS)
-# - VideoRoom-0.1.0.msi (Windows installer)
-# - VideoRoom_0.1.0.exe (Windows portable)
-# - videoroom-0.1.0.deb (Linux)
+# - ReelVault-0.1.0.dmg (macOS)
+# - ReelVault-0.1.0.msi (Windows installer)
+# - ReelVault_0.1.0.exe (Windows portable)
+# - reelvault-0.1.0.deb (Linux)
 ```
 
 ### macOS Client
@@ -371,7 +371,7 @@ cd macos && swift build -c release
 
 ## Conclusion
 
-The VideoRoom MVP is feature-complete with two production-ready native clients:
+The ReelVault MVP is feature-complete with two production-ready native clients:
 
 1. **Desktop Client (Kotlin Compose)**
    - Cross-platform (Windows, Linux, macOS)
@@ -397,20 +397,20 @@ All code is syntactically correct, architecturally sound, and follows industry b
 
 ### Desktop
 ```bash
-cd VideoRoom/desktop
+cd ReelVault/desktop
 ./gradlew run
 ```
 
 ### macOS (after proto setup)
 ```bash
-cd VideoRoom/macos
-swift run VideoRoom
+cd ReelVault/macos
+swift run ReelVault
 ```
 
 ### Backend
 ```bash
-cd VideoRoom/core
-cargo run --bin videoroom-core
+cd ReelVault/core
+cargo run --bin reelvault-core
 ```
 
 All three running simultaneously will provide a fully functional video cataloging application.

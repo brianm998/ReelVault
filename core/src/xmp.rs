@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 VideoRoom Contributors
+// Copyright (C) 2026 ReelVault Contributors
 
 //! Native reader for photo-style EXIF metadata embedded in MP4/MOV
 //! container files via the XMP convention.
@@ -9,7 +9,7 @@
 //! Adobe XMP packet is the closest thing the industry has settled on.
 //! When a video carries an XMP-EXIF packet, every XMP-aware reader
 //! (Premiere, Lightroom, Bridge, exiftool) can pull the same fields
-//! back out. This module gives VideoRoom a native, dependency-free
+//! back out. This module gives ReelVault a native, dependency-free
 //! reader for the same packets, so the catalog can sort and filter by
 //! lens, ISO, aperture, shutter speed, etc.
 //!
@@ -26,7 +26,7 @@
 //!
 //! ## Why a custom parser instead of exiftool subprocess
 //!
-//! VideoRoom is meant to be self-contained: users shouldn't have to
+//! ReelVault is meant to be self-contained: users shouldn't have to
 //! install exiftool to get sortable EXIF. And fork-per-video adds up
 //! noticeably at the 100k-video scale the catalog is sized for. The
 //! atom walk and the regex-based field extraction together run in
@@ -104,7 +104,7 @@ impl XmpMetadata {
 }
 
 /// Scan a video file for an embedded XMP packet and parse the fields
-/// VideoRoom cares about. Returns `Ok(None)` if no XMP packet is
+/// ReelVault cares about. Returns `Ok(None)` if no XMP packet is
 /// found, which is the common case for ordinary camera-original
 /// footage. Returns an IO error only if the file can't be opened or
 /// read; malformed atoms or malformed XMP are silently treated as

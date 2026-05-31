@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 VideoRoom Contributors
+// Copyright (C) 2026 ReelVault Contributors
 
-use crate::error::{Result, VideoRoomError};
+use crate::error::{Result, ReelVaultError};
 use crate::db::Database;
 use serde::{Deserialize, Serialize, Deserializer};
 use std::path::Path;
@@ -37,7 +37,7 @@ impl MetadataExtractor {
     pub fn extract(video_path: &Path) -> Result<FFProbeOutput> {
         // Check if ffprobe is available
         if !Self::ffprobe_available() {
-            return Err(VideoRoomError::FfmpegError(
+            return Err(ReelVaultError::FfmpegError(
                 "ffprobe not found in PATH. Please install FFmpeg.".to_string(),
             ));
         }
@@ -57,18 +57,18 @@ impl MetadataExtractor {
                 video_path.to_str().unwrap_or(""),
             ])
             .output()
-            .map_err(|e| VideoRoomError::FfmpegError(format!("Failed to run ffprobe: {}", e)))?;
+            .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to run ffprobe: {}", e)))?;
 
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
-            return Err(VideoRoomError::MetadataExtractionFailed(error_msg.to_string()));
+            return Err(ReelVaultError::MetadataExtractionFailed(error_msg.to_string()));
         }
 
         let json_str = String::from_utf8(output.stdout)
-            .map_err(|e| VideoRoomError::FfmpegError(format!("Invalid UTF-8 from ffprobe: {}", e)))?;
+            .map_err(|e| ReelVaultError::FfmpegError(format!("Invalid UTF-8 from ffprobe: {}", e)))?;
 
         let probe_output: FFProbeOutput = serde_json::from_str(&json_str)
-            .map_err(|e| VideoRoomError::MetadataExtractionFailed(format!("Failed to parse ffprobe JSON: {}", e)))?;
+            .map_err(|e| ReelVaultError::MetadataExtractionFailed(format!("Failed to parse ffprobe JSON: {}", e)))?;
 
         Ok(probe_output)
     }
@@ -241,7 +241,7 @@ impl MetadataExtractor {
                 metadata_json
             ],
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         tracing::debug!("Stored metadata for video {}: {}x{}@{:.2}fps", video_id, width, height, fps);
 
@@ -272,7 +272,7 @@ impl MetadataExtractor {
         altitude: f64,
     ) -> Result<()> {
         if !Self::ffmpeg_available() {
-            return Err(VideoRoomError::MetadataExtractionFailed(
+            return Err(ReelVaultError::MetadataExtractionFailed(
                 "ffmpeg not available on PATH; cannot embed location in file".to_string(),
             ));
         }
@@ -288,7 +288,7 @@ impl MetadataExtractor {
         let path = std::path::Path::new(video_path);
         let dir = path
             .parent()
-            .ok_or_else(|| VideoRoomError::MetadataExtractionFailed(
+            .ok_or_else(|| ReelVaultError::MetadataExtractionFailed(
                 "video has no parent directory".to_string(),
             ))?;
         let ext = path
@@ -296,7 +296,7 @@ impl MetadataExtractor {
             .and_then(|s| s.to_str())
             .unwrap_or("mp4");
         let temp_path = dir.join(format!(
-            ".videoroom-loc-{}.{}",
+            ".reelvault-loc-{}.{}",
             uuid::Uuid::new_v4(),
             ext
         ));
@@ -323,7 +323,7 @@ impl MetadataExtractor {
             Ok(s) => s.success(),
             Err(e) => {
                 let _ = std::fs::remove_file(&temp_path);
-                return Err(VideoRoomError::MetadataExtractionFailed(format!(
+                return Err(ReelVaultError::MetadataExtractionFailed(format!(
                     "ffmpeg failed to spawn: {}", e
                 )));
             }
@@ -331,7 +331,7 @@ impl MetadataExtractor {
 
         if !ok {
             let _ = std::fs::remove_file(&temp_path);
-            return Err(VideoRoomError::MetadataExtractionFailed(
+            return Err(ReelVaultError::MetadataExtractionFailed(
                 "ffmpeg returned a non-zero exit code while writing location".to_string(),
             ));
         }
@@ -341,7 +341,7 @@ impl MetadataExtractor {
         std::fs::rename(&temp_path, video_path).map_err(|e| {
             // Try to clean the temp file up if the rename failed.
             let _ = std::fs::remove_file(&temp_path);
-            VideoRoomError::MetadataExtractionFailed(format!(
+            ReelVaultError::MetadataExtractionFailed(format!(
                 "Failed to atomically replace {}: {}", video_path, e
             ))
         })?;
@@ -357,14 +357,14 @@ impl MetadataExtractor {
     /// reading back).
     pub fn write_creation_time_tag(video_path: &str, timestamp_ms: i64) -> Result<()> {
         if !Self::ffmpeg_available() {
-            return Err(VideoRoomError::MetadataExtractionFailed(
+            return Err(ReelVaultError::MetadataExtractionFailed(
                 "ffmpeg not available on PATH; cannot embed creation time in file".to_string(),
             ));
         }
 
         // Chrono is already a dependency — use it for a robust UTC string.
         let dt = chrono::DateTime::<chrono::Utc>::from_timestamp_millis(timestamp_ms)
-            .ok_or_else(|| VideoRoomError::MetadataExtractionFailed(
+            .ok_or_else(|| ReelVaultError::MetadataExtractionFailed(
                 format!("timestamp_ms {} is out of range", timestamp_ms)
             ))?;
         let iso = dt.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
@@ -372,7 +372,7 @@ impl MetadataExtractor {
         let path = std::path::Path::new(video_path);
         let dir = path
             .parent()
-            .ok_or_else(|| VideoRoomError::MetadataExtractionFailed(
+            .ok_or_else(|| ReelVaultError::MetadataExtractionFailed(
                 "video has no parent directory".to_string(),
             ))?;
         let ext = path
@@ -380,7 +380,7 @@ impl MetadataExtractor {
             .and_then(|s| s.to_str())
             .unwrap_or("mp4");
         let temp_path = dir.join(format!(
-            ".videoroom-date-{}.{}",
+            ".reelvault-date-{}.{}",
             uuid::Uuid::new_v4(),
             ext
         ));
@@ -402,7 +402,7 @@ impl MetadataExtractor {
             Ok(s) => s.success(),
             Err(e) => {
                 let _ = std::fs::remove_file(&temp_path);
-                return Err(VideoRoomError::MetadataExtractionFailed(format!(
+                return Err(ReelVaultError::MetadataExtractionFailed(format!(
                     "ffmpeg failed to spawn: {}", e
                 )));
             }
@@ -410,14 +410,14 @@ impl MetadataExtractor {
 
         if !ok {
             let _ = std::fs::remove_file(&temp_path);
-            return Err(VideoRoomError::MetadataExtractionFailed(
+            return Err(ReelVaultError::MetadataExtractionFailed(
                 "ffmpeg returned a non-zero exit code while writing creation_time".to_string(),
             ));
         }
 
         std::fs::rename(&temp_path, video_path).map_err(|e| {
             let _ = std::fs::remove_file(&temp_path);
-            VideoRoomError::MetadataExtractionFailed(format!(
+            ReelVaultError::MetadataExtractionFailed(format!(
                 "Failed to atomically replace {}: {}", video_path, e
             ))
         })?;
@@ -439,7 +439,7 @@ impl MetadataExtractor {
             .streams
             .iter()
             .find(|s| s.codec_type == Some("video".to_string()))
-            .ok_or_else(|| VideoRoomError::MetadataExtractionFailed("No video stream found".to_string()))?;
+            .ok_or_else(|| ReelVaultError::MetadataExtractionFailed("No video stream found".to_string()))?;
 
         Ok((video_stream, format))
     }

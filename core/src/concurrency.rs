@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 VideoRoom Contributors
+// Copyright (C) 2026 ReelVault Contributors
 
 //! Concurrency primitives used to bound how many heavyweight external
 //! processes (ffmpeg / ffprobe) we run at once.

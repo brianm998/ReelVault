@@ -1,4 +1,4 @@
-# VideoRoom macOS Client - Implementation Summary
+# ReelVault macOS Client - Implementation Summary
 
 ## Overview
 
@@ -69,8 +69,8 @@ macos/
 ├── IMPLEMENTATION.md                 # This file
 ├── .gitignore
 │
-└── VideoRoom/
-    ├── VideoRoom.swift               # @main app entry
+└── ReelVault/
+    ├── ReelVault.swift               # @main app entry
     │
     ├── Models/
     │   └── Video.swift               # VideoSummary, VideoMetadata, Tag, Collection
@@ -487,10 +487,10 @@ self.error = "Failed to load videos: \(error.localizedDescription)"
 swift build
 
 # Run with SPM
-swift run VideoRoom
+swift run ReelVault
 
 # Open in Xcode
-open VideoRoom.xcodeproj  # (requires xcodeproj generation)
+open ReelVault.xcodeproj  # (requires xcodeproj generation)
 
 # Using Makefile
 make build
@@ -506,7 +506,7 @@ swift build -c release
 # Archive for distribution
 make archive
 
-# Output: .build/release/VideoRoom executable
+# Output: .build/release/ReelVault executable
 ```
 
 ### Code Signing (macOS App Store)
@@ -520,7 +520,7 @@ Currently not configured (would need .pbxproj setup).
 
 ## Conclusion
 
-The macOS SwiftUI client provides a high-quality, native experience for VideoRoom users on macOS. It shares the same backend, data models, and architecture patterns as the Kotlin Compose desktop client while leveraging native SwiftUI capabilities for optimal performance and user experience.
+The macOS SwiftUI client provides a high-quality, native experience for ReelVault users on macOS. It shares the same backend, data models, and architecture patterns as the Kotlin Compose desktop client while leveraging native SwiftUI capabilities for optimal performance and user experience.
 
 The implementation emphasizes:
 - **Clarity**: MVVM separation of concerns

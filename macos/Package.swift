@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "VideoRoom",
+    name: "ReelVault",
     platforms: [
         .macOS(.v15)
     ],
     products: [
-        .executable(name: "VideoRoom", targets: ["VideoRoom"])
+        .executable(name: "ReelVault", targets: ["ReelVault"])
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.28.0"),
@@ -17,14 +17,14 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "VideoRoom",
+            name: "ReelVault",
             dependencies: [
                 .product(name: "SwiftProtobuf", package: "swift-protobuf"),
                 .product(name: "GRPCCore", package: "grpc-swift"),
                 .product(name: "GRPCProtobuf", package: "grpc-swift-protobuf"),
                 .product(name: "GRPCNIOTransportHTTP2", package: "grpc-swift-nio-transport"),
             ],
-            path: "VideoRoom",
+            path: "ReelVault",
             exclude: ["Info.plist"],
             resources: [
                 // Bundle everything under Resources/ — the .icns drives

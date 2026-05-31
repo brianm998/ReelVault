@@ -1,27 +1,27 @@
-# VideoRoom Core — Windows service installer
+# ReelVault Core — Windows service installer
 #
 # Run from an elevated (Administrator) PowerShell prompt:
 #   .\install-service.ps1
-#   .\install-service.ps1 -Binary "C:\path\to\videoroom-core.exe"
+#   .\install-service.ps1 -Binary "C:\path\to\reelvault-core.exe"
 #   .\install-service.ps1 -Uninstall
 #
-# The daemon installs to C:\Program Files\VideoRoom\ and listens on
+# The daemon installs to C:\Program Files\ReelVault\ and listens on
 # 127.0.0.1:50051, serving all users on this machine from a single catalog.
 #
-# Log location:  C:\ProgramData\VideoRoom\logs\videoroom-core.log
-# Catalog:       C:\ProgramData\VideoRoom\catalog.db
+# Log location:  C:\ProgramData\ReelVault\logs\reelvault-core.log
+# Catalog:       C:\ProgramData\ReelVault\catalog.db
 
 param(
-    [string]$Binary = "$PSScriptRoot\videoroom-core.exe",
+    [string]$Binary = "$PSScriptRoot\reelvault-core.exe",
     [switch]$Uninstall
 )
 
-$ServiceName   = "VideoRoomCore"
-$DisplayName   = "VideoRoom Core Daemon"
-$Description   = "Serves the VideoRoom gRPC catalog API on 127.0.0.1:50051."
-$InstallDir    = "C:\Program Files\VideoRoom"
-$InstallBin    = "$InstallDir\videoroom-core.exe"
-$DataDir       = "C:\ProgramData\VideoRoom"
+$ServiceName   = "ReelVaultCore"
+$DisplayName   = "ReelVault Core Daemon"
+$Description   = "Serves the ReelVault gRPC catalog API on 127.0.0.1:50051."
+$InstallDir    = "C:\Program Files\ReelVault"
+$InstallBin    = "$InstallDir\reelvault-core.exe"
+$DataDir       = "C:\ProgramData\ReelVault"
 $LogDir        = "$DataDir\logs"
 
 # Require elevation.
@@ -42,7 +42,7 @@ function Install-Service {
 
     if (-not (Test-Path $Binary)) {
         Write-Error "Binary not found at '$Binary'."
-        Write-Error "Pass -Binary <path> or place videoroom-core.exe next to this script."
+        Write-Error "Pass -Binary <path> or place reelvault-core.exe next to this script."
         exit 1
     }
 
@@ -71,13 +71,13 @@ function Install-Service {
 
     $svc = Get-Service -Name $ServiceName
     Write-Host ""
-    Write-Host "VideoRoom Core daemon installed and running (status: $($svc.Status))."
-    Write-Host "  Logs:    $LogDir\videoroom-core.log"
+    Write-Host "ReelVault Core daemon installed and running (status: $($svc.Status))."
+    Write-Host "  Logs:    $LogDir\reelvault-core.log"
     Write-Host "  Catalog: $DataDir\catalog.db"
     Write-Host "  Port:    127.0.0.1:50051"
     Write-Host ""
     Write-Host "To view logs:"
-    Write-Host "  Get-Content '$LogDir\videoroom-core.log' -Wait"
+    Write-Host "  Get-Content '$LogDir\reelvault-core.log' -Wait"
 }
 
 function Uninstall-Service {
@@ -85,7 +85,7 @@ function Uninstall-Service {
     Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
     & sc.exe delete $ServiceName | Out-Null
     Remove-Item -Force $InstallBin -ErrorAction SilentlyContinue
-    Write-Host "VideoRoom Core service removed."
+    Write-Host "ReelVault Core service removed."
     Write-Host "Catalog and logs in $DataDir left intact — remove manually if desired."
 }
 

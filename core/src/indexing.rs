@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 VideoRoom Contributors
+// Copyright (C) 2026 ReelVault Contributors
 
 use crate::db::Database;
-use crate::error::{Result, VideoRoomError};
+use crate::error::{Result, ReelVaultError};
 use crate::metadata::MetadataExtractor;
 use crate::post_index;
 use crate::thumbnails::ThumbnailGenerator;
@@ -300,7 +300,7 @@ impl IndexingEngine {
         let filename = video_path
             .file_name()
             .and_then(|n| n.to_str())
-            .ok_or_else(|| VideoRoomError::InvalidPath("Invalid filename".to_string()))?;
+            .ok_or_else(|| ReelVaultError::InvalidPath("Invalid filename".to_string()))?;
 
         // Get file size
         let file_size = std::fs::metadata(video_path)
@@ -401,7 +401,7 @@ impl IndexingEngine {
             .map(|s| SUPPORTED_EXTENSIONS.contains(&s.to_lowercase().as_str()))
             .unwrap_or(false);
         if !ext_ok {
-            return Err(VideoRoomError::InvalidPath(format!(
+            return Err(ReelVaultError::InvalidPath(format!(
                 "unsupported extension: {}",
                 video_path.display()
             )));
@@ -440,7 +440,7 @@ impl IndexingEngine {
                 "UPDATE videos SET is_online = 0 WHERE id = ?",
                 rusqlite::params![&video.id],
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
             Ok(Some(video.id))
         } else {
             Ok(None)
@@ -454,7 +454,7 @@ impl IndexingEngine {
                 "UPDATE videos SET is_online = ? WHERE id = ?",
                 rusqlite::params![is_online as i32, video.id],
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         }
         Ok(())
     }

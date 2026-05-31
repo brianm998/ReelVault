@@ -6,14 +6,14 @@
 ARGS ?=
 
 help:
-	@echo "VideoRoom Core (Rust daemon) - Build Commands"
+	@echo "ReelVault Core (Rust daemon) - Build Commands"
 	@echo "============================================="
 	@echo "make build       - cargo build (debug)"
 	@echo "make release     - cargo build --release"
 	@echo "make run         - Run the daemon (debug). Pass flags via ARGS=..."
 	@echo "make run-release - Run the daemon (release). Pass flags via ARGS=..."
 	@echo "make dev         - Run the daemon with RUST_LOG=debug"
-	@echo "make cli         - Run the videoroom-cli binary. Pass args via ARGS=..."
+	@echo "make cli         - Run the reelvault-cli binary. Pass args via ARGS=..."
 	@echo "make test        - cargo test"
 	@echo "make check       - cargo check (fast type-check, no codegen)"
 	@echo "make clippy      - cargo clippy -- -D warnings"
@@ -34,16 +34,16 @@ release:
 	cargo build --release
 
 run:
-	cargo run --bin videoroom-core -- $(ARGS)
+	cargo run --bin reelvault-core -- $(ARGS)
 
 run-release:
-	cargo run --release --bin videoroom-core -- $(ARGS)
+	cargo run --release --bin reelvault-core -- $(ARGS)
 
 dev:
-	RUST_LOG=debug cargo run --bin videoroom-core -- $(ARGS)
+	RUST_LOG=debug cargo run --bin reelvault-core -- $(ARGS)
 
 cli:
-	cargo run --bin videoroom-cli -- $(ARGS)
+	cargo run --bin reelvault-cli -- $(ARGS)
 
 test:
 	cargo test

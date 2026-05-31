@@ -1,7 +1,7 @@
 .PHONY: build run clean test help xcode
 
 help:
-	@echo "VideoRoom macOS Client - Build Commands"
+	@echo "ReelVault macOS Client - Build Commands"
 	@echo "========================================"
 	@echo "make build      - Build the app using Swift Package Manager"
 	@echo "make run        - Build and run the app"
@@ -14,7 +14,7 @@ build:
 	swift build -c release
 
 run: build
-	./.build/release/VideoRoom
+	./.build/release/ReelVault
 
 clean:
 	swift package clean
@@ -26,9 +26,9 @@ test:
 	swift test
 
 xcode:
-	open VideoRoom.xcodeproj
+	open ReelVault.xcodeproj
 
 archive:
-	swift build -c release --product VideoRoom
+	swift build -c release --product ReelVault
 
 .DEFAULT_GOAL := help

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 VideoRoom Contributors
+// Copyright (C) 2026 ReelVault Contributors
 
 use crate::db::Database;
-use crate::error::{Result, VideoRoomError};
+use crate::error::{Result, ReelVaultError};
 
 #[derive(Debug, Clone)]
 pub struct SearchResult {
@@ -51,7 +51,7 @@ impl SearchEngine {
 
         let mut stmt = conn
             .prepare(&sql)
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         let mut params_vec: Vec<&dyn rusqlite::ToSql> = vec![&like_query, &like_query];
 
@@ -71,9 +71,9 @@ impl SearchEngine {
                     path: row.get(2)?,
                 })
             })
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         // Get total count
         let count_sql = format!(
@@ -98,7 +98,7 @@ impl SearchEngine {
 
         let mut count_stmt = conn
             .prepare(&count_sql)
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         let count_params: Vec<&dyn rusqlite::ToSql> = {
             let mut p: Vec<&dyn rusqlite::ToSql> = vec![&like_query, &like_query];
@@ -110,7 +110,7 @@ impl SearchEngine {
 
         let total: i64 = count_stmt
             .query_row(count_params.as_slice(), |row| row.get(0))
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok((results, total))
     }
@@ -196,7 +196,7 @@ impl SearchEngine {
 
         let mut stmt = conn
             .prepare(&sql)
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         let results = stmt
             .query_map(param_refs.as_slice(), |row| {
@@ -206,9 +206,9 @@ impl SearchEngine {
                     path: row.get(2)?,
                 })
             })
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         // Get total count
         let count_sql = sql.replace("SELECT DISTINCT v.id, v.filename, v.path", "SELECT COUNT(DISTINCT v.id)")
@@ -225,11 +225,11 @@ impl SearchEngine {
 
         let mut count_stmt = conn
             .prepare(&count_sql)
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         let total: i64 = count_stmt
             .query_row(count_params.as_slice(), |row| row.get(0))
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok((results, total))
     }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VideoRoom Core — multi-platform release build script
+# ReelVault Core — multi-platform release build script
 #
 # Produces release binaries and service-install bundles for all supported
 # targets and places them under dist/core/.
@@ -69,7 +69,7 @@ if [[ -z "$VERSION" ]]; then
     VERSION="$(grep '^version' "${CORE_DIR}/Cargo.toml" \
         | head -1 | sed 's/.*"\(.*\)".*/\1/')"
 fi
-echo "==> Building videoroom-core v${VERSION}"
+echo "==> Building reelvault-core v${VERSION}"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -111,7 +111,7 @@ build_target() {
     (cd "$CORE_DIR" && \
         CARGO_TERM_COLOR=always \
         "$tool" build --release --target "$target" \
-            --bin videoroom-core --bin videoroom-cli 2>&1)
+            --bin reelvault-core --bin reelvault-cli 2>&1)
 }
 
 # Package a built target into a tar.gz (Unix) or zip (Windows).
@@ -121,25 +121,25 @@ package_target() {
     local ext="${3:-}"           # ".exe" for Windows, "" otherwise
 
     local bin_dir="${CORE_DIR}/target/${target}/release"
-    local pkg_name="videoroom-core-v${VERSION}-${platform_label}"
+    local pkg_name="reelvault-core-v${VERSION}-${platform_label}"
     local pkg_dir="${OUT_DIR}/${pkg_name}"
 
     rm -rf "$pkg_dir"
     mkdir -p "$pkg_dir"
 
-    cp "${bin_dir}/videoroom-core${ext}"  "${pkg_dir}/"
-    cp "${bin_dir}/videoroom-cli${ext}"   "${pkg_dir}/"
+    cp "${bin_dir}/reelvault-core${ext}"  "${pkg_dir}/"
+    cp "${bin_dir}/reelvault-cli${ext}"   "${pkg_dir}/"
     cp -r "${CORE_DIR}/dist/"*            "${pkg_dir}/" 2>/dev/null || true
 
     # Add a quick-start README.
     cat > "${pkg_dir}/INSTALL.txt" << EOF
-VideoRoom Core v${VERSION} — ${platform_label}
+ReelVault Core v${VERSION} — ${platform_label}
 ================================================
 
 Binaries
 --------
-  videoroom-core${ext}   gRPC daemon
-  videoroom-cli${ext}    command-line catalog tool
+  reelvault-core${ext}   gRPC daemon
+  reelvault-cli${ext}    command-line catalog tool
 
 System Daemon Setup
 -------------------
@@ -149,7 +149,7 @@ EOF
         cat >> "${pkg_dir}/INSTALL.txt" << 'EOF'
   Run install-service.ps1 from an elevated PowerShell prompt.
   The daemon will start automatically on boot and log to:
-    C:\ProgramData\VideoRoom\logs\videoroom-core.log
+    C:\ProgramData\ReelVault\logs\reelvault-core.log
 EOF
     else
         cat >> "${pkg_dir}/INSTALL.txt" << 'EOF'
@@ -157,9 +157,9 @@ EOF
     sudo ./install-service.sh
   The daemon will start automatically on boot.
 
-  macOS logs:  /Library/Logs/VideoRoom/videoroom-core.log
-  Linux logs:  /var/log/videoroom/videoroom-core.log
-               journalctl -u videoroom-core -f
+  macOS logs:  /Library/Logs/ReelVault/reelvault-core.log
+  Linux logs:  /var/log/reelvault/reelvault-core.log
+               journalctl -u reelvault-core -f
 EOF
     fi
 
@@ -207,23 +207,23 @@ if [[ "$NATIVE" -eq 1 ]]; then
             echo "  Stitching universal binary with lipo…"
             LIPO_OUT="${CORE_DIR}/target/universal-apple-darwin"
             mkdir -p "${LIPO_OUT}/release"
-            for bin in videoroom-core videoroom-cli; do
+            for bin in reelvault-core reelvault-cli; do
                 lipo -create -output "${LIPO_OUT}/release/${bin}" \
                     "${CORE_DIR}/target/aarch64-apple-darwin/release/${bin}" \
                     "${CORE_DIR}/target/x86_64-apple-darwin/release/${bin}"
                 echo "    lipo -> ${bin} (universal)"
             done
-            PKG="videoroom-core-v${VERSION}-macos-universal"
+            PKG="reelvault-core-v${VERSION}-macos-universal"
             PKG_DIR="${OUT_DIR}/${PKG}"
             mkdir -p "$PKG_DIR"
-            cp "${LIPO_OUT}/release/videoroom-core" "${PKG_DIR}/"
-            cp "${LIPO_OUT}/release/videoroom-cli"  "${PKG_DIR}/"
+            cp "${LIPO_OUT}/release/reelvault-core" "${PKG_DIR}/"
+            cp "${LIPO_OUT}/release/reelvault-cli"  "${PKG_DIR}/"
             cp -r "${CORE_DIR}/dist/"* "${PKG_DIR}/" 2>/dev/null || true
             cat > "${PKG_DIR}/INSTALL.txt" << EOF
-VideoRoom Core v${VERSION} — macOS Universal (arm64 + x86_64)
+ReelVault Core v${VERSION} — macOS Universal (arm64 + x86_64)
 =============================================================
 sudo ./install-service.sh
-Logs: /Library/Logs/VideoRoom/videoroom-core.log
+Logs: /Library/Logs/ReelVault/reelvault-core.log
 EOF
             (cd "$OUT_DIR" && tar czf "${PKG}.tar.gz" "${PKG}/")
             rm -rf "$PKG_DIR"
@@ -234,10 +234,10 @@ EOF
             PKG_STAGE="${OUT_DIR}/.pkgroot"
             rm -rf "${PKG_STAGE}"
             mkdir -p "${PKG_STAGE}/usr/local/bin"
-            cp "${LIPO_OUT}/release/videoroom-core" "${PKG_STAGE}/usr/local/bin/"
-            cp "${LIPO_OUT}/release/videoroom-cli"  "${PKG_STAGE}/usr/local/bin/"
-            chmod 755 "${PKG_STAGE}/usr/local/bin/videoroom-core"
-            chmod 755 "${PKG_STAGE}/usr/local/bin/videoroom-cli"
+            cp "${LIPO_OUT}/release/reelvault-core" "${PKG_STAGE}/usr/local/bin/"
+            cp "${LIPO_OUT}/release/reelvault-cli"  "${PKG_STAGE}/usr/local/bin/"
+            chmod 755 "${PKG_STAGE}/usr/local/bin/reelvault-core"
+            chmod 755 "${PKG_STAGE}/usr/local/bin/reelvault-cli"
 
             # Codesign binaries with Hardened Runtime before pkgbuild.
             # Apple notarization rejects packages containing Mach-O binaries that
@@ -246,8 +246,8 @@ EOF
             if [[ -n "${SIGN_APP:-}" ]]; then
                 echo "  Code-signing binaries with hardened runtime…"
                 for bin in \
-                    "${PKG_STAGE}/usr/local/bin/videoroom-core" \
-                    "${PKG_STAGE}/usr/local/bin/videoroom-cli"; do
+                    "${PKG_STAGE}/usr/local/bin/reelvault-core" \
+                    "${PKG_STAGE}/usr/local/bin/reelvault-cli"; do
                     codesign --force --options runtime --timestamp \
                         --sign "${SIGN_APP}" "$bin"
                     echo "    Signed: $(basename "$bin")"
@@ -256,7 +256,7 @@ EOF
 
             PKGBUILD_ARGS=(
                 --root             "${PKG_STAGE}"
-                --identifier       "com.videoroom.core"
+                --identifier       "com.reelvault.core"
                 --version          "${VERSION}"
                 --install-location /
             )
@@ -277,27 +277,27 @@ EOF
                     package_target "x86_64-unknown-linux-gnu" "linux-x86_64"
 
                     # ── Linux .deb package ───────────────────────────────────
-                    echo "  Packaging videoroom-core_${VERSION}_amd64.deb…"
-                    DEB_STEM="videoroom-core_${VERSION}_amd64"
+                    echo "  Packaging reelvault-core_${VERSION}_amd64.deb…"
+                    DEB_STEM="reelvault-core_${VERSION}_amd64"
                     DEB_STAGE="${OUT_DIR}/.debroot"
                     rm -rf "${DEB_STAGE}"
                     mkdir -p "${DEB_STAGE}/DEBIAN"
                     mkdir -p "${DEB_STAGE}/usr/local/bin"
-                    cp "${CORE_DIR}/target/x86_64-unknown-linux-gnu/release/videoroom-core" \
+                    cp "${CORE_DIR}/target/x86_64-unknown-linux-gnu/release/reelvault-core" \
                         "${DEB_STAGE}/usr/local/bin/"
-                    cp "${CORE_DIR}/target/x86_64-unknown-linux-gnu/release/videoroom-cli" \
+                    cp "${CORE_DIR}/target/x86_64-unknown-linux-gnu/release/reelvault-cli" \
                         "${DEB_STAGE}/usr/local/bin/"
                     chmod 755 "${DEB_STAGE}/usr/local/bin/"*
                     cat > "${DEB_STAGE}/DEBIAN/control" << CTRL
-Package: videoroom-core
+Package: reelvault-core
 Version: ${VERSION}
 Architecture: amd64
 Maintainer: Brian Martin
 Depends: libc6 (>= 2.17)
 Section: video
 Priority: optional
-Description: VideoRoom Core Daemon
- gRPC daemon for the VideoRoom video cataloging application.
+Description: ReelVault Core Daemon
+ gRPC daemon for the ReelVault video cataloging application.
 CTRL
                     dpkg-deb --build --root-owner-group \
                         "${DEB_STAGE}" "${OUT_DIR}/${DEB_STEM}.deb"
@@ -312,27 +312,27 @@ CTRL
                     package_target "aarch64-unknown-linux-gnu" "linux-aarch64"
 
                     # ── Linux .deb package ───────────────────────────────────
-                    echo "  Packaging videoroom-core_${VERSION}_arm64.deb…"
-                    DEB_STEM="videoroom-core_${VERSION}_arm64"
+                    echo "  Packaging reelvault-core_${VERSION}_arm64.deb…"
+                    DEB_STEM="reelvault-core_${VERSION}_arm64"
                     DEB_STAGE="${OUT_DIR}/.debroot"
                     rm -rf "${DEB_STAGE}"
                     mkdir -p "${DEB_STAGE}/DEBIAN"
                     mkdir -p "${DEB_STAGE}/usr/local/bin"
-                    cp "${CORE_DIR}/target/aarch64-unknown-linux-gnu/release/videoroom-core" \
+                    cp "${CORE_DIR}/target/aarch64-unknown-linux-gnu/release/reelvault-core" \
                         "${DEB_STAGE}/usr/local/bin/"
-                    cp "${CORE_DIR}/target/aarch64-unknown-linux-gnu/release/videoroom-cli" \
+                    cp "${CORE_DIR}/target/aarch64-unknown-linux-gnu/release/reelvault-cli" \
                         "${DEB_STAGE}/usr/local/bin/"
                     chmod 755 "${DEB_STAGE}/usr/local/bin/"*
                     cat > "${DEB_STAGE}/DEBIAN/control" << CTRL
-Package: videoroom-core
+Package: reelvault-core
 Version: ${VERSION}
 Architecture: arm64
 Maintainer: Brian Martin
 Depends: libc6 (>= 2.17)
 Section: video
 Priority: optional
-Description: VideoRoom Core Daemon
- gRPC daemon for the VideoRoom video cataloging application.
+Description: ReelVault Core Daemon
+ gRPC daemon for the ReelVault video cataloging application.
 CTRL
                     dpkg-deb --build --root-owner-group \
                         "${DEB_STAGE}" "${OUT_DIR}/${DEB_STEM}.deb"
@@ -356,15 +356,15 @@ CTRL
                 || command -v makensis 2>/dev/null || true)"
             if [[ -n "$MAKENSIS_CMD" ]]; then
                 echo "  Packaging Windows Setup.exe…"
-                WIN_STEM="videoroom-core-v${VERSION}-windows-x86_64"
+                WIN_STEM="reelvault-core-v${VERSION}-windows-x86_64"
                 WIN_STAGE="${OUT_DIR}/${WIN_STEM}"
                 mkdir -p "${WIN_STAGE}"
-                cp "${CORE_DIR}/target/x86_64-pc-windows-msvc/release/videoroom-core.exe" \
+                cp "${CORE_DIR}/target/x86_64-pc-windows-msvc/release/reelvault-core.exe" \
                     "${WIN_STAGE}/"
-                cp "${CORE_DIR}/target/x86_64-pc-windows-msvc/release/videoroom-cli.exe" \
+                cp "${CORE_DIR}/target/x86_64-pc-windows-msvc/release/reelvault-cli.exe" \
                     "${WIN_STAGE}/"
                 SETUP_OUT="${OUT_DIR}/${WIN_STEM}-Setup.exe"
-                NSI_SCRIPT="${SCRIPT_DIR}/releases/videoroom_core_installer.nsi"
+                NSI_SCRIPT="${SCRIPT_DIR}/releases/reelvault_core_installer.nsi"
                 "$MAKENSIS_CMD" \
                     "-DAPP_VERSION=${VERSION}" \
                     "-DARCH=x64" \
@@ -415,7 +415,7 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
     LIPO_OUT="${CORE_DIR}/target/universal-apple-darwin"
     mkdir -p "${LIPO_OUT}/release"
 
-    for bin in videoroom-core videoroom-cli; do
+    for bin in reelvault-core reelvault-cli; do
         lipo -create -output "${LIPO_OUT}/release/${bin}" \
             "${CORE_DIR}/target/aarch64-apple-darwin/release/${bin}" \
             "${CORE_DIR}/target/x86_64-apple-darwin/release/${bin}"
@@ -424,17 +424,17 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
 
     # Package: universal (preferred) + individual arches for pinned installs.
     (
-        PKG="videoroom-core-v${VERSION}-macos-universal"
+        PKG="reelvault-core-v${VERSION}-macos-universal"
         PKG_DIR="${OUT_DIR}/${PKG}"
         mkdir -p "$PKG_DIR"
-        cp "${LIPO_OUT}/release/videoroom-core"  "${PKG_DIR}/"
-        cp "${LIPO_OUT}/release/videoroom-cli"   "${PKG_DIR}/"
+        cp "${LIPO_OUT}/release/reelvault-core"  "${PKG_DIR}/"
+        cp "${LIPO_OUT}/release/reelvault-cli"   "${PKG_DIR}/"
         cp -r "${CORE_DIR}/dist/"*               "${PKG_DIR}/" 2>/dev/null || true
         cat > "${PKG_DIR}/INSTALL.txt" << EOF
-VideoRoom Core v${VERSION} — macOS Universal (arm64 + x86_64)
+ReelVault Core v${VERSION} — macOS Universal (arm64 + x86_64)
 =============================================================
 sudo ./install-service.sh
-Logs: /Library/Logs/VideoRoom/videoroom-core.log
+Logs: /Library/Logs/ReelVault/reelvault-core.log
 EOF
         (cd "$OUT_DIR" && tar czf "${PKG}.tar.gz" "${PKG}/")
         rm -rf "$PKG_DIR"

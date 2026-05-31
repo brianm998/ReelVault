@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Rust backend (`core/`) is a gRPC daemon that manages the VideoRoom catalog. It handles:
+The Rust backend (`core/`) is a gRPC daemon that manages the ReelVault catalog. It handles:
 - SQLite database persistence
 - Video metadata extraction
 - Thumbnail generation
@@ -19,9 +19,9 @@ Entry point. Initializes:
 - gRPC server startup on `127.0.0.1:50051`
 
 Uses `dirs` crate to store database in platform-specific locations:
-- **macOS**: `~/Library/Application Support/VideoRoom/`
-- **Linux**: `~/.local/share/videoroom/`
-- **Windows**: `%APPDATA%\VideoRoom\`
+- **macOS**: `~/Library/Application Support/ReelVault/`
+- **Linux**: `~/.local/share/reelvault/`
+- **Windows**: `%APPDATA%\ReelVault\`
 
 ### `db.rs` — Database Layer
 All SQLite operations. Public methods:
@@ -97,7 +97,7 @@ Config struct contains:
 - `enable_auto_tagging` (future: AI features)
 
 ### `service.rs` — gRPC Service Implementation
-Implements all gRPC methods defined in `proto/videoroom.proto`.
+Implements all gRPC methods defined in `proto/reelvault.proto`.
 
 Main methods (Request → Response):
 - **Query**: `list_videos()`, `search_videos()`, `get_metadata()`, `get_thumbnail()`
@@ -110,7 +110,7 @@ Main methods (Request → Response):
 Streaming responses (scan progress, proxy generation) return `tonic::codec::Streaming`.
 
 ### `error.rs` — Error Handling
-`VideoRoomError` enum maps application errors to gRPC Status codes:
+`ReelVaultError` enum maps application errors to gRPC Status codes:
 - `VideoNotFound` → Status::NOT_FOUND
 - `DatabaseError` → Status::INTERNAL
 - `InvalidRequest` → Status::INVALID_ARGUMENT
@@ -137,12 +137,12 @@ Indexes on frequently queried fields (filename, path, resolution, fps, etc.) for
 
 ## Protocol Buffers
 
-`proto/videoroom.proto` defines:
-- **Service**: `VideoRoom` with 30+ RPC methods
+`proto/reelvault.proto` defines:
+- **Service**: `ReelVault` with 30+ RPC methods
 - **Messages**: Request/response types for each operation
 - **Streaming**: `stream ScanProgress`, `stream ThumbnailChunk`, `stream ProxyGenerationProgress`
 
-Generated Rust code goes to `target/debug/videoroom.rs` (via tonic-build).
+Generated Rust code goes to `target/debug/reelvault.rs` (via tonic-build).
 
 ## Dependencies
 
@@ -193,9 +193,9 @@ cargo clippy
 ## Extending
 
 ### Adding a New gRPC Method
-1. Add message types to `proto/videoroom.proto`
+1. Add message types to `proto/reelvault.proto`
 2. Run `cargo build` to generate Rust code
-3. Implement in `service.rs` under `impl VideoRoomService`
+3. Implement in `service.rs` under `impl ReelVaultService`
 4. Add supporting logic in appropriate module (db, metadata, etc.)
 
 ### Adding a New Database Table

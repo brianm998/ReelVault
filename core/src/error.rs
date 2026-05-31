@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 VideoRoom Contributors
+// Copyright (C) 2026 ReelVault Contributors
 
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum VideoRoomError {
+pub enum ReelVaultError {
     #[error("Database error: {0}")]
     DatabaseError(String),
 
@@ -49,20 +49,20 @@ pub enum VideoRoomError {
 }
 
 // gRPC conversion
-impl From<VideoRoomError> for tonic::Status {
-    fn from(err: VideoRoomError) -> Self {
+impl From<ReelVaultError> for tonic::Status {
+    fn from(err: ReelVaultError) -> Self {
         match err {
-            VideoRoomError::VideoNotFound(_)
-            | VideoRoomError::TagNotFound(_)
-            | VideoRoomError::CollectionNotFound(_)
-            | VideoRoomError::FileNotFound(_) => tonic::Status::not_found(err.to_string()),
-            VideoRoomError::InvalidRequest(_) | VideoRoomError::InvalidPath(_) => {
+            ReelVaultError::VideoNotFound(_)
+            | ReelVaultError::TagNotFound(_)
+            | ReelVaultError::CollectionNotFound(_)
+            | ReelVaultError::FileNotFound(_) => tonic::Status::not_found(err.to_string()),
+            ReelVaultError::InvalidRequest(_) | ReelVaultError::InvalidPath(_) => {
                 tonic::Status::invalid_argument(err.to_string())
             }
-            VideoRoomError::DuplicateEntry(_) => tonic::Status::already_exists(err.to_string()),
+            ReelVaultError::DuplicateEntry(_) => tonic::Status::already_exists(err.to_string()),
             _ => tonic::Status::internal(err.to_string()),
         }
     }
 }
 
-pub type Result<T> = std::result::Result<T, VideoRoomError>;
+pub type Result<T> = std::result::Result<T, ReelVaultError>;

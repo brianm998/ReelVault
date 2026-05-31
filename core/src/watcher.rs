@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 VideoRoom Contributors
+// Copyright (C) 2026 ReelVault Contributors
 
 //! Real-time library watcher.
 //!
@@ -122,11 +122,11 @@ impl LibraryWatcher {
         let (cmd_tx, cmd_rx) = std_mpsc::channel::<WatcherCmd>();
 
         let thread = std::thread::Builder::new()
-            .name("videoroom-watcher".to_string())
+            .name("reelvault-watcher".to_string())
             .spawn(move || {
                 run_watcher(db, thumbnail_cache, events, settle_ms, poll_ms, initial_paths, cmd_rx);
             })
-            .map_err(crate::error::VideoRoomError::IoError)?;
+            .map_err(crate::error::ReelVaultError::IoError)?;
 
         Ok(LibraryWatcher {
             cmd_tx,

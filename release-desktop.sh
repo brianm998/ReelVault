@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VideoRoom Desktop (Kotlin Compose) — release build script
+# ReelVault Desktop (Kotlin Compose) — release build script
 #
 # ┌──────────────────────────────────────────────────────────────────────┐
 # │ IMPORTANT: Compose Desktop native distributions are platform-bound.  │
@@ -17,7 +17,7 @@
 #   ./release-desktop.sh [OPTIONS]
 #
 # Options:
-#   --core-bin PATH   Path to the videoroom-core binary to bundle.
+#   --core-bin PATH   Path to the reelvault-core binary to bundle.
 #                     If omitted, the script searches the usual build locations
 #                     and warns if nothing is found.
 #   --sign IDENTITY   Developer ID Application identity for code signing.
@@ -25,7 +25,7 @@
 #                     Omit to skip signing (local / unsigned builds only).
 #   --notarize        Submit the .pkg to Apple Notary Service after signing.
 #                     Requires --sign and APPLE_API_KEY_PATH, APPLE_API_KEY_ID,
-#                     APPLE_API_ISSUER_ID env vars (CI) or a "VideoRoom-Notarize"
+#                     APPLE_API_ISSUER_ID env vars (CI) or a "ReelVault-Notarize"
 #                     keychain profile (local).
 #   --out DIR         Output directory (default: dist/desktop)
 #   --help            Show this message
@@ -71,18 +71,18 @@ done
 OS="$(uname -s)"
 
 # ---------------------------------------------------------------------------
-# Locate the videoroom-core binary to bundle
+# Locate the reelvault-core binary to bundle
 # ---------------------------------------------------------------------------
 locate_core_bin() {
     local candidates=(
         "${CORE_BIN}"
-        "${CORE_DIR}/target/release/videoroom-core"
-        "${SCRIPT_DIR}/dist/core/videoroom-core"
+        "${CORE_DIR}/target/release/reelvault-core"
+        "${SCRIPT_DIR}/dist/core/reelvault-core"
     )
     # Also check the universal macOS binary
     if [[ "$OS" == "Darwin" ]]; then
         candidates+=(
-            "${CORE_DIR}/target/universal-apple-darwin/release/videoroom-core"
+            "${CORE_DIR}/target/universal-apple-darwin/release/reelvault-core"
         )
     fi
     for c in "${candidates[@]}"; do
@@ -95,7 +95,7 @@ locate_core_bin() {
     return 1
 }
 
-echo "==> VideoRoom Desktop release build"
+echo "==> ReelVault Desktop release build"
 echo "    Platform: ${OS}"
 
 # ---------------------------------------------------------------------------
@@ -109,16 +109,16 @@ if FOUND_BIN="$(locate_core_bin 2>/dev/null)"; then
     echo "==> Bundling daemon binary: ${FOUND_BIN}"
     # On Windows the binary has a .exe suffix; on Unix it doesn't.
     if [[ "$OS" == "MINGW"* || "$OS" == "CYGWIN"* || "$OS" == "MSYS"* ]]; then
-        cp -f "$FOUND_BIN" "${RELEASE_BIN_DIR}/videoroom-core.exe"
+        cp -f "$FOUND_BIN" "${RELEASE_BIN_DIR}/reelvault-core.exe"
     else
-        cp -f "$FOUND_BIN" "${RELEASE_BIN_DIR}/videoroom-core"
-        chmod +x "${RELEASE_BIN_DIR}/videoroom-core"
+        cp -f "$FOUND_BIN" "${RELEASE_BIN_DIR}/reelvault-core"
+        chmod +x "${RELEASE_BIN_DIR}/reelvault-core"
     fi
 else
     echo ""
-    echo "WARNING: videoroom-core binary not found — the desktop app will be"
+    echo "WARNING: reelvault-core binary not found — the desktop app will be"
     echo "  packaged without a bundled daemon. Users will need to install or"
-    echo "  run videoroom-core separately."
+    echo "  run reelvault-core separately."
     echo "  To bundle it, run ./release-core.sh first, then re-run this script."
     echo "  Or pass --core-bin <path> explicitly."
     echo ""
@@ -158,7 +158,7 @@ copy_artifacts() {
 if [[ "$OS" == "Darwin" ]]; then
     # -----------------------------------------------------------------------
     # macOS — two-phase approach:
-    #   1. createDistributable → VideoRoom.app  (jpackage --type app-image)
+    #   1. createDistributable → ReelVault.app  (jpackage --type app-image)
     #   2. codesign the bundle (dylibs → JDK runtime → main exe → bundle)
     #   3. pkgbuild to wrap into a signed installer .pkg
     #
@@ -172,7 +172,7 @@ if [[ "$OS" == "Darwin" ]]; then
         CARGO_TERM_COLOR=always \
         ./gradlew createDistributable --no-daemon 2>&1)
 
-    APP_BUNDLE="${BUILD_MAIN}/app/VideoRoom.app"
+    APP_BUNDLE="${BUILD_MAIN}/app/ReelVault.app"
     if [[ ! -d "$APP_BUNDLE" ]]; then
         echo "Error: app bundle not found at ${APP_BUNDLE}" >&2
         exit 1
@@ -191,7 +191,7 @@ if [[ "$OS" == "Darwin" ]]; then
     if [[ -n "$SIGN_IDENTITY" ]]; then
         echo "==> Signing app bundle…"
 
-        ENTS_FILE="$(mktemp /tmp/videoroom-entitlements.XXXXXX.plist)"
+        ENTS_FILE="$(mktemp /tmp/reelvault-entitlements.XXXXXX.plist)"
         cat > "$ENTS_FILE" << 'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
@@ -268,7 +268,7 @@ PLIST
     # Signing the pkg with Developer ID Installer happens here so notarytool
     # receives an already-signed pkg (no productsign step needed later).
     SIGN_PKG="${SIGN_IDENTITY/Developer ID Application/Developer ID Installer}"
-    PKG_NAME="VideoRoom-${VERSION}.pkg"
+    PKG_NAME="ReelVault-${VERSION}.pkg"
     PKG_PATH="${OUT_DIR}/${PKG_NAME}"
 
     echo "==> Creating installer: ${PKG_NAME}…"
@@ -276,7 +276,7 @@ PLIST
         pkgbuild \
             --component        "$APP_BUNDLE" \
             --install-location /Applications \
-            --identifier       "com.videoroom.app" \
+            --identifier       "com.reelvault.app" \
             --version          "$VERSION" \
             --sign             "$SIGN_PKG" \
             "$PKG_PATH"
@@ -284,7 +284,7 @@ PLIST
         pkgbuild \
             --component        "$APP_BUNDLE" \
             --install-location /Applications \
-            --identifier       "com.videoroom.app" \
+            --identifier       "com.reelvault.app" \
             --version          "$VERSION" \
             "$PKG_PATH"
     fi
@@ -343,7 +343,7 @@ if [[ "$OS" == "Darwin" && "$NOTARIZE" -eq 1 ]]; then
                 --wait 2>&1) || true
         else
             NOTARY_OUT=$(xcrun notarytool submit "$PKG_PATH" \
-                --keychain-profile "VideoRoom-Notarize" \
+                --keychain-profile "ReelVault-Notarize" \
                 --wait 2>&1) || true
         fi
         echo "$NOTARY_OUT"
@@ -363,7 +363,7 @@ if [[ "$OS" == "Darwin" && "$NOTARIZE" -eq 1 ]]; then
                         --issuer "$APPLE_API_ISSUER_ID" 2>&1 || true
                 else
                     xcrun notarytool log "$SUBMISSION_ID" \
-                        --keychain-profile "VideoRoom-Notarize" 2>&1 || true
+                        --keychain-profile "ReelVault-Notarize" 2>&1 || true
                 fi
             fi
             exit 1

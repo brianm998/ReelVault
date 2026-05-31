@@ -39,23 +39,23 @@ cd ..
 
 # Generate Swift code from protos
 protoc \
-  --swift_out=VideoRoom \
-  --grpc-swift_out=VideoRoom \
+  --swift_out=ReelVault \
+  --grpc-swift_out=ReelVault \
   -I../core/proto \
   ../core/proto/video.proto
 ```
 
 This will generate:
-- `VideoRoom/Generated/video.pb.swift` - Protocol buffer message definitions
-- `VideoRoom/Generated/video.grpc.swift` - gRPC service definitions
+- `ReelVault/Generated/video.pb.swift` - Protocol buffer message definitions
+- `ReelVault/Generated/video.grpc.swift` - gRPC service definitions
 
 ### Step 2: Import Generated Files
 
-Once generated, the Swift files should be in `VideoRoom/Generated/` directory:
+Once generated, the Swift files should be in `ReelVault/Generated/` directory:
 
 ```
 macos/
-└── VideoRoom/
+└── ReelVault/
     └── Generated/
         ├── video.pb.swift           # Message types
         └── video.grpc.swift         # Service client
@@ -64,8 +64,8 @@ macos/
 The import statements in `VideoRepository.swift` will then work:
 ```swift
 // These will be available after proto generation
-let request = Videoroom_ListVideosRequest()
-let client = Videoroom_VideoRoomNIOClient(channel: channel)
+let request = Reelvault_ListVideosRequest()
+let client = Reelvault_ReelVaultNIOClient(channel: channel)
 ```
 
 ### Step 3: Update VideoRepository
@@ -85,7 +85,7 @@ func listVideos(...) async throws -> [VideoSummary] {
 func listVideos(...) async throws -> [VideoSummary] {
     guard let client = client else { ... }
     
-    var request = Videoroom_ListVideosRequest()
+    var request = Reelvault_ListVideosRequest()
     request.limit = limit
     request.offset = offset
     let response = try await client.listVideos(request)
@@ -139,7 +139,7 @@ To automate proto generation, add a build phase to your Xcode project (requires 
 2. Add script:
 ```bash
 PROTO_DIR="${PROJECT_DIR}/../core/proto"
-SWIFT_OUT="${PROJECT_DIR}/VideoRoom/Generated"
+SWIFT_OUT="${PROJECT_DIR}/ReelVault/Generated"
 
 mkdir -p "$SWIFT_OUT"
 
@@ -159,7 +159,7 @@ In future Swift versions (5.10+), proto compilation can be automated via a build
 ```swift
 targets: [
     .executableTarget(
-        name: "VideoRoom",
+        name: "ReelVault",
         dependencies: [...],
         plugins: [
             .plugin(name: "GRPCSwiftPlugin", package: "grpc-swift")
@@ -181,7 +181,7 @@ swift build
 
 2. Run the client:
 ```bash
-swift run VideoRoom
+swift run ReelVault
 ```
 
 3. The app will connect to `localhost:50051` and load videos from the backend
@@ -191,7 +191,7 @@ swift run VideoRoom
 ### Error: "Cannot find type in scope"
 
 This means the proto-generated file isn't being found. Check:
-- Generated files exist in `VideoRoom/Generated/`
+- Generated files exist in `ReelVault/Generated/`
 - Files are in the correct path
 - `Package.swift` includes the generated directory
 
@@ -241,8 +241,8 @@ message GetMetadataResponse {
 
 These will be generated as:
 ```swift
-struct Videoroom_ListVideosRequest: Message { ... }
-struct Videoroom_ListVideosResponse: Message { ... }
+struct Reelvault_ListVideosRequest: Message { ... }
+struct Reelvault_ListVideosResponse: Message { ... }
 // etc.
 ```
 
@@ -269,7 +269,7 @@ Once proto files are in place, all functionality will work.
 
 The source proto definitions are in:
 ```
-/Users/brian/git/VideoRoom/core/proto/
+/Users/brian/git/ReelVault/core/proto/
 ```
 
 Current known proto files:

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 VideoRoom Contributors
+// Copyright (C) 2026 ReelVault Contributors
 
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
@@ -8,15 +8,15 @@ use std::time::Instant;
 use humansize::{format_size, BINARY};
 use prettytable::{Table, Row, Cell};
 
-use videoroom_core::db::Database;
-use videoroom_core::metadata::MetadataExtractor;
-use videoroom_core::indexing::IndexingEngine;
-use videoroom_core::post_index;
-use videoroom_core::search::SearchEngine;
+use reelvault_core::db::Database;
+use reelvault_core::metadata::MetadataExtractor;
+use reelvault_core::indexing::IndexingEngine;
+use reelvault_core::post_index;
+use reelvault_core::search::SearchEngine;
 
 #[derive(Parser)]
-#[command(name = "videoroom-cli")]
-#[command(about = "VideoRoom CLI testing tool", long_about = "Test and debug the VideoRoom core")]
+#[command(name = "reelvault-cli")]
+#[command(about = "ReelVault CLI testing tool", long_about = "Test and debug the ReelVault core")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -151,7 +151,7 @@ async fn main() -> anyhow::Result<()> {
         get_default_db_path()?
     };
 
-    println!("📚 VideoRoom CLI v{}", env!("CARGO_PKG_VERSION"));
+    println!("📚 ReelVault CLI v{}", env!("CARGO_PKG_VERSION"));
     println!("Database: {}\n", db_path.display());
 
     // Initialize database. Wrapped in `Arc` so scan-related commands
@@ -610,15 +610,15 @@ fn get_default_db_path() -> anyhow::Result<PathBuf> {
             .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?
             .join("Library")
             .join("Application Support")
-            .join("VideoRoom")
+            .join("ReelVault")
     } else if cfg!(target_os = "windows") {
         dirs::data_dir()
             .ok_or_else(|| anyhow::anyhow!("Could not determine data directory"))?
-            .join("VideoRoom")
+            .join("ReelVault")
     } else {
         dirs::data_local_dir()
             .ok_or_else(|| anyhow::anyhow!("Could not determine data directory"))?
-            .join("videoroom")
+            .join("reelvault")
     };
 
     std::fs::create_dir_all(&data_dir)?;
@@ -631,15 +631,15 @@ fn get_cache_path() -> anyhow::Result<PathBuf> {
             .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?
             .join("Library")
             .join("Caches")
-            .join("VideoRoom")
+            .join("ReelVault")
     } else if cfg!(target_os = "windows") {
         dirs::cache_dir()
             .ok_or_else(|| anyhow::anyhow!("Could not determine cache directory"))?
-            .join("VideoRoom")
+            .join("ReelVault")
     } else {
         dirs::cache_dir()
             .ok_or_else(|| anyhow::anyhow!("Could not determine cache directory"))?
-            .join("videoroom")
+            .join("reelvault")
     };
 
     std::fs::create_dir_all(&cache_dir)?;

@@ -8,9 +8,9 @@ plugins {
     id("com.google.protobuf") version "0.9.4"
 }
 
-group = "com.videoroom"
+group = "com.reelvault"
 // Version is read from the root VERSION file — the single source of truth.
-// Update that file (and AppVersion.kt + macos/VideoRoom/Info.plist) when bumping.
+// Update that file (and AppVersion.kt + macos/ReelVault/Info.plist) when bumping.
 version = rootProject.file("../VERSION").readText().trim()
 
 repositories {
@@ -110,14 +110,14 @@ sourceSets {
 // For dev runs (`./gradlew run`) we synthesise a throwaway .app inside
 // build/tmp/: the executable inside it is a symlink to the JDK's real
 // `java` binary, plus a minimal Info.plist. macOS treats it as a proper
-// bundle, so the Dock reads "VideoRoom" from CFBundleName. The JVM still
+// bundle, so the Dock reads "ReelVault" from CFBundleName. The JVM still
 // runs the same bytecode — only the launch path changes.
 //
 // Packaged builds go through jpackage as before and already produce a
-// VideoRoom.app with the correct Info.plist; this affects only `run`.
+// ReelVault.app with the correct Info.plist; this affects only `run`.
 val syncDevLaunchBundle by tasks.registering {
     onlyIf { org.gradle.internal.os.OperatingSystem.current().isMacOsX }
-    val appDir = layout.buildDirectory.dir("tmp/dev-launch/VideoRoom.app")
+    val appDir = layout.buildDirectory.dir("tmp/dev-launch/ReelVault.app")
     val iconSrc = file("src/main/resources/icons/AppIcon.icns")
     outputs.dir(appDir)
     inputs.file(iconSrc)
@@ -138,10 +138,10 @@ val syncDevLaunchBundle by tasks.registering {
             <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
             <plist version="1.0">
             <dict>
-              <key>CFBundleExecutable</key><string>VideoRoom</string>
-              <key>CFBundleName</key><string>VideoRoom</string>
-              <key>CFBundleDisplayName</key><string>VideoRoom</string>
-              <key>CFBundleIdentifier</key><string>com.videoroom.dev</string>
+              <key>CFBundleExecutable</key><string>ReelVault</string>
+              <key>CFBundleName</key><string>ReelVault</string>
+              <key>CFBundleDisplayName</key><string>ReelVault</string>
+              <key>CFBundleIdentifier</key><string>com.reelvault.dev</string>
               <key>CFBundlePackageType</key><string>APPL</string>
               <key>CFBundleIconFile</key><string>AppIcon</string>
               <key>NSHighResolutionCapable</key><true/>
@@ -156,7 +156,7 @@ val syncDevLaunchBundle by tasks.registering {
 
 compose.desktop {
     application {
-        mainClass = "com.videoroom.AppKt"
+        mainClass = "com.reelvault.AppKt"
         // JNA on JDK 17+ needs reflective access to a few java.* internals to
         // attach native callbacks; without these, EmbeddedMediaPlayerComponent
         // can fail to wire up its event listener (silent: VLCJ swallows the
@@ -173,17 +173,17 @@ compose.desktop {
         )
         // macOS Dock tooltip and menu-bar app name. Three knobs:
         //
-        // * `-Xdock:name=VideoRoom` — parsed by the macOS-aware JVM launcher
+        // * `-Xdock:name=ReelVault` — parsed by the macOS-aware JVM launcher
         //   (JBR, OpenJDK with Apple's launcher patches). Sets NSApp's name
         //   before any Java code runs.
-        // * `-Dapple.awt.application.name=VideoRoom` — read by AWT's native
+        // * `-Dapple.awt.application.name=ReelVault` — read by AWT's native
         //   Cocoa init when LWCToolkit boots. Setting this as a JVM `-D`
         //   arg (not via `System.setProperty` in main) is the only reliable
         //   way to land it before AWT init: the Compose entrypoint touches
         //   AWT classes synchronously, and once they load the name is
         //   cached. We tried `System.setProperty` from main() — Dock still
         //   read "java".
-        // * `-Dcom.apple.mrj.application.apple.menu.about.name=VideoRoom` —
+        // * `-Dcom.apple.mrj.application.apple.menu.about.name=ReelVault` —
         //   the legacy MRJ property; some older OpenJDK builds still honour
         //   only this one. Harmless if ignored.
         //
@@ -191,9 +191,9 @@ compose.desktop {
         // abort startup with "Unrecognized VM option". Gate on the host.
         if (org.gradle.internal.os.OperatingSystem.current().isMacOsX) {
             jvmArgs += listOf(
-                "-Xdock:name=VideoRoom",
-                "-Dapple.awt.application.name=VideoRoom",
-                "-Dcom.apple.mrj.application.apple.menu.about.name=VideoRoom",
+                "-Xdock:name=ReelVault",
+                "-Dapple.awt.application.name=ReelVault",
+                "-Dcom.apple.mrj.application.apple.menu.about.name=ReelVault",
             )
         }
         nativeDistributions {
@@ -203,11 +203,11 @@ compose.desktop {
             // productsigned + notarized by release-desktop.sh.
             targetFormats(TargetFormat.Pkg, TargetFormat.Deb, TargetFormat.Exe)
 
-            packageName = "VideoRoom"
+            packageName = "ReelVault"
             packageVersion = "0.1.0"
             description = "Video library manager and cataloging tool"
-            vendor = "VideoRoom"
-            copyright = "2024 VideoRoom Contributors"
+            vendor = "ReelVault"
+            copyright = "2024 ReelVault Contributors"
 
             // App-icon files for jpackage. Compose Desktop expects one
             // platform-specific file per target OS — picked up at packaging
@@ -219,7 +219,7 @@ compose.desktop {
                 // (createDistributable, --type app-image) and the DMG
                 // (packageDmg). Deb/Msi accept 0.x. Override the whole
                 // macOS chain until we ship 1.0.
-                bundleID = "com.videoroom.app"
+                bundleID = "com.reelvault.app"
                 packageVersion = "1.0.0"
                 packageBuildVersion = "1.0.0"
 
@@ -232,10 +232,10 @@ compose.desktop {
                 iconFile.set(iconsDir.file("AppIcon.ico").asFile)
             }
 
-            // When release-desktop.sh places the compiled videoroom-core binary in
+            // When release-desktop.sh places the compiled reelvault-core binary in
             // desktop/release-bin/, the packaging step bundles it alongside the
             // application jar. ServerLauncher.kt looks for the binary at
-            // <jar dir>/videoroom-core[.exe] — that's where Compose puts
+            // <jar dir>/reelvault-core[.exe] — that's where Compose puts
             // appResourcesRootDir files on every platform.
             val releaseBin = project.layout.projectDirectory.dir("release-bin")
             if (releaseBin.asFile.exists()) {
@@ -247,9 +247,9 @@ compose.desktop {
 
 // Wire the dev-launch bundle into Compose's `run` task. We resolve the
 // real `java` binary from the configured Java toolchain, symlink it as
-// VideoRoom.app/Contents/MacOS/VideoRoom, and point JavaExec at that
+// ReelVault.app/Contents/MacOS/ReelVault, and point JavaExec at that
 // symlink. macOS sees the parent .app, reads CFBundleName from
-// Info.plist, and the Dock tooltip displays "VideoRoom" instead of
+// Info.plist, and the Dock tooltip displays "ReelVault" instead of
 // "java". Same JVM, same args — only the launch path changes.
 afterEvaluate {
     if (!org.gradle.internal.os.OperatingSystem.current().isMacOsX) return@afterEvaluate
@@ -258,8 +258,8 @@ afterEvaluate {
     runTask.doFirst {
         val realJava = runTask.javaLauncher.get().executablePath.asFile
         val app = layout.buildDirectory
-            .dir("tmp/dev-launch/VideoRoom.app").get().asFile
-        val exe = File(app, "Contents/MacOS/VideoRoom")
+            .dir("tmp/dev-launch/ReelVault.app").get().asFile
+        val exe = File(app, "Contents/MacOS/ReelVault")
         // Refresh the symlink — toolchain path can change between gradle
         // invocations (different JDK, version bump, etc.), so re-resolve
         // every time rather than caching.

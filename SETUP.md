@@ -1,4 +1,4 @@
-# VideoRoom Development Setup
+# ReelVault Development Setup
 
 ## Prerequisites
 
@@ -46,16 +46,16 @@ cd core
 cargo build --release
 ```
 
-The compiled binary will be at `core/target/release/videoroom-core`.
+The compiled binary will be at `core/target/release/reelvault-core`.
 
 ## Running the Core Daemon
 
 ```bash
-./core/target/release/videoroom-core
+./core/target/release/reelvault-core
 ```
 
 The daemon will:
-- Create a database at `~/.videoroom/catalog.db`
+- Create a database at `~/.reelvault/catalog.db`
 - Create a thumbnail cache directory
 - Listen on `127.0.0.1:50051` for gRPC connections
 
@@ -92,7 +92,7 @@ cargo build
 
 Once the core daemon is running, frontends can connect via gRPC at `http://127.0.0.1:50051`.
 
-The proto definitions are in `core/proto/videoroom.proto` and should be used to generate client code for each frontend language.
+The proto definitions are in `core/proto/reelvault.proto` and should be used to generate client code for each frontend language.
 
 ## Troubleshooting
 
@@ -102,7 +102,7 @@ The proto definitions are in `core/proto/videoroom.proto` and should be used to 
 
 **Database locked**
 - Only one daemon instance should run at a time
-- Kill any existing processes: `pkill videoroom-core`
+- Kill any existing processes: `pkill reelvault-core`
 
 **Port already in use**
 - Change the port in `core/src/main.rs` if 50051 is occupied

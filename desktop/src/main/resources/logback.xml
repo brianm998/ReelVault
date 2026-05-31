@@ -11,9 +11,9 @@
     <!-- Video playback diagnostics — keep at DEBUG so we capture every step
          of the VLCJ init / load / play pipeline. This is what we need to
          figure out why playback fails on macOS. -->
-    <logger name="com.videoroom.ui.components.ComposeVideoPlayer" level="DEBUG"/>
-    <logger name="com.videoroom.ui.screens.GridScreen" level="DEBUG"/>
-    <logger name="com.videoroom.ui.screens.DetailViewScreen" level="DEBUG"/>
+    <logger name="com.reelvault.ui.components.ComposeVideoPlayer" level="DEBUG"/>
+    <logger name="com.reelvault.ui.screens.GridScreen" level="DEBUG"/>
+    <logger name="com.reelvault.ui.screens.DetailViewScreen" level="DEBUG"/>
     <logger name="uk.co.caprica.vlcj" level="DEBUG"/>
     <!-- Native libvlc diagnostics, piped through NativeLog. DEBUG while
          we're still hunting the callback-doesn't-fire issue — it shows

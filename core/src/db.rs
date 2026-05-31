@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Copyright (C) 2026 VideoRoom Contributors
+// Copyright (C) 2026 ReelVault Contributors
 
-use crate::error::{Result, VideoRoomError};
+use crate::error::{Result, ReelVaultError};
 use chrono::Utc;
 use rusqlite::{params, Connection, OptionalExtension};
 use std::path::{Path, PathBuf};
@@ -12,7 +12,7 @@ use uuid::Uuid;
 /// so the gRPC `OpenCatalog` / `CloseCatalog` RPCs can swap which file backs
 /// the server without restarting the process. `None` means "no catalog open"
 /// — every method that touches SQL returns
-/// [`VideoRoomError::DatabaseError`] in that state, and the service layer
+/// [`ReelVaultError::DatabaseError`] in that state, and the service layer
 /// turns those into `FailedPrecondition` for the client.
 pub struct Database {
     path: RwLock<Option<PathBuf>>,
@@ -77,13 +77,13 @@ impl Database {
         // Open + initialize before we swap so a bad path doesn't leave the
         // daemon in a half-broken state.
         let conn = Connection::open(new_path).map_err(|e| {
-            VideoRoomError::DatabaseError(format!("Failed to open database: {}", e))
+            ReelVaultError::DatabaseError(format!("Failed to open database: {}", e))
         })?;
         Self::initialize_conn(&conn)?;
         drop(conn);
 
         let mut guard = self.path.write().map_err(|_| {
-            VideoRoomError::DatabaseError("Database path lock poisoned".to_string())
+            ReelVaultError::DatabaseError("Database path lock poisoned".to_string())
         })?;
         *guard = Some(new_path.to_path_buf());
         tracing::info!("Catalog opened: {}", new_path.display());
@@ -125,7 +125,7 @@ impl Database {
 
         let schema = include_str!("../schema.sql");
         conn.execute_batch(schema)
-            .map_err(|e| VideoRoomError::DatabaseError(format!("Failed to initialize schema: {}", e)))?;
+            .map_err(|e| ReelVaultError::DatabaseError(format!("Failed to initialize schema: {}", e)))?;
 
         // Migration: add columns to existing tables. SQLite has no
         // `ALTER TABLE ADD COLUMN IF NOT EXISTS`, so we try and ignore the
@@ -136,9 +136,9 @@ impl Database {
             // Proxy relation. `proxy_of` is the video this row is a
             // lower-resolution stand-in for; `proxy_confidence` is the
             // thumbnail-similarity score (0..=1) we used when
-            // auto-detecting; `proxy_auto_detected` is true if VideoRoom
+            // auto-detecting; `proxy_auto_detected` is true if ReelVault
             // inferred the link (false if the user marked it manually
-            // or VideoRoom *generated* the proxy file via
+            // or ReelVault *generated* the proxy file via
             // `GenerateProxy`). Indexed for fast "list proxies of X"
             // lookups.
             ("videos.proxy_of", "ALTER TABLE videos ADD COLUMN proxy_of TEXT"),
@@ -221,13 +221,13 @@ impl Database {
         let path = self
             .path
             .read()
-            .map_err(|_| VideoRoomError::DatabaseError("Database path lock poisoned".to_string()))?
+            .map_err(|_| ReelVaultError::DatabaseError("Database path lock poisoned".to_string()))?
             .clone()
             .ok_or_else(|| {
-                VideoRoomError::DatabaseError("No catalog is currently open".to_string())
+                ReelVaultError::DatabaseError("No catalog is currently open".to_string())
             })?;
         Connection::open(&path)
-            .map_err(|e| VideoRoomError::DatabaseError(format!("Failed to open database: {}", e)))
+            .map_err(|e| ReelVaultError::DatabaseError(format!("Failed to open database: {}", e)))
     }
 
     // VIDEO OPERATIONS
@@ -259,9 +259,9 @@ impl Database {
         )
         .map_err(|e| {
             if e.to_string().contains("UNIQUE constraint failed") {
-                VideoRoomError::DuplicateEntry("Video already exists".to_string())
+                ReelVaultError::DuplicateEntry("Video already exists".to_string())
             } else {
-                VideoRoomError::DatabaseError(e.to_string())
+                ReelVaultError::DatabaseError(e.to_string())
             }
         })?;
 
@@ -290,7 +290,7 @@ impl Database {
                 },
             )
             .optional()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(result)
     }
@@ -333,7 +333,7 @@ impl Database {
                 },
             )
             .optional()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(result)
     }
@@ -356,7 +356,7 @@ impl Database {
 
         let total: i64 = conn
             .query_row("SELECT COUNT(*) FROM videos", [], |row| row.get(0))
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         let direction = if ascending { "ASC" } else { "DESC" };
         // Whitelist sort columns to avoid SQL injection
@@ -393,7 +393,7 @@ impl Database {
 
         let mut stmt = conn
             .prepare(&sql)
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         let videos = stmt
             .query_map(params![limit, offset], |row| {
@@ -408,9 +408,9 @@ impl Database {
                     is_online: row.get(7)?,
                 })
             })
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok((videos, total))
     }
@@ -419,7 +419,7 @@ impl Database {
         let conn = self.get_connection()?;
 
         conn.execute("DELETE FROM videos WHERE id = ?", [video_id])
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(())
     }
@@ -436,9 +436,9 @@ impl Database {
         )
         .map_err(|e| {
             if e.to_string().contains("UNIQUE constraint failed") {
-                VideoRoomError::DuplicateEntry(format!("Tag '{}' already exists", name))
+                ReelVaultError::DuplicateEntry(format!("Tag '{}' already exists", name))
             } else {
-                VideoRoomError::DatabaseError(e.to_string())
+                ReelVaultError::DatabaseError(e.to_string())
             }
         })?;
 
@@ -461,7 +461,7 @@ impl Database {
                 },
             )
             .optional()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(result)
     }
@@ -471,7 +471,7 @@ impl Database {
 
         let mut stmt = conn
             .prepare("SELECT id, name, color FROM tags ORDER BY name")
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         let tags = stmt
             .query_map([], |row| {
@@ -481,9 +481,9 @@ impl Database {
                     color: row.get(2)?,
                 })
             })
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(tags)
     }
@@ -492,7 +492,7 @@ impl Database {
         let conn = self.get_connection()?;
 
         conn.execute("DELETE FROM tags WHERE id = ?", [tag_id])
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(())
     }
@@ -504,7 +504,7 @@ impl Database {
             "INSERT OR IGNORE INTO video_tags (video_id, tag_id) VALUES (?, ?)",
             params![video_id, tag_id],
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(())
     }
@@ -516,7 +516,7 @@ impl Database {
             "DELETE FROM video_tags WHERE video_id = ? AND tag_id = ?",
             params![video_id, tag_id],
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(())
     }
@@ -533,13 +533,13 @@ impl Database {
                  WHERE vt.video_id = ?
                  ORDER BY t.name",
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         let tags = stmt
             .query_map([video_id], |row| row.get(0))
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(tags)
     }
@@ -560,7 +560,7 @@ impl Database {
                 },
             )
             .optional()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(result)
     }
 
@@ -573,7 +573,7 @@ impl Database {
                 [tag_id],
                 |row| row.get(0),
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(count)
     }
 
@@ -587,7 +587,7 @@ impl Database {
             "INSERT INTO collections (id, name, is_smart, filter_json) VALUES (?, ?, ?, ?)",
             params![&collection_id, name, is_smart as i32, filter_json],
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(collection_id)
     }
@@ -597,7 +597,7 @@ impl Database {
 
         let mut stmt = conn
             .prepare("SELECT id, name, is_smart, filter_json FROM collections ORDER BY name")
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         let collections = stmt
             .query_map([], |row| {
@@ -608,9 +608,9 @@ impl Database {
                     filter_json: row.get(3)?,
                 })
             })
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(collections)
     }
@@ -619,7 +619,7 @@ impl Database {
         let conn = self.get_connection()?;
 
         conn.execute("DELETE FROM collections WHERE id = ?", [collection_id])
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(())
     }
@@ -631,7 +631,7 @@ impl Database {
             "INSERT OR IGNORE INTO collection_members (collection_id, video_id) VALUES (?, ?)",
             params![collection_id, video_id],
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(())
     }
@@ -643,7 +643,7 @@ impl Database {
             "DELETE FROM collection_members WHERE collection_id = ? AND video_id = ?",
             params![collection_id, video_id],
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(())
     }
@@ -653,13 +653,13 @@ impl Database {
 
         let mut stmt = conn
             .prepare("SELECT video_id FROM collection_members WHERE collection_id = ?")
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         let videos = stmt
             .query_map([collection_id], |row| row.get(0))
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(videos)
     }
@@ -674,7 +674,7 @@ impl Database {
              ON CONFLICT(video_id) DO UPDATE SET notes = ?, updated_at = ?",
             params![video_id, notes, Utc::now().timestamp_millis(), notes, Utc::now().timestamp_millis()],
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(())
     }
@@ -689,7 +689,7 @@ impl Database {
                 |row| row.get(0),
             )
             .optional()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(result)
     }
@@ -717,7 +717,7 @@ impl Database {
                  WHERE video_id = ?",
                 params![latitude, longitude, altitude, video_id],
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         if affected == 0 {
             // No metadata row yet — insert a sparse one so the GPS sticks.
             conn.execute(
@@ -725,7 +725,7 @@ impl Database {
                  VALUES (?, ?, ?, ?)",
                 params![video_id, latitude, longitude, altitude],
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         }
         Ok(())
     }
@@ -741,13 +741,13 @@ impl Database {
                 "UPDATE metadata SET creation_date = ? WHERE video_id = ?",
                 params![timestamp_ms, video_id],
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         if affected == 0 {
             conn.execute(
                 "INSERT INTO metadata (video_id, creation_date) VALUES (?, ?)",
                 params![video_id, timestamp_ms],
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         }
         Ok(())
     }
@@ -767,7 +767,7 @@ impl Database {
              ON CONFLICT(video_id) DO UPDATE SET rating = excluded.rating, updated_at = CURRENT_TIMESTAMP",
             params![video_id, rating, video_id],
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(())
     }
 
@@ -782,7 +782,7 @@ impl Database {
              ON CONFLICT(video_id) DO UPDATE SET color_label = excluded.color_label, updated_at = CURRENT_TIMESTAMP",
             params![video_id, video_id, label],
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(())
     }
 
@@ -797,7 +797,7 @@ impl Database {
         ) {
             Ok(pair) => Ok(pair),
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok((0, String::new())),
-            Err(e) => Err(VideoRoomError::DatabaseError(e.to_string())),
+            Err(e) => Err(ReelVaultError::DatabaseError(e.to_string())),
         }
     }
 
@@ -814,7 +814,7 @@ impl Database {
                 |row| row.get::<_, String>(0),
             )
             .optional()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(row)
     }
 
@@ -825,7 +825,7 @@ impl Database {
              ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP",
             params![key, value],
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(())
     }
 
@@ -845,7 +845,7 @@ impl Database {
                    AND m.gps_longitude IS NOT NULL \
                    AND NOT (m.gps_latitude = 0 AND m.gps_longitude = 0)",
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         let rows = stmt
             .query_map([], |row| {
@@ -859,11 +859,11 @@ impl Database {
                     has_thumbnail: row.get::<_, i64>(6)? != 0,
                 })
             })
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         let mut out = Vec::new();
         for r in rows {
-            out.push(r.map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?);
+            out.push(r.map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?);
         }
         Ok(out)
     }
@@ -885,7 +885,7 @@ impl Database {
                  FROM named_locations \
                  ORDER BY name COLLATE NOCASE",
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         let rows = stmt
             .query_map([], |row| {
@@ -899,11 +899,11 @@ impl Database {
                     updated_at_ms: row.get::<_, i64>(6)?,
                 })
             })
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         let mut out = Vec::new();
         for r in rows {
-            out.push(r.map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?);
+            out.push(r.map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?);
         }
         Ok(out)
     }
@@ -923,7 +923,7 @@ impl Database {
         radius_m: f64,
     ) -> Result<NamedLocationRecord> {
         if name.trim().is_empty() {
-            return Err(VideoRoomError::DatabaseError(
+            return Err(ReelVaultError::DatabaseError(
                 "name must not be empty".into(),
             ));
         }
@@ -937,7 +937,7 @@ impl Database {
                  VALUES (?, ?, ?, ?, ?)",
                 params![&new_id, name.trim(), latitude, longitude, effective_radius],
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
             new_id
         } else {
             let affected = conn
@@ -948,7 +948,7 @@ impl Database {
                         WHERE id = ?",
                     params![name.trim(), latitude, longitude, effective_radius, id],
                 )
-                .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
             if affected == 0 {
                 // No existing row — treat as an insert with the caller-
                 // supplied id so the client's local cache stays consistent.
@@ -958,7 +958,7 @@ impl Database {
                      VALUES (?, ?, ?, ?, ?)",
                     params![id, name.trim(), latitude, longitude, effective_radius],
                 )
-                .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
             }
             id.to_string()
         };
@@ -983,7 +983,7 @@ impl Database {
                 })
             },
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))
     }
 
     /// Delete a named location. Idempotent — deleting a missing id is a
@@ -991,7 +991,7 @@ impl Database {
     pub fn delete_named_location(&self, id: &str) -> Result<()> {
         let conn = self.get_connection()?;
         conn.execute("DELETE FROM named_locations WHERE id = ?", [id])
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(())
     }
 
@@ -1008,7 +1008,7 @@ impl Database {
              ON CONFLICT(path) DO UPDATE SET recursive = excluded.recursive",
             params![&location_id, path, recursive as i32],
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         // Return the actual ID (may be the existing one if we just updated).
         let id: String = conn
@@ -1017,7 +1017,7 @@ impl Database {
                 [path],
                 |row| row.get(0),
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(id)
     }
 
@@ -1026,7 +1026,7 @@ impl Database {
 
         let mut stmt = conn
             .prepare("SELECT id, path, recursive, enabled, last_scanned FROM library_locations ORDER BY path")
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         let locations = stmt
             .query_map([], |row| {
@@ -1038,9 +1038,9 @@ impl Database {
                     last_scanned: row.get(4)?,
                 })
             })
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(locations)
     }
@@ -1055,10 +1055,10 @@ impl Database {
         let deleted = conn.execute(
             "DELETE FROM videos WHERE path LIKE ? || '%'",
             [&prefix],
-        ).map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        ).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         conn.execute("DELETE FROM library_locations WHERE path = ?", [path])
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(deleted)
     }
@@ -1067,7 +1067,7 @@ impl Database {
 
     /// Create a new group, set members' group_id, and return the new group's ID.
     ///
-    /// Returns [`VideoRoomError::InvalidRequest`] if any of the supplied
+    /// Returns [`ReelVaultError::InvalidRequest`] if any of the supplied
     /// `video_ids` are proxy videos (i.e. have a non-null `proxy_of`). A proxy
     /// is a derived, lower-resolution stand-in for its master; including it in a
     /// stack would create a confusing double-identity where the same file shows
@@ -1080,7 +1080,7 @@ impl Database {
         preferred_video_id: Option<&str>,
     ) -> Result<String> {
         if video_ids.is_empty() {
-            return Err(VideoRoomError::InvalidRequest("Group must contain at least one video".to_string()));
+            return Err(ReelVaultError::InvalidRequest("Group must contain at least one video".to_string()));
         }
         let conn = self.get_connection()?;
 
@@ -1093,11 +1093,11 @@ impl Database {
                     |row| row.get(0),
                 )
                 .optional()
-                .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
                 .flatten();
 
             if proxy_of.is_some() {
-                return Err(VideoRoomError::InvalidRequest(format!(
+                return Err(ReelVaultError::InvalidRequest(format!(
                     "Video {vid} is a proxy and cannot be added to a stack"
                 )));
             }
@@ -1110,7 +1110,7 @@ impl Database {
             "INSERT INTO video_groups (id, name, base_name, preferred_video_id) VALUES (?, ?, ?, ?)",
             params![group_id, name, base_name, preferred],
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         // Assign group_id to each video, clearing any existing group membership
         for vid in video_ids {
@@ -1118,7 +1118,7 @@ impl Database {
                 "UPDATE videos SET group_id = ? WHERE id = ?",
                 params![group_id, vid],
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         }
 
         Ok(group_id)
@@ -1135,7 +1135,7 @@ impl Database {
                 |row| row.get(0),
             )
             .optional()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .flatten();
 
         let Some(group_id) = group_id else {
@@ -1143,7 +1143,7 @@ impl Database {
         };
 
         conn.execute("UPDATE videos SET group_id = NULL WHERE id = ?", [video_id])
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         // Count remaining members
         let remaining: i64 = conn
@@ -1152,14 +1152,14 @@ impl Database {
                 [&group_id],
                 |row| row.get(0),
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         // If only one or zero members remain, dissolve the group entirely
         if remaining <= 1 {
             conn.execute("UPDATE videos SET group_id = NULL WHERE group_id = ?", [&group_id])
-                .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
             conn.execute("DELETE FROM video_groups WHERE id = ?", [&group_id])
-                .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         }
 
         Ok(())
@@ -1171,7 +1171,7 @@ impl Database {
             "UPDATE video_groups SET preferred_video_id = ? WHERE id = ?",
             params![video_id, group_id],
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(())
     }
 
@@ -1191,7 +1191,7 @@ impl Database {
                 },
             )
             .optional()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(result)
     }
 
@@ -1200,12 +1200,12 @@ impl Database {
         let conn = self.get_connection()?;
         let mut stmt = conn
             .prepare("SELECT id FROM videos WHERE group_id = ? ORDER BY filename")
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let ids = stmt
             .query_map([group_id], |row| row.get::<_, String>(0))
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(ids)
     }
 
@@ -1217,7 +1217,7 @@ impl Database {
                 [group_id],
                 |row| row.get(0),
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(count)
     }
 
@@ -1471,7 +1471,7 @@ impl Database {
             bind.iter().map(|b| b.as_ref() as &dyn rusqlite::ToSql).collect();
         let total: i64 = conn
             .query_row(&count_sql, count_params.as_slice(), |row| row.get(0))
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         // ---- SELECT page ----
         let sql = format!(
@@ -1503,7 +1503,7 @@ impl Database {
 
         let mut stmt = conn
             .prepare(&sql)
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         let videos = stmt
             .query_map(query_params.as_slice(), |row| {
@@ -1518,9 +1518,9 @@ impl Database {
                     is_online: row.get(7)?,
                 })
             })
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok((videos, total))
     }
@@ -1539,12 +1539,12 @@ impl Database {
         );
         let mut stmt = conn
             .prepare(&sql)
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let rows = stmt
             .query_map([], |row| row.get::<_, String>(0))
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(rows)
     }
 
@@ -1571,12 +1571,12 @@ impl Database {
                  WHERE creation_date IS NOT NULL AND creation_date > 0
                  ORDER BY y DESC",
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let rows = stmt
             .query_map([], |row| row.get::<_, i32>(0))
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(rows)
     }
 
@@ -1608,7 +1608,7 @@ impl Database {
                 params![pattern],
                 |row| row.get(0),
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(count)
     }
 
@@ -1622,7 +1622,7 @@ impl Database {
                 |row| row.get(0),
             )
             .optional()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .flatten();
         Ok(result)
     }
@@ -1631,7 +1631,7 @@ impl Database {
 
     /// Link `proxy_id` to `original_id` in the proxy_links junction
     /// table. `confidence` is the thumb-similarity score (or 1.0 for
-    /// VideoRoom-generated / user-marked proxies). `auto_detected`
+    /// ReelVault-generated / user-marked proxies). `auto_detected`
     /// distinguishes scanner inferences from user/system marks so the
     /// UI can render them differently.
     ///
@@ -1658,14 +1658,14 @@ impl Database {
              VALUES (?, ?, ?, ?)",
             params![original_id, proxy_id, confidence, auto_detected as i32],
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         conn.execute(
             "UPDATE videos
              SET proxy_of = ?, proxy_confidence = ?, proxy_auto_detected = ?
              WHERE id = ?",
             params![original_id, confidence, auto_detected as i32, proxy_id],
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         // A proxy must not also belong to a stack. If this video is currently
         // in a group, evict it now. If the group collapses to a single member
@@ -1678,7 +1678,7 @@ impl Database {
                 |row| row.get(0),
             )
             .optional()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .flatten();
 
         if let Some(gid) = group_id {
@@ -1686,7 +1686,7 @@ impl Database {
                 "UPDATE videos SET group_id = NULL WHERE id = ?",
                 [proxy_id],
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
             let remaining: i64 = conn
                 .query_row(
@@ -1694,16 +1694,16 @@ impl Database {
                     [&gid],
                     |row| row.get(0),
                 )
-                .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
             if remaining <= 1 {
                 conn.execute(
                     "UPDATE videos SET group_id = NULL WHERE group_id = ?",
                     [&gid],
                 )
-                .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
                 conn.execute("DELETE FROM video_groups WHERE id = ?", [&gid])
-                    .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
             }
         }
 
@@ -1722,7 +1722,7 @@ impl Database {
             "DELETE FROM proxy_links WHERE master_id = ? AND proxy_id = ?",
             params![master_id, proxy_id],
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         // Find a remaining master (if any) to keep the denormalized
         // pointer in sync.  The MIN() picks deterministically so
@@ -1738,7 +1738,7 @@ impl Database {
                 |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
             )
             .optional()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         if let Some((m, conf, auto)) = remaining {
             conn.execute(
@@ -1747,7 +1747,7 @@ impl Database {
                  WHERE id = ?",
                 params![m, conf, auto, proxy_id],
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         } else {
             conn.execute(
                 "UPDATE videos
@@ -1755,7 +1755,7 @@ impl Database {
                  WHERE id = ?",
                 [proxy_id],
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         }
         Ok(())
     }
@@ -1778,7 +1778,7 @@ impl Database {
                  WHERE pl.master_id = ?
                  ORDER BY (COALESCE(m.width,0) * COALESCE(m.height,0)) DESC",
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let rows = stmt
             .query_map([video_id], |row| {
                 Ok(ProxyRecord {
@@ -1792,9 +1792,9 @@ impl Database {
                     auto_detected: row.get::<_, i32>(7)? != 0,
                 })
             })
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(rows)
     }
 
@@ -1814,7 +1814,7 @@ impl Database {
                  WHERE pl.proxy_id = ?
                  ORDER BY (COALESCE(m.width,0) * COALESCE(m.height,0)) DESC",
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let rows = stmt
             .query_map([proxy_video_id], |row| {
                 Ok(ProxyRecord {
@@ -1828,9 +1828,9 @@ impl Database {
                     auto_detected: row.get::<_, i32>(7)? != 0,
                 })
             })
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(rows)
     }
 
@@ -1844,7 +1844,7 @@ impl Database {
                 |row| row.get(0),
             )
             .optional()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .flatten();
         Ok(result)
     }
@@ -1859,14 +1859,14 @@ impl Database {
             "DELETE FROM proxy_links WHERE proxy_id = ?",
             [video_id],
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         conn.execute(
             "UPDATE videos
              SET proxy_of = NULL, proxy_confidence = NULL, proxy_auto_detected = 0
              WHERE id = ?",
             [video_id],
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(())
     }
 
@@ -1888,7 +1888,7 @@ impl Database {
                         COALESCE(v.file_size_bytes, 0)
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id",
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let rows = stmt
             .query_map([], |row| {
                 let path: String = row.get(2)?;
@@ -1911,9 +1911,9 @@ impl Database {
                     file_size_bytes: row.get(9)?,
                 })
             })
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(rows)
     }
 
@@ -1952,7 +1952,7 @@ impl Database {
                               AND v2.path >= ?1 AND v2.path < ?2
                         ))",
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let rows = stmt
             .query_map(params![lower, upper], |row| {
                 let path: String = row.get(2)?;
@@ -1975,9 +1975,9 @@ impl Database {
                     file_size_bytes: row.get(9)?,
                 })
             })
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(rows)
     }
 
@@ -2021,7 +2021,7 @@ impl Database {
                 },
             )
             .optional()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(result)
     }
 
@@ -2055,7 +2055,7 @@ impl Database {
                  WHERE v.id != ?
                    AND v.path >= ? AND v.path < ?",
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let rows = stmt
             .query_map(params![exclude_id, lower, upper], |row| {
                 let path: String = row.get(2)?;
@@ -2078,9 +2078,9 @@ impl Database {
                     file_size_bytes: row.get(9)?,
                 })
             })
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         // The range query also matches nested subdirectories — keep
         // only rows whose computed parent_dir matches exactly.
         let rows = rows
@@ -2110,7 +2110,7 @@ impl Database {
                  WHERE v.group_id = ?
                    AND v.id != ?",
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let rows = stmt
             .query_map(params![group_id, exclude_id], |row| {
                 let path: String = row.get(2)?;
@@ -2133,9 +2133,9 @@ impl Database {
                     file_size_bytes: row.get(9)?,
                 })
             })
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(rows)
     }
 
@@ -2177,7 +2177,7 @@ impl Database {
                 },
             )
             .optional()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(result)
     }
 
@@ -2210,7 +2210,7 @@ impl Database {
                    AND v.id != ?
                    AND v.path >= ? AND v.path < ?",
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let rows = stmt
             .query_map(params![exclude_id, lower, upper], |row| {
                 let path: String = row.get(2)?;
@@ -2233,9 +2233,9 @@ impl Database {
                     modified_at_ms: row.get(10)?,
                 })
             })
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let rows = rows
             .into_iter()
             .filter(|c| c.parent_dir == parent_dir)
@@ -2252,7 +2252,7 @@ impl Database {
             "UPDATE videos SET group_id = ? WHERE id = ?",
             params![group_id, video_id],
         )
-        .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(())
     }
 
@@ -2281,12 +2281,12 @@ impl Database {
                  WHERE master_id = ?",
                 params![new_anchor_id, old_anchor_id],
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         conn.execute(
                 "UPDATE videos SET proxy_of = ? WHERE proxy_of = ?",
                 params![new_anchor_id, old_anchor_id],
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(n)
     }
 
@@ -2305,7 +2305,7 @@ impl Database {
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
                  WHERE v.proxy_of IS NULL",
             )
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         let rows = stmt
             .query_map([], |row| {
@@ -2329,9 +2329,9 @@ impl Database {
                     modified_at_ms: row.get(10)?,
                 })
             })
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
             .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|e| VideoRoomError::DatabaseError(e.to_string()))?;
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(rows)
     }
@@ -2422,7 +2422,7 @@ pub struct ProxyRecord {
     pub width: i32,
     pub height: i32,
     /// dHash similarity at detection time (1.0 for user-marked or
-    /// VideoRoom-generated proxies; ~0.9–1.0 for auto-detected).
+    /// ReelVault-generated proxies; ~0.9–1.0 for auto-detected).
     pub proxy_confidence: f64,
     pub auto_detected: bool,
 }
