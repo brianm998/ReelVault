@@ -1501,12 +1501,16 @@ class GridViewModel(
         thumbnailLoading.add(videoId)
         viewModelScope.launch {
             try {
-                // Retry up to 3 times with short back-off. The first attempt
-                // can fail with an empty gRPC stream when many cards load
-                // simultaneously (connection under load) or when a newly-added
-                // video's thumbnail file hasn't been flushed yet.
-                var attempt = 0
-                while (attempt <= 2 && !_thumbnails.value.containsKey(videoId)) {
+                // Fast initial retries handle the cards-mount-storm failure
+                // mode: an empty gRPC stream when many cards request thumbnails
+                // at once. Slow tail retries cover the case where the storm
+                // exhausts the fast budget — without them the card stayed
+                // permanently thumbnail-less until a re-mount (e.g. via a
+                // mode switch) re-triggered the load.
+                val delaysMs = longArrayOf(0L, 500L, 1_000L, 10_000L, 30_000L, 60_000L)
+                for (delayMs in delaysMs) {
+                    if (_thumbnails.value.containsKey(videoId)) break
+                    if (delayMs > 0) delay(delayMs)
                     val data = thumbnailSemaphore.withPermit {
                         repository.getThumbnail(videoId, "medium")
                     }
@@ -1514,8 +1518,6 @@ class GridViewModel(
                         _thumbnails.update { it + (videoId to data) }
                         break
                     }
-                    attempt++
-                    if (attempt <= 2) delay(500L * attempt)
                 }
             } finally {
                 thumbnailLoading.remove(videoId)

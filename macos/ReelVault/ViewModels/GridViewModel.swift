@@ -1108,21 +1108,25 @@ class GridViewModel: ObservableObject {
         thumbnailLoading.insert(videoId)
         Task {
             defer { thumbnailLoading.remove(videoId) }
-            // Retry up to 3 times with short back-off. The first attempt can
-            // fail with an empty gRPC stream when many cards load simultaneously
-            // (connection under load) or when a newly-added video's thumbnail
-            // file hasn't been flushed yet.
-            for attempt in 0..<3 {
+            // Fast initial retries handle the cards-mount-storm failure mode:
+            // an empty gRPC stream when many cards request thumbnails at once.
+            // Slow tail retries cover the case where the storm exhausts the
+            // fast budget — without them the card stayed permanently
+            // thumbnail-less until a re-mount (e.g. via a mode switch)
+            // re-triggered the load.
+            let delaysNs: [UInt64] = [0, 500_000_000, 1_000_000_000,
+                                      10_000_000_000, 30_000_000_000, 60_000_000_000]
+            for delay in delaysNs {
                 if thumbnails[videoId] != nil { return }
+                if delay > 0 {
+                    try? await Task.sleep(nanoseconds: delay)
+                }
                 await thumbnailSemaphore.acquire()
                 let image = try? await repository.getThumbnail(videoId: videoId, size: "medium")
                 await thumbnailSemaphore.release()
                 if let image {
                     thumbnails[videoId] = image
                     return
-                }
-                if attempt < 2 {
-                    try? await Task.sleep(nanoseconds: UInt64(500_000_000) * UInt64(attempt + 1))
                 }
             }
         }
