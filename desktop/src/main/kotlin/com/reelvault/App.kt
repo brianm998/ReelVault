@@ -419,6 +419,9 @@ fun ReelVaultApp(
     var showAppearanceDialog by remember { mutableStateOf(false) }
     // Camera-names editor dialog visibility (internal → marketing).
     var showCameraNamesDialog by remember { mutableStateOf(false) }
+    // Library-wide auto-tagging / detection settings (currently houses
+    // the timelapse auto-tag toggle; future home for other library knobs).
+    var showLibrarySettingsDialog by remember { mutableStateOf(false) }
     // Library removal confirmation. Non-null while the "Are you sure?" dialog is shown.
     var pendingRemoveLocation by remember { mutableStateOf<com.reelvault.data.models.LibraryLocation?>(null) }
     // Collection deletion confirmation. Non-null while the "Are you sure?" dialog is shown.
@@ -718,6 +721,7 @@ fun ReelVaultApp(
                         onGroupSelected = { gridViewModel.groupSelectedVideos() },
                         onConfigureWatcher = { showWatchSettingsDialog = true },
                         onConfigureCameraNames = { showCameraNamesDialog = true },
+                        onConfigureLibrary = { showLibrarySettingsDialog = true },
                         onConfigureAppearance = { showAppearanceDialog = true },
                         onOpenCatalog = {
                             openDialogIsStartup = false
@@ -1367,6 +1371,15 @@ fun ReelVaultApp(
                     )
                 }
 
+                // Library-wide auto-tagging / detection settings
+                // (timelapse auto-tag, etc.).
+                if (showLibrarySettingsDialog) {
+                    com.reelvault.ui.screens.LibrarySettingsDialog(
+                        repository = repository,
+                        onDismiss = { showLibrarySettingsDialog = false }
+                    )
+                }
+
                 // Proxy resolution picker. Observes the grid view-model:
                 // a non-null `proxyCreationVideoId` means the user just
                 // clicked Create proxy on a card. Look up the matching
@@ -1933,6 +1946,8 @@ fun ReelVaultTopBar(
     onConfigureWatcher: () -> Unit = {},
     /** Opens the camera-names editor dialog. */
     onConfigureCameraNames: () -> Unit = {},
+    /** Opens the library-wide auto-tagging/detection settings dialog. */
+    onConfigureLibrary: () -> Unit = {},
     /** Opens the appearance (accent color scheme) dialog. */
     onConfigureAppearance: () -> Unit = {},
     onOpenCatalog: () -> Unit = {},
@@ -2266,6 +2281,21 @@ fun ReelVaultTopBar(
                             Icon(
                                 imageVector = Icons.Default.CreateNewFolder,
                                 contentDescription = "Add Library Location"
+                            )
+                        }
+                    }
+
+                    // Library auto-tagging / detection settings button.
+                    com.reelvault.ui.components.Tooltip(
+                        text = "Configure catalog-wide auto-tagging — currently the " +
+                            "timelapse heuristic (auto-tags videos whose recorded " +
+                            "resolution exceeds their camera's max in-camera video " +
+                            "resolution). Off by default."
+                    ) {
+                        IconButton(onClick = onConfigureLibrary) {
+                            Icon(
+                                imageVector = Icons.Default.VideoLibrary,
+                                contentDescription = "Library settings"
                             )
                         }
                     }
