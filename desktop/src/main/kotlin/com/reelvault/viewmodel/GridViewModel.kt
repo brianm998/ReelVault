@@ -205,24 +205,50 @@ class GridViewModel(
     /**
      * Open (or re-open) the long-lived `SubscribeCatalogEvents` stream
      * against the daemon. Idempotent — calling twice cancels the prior
-     * job and starts a fresh one. Reconnects with a 2 s backoff if the
-     * stream ends while live updates are still enabled.
+     * job and starts a fresh one. While live updates are enabled, the
+     * coroutine retries on failure with exponential backoff (2, 4, 8,
+     * 16, 32, 60 s, then 60 s) and suppresses duplicate error logs so
+     * a daemon that stays offline doesn't spam the console with the
+     * same `Connection refused` stack every two seconds.
      */
     fun startCatalogEventStream() {
         catalogEventsJob?.cancel()
         catalogEventsJob = viewModelScope.launch {
-            try {
-                repository.subscribeCatalogEvents().collect { event ->
-                    handleCatalogEvent(event)
+            var attempt = 0
+            var lastErrorSignature: String? = null
+            while (isActive && _liveUpdatesEnabled.value) {
+                try {
+                    repository.subscribeCatalogEvents().collect { event ->
+                        // First event after a (re)connect — announce we're
+                        // back online (if we had been logging failures) and
+                        // reset the retry state.
+                        if (attempt > 0 || lastErrorSignature != null) {
+                            logger.info("Catalog events stream reconnected after {} attempt(s)", attempt)
+                            attempt = 0
+                            lastErrorSignature = null
+                        }
+                        handleCatalogEvent(event)
+                    }
+                    // Stream ended cleanly (server closed it without throwing).
+                    lastErrorSignature = null
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // Suppress duplicate log spam when the daemon stays
+                    // offline: log the first occurrence of each distinct
+                    // error, then stay quiet until either the error type
+                    // changes or the stream reconnects.
+                    val signature = e.message ?: e::class.simpleName ?: "unknown"
+                    if (signature != lastErrorSignature) {
+                        logger.warn("Catalog events stream ended: {}", signature)
+                        lastErrorSignature = signature
+                    }
                 }
-            } catch (e: Exception) {
-                logger.warn("Catalog events stream ended", e)
-            }
-            // Stream ended: reconnect after a short backoff if we're
-            // still expecting live updates.
-            if (isActive && _liveUpdatesEnabled.value) {
-                delay(2_000)
-                if (isActive) startCatalogEventStream()
+                if (!isActive || !_liveUpdatesEnabled.value) break
+                attempt++
+                // Exponential backoff capped at 60 s: 2, 4, 8, 16, 32, 60, ...
+                val delayMs = minOf(60_000L, 1_000L * (1L shl minOf(attempt, 6)))
+                delay(delayMs)
             }
         }
     }
