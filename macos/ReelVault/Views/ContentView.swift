@@ -39,6 +39,7 @@ struct ContentView: View {
     @State private var showPlaybackSettingsSheet = false
     @State private var showCameraNamesSheet = false
     @State private var showAppearanceSettingsSheet = false
+    @State private var showLibrarySettingsSheet = false
     @State private var showOpenCatalogSheet = false
     // Wrapper that gives the proxy-picker sheet an Identifiable item
     // to bind to (sheet(item:) requires that). We don't need a real
@@ -180,6 +181,9 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showAppearanceSettingsSheet) {
             AppearanceSettingsDialog(isPresented: $showAppearanceSettingsSheet)
+        }
+        .sheet(isPresented: $showLibrarySettingsSheet) {
+            LibrarySettingsDialog(isPresented: $showLibrarySettingsSheet)
         }
         // Proxy creation picker. Observes `proxyCreationVideoId` on the
         // grid view-model — non-nil means "user just clicked Create
@@ -520,6 +524,16 @@ struct ContentView: View {
             }
             .buttonStyle(.borderless)
             .help("Set the inline-playback ceiling and the default proxy resolution. Videos taller than the ceiling get a \"Too large to play here\" marker and offer a one-click proxy.")
+
+            // Library — catalog-wide auto-tagging / detection settings
+            // (currently the timelapse heuristic, more to come).
+            Button {
+                showLibrarySettingsSheet = true
+            } label: {
+                Image(systemName: "books.vertical")
+            }
+            .buttonStyle(.borderless)
+            .help("Configure catalog-wide auto-tagging — currently the timelapse heuristic (auto-tags videos whose recorded resolution exceeds their camera's max in-camera video resolution). Off by default.")
 
             // Appearance — accent color scheme picker.
             Button {

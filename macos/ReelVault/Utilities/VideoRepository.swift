@@ -648,6 +648,11 @@ class VideoRepository: ObservableObject {
         let proxyTargetHeight: Int
         let maxConcurrentJobs: Int
         let enableAutoTagging: Bool
+        /// When true, the post-index pipeline auto-applies a "timelapse" tag
+        /// to videos whose recorded resolution exceeds their camera's max
+        /// in-camera video resolution. Backed by `auto_tag_history` so a
+        /// user-removed tag never gets re-applied.
+        let autoTagTimelapses: Bool
     }
 
     /// Read the daemon's current config. Returns nil on transport
@@ -662,6 +667,7 @@ class VideoRepository: ObservableObject {
                 proxyTargetHeight: Int(response.proxyTargetHeight),
                 maxConcurrentJobs: Int(response.maxConcurrentJobs),
                 enableAutoTagging: response.enableAutoTagging,
+                autoTagTimelapses: response.autoTagTimelapses,
             )
         } catch {
             NSLog("getConfig failed: \(error)")
@@ -679,7 +685,8 @@ class VideoRepository: ObservableObject {
         maxNativePlaybackHeight: Int? = nil,
         proxyTargetHeight: Int? = nil,
         maxConcurrentJobs: Int? = nil,
-        enableAutoTagging: Bool? = nil
+        enableAutoTagging: Bool? = nil,
+        autoTagTimelapses: Bool? = nil
     ) async -> Bool {
         guard let client = serviceClient else { return false }
         var request = Reelvault_UpdateConfigRequest()
@@ -687,6 +694,7 @@ class VideoRepository: ObservableObject {
         if let h = proxyTargetHeight { request.proxyTargetHeight = Int32(h) }
         if let n = maxConcurrentJobs { request.maxConcurrentJobs = Int32(n) }
         if let b = enableAutoTagging { request.enableAutoTagging = b }
+        if let b = autoTagTimelapses { request.autoTagTimelapses = b }
         do {
             _ = try await client.updateConfig(request)
             return true

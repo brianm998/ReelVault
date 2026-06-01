@@ -249,6 +249,18 @@ ReelVault/
 
 ### UI/UX Consistency
 
+**Default rule:** Unless explicitly stated otherwise, every feature must
+be implemented in both clients (Kotlin Compose desktop and SwiftUI macOS)
+as part of the same change. A feature landing in only one client is
+considered incomplete. The single exception is **client-specific bugs**:
+a fix targeting a Compose-only or SwiftUI-only defect doesn't need a
+mirror in the other client.
+
+If parity is genuinely undesirable for some new feature (e.g. macOS-only
+QuickLook integration, Linux-only inotify tuning), the change must say
+so explicitly in the commit / PR description; otherwise reviewers will
+push back on a missing client.
+
 Both clients should share:
 - Grid layout with thumbnail hover preview
 - Identical metadata inspector on the right
