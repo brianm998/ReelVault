@@ -13,12 +13,35 @@ import SwiftUI
 /// recorded resolution exceeds their camera's max in-camera video
 /// resolution. The catalog remembers which videos were auto-tagged —
 /// removing the tag manually is permanent, even on subsequent scans.
+///
+/// The dialog seeds its initial state from
+/// `VideoRepository.shared.cachedConfig`, which is populated by any
+/// earlier `getConfig` call (typically the first time the user opens
+/// any settings dialog after launch). After that the dialog opens
+/// instantly — no spinner — and only the very first open of any
+/// settings dialog pays a network round-trip. A background refresh
+/// still runs so a setting changed via CLI or another client lands
+/// within a second or two.
 struct LibrarySettingsDialog: View {
     @Binding var isPresented: Bool
 
-    @State private var autoTagTimelapses: Bool = false
-    @State private var loading = true
+    @State private var autoTagTimelapses: Bool
+    @State private var loading: Bool
     @State private var saving = false
+
+    init(isPresented: Binding<Bool>) {
+        self._isPresented = isPresented
+        // Seed from the repository's in-memory cache. If we've never
+        // fetched (very first dialog open after a cold start), the
+        // cache is nil and we fall back to the same default the daemon
+        // uses — on. The background `.task` below replaces this with
+        // the real server value as soon as it arrives.
+        let cached = VideoRepository.shared.cachedConfig
+        self._autoTagTimelapses = State(initialValue: cached?.autoTagTimelapses ?? true)
+        // Only show the "refreshing…" affordance when we genuinely
+        // don't have any value to render yet. Cached opens skip it.
+        self._loading = State(initialValue: cached == nil)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -38,16 +61,18 @@ struct LibrarySettingsDialog: View {
 
             Divider()
 
+            timelapseSection
+
+            // The "refreshing…" affordance only renders on a true cold
+            // start (no cached config yet). After the first fetch it
+            // never reappears within this app session.
             if loading {
-                HStack {
-                    ProgressView().scaleEffect(0.7)
-                    Text("Loading current settings…")
+                HStack(spacing: 6) {
+                    ProgressView().scaleEffect(0.6)
+                    Text("Refreshing…")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                timelapseSection
             }
 
             Spacer()
@@ -61,12 +86,12 @@ struct LibrarySettingsDialog: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
-                .disabled(loading || saving)
+                .disabled(saving)
             }
         }
         .padding(20)
         .frame(width: 540, height: 280)
-        .task { await loadSettings() }
+        .task { await refreshFromServer() }
     }
 
     private var timelapseSection: some View {
@@ -92,10 +117,15 @@ struct LibrarySettingsDialog: View {
         }
     }
 
-    private func loadSettings() async {
-        loading = true
-        if let cfg = await VideoRepository.shared.getConfig() {
-            autoTagTimelapses = cfg.autoTagTimelapses
+    private func refreshFromServer() async {
+        // Always refresh in the background so the cache is current —
+        // catches the case where the value changed via CLI or another
+        // client since the cache was last filled. When the cache was
+        // already populated this is essentially free UX-wise: the
+        // toggle re-snaps to the freshly-fetched value (almost always
+        // identical to the cached one).
+        if let fresh = await VideoRepository.shared.getConfig() {
+            autoTagTimelapses = fresh.autoTagTimelapses
         }
         loading = false
     }

@@ -655,6 +655,22 @@ class VideoRepository: ObservableObject {
         let autoTagTimelapses: Bool
     }
 
+    /// In-memory cache of the last successfully-fetched server config.
+    /// Populated on the first `getConfig` call and kept in sync by
+    /// `updateConfig` after a successful save.
+    ///
+    /// Preferences dialogs read `cachedConfig` synchronously to render
+    /// with the user's actual settings immediately — without that,
+    /// every dialog-open paid a gRPC round-trip, which can be visible
+    /// latency on a slow link. Dialogs still call `getConfig` in a
+    /// background `.task` to refresh, but they no longer block their
+    /// first paint on the network.
+    ///
+    /// `nil` means "never fetched yet" — dialogs fall back to sensible
+    /// defaults until the first fetch completes (typically <100 ms
+    /// after the catalog opens).
+    private(set) var cachedConfig: ServerConfig?
+
     /// Read the daemon's current config. Returns nil on transport
     /// failure so the Preferences UI never has to handle a partial
     /// state — it shows a spinner instead and re-tries on save.
@@ -662,13 +678,15 @@ class VideoRepository: ObservableObject {
         guard let client = serviceClient else { return nil }
         do {
             let response = try await client.getConfig(Reelvault_GetConfigRequest())
-            return ServerConfig(
+            let cfg = ServerConfig(
                 maxNativePlaybackHeight: Int(response.maxNativePlaybackHeight),
                 proxyTargetHeight: Int(response.proxyTargetHeight),
                 maxConcurrentJobs: Int(response.maxConcurrentJobs),
                 enableAutoTagging: response.enableAutoTagging,
                 autoTagTimelapses: response.autoTagTimelapses,
             )
+            self.cachedConfig = cfg
+            return cfg
         } catch {
             NSLog("getConfig failed: \(error)")
             return nil
@@ -697,6 +715,26 @@ class VideoRepository: ObservableObject {
         if let b = autoTagTimelapses { request.autoTagTimelapses = b }
         do {
             _ = try await client.updateConfig(request)
+            // Keep the cache in sync with the value we just persisted so
+            // a re-open of any settings dialog sees the saved value
+            // without paying another gRPC round-trip. We re-base off
+            // the current cache (or sensible defaults) so an
+            // `updateConfig` that only touched one field doesn't blank
+            // out the others.
+            let base = self.cachedConfig ?? ServerConfig(
+                maxNativePlaybackHeight: 2160,
+                proxyTargetHeight: 720,
+                maxConcurrentJobs: 4,
+                enableAutoTagging: false,
+                autoTagTimelapses: true,
+            )
+            self.cachedConfig = ServerConfig(
+                maxNativePlaybackHeight: maxNativePlaybackHeight ?? base.maxNativePlaybackHeight,
+                proxyTargetHeight: proxyTargetHeight ?? base.proxyTargetHeight,
+                maxConcurrentJobs: maxConcurrentJobs ?? base.maxConcurrentJobs,
+                enableAutoTagging: enableAutoTagging ?? base.enableAutoTagging,
+                autoTagTimelapses: autoTagTimelapses ?? base.autoTagTimelapses,
+            )
             return true
         } catch {
             NSLog("updateConfig failed: \(error)")

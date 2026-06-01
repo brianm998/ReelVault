@@ -15,8 +15,11 @@ pub struct Config {
     /// When true, the post-index pipeline applies the "timelapse" tag
     /// to any video whose resolution exceeds its camera's max in-camera
     /// video resolution (see [`crate::full_resolution::is_likely_timelapse`]).
-    /// Off by default. Once a video is auto-tagged, removing the tag
-    /// manually is permanent — the auto-tagger consults
+    /// **On by default.** The heuristic is conservative (matches only
+    /// non-standard resolutions known to be unreachable as in-camera
+    /// video for that body), so false positives are rare and users
+    /// usually want the auto-tag. Once a video is auto-tagged, removing
+    /// the tag manually is permanent — the auto-tagger consults
     /// `auto_tag_history` and never re-applies to the same video.
     pub auto_tag_timelapses: bool,
     /// Maximum number of concurrent ffmpeg/ffprobe processes the server will
@@ -125,9 +128,9 @@ impl Config {
             .unwrap_or(30000)
             .max(0);
 
-        let auto_tag_timelapses = Self::get_config_value(&conn, "auto_tag_timelapses", "false")?
+        let auto_tag_timelapses = Self::get_config_value(&conn, "auto_tag_timelapses", "true")?
             .parse::<bool>()
-            .unwrap_or(false);
+            .unwrap_or(true);
 
         std::fs::create_dir_all(&thumbnail_cache_path)
             .map_err(|e| ReelVaultError::ConfigError(format!("Failed to create cache directory: {}", e)))?;
@@ -202,7 +205,7 @@ impl Config {
             watch_enabled: true,
             watch_write_settle_ms: 5000,
             watch_poll_interval_ms: 30000,
-            auto_tag_timelapses: false,
+            auto_tag_timelapses: true,
         }
     }
 

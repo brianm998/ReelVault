@@ -81,9 +81,10 @@ pub struct Options {
     /// Apply the "timelapse" tag automatically when a video's recorded
     /// resolution exceeds its camera's max in-camera video resolution
     /// (see [`crate::full_resolution::is_likely_timelapse`]).
-    /// Default is **off** — opt-in per scan request. Idempotent against
-    /// user removal: if the user untags a timelapse-flagged video,
-    /// the auto-tagger won't re-apply it (history table in `auto_tag_history`).
+    /// Default is **on** — the heuristic is conservative and most
+    /// users want the auto-tag. Idempotent against user removal: if
+    /// the user untags a timelapse-flagged video, the auto-tagger
+    /// won't re-apply it (history table in `auto_tag_history`).
     pub auto_tag_timelapses: bool,
 }
 
@@ -93,7 +94,7 @@ impl Default for Options {
             auto_group: false,
             detect_proxies: true,
             sensor_fetch: true,
-            auto_tag_timelapses: false,
+            auto_tag_timelapses: true,
         }
     }
 }

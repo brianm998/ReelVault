@@ -28,6 +28,15 @@ import kotlinx.coroutines.launch
  * recorded resolution exceeds their camera's max in-camera video
  * resolution. The catalog remembers which videos were auto-tagged —
  * removing the tag manually is permanent, even on subsequent scans.
+ *
+ * The dialog seeds its initial state from
+ * [VideoRepository.cachedConfig], which is populated by any earlier
+ * `getConfig` call (typically the first time the user opens any
+ * settings dialog after launch). After that the dialog opens
+ * instantly — no spinner — and only the very first open of any
+ * settings dialog pays a network round-trip. A background refresh
+ * still runs so a setting changed via CLI or another client lands
+ * within a second or two.
  */
 @Composable
 fun LibrarySettingsDialog(
@@ -36,14 +45,30 @@ fun LibrarySettingsDialog(
 ) {
     val scope = rememberCoroutineScope()
 
-    var autoTagTimelapses by remember { mutableStateOf(false) }
-    var loading by remember { mutableStateOf(true) }
+    // Seed from the repository's in-memory cache. If we've never fetched
+    // (very first dialog open after a cold start), the cache is null and
+    // we fall back to the same default the daemon uses — on. The
+    // background LaunchedEffect below replaces this with the real
+    // server value as soon as it arrives.
+    val cached = remember { repository.cachedConfig() }
+    var autoTagTimelapses by remember {
+        mutableStateOf(cached?.autoTagTimelapses ?: true)
+    }
+    // Only show the "loading…" affordance when we genuinely don't have
+    // any value to render yet. Cached opens skip it entirely.
+    var loading by remember { mutableStateOf(cached == null) }
     var saving by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        loading = true
-        repository.getConfig()?.let { cfg ->
-            autoTagTimelapses = cfg.autoTagTimelapses
+        // Always refresh in the background so the cache is current —
+        // catches the case where the value changed via CLI or another
+        // client since the cache was last filled. When the cache was
+        // already populated this is essentially free UX-wise: the
+        // toggle re-snaps to the freshly-fetched value (almost always
+        // identical to the cached one).
+        val fresh = repository.getConfig()
+        if (fresh != null) {
+            autoTagTimelapses = fresh.autoTagTimelapses
         }
         loading = false
     }
@@ -70,43 +95,47 @@ fun LibrarySettingsDialog(
             }
         },
         text = {
-            if (loading) {
+            Column(modifier = Modifier.width(460.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        "Loading current settings…",
-                        style = MaterialTheme.typography.bodySmall,
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Auto-tag timelapses",
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "When a video's recorded resolution exceeds the camera's " +
+                                "max in-camera video resolution, ReelVault tags it as " +
+                                "\"timelapse\" — by definition such files can only be " +
+                                "assembled from stills. Removing the tag manually is " +
+                                "permanent: the auto-tagger won't re-apply it on " +
+                                "future scans, even if the same heuristic fires again.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Switch(
+                        checked = autoTagTimelapses,
+                        onCheckedChange = { autoTagTimelapses = it },
+                        enabled = !saving,
                     )
                 }
-            } else {
-                Column(modifier = Modifier.width(460.dp)) {
+                // The "loading" affordance only renders on a true cold
+                // start (no cached config yet). After the first fetch
+                // it never reappears within this app session.
+                if (loading) {
+                    Spacer(modifier = Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                "Auto-tag timelapses",
-                                fontWeight = FontWeight.Medium,
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                "When a video's recorded resolution exceeds the camera's " +
-                                    "max in-camera video resolution, ReelVault tags it as " +
-                                    "\"timelapse\" — by definition such files can only be " +
-                                    "assembled from stills. Removing the tag manually is " +
-                                    "permanent: the auto-tagger won't re-apply it on " +
-                                    "future scans, even if the same heuristic fires again.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Switch(
-                            checked = autoTagTimelapses,
-                            onCheckedChange = { autoTagTimelapses = it },
-                            enabled = !saving,
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(10.dp),
+                            strokeWidth = 1.5.dp,
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            "Refreshing…",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -124,7 +153,7 @@ fun LibrarySettingsDialog(
                         onDismiss()
                     }
                 },
-                enabled = !loading && !saving,
+                enabled = !saving,
             ) {
                 Text(if (saving) "Saving…" else "Save")
             }

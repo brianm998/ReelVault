@@ -455,17 +455,43 @@ class VideoRepository(
         val autoTagTimelapses: Boolean,
     )
 
+    /**
+     * In-memory cache of the last successfully-fetched server config.
+     * Populated on the first [getConfig] call (or refreshed via the same
+     * method) and kept in sync by [updateConfig] after a successful save.
+     *
+     * Preferences dialogs read [cachedConfig] synchronously to render
+     * with the user's actual settings immediately — without that, every
+     * dialog-open paid a gRPC round-trip, which can be visible latency
+     * on a slow link. Dialogs still call [getConfig] in a background
+     * `LaunchedEffect` to refresh, but they no longer block their first
+     * paint on the network.
+     *
+     * `null` means "never fetched yet" — dialogs fall back to sensible
+     * defaults until the first fetch completes (typically <100 ms after
+     * the catalog opens).
+     */
+    @Volatile
+    private var cachedConfig: ServerConfig? = null
+
+    /** The most recently fetched config, or `null` if we haven't talked
+     *  to the daemon yet. Synchronous; suitable for initialising
+     *  `mutableStateOf(...)` in a dialog's `remember { }` block. */
+    fun cachedConfig(): ServerConfig? = cachedConfig
+
     suspend fun getConfig(): ServerConfig? = withContext(Dispatchers.IO) {
         val s = stub ?: return@withContext null
         try {
             val response = s.getConfig(Reelvault.GetConfigRequest.newBuilder().build())
-            ServerConfig(
+            val cfg = ServerConfig(
                 maxNativePlaybackHeight = response.maxNativePlaybackHeight,
                 proxyTargetHeight = response.proxyTargetHeight,
                 maxConcurrentJobs = response.maxConcurrentJobs,
                 enableAutoTagging = response.enableAutoTagging,
                 autoTagTimelapses = response.autoTagTimelapses,
             )
+            cachedConfig = cfg
+            cfg
         } catch (e: Exception) {
             logger.warn("getConfig failed", e)
             null
@@ -489,6 +515,25 @@ class VideoRepository(
             enableAutoTagging?.let { builder.enableAutoTagging = it }
             autoTagTimelapses?.let { builder.autoTagTimelapses = it }
             s.updateConfig(builder.build())
+            // Keep the cache in sync with the value we just persisted so
+            // a re-open of any settings dialog sees the saved value
+            // without paying another gRPC round-trip. We re-base off the
+            // current cache (or a sensible default) so an `updateConfig`
+            // that only touched one field doesn't blank out the others.
+            val base = cachedConfig ?: ServerConfig(
+                maxNativePlaybackHeight = 2160,
+                proxyTargetHeight = 720,
+                maxConcurrentJobs = 4,
+                enableAutoTagging = false,
+                autoTagTimelapses = true,
+            )
+            cachedConfig = base.copy(
+                maxNativePlaybackHeight = maxNativePlaybackHeight ?: base.maxNativePlaybackHeight,
+                proxyTargetHeight = proxyTargetHeight ?: base.proxyTargetHeight,
+                maxConcurrentJobs = maxConcurrentJobs ?: base.maxConcurrentJobs,
+                enableAutoTagging = enableAutoTagging ?: base.enableAutoTagging,
+                autoTagTimelapses = autoTagTimelapses ?: base.autoTagTimelapses,
+            )
             true
         } catch (e: Exception) {
             logger.warn("updateConfig failed", e)
