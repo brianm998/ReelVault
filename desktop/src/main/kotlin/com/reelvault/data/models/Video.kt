@@ -352,6 +352,12 @@ enum class CatalogEventKind {
     WatcherDisabled,
     ScanStarted,
     ScanCompleted,
+    /** A background post-index pass (proxy/group/sensor) began. */
+    PostIndexStarted,
+    /** Periodic progress for the in-flight post-index pass. */
+    PostIndexProgress,
+    /** The post-index pass drained; clients clear the activity panel. */
+    PostIndexCompleted,
 }
 
 data class CatalogEvent(
@@ -364,6 +370,30 @@ data class CatalogEvent(
     val atMs: Long,
     /** Human-readable note (filename for VideoRemoved, etc.). */
     val message: String,
+    /** Set only on POST_INDEX_* events; null otherwise. */
+    val postIndex: PostIndexProgress? = null,
+)
+
+/**
+ * Payload for the POST_INDEX_* catalog events — the daemon's background
+ * proxy-detection / auto-grouping / camera-sensor / timelapse pass. This
+ * work is CPU- and IO-heavy and used to be invisible to the UI; the grid
+ * surfaces it in a background-activity panel so a long pass doesn't look
+ * like the daemon has silently pegged a core.
+ */
+data class PostIndexProgress(
+    /** Videos fully post-indexed in the current pass. */
+    val processed: Long,
+    /** Expected total this pass; 0 when unknown. */
+    val total: Long,
+    /** 0..100; 0 when [total] is unknown. */
+    val percent: Double,
+    /** Estimated seconds remaining; 0 when unknown. */
+    val etaSeconds: Long,
+    /** Dominant activity: "grouping" | "proxies" | "sensors" | "tagging". */
+    val phase: String,
+    /** Last human-readable action, e.g. "linked a.mov → b.mov". */
+    val detail: String,
 )
 
 /**

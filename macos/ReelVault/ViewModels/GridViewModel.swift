@@ -119,10 +119,25 @@ class GridViewModel: ObservableObject {
     /// reporter.
     @Published var watcherBanner: String?
 
+    /// Live progress for the daemon's background post-index pass (proxy
+    /// detection / auto-grouping / camera-sensor lookups). `nil` when no
+    /// pass is active. Driven by the `.postIndex*` catalog events and
+    /// rendered in a background-activity panel so a long, CPU-heavy pass
+    /// isn't invisible — including watcher-triggered passes that have no
+    /// user-initiated scan banner.
+    @Published var postIndexProgress: PostIndexProgress?
+
     /// AsyncStream task owning the open `SubscribeCatalogEvents` connection.
     /// Cancelled in `stopCatalogEventStream()`; replaced if the stream
     /// drops and we reconnect.
     private var catalogEventsTask: Task<Void, Never>?
+
+    /// Pending "clear the post-index panel" work item, scheduled on
+    /// `.postIndexCompleted` and cancelled if another pass starts within
+    /// the linger window. The watcher runs the pass in short waves;
+    /// lingering bridges the gap so the panel reads as one continuous
+    /// "busy" state instead of flickering.
+    private var postIndexClearWorkItem: DispatchWorkItem?
 
     /// Debounce timer for refreshing the grid after a burst of watcher
     /// events. We get one event per file; refreshing the entire grid for
@@ -177,23 +192,54 @@ class GridViewModel: ObservableObject {
     /// task and starts a fresh one. Cancellation happens automatically
     /// when the grid view-model is deallocated (deinit can't be async, so
     /// we rely on the task's own cleanup path).
+    ///
+    /// While live updates are enabled, the task retries on failure with
+    /// exponential backoff (2, 4, 8, 16, 32, 60 s, then 60 s) and
+    /// suppresses duplicate error logs so a daemon that stays offline
+    /// doesn't spam the console with the same `Connection refused` error
+    /// every two seconds. A single line is logged on reconnect.
     func startCatalogEventStream() {
         catalogEventsTask?.cancel()
         catalogEventsTask = Task { [weak self] in
             guard let self else { return }
-            let stream = self.repository.subscribeCatalogEvents()
-            for await event in stream {
-                if Task.isCancelled { break }
-                self.handleCatalogEvent(event)
-            }
-            // Stream ended. If we still have a catalog open and the user
-            // hasn't disabled live updates, retry once after a short
-            // backoff — handles transient gRPC disconnects gracefully.
-            if !Task.isCancelled && self.liveUpdatesEnabled {
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                if !Task.isCancelled {
-                    self.startCatalogEventStream()
+            var attempt = 0
+            var lastErrorSignature: String?
+            while !Task.isCancelled && self.liveUpdatesEnabled {
+                do {
+                    let stream = self.repository.subscribeCatalogEvents()
+                    for try await event in stream {
+                        if Task.isCancelled { break }
+                        // First event after a (re)connect — announce we're
+                        // back online (if we'd been logging failures) and
+                        // reset the retry state.
+                        if attempt > 0 || lastErrorSignature != nil {
+                            NSLog("Catalog events stream reconnected after \(attempt) attempt(s)")
+                            attempt = 0
+                            lastErrorSignature = nil
+                        }
+                        self.handleCatalogEvent(event)
+                    }
+                    // Stream ended cleanly (server closed it without throwing).
+                    lastErrorSignature = nil
+                } catch is CancellationError {
+                    break
+                } catch {
+                    if Task.isCancelled { break }
+                    // Suppress duplicate log spam when the daemon stays
+                    // offline: log the first occurrence of each distinct
+                    // error, then stay quiet until either the error type
+                    // changes or the stream reconnects.
+                    let signature = String(describing: error)
+                    if signature != lastErrorSignature {
+                        NSLog("Catalog events stream ended: \(signature)")
+                        lastErrorSignature = signature
+                    }
                 }
+                if Task.isCancelled || !self.liveUpdatesEnabled { break }
+                attempt += 1
+                // Exponential backoff capped at 60 s: 2, 4, 8, 16, 32, 60, ...
+                let delayMs = min(60_000, 1_000 * (1 << min(attempt, 6)))
+                try? await Task.sleep(nanoseconds: UInt64(delayMs) * 1_000_000)
             }
         }
     }
@@ -201,6 +247,9 @@ class GridViewModel: ObservableObject {
     func stopCatalogEventStream() {
         catalogEventsTask?.cancel()
         catalogEventsTask = nil
+        postIndexClearWorkItem?.cancel()
+        postIndexClearWorkItem = nil
+        postIndexProgress = nil
     }
 
     /// Reacts to one `CatalogEvent`. Drives the live-updates indicator,
@@ -221,10 +270,31 @@ class GridViewModel: ObservableObject {
             scheduleWatcherRefresh()
         case .videoAdded, .videoModified, .videoRemoved:
             scheduleWatcherRefresh()
+        case .postIndexStarted, .postIndexProgress:
+            // A background pass is running — cancel any pending clear and
+            // show the latest snapshot.
+            postIndexClearWorkItem?.cancel()
+            postIndexClearWorkItem = nil
+            postIndexProgress = event.postIndex
+        case .postIndexCompleted:
+            // Refresh so newly-linked proxies / groups appear, then clear
+            // the panel after a short linger to bridge consecutive watcher
+            // waves into one continuous "busy" state.
+            scheduleWatcherRefresh()
+            postIndexClearWorkItem?.cancel()
+            let work = DispatchWorkItem { [weak self] in
+                self?.postIndexProgress = nil
+            }
+            postIndexClearWorkItem = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.postIndexLingerSeconds, execute: work)
         case .unknown:
             break
         }
     }
+
+    /// How long the post-index panel lingers after a pass completes before
+    /// clearing — see `postIndexClearWorkItem`.
+    private static let postIndexLingerSeconds: TimeInterval = 3.5
 
     // MARK: - Proxy management
 

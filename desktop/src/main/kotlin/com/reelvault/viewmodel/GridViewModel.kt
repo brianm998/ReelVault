@@ -5,6 +5,7 @@ package com.reelvault.viewmodel
 
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
+import com.reelvault.data.models.PostIndexProgress
 import com.reelvault.data.models.VideoSummary
 import com.reelvault.data.repository.VideoRepository
 import kotlinx.coroutines.*
@@ -16,6 +17,14 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import org.slf4j.LoggerFactory
 import java.util.prefs.Preferences
+
+/**
+ * How long the background post-index panel lingers after a pass completes
+ * before clearing. The file watcher runs the pass in short waves; this
+ * window bridges the gap between consecutive waves so the panel doesn't
+ * flicker on and off during a bulk refresh.
+ */
+private const val POST_INDEX_LINGER_MS = 3_500L
 
 class GridViewModel(
     private val repository: VideoRepository
@@ -174,6 +183,27 @@ class GridViewModel(
     val watcherBanner: StateFlow<String?> = _watcherBanner.asStateFlow()
 
     /**
+     * Live progress for the daemon's background post-index pass (proxy
+     * detection / auto-grouping / camera-sensor lookups). Null when no pass
+     * is active. Driven by the POST_INDEX_* catalog events and rendered in
+     * a background-activity panel so a long, CPU-heavy pass isn't invisible.
+     *
+     * The file watcher runs the pass in short waves (one per batch of
+     * settled files), so we linger briefly after PostIndexCompleted — see
+     * [postIndexClearJob] — to render back-to-back waves as one continuous
+     * "busy" panel instead of flickering on and off.
+     */
+    private val _postIndexProgress = MutableStateFlow<PostIndexProgress?>(null)
+    val postIndexProgress: StateFlow<PostIndexProgress?> = _postIndexProgress.asStateFlow()
+
+    /**
+     * Pending "clear the post-index panel" job, scheduled on
+     * PostIndexCompleted and cancelled if another pass starts within the
+     * linger window.
+     */
+    private var postIndexClearJob: Job? = null
+
+    /**
      * Coroutine job owning the open `subscribeCatalogEvents` collection.
      * Cancelled on `stopCatalogEventStream()`; replaced if the stream
      * drops and we reconnect.
@@ -258,6 +288,9 @@ class GridViewModel(
         catalogEventsJob = null
         watcherRefreshJob?.cancel()
         watcherRefreshJob = null
+        postIndexClearJob?.cancel()
+        postIndexClearJob = null
+        _postIndexProgress.value = null
     }
 
     /**
@@ -283,6 +316,27 @@ class GridViewModel(
             com.reelvault.data.models.CatalogEventKind.VideoModified,
             com.reelvault.data.models.CatalogEventKind.VideoRemoved ->
                 scheduleWatcherRefresh()
+            com.reelvault.data.models.CatalogEventKind.PostIndexStarted,
+            com.reelvault.data.models.CatalogEventKind.PostIndexProgress -> {
+                // A background pass is running — cancel any pending "clear"
+                // and show the latest snapshot.
+                postIndexClearJob?.cancel()
+                postIndexClearJob = null
+                _postIndexProgress.value = event.postIndex
+            }
+            com.reelvault.data.models.CatalogEventKind.PostIndexCompleted -> {
+                // Refresh the grid so newly-linked proxies / groups appear,
+                // then clear the panel after a short linger. The watcher
+                // runs the pass in waves; lingering bridges the gap between
+                // consecutive waves so the panel reads as one continuous
+                // "busy" state instead of flickering.
+                scheduleWatcherRefresh()
+                postIndexClearJob?.cancel()
+                postIndexClearJob = viewModelScope.launch {
+                    delay(POST_INDEX_LINGER_MS)
+                    _postIndexProgress.value = null
+                }
+            }
             com.reelvault.data.models.CatalogEventKind.Unknown -> { /* future kinds */ }
         }
     }

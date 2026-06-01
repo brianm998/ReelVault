@@ -1830,6 +1830,18 @@ nonisolated struct Reelvault_CatalogEvent: Sendable {
   /// can display a meaningful toast.
   var message: String = String()
 
+  /// Populated only for POST_INDEX_* kinds (absent otherwise). Carries the
+  /// counts, current phase, and ETA the client renders in its
+  /// background-activity panel.
+  var postIndex: Reelvault_PostIndexProgress {
+    get {_postIndex ?? Reelvault_PostIndexProgress()}
+    set {_postIndex = newValue}
+  }
+  /// Returns true if `postIndex` has been explicitly set.
+  var hasPostIndex: Bool {self._postIndex != nil}
+  /// Clears the value of `postIndex`. Subsequent reads from it will return its default value.
+  mutating func clearPostIndex() {self._postIndex = nil}
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   nonisolated enum Kind: SwiftProtobuf.Enum, Swift.CaseIterable {
@@ -1856,6 +1868,22 @@ nonisolated struct Reelvault_CatalogEvent: Sendable {
 
     /// A user-driven ScanLibrary just finished.
     case scanCompleted // = 7
+
+    /// Background post-index work — the proxy-detection / auto-grouping /
+    /// camera-sensor / timelapse passes the daemon runs after a video is
+    /// indexed, whether triggered by a ScanLibrary or by the file watcher
+    /// picking up changed files on disk. This work is CPU- and IO-heavy
+    /// (pairwise thumbnail hashing) and was previously invisible to
+    /// clients, so a long pass looked like the daemon had silently pegged
+    /// a core. These three kinds let clients show what it's doing and
+    /// roughly how far along it is. The payload rides in `post_index`.
+    case postIndexStarted // = 8
+
+    /// Periodic progress while it runs (~1/sec).
+    case postIndexProgress // = 9
+
+    /// The pass drained; clients clear the panel.
+    case postIndexCompleted // = 10
     case UNRECOGNIZED(Int)
 
     init() {
@@ -1872,6 +1900,9 @@ nonisolated struct Reelvault_CatalogEvent: Sendable {
       case 5: self = .watcherDisabled
       case 6: self = .scanStarted
       case 7: self = .scanCompleted
+      case 8: self = .postIndexStarted
+      case 9: self = .postIndexProgress
+      case 10: self = .postIndexCompleted
       default: self = .UNRECOGNIZED(rawValue)
       }
     }
@@ -1886,6 +1917,9 @@ nonisolated struct Reelvault_CatalogEvent: Sendable {
       case .watcherDisabled: return 5
       case .scanStarted: return 6
       case .scanCompleted: return 7
+      case .postIndexStarted: return 8
+      case .postIndexProgress: return 9
+      case .postIndexCompleted: return 10
       case .UNRECOGNIZED(let i): return i
       }
     }
@@ -1900,9 +1934,55 @@ nonisolated struct Reelvault_CatalogEvent: Sendable {
       .watcherDisabled,
       .scanStarted,
       .scanCompleted,
+      .postIndexStarted,
+      .postIndexProgress,
+      .postIndexCompleted,
     ]
 
   }
+
+  init() {}
+
+  fileprivate var _postIndex: Reelvault_PostIndexProgress? = nil
+}
+
+/// Progress for a background post-index pass (proxy detection, auto-
+/// grouping, camera-sensor lookups, timelapse auto-tagging). Rides inside
+/// POST_INDEX_* `CatalogEvent`s.
+///
+/// Counts are per *pass*. A `ScanLibrary` drains one big pass, so `total`
+/// covers the whole scan and the ETA is meaningful end-to-end. The file
+/// watcher instead processes settled files in waves — each wave is its own
+/// short pass — so clients should treat back-to-back passes as one
+/// continuous "busy" state (linger briefly on COMPLETED) rather than a
+/// single global percentage.
+nonisolated struct Reelvault_PostIndexProgress: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Videos fully post-indexed in this pass.
+  var processed: Int64 = 0
+
+  /// Expected videos this pass; 0 = unknown.
+  var total: Int64 = 0
+
+  /// 0..100 (0 when total is unknown).
+  var percent: Double = 0
+
+  /// Estimated seconds remaining; 0 = unknown.
+  var etaSeconds: Int64 = 0
+
+  /// Dominant current activity, one of: "grouping" | "proxies" |
+  /// "sensors" | "tagging". Proxy detection dominates wall-clock, so this
+  /// usually reads "proxies" — the honest answer to "why is the core busy?".
+  var phase: String = String()
+
+  /// Last human-readable action, e.g. "linked clip_1080p.mov → clip_4k.mov".
+  /// Lets the panel show live activity even when `total` is unknown.
+  var detail: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
 }
@@ -5492,7 +5572,7 @@ nonisolated extension Reelvault_SubscribeCatalogEventsRequest: SwiftProtobuf.Mes
 
 nonisolated extension Reelvault_CatalogEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".CatalogEvent"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{3}video_id\0\u{1}path\0\u{3}at_ms\0\u{1}message\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{3}video_id\0\u{1}path\0\u{3}at_ms\0\u{1}message\0\u{3}post_index\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5505,12 +5585,17 @@ nonisolated extension Reelvault_CatalogEvent: SwiftProtobuf.Message, SwiftProtob
       case 3: try { try decoder.decodeSingularStringField(value: &self.path) }()
       case 4: try { try decoder.decodeSingularInt64Field(value: &self.atMs) }()
       case 5: try { try decoder.decodeSingularStringField(value: &self.message) }()
+      case 6: try { try decoder.decodeSingularMessageField(value: &self._postIndex) }()
       default: break
       }
     }
   }
 
   func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
     if self.kind != .unspecified {
       try visitor.visitSingularEnumField(value: self.kind, fieldNumber: 1)
     }
@@ -5526,6 +5611,9 @@ nonisolated extension Reelvault_CatalogEvent: SwiftProtobuf.Message, SwiftProtob
     if !self.message.isEmpty {
       try visitor.visitSingularStringField(value: self.message, fieldNumber: 5)
     }
+    try { if let v = self._postIndex {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -5535,13 +5623,69 @@ nonisolated extension Reelvault_CatalogEvent: SwiftProtobuf.Message, SwiftProtob
     if lhs.path != rhs.path {return false}
     if lhs.atMs != rhs.atMs {return false}
     if lhs.message != rhs.message {return false}
+    if lhs._postIndex != rhs._postIndex {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
 nonisolated extension Reelvault_CatalogEvent.Kind: SwiftProtobuf._ProtoNameProviding {
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0KIND_UNSPECIFIED\0\u{1}VIDEO_ADDED\0\u{1}VIDEO_MODIFIED\0\u{1}VIDEO_REMOVED\0\u{1}WATCHER_STARTED\0\u{1}WATCHER_DISABLED\0\u{1}SCAN_STARTED\0\u{1}SCAN_COMPLETED\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0KIND_UNSPECIFIED\0\u{1}VIDEO_ADDED\0\u{1}VIDEO_MODIFIED\0\u{1}VIDEO_REMOVED\0\u{1}WATCHER_STARTED\0\u{1}WATCHER_DISABLED\0\u{1}SCAN_STARTED\0\u{1}SCAN_COMPLETED\0\u{1}POST_INDEX_STARTED\0\u{1}POST_INDEX_PROGRESS\0\u{1}POST_INDEX_COMPLETED\0")
+}
+
+nonisolated extension Reelvault_PostIndexProgress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".PostIndexProgress"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}processed\0\u{1}total\0\u{1}percent\0\u{3}eta_seconds\0\u{1}phase\0\u{1}detail\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularInt64Field(value: &self.processed) }()
+      case 2: try { try decoder.decodeSingularInt64Field(value: &self.total) }()
+      case 3: try { try decoder.decodeSingularDoubleField(value: &self.percent) }()
+      case 4: try { try decoder.decodeSingularInt64Field(value: &self.etaSeconds) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.phase) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self.detail) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.processed != 0 {
+      try visitor.visitSingularInt64Field(value: self.processed, fieldNumber: 1)
+    }
+    if self.total != 0 {
+      try visitor.visitSingularInt64Field(value: self.total, fieldNumber: 2)
+    }
+    if self.percent.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.percent, fieldNumber: 3)
+    }
+    if self.etaSeconds != 0 {
+      try visitor.visitSingularInt64Field(value: self.etaSeconds, fieldNumber: 4)
+    }
+    if !self.phase.isEmpty {
+      try visitor.visitSingularStringField(value: self.phase, fieldNumber: 5)
+    }
+    if !self.detail.isEmpty {
+      try visitor.visitSingularStringField(value: self.detail, fieldNumber: 6)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Reelvault_PostIndexProgress, rhs: Reelvault_PostIndexProgress) -> Bool {
+    if lhs.processed != rhs.processed {return false}
+    if lhs.total != rhs.total {return false}
+    if lhs.percent != rhs.percent {return false}
+    if lhs.etaSeconds != rhs.etaSeconds {return false}
+    if lhs.phase != rhs.phase {return false}
+    if lhs.detail != rhs.detail {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
 }
 
 nonisolated extension Reelvault_GetWatchSettingsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {

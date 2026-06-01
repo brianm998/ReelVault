@@ -486,6 +486,12 @@ enum CatalogEventKind {
     case watcherDisabled
     case scanStarted
     case scanCompleted
+    /// A background post-index pass (proxy/group/sensor) began.
+    case postIndexStarted
+    /// Periodic progress for the in-flight post-index pass.
+    case postIndexProgress
+    /// The post-index pass drained; clients clear the activity panel.
+    case postIndexCompleted
 }
 
 struct CatalogEvent: Equatable {
@@ -494,6 +500,28 @@ struct CatalogEvent: Equatable {
     let path: String        // The file that triggered it (best-effort).
     let atMs: Int64         // Server-side Unix milliseconds.
     let message: String     // Human-readable (filename for VideoRemoved, etc.)
+    /// Set only on `.postIndex*` events; nil otherwise.
+    var postIndex: PostIndexProgress? = nil
+}
+
+/// Payload for the `.postIndex*` catalog events — the daemon's background
+/// proxy-detection / auto-grouping / camera-sensor / timelapse pass. This
+/// work is CPU- and IO-heavy and used to be invisible to the UI; the grid
+/// surfaces it in a background-activity panel so a long pass doesn't look
+/// like the daemon has silently pegged a core.
+struct PostIndexProgress: Equatable {
+    /// Videos fully post-indexed in the current pass.
+    let processed: Int64
+    /// Expected total this pass; 0 when unknown.
+    let total: Int64
+    /// 0..100; 0 when `total` is unknown.
+    let percent: Double
+    /// Estimated seconds remaining; 0 when unknown.
+    let etaSeconds: Int64
+    /// Dominant activity: "grouping" | "proxies" | "sensors" | "tagging".
+    let phase: String
+    /// Last human-readable action, e.g. "linked a.mov → b.mov".
+    let detail: String
 }
 
 /// Watcher knobs that govern the real-time scanner. Round-trip via

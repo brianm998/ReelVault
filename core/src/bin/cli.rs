@@ -198,6 +198,7 @@ async fn cmd_scan(
         &cache_path,
         None,
         post_index::Options::default(),
+        None, // CLI doesn't surface post-index progress events
         |progress| {
             if !progress.current_file.is_empty() {
                 println!(
@@ -583,6 +584,7 @@ async fn cmd_bench(db: Arc<Database>, path: &std::path::Path) -> anyhow::Result<
         &cache_path,
         None,
         post_index::Options::default(),
+        None, // benchmark path doesn't surface post-index progress events
         |progress| {
             if progress.progress_percent > 0.0 && progress.progress_percent % 10.0 < 1.0 {
                 println!("  {:.0}% - {} videos found, {} indexed",

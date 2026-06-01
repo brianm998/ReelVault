@@ -879,12 +879,13 @@ class VideoRepository: ObservableObject {
     /// `.watcherDisabled` greeting so the UI can paint the live-updates
     /// indicator without an extra round-trip.
     ///
-    /// Returns an `AsyncStream` that finishes (cleanly) when the task is
-    /// cancelled or the server tears down the stream. Callers should
-    /// own a `Task` that loops over it and is cancelled before the
-    /// repository disconnects.
-    func subscribeCatalogEvents() -> AsyncStream<CatalogEvent> {
-        AsyncStream { continuation in
+    /// Returns an `AsyncThrowingStream` that finishes cleanly when the task
+    /// is cancelled or the server tears the stream down without error, and
+    /// finishes *throwing* when the underlying gRPC call fails. Callers own
+    /// a `Task` that loops over it, applies reconnect backoff on a thrown
+    /// error, and is cancelled before the repository disconnects.
+    func subscribeCatalogEvents() -> AsyncThrowingStream<CatalogEvent, Error> {
+        AsyncThrowingStream { continuation in
             let task = Task {
                 guard let client = serviceClient else {
                     continuation.finish()
@@ -903,24 +904,40 @@ class VideoRepository: ObservableObject {
                             case .watcherDisabled: kind = .watcherDisabled
                             case .scanStarted: kind = .scanStarted
                             case .scanCompleted: kind = .scanCompleted
+                            case .postIndexStarted: kind = .postIndexStarted
+                            case .postIndexProgress: kind = .postIndexProgress
+                            case .postIndexCompleted: kind = .postIndexCompleted
                             default: kind = .unknown
                             }
+                            let postIndex: PostIndexProgress? = proto.hasPostIndex
+                                ? PostIndexProgress(
+                                    processed: proto.postIndex.processed,
+                                    total: proto.postIndex.total,
+                                    percent: proto.postIndex.percent,
+                                    etaSeconds: proto.postIndex.etaSeconds,
+                                    phase: proto.postIndex.phase,
+                                    detail: proto.postIndex.detail
+                                )
+                                : nil
                             continuation.yield(CatalogEvent(
                                 kind: kind,
                                 videoId: proto.videoID,
                                 path: proto.path,
                                 atMs: proto.atMs,
-                                message: proto.message
+                                message: proto.message,
+                                postIndex: postIndex
                             ))
                         }
                     }
+                    // Server closed the stream cleanly (no error).
+                    continuation.finish()
                 } catch {
-                    // Stream ended (server closed, network blip, or task
-                    // cancellation). The view-model treats any finish as
-                    // "live updates dropped" and may attempt a reconnect.
-                    NSLog("subscribeCatalogEvents stream ended: \(error)")
+                    // Surface the failure so the caller (the view-model) can
+                    // apply reconnect backoff and de-duplicated logging.
+                    // Logging every drop here would spam the console when the
+                    // daemon is offline.
+                    continuation.finish(throwing: error)
                 }
-                continuation.finish()
             }
             continuation.onTermination = { _ in task.cancel() }
         }
