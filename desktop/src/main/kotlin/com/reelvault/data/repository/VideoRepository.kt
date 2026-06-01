@@ -693,12 +693,28 @@ class VideoRepository(
                     Reelvault.CatalogEvent.Kind.WATCHER_DISABLED -> CatalogEventKind.WatcherDisabled
                     Reelvault.CatalogEvent.Kind.SCAN_STARTED -> CatalogEventKind.ScanStarted
                     Reelvault.CatalogEvent.Kind.SCAN_COMPLETED -> CatalogEventKind.ScanCompleted
+                    Reelvault.CatalogEvent.Kind.POST_INDEX_STARTED -> CatalogEventKind.PostIndexStarted
+                    Reelvault.CatalogEvent.Kind.POST_INDEX_PROGRESS -> CatalogEventKind.PostIndexProgress
+                    Reelvault.CatalogEvent.Kind.POST_INDEX_COMPLETED -> CatalogEventKind.PostIndexCompleted
                     else -> CatalogEventKind.Unknown
                 },
                 videoId = proto.videoId,
                 path = proto.path,
                 atMs = proto.atMs,
                 message = proto.message,
+                postIndex = if (proto.hasPostIndex()) {
+                    val p = proto.postIndex
+                    PostIndexProgress(
+                        processed = p.processed,
+                        total = p.total,
+                        percent = p.percent,
+                        etaSeconds = p.etaSeconds,
+                        phase = p.phase,
+                        detail = p.detail,
+                    )
+                } else {
+                    null
+                },
             )
         }
     }

@@ -347,6 +347,7 @@ struct ContentView: View {
         VStack(spacing: 0) {
             topBar
             scanBanner
+            postIndexBanner
             scanResultBanner
             updateBanner
             locationFilterBanner
@@ -757,6 +758,59 @@ struct ContentView: View {
             }
             .padding(8)
             .background(Color.accentColor.opacity(0.15))
+        }
+    }
+
+    /// Background post-index activity — proxy detection / grouping / sensor
+    /// lookups. Driven by the `.postIndex*` catalog events, so it surfaces
+    /// watcher-triggered passes (which have no scan banner) and explains why
+    /// the core is busy and roughly how far along it is.
+    @ViewBuilder
+    private var postIndexBanner: some View {
+        if let pi = gridViewModel.postIndexProgress {
+            let phaseLabel: String = {
+                switch pi.phase {
+                case "grouping": return "Grouping clips"
+                case "proxies": return "Detecting proxies"
+                case "sensors": return "Fetching camera data"
+                case "tagging": return "Tagging timelapses"
+                default: return "Post-indexing"
+                }
+            }()
+            let countText = pi.total > 0 ? "\(pi.processed) / \(pi.total)" : "\(pi.processed)"
+            let etaText: String = {
+                let s = pi.etaSeconds
+                if s <= 0 { return "" }
+                if s < 60 { return "~\(s)s left" }
+                if s < 3600 { return "~\(s / 60) min left" }
+                return "~\(s / 3600)h \((s % 3600) / 60)m left"
+            }()
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    ProgressView().scaleEffect(0.6)
+                    Text(pi.total > 0
+                         ? "\(phaseLabel) — \(countText) (\(Int(pi.percent))%)"
+                         : "\(phaseLabel) — \(countText)")
+                        .font(.caption)
+                    Spacer()
+                    if !etaText.isEmpty {
+                        Text(etaText).font(.caption).foregroundColor(.secondary)
+                    }
+                }
+                if pi.total > 0 {
+                    ProgressView(value: min(max(pi.percent, 0), 100), total: 100)
+                        .progressViewStyle(.linear)
+                }
+                if !pi.detail.isEmpty {
+                    Text(pi.detail)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+            }
+            .padding(8)
+            .background(Color.blue.opacity(0.12))
         }
     }
 

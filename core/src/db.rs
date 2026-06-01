@@ -299,6 +299,22 @@ impl Database {
         Ok(video_id)
     }
 
+    /// Refresh the cached on-disk size for an existing video row, and
+    /// re-assert that it's online (a file we just re-read is clearly
+    /// present). Called on re-index so the watcher's poll-fallback — which
+    /// re-queues any file whose stored `file_size_bytes` differs from the
+    /// size on disk — converges instead of looping forever after an
+    /// off-FSEvents write (e.g. embedding XMP grows the file).
+    pub fn update_video_file_size(&self, video_id: &str, file_size_bytes: i64) -> Result<()> {
+        let conn = self.get_connection()?;
+        conn.execute(
+            "UPDATE videos SET file_size_bytes = ?, is_online = 1 WHERE id = ?",
+            params![file_size_bytes, video_id],
+        )
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
     pub fn get_video(&self, video_id: &str) -> Result<Option<VideoRecord>> {
         let conn = self.get_connection()?;
 
@@ -2579,4 +2595,45 @@ pub struct AutoGroupCandidate {
     /// recently written copy as the stack's preferred leader (ties
     /// broken on resolution, see `grouping.rs`).
     pub modified_at_ms: i64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Regression guard for the watcher re-index loop: the poll-fallback
+    /// re-queues any file whose stored `videos.file_size_bytes` differs from
+    /// the on-disk size, so a re-index *must* converge that column. Before
+    /// the fix, re-indexing only refreshed the `metadata` row, leaving the
+    /// stale size in place and re-triggering the file every poll cycle.
+    #[test]
+    fn update_video_file_size_converges_stored_size() {
+        let tmp = tempfile::tempdir().expect("tmpdir");
+        let db = Database::new_empty();
+        db.set_path(&tmp.path().join("catalog.db"))
+            .expect("init schema");
+
+        // Initial index records the original on-disk size.
+        let id = db
+            .add_video("/lib/clip.mov", "clip.mov", None, None, Some(1000))
+            .expect("add_video");
+        let before = db
+            .get_video_by_path("/lib/clip.mov")
+            .expect("query")
+            .expect("row exists");
+        assert_eq!(before.file_size_bytes, Some(1000));
+
+        // File grows on disk (e.g. an XMP embed). The re-index path calls
+        // this; the stored size must now match what the poll-fallback reads.
+        db.update_video_file_size(&id, 2048).expect("update size");
+        let after = db
+            .get_video_by_path("/lib/clip.mov")
+            .expect("query")
+            .expect("row exists");
+        assert_eq!(
+            after.file_size_bytes,
+            Some(2048),
+            "re-index must converge videos.file_size_bytes to the on-disk size"
+        );
+    }
 }

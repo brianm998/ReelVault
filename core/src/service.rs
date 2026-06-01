@@ -993,6 +993,9 @@ impl ReelVaultTrait for ReelVaultService {
                         sensor_fetch: true,
                         auto_tag_timelapses,
                     },
+                    // Publish post-index progress on the catalog-events bus
+                    // so a long proxy-detection drain isn't invisible.
+                    Some(scan_events.clone()),
                     |progress| send_progress(tx, progress),
                 ) {
                     Ok(_) => {
@@ -2145,6 +2148,7 @@ impl ReelVaultTrait for ReelVaultService {
                 path: String::new(),
                 at_ms: now_ms(),
                 message: String::new(),
+                post_index: None,
             }))
             .await;
 
@@ -2171,6 +2175,7 @@ impl ReelVaultTrait for ReelVaultService {
                                     "watcher event stream lagged {} events — please refresh",
                                     n
                                 ),
+                                post_index: None,
                             }))
                             .await;
                     }
@@ -2495,6 +2500,7 @@ fn change_to_event(change: &CatalogChange) -> reelvault::CatalogEvent {
             path: path.to_string_lossy().into_owned(),
             at_ms,
             message: String::new(),
+            post_index: None,
         },
         CatalogChange::VideoModified { video_id, path } => reelvault::CatalogEvent {
             kind: Kind::VideoModified as i32,
@@ -2502,6 +2508,7 @@ fn change_to_event(change: &CatalogChange) -> reelvault::CatalogEvent {
             path: path.to_string_lossy().into_owned(),
             at_ms,
             message: String::new(),
+            post_index: None,
         },
         CatalogChange::VideoRemoved { video_id, path } => reelvault::CatalogEvent {
             kind: Kind::VideoRemoved as i32,
@@ -2513,6 +2520,7 @@ fn change_to_event(change: &CatalogChange) -> reelvault::CatalogEvent {
                 .and_then(|n| n.to_str())
                 .map(str::to_string)
                 .unwrap_or_default(),
+            post_index: None,
         },
         CatalogChange::ScanStarted { path } => reelvault::CatalogEvent {
             kind: Kind::ScanStarted as i32,
@@ -2520,6 +2528,7 @@ fn change_to_event(change: &CatalogChange) -> reelvault::CatalogEvent {
             path: path.clone(),
             at_ms,
             message: String::new(),
+            post_index: None,
         },
         CatalogChange::ScanCompleted { path } => reelvault::CatalogEvent {
             kind: Kind::ScanCompleted as i32,
@@ -2527,6 +2536,59 @@ fn change_to_event(change: &CatalogChange) -> reelvault::CatalogEvent {
             path: path.clone(),
             at_ms,
             message: String::new(),
+            post_index: None,
+        },
+        CatalogChange::PostIndexStarted { total } => reelvault::CatalogEvent {
+            kind: Kind::PostIndexStarted as i32,
+            video_id: String::new(),
+            path: String::new(),
+            at_ms,
+            message: String::new(),
+            post_index: Some(reelvault::PostIndexProgress {
+                processed: 0,
+                total: *total as i64,
+                percent: 0.0,
+                eta_seconds: 0,
+                phase: String::new(),
+                detail: String::new(),
+            }),
+        },
+        CatalogChange::PostIndexProgress {
+            processed,
+            total,
+            percent,
+            eta_secs,
+            phase,
+            detail,
+        } => reelvault::CatalogEvent {
+            kind: Kind::PostIndexProgress as i32,
+            video_id: String::new(),
+            path: String::new(),
+            at_ms,
+            message: String::new(),
+            post_index: Some(reelvault::PostIndexProgress {
+                processed: *processed as i64,
+                total: *total as i64,
+                percent: *percent,
+                eta_seconds: *eta_secs as i64,
+                phase: phase.clone(),
+                detail: detail.clone(),
+            }),
+        },
+        CatalogChange::PostIndexCompleted { processed } => reelvault::CatalogEvent {
+            kind: Kind::PostIndexCompleted as i32,
+            video_id: String::new(),
+            path: String::new(),
+            at_ms,
+            message: String::new(),
+            post_index: Some(reelvault::PostIndexProgress {
+                processed: *processed as i64,
+                total: 0,
+                percent: 100.0,
+                eta_seconds: 0,
+                phase: String::new(),
+                detail: String::new(),
+            }),
         },
     }
 }

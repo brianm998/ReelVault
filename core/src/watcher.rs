@@ -72,6 +72,24 @@ pub enum CatalogChange {
     /// The matching companion to `ScanStarted` — emitted from the service
     /// after the scan's spawn_blocking task returns.
     ScanCompleted { path: String },
+    /// A non-trivial background post-index pass (proxy detection / auto-
+    /// grouping / sensor lookups) just began. Emitted by the post-index
+    /// pool's emitter thread once a pass has run long enough to be worth
+    /// surfacing. `total` is the expected number of videos in the pass.
+    PostIndexStarted { total: u64 },
+    /// Periodic progress for the in-flight post-index pass (~1/sec).
+    PostIndexProgress {
+        processed: u64,
+        total: u64,
+        percent: f64,
+        eta_secs: u64,
+        /// "grouping" | "proxies" | "sensors" | "tagging".
+        phase: String,
+        /// Last human-readable action, e.g. "linked a.mov → b.mov".
+        detail: String,
+    },
+    /// The post-index pass drained. Clients clear the activity panel.
+    PostIndexCompleted { processed: u64 },
 }
 
 /// Per-path settle state. The watcher only triggers a scan once
@@ -440,6 +458,9 @@ fn sweep_pending(
         .and_then(|s| s.parse::<bool>().ok())
         .unwrap_or(false);
 
+    // `ready.len()` is this wave's expected total; the emitter uses it for
+    // the percent/ETA and to decide whether the wave is worth surfacing.
+    let wave_total = ready.len() as u64;
     let post_index = post_index::spawn(
         Arc::clone(db),
         thumbnail_cache.to_path_buf(),
@@ -449,6 +470,8 @@ fn sweep_pending(
             sensor_fetch: true,
             auto_tag_timelapses,
         },
+        Some(events.clone()),
+        wave_total,
     );
 
     for (path, _pf) in ready {

@@ -6,6 +6,7 @@
 package com.reelvault
 
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -19,6 +20,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -145,6 +147,11 @@ fun main() {
         // single-key shortcuts ('g', 'd', 'i') so the user can still type those
         // letters into the search box.
         val searchFocused = remember { mutableStateOf(false) }
+        // FocusRequester for the invisible root Box (see the long comment by
+        // the Box declaration). Declared here so the Window-level Escape and
+        // click-outside handlers can transfer focus to it, dismissing any
+        // focused TextField.
+        val rootFocus = remember { FocusRequester() }
         // True while a PathCompletingTextField holds focus. Suppresses the
         // Tab → toggle-panels shortcut so Tab drives path completion instead.
         val pathFieldFocused = remember { mutableStateOf(false) }
@@ -212,6 +219,18 @@ fun main() {
                 ) {
                     togglePanelsAction.value()
                     return@Window true // consume so focus traversal doesn't also fire
+                }
+                // Escape → release focus from the top-bar search field so the
+                // user can resume single-key shortcuts (and so the field stops
+                // swallowing every subsequent keystroke). Only consume the
+                // event when the field actually holds focus — otherwise let
+                // dialogs and other components see Escape normally.
+                if (event.type == KeyEventType.KeyDown &&
+                    event.key == Key.Escape &&
+                    searchFocused.value
+                ) {
+                    rootFocus.requestFocus()
+                    return@Window true
                 }
                 // Single-letter shortcuts: only when no modifier is held AND the
                 // search field isn't focused (so the user can still type 'g', 'd',
@@ -294,7 +313,13 @@ fun main() {
             // can still take focus normally; when they release it the Box holds it
             // again as a neutral fallback. The focus system's invariant is never
             // violated regardless of recomposition timing.
-            val rootFocus = remember { FocusRequester() }
+            //
+            // The same Box also handles click-outside-to-clear-focus: any tap that
+            // isn't consumed by a child (button, TextField, etc.) reaches this
+            // pointerInput and transfers focus back to the Box — so clicking
+            // empty space dismisses the search field, matching macOS behavior.
+            // rootFocus is declared at application scope so the Window-level
+            // Escape handler can also use it.
             LaunchedEffect(Unit) {
                 // requestFocus() must run after the first composition pass so the
                 // node is actually attached to the owner. LaunchedEffect(Unit)
@@ -306,6 +331,9 @@ fun main() {
                     .fillMaxSize()
                     .focusRequester(rootFocus)
                     .focusable()
+                    .pointerInput(Unit) {
+                        detectTapGestures(onTap = { rootFocus.requestFocus() })
+                    }
             ) {
                 CompositionLocalProvider(
                     LocalShiftPressed provides shiftPressed,
@@ -775,6 +803,81 @@ fun ReelVaultApp(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
+                            }
+                        }
+                    }
+
+                    // Background post-index activity panel — proxy detection /
+                    // grouping / camera-sensor lookups. Driven by POST_INDEX_*
+                    // catalog events, so it surfaces watcher-triggered passes
+                    // (which have no user scan banner) and explains why the
+                    // core is busy + how far along it is.
+                    val postIndex = gridViewModel.postIndexProgress.collectAsState()
+                    postIndex.value?.let { pi ->
+                        val phaseLabel = when (pi.phase) {
+                            "grouping" -> "Grouping clips"
+                            "proxies" -> "Detecting proxies"
+                            "sensors" -> "Fetching camera data"
+                            "tagging" -> "Tagging timelapses"
+                            else -> "Post-indexing"
+                        }
+                        val countText =
+                            if (pi.total > 0) "${pi.processed} / ${pi.total}" else "${pi.processed}"
+                        val etaText = when {
+                            pi.etaSeconds <= 0L -> ""
+                            pi.etaSeconds < 60L -> "~${pi.etaSeconds}s left"
+                            pi.etaSeconds < 3600L -> "~${pi.etaSeconds / 60L} min left"
+                            else -> "~${pi.etaSeconds / 3600L}h ${(pi.etaSeconds % 3600L) / 60L}m left"
+                        }
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.secondaryContainer
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(ReelVaultSpacing.Small)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(modifier = Modifier.width(ReelVaultSpacing.Small))
+                                    Text(
+                                        text = "$phaseLabel — $countText" +
+                                            if (pi.total > 0) " (${pi.percent.toInt()}%)" else "",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                    if (etaText.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                        Text(
+                                            text = etaText,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                if (pi.total > 0) {
+                                    LinearProgressIndicator(
+                                        progress = { (pi.percent / 100.0).toFloat().coerceIn(0f, 1f) },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                } else {
+                                    // Total unknown (rare) — indeterminate bar.
+                                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                                }
+                                if (pi.detail.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = pi.detail,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                                        maxLines = 1
+                                    )
+                                }
                             }
                         }
                     }

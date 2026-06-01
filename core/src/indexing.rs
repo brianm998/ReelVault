@@ -136,6 +136,11 @@ impl IndexingEngine {
         thumbnail_cache: &Path,
         filename_date: Option<FilenameDateRule>,
         post_index_options: post_index::Options,
+        // Broadcast bus for post-index progress events. `None` disables
+        // progress reporting (CLI / tests); the gRPC service passes its
+        // catalog-events sender so a long proxy-detection pass shows up in
+        // the clients' background-activity panel.
+        events: Option<tokio::sync::broadcast::Sender<crate::watcher::CatalogChange>>,
         on_progress: impl Fn(&ScanProgress) + Sync,
     ) -> Result<()> {
         tracing::info!("Starting scan of: {}", path.display());
@@ -181,6 +186,8 @@ impl IndexingEngine {
             Arc::clone(&db),
             thumbnail_cache.to_path_buf(),
             post_index_options,
+            events.clone(),
+            videos_found.max(0) as u64,
         );
 
         // Second pass: extract metadata + generate thumbnails in parallel.
@@ -312,6 +319,16 @@ impl IndexingEngine {
 
         // Check if already indexed — if so, reuse the existing ID and just refresh metadata.
         let video_id = if let Ok(Some(existing)) = db.get_video_by_path(video_path.to_str().unwrap_or("")) {
+            // Keep the cached size on the `videos` row in sync with disk.
+            // The watcher's poll-fallback re-queues any file whose stored
+            // `file_size_bytes` differs from the on-disk size; without this
+            // update a re-index (which only refreshes `metadata`) leaves the
+            // old size in place, so the file is re-detected as "changed"
+            // every poll cycle — an endless re-index loop after any
+            // off-FSEvents write (e.g. embedding XMP).
+            if let Some(sz) = file_size {
+                db.update_video_file_size(&existing.id, sz)?;
+            }
             existing.id
         } else {
             // Create video record
