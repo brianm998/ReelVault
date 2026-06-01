@@ -1,0 +1,1933 @@
+{
+  "$comment": [
+    "Per-camera resolution data for the full-resolution classifier and",
+    "the timelapse heuristic. Keyed by canonical EXIF make+model string",
+    "(uppercase + single-spaced, matching core/src/camera_names.rs::normalise()).",
+    "",
+    "Each value is an object:",
+    "  natives:    list of [w, h] native sensor / max-photo modes the",
+    "              full-resolution classifier matches against to decide",
+    "              the FULL badge. Multiple entries cover bodies with",
+    "              distinct still and open-gate video native modes.",
+    "  video_max:  [w, h] or null. The camera's maximum *in-camera* video",
+    "              recording resolution. When set, a recorded clip whose",
+    "              pixel count strictly exceeds this is assumed to be a",
+    "              timelapse — its dimensions are physically unreachable",
+    "              for the camera's video pipeline, so it must have been",
+    "              assembled from stills. Leave null for cameras whose",
+    "              video and photo native match (cinema bodies, open-gate",
+    "              MFT cams) — the heuristic stays silent rather than",
+    "              risk false positives.",
+    "",
+    "Cameras shooting in a standard video format (3840x2160 UHD, 1920x1080",
+    "FHD, etc.) match the deny-list in core/src/full_resolution.rs and",
+    "land in the 'unknown' bucket for the full-resolution badge, regardless",
+    "of what's in this file.",
+    "",
+    "Regenerate via: tools/fetch_sensor_resolutions.py",
+    "Hand-edits inside the 'cameras' map are preserved by --fetch (Wikidata",
+    "merge is additive). Both shape and the `natives` / `video_max` fields",
+    "are validated on every run."
+  ],
+  "version": 2,
+  "generated_at": "2026-05-31T23:08:44Z",
+  "source": "manual seed",
+  "cameras": {
+    "APPLE IPHONE 12": {
+      "natives": [
+        [
+          4032,
+          3024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "APPLE IPHONE 12 MINI": {
+      "natives": [
+        [
+          4032,
+          3024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "APPLE IPHONE 12 PRO": {
+      "natives": [
+        [
+          4032,
+          3024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "APPLE IPHONE 12 PRO MAX": {
+      "natives": [
+        [
+          4032,
+          3024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "APPLE IPHONE 13": {
+      "natives": [
+        [
+          4032,
+          3024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "APPLE IPHONE 13 MINI": {
+      "natives": [
+        [
+          4032,
+          3024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "APPLE IPHONE 13 PRO": {
+      "natives": [
+        [
+          4032,
+          3024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "APPLE IPHONE 13 PRO MAX": {
+      "natives": [
+        [
+          4032,
+          3024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "APPLE IPHONE 14": {
+      "natives": [
+        [
+          4032,
+          3024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "APPLE IPHONE 14 PLUS": {
+      "natives": [
+        [
+          4032,
+          3024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "APPLE IPHONE 14 PRO": {
+      "natives": [
+        [
+          8064,
+          6048
+        ],
+        [
+          4032,
+          3024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "APPLE IPHONE 14 PRO MAX": {
+      "natives": [
+        [
+          8064,
+          6048
+        ],
+        [
+          4032,
+          3024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "APPLE IPHONE 15": {
+      "natives": [
+        [
+          8064,
+          6048
+        ],
+        [
+          4032,
+          3024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "APPLE IPHONE 15 PLUS": {
+      "natives": [
+        [
+          8064,
+          6048
+        ],
+        [
+          4032,
+          3024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "APPLE IPHONE 15 PRO": {
+      "natives": [
+        [
+          8064,
+          6048
+        ],
+        [
+          4032,
+          3024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "APPLE IPHONE 15 PRO MAX": {
+      "natives": [
+        [
+          8064,
+          6048
+        ],
+        [
+          4032,
+          3024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "APPLE IPHONE 16": {
+      "natives": [
+        [
+          8064,
+          6048
+        ],
+        [
+          4032,
+          3024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "APPLE IPHONE 16 PLUS": {
+      "natives": [
+        [
+          8064,
+          6048
+        ],
+        [
+          4032,
+          3024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "APPLE IPHONE 16 PRO": {
+      "natives": [
+        [
+          8064,
+          6048
+        ],
+        [
+          4032,
+          3024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "APPLE IPHONE 16 PRO MAX": {
+      "natives": [
+        [
+          8064,
+          6048
+        ],
+        [
+          4032,
+          3024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "BLACKMAGIC DESIGN BMCC": {
+      "natives": [
+        [
+          6144,
+          4096
+        ]
+      ],
+      "video_max": [
+        6144,
+        4096
+      ]
+    },
+    "BLACKMAGIC DESIGN BMPCC6K": {
+      "natives": [
+        [
+          6144,
+          3456
+        ]
+      ],
+      "video_max": [
+        6144,
+        3456
+      ]
+    },
+    "BLACKMAGIC DESIGN BMPCC6KG2": {
+      "natives": [
+        [
+          6144,
+          3456
+        ]
+      ],
+      "video_max": [
+        6144,
+        3456
+      ]
+    },
+    "BLACKMAGIC DESIGN BMPCC6KPRO": {
+      "natives": [
+        [
+          6144,
+          3456
+        ]
+      ],
+      "video_max": [
+        6144,
+        3456
+      ]
+    },
+    "BLACKMAGIC DESIGN URSA MINI PRO": {
+      "natives": [
+        [
+          4608,
+          2592
+        ]
+      ],
+      "video_max": [
+        4608,
+        2592
+      ]
+    },
+    "BLACKMAGIC DESIGN URSA MINI PRO 12K": {
+      "natives": [
+        [
+          12288,
+          6480
+        ]
+      ],
+      "video_max": [
+        12288,
+        6480
+      ]
+    },
+    "BLACKMAGIC DESIGN URSA MINI PRO 4.6K G2": {
+      "natives": [
+        [
+          4608,
+          2592
+        ]
+      ],
+      "video_max": [
+        4608,
+        2592
+      ]
+    },
+    "CANON EOS 5D MARK II": {
+      "natives": [
+        [
+          5616,
+          3744
+        ]
+      ],
+      "video_max": [
+        1920,
+        1080
+      ]
+    },
+    "CANON EOS 5D MARK III": {
+      "natives": [
+        [
+          5760,
+          3840
+        ]
+      ],
+      "video_max": [
+        1920,
+        1080
+      ]
+    },
+    "CANON EOS 5D MARK IV": {
+      "natives": [
+        [
+          6720,
+          4480
+        ]
+      ],
+      "video_max": [
+        4096,
+        2160
+      ]
+    },
+    "CANON EOS R10": {
+      "natives": [
+        [
+          6960,
+          4640
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "CANON EOS R100": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "CANON EOS R3": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        6000,
+        3164
+      ]
+    },
+    "CANON EOS R5": {
+      "natives": [
+        [
+          8192,
+          5464
+        ]
+      ],
+      "video_max": [
+        8192,
+        4320
+      ]
+    },
+    "CANON EOS R5 MARK II": {
+      "natives": [
+        [
+          8192,
+          5464
+        ]
+      ],
+      "video_max": [
+        8192,
+        4320
+      ]
+    },
+    "CANON EOS R50": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "CANON EOS R6": {
+      "natives": [
+        [
+          5472,
+          3648
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "CANON EOS R6 MARK II": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "CANON EOS R7": {
+      "natives": [
+        [
+          6960,
+          4640
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "CANON EOS R8": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "CANON EOS-1D X MARK II": {
+      "natives": [
+        [
+          5472,
+          3648
+        ]
+      ],
+      "video_max": [
+        4096,
+        2160
+      ]
+    },
+    "CANON EOS-1D X MARK III": {
+      "natives": [
+        [
+          5472,
+          3648
+        ]
+      ],
+      "video_max": [
+        5472,
+        2886
+      ]
+    },
+    "DJI OSMO POCKET 3": {
+      "natives": [
+        [
+          3840,
+          2160
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "DJI POCKET 2": {
+      "natives": [
+        [
+          3840,
+          2160
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "FUJIFILM GFX 50R": {
+      "natives": [
+        [
+          8256,
+          6192
+        ]
+      ],
+      "video_max": [
+        1920,
+        1080
+      ]
+    },
+    "FUJIFILM GFX 50S": {
+      "natives": [
+        [
+          8256,
+          6192
+        ]
+      ],
+      "video_max": [
+        1920,
+        1080
+      ]
+    },
+    "FUJIFILM GFX 50S II": {
+      "natives": [
+        [
+          8256,
+          6192
+        ]
+      ],
+      "video_max": [
+        1920,
+        1080
+      ]
+    },
+    "FUJIFILM GFX100": {
+      "natives": [
+        [
+          11648,
+          8736
+        ]
+      ],
+      "video_max": [
+        4096,
+        2160
+      ]
+    },
+    "FUJIFILM GFX100 II": {
+      "natives": [
+        [
+          11648,
+          8736
+        ]
+      ],
+      "video_max": [
+        8192,
+        4320
+      ]
+    },
+    "FUJIFILM GFX100S": {
+      "natives": [
+        [
+          11648,
+          8736
+        ]
+      ],
+      "video_max": [
+        4096,
+        2160
+      ]
+    },
+    "FUJIFILM X-H2": {
+      "natives": [
+        [
+          7728,
+          5152
+        ]
+      ],
+      "video_max": [
+        8192,
+        4320
+      ]
+    },
+    "FUJIFILM X-H2S": {
+      "natives": [
+        [
+          6240,
+          4160
+        ]
+      ],
+      "video_max": [
+        6240,
+        4160
+      ]
+    },
+    "FUJIFILM X-PRO2": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        1920,
+        1080
+      ]
+    },
+    "FUJIFILM X-PRO3": {
+      "natives": [
+        [
+          6240,
+          4160
+        ]
+      ],
+      "video_max": [
+        4096,
+        2160
+      ]
+    },
+    "FUJIFILM X-S10": {
+      "natives": [
+        [
+          6240,
+          4160
+        ]
+      ],
+      "video_max": [
+        4096,
+        2160
+      ]
+    },
+    "FUJIFILM X-S20": {
+      "natives": [
+        [
+          6240,
+          4160
+        ]
+      ],
+      "video_max": [
+        6240,
+        4160
+      ]
+    },
+    "FUJIFILM X-T2": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "FUJIFILM X-T3": {
+      "natives": [
+        [
+          6240,
+          4160
+        ]
+      ],
+      "video_max": [
+        4096,
+        2160
+      ]
+    },
+    "FUJIFILM X-T4": {
+      "natives": [
+        [
+          6240,
+          4160
+        ]
+      ],
+      "video_max": [
+        4096,
+        2160
+      ]
+    },
+    "FUJIFILM X-T5": {
+      "natives": [
+        [
+          7728,
+          5152
+        ]
+      ],
+      "video_max": [
+        6240,
+        4160
+      ]
+    },
+    "FUJIFILM X100V": {
+      "natives": [
+        [
+          6240,
+          4160
+        ]
+      ],
+      "video_max": [
+        4096,
+        2160
+      ]
+    },
+    "FUJIFILM X100VI": {
+      "natives": [
+        [
+          7728,
+          5152
+        ]
+      ],
+      "video_max": [
+        6240,
+        4160
+      ]
+    },
+    "GOPRO HERO10 BLACK": {
+      "natives": [
+        [
+          5312,
+          2988
+        ]
+      ],
+      "video_max": [
+        5312,
+        2988
+      ]
+    },
+    "GOPRO HERO11 BLACK": {
+      "natives": [
+        [
+          5312,
+          4648
+        ]
+      ],
+      "video_max": [
+        5312,
+        4648
+      ]
+    },
+    "GOPRO HERO12 BLACK": {
+      "natives": [
+        [
+          5312,
+          4648
+        ]
+      ],
+      "video_max": [
+        5312,
+        4648
+      ]
+    },
+    "GOPRO HERO13 BLACK": {
+      "natives": [
+        [
+          5312,
+          4648
+        ]
+      ],
+      "video_max": [
+        5312,
+        4648
+      ]
+    },
+    "GOPRO HERO9 BLACK": {
+      "natives": [
+        [
+          5120,
+          3840
+        ]
+      ],
+      "video_max": [
+        5120,
+        3840
+      ]
+    },
+    "NIKON CORPORATION NIKON D6": {
+      "natives": [
+        [
+          5568,
+          3712
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "NIKON CORPORATION NIKON D750": {
+      "natives": [
+        [
+          6016,
+          4016
+        ]
+      ],
+      "video_max": [
+        1920,
+        1080
+      ]
+    },
+    "NIKON CORPORATION NIKON D780": {
+      "natives": [
+        [
+          6048,
+          4024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "NIKON CORPORATION NIKON D850": {
+      "natives": [
+        [
+          8256,
+          5504
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "NIKON CORPORATION NIKON Z 30": {
+      "natives": [
+        [
+          5568,
+          3712
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "NIKON CORPORATION NIKON Z 5": {
+      "natives": [
+        [
+          6016,
+          4016
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "NIKON CORPORATION NIKON Z 50": {
+      "natives": [
+        [
+          5568,
+          3712
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "NIKON CORPORATION NIKON Z 5_2": {
+      "natives": [
+        [
+          6048,
+          4032
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "NIKON CORPORATION NIKON Z 6": {
+      "natives": [
+        [
+          6048,
+          4024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "NIKON CORPORATION NIKON Z 6_2": {
+      "natives": [
+        [
+          6048,
+          4024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "NIKON CORPORATION NIKON Z 6_3": {
+      "natives": [
+        [
+          6048,
+          4032
+        ]
+      ],
+      "video_max": [
+        6048,
+        3402
+      ]
+    },
+    "NIKON CORPORATION NIKON Z 7": {
+      "natives": [
+        [
+          8256,
+          5504
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "NIKON CORPORATION NIKON Z 7_2": {
+      "natives": [
+        [
+          8256,
+          5504
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "NIKON CORPORATION NIKON Z 8": {
+      "natives": [
+        [
+          8256,
+          5504
+        ]
+      ],
+      "video_max": [
+        8256,
+        4644
+      ]
+    },
+    "NIKON CORPORATION NIKON Z 9": {
+      "natives": [
+        [
+          8256,
+          5504
+        ]
+      ],
+      "video_max": [
+        8256,
+        4644
+      ]
+    },
+    "NIKON CORPORATION NIKON Z F": {
+      "natives": [
+        [
+          6048,
+          4032
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "NIKON CORPORATION NIKON Z FC": {
+      "natives": [
+        [
+          5568,
+          3712
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "NIKON Z 6_3": {
+      "natives": [
+        [
+          6048,
+          4032
+        ]
+      ],
+      "video_max": [
+        6048,
+        3402
+      ]
+    },
+    "NIKON Z 8": {
+      "natives": [
+        [
+          8256,
+          5504
+        ]
+      ],
+      "video_max": [
+        8256,
+        4644
+      ]
+    },
+    "NIKON Z 9": {
+      "natives": [
+        [
+          8256,
+          5504
+        ]
+      ],
+      "video_max": [
+        8256,
+        4644
+      ]
+    },
+    "PANASONIC DC-BGH1": {
+      "natives": [
+        [
+          3680,
+          2760
+        ]
+      ],
+      "video_max": [
+        4096,
+        2160
+      ]
+    },
+    "PANASONIC DC-BS1H": {
+      "natives": [
+        [
+          6000,
+          4000
+        ],
+        [
+          5952,
+          3968
+        ]
+      ],
+      "video_max": [
+        5952,
+        3968
+      ]
+    },
+    "PANASONIC DC-G9": {
+      "natives": [
+        [
+          5184,
+          3888
+        ]
+      ],
+      "video_max": [
+        4096,
+        2160
+      ]
+    },
+    "PANASONIC DC-G9M2": {
+      "natives": [
+        [
+          5776,
+          4336
+        ]
+      ],
+      "video_max": [
+        5776,
+        4336
+      ]
+    },
+    "PANASONIC DC-GH5": {
+      "natives": [
+        [
+          5184,
+          3888
+        ]
+      ],
+      "video_max": [
+        4096,
+        2160
+      ]
+    },
+    "PANASONIC DC-GH5M2": {
+      "natives": [
+        [
+          5184,
+          3888
+        ]
+      ],
+      "video_max": [
+        4096,
+        2160
+      ]
+    },
+    "PANASONIC DC-GH5S": {
+      "natives": [
+        [
+          3680,
+          2760
+        ]
+      ],
+      "video_max": [
+        4096,
+        2160
+      ]
+    },
+    "PANASONIC DC-GH6": {
+      "natives": [
+        [
+          5776,
+          4336
+        ],
+        [
+          5728,
+          3024
+        ]
+      ],
+      "video_max": [
+        5776,
+        4336
+      ]
+    },
+    "PANASONIC DC-GH7": {
+      "natives": [
+        [
+          5776,
+          4336
+        ],
+        [
+          5728,
+          3024
+        ]
+      ],
+      "video_max": [
+        5776,
+        4336
+      ]
+    },
+    "PANASONIC DC-S1": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "PANASONIC DC-S1H": {
+      "natives": [
+        [
+          6000,
+          4000
+        ],
+        [
+          5952,
+          3968
+        ]
+      ],
+      "video_max": [
+        5952,
+        3968
+      ]
+    },
+    "PANASONIC DC-S1R": {
+      "natives": [
+        [
+          8368,
+          5584
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "PANASONIC DC-S5": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "PANASONIC DC-S5M2": {
+      "natives": [
+        [
+          6000,
+          4000
+        ],
+        [
+          5952,
+          3968
+        ]
+      ],
+      "video_max": [
+        5952,
+        3968
+      ]
+    },
+    "PANASONIC DC-S5M2X": {
+      "natives": [
+        [
+          6000,
+          4000
+        ],
+        [
+          5952,
+          3968
+        ]
+      ],
+      "video_max": [
+        5952,
+        3968
+      ]
+    },
+    "PANASONIC DC-S9": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY DSC-RX100": {
+      "natives": [
+        [
+          5472,
+          3648
+        ]
+      ],
+      "video_max": [
+        1920,
+        1080
+      ]
+    },
+    "SONY DSC-RX100M2": {
+      "natives": [
+        [
+          5472,
+          3648
+        ]
+      ],
+      "video_max": [
+        1920,
+        1080
+      ]
+    },
+    "SONY DSC-RX100M3": {
+      "natives": [
+        [
+          5472,
+          3648
+        ]
+      ],
+      "video_max": [
+        1920,
+        1080
+      ]
+    },
+    "SONY DSC-RX100M4": {
+      "natives": [
+        [
+          5472,
+          3648
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY DSC-RX100M5": {
+      "natives": [
+        [
+          5472,
+          3648
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY DSC-RX100M5A": {
+      "natives": [
+        [
+          5472,
+          3648
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY DSC-RX100M6": {
+      "natives": [
+        [
+          5472,
+          3648
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY DSC-RX100M7": {
+      "natives": [
+        [
+          5472,
+          3648
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILCE-1": {
+      "natives": [
+        [
+          8640,
+          5760
+        ]
+      ],
+      "video_max": [
+        7680,
+        4320
+      ]
+    },
+    "SONY ILCE-1M2": {
+      "natives": [
+        [
+          8640,
+          5760
+        ]
+      ],
+      "video_max": [
+        7680,
+        4320
+      ]
+    },
+    "SONY ILCE-5000": {
+      "natives": [
+        [
+          5456,
+          3632
+        ]
+      ],
+      "video_max": [
+        1920,
+        1080
+      ]
+    },
+    "SONY ILCE-5100": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        1920,
+        1080
+      ]
+    },
+    "SONY ILCE-6000": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        1920,
+        1080
+      ]
+    },
+    "SONY ILCE-6100": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILCE-6300": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILCE-6400": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILCE-6500": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILCE-6600": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILCE-6700": {
+      "natives": [
+        [
+          6192,
+          4128
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILCE-7": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        1920,
+        1080
+      ]
+    },
+    "SONY ILCE-7C": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILCE-7CM2": {
+      "natives": [
+        [
+          7008,
+          4672
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILCE-7CR": {
+      "natives": [
+        [
+          9504,
+          6336
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILCE-7M2": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        1920,
+        1080
+      ]
+    },
+    "SONY ILCE-7M3": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILCE-7M4": {
+      "natives": [
+        [
+          7008,
+          4672
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILCE-7R": {
+      "natives": [
+        [
+          7360,
+          4912
+        ]
+      ],
+      "video_max": [
+        1920,
+        1080
+      ]
+    },
+    "SONY ILCE-7RM2": {
+      "natives": [
+        [
+          7952,
+          5304
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILCE-7RM3": {
+      "natives": [
+        [
+          7952,
+          5304
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILCE-7RM3A": {
+      "natives": [
+        [
+          7952,
+          5304
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILCE-7RM4": {
+      "natives": [
+        [
+          9504,
+          6336
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILCE-7RM4A": {
+      "natives": [
+        [
+          9504,
+          6336
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILCE-7RM5": {
+      "natives": [
+        [
+          9504,
+          6336
+        ]
+      ],
+      "video_max": [
+        7680,
+        4320
+      ]
+    },
+    "SONY ILCE-7S": {
+      "natives": [
+        [
+          4240,
+          2832
+        ]
+      ],
+      "video_max": [
+        1920,
+        1080
+      ]
+    },
+    "SONY ILCE-7SM2": {
+      "natives": [
+        [
+          4240,
+          2832
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILCE-7SM3": {
+      "natives": [
+        [
+          4240,
+          2832
+        ],
+        [
+          4264,
+          2408
+        ]
+      ],
+      "video_max": [
+        4264,
+        2408
+      ]
+    },
+    "SONY ILCE-9": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILCE-9M2": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILCE-9M3": {
+      "natives": [
+        [
+          6048,
+          4024
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILME-FX3": {
+      "natives": [
+        [
+          4240,
+          2832
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILME-FX30": {
+      "natives": [
+        [
+          6192,
+          4128
+        ],
+        [
+          6048,
+          3404
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ILME-FX6": {
+      "natives": [
+        [
+          4240,
+          2832
+        ]
+      ],
+      "video_max": [
+        4096,
+        2160
+      ]
+    },
+    "SONY ILME-FX9": {
+      "natives": [
+        [
+          6008,
+          3168
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ZV-1": {
+      "natives": [
+        [
+          5472,
+          3648
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ZV-1F": {
+      "natives": [
+        [
+          5472,
+          3648
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ZV-1M2": {
+      "natives": [
+        [
+          5472,
+          3648
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ZV-E1": {
+      "natives": [
+        [
+          4240,
+          2832
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ZV-E10": {
+      "natives": [
+        [
+          6000,
+          4000
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    },
+    "SONY ZV-E10M2": {
+      "natives": [
+        [
+          6192,
+          4128
+        ]
+      ],
+      "video_max": [
+        3840,
+        2160
+      ]
+    }
+  }
+}

@@ -145,6 +145,14 @@ struct DetailView: View {
                 if metadata.hdr {
                     MetadataItemView(label: "HDR", value: "Yes")
                 }
+                switch metadata.fullResolution {
+                case .full:
+                    MetadataItemView(label: "Resolution Status", value: "Full resolution")
+                case .notFull:
+                    MetadataItemView(label: "Resolution Status", value: "Not full resolution")
+                case .unspecified:
+                    EmptyView()  // no row when unknown
+                }
             }
 
             // EXIF section
@@ -629,6 +637,8 @@ struct MetadataItemView: View {
         case "Size":        return "File size on disk."
         case "Color Space": return "Color encoding standard (e.g. bt709 for HD, bt2020 for 4K HDR)."
         case "HDR":         return "High Dynamic Range content with extended brightness and color range."
+        case "Resolution Status":
+            return "\"Full\" when the recorded dimensions match a known native sensor mode for this camera (e.g. a timelapse rendered at full sensor resolution). \"Not full\" when the camera is known but the recorded size doesn't match either a native mode or a common video standard."
         case "Camera":      return "Camera model recorded in the file's metadata (when available)."
         case "Lens":        return "Lens model recorded in the file's metadata."
         case "Captured":    return "Original recording date and time from the file's metadata."

@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.reelvault.ViewMode
+import com.reelvault.data.models.FullResolutionStatus
 import com.reelvault.data.models.GridStatKey
 import com.reelvault.ui.theme.ReelVaultSpacing
 import com.reelvault.viewmodel.DetailViewModel
@@ -214,6 +215,14 @@ fun DetailScreen(
 
                 if (metadata.value!!.hdr) {
                     MetadataItem("HDR", "Yes")
+                }
+
+                when (metadata.value!!.fullResolution) {
+                    FullResolutionStatus.Full ->
+                        MetadataItem("Resolution Status", "Full resolution")
+                    FullResolutionStatus.NotFull ->
+                        MetadataItem("Resolution Status", "Not full resolution")
+                    FullResolutionStatus.Unspecified -> {} // no row when unknown
                 }
 
                 // EXIF / Camera section
@@ -967,6 +976,7 @@ private fun defaultMetadataTooltip(label: String, value: String): String = when 
     "Size" -> "File size on disk."
     "Color Space" -> "Color encoding standard (e.g. bt709 for HD, bt2020 for 4K HDR)."
     "HDR" -> "High Dynamic Range content with extended brightness and color range."
+    "Resolution Status" -> "\"Full\" when the recorded dimensions match a known native sensor mode for this camera (e.g. a timelapse rendered at full sensor resolution). \"Not full\" when the camera is known but the recorded size doesn't match either a native mode or a common video standard."
     "Camera" -> "Camera model recorded in the file's metadata (when available)."
     "Lens" -> "Lens model recorded in the file's metadata."
     "Captured" -> "Original recording date and time from the file's metadata."

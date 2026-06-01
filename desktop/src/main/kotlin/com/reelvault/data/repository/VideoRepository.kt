@@ -113,6 +113,7 @@ class VideoRepository(
             aperture = proto.aperture,
             exposureTimeS = proto.exposureTimeS,
             focalLengthMm = proto.focalLengthMm,
+            fullResolution = FullResolutionStatus.fromWire(proto.fullResolutionValue),
         )
     }
 
@@ -156,6 +157,7 @@ class VideoRepository(
             exposureMode = proto.exposureMode,
             exposureProgram = proto.exposureProgram,
             whiteBalance = proto.whiteBalance,
+            fullResolution = FullResolutionStatus.fromWire(proto.fullResolutionValue),
         )
     }
 
@@ -446,6 +448,11 @@ class VideoRepository(
         val proxyTargetHeight: Int,
         val maxConcurrentJobs: Int,
         val enableAutoTagging: Boolean,
+        /** When true, the post-index pipeline auto-applies a "timelapse" tag
+         *  to videos whose recorded resolution exceeds their camera's max
+         *  in-camera video resolution. Backed by `auto_tag_history` so a
+         *  user-removed tag never gets re-applied. */
+        val autoTagTimelapses: Boolean,
     )
 
     suspend fun getConfig(): ServerConfig? = withContext(Dispatchers.IO) {
@@ -457,6 +464,7 @@ class VideoRepository(
                 proxyTargetHeight = response.proxyTargetHeight,
                 maxConcurrentJobs = response.maxConcurrentJobs,
                 enableAutoTagging = response.enableAutoTagging,
+                autoTagTimelapses = response.autoTagTimelapses,
             )
         } catch (e: Exception) {
             logger.warn("getConfig failed", e)
@@ -470,6 +478,7 @@ class VideoRepository(
         proxyTargetHeight: Int? = null,
         maxConcurrentJobs: Int? = null,
         enableAutoTagging: Boolean? = null,
+        autoTagTimelapses: Boolean? = null,
     ): Boolean = withContext(Dispatchers.IO) {
         val s = stub ?: return@withContext false
         try {
@@ -478,6 +487,7 @@ class VideoRepository(
             proxyTargetHeight?.let { builder.proxyTargetHeight = it }
             maxConcurrentJobs?.let { builder.maxConcurrentJobs = it }
             enableAutoTagging?.let { builder.enableAutoTagging = it }
+            autoTagTimelapses?.let { builder.autoTagTimelapses = it }
             s.updateConfig(builder.build())
             true
         } catch (e: Exception) {

@@ -73,11 +73,28 @@ const CHANNEL_CAPACITY: usize = 1024;
 pub struct Options {
     pub auto_group: bool,
     pub detect_proxies: bool,
+    /// Issue a Wikidata SPARQL lookup for any `camera_model` we
+    /// encounter that isn't in the built-in sensor table. Backs the
+    /// full-resolution badge on the grid card; see
+    /// [`crate::sensor_cache::ensure_cached`].
+    pub sensor_fetch: bool,
+    /// Apply the "timelapse" tag automatically when a video's recorded
+    /// resolution exceeds its camera's max in-camera video resolution
+    /// (see [`crate::full_resolution::is_likely_timelapse`]).
+    /// Default is **off** — opt-in per scan request. Idempotent against
+    /// user removal: if the user untags a timelapse-flagged video,
+    /// the auto-tagger won't re-apply it (history table in `auto_tag_history`).
+    pub auto_tag_timelapses: bool,
 }
 
 impl Default for Options {
     fn default() -> Self {
-        Options { auto_group: false, detect_proxies: true }
+        Options {
+            auto_group: false,
+            detect_proxies: true,
+            sensor_fetch: true,
+            auto_tag_timelapses: false,
+        }
     }
 }
 
@@ -191,6 +208,94 @@ fn process_one(
     if options.detect_proxies {
         detect_proxy_for(db, thumbnail_cache, decision_mutex, video_id)?;
     }
+    if options.sensor_fetch {
+        // Best-effort: don't fail the post-index pass on a Wikidata
+        // hiccup. The classifier degrades to Unknown for cameras that
+        // never get cached; users see the same "no badge" state they
+        // would without this step.
+        if let Err(e) = fetch_sensor_for(db, video_id) {
+            tracing::debug!(video_id = %video_id, error = %e,
+                "post-index sensor_fetch skipped");
+        }
+    }
+    if options.auto_tag_timelapses {
+        // Same best-effort posture as sensor_fetch — never fail the
+        // post-index pass over a tag write.
+        if let Err(e) = auto_tag_timelapse_for(db, video_id) {
+            tracing::debug!(video_id = %video_id, error = %e,
+                "post-index timelapse auto-tag skipped");
+        }
+    }
+    Ok(())
+}
+
+fn auto_tag_timelapse_for(db: &Database, video_id: &str) -> Result<()> {
+    let conn = db.get_connection()?;
+    let row: Option<(Option<String>, i32, i32)> = conn
+        .query_row(
+            "SELECT camera_model, width, height FROM metadata WHERE video_id = ?",
+            [video_id],
+            |r| {
+                Ok((
+                    r.get::<_, Option<String>>(0)?,
+                    r.get::<_, i32>(1)?,
+                    r.get::<_, i32>(2)?,
+                ))
+            },
+        )
+        .ok();
+    let Some((camera, width, height)) = row else {
+        return Ok(());
+    };
+    let Some(camera) = camera else {
+        return Ok(());
+    };
+    let camera = camera.trim();
+    if camera.is_empty() {
+        return Ok(());
+    }
+    let w = width.max(0) as u32;
+    let h = height.max(0) as u32;
+    if !crate::full_resolution::is_likely_timelapse(camera, w, h) {
+        return Ok(());
+    }
+    // auto_tag_if_unseen returns false if a previous run already applied
+    // (and the user may or may not have since removed) the tag — in
+    // either case we leave it alone.
+    let applied = db.auto_tag_if_unseen(video_id, "timelapse", "timelapse_heuristic")?;
+    if applied {
+        tracing::info!(
+            video_id = %video_id,
+            camera = %camera,
+            width = w,
+            height = h,
+            "auto-tagged as timelapse"
+        );
+    }
+    Ok(())
+}
+
+fn fetch_sensor_for(db: &Database, video_id: &str) -> Result<()> {
+    let conn = db.get_connection()?;
+    let camera_model: Option<String> = conn
+        .query_row(
+            "SELECT camera_model FROM metadata WHERE video_id = ?",
+            [video_id],
+            |r| r.get::<_, Option<String>>(0),
+        )
+        .ok()
+        .flatten();
+    let Some(model) = camera_model else {
+        return Ok(());
+    };
+    let model = model.trim();
+    if model.is_empty() {
+        return Ok(());
+    }
+    // ensure_cached is a no-op when the camera is covered by the
+    // built-in table or already cached — only newly-discovered bodies
+    // pay the Wikidata round-trip.
+    let _ = crate::sensor_cache::ensure_cached(&conn, model)?;
     Ok(())
 }
 

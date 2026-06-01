@@ -4,6 +4,26 @@
 import Foundation
 import SwiftUI
 
+/// Mirror of proto `FullResolutionStatus`. The daemon's classifier
+/// decides whether a video appears to be at its camera's native sensor
+/// resolution (`.full`), at a non-standard non-native resolution
+/// suggesting a derived/exported variant (`.notFull`), or in a state
+/// we can't classify (`.unspecified` — unknown camera or a common
+/// video standard like UHD/FHD). Clients render a badge for `.full`
+/// and `.notFull`; `.unspecified` gets no badge.
+enum FullResolutionStatus: Int {
+    case unspecified = 0
+    case full = 1
+    case notFull = 2
+
+    /// Map an int from the proto wire format. Unknown values fall back
+    /// to `.unspecified` so a daemon that adds a new variant doesn't
+    /// crash an older client.
+    static func from(wire: Int) -> FullResolutionStatus {
+        FullResolutionStatus(rawValue: wire) ?? .unspecified
+    }
+}
+
 struct VideoSummary: Identifiable, Hashable {
     let id: String
     let filename: String
@@ -68,6 +88,10 @@ struct VideoSummary: Identifiable, Hashable {
     let exposureTimeS: Double
     /// Focal length in millimeters from embedded XMP. 0.0 when absent.
     let focalLengthMm: Double
+    /// Full-resolution badge state set by the daemon's classifier.
+    /// `.unspecified` (the default) renders no badge; the other two
+    /// render the "Full" / "Not full" chip on the card.
+    let fullResolution: FullResolutionStatus
 
     var isInGroup: Bool { !groupId.isEmpty && groupSize > 1 }
     var hasProxies: Bool { proxyCount > 0 }
@@ -116,7 +140,8 @@ struct VideoSummary: Identifiable, Hashable {
             cameraModel: cameraModel, cameraDisplayName: cameraDisplayName,
             gpsLatitude: gpsLatitude, gpsLongitude: gpsLongitude,
             lensModel: lensModel, iso: iso, aperture: aperture,
-            exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm
+            exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm,
+            fullResolution: fullResolution
         )
     }
 
@@ -137,7 +162,8 @@ struct VideoSummary: Identifiable, Hashable {
             cameraModel: cameraModel, cameraDisplayName: cameraDisplayName,
             gpsLatitude: gpsLatitude, gpsLongitude: gpsLongitude,
             lensModel: lensModel, iso: iso, aperture: aperture,
-            exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm
+            exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm,
+            fullResolution: fullResolution
         )
     }
 
@@ -158,7 +184,8 @@ struct VideoSummary: Identifiable, Hashable {
             cameraModel: cameraModel, cameraDisplayName: cameraDisplayName,
             gpsLatitude: latitude, gpsLongitude: longitude,
             lensModel: lensModel, iso: iso, aperture: aperture,
-            exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm
+            exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm,
+            fullResolution: fullResolution
         )
     }
 
@@ -179,7 +206,8 @@ struct VideoSummary: Identifiable, Hashable {
             cameraModel: cameraModel, cameraDisplayName: cameraDisplayName,
             gpsLatitude: gpsLatitude, gpsLongitude: gpsLongitude,
             lensModel: lensModel, iso: iso, aperture: aperture,
-            exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm
+            exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm,
+            fullResolution: fullResolution
         )
     }
 }
@@ -230,6 +258,9 @@ struct VideoMetadata: Identifiable {
     let exposureMode: String
     let exposureProgram: String
     let whiteBalance: String
+    /// Mirrors `VideoSummary.fullResolution` — the detail panel shows a
+    /// "Resolution Status" row in addition to the card badge.
+    let fullResolution: FullResolutionStatus
 
     var resolution: String { "\(width)×\(height)" }
 

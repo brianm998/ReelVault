@@ -12,6 +12,13 @@ pub struct Config {
     pub thumbnail_cache_path: PathBuf,
     pub max_concurrent_jobs: i32,
     pub enable_auto_tagging: bool,
+    /// When true, the post-index pipeline applies the "timelapse" tag
+    /// to any video whose resolution exceeds its camera's max in-camera
+    /// video resolution (see [`crate::full_resolution::is_likely_timelapse`]).
+    /// Off by default. Once a video is auto-tagged, removing the tag
+    /// manually is permanent — the auto-tagger consults
+    /// `auto_tag_history` and never re-applies to the same video.
+    pub auto_tag_timelapses: bool,
     /// Maximum number of concurrent ffmpeg/ffprobe processes the server will
     /// run at once. Bounds disk/network bandwidth — important for SAN-backed
     /// libraries. 0 disables the throttle. Default = 4.
@@ -118,6 +125,10 @@ impl Config {
             .unwrap_or(30000)
             .max(0);
 
+        let auto_tag_timelapses = Self::get_config_value(&conn, "auto_tag_timelapses", "false")?
+            .parse::<bool>()
+            .unwrap_or(false);
+
         std::fs::create_dir_all(&thumbnail_cache_path)
             .map_err(|e| ReelVaultError::ConfigError(format!("Failed to create cache directory: {}", e)))?;
 
@@ -132,6 +143,7 @@ impl Config {
             watch_enabled,
             watch_write_settle_ms,
             watch_poll_interval_ms,
+            auto_tag_timelapses,
         })
     }
 
@@ -147,6 +159,7 @@ impl Config {
         Self::set_config_value(&conn, "watch_enabled", &self.watch_enabled.to_string())?;
         Self::set_config_value(&conn, "watch_write_settle_ms", &self.watch_write_settle_ms.to_string())?;
         Self::set_config_value(&conn, "watch_poll_interval_ms", &self.watch_poll_interval_ms.to_string())?;
+        Self::set_config_value(&conn, "auto_tag_timelapses", &self.auto_tag_timelapses.to_string())?;
 
         Ok(())
     }
@@ -189,6 +202,7 @@ impl Config {
             watch_enabled: true,
             watch_write_settle_ms: 5000,
             watch_poll_interval_ms: 30000,
+            auto_tag_timelapses: false,
         }
     }
 

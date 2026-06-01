@@ -28,6 +28,48 @@ fileprivate nonisolated struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobu
   typealias Version = _2
 }
 
+nonisolated enum Reelvault_FullResolutionStatus: SwiftProtobuf.Enum, Swift.CaseIterable {
+  typealias RawValue = Int
+
+  /// Prost strips the SCREAMING_SNAKE form of the enum name from each
+  /// value, so these become `FullResolutionStatus::{Unspecified, Full,
+  /// NotFull}` on the Rust side. Keep the prefix matching exactly.
+  case unspecified // = 0
+  case full // = 1
+  case notFull // = 2
+  case UNRECOGNIZED(Int)
+
+  init() {
+    self = .unspecified
+  }
+
+  init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .unspecified
+    case 1: self = .full
+    case 2: self = .notFull
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  var rawValue: Int {
+    switch self {
+    case .unspecified: return 0
+    case .full: return 1
+    case .notFull: return 2
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  static let allCases: [Reelvault_FullResolutionStatus] = [
+    .unspecified,
+    .full,
+    .notFull,
+  ]
+
+}
+
 nonisolated struct Reelvault_ListVideosRequest: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -341,6 +383,19 @@ nonisolated struct Reelvault_VideoSummary: @unchecked Sendable {
     set {_uniqueStorage()._focalLengthMm = newValue}
   }
 
+  /// Full-resolution classification (see core/src/full_resolution.rs).
+  /// FULL means the recorded (width, height) matches a known native
+  /// sensor mode for `camera_model`; NOT_FULL means the camera is known
+  /// but the resolution doesn't match either a sensor native or a common
+  /// video standard; UNSPECIFIED means we can't tell — either the camera
+  /// is unknown, or the resolution is a common standard (UHD/FHD/etc.)
+  /// we deliberately refuse to classify. Clients render badges for FULL
+  /// and NOT_FULL; UNSPECIFIED renders no badge.
+  var fullResolution: Reelvault_FullResolutionStatus {
+    get {_storage._fullResolution}
+    set {_uniqueStorage()._fullResolution = newValue}
+  }
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -625,6 +680,14 @@ nonisolated struct Reelvault_VideoMetadata: @unchecked Sendable {
   var whiteBalance: String {
     get {_storage._whiteBalance}
     set {_uniqueStorage()._whiteBalance = newValue}
+  }
+
+  /// Mirror of VideoSummary.full_resolution — see that field's doc
+  /// comment and the FullResolutionStatus enum for semantics. Computed
+  /// server-side via core/src/full_resolution.rs.
+  var fullResolution: Reelvault_FullResolutionStatus {
+    get {_storage._fullResolution}
+    set {_uniqueStorage()._fullResolution = newValue}
   }
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -1271,6 +1334,14 @@ nonisolated struct Reelvault_ConfigResponse: Sendable {
   /// Default height (px) for newly-generated proxies. Default 720.
   var proxyTargetHeight: Int32 = 0
 
+  /// Apply the "timelapse" tag automatically when a video's recorded
+  /// resolution exceeds its camera's max in-camera video resolution.
+  /// Default off — opt-in. Once a video has been auto-tagged the
+  /// catalog remembers, so removing the tag manually is permanent
+  /// (the auto-tagger won't re-apply on subsequent scans). Backed by
+  /// the `auto_tag_history` SQLite table.
+  var autoTagTimelapses: Bool = false
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -1290,6 +1361,9 @@ nonisolated struct Reelvault_UpdateConfigRequest: Sendable {
   var maxNativePlaybackHeight: Int32 = 0
 
   var proxyTargetHeight: Int32 = 0
+
+  /// See ConfigResponse.auto_tag_timelapses for semantics.
+  var autoTagTimelapses: Bool = false
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -2021,6 +2095,10 @@ nonisolated struct Reelvault_Response: Sendable {
 
 fileprivate nonisolated let _protobuf_package = "reelvault"
 
+nonisolated extension Reelvault_FullResolutionStatus: SwiftProtobuf._ProtoNameProviding {
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0FULL_RESOLUTION_STATUS_UNSPECIFIED\0\u{1}FULL_RESOLUTION_STATUS_FULL\0\u{1}FULL_RESOLUTION_STATUS_NOT_FULL\0")
+}
+
 nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ListVideosRequest"
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}limit\0\u{1}offset\0\u{3}sort_by\0\u{3}sort_ascending\0\u{3}filter_tags\0\u{3}collection_id\0\u{3}location_path\0\u{3}filter_camera\0\u{3}filter_lens\0\u{3}filter_codec\0\u{3}filter_capture_year\0\u{3}filter_by_location\0\u{3}filter_latitude\0\u{3}filter_longitude\0\u{3}filter_radius_km\0\u{3}filter_min_rating\0\u{3}filter_color_label\0")
@@ -2201,7 +2279,7 @@ nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftP
 
 nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".VideoSummary"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0\u{3}proxy_count\0\u{3}proxy_of\0\u{3}playable_natively\0\u{1}rating\0\u{3}color_label\0\u{3}camera_model\0\u{3}camera_display_name\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}lens_model\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0\u{3}proxy_count\0\u{3}proxy_of\0\u{3}playable_natively\0\u{1}rating\0\u{3}color_label\0\u{3}camera_model\0\u{3}camera_display_name\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}lens_model\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}full_resolution\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -2236,6 +2314,7 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
     var _aperture: Double = 0
     var _exposureTimeS: Double = 0
     var _focalLengthMm: Double = 0
+    var _fullResolution: Reelvault_FullResolutionStatus = .unspecified
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2278,6 +2357,7 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
       _aperture = source._aperture
       _exposureTimeS = source._exposureTimeS
       _focalLengthMm = source._focalLengthMm
+      _fullResolution = source._fullResolution
     }
   }
 
@@ -2328,6 +2408,7 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
         case 30: try { try decoder.decodeSingularDoubleField(value: &_storage._aperture) }()
         case 31: try { try decoder.decodeSingularDoubleField(value: &_storage._exposureTimeS) }()
         case 32: try { try decoder.decodeSingularDoubleField(value: &_storage._focalLengthMm) }()
+        case 33: try { try decoder.decodeSingularEnumField(value: &_storage._fullResolution) }()
         default: break
         }
       }
@@ -2432,6 +2513,9 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
       if _storage._focalLengthMm.bitPattern != 0 {
         try visitor.visitSingularDoubleField(value: _storage._focalLengthMm, fieldNumber: 32)
       }
+      if _storage._fullResolution != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._fullResolution, fieldNumber: 33)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2473,6 +2557,7 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
         if _storage._aperture != rhs_storage._aperture {return false}
         if _storage._exposureTimeS != rhs_storage._exposureTimeS {return false}
         if _storage._focalLengthMm != rhs_storage._focalLengthMm {return false}
+        if _storage._fullResolution != rhs_storage._fullResolution {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -2634,7 +2719,7 @@ nonisolated extension Reelvault_GetMetadataRequest: SwiftProtobuf.Message, Swift
 
 nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".VideoMetadata"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0\u{1}rating\0\u{3}color_label\0\u{3}camera_display_name\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}exposure_mode\0\u{3}exposure_program\0\u{3}white_balance\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0\u{1}rating\0\u{3}color_label\0\u{3}camera_display_name\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}exposure_mode\0\u{3}exposure_program\0\u{3}white_balance\0\u{3}full_resolution\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -2675,6 +2760,7 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
     var _exposureMode: String = String()
     var _exposureProgram: String = String()
     var _whiteBalance: String = String()
+    var _fullResolution: Reelvault_FullResolutionStatus = .unspecified
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2723,6 +2809,7 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
       _exposureMode = source._exposureMode
       _exposureProgram = source._exposureProgram
       _whiteBalance = source._whiteBalance
+      _fullResolution = source._fullResolution
     }
   }
 
@@ -2779,6 +2866,7 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
         case 36: try { try decoder.decodeSingularStringField(value: &_storage._exposureMode) }()
         case 37: try { try decoder.decodeSingularStringField(value: &_storage._exposureProgram) }()
         case 38: try { try decoder.decodeSingularStringField(value: &_storage._whiteBalance) }()
+        case 39: try { try decoder.decodeSingularEnumField(value: &_storage._fullResolution) }()
         default: break
         }
       }
@@ -2901,6 +2989,9 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
       if !_storage._whiteBalance.isEmpty {
         try visitor.visitSingularStringField(value: _storage._whiteBalance, fieldNumber: 38)
       }
+      if _storage._fullResolution != .unspecified {
+        try visitor.visitSingularEnumField(value: _storage._fullResolution, fieldNumber: 39)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2948,6 +3039,7 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
         if _storage._exposureMode != rhs_storage._exposureMode {return false}
         if _storage._exposureProgram != rhs_storage._exposureProgram {return false}
         if _storage._whiteBalance != rhs_storage._whiteBalance {return false}
+        if _storage._fullResolution != rhs_storage._fullResolution {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -4357,7 +4449,7 @@ nonisolated extension Reelvault_GetConfigRequest: SwiftProtobuf.Message, SwiftPr
 
 nonisolated extension Reelvault_ConfigResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ConfigResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}proxy_threshold_scale\0\u{3}thumbnail_cache_path\0\u{3}max_concurrent_jobs\0\u{3}enable_auto_tagging\0\u{4}\u{2}max_native_playback_height\0\u{3}proxy_target_height\0\u{b}external_editors\0\u{c}\u{5}\u{1}")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}proxy_threshold_scale\0\u{3}thumbnail_cache_path\0\u{3}max_concurrent_jobs\0\u{3}enable_auto_tagging\0\u{4}\u{2}max_native_playback_height\0\u{3}proxy_target_height\0\u{3}auto_tag_timelapses\0\u{b}external_editors\0\u{c}\u{5}\u{1}")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4371,6 +4463,7 @@ nonisolated extension Reelvault_ConfigResponse: SwiftProtobuf.Message, SwiftProt
       case 4: try { try decoder.decodeSingularBoolField(value: &self.enableAutoTagging) }()
       case 6: try { try decoder.decodeSingularInt32Field(value: &self.maxNativePlaybackHeight) }()
       case 7: try { try decoder.decodeSingularInt32Field(value: &self.proxyTargetHeight) }()
+      case 8: try { try decoder.decodeSingularBoolField(value: &self.autoTagTimelapses) }()
       default: break
       }
     }
@@ -4395,6 +4488,9 @@ nonisolated extension Reelvault_ConfigResponse: SwiftProtobuf.Message, SwiftProt
     if self.proxyTargetHeight != 0 {
       try visitor.visitSingularInt32Field(value: self.proxyTargetHeight, fieldNumber: 7)
     }
+    if self.autoTagTimelapses != false {
+      try visitor.visitSingularBoolField(value: self.autoTagTimelapses, fieldNumber: 8)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -4405,6 +4501,7 @@ nonisolated extension Reelvault_ConfigResponse: SwiftProtobuf.Message, SwiftProt
     if lhs.enableAutoTagging != rhs.enableAutoTagging {return false}
     if lhs.maxNativePlaybackHeight != rhs.maxNativePlaybackHeight {return false}
     if lhs.proxyTargetHeight != rhs.proxyTargetHeight {return false}
+    if lhs.autoTagTimelapses != rhs.autoTagTimelapses {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -4412,7 +4509,7 @@ nonisolated extension Reelvault_ConfigResponse: SwiftProtobuf.Message, SwiftProt
 
 nonisolated extension Reelvault_UpdateConfigRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".UpdateConfigRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}proxy_threshold_scale\0\u{3}max_concurrent_jobs\0\u{3}enable_auto_tagging\0\u{3}max_native_playback_height\0\u{3}proxy_target_height\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}proxy_threshold_scale\0\u{3}max_concurrent_jobs\0\u{3}enable_auto_tagging\0\u{3}max_native_playback_height\0\u{3}proxy_target_height\0\u{3}auto_tag_timelapses\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4425,6 +4522,7 @@ nonisolated extension Reelvault_UpdateConfigRequest: SwiftProtobuf.Message, Swif
       case 3: try { try decoder.decodeSingularBoolField(value: &self.enableAutoTagging) }()
       case 4: try { try decoder.decodeSingularInt32Field(value: &self.maxNativePlaybackHeight) }()
       case 5: try { try decoder.decodeSingularInt32Field(value: &self.proxyTargetHeight) }()
+      case 6: try { try decoder.decodeSingularBoolField(value: &self.autoTagTimelapses) }()
       default: break
       }
     }
@@ -4446,6 +4544,9 @@ nonisolated extension Reelvault_UpdateConfigRequest: SwiftProtobuf.Message, Swif
     if self.proxyTargetHeight != 0 {
       try visitor.visitSingularInt32Field(value: self.proxyTargetHeight, fieldNumber: 5)
     }
+    if self.autoTagTimelapses != false {
+      try visitor.visitSingularBoolField(value: self.autoTagTimelapses, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -4455,6 +4556,7 @@ nonisolated extension Reelvault_UpdateConfigRequest: SwiftProtobuf.Message, Swif
     if lhs.enableAutoTagging != rhs.enableAutoTagging {return false}
     if lhs.maxNativePlaybackHeight != rhs.maxNativePlaybackHeight {return false}
     if lhs.proxyTargetHeight != rhs.proxyTargetHeight {return false}
+    if lhs.autoTagTimelapses != rhs.autoTagTimelapses {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -1278,6 +1278,30 @@ struct VideoCardView: View {
                                 .clipShape(Circle())
                                 .help("\(video.proxyCount) proxy/proxies available for inline playback.")
                         }
+                        // Full-resolution badge — only renders when the
+                        // daemon's classifier was sure either way. Unspecified
+                        // (unknown camera or standard video format) ->
+                        // intentionally no badge.
+                        switch video.fullResolution {
+                        case .full:
+                            Image(systemName: "checkmark.seal.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white)
+                                .padding(3)
+                                .background(Color.black.opacity(0.55))
+                                .clipShape(Circle())
+                                .help("Full resolution — matches a known native sensor mode for \(video.cameraDisplayName.isEmpty ? "this camera" : video.cameraDisplayName).")
+                        case .notFull:
+                            Image(systemName: "crop")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white)
+                                .padding(3)
+                                .background(Color.black.opacity(0.55))
+                                .clipShape(Circle())
+                                .help("Not full resolution — recorded dimensions don't match any native sensor mode for \(video.cameraDisplayName.isEmpty ? "this camera" : video.cameraDisplayName).")
+                        case .unspecified:
+                            EmptyView()
+                        }
                     }
                 }
             }

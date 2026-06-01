@@ -422,10 +422,33 @@ fn sweep_pending(
     // run for watcher-triggered additions just as they do for explicit scans.
     // Spawn the pool once for the whole batch so workers can run in parallel
     // while the main loop iterates over (the typically small) ready list.
+    // Read the per-catalog opt-in for the timelapse auto-tagger. We
+    // re-fetch on every batch (cheap single-row SELECT) so a user
+    // toggling the setting via UpdateConfig takes effect on the next
+    // watcher-triggered scan without a daemon restart.
+    let auto_tag_timelapses = db
+        .get_connection()
+        .ok()
+        .and_then(|c| {
+            c.query_row(
+                "SELECT value FROM config WHERE key = 'auto_tag_timelapses'",
+                [],
+                |r| r.get::<_, String>(0),
+            )
+            .ok()
+        })
+        .and_then(|s| s.parse::<bool>().ok())
+        .unwrap_or(false);
+
     let post_index = post_index::spawn(
         Arc::clone(db),
         thumbnail_cache.to_path_buf(),
-        post_index::Options { auto_group: true, detect_proxies: true },
+        post_index::Options {
+            auto_group: true,
+            detect_proxies: true,
+            sensor_fetch: true,
+            auto_tag_timelapses,
+        },
     );
 
     for (path, _pf) in ready {

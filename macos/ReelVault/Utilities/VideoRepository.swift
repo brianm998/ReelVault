@@ -996,7 +996,8 @@ class VideoRepository: ObservableObject {
             iso: Int(p.iso),
             aperture: p.aperture,
             exposureTimeS: p.exposureTimeS,
-            focalLengthMm: p.focalLengthMm
+            focalLengthMm: p.focalLengthMm,
+            fullResolution: FullResolutionStatus.from(wire: Int(p.fullResolution.rawValue))
         )
     }
 
@@ -1035,7 +1036,8 @@ class VideoRepository: ObservableObject {
             focalLengthMm: p.focalLengthMm,
             exposureMode: p.exposureMode,
             exposureProgram: p.exposureProgram,
-            whiteBalance: p.whiteBalance
+            whiteBalance: p.whiteBalance,
+            fullResolution: FullResolutionStatus.from(wire: Int(p.fullResolution.rawValue))
         )
     }
 

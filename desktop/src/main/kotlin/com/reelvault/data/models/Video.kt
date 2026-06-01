@@ -69,6 +69,10 @@ data class VideoSummary(
     val exposureTimeS: Double = 0.0,
     /** Focal length in millimeters from embedded XMP. 0.0 when absent. */
     val focalLengthMm: Double = 0.0,
+    /** Full-resolution badge state set by the daemon's classifier.
+     *  [FullResolutionStatus.Unspecified] (the default) renders no badge;
+     *  the other two render the "Full" / "Not full" chip on the card. */
+    val fullResolution: FullResolutionStatus = FullResolutionStatus.Unspecified,
 ) {
     val isInGroup: Boolean get() = groupId.isNotEmpty() && groupSize > 1
     val hasProxies: Boolean get() = proxyCount > 0
@@ -143,6 +147,9 @@ data class VideoMetadata(
     val exposureMode: String = "",
     val exposureProgram: String = "",
     val whiteBalance: String = "",
+    /** Mirrors [VideoSummary.fullResolution] — the detail panel shows
+     *  a richer "Resolution status" row in addition to the card badge. */
+    val fullResolution: FullResolutionStatus = FullResolutionStatus.Unspecified,
 ) {
     val resolution: String get() = "$width x $height"
     val durationFormatted: String get() {
@@ -510,6 +517,26 @@ enum class GridStatKey(val raw: String, val displayName: String) {
                 "1/$denom"
             }
         }
+    }
+}
+
+/**
+ * Mirror of proto `FullResolutionStatus`. The daemon's classifier
+ * decides whether a video appears to be at its camera's native sensor
+ * resolution (Full), at a non-standard non-native resolution
+ * suggesting a derived/exported variant (NotFull), or in a state we
+ * can't classify (Unspecified — unknown camera or a common video
+ * standard like UHD/FHD). Clients render a badge for Full and NotFull;
+ * Unspecified gets no badge.
+ */
+enum class FullResolutionStatus(val wire: Int) {
+    Unspecified(0),
+    Full(1),
+    NotFull(2);
+
+    companion object {
+        fun fromWire(value: Int): FullResolutionStatus =
+            values().firstOrNull { it.wire == value } ?: Unspecified
     }
 }
 

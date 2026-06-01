@@ -1213,7 +1213,8 @@ class GridViewModel: ObservableObject {
                     cameraModel: v.cameraModel, cameraDisplayName: v.cameraDisplayName,
                     gpsLatitude: v.gpsLatitude, gpsLongitude: v.gpsLongitude,
                     lensModel: v.lensModel, iso: v.iso, aperture: v.aperture,
-                    exposureTimeS: v.exposureTimeS, focalLengthMm: v.focalLengthMm
+                    exposureTimeS: v.exposureTimeS, focalLengthMm: v.focalLengthMm,
+                    fullResolution: v.fullResolution
                 )
             }
             return v

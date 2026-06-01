@@ -230,6 +230,24 @@ message VideoSummary {
   double aperture = 30;          // f-number, e.g. 1.8
   double exposure_time_s = 31;   // seconds; 1/4000 -> 0.00025
   double focal_length_mm = 32;
+  // Full-resolution classification (see core/src/full_resolution.rs).
+  // FULL means the recorded (width, height) matches a known native
+  // sensor mode for `camera_model`; NOT_FULL means the camera is known
+  // but the resolution doesn't match either a sensor native or a common
+  // video standard; UNSPECIFIED means we can't tell — either the camera
+  // is unknown, or the resolution is a common standard (UHD/FHD/etc.)
+  // we deliberately refuse to classify. Clients render badges for FULL
+  // and NOT_FULL; UNSPECIFIED renders no badge.
+  FullResolutionStatus full_resolution = 33;
+}
+
+enum FullResolutionStatus {
+  // Prost strips the SCREAMING_SNAKE form of the enum name from each
+  // value, so these become `FullResolutionStatus::{Unspecified, Full,
+  // NotFull}` on the Rust side. Keep the prefix matching exactly.
+  FULL_RESOLUTION_STATUS_UNSPECIFIED = 0;
+  FULL_RESOLUTION_STATUS_FULL = 1;
+  FULL_RESOLUTION_STATUS_NOT_FULL = 2;
 }
 
 message ListVideosResponse {
@@ -325,6 +343,10 @@ message VideoMetadata {
   string exposure_mode = 36;
   string exposure_program = 37;
   string white_balance = 38;
+  // Mirror of VideoSummary.full_resolution — see that field's doc
+  // comment and the FullResolutionStatus enum for semantics. Computed
+  // server-side via core/src/full_resolution.rs.
+  FullResolutionStatus full_resolution = 39;
 }
 
 message GetThumbnailRequest {
@@ -584,6 +606,13 @@ message ConfigResponse {
   int32 max_native_playback_height = 6;
   // Default height (px) for newly-generated proxies. Default 720.
   int32 proxy_target_height = 7;
+  // Apply the "timelapse" tag automatically when a video's recorded
+  // resolution exceeds its camera's max in-camera video resolution.
+  // Default off — opt-in. Once a video has been auto-tagged the
+  // catalog remembers, so removing the tag manually is permanent
+  // (the auto-tagger won't re-apply on subsequent scans). Backed by
+  // the `auto_tag_history` SQLite table.
+  bool auto_tag_timelapses = 8;
 }
 
 message UpdateConfigRequest {
@@ -592,6 +621,8 @@ message UpdateConfigRequest {
   bool enable_auto_tagging = 3;
   int32 max_native_playback_height = 4;
   int32 proxy_target_height = 5;
+  // See ConfigResponse.auto_tag_timelapses for semantics.
+  bool auto_tag_timelapses = 6;
 }
 
 // Groups

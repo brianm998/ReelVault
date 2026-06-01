@@ -302,6 +302,13 @@ impl ReelVaultService {
             )
             .unwrap_or_else(|| camera_model_str.clone());
 
+        let full_resolution = classify_full_resolution(
+            &self.db,
+            &camera_model_str,
+            width,
+            height,
+        );
+
         Ok(VideoMetadata {
             id: video_id.to_string(),
             filename: video.filename,
@@ -341,6 +348,7 @@ impl ReelVaultService {
             exposure_mode: exposure_mode.unwrap_or_default(),
             exposure_program: exposure_program.unwrap_or_default(),
             white_balance: white_balance.unwrap_or_default(),
+            full_resolution,
         })
     }
 
@@ -448,6 +456,13 @@ impl ReelVaultService {
             .get_video_user_marks(video_id)
             .unwrap_or((0, String::new()));
 
+        let full_resolution = classify_full_resolution(
+            &self.db,
+            &camera_model_str,
+            width,
+            height,
+        );
+
         VideoSummary {
             id: video_id.to_string(),
             filename: filename.to_string(),
@@ -482,8 +497,39 @@ impl ReelVaultService {
             aperture: aperture.unwrap_or(0.0),
             exposure_time_s: exposure_time_s.unwrap_or(0.0),
             focal_length_mm: focal_length_mm.unwrap_or(0.0),
+            full_resolution,
         }
     }
+}
+
+/// Classify a video's full-resolution status to its `i32` proto code.
+///
+/// Reads the catalog's `camera_sensor_cache` table when the camera
+/// isn't covered by the built-in `core/data/sensor_resolutions.json`
+/// table; falls back to the pure built-in classifier when the catalog
+/// isn't reachable (degraded mode rather than an error).
+///
+/// Negative widths/heights from the DB are clamped to 0 — the
+/// classifier treats 0×0 as Unknown.
+fn classify_full_resolution(
+    db: &crate::db::Database,
+    camera_model: &str,
+    width: i32,
+    height: i32,
+) -> i32 {
+    use crate::full_resolution::Classification;
+    let w = width.max(0) as u32;
+    let h = height.max(0) as u32;
+    let classification = match db.get_connection() {
+        Ok(conn) => crate::sensor_cache::classify_with_cache(&conn, camera_model, w, h),
+        Err(_) => crate::full_resolution::classify(camera_model, w, h),
+    };
+    let proto_enum = match classification {
+        Classification::Unknown => FullResolutionStatus::Unspecified,
+        Classification::Full => FullResolutionStatus::Full,
+        Classification::NotFull => FullResolutionStatus::NotFull,
+    };
+    proto_enum as i32
 }
 
 #[tonic::async_trait]
@@ -863,6 +909,9 @@ impl ReelVaultTrait for ReelVaultService {
         let cache_path = self.config.thumbnail_cache_path.clone();
         let location_path = req.location_path.clone();
         let auto_group = req.auto_group;
+        // Copy the persistent config flag out of `self.config` before the
+        // 'static-bound spawn — the scan_one closure can't borrow self.
+        let auto_tag_timelapses = self.config.auto_tag_timelapses;
         let filename_date_rule = crate::indexing::FilenameDateRule::from_proto(
             &req.filename_date_format,
             &req.filename_date_position,
@@ -934,9 +983,15 @@ impl ReelVaultTrait for ReelVaultService {
                     crate::post_index::Options {
                         // Mirror the existing gate: auto-grouping
                         // is opt-in per scan request; proxy
-                        // detection runs unconditionally.
+                        // detection runs unconditionally; sensor
+                        // fetch piggybacks on the scan to fill the
+                        // runtime cache for unknown camera models;
+                        // timelapse auto-tag follows the persistent
+                        // config flag (off by default).
                         auto_group,
                         detect_proxies: true,
+                        sensor_fetch: true,
+                        auto_tag_timelapses,
                     },
                     |progress| send_progress(tx, progress),
                 ) {
@@ -1766,6 +1821,7 @@ impl ReelVaultTrait for ReelVaultService {
             enable_auto_tagging: self.config.enable_auto_tagging,
             max_native_playback_height: self.config.max_native_playback_height,
             proxy_target_height: self.config.proxy_target_height,
+            auto_tag_timelapses: self.config.auto_tag_timelapses,
         }))
     }
 
@@ -1785,6 +1841,7 @@ impl ReelVaultTrait for ReelVaultService {
                 ("proxy_target_height", req.proxy_target_height.clamp(144, 4320).to_string()),
                 ("max_concurrent_jobs", req.max_concurrent_jobs.max(0).to_string()),
                 ("enable_auto_tagging", req.enable_auto_tagging.to_string()),
+                ("auto_tag_timelapses", req.auto_tag_timelapses.to_string()),
             ];
             for (key, value) in pairs {
                 let _ = conn.execute(

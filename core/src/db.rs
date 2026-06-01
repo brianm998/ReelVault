@@ -202,6 +202,37 @@ impl Database {
             ("idx_metadata_aperture",     "CREATE INDEX IF NOT EXISTS idx_metadata_aperture ON metadata(aperture)"),
             ("idx_metadata_exposure_time","CREATE INDEX IF NOT EXISTS idx_metadata_exposure_time ON metadata(exposure_time_s)"),
             ("idx_metadata_focal_length", "CREATE INDEX IF NOT EXISTS idx_metadata_focal_length ON metadata(focal_length_mm)"),
+            // Runtime sensor-resolution cache. Populated by
+            // sensor_cache.rs when the indexer encounters a
+            // camera_model not present in the built-in
+            // sensor_resolutions.json. `native_resolutions` is a JSON
+            // array of [w, h] pairs (NULL = "we asked the upstream
+            // source and got nothing"). `source` records what produced
+            // the entry ("wikidata", "user", "pending") so we can
+            // refetch selectively in the future. `fetched_at` is unix
+            // seconds; entries expire per the TTLs in sensor_cache.rs.
+            ("camera_sensor_cache table", "CREATE TABLE IF NOT EXISTS camera_sensor_cache (
+                camera_key TEXT PRIMARY KEY,
+                native_resolutions TEXT,
+                fetched_at INTEGER NOT NULL,
+                source TEXT NOT NULL
+            )"),
+            // Memory of tags ReelVault auto-applied to each video.
+            // We never auto-apply the same (video_id, tag_name) twice —
+            // which means a user who removes an auto-applied tag keeps
+            // it removed even when the same heuristic re-fires on a
+            // later scan. `source` records which feature added the row
+            // (e.g. "timelapse_heuristic"); `applied_at` is unix
+            // seconds. Composite primary key gives the idempotency
+            // and a fast existence check.
+            ("auto_tag_history table", "CREATE TABLE IF NOT EXISTS auto_tag_history (
+                video_id TEXT NOT NULL,
+                tag_name TEXT NOT NULL,
+                applied_at INTEGER NOT NULL,
+                source TEXT NOT NULL,
+                PRIMARY KEY (video_id, tag_name),
+                FOREIGN KEY(video_id) REFERENCES videos(id) ON DELETE CASCADE
+            )"),
         ];
         for (label, sql) in migrations {
             match conn.execute(sql, []) {
@@ -507,6 +538,82 @@ impl Database {
         .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(())
+    }
+
+    /// Apply `tag_name` to `video_id`, but only once in the history of
+    /// the catalog — even if the user later removes the tag manually,
+    /// this method will *not* re-apply it on a subsequent scan.
+    /// Returns `true` if the tag was applied now, `false` if the
+    /// auto_tag_history already records a previous application.
+    ///
+    /// The tag itself is created lazily (with no colour) if it
+    /// doesn't exist yet, so callers don't need to pre-provision
+    /// "timelapse" / "auto-detected" / etc. tags.
+    ///
+    /// `source` is recorded on the history row so we can later filter
+    /// or wipe auto-tags by feature (e.g. "if the timelapse heuristic
+    /// improves and we want to retry, clear `source = 'timelapse_heuristic'`").
+    pub fn auto_tag_if_unseen(
+        &self,
+        video_id: &str,
+        tag_name: &str,
+        source: &str,
+    ) -> Result<bool> {
+        let conn = self.get_connection()?;
+
+        // Check history first — cheap PK lookup.
+        let already: Option<i64> = conn
+            .query_row(
+                "SELECT 1 FROM auto_tag_history WHERE video_id = ? AND tag_name = ?",
+                params![video_id, tag_name],
+                |r| r.get(0),
+            )
+            .ok();
+        if already.is_some() {
+            return Ok(false);
+        }
+
+        // Find-or-create the tag itself.
+        let tag_id: String = match conn
+            .query_row(
+                "SELECT id FROM tags WHERE name = ?",
+                [tag_name],
+                |r| r.get::<_, String>(0),
+            )
+            .ok()
+        {
+            Some(id) => id,
+            None => {
+                let id = Uuid::new_v4().to_string();
+                conn.execute(
+                    "INSERT OR IGNORE INTO tags (id, name, color) VALUES (?, ?, NULL)",
+                    params![&id, tag_name],
+                )
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+                // Re-query in case another worker raced and inserted first.
+                conn.query_row(
+                    "SELECT id FROM tags WHERE name = ?",
+                    [tag_name],
+                    |r| r.get::<_, String>(0),
+                )
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
+            }
+        };
+
+        // Apply tag + record history in one transaction.
+        let now = chrono::Utc::now().timestamp();
+        conn.execute(
+            "INSERT OR IGNORE INTO video_tags (video_id, tag_id) VALUES (?, ?)",
+            params![video_id, &tag_id],
+        )
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        conn.execute(
+            "INSERT OR IGNORE INTO auto_tag_history (video_id, tag_name, applied_at, source)
+             VALUES (?, ?, ?, ?)",
+            params![video_id, tag_name, now, source],
+        )
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(true)
     }
 
     pub fn untag_video(&self, video_id: &str, tag_id: &str) -> Result<()> {

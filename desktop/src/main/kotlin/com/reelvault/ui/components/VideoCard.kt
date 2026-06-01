@@ -14,6 +14,8 @@ import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Crop
+import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Movie
@@ -47,6 +49,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.reelvault.LocalAppWindow
+import com.reelvault.data.models.FullResolutionStatus
 import com.reelvault.data.models.VideoSummary
 import com.reelvault.ui.theme.ReelVaultCornerRadius
 import com.reelvault.ui.theme.ReelVaultSpacing
@@ -650,6 +653,51 @@ fun VideoCard(
                                 )
                             }
                         }
+                    }
+                    // Full-resolution badge — only renders when the daemon's
+                    // classifier was sure either way (matched a known native
+                    // sensor mode, or definitely doesn't match). Unspecified
+                    // (unknown camera or standard video format) -> no badge.
+                    when (video.fullResolution) {
+                        FullResolutionStatus.Full -> {
+                            com.reelvault.ui.components.Tooltip(
+                                text = "Full resolution — matches a known native sensor mode for ${video.cameraDisplayName.ifEmpty { "this camera" }}"
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.HighQuality,
+                                        contentDescription = "Full resolution",
+                                        modifier = Modifier.size(10.dp),
+                                        tint = Color.White
+                                    )
+                                }
+                            }
+                        }
+                        FullResolutionStatus.NotFull -> {
+                            com.reelvault.ui.components.Tooltip(
+                                text = "Not full resolution — recorded dimensions don't match any native sensor mode for ${video.cameraDisplayName.ifEmpty { "this camera" }}"
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Crop,
+                                        contentDescription = "Not full resolution",
+                                        modifier = Modifier.size(10.dp),
+                                        tint = Color.White
+                                    )
+                                }
+                            }
+                        }
+                        FullResolutionStatus.Unspecified -> {} // intentionally no badge
                     }
                 }
 

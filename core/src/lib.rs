@@ -17,6 +17,8 @@ pub mod proxies;
 pub mod post_index;
 pub mod path_templates;
 pub mod camera_names;
+pub mod full_resolution;
+pub mod sensor_cache;
 pub mod xmp;
 
 pub use error::Result;
