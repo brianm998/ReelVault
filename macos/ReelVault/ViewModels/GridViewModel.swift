@@ -143,13 +143,20 @@ class GridViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var searchDebounce: AnyCancellable?
 
+    /// In-flight `listVideos` Task for the active page load. Cancelled when
+    /// a new reload (filter change or background refresh) starts so a stale
+    /// response from a prior selection / filter can't clobber the new one.
+    /// Loads check `Task.isCancelled` after the await and bail without
+    /// writing state.
+    private var listLoadTask: Task<Void, Never>?
+
     init() {
         // Debounced search
         searchDebounce = $searchQuery
             .debounce(for: 0.5, scheduler: DispatchQueue.main)
             .removeDuplicates()
             .sink { [weak self] _ in
-                self?.reloadFromTop()
+                self?.reloadForFilterChange()
             }
     }
 
@@ -367,25 +374,62 @@ class GridViewModel: ObservableObject {
 
     // MARK: - Loading
 
+    /// Background refresh — used by scan-tick progress and watcher events.
+    /// Re-fetches the first page and replaces in place; does NOT clear the
+    /// current grid or show a full-page spinner, so periodic scan ticks
+    /// don't make the UI flicker every few seconds.
     func loadVideos() {
-        reloadFromTop()
+        reloadFromTop(showSpinner: false)
     }
 
-    private func reloadFromTop() {
+    /// User-initiated filter / sort / selection change. Cancels any in-flight
+    /// load, clears the grid, and shows a spinner so the user sees the change
+    /// took effect immediately instead of staring at stale data while the new
+    /// fetch is in flight.
+    private func reloadForFilterChange() {
+        reloadFromTop(showSpinner: true)
+    }
+
+    /// - Parameter showSpinner: When true, clear the current grid and flip
+    ///   into the loading state synchronously (filter change path). When
+    ///   false, leave the existing rows in place and only swap them out once
+    ///   the fetch returns (background refresh path).
+    private func reloadFromTop(showSpinner: Bool) {
+        if !showSpinner && isLoading {
+            // A user-initiated filter change is still in flight (it set
+            // isLoading = true). Don't let a scan-tick / watcher background
+            // refresh interrupt it — that would re-cancel the user's load
+            // and risk a spinner that never resolves under a busy scan.
+            return
+        }
+        // Cancel any in-flight list load so a late response from the prior
+        // selection / filter can't clobber the new one.
+        listLoadTask?.cancel()
         currentPage = 0
         expandedGroupIds = []
-        Task { await loadCurrentPage(replace: true) }
+        if showSpinner {
+            videos = []
+            totalCount = 0
+            hasMore = false
+            isLoading = true
+        }
+        error = nil
+        listLoadTask = Task { [weak self] in
+            await self?.loadCurrentPage(replace: true)
+        }
     }
 
     func loadMore() {
         guard hasMore && !isLoading else { return }
         currentPage += 1
-        Task { await loadCurrentPage(replace: false) }
+        isLoading = true
+        error = nil
+        listLoadTask = Task { [weak self] in
+            await self?.loadCurrentPage(replace: false)
+        }
     }
 
     private func loadCurrentPage(replace: Bool) async {
-        isLoading = true
-        error = nil
         do {
             let filterTagIds = filterTagId.isEmpty ? [] : [filterTagId]
             let geo: (latitude: Double, longitude: Double, radiusKm: Double)? = filterLocation.map {
@@ -408,6 +452,10 @@ class GridViewModel: ObservableObject {
                 filterColorLabel: filterColorLabel,
                 collectionId: collectionIdFilter
             )
+            // A newer reload may have superseded us while listVideos was in
+            // flight; if so, drop the result on the floor so it can't overwrite
+            // the fresh selection's data.
+            if Task.isCancelled { return }
             if replace {
                 videos = results
             } else {
@@ -420,6 +468,7 @@ class GridViewModel: ObservableObject {
             // Keep map locations in sync with the active grid filters.
             Task { await loadVideoLocationsFilteredAsync() }
         } catch {
+            if Task.isCancelled { return }
             self.error = "Failed to load videos: \(error.localizedDescription)"
             isLoading = false
         }
@@ -430,13 +479,13 @@ class GridViewModel: ObservableObject {
     func setSort(_ field: String, ascending: Bool) {
         sortBy = field
         sortAscending = ascending
-        reloadFromTop()
+        reloadForFilterChange()
     }
 
     func setLocationFilter(_ path: String) {
         guard selectedLocationPath != path else { return }
         selectedLocationPath = path
-        reloadFromTop()
+        reloadForFilterChange()
     }
 
     // MARK: - Collections
@@ -455,7 +504,7 @@ class GridViewModel: ObservableObject {
         selectedCollectionId = id
         guard let id = id, let col = collections.first(where: { $0.id == id }) else {
             collectionIdFilter = nil
-            reloadFromTop()
+            reloadForFilterChange()
             return
         }
         if col.isSmart, !col.filterJson.isEmpty,
@@ -472,7 +521,7 @@ class GridViewModel: ObservableObject {
         } else {
             collectionIdFilter = id
         }
-        reloadFromTop()
+        reloadForFilterChange()
     }
 
     func createCollection(name: String, isSmart: Bool, filterJson: String = "") {
@@ -548,7 +597,7 @@ class GridViewModel: ObservableObject {
     func setTagFilter(_ tagId: String) {
         guard filterTagId != tagId else { return }
         filterTagId = tagId
-        reloadFromTop()
+        reloadForFilterChange()
     }
 
     func loadFilterOptions() {
@@ -560,34 +609,34 @@ class GridViewModel: ObservableObject {
     func setCameraFilter(_ value: String) {
         guard filterCamera != value else { return }
         filterCamera = value
-        reloadFromTop()
+        reloadForFilterChange()
     }
     func setLensFilter(_ value: String) {
         guard filterLens != value else { return }
         filterLens = value
-        reloadFromTop()
+        reloadForFilterChange()
     }
     func setCodecFilter(_ value: String) {
         guard filterCodec != value else { return }
         filterCodec = value
-        reloadFromTop()
+        reloadForFilterChange()
     }
     func setCaptureYearFilter(_ year: Int32) {
         guard filterCaptureYear != year else { return }
         filterCaptureYear = year
-        reloadFromTop()
+        reloadForFilterChange()
     }
 
     func setMinRatingFilter(_ n: Int32) {
         guard filterMinRating != n else { return }
         filterMinRating = n
-        reloadFromTop()
+        reloadForFilterChange()
     }
 
     func setColorLabelFilter(_ label: String) {
         guard filterColorLabel != label else { return }
         filterColorLabel = label
-        reloadFromTop()
+        reloadForFilterChange()
     }
 
     func clearAllDropdownFilters() {
@@ -599,7 +648,7 @@ class GridViewModel: ObservableObject {
         if !filterTagId.isEmpty { filterTagId = ""; changed = true }
         if filterMinRating != 0 { filterMinRating = 0; changed = true }
         if !filterColorLabel.isEmpty { filterColorLabel = ""; changed = true }
-        if changed { reloadFromTop() }
+        if changed { reloadForFilterChange() }
     }
 
     /// Expand `videoIds` so that any video in a COLLAPSED stack is replaced
@@ -805,7 +854,11 @@ class GridViewModel: ObservableObject {
                     // instead of having to wait until the very end.
                     libraryRefreshTick += 1
                     if libraryRefreshTick % 12 == 0 {
-                        reloadFromTop()
+                        // Background refresh — keep current rows visible,
+                        // just swap them out when the fetch returns. Using
+                        // `loadVideos()` (not `reloadForFilterChange`) avoids
+                        // a full-page spinner every 12 progress ticks.
+                        loadVideos()
                         loadLibraryLocations()
                     }
                 }
@@ -830,7 +883,7 @@ class GridViewModel: ObservableObject {
 
                 scanStatus = nil
                 isLoading = false
-                reloadFromTop()
+                loadVideos()
                 loadLibraryLocations()
                 loadFilterOptions()
             } catch {
@@ -947,7 +1000,8 @@ class GridViewModel: ObservableObject {
                         }
                         libraryRefreshTick += 1
                         if libraryRefreshTick % 12 == 0 {
-                            reloadFromTop()
+                            // Background refresh — see comment in addLibraryAndScan.
+                            loadVideos()
                             loadLibraryLocations()
                         }
                     }
@@ -985,7 +1039,7 @@ class GridViewModel: ObservableObject {
             scanStatus = nil
             isLoading = false
             batchScanProgress = nil
-            reloadFromTop()
+            loadVideos()
             loadLibraryLocations()
             loadFilterOptions()
         }
@@ -1223,7 +1277,7 @@ class GridViewModel: ObservableObject {
             do {
                 _ = try await repository.setGroupPreferred(groupId: groupId, videoId: videoId)
                 refreshAfterStackChange(groupId: groupId)
-                reloadFromTop()  // representative changed → grid order may shift
+                loadVideos()  // representative changed → grid order may shift; background refresh keeps rows visible
             } catch {
                 self.error = "Failed to set stack master: \(error.localizedDescription)"
             }
@@ -1274,8 +1328,10 @@ class GridViewModel: ObservableObject {
             }
         }
         // Reload the representative list so each video's `groupId` /
-        // `groupSize` reflects the post-ungroup reality.
-        reloadFromTop()
+        // `groupSize` reflects the post-ungroup reality. Background refresh —
+        // the filter hasn't changed, so we keep the existing rows visible
+        // and just swap them out when the fetch returns.
+        loadVideos()
     }
 
     func toggleStackExpansion(_ groupId: String) {
@@ -1347,7 +1403,7 @@ class GridViewModel: ObservableObject {
             do {
                 _ = try await repository.createGroup(videoIds: ids, name: "", preferredVideoId: preferred)
                 clearSelection()
-                reloadFromTop()
+                loadVideos()  // background refresh — no filter change, just structural update
             } catch {
                 self.error = "Group failed: \(error.localizedDescription)"
             }
@@ -1551,7 +1607,7 @@ class GridViewModel: ObservableObject {
         } else {
             filterLocation = nil
         }
-        Task { await loadCurrentPage(replace: true) }
+        reloadForFilterChange()
     }
 
     /// Refresh the list of geotagged videos used by the global-map view.

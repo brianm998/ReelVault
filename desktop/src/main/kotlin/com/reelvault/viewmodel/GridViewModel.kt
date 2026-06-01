@@ -187,6 +187,15 @@ class GridViewModel(
      */
     private var watcherRefreshJob: Job? = null
 
+    /**
+     * In-flight `listVideos` coroutine for the active page load.
+     * `loadVideos()` / `loadMore()` cancel it before launching a new one so
+     * a late response from the prior selection / filter can't clobber the
+     * new one. Coroutine cancellation throws `CancellationException` from
+     * the suspend call, so the body after the await never runs.
+     */
+    private var listLoadJob: Job? = null
+
     init {
         logger.info("GridViewModel created")
     }
@@ -415,14 +424,58 @@ class GridViewModel(
         }
     }
 
+    /**
+     * Background refresh — used by scan-tick progress and watcher events.
+     * Re-fetches the first page and replaces in place; does NOT clear the
+     * current grid or show a full-page spinner, so periodic scan ticks
+     * don't make the UI flicker every few seconds.
+     */
     fun loadVideos() {
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-            currentPage = 0
-            // Reset stack expansion — representatives may have shifted/changed.
-            collapseAllStacks()
+        reloadFromTop(showSpinner = false)
+    }
 
+    /**
+     * User-initiated filter / sort / search change. Cancels any in-flight
+     * load, clears the grid, and shows a spinner so the user sees the change
+     * took effect immediately instead of staring at stale data while the new
+     * fetch is in flight.
+     */
+    private fun reloadForFilterChange() {
+        reloadFromTop(showSpinner = true)
+    }
+
+    /**
+     * @param showSpinner When true, clear the current grid and flip into the
+     *   loading state synchronously (filter-change path). When false, leave
+     *   the existing rows in place and only swap them out once the fetch
+     *   returns (background-refresh path).
+     */
+    private fun reloadFromTop(showSpinner: Boolean) {
+        if (!showSpinner && _isLoading.value) {
+            // A user-initiated filter change is still in flight (it set
+            // isLoading = true). Don't let a scan-tick / watcher background
+            // refresh interrupt it — that would re-cancel the user's load
+            // and risk a spinner that never resolves under a busy scan.
+            return
+        }
+        // Cancel any in-flight list load so a late response from the prior
+        // selection / filter can't clobber the new one.
+        listLoadJob?.cancel()
+        if (showSpinner) {
+            // Synchronously clear the old list and switch into the loading
+            // state so the user sees the spinner immediately instead of
+            // stale videos from the previous selection.
+            _videos.value = emptyList()
+            _totalCount.value = 0L
+            _hasMore.value = false
+            _isLoading.value = true
+        }
+        _error.value = null
+        currentPage = 0
+        // Reset stack expansion — representatives may have shifted/changed.
+        collapseAllStacks()
+
+        listLoadJob = viewModelScope.launch {
             try {
                 val (videosList, totalCount) = if (searchQuery.isNotEmpty()) {
                     repository.searchVideos(
@@ -460,6 +513,10 @@ class GridViewModel(
 
                 // Keep map locations in sync with the active grid filters.
                 launch { loadVideoLocationsFilteredAsync() }
+            } catch (e: CancellationException) {
+                // Superseded by a newer load — leave state alone so the
+                // newer load owns isLoading / videos.
+                throw e
             } catch (e: Exception) {
                 _error.value = "Failed to load videos: ${e.message}"
                 _isLoading.value = false
@@ -471,19 +528,19 @@ class GridViewModel(
     fun loadMore() {
         if (_isLoading.value || !_hasMore.value) return
 
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
+        _isLoading.value = true
+        _error.value = null
 
-            // Snapshot the offset *before* the first suspension point.
-            // Using the actual list size (not currentPage * pageSize) means
-            // that even if a concurrent loadVideos() resets currentPage = 0
-            // while this coroutine is suspended at the gRPC call, we still
-            // fetch the correct next page — preventing the duplicate-key
-            // crash that occurred when currentPage was reset mid-flight.
-            val offset = _videos.value.size
-            currentPage = offset / pageSize  // keep counter in sync
+        // Snapshot the offset *before* launching the coroutine. Using the
+        // actual list size (not currentPage * pageSize) means that even if a
+        // concurrent loadVideos() resets currentPage = 0 while this
+        // coroutine is suspended at the gRPC call, we still fetch the
+        // correct next page — preventing the duplicate-key crash that
+        // occurred when currentPage was reset mid-flight.
+        val offset = _videos.value.size
+        currentPage = offset / pageSize  // keep counter in sync
 
+        listLoadJob = viewModelScope.launch {
             try {
                 val (newVideos, totalCount) = if (searchQuery.isNotEmpty()) {
                     repository.searchVideos(
@@ -522,6 +579,10 @@ class GridViewModel(
                 _isLoading.value = false
 
                 logger.info("Loaded more videos, total now: ${merged.size}/$totalCount")
+            } catch (e: CancellationException) {
+                // Superseded by loadVideos() — leave state alone so the
+                // newer load owns isLoading / videos.
+                throw e
             } catch (e: Exception) {
                 _error.value = "Failed to load more videos: ${e.message}"
                 _isLoading.value = false
@@ -597,12 +658,12 @@ class GridViewModel(
 
     fun setSearchQuery(query: String) {
         searchQuery = query
-        loadVideos()
+        reloadForFilterChange()
     }
 
     fun clearSearch() {
         searchQuery = ""
-        loadVideos()
+        reloadForFilterChange()
     }
 
     fun setSort(field: String, ascending: Boolean) {
@@ -610,7 +671,7 @@ class GridViewModel(
         sortAscending = ascending
         _currentSortField.value = field
         _currentSortAscending.value = ascending
-        loadVideos()
+        reloadForFilterChange()
     }
 
     /** Load the list of library locations from the backend (with per-directory counts). */
@@ -658,7 +719,7 @@ class GridViewModel(
         if (locationPathFilter == path) return
         locationPathFilter = path
         _selectedLocationPath.value = path
-        loadVideos()
+        reloadForFilterChange()
     }
 
     /** Load (or refresh) the full list of keywords/tags with their usage counts. */
@@ -678,7 +739,7 @@ class GridViewModel(
         if (_filterTagId.value == tagId) return
         _filterTagId.value = tagId
         filterTags = if (tagId.isEmpty()) emptyList() else listOf(tagId)
-        loadVideos()
+        reloadForFilterChange()
     }
 
     /** Refresh the distinct values for the top-bar dropdowns. */
@@ -695,34 +756,34 @@ class GridViewModel(
     fun setCameraFilter(value: String) {
         if (_filterCamera.value == value) return
         _filterCamera.value = value
-        loadVideos()
+        reloadForFilterChange()
     }
     fun setLensFilter(value: String) {
         if (_filterLens.value == value) return
         _filterLens.value = value
-        loadVideos()
+        reloadForFilterChange()
     }
     fun setCodecFilter(value: String) {
         if (_filterCodec.value == value) return
         _filterCodec.value = value
-        loadVideos()
+        reloadForFilterChange()
     }
     fun setCaptureYearFilter(year: Int) {
         if (_filterCaptureYear.value == year) return
         _filterCaptureYear.value = year
-        loadVideos()
+        reloadForFilterChange()
     }
 
     fun setMinRatingFilter(n: Int) {
         if (_filterMinRating.value == n) return
         _filterMinRating.value = n
-        loadVideos()
+        reloadForFilterChange()
     }
 
     fun setColorLabelFilter(label: String) {
         if (_filterColorLabel.value == label) return
         _filterColorLabel.value = label
-        loadVideos()
+        reloadForFilterChange()
     }
 
     fun clearAllDropdownFilters() {
@@ -734,7 +795,7 @@ class GridViewModel(
         if (_filterLocation.value != null) { _filterLocation.value = null; changed = true }
         if (_filterMinRating.value != 0) { _filterMinRating.value = 0; changed = true }
         if (_filterColorLabel.value.isNotEmpty()) { _filterColorLabel.value = ""; changed = true }
-        if (changed) loadVideos()
+        if (changed) reloadForFilterChange()
     }
 
     // --- Lightroom-style user marks ---
@@ -854,7 +915,7 @@ class GridViewModel(
         _filterLocation.value = if (latitude != null && longitude != null) {
             Triple(latitude, longitude, radiusKm)
         } else null
-        loadVideos()
+        reloadForFilterChange()
     }
 
     /** Refresh the list of geotagged videos (used by the global-map screen). */
@@ -1195,7 +1256,7 @@ class GridViewModel(
 
     fun setFilterTags(tags: List<String>) {
         filterTags = tags
-        loadVideos()
+        reloadForFilterChange()
     }
 
     fun setCollection(id: String?) {
@@ -1217,7 +1278,7 @@ class GridViewModel(
         } else {
             collectionId = id
         }
-        loadVideos()
+        reloadForFilterChange()
     }
 
     fun loadCollections() {
