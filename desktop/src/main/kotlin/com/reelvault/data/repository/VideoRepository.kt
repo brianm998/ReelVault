@@ -209,6 +209,11 @@ class VideoRepository(
             val response = s.listVideos(request)
             val videos = response.videosList.map { protoToVideoSummary(it) }
             Pair(videos, response.totalCount)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // Cancellation is not an error — the caller superseded this
+            // request. Rethrow so structured concurrency unwinds cleanly
+            // and the calling coroutine doesn't see a stale empty result.
+            throw e
         } catch (e: Exception) {
             logger.error("Failed to list videos: ${e.message}", e)
             Pair(emptyList(), 0L)
@@ -304,6 +309,9 @@ class VideoRepository(
             val response = s.searchVideos(request)
             val videos = response.videosList.map { protoToVideoSummary(it) }
             Pair(videos, response.totalCount)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // Cancellation is not an error — caller superseded us.
+            throw e
         } catch (e: Exception) {
             logger.error("Failed to search videos: ${e.message}", e)
             Pair(emptyList(), 0L)
@@ -1085,6 +1093,9 @@ class VideoRepository(
                     hasThumbnail = proto.hasThumbnail,
                 )
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // Cancellation is not an error — caller superseded us.
+            throw e
         } catch (e: Exception) {
             logger.error("ListVideosWithLocations failed: ${e.message}", e)
             emptyList()
