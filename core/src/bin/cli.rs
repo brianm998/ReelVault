@@ -10,7 +10,7 @@ use prettytable::{Table, Row, Cell};
 
 use reelvault_core::db::Database;
 use reelvault_core::metadata::MetadataExtractor;
-use reelvault_core::indexing::IndexingEngine;
+use reelvault_core::indexing::{IndexingEngine, ScanConfig};
 use reelvault_core::post_index;
 use reelvault_core::search::SearchEngine;
 
@@ -193,12 +193,14 @@ async fn cmd_scan(
 
     IndexingEngine::scan_directory(
         db,
-        path,
-        recursive,
-        &cache_path,
-        None,
-        post_index::Options::default(),
-        None, // CLI doesn't surface post-index progress events
+        ScanConfig {
+            path,
+            recursive,
+            thumbnail_cache: &cache_path,
+            filename_date: None,
+            post_index_options: post_index::Options::default(),
+            events: None, // CLI doesn't surface post-index progress events
+        },
         |progress| {
             if !progress.current_file.is_empty() {
                 println!(
@@ -579,12 +581,14 @@ async fn cmd_bench(db: Arc<Database>, path: &std::path::Path) -> anyhow::Result<
     let db_for_stats = Arc::clone(&db);
     IndexingEngine::scan_directory(
         db,
-        path,
-        true,
-        &cache_path,
-        None,
-        post_index::Options::default(),
-        None, // benchmark path doesn't surface post-index progress events
+        ScanConfig {
+            path,
+            recursive: true,
+            thumbnail_cache: &cache_path,
+            filename_date: None,
+            post_index_options: post_index::Options::default(),
+            events: None, // benchmark path doesn't surface post-index progress events
+        },
         |progress| {
             if progress.progress_percent > 0.0 && progress.progress_percent % 10.0 < 1.0 {
                 println!("  {:.0}% - {} videos found, {} indexed",

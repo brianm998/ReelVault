@@ -126,23 +126,45 @@ impl FilenameDateRule {
     }
 }
 
+/// Inputs for a full directory scan, grouped into one struct so
+/// [`IndexingEngine::scan_directory`] stays under clippy's argument limit as
+/// the set of per-scan knobs grows. Mirrors the option-bundle pattern already
+/// used by [`post_index::Options`].
+pub struct ScanConfig<'a> {
+    /// Root directory to scan.
+    pub path: &'a Path,
+    /// Recurse into subdirectories when true; otherwise only the top level.
+    pub recursive: bool,
+    /// Directory where generated thumbnails are cached.
+    pub thumbnail_cache: &'a Path,
+    /// Optional rule for inferring capture dates from filenames.
+    pub filename_date: Option<FilenameDateRule>,
+    /// Post-index pipeline toggles (proxy detection, auto-grouping, …).
+    pub post_index_options: post_index::Options,
+    /// Broadcast bus for post-index progress events. `None` disables
+    /// progress reporting (CLI / tests); the gRPC service passes its
+    /// catalog-events sender so a long proxy-detection pass shows up in
+    /// the clients' background-activity panel.
+    pub events: Option<tokio::sync::broadcast::Sender<crate::watcher::CatalogChange>>,
+}
+
 pub struct IndexingEngine;
 
 impl IndexingEngine {
     pub fn scan_directory(
         db: Arc<Database>,
-        path: &Path,
-        recursive: bool,
-        thumbnail_cache: &Path,
-        filename_date: Option<FilenameDateRule>,
-        post_index_options: post_index::Options,
-        // Broadcast bus for post-index progress events. `None` disables
-        // progress reporting (CLI / tests); the gRPC service passes its
-        // catalog-events sender so a long proxy-detection pass shows up in
-        // the clients' background-activity panel.
-        events: Option<tokio::sync::broadcast::Sender<crate::watcher::CatalogChange>>,
+        config: ScanConfig,
         on_progress: impl Fn(&ScanProgress) + Sync,
     ) -> Result<()> {
+        let ScanConfig {
+            path,
+            recursive,
+            thumbnail_cache,
+            filename_date,
+            post_index_options,
+            events,
+        } = config;
+
         tracing::info!("Starting scan of: {}", path.display());
 
         on_progress(&ScanProgress {

@@ -976,26 +976,28 @@ impl ReelVaultTrait for ReelVaultService {
 
                 match IndexingEngine::scan_directory(
                     Arc::clone(&db),
-                    scan_path,
-                    recursive,
-                    &cache_path,
-                    filename_date_rule,
-                    crate::post_index::Options {
-                        // Mirror the existing gate: auto-grouping
-                        // is opt-in per scan request; proxy
-                        // detection runs unconditionally; sensor
-                        // fetch piggybacks on the scan to fill the
-                        // runtime cache for unknown camera models;
-                        // timelapse auto-tag follows the persistent
-                        // config flag (off by default).
-                        auto_group,
-                        detect_proxies: true,
-                        sensor_fetch: true,
-                        auto_tag_timelapses,
+                    crate::indexing::ScanConfig {
+                        path: scan_path,
+                        recursive,
+                        thumbnail_cache: &cache_path,
+                        filename_date: filename_date_rule,
+                        post_index_options: crate::post_index::Options {
+                            // Mirror the existing gate: auto-grouping
+                            // is opt-in per scan request; proxy
+                            // detection runs unconditionally; sensor
+                            // fetch piggybacks on the scan to fill the
+                            // runtime cache for unknown camera models;
+                            // timelapse auto-tag follows the persistent
+                            // config flag (off by default).
+                            auto_group,
+                            detect_proxies: true,
+                            sensor_fetch: true,
+                            auto_tag_timelapses,
+                        },
+                        // Publish post-index progress on the catalog-events bus
+                        // so a long proxy-detection drain isn't invisible.
+                        events: Some(scan_events.clone()),
                     },
-                    // Publish post-index progress on the catalog-events bus
-                    // so a long proxy-detection drain isn't invisible.
-                    Some(scan_events.clone()),
                     |progress| send_progress(tx, progress),
                 ) {
                     Ok(_) => {
