@@ -138,6 +138,17 @@ impl MetadataExtractor {
                 creation_date = Some(ts);
             }
         }
+
+        // Recover a missing make prefix. Some files carry only the model
+        // (a sidecar wrote `tiff:Model` but no make, and ffprobe had none
+        // either), leaving a bare code like "ILCE-7SM2". When that code
+        // uniquely identifies a known camera, store the canonical
+        // make-prefixed form ("SONY ILCE-7SM2") so it groups with — and
+        // resolves to the same marketing name as — its make-prefixed
+        // siblings instead of forming a duplicate. No-op for anything
+        // that already has a make or doesn't match a known body.
+        camera_model = camera_model.map(|c| crate::camera_names::recover_make_prefix(&c));
+
         // Photo-EXIF columns. Two independent sources, in priority order:
         //   1. The XMP packet (richer; written by tools that follow the
         //      XMP-EXIF standard — Premiere, Lightroom, exiftool).

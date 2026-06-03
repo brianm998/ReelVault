@@ -114,6 +114,51 @@ pub fn builtin_entries() -> impl Iterator<Item = (&'static str, &'static str)> {
     MAPPINGS.iter().copied()
 }
 
+/// Recover the canonical make-prefixed form of a camera string that
+/// arrived *without* its make. Some files carry only the model code
+/// (e.g. a sidecar wrote `tiff:Model` = "ILCE-7SM2" but no make, and
+/// ffprobe had none either), so the extractor can only produce the bare
+/// code. When that code matches exactly one built-in entry by
+/// whole-token suffix, return that entry's key ("SONY ILCE-7SM2") so the
+/// value groups with — and resolves to the same marketing name as — its
+/// make-prefixed siblings rather than forming a duplicate facet row.
+///
+/// Returned unchanged when the input already matches a full table key
+/// (it has its make), or matches no entry, or is ambiguous (two makes
+/// share the model code). This normalises the stored *internal* string
+/// only; marketing-name resolution still happens at display time via
+/// [`marketing_name_for`]. The returned form is the table's canonical
+/// upper-case spelling, which matches what make-present files from these
+/// bodies record (Sony/Nikon/Canon/… report an upper-case make).
+pub fn recover_make_prefix(internal: &str) -> String {
+    let key = normalise(internal);
+    if key.is_empty() {
+        return internal.to_string();
+    }
+    // Already a full, known entry — it has its make; nothing to recover.
+    if MAPPINGS.iter().any(|(k, _)| *k == key.as_str()) {
+        return internal.to_string();
+    }
+    // Whole-token suffix match against the model portion of each key. The
+    // leading space ensures we match a complete trailing token, so
+    // "ILCE-7" never matches "…ILCE-7M2".
+    let suffix = format!(" {key}");
+    let mut matched: Option<&'static str> = None;
+    for (k, _) in MAPPINGS {
+        if k.ends_with(suffix.as_str()) {
+            match matched {
+                // Two distinct keys share this model suffix — ambiguous,
+                // so leave the value as-is rather than guess a make.
+                Some(prev) if prev != *k => return internal.to_string(),
+                _ => matched = Some(k),
+            }
+        }
+    }
+    matched
+        .map(|k| k.to_string())
+        .unwrap_or_else(|| internal.to_string())
+}
+
 /// Strip extraneous whitespace and uppercase the input so different
 /// equivalent representations of the same camera all collide on the
 /// same map key. Public so callers can construct override maps with
@@ -358,6 +403,33 @@ mod tests {
     fn unknown_camera_returns_none() {
         assert_eq!(marketing_name_for("SOMETHING UNKNOWN"), None);
         assert_eq!(marketing_name_for(""), None);
+    }
+
+    #[test]
+    fn recover_make_prefix_fills_in_missing_make() {
+        // The straggler case: a bare model code with no make recovers its
+        // canonical make-prefixed form so it groups with its siblings.
+        assert_eq!(recover_make_prefix("ILCE-7SM2"), "SONY ILCE-7SM2");
+        assert_eq!(recover_make_prefix("ILCE-9"), "SONY ILCE-9");
+        // Case/space tolerant on the input.
+        assert_eq!(recover_make_prefix("ilce-7rm4"), "SONY ILCE-7RM4");
+        // And the recovered form resolves to the right marketing name.
+        assert_eq!(
+            marketing_name_for(&recover_make_prefix("ILCE-7SM2")),
+            Some("Sony a7S II")
+        );
+    }
+
+    #[test]
+    fn recover_make_prefix_leaves_canonical_and_unknown_alone() {
+        // Already has its make → unchanged.
+        assert_eq!(recover_make_prefix("SONY ILCE-7SM2"), "SONY ILCE-7SM2");
+        // Not a known body → unchanged (don't invent a make).
+        assert_eq!(recover_make_prefix("Atomos"), "Atomos");
+        assert_eq!(recover_make_prefix("WIDGET-9000"), "WIDGET-9000");
+        assert_eq!(recover_make_prefix(""), "");
+        // A bare token must match a *whole* trailing token, not a fragment.
+        assert_eq!(recover_make_prefix("7SM2"), "7SM2");
     }
 
     #[test]
