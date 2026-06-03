@@ -787,6 +787,11 @@ fun ReelVaultApp(
                         accentScheme = accentScheme,
                     )
 
+                    // Horizontal border separating the top bar from the content
+                    // below, matching the separator the macOS client draws under
+                    // its top bar and the divider above the bottom bar.
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
                     // Scan status banner (during scan)
                     val scanStatus = gridViewModel.scanStatus.collectAsState()
                     val watcherBanner = gridViewModel.watcherBanner.collectAsState()
