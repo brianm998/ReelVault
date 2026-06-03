@@ -569,8 +569,17 @@ fun ReelVaultApp(
     }
     LaunchedEffect(Unit) {
         onRegisterTogglePanelsAction {
+            // Read the live expanded-state from the state maps, not the
+            // `leftPanelExpanded` / `rightPanelExpanded` locals. This lambda is
+            // registered once (LaunchedEffect(Unit)) and capturing those locals
+            // would freeze the first-composition snapshot — both panels default
+            // to expanded — so `anyOpen` would stay true forever and Tab could
+            // only ever close the panels, never reopen them. The state maps and
+            // `viewMode` are stable remembered state, so reads here always see
+            // the current values.
+            val anyOpen = (leftPanelExpandeds[viewMode] ?: true) ||
+                (rightPanelExpandeds[viewMode] ?: true)
             // If either is open, close both. If both are closed, open both.
-            val anyOpen = leftPanelExpanded || rightPanelExpanded
             setLeftPanelExpanded(!anyOpen)
             setRightPanelExpanded(!anyOpen)
         }
