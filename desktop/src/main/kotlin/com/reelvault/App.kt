@@ -598,7 +598,7 @@ fun ReelVaultApp(
         gridViewModel.loadLibraryLocations()
         gridViewModel.loadTags()
         gridViewModel.loadCollections()
-        gridViewModel.loadFilterOptions()
+        gridViewModel.refreshMetadataFacets()
         // Per-catalog grid layout — the four top-of-card stat slots.
         gridViewModel.loadGridSettings()
         // Pre-load both location-related data sources so the global-map
@@ -743,9 +743,7 @@ fun ReelVaultApp(
                     val selectedIds = gridViewModel.selectedVideoIds.collectAsState()
                     ReelVaultTopBar(
                         gridViewModel = gridViewModel,
-                        onSearch = { gridViewModel.setSearchQuery(it) },
                         onRequestAddLibrary = { showAddLibraryDialog = true },
-                        onSearchFocusChanged = onSearchFocusChanged,
                         onGroupSelected = { gridViewModel.groupSelectedVideos() },
                         onConfigureWatcher = { showWatchSettingsDialog = true },
                         onConfigureCameraNames = { showCameraNamesDialog = true },
@@ -1313,44 +1311,50 @@ fun ReelVaultApp(
                             }
                         }
 
-                        when (viewMode) {
-                            ViewMode.GRID -> GridScreen(
-                                viewModel = gridViewModel,
-                                onVideoSelect = { video ->
-                                    detailViewModel.setCurrentVideo(video)
-                                    detailViewModel.loadMetadata(video.id)
-                                },
-                                thumbnailMinWidth = thumbnailWidth,
-                                onLocationClick = onCardLocationClick,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                            )
-                            ViewMode.LIST -> ListScreen(
-                                viewModel = gridViewModel,
-                                onVideoSelect = { video ->
-                                    detailViewModel.setCurrentVideo(video)
-                                    detailViewModel.loadMetadata(video.id)
-                                },
-                                // Same slider value the grid uses — a
-                                // list-mode card matches its grid-mode
-                                // counterpart in size, so the size slider
-                                // scales both views in lockstep instead
-                                // of leaving list-mode cards half the
-                                // width.
-                                thumbnailHeight = thumbnailWidth,
-                                onLocationClick = onCardLocationClick,
-                                modifier = Modifier.weight(1f).fillMaxHeight()
-                            )
-                            ViewMode.DETAIL -> DetailViewScreen(
-                                gridViewModel = gridViewModel,
-                                detailViewModel = detailViewModel,
-                                infoOverlay = infoOverlay,
-                                playToggle = detailPlayToggle,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                            )
+                        // Centre content column: the Library Filter bar pinned
+                        // above the grid/list. Because this Column sits between
+                        // the two panel dividers, the bar automatically stops at
+                        // the side panels and tracks their resize/collapse.
+                        Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                            if (viewMode != ViewMode.DETAIL) {
+                                com.reelvault.ui.components.LibraryFilterBar(
+                                    viewModel = gridViewModel,
+                                    onSearchFocusChanged = onSearchFocusChanged,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                            when (viewMode) {
+                                ViewMode.GRID -> GridScreen(
+                                    viewModel = gridViewModel,
+                                    onVideoSelect = { video ->
+                                        detailViewModel.setCurrentVideo(video)
+                                        detailViewModel.loadMetadata(video.id)
+                                    },
+                                    thumbnailMinWidth = thumbnailWidth,
+                                    onLocationClick = onCardLocationClick,
+                                    modifier = Modifier.weight(1f).fillMaxWidth()
+                                )
+                                ViewMode.LIST -> ListScreen(
+                                    viewModel = gridViewModel,
+                                    onVideoSelect = { video ->
+                                        detailViewModel.setCurrentVideo(video)
+                                        detailViewModel.loadMetadata(video.id)
+                                    },
+                                    // Same slider value the grid uses so a
+                                    // list-mode card matches its grid-mode
+                                    // counterpart in size.
+                                    thumbnailHeight = thumbnailWidth,
+                                    onLocationClick = onCardLocationClick,
+                                    modifier = Modifier.weight(1f).fillMaxWidth()
+                                )
+                                ViewMode.DETAIL -> DetailViewScreen(
+                                    gridViewModel = gridViewModel,
+                                    detailViewModel = detailViewModel,
+                                    infoOverlay = infoOverlay,
+                                    playToggle = detailPlayToggle,
+                                    modifier = Modifier.weight(1f).fillMaxWidth()
+                                )
+                            }
                         }
 
                         Divider(
@@ -2042,7 +2046,6 @@ private fun HelpStep(
 @Composable
 fun ReelVaultTopBar(
     gridViewModel: com.reelvault.viewmodel.GridViewModel,
-    onSearch: (String) -> Unit,
     onRequestAddLibrary: () -> Unit,
     onGroupSelected: () -> Unit = {},
     /** Opens the watcher (live-updates) preferences dialog. */
@@ -2062,13 +2065,11 @@ fun ReelVaultTopBar(
     /** Opens the global map dialog showing every geotagged video. */
     onShowGlobalMap: () -> Unit = {},
     selectedCount: Int = 0,
-    onSearchFocusChanged: (Boolean) -> Unit = {},
     /** Opens the full in-app help reference. */
     onShowHelp: () -> Unit = {},
     /** Drives which colour variant of the title-bar icon is shown. */
     accentScheme: AccentScheme = AccentScheme.Purple,
 ) {
-    var searchQuery by remember { mutableStateOf("") }
     var showFileMenu by remember { mutableStateOf(false) }
 
     TopAppBar(
@@ -2182,54 +2183,9 @@ fun ReelVaultTopBar(
                     }
                 }
 
-                // Search bar - use OutlinedTextField which has a more compact
-                // default height that fits inside the TopAppBar without
-                // clipping text.
-                com.reelvault.ui.components.Tooltip(
-                    text = "Search videos by filename, notes, or tag. Matches as you type."
-                ) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = {
-                            searchQuery = it
-                            onSearch(it)
-                        },
-                        placeholder = {
-                            Text(
-                                "Search videos...",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        modifier = Modifier
-                            .width(300.dp)
-                            .onFocusChanged { onSearchFocusChanged(it.isFocused) },
-                        singleLine = true,
-                        textStyle = MaterialTheme.typography.bodySmall.copy(
-                            color = MaterialTheme.colorScheme.onSurface
-                        ),
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Search,
-                                contentDescription = "Search",
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        shape = MaterialTheme.shapes.small,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                        )
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(ReelVaultSpacing.Small))
-
-                // Filter dropdowns — only visible fields with data appear.
-                FilterDropdowns(gridViewModel)
+                // Search field + filter dropdowns now live in the Library
+                // Filter bar (LibraryFilterBar), below the top bar and inside
+                // the centre content column.
 
                 Spacer(modifier = Modifier.weight(1f))
 
@@ -2694,253 +2650,6 @@ fun ViewModeToggle(
                         )
                     }
                 }
-            }
-        }
-    }
-}
-
-/**
- * Compact row of filter dropdowns shown to the right of the search field.
- * Each dropdown is hidden when no data exists for its column. Selecting any
- * value narrows the grid; "---" clears that filter.
- */
-@Composable
-fun FilterDropdowns(gridViewModel: com.reelvault.viewmodel.GridViewModel) {
-    val options = gridViewModel.filterOptions.collectAsState().value
-    val camera = gridViewModel.filterCamera.collectAsState().value
-    val lens = gridViewModel.filterLens.collectAsState().value
-    val codec = gridViewModel.filterCodec.collectAsState().value
-    val year = gridViewModel.filterCaptureYear.collectAsState().value
-    val tagId = gridViewModel.filterTagId.collectAsState().value
-    val allTags = gridViewModel.tags.collectAsState().value
-    val minRating = gridViewModel.filterMinRating.collectAsState().value
-    val colorLabel = gridViewModel.filterColorLabel.collectAsState().value
-    val anyFilterActive =
-        camera.isNotEmpty() || lens.isNotEmpty() || codec.isNotEmpty() ||
-            year != 0 || tagId.isNotEmpty() ||
-            minRating != 0 || colorLabel.isNotEmpty()
-
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        if (options.cameras.isNotEmpty()) {
-            com.reelvault.ui.components.Tooltip(
-                text = "Show only videos captured with this camera model. " +
-                    "Pick \"---\" to clear."
-            ) {
-                FilterDropdown(
-                    label = "Camera",
-                    values = options.cameras,
-                    selected = camera,
-                    onSelect = { gridViewModel.setCameraFilter(it) },
-                    displayLabels = options.cameraDisplayNames
-                )
-            }
-            Spacer(modifier = Modifier.width(ReelVaultSpacing.XSmall))
-        }
-        if (options.lenses.isNotEmpty()) {
-            com.reelvault.ui.components.Tooltip(
-                text = "Show only videos shot with this lens model. " +
-                    "Pick \"---\" to clear."
-            ) {
-                FilterDropdown(
-                    label = "Lens",
-                    values = options.lenses,
-                    selected = lens,
-                    onSelect = { gridViewModel.setLensFilter(it) }
-                )
-            }
-            Spacer(modifier = Modifier.width(ReelVaultSpacing.XSmall))
-        }
-        if (allTags.isNotEmpty()) {
-            com.reelvault.ui.components.Tooltip(
-                text = "Show only videos tagged with this keyword. " +
-                    "Pick \"---\" to clear."
-            ) {
-                FilterDropdown(
-                    label = "Keyword",
-                    // Tags use ID as the "value" but display name; build a map.
-                    values = allTags.map { it.name },
-                    selected = allTags.firstOrNull { it.id == tagId }?.name ?: "",
-                    onSelect = { name ->
-                        val matched = allTags.firstOrNull { it.name == name }
-                        gridViewModel.setTagFilter(matched?.id ?: "")
-                    }
-                )
-            }
-            Spacer(modifier = Modifier.width(ReelVaultSpacing.XSmall))
-        }
-        if (options.codecs.isNotEmpty()) {
-            com.reelvault.ui.components.Tooltip(
-                text = "Show only videos using this video codec (e.g. h264, hevc, prores). " +
-                    "Pick \"---\" to clear."
-            ) {
-                FilterDropdown(
-                    label = "Codec",
-                    values = options.codecs,
-                    selected = codec,
-                    onSelect = { gridViewModel.setCodecFilter(it) }
-                )
-            }
-            Spacer(modifier = Modifier.width(ReelVaultSpacing.XSmall))
-        }
-        if (options.captureYears.isNotEmpty()) {
-            com.reelvault.ui.components.Tooltip(
-                text = "Show only videos whose capture date falls in this year. " +
-                    "Pick \"---\" to clear."
-            ) {
-                FilterDropdown(
-                    label = "Year",
-                    values = options.captureYears.map { it.toString() },
-                    selected = if (year == 0) "" else year.toString(),
-                    onSelect = { gridViewModel.setCaptureYearFilter(it.toIntOrNull() ?: 0) }
-                )
-            }
-            Spacer(modifier = Modifier.width(ReelVaultSpacing.XSmall))
-        }
-
-        // Lightroom-style rating filter.
-        com.reelvault.ui.components.Tooltip(
-            text = "Show only videos at or above this star rating. Pick \"---\" to clear."
-        ) {
-            FilterDropdown(
-                label = "Rating",
-                values = listOf("≥1", "≥2", "≥3", "≥4", "5"),
-                selected = when (minRating) {
-                    0 -> ""
-                    5 -> "5"
-                    else -> "≥$minRating"
-                },
-                onSelect = { raw ->
-                    val n = when {
-                        raw.isEmpty() -> 0
-                        raw == "5"    -> 5
-                        else          -> raw.removePrefix("≥").toIntOrNull() ?: 0
-                    }
-                    gridViewModel.setMinRatingFilter(n)
-                }
-            )
-        }
-        Spacer(modifier = Modifier.width(ReelVaultSpacing.XSmall))
-
-        // Lightroom-style colour-label filter.
-        com.reelvault.ui.components.Tooltip(
-            text = "Show only videos with this colour label. Pick \"---\" to clear."
-        ) {
-            val colorChoices = com.reelvault.data.models.ColorLabel.values()
-                .filter { it != com.reelvault.data.models.ColorLabel.None }
-                .map { it.displayName }
-            FilterDropdown(
-                label = "Color",
-                values = colorChoices,
-                selected = com.reelvault.data.models.ColorLabel.from(colorLabel).let {
-                    if (it == com.reelvault.data.models.ColorLabel.None) "" else it.displayName
-                },
-                onSelect = { display ->
-                    val match = com.reelvault.data.models.ColorLabel.values()
-                        .firstOrNull { it.displayName == display }
-                        ?: com.reelvault.data.models.ColorLabel.None
-                    gridViewModel.setColorLabelFilter(match.raw)
-                }
-            )
-        }
-
-        if (anyFilterActive) {
-            Spacer(modifier = Modifier.width(ReelVaultSpacing.Small))
-            com.reelvault.ui.components.Tooltip(
-                text = "Clear all active filters (camera, lens, keyword, codec, year, rating, colour)."
-            ) {
-                TextButton(onClick = {
-                    gridViewModel.clearAllDropdownFilters()
-                    gridViewModel.setTagFilter("")
-                }) {
-                    Text("Clear", style = MaterialTheme.typography.labelSmall)
-                }
-            }
-        }
-    }
-}
-
-/**
- * One compact dropdown. The current selection is shown on the button; "---"
- * at the top of the menu clears the filter.
- */
-@Composable
-fun FilterDropdown(
-    label: String,
-    values: List<String>,
-    selected: String,
-    onSelect: (String) -> Unit,
-    /**
-     * Optional parallel list of user-facing labels — same length and
-     * order as [values]. When provided, dropdown items + the selected
-     * chip render the label, but the internal `value` is still what
-     * gets passed to [onSelect]. Used by the Camera filter to show
-     * marketing names (e.g. "Sony a7R III") while filtering on the
-     * internal model code (e.g. "SONY ILCE-7RM3"). Pass an empty list
-     * (the default) to keep the legacy "label == value" behaviour.
-     */
-    displayLabels: List<String> = emptyList()
-) {
-    var expanded by remember { mutableStateOf(false) }
-    fun labelFor(idx: Int, value: String): String =
-        if (displayLabels.isNotEmpty() && idx < displayLabels.size) displayLabels[idx] else value
-    val display = when {
-        selected.isEmpty() -> "---"
-        displayLabels.isNotEmpty() -> {
-            val idx = values.indexOf(selected)
-            if (idx >= 0 && idx < displayLabels.size) displayLabels[idx] else selected
-        }
-        else -> selected
-    }
-
-    Box {
-        OutlinedButton(
-            onClick = { expanded = true },
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-        ) {
-            Column(horizontalAlignment = Alignment.Start) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = display,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (selected.isEmpty()) {
-                        MaterialTheme.colorScheme.onSurface
-                    } else {
-                        MaterialTheme.colorScheme.primary
-                    },
-                    maxLines = 1
-                )
-            }
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text("---") },
-                onClick = {
-                    onSelect("")
-                    expanded = false
-                }
-            )
-            HorizontalDivider()
-            values.forEachIndexed { idx, value ->
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            labelFor(idx, value),
-                            color = if (value == selected) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            }
-                        )
-                    },
-                    onClick = {
-                        onSelect(value)
-                        expanded = false
-                    }
-                )
             }
         }
     }

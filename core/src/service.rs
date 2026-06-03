@@ -2,9 +2,10 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 use crate::config::Config;
-use crate::db::Database;
+use crate::db::{Database, FilterSpec};
 use crate::error::{Result, ReelVaultError};
 use crate::indexing::IndexingEngine;
+use crate::metadata_keys;
 use crate::path_templates::expand_path_templates;
 use crate::search::SearchEngine;
 use crate::thumbnails::ThumbnailGenerator;
@@ -582,25 +583,47 @@ impl ReelVaultTrait for ReelVaultService {
             None
         };
 
+        // Fold the legacy scalar dropdown filters into the generic metadata
+        // filters (back-compat: old clients still send camera/lens/codec/year
+        // as scalars; new clients send `metadata_filters`). Then build the
+        // shared FilterSpec.
+        let mut metadata_filters: Vec<(String, String)> = req
+            .metadata_filters
+            .iter()
+            .map(|mf| (mf.key.clone(), mf.value.clone()))
+            .collect();
+        if !req.filter_camera.is_empty() {
+            metadata_filters.push(("camera".to_string(), req.filter_camera.clone()));
+        }
+        if !req.filter_lens.is_empty() {
+            metadata_filters.push(("lens".to_string(), req.filter_lens.clone()));
+        }
+        if !req.filter_codec.is_empty() {
+            metadata_filters.push(("codec".to_string(), req.filter_codec.clone()));
+        }
+        if req.filter_capture_year > 0 {
+            metadata_filters.push(("year".to_string(), req.filter_capture_year.to_string()));
+        }
+
+        let spec = FilterSpec {
+            location_filter,
+            tag_ids,
+            geo: geo_filter,
+            min_rating: req.filter_min_rating,
+            color_label: req.filter_color_label.clone(),
+            collection_id: if req.collection_id.is_empty() {
+                None
+            } else {
+                Some(req.collection_id.clone())
+            },
+            search_query: req.search_query.clone(),
+            metadata_filters,
+        };
+
         // Use grouped listing — returns one representative per group + ungrouped videos
         let (videos, total_count) = self
             .db
-            .list_videos_grouped(
-                limit,
-                offset,
-                &req.sort_by,
-                req.sort_ascending,
-                &location_filter,
-                &tag_ids,
-                &req.filter_camera,
-                &req.filter_lens,
-                &req.filter_codec,
-                req.filter_capture_year,
-                geo_filter,
-                req.filter_min_rating,
-                &req.filter_color_label,
-                if req.collection_id.is_empty() { None } else { Some(req.collection_id.as_str()) },
-            )
+            .list_videos_grouped(limit, offset, &req.sort_by, req.sort_ascending, &spec)
             .map_err(Status::from)?;
 
         let video_summaries: Vec<VideoSummary> = videos
@@ -1791,6 +1814,149 @@ impl ReelVaultTrait for ReelVaultService {
             codecs,
             capture_years: years,
             camera_display_names,
+        }))
+    }
+
+    async fn get_metadata_facets(
+        &self,
+        request: Request<MetadataFacetsRequest>,
+    ) -> std::result::Result<Response<MetadataFacetsResponse>, Status> {
+        let req = request.into_inner();
+
+        let location_filter = if req.location_path.is_empty() {
+            String::new()
+        } else {
+            expand_tilde(&req.location_path)
+        };
+        // Resolve tags by name or id, same as list_videos.
+        let tag_ids: Vec<String> = req
+            .filter_tags
+            .iter()
+            .filter_map(|s| {
+                if s.is_empty() {
+                    return None;
+                }
+                if let Ok(Some(tag)) = self.db.get_tag_by_name(s) {
+                    Some(tag.id)
+                } else {
+                    Some(s.clone())
+                }
+            })
+            .collect();
+        let geo = if req.filter_by_location {
+            Some((
+                req.filter_latitude,
+                req.filter_longitude,
+                req.filter_radius_km.max(0.01),
+            ))
+        } else {
+            None
+        };
+        let collection_id = if req.collection_id.is_empty() {
+            None
+        } else {
+            Some(req.collection_id.clone())
+        };
+
+        // Base FilterSpec for the upstream filters; `extra` carries the
+        // metadata columns to the left of whichever column we're computing.
+        let base_spec = |extra: Vec<(String, String)>| FilterSpec {
+            location_filter: location_filter.clone(),
+            tag_ids: tag_ids.clone(),
+            geo,
+            min_rating: req.filter_min_rating,
+            color_label: req.filter_color_label.clone(),
+            collection_id: collection_id.clone(),
+            search_query: req.search_query.clone(),
+            metadata_filters: extra,
+        };
+
+        // Available keys = registry keys with data under the upstream filters
+        // (no metadata columns applied), for each column's "change key" picker.
+        let upstream = base_spec(Vec::new());
+        let available_keys: Vec<MetadataKeyInfo> = self
+            .db
+            .metadata_keys_with_data(&upstream)
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|tok| metadata_keys::lookup(tok))
+            .map(|mk| MetadataKeyInfo {
+                key: mk.token.to_string(),
+                display_name: mk.display_name.to_string(),
+                is_numeric: mk.is_numeric,
+            })
+            .collect();
+
+        let custom_overrides = self.load_custom_camera_names();
+        let mut columns_out = Vec::with_capacity(req.columns.len());
+        for (i, col) in req.columns.iter().enumerate() {
+            // Placeholder column (no key chosen yet) — keep its position so the
+            // response stays index-aligned, but return no values.
+            if col.key.is_empty() {
+                columns_out.push(MetadataFacetColumn {
+                    key: String::new(),
+                    display_name: String::new(),
+                    is_numeric: false,
+                    values: Vec::new(),
+                });
+                continue;
+            }
+
+            // Cascade: column i is constrained by every column to its LEFT that
+            // has a value selected.
+            let left: Vec<(String, String)> = req.columns[..i]
+                .iter()
+                .filter(|c| !c.key.is_empty() && !c.value.is_empty())
+                .map(|c| (c.key.clone(), c.value.clone()))
+                .collect();
+            let spec = base_spec(left);
+            let counts = self
+                .db
+                .distinct_facet_values(&col.key, &spec)
+                .unwrap_or_default();
+
+            let mk = metadata_keys::lookup(&col.key);
+            let is_numeric = mk.map(|m| m.is_numeric).unwrap_or(false);
+            let display_name = mk
+                .map(|m| m.display_name.to_string())
+                .unwrap_or_else(|| col.key.clone());
+
+            let values = counts
+                .into_iter()
+                .map(|fc| {
+                    // Keyword carries its own display (tag name); camera resolves
+                    // to a marketing name; the rest format from the token.
+                    let display = fc.display.unwrap_or_else(|| {
+                        if col.key == "camera" {
+                            crate::camera_names::marketing_name_for_with_custom(
+                                &fc.token,
+                                &custom_overrides,
+                            )
+                            .unwrap_or_else(|| fc.token.clone())
+                        } else {
+                            mk.map(|m| m.format_value(&fc.token))
+                                .unwrap_or_else(|| fc.token.clone())
+                        }
+                    });
+                    FacetValue {
+                        token: fc.token,
+                        display,
+                        count: fc.count,
+                    }
+                })
+                .collect();
+
+            columns_out.push(MetadataFacetColumn {
+                key: col.key.clone(),
+                display_name,
+                is_numeric,
+                values,
+            });
+        }
+
+        Ok(Response::new(MetadataFacetsResponse {
+            columns: columns_out,
+            available_keys,
         }))
     }
 

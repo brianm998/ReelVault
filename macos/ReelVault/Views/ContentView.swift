@@ -479,12 +479,8 @@ struct ContentView: View {
                 }
             }
 
-            TextField("Search videos…", text: $gridViewModel.searchQuery)
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 240)
-                .help("Search videos by filename, notes, or tag. Matches as you type. Press Escape to clear focus.")
-
-            FilterDropdowns(vm: gridViewModel)
+            // Search field + filter dropdowns now live in the Library Filter
+            // bar (LibraryFilterBar), below the top bar in the centre column.
 
             Spacer()
 
@@ -936,51 +932,59 @@ struct ContentView: View {
 
             Divider()
 
-            // Middle area — grid (browse), list, or detail (single-video loupe).
-            switch viewMode {
-            case .grid:
-                GridView(
-                    viewModel: gridViewModel,
-                    detailViewModel: detailViewModel,
-                    thumbnailMinWidth: CGFloat(thumbnailWidth),
-                    onLocationClick: { lat, lon in
-                        Task {
-                            await gridViewModel.loadVideoLocationsFilteredAsync()
-                            await gridViewModel.loadNamedLocationsAsync()
-                            globalMapFocusCoord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
-                            showGlobalMapSheet = true
+            // Middle column — the Library Filter bar pinned above the grid /
+            // list. Living between the two panel dividers makes the bar stop at
+            // the side panels and track their resize / collapse automatically.
+            VStack(spacing: 0) {
+                if viewMode != .detail {
+                    LibraryFilterBar(vm: gridViewModel)
+                }
+                switch viewMode {
+                case .grid:
+                    GridView(
+                        viewModel: gridViewModel,
+                        detailViewModel: detailViewModel,
+                        thumbnailMinWidth: CGFloat(thumbnailWidth),
+                        onLocationClick: { lat, lon in
+                            Task {
+                                await gridViewModel.loadVideoLocationsFilteredAsync()
+                                await gridViewModel.loadNamedLocationsAsync()
+                                globalMapFocusCoord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+                                showGlobalMapSheet = true
+                            }
                         }
-                    }
-                )
-                .frame(maxWidth: .infinity)
-            case .list:
-                ListView(
-                    viewModel: gridViewModel,
-                    detailViewModel: detailViewModel,
-                    // Same slider value the grid uses — a list-mode card
-                    // matches its grid-mode counterpart in size, so the
-                    // size slider scales both views in lockstep instead
-                    // of leaving list-mode cards half the width.
-                    thumbnailHeight: CGFloat(thumbnailWidth),
-                    onLocationClick: { lat, lon in
-                        Task {
-                            await gridViewModel.loadVideoLocationsFilteredAsync()
-                            await gridViewModel.loadNamedLocationsAsync()
-                            globalMapFocusCoord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
-                            showGlobalMapSheet = true
+                    )
+                    .frame(maxWidth: .infinity)
+                case .list:
+                    ListView(
+                        viewModel: gridViewModel,
+                        detailViewModel: detailViewModel,
+                        // Same slider value the grid uses — a list-mode card
+                        // matches its grid-mode counterpart in size, so the
+                        // size slider scales both views in lockstep instead
+                        // of leaving list-mode cards half the width.
+                        thumbnailHeight: CGFloat(thumbnailWidth),
+                        onLocationClick: { lat, lon in
+                            Task {
+                                await gridViewModel.loadVideoLocationsFilteredAsync()
+                                await gridViewModel.loadNamedLocationsAsync()
+                                globalMapFocusCoord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+                                showGlobalMapSheet = true
+                            }
                         }
-                    }
-                )
-                .frame(maxWidth: .infinity)
-            case .detail:
-                DetailLoupeView(
-                    gridViewModel: gridViewModel,
-                    detailViewModel: detailViewModel,
-                    infoOverlay: infoOverlay,
-                    playToggle: detailPlayToggle
-                )
-                .frame(maxWidth: .infinity)
+                    )
+                    .frame(maxWidth: .infinity)
+                case .detail:
+                    DetailLoupeView(
+                        gridViewModel: gridViewModel,
+                        detailViewModel: detailViewModel,
+                        infoOverlay: infoOverlay,
+                        playToggle: detailPlayToggle
+                    )
+                    .frame(maxWidth: .infinity)
+                }
             }
+            .frame(maxWidth: .infinity)
 
             Divider()
 
@@ -1151,7 +1155,7 @@ struct ContentView: View {
         gridViewModel.loadLibraryLocations()
         gridViewModel.loadTags()
         gridViewModel.loadCollections()
-        gridViewModel.loadFilterOptions()
+        gridViewModel.refreshMetadataFacets()
         // Per-catalog grid layout — the four top-of-card stat slots.
         gridViewModel.loadGridSettings()
         // Pre-load both location-related data sources so the global-map
@@ -1376,162 +1380,6 @@ struct GlobalKeyboardShortcuts: ViewModifier {
 /// Compact row of filter dropdowns next to the search field. Each dropdown
 /// hides itself if there's no data for its column. "---" at the top of any
 /// dropdown clears that filter.
-struct FilterDropdowns: View {
-    @ObservedObject var vm: GridViewModel
-
-    var body: some View {
-        HStack(spacing: 6) {
-            if !vm.filterOptions.cameras.isEmpty {
-                FilterMenu(
-                    label: "Camera",
-                    values: vm.filterOptions.cameras,
-                    displayLabels: vm.filterOptions.cameraDisplayNames,
-                    selected: vm.filterCamera,
-                    onSelect: { vm.setCameraFilter($0) }
-                )
-                .help("Show only videos captured with this camera model. Pick \"---\" to clear.")
-            }
-            if !vm.filterOptions.lenses.isEmpty {
-                FilterMenu(
-                    label: "Lens",
-                    values: vm.filterOptions.lenses,
-                    selected: vm.filterLens,
-                    onSelect: { vm.setLensFilter($0) }
-                )
-                .help("Show only videos shot with this lens model. Pick \"---\" to clear.")
-            }
-            if !vm.tags.isEmpty {
-                FilterMenu(
-                    label: "Keyword",
-                    values: vm.tags.map { $0.name },
-                    selected: vm.tags.first(where: { $0.id == vm.filterTagId })?.name ?? "",
-                    onSelect: { name in
-                        let id = vm.tags.first(where: { $0.name == name })?.id ?? ""
-                        vm.setTagFilter(id)
-                    }
-                )
-                .help("Show only videos tagged with this keyword. Pick \"---\" to clear.")
-            }
-            if !vm.filterOptions.codecs.isEmpty {
-                FilterMenu(
-                    label: "Codec",
-                    values: vm.filterOptions.codecs,
-                    selected: vm.filterCodec,
-                    onSelect: { vm.setCodecFilter($0) }
-                )
-                .help("Show only videos using this video codec (e.g. h264, hevc, prores). Pick \"---\" to clear.")
-            }
-            if !vm.filterOptions.captureYears.isEmpty {
-                FilterMenu(
-                    label: "Year",
-                    values: vm.filterOptions.captureYears.map { String($0) },
-                    selected: vm.filterCaptureYear == 0 ? "" : String(vm.filterCaptureYear),
-                    onSelect: { vm.setCaptureYearFilter(Int32($0) ?? 0) }
-                )
-                .help("Show only videos whose capture date falls in this year. Pick \"---\" to clear.")
-            }
-            // Lightroom-style rating filter: ≥ N stars.
-            FilterMenu(
-                label: "Rating",
-                values: ["≥1", "≥2", "≥3", "≥4", "5"],
-                selected: vm.filterMinRating == 0 ? "" : (vm.filterMinRating == 5 ? "5" : "≥\(vm.filterMinRating)"),
-                onSelect: { raw in
-                    let n: Int32
-                    if raw.isEmpty { n = 0 }
-                    else if raw == "5" { n = 5 }
-                    else { n = Int32(raw.dropFirst()) ?? 0 }
-                    vm.setMinRatingFilter(n)
-                }
-            )
-            .help("Show only videos at or above this star rating. Pick \"---\" to clear.")
-
-            // Lightroom-style colour-label filter.
-            FilterMenu(
-                label: "Color",
-                values: ColorLabel.allCases.filter { $0 != .none }.map { $0.displayName },
-                selected: ColorLabel(vm.filterColorLabel).displayName == "None"
-                    ? "" : ColorLabel(vm.filterColorLabel).displayName,
-                onSelect: { displayName in
-                    let label = ColorLabel.allCases.first { $0.displayName == displayName } ?? .none
-                    vm.setColorLabelFilter(label.rawValue)
-                }
-            )
-            .help("Show only videos with this colour label. Pick \"---\" to clear.")
-
-            if anyActive {
-                Button("Clear") { vm.clearAllDropdownFilters() }
-                    .buttonStyle(.borderless)
-                    .controlSize(.small)
-                    .help("Clear all active filters (camera, lens, keyword, codec, year, rating, colour).")
-            }
-        }
-    }
-
-    private var anyActive: Bool {
-        !vm.filterCamera.isEmpty || !vm.filterLens.isEmpty || !vm.filterCodec.isEmpty
-            || vm.filterCaptureYear != 0 || !vm.filterTagId.isEmpty
-            || vm.filterMinRating != 0 || !vm.filterColorLabel.isEmpty
-    }
-}
-
-/// One compact dropdown menu showing label + current selection (or "---").
-struct FilterMenu: View {
-    let label: String
-    let values: [String]
-    /// Optional parallel list of user-facing labels — same length and
-    /// order as `values`. When provided, dropdown items + the selected
-    /// chip render the label, but the internal `value` is still what
-    /// gets passed to `onSelect`. Used by the Camera filter to show
-    /// marketing names (e.g. "Sony a7R III") while filtering on the
-    /// internal model code (e.g. "SONY ILCE-7RM3"). Pass an empty array
-    /// (the default) to keep the legacy "label == value" behaviour.
-    var displayLabels: [String] = []
-    let selected: String
-    let onSelect: (String) -> Void
-
-    /// User-facing string shown in the chip for the currently-selected
-    /// value. Resolves through `displayLabels` when one is configured.
-    private var display: String {
-        if selected.isEmpty { return "---" }
-        if !displayLabels.isEmpty,
-           let idx = values.firstIndex(of: selected),
-           idx < displayLabels.count {
-            return displayLabels[idx]
-        }
-        return selected
-    }
-
-    private func displayLabel(for index: Int, value: String) -> String {
-        if !displayLabels.isEmpty && index < displayLabels.count {
-            return displayLabels[index]
-        }
-        return value
-    }
-
-    var body: some View {
-        Menu {
-            Button("---") { onSelect("") }
-            Divider()
-            ForEach(Array(values.enumerated()), id: \.element) { idx, v in
-                Button(displayLabel(for: idx, value: v)) { onSelect(v) }
-            }
-        } label: {
-            VStack(alignment: .leading, spacing: 0) {
-                Text(label)
-                    .font(.system(size: 9))
-                    .foregroundColor(.secondary)
-                Text(display)
-                    .font(.system(size: 11))
-                    .foregroundColor(selected.isEmpty ? .primary : .accentColor)
-                    .lineLimit(1)
-            }
-            .frame(minWidth: 70, alignment: .leading)
-        }
-        .menuStyle(.borderlessButton)
-        .controlSize(.small)
-    }
-}
-
 /// Tiny `Identifiable` wrapper so `.sheet(item:)` can drive the LocationPicker
 /// off `[String]?` — SwiftUI requires a single hashable identity for the
 /// sheet item, and bare arrays aren't `Identifiable`.

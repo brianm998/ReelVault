@@ -70,6 +70,27 @@ nonisolated enum Reelvault_FullResolutionStatus: SwiftProtobuf.Enum, Swift.CaseI
 
 }
 
+/// A single generic metadata filter. `key` is a canonical metadata token
+/// recognized by the daemon's metadata-key registry (see
+/// core/src/metadata_keys.rs) — one of `camera`, `lens`, `codec`, `year`,
+/// `iso`, `aperture`, `exposure`, `focal_length`, `keyword`, with room to grow
+/// to arbitrary XMP keys later. `value` is the exact token to match (the
+/// `token` field of a FacetValue); an empty `value` means "no constraint" (the
+/// column is a placeholder / "All").
+nonisolated struct Reelvault_MetadataFilter: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var key: String = String()
+
+  var value: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
 nonisolated struct Reelvault_ListVideosRequest: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -175,6 +196,24 @@ nonisolated struct Reelvault_ListVideosRequest: @unchecked Sendable {
   var filterColorLabel: String {
     get {_storage._filterColorLabel}
     set {_uniqueStorage()._filterColorLabel = newValue}
+  }
+
+  /// Generic metadata filters from the Library Filter's "metadata" columns.
+  /// AND-combined with everything else. Camera/lens/codec/year now travel here;
+  /// the scalar fields 8–11 above remain honored for back-compat but new
+  /// clients leave them empty and send these instead.
+  var metadataFilters: [Reelvault_MetadataFilter] {
+    get {_storage._metadataFilters}
+    set {_uniqueStorage()._metadataFilters = newValue}
+  }
+
+  /// Full-text query (filename / notes), matched the same way as SearchVideos.
+  /// Empty = no text filter. Folding search into ListVideos lets the text
+  /// filter compose with all the others; the separate SearchVideos RPC remains
+  /// for legacy callers.
+  var searchQuery: String {
+    get {_storage._searchQuery}
+    set {_uniqueStorage()._searchQuery = newValue}
   }
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -1527,6 +1566,124 @@ nonisolated struct Reelvault_FilterOptions: Sendable {
   init() {}
 }
 
+nonisolated struct Reelvault_MetadataFacetsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Upstream narrowing filters — the same higher-level filters that scope the
+  /// grid (library location, keyword/tags, collection, geo proximity, the
+  /// Lightroom user-mark "attribute" filters, and the text query). Facet values
+  /// are computed within the set these select.
+  var locationPath: String = String()
+
+  var filterTags: [String] = []
+
+  var collectionID: String = String()
+
+  var filterByLocation: Bool = false
+
+  var filterLatitude: Double = 0
+
+  var filterLongitude: Double = 0
+
+  var filterRadiusKm: Double = 0
+
+  var filterMinRating: Int32 = 0
+
+  var filterColorLabel: String = String()
+
+  var searchQuery: String = String()
+
+  /// The ordered metadata columns, left→right. Column i's returned values are
+  /// computed with every column to its LEFT applied (the cascade) plus all the
+  /// upstream filters above. A column whose `value` is empty adds no constraint;
+  /// a column whose `key` is empty is a placeholder slot (returns no values but
+  /// still occupies a position so the response stays index-aligned).
+  var columns: [Reelvault_MetadataFilter] = []
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+/// One selectable value within a facet column.
+nonisolated struct Reelvault_FacetValue: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// exact value to echo back as MetadataFilter.value
+  var token: String = String()
+
+  /// human-readable label (e.g. "Sony a7R III", "1/4000 s", "f/1.8")
+  var display: String = String()
+
+  /// videos matching this value within the column's cascade
+  var count: Int64 = 0
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+/// The available values for one metadata column.
+nonisolated struct Reelvault_MetadataFacetColumn: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// echoes the request column's key ("" for a placeholder)
+  var key: String = String()
+
+  /// human-readable column title ("Camera", "ISO", "Exposure")
+  var displayName: String = String()
+
+  /// formatting / sorting hint
+  var isNumeric: Bool = false
+
+  var values: [Reelvault_FacetValue] = []
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+/// A metadata key the user can choose for a column.
+nonisolated struct Reelvault_MetadataKeyInfo: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var key: String = String()
+
+  var displayName: String = String()
+
+  var isNumeric: Bool = false
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Reelvault_MetadataFacetsResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// One entry per request column, in the SAME order (placeholder columns get an
+  /// empty `values` list) so clients align facets to columns by index.
+  var columns: [Reelvault_MetadataFacetColumn] = []
+
+  /// Every metadata key that has at least one value in the current upstream-
+  /// filtered set — populates each column's "change key" picker.
+  var availableKeys: [Reelvault_MetadataKeyInfo] = []
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
 /// Open / switch to the catalog file at `path`. If a catalog is currently
 /// open it's closed first. The file is created if it doesn't exist; the
 /// daemon initializes the schema on its first open.
@@ -2179,9 +2336,44 @@ nonisolated extension Reelvault_FullResolutionStatus: SwiftProtobuf._ProtoNamePr
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0FULL_RESOLUTION_STATUS_UNSPECIFIED\0\u{1}FULL_RESOLUTION_STATUS_FULL\0\u{1}FULL_RESOLUTION_STATUS_NOT_FULL\0")
 }
 
+nonisolated extension Reelvault_MetadataFilter: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".MetadataFilter"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}key\0\u{1}value\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.key) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.value) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.key.isEmpty {
+      try visitor.visitSingularStringField(value: self.key, fieldNumber: 1)
+    }
+    if !self.value.isEmpty {
+      try visitor.visitSingularStringField(value: self.value, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Reelvault_MetadataFilter, rhs: Reelvault_MetadataFilter) -> Bool {
+    if lhs.key != rhs.key {return false}
+    if lhs.value != rhs.value {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ListVideosRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}limit\0\u{1}offset\0\u{3}sort_by\0\u{3}sort_ascending\0\u{3}filter_tags\0\u{3}collection_id\0\u{3}location_path\0\u{3}filter_camera\0\u{3}filter_lens\0\u{3}filter_codec\0\u{3}filter_capture_year\0\u{3}filter_by_location\0\u{3}filter_latitude\0\u{3}filter_longitude\0\u{3}filter_radius_km\0\u{3}filter_min_rating\0\u{3}filter_color_label\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}limit\0\u{1}offset\0\u{3}sort_by\0\u{3}sort_ascending\0\u{3}filter_tags\0\u{3}collection_id\0\u{3}location_path\0\u{3}filter_camera\0\u{3}filter_lens\0\u{3}filter_codec\0\u{3}filter_capture_year\0\u{3}filter_by_location\0\u{3}filter_latitude\0\u{3}filter_longitude\0\u{3}filter_radius_km\0\u{3}filter_min_rating\0\u{3}filter_color_label\0\u{3}metadata_filters\0\u{3}search_query\0")
 
   fileprivate class _StorageClass {
     var _limit: Int32 = 0
@@ -2201,6 +2393,8 @@ nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftP
     var _filterRadiusKm: Double = 0
     var _filterMinRating: Int32 = 0
     var _filterColorLabel: String = String()
+    var _metadataFilters: [Reelvault_MetadataFilter] = []
+    var _searchQuery: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2228,6 +2422,8 @@ nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftP
       _filterRadiusKm = source._filterRadiusKm
       _filterMinRating = source._filterMinRating
       _filterColorLabel = source._filterColorLabel
+      _metadataFilters = source._metadataFilters
+      _searchQuery = source._searchQuery
     }
   }
 
@@ -2263,6 +2459,8 @@ nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftP
         case 15: try { try decoder.decodeSingularDoubleField(value: &_storage._filterRadiusKm) }()
         case 16: try { try decoder.decodeSingularInt32Field(value: &_storage._filterMinRating) }()
         case 17: try { try decoder.decodeSingularStringField(value: &_storage._filterColorLabel) }()
+        case 18: try { try decoder.decodeRepeatedMessageField(value: &_storage._metadataFilters) }()
+        case 19: try { try decoder.decodeSingularStringField(value: &_storage._searchQuery) }()
         default: break
         }
       }
@@ -2322,6 +2520,12 @@ nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftP
       if !_storage._filterColorLabel.isEmpty {
         try visitor.visitSingularStringField(value: _storage._filterColorLabel, fieldNumber: 17)
       }
+      if !_storage._metadataFilters.isEmpty {
+        try visitor.visitRepeatedMessageField(value: _storage._metadataFilters, fieldNumber: 18)
+      }
+      if !_storage._searchQuery.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._searchQuery, fieldNumber: 19)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2348,6 +2552,8 @@ nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftP
         if _storage._filterRadiusKm != rhs_storage._filterRadiusKm {return false}
         if _storage._filterMinRating != rhs_storage._filterMinRating {return false}
         if _storage._filterColorLabel != rhs_storage._filterColorLabel {return false}
+        if _storage._metadataFilters != rhs_storage._metadataFilters {return false}
+        if _storage._searchQuery != rhs_storage._searchQuery {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -5001,6 +5207,246 @@ nonisolated extension Reelvault_FilterOptions: SwiftProtobuf.Message, SwiftProto
     if lhs.codecs != rhs.codecs {return false}
     if lhs.captureYears != rhs.captureYears {return false}
     if lhs.cameraDisplayNames != rhs.cameraDisplayNames {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_MetadataFacetsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".MetadataFacetsRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}location_path\0\u{3}filter_tags\0\u{3}collection_id\0\u{3}filter_by_location\0\u{3}filter_latitude\0\u{3}filter_longitude\0\u{3}filter_radius_km\0\u{3}filter_min_rating\0\u{3}filter_color_label\0\u{3}search_query\0\u{1}columns\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.locationPath) }()
+      case 2: try { try decoder.decodeRepeatedStringField(value: &self.filterTags) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.collectionID) }()
+      case 4: try { try decoder.decodeSingularBoolField(value: &self.filterByLocation) }()
+      case 5: try { try decoder.decodeSingularDoubleField(value: &self.filterLatitude) }()
+      case 6: try { try decoder.decodeSingularDoubleField(value: &self.filterLongitude) }()
+      case 7: try { try decoder.decodeSingularDoubleField(value: &self.filterRadiusKm) }()
+      case 8: try { try decoder.decodeSingularInt32Field(value: &self.filterMinRating) }()
+      case 9: try { try decoder.decodeSingularStringField(value: &self.filterColorLabel) }()
+      case 10: try { try decoder.decodeSingularStringField(value: &self.searchQuery) }()
+      case 11: try { try decoder.decodeRepeatedMessageField(value: &self.columns) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.locationPath.isEmpty {
+      try visitor.visitSingularStringField(value: self.locationPath, fieldNumber: 1)
+    }
+    if !self.filterTags.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.filterTags, fieldNumber: 2)
+    }
+    if !self.collectionID.isEmpty {
+      try visitor.visitSingularStringField(value: self.collectionID, fieldNumber: 3)
+    }
+    if self.filterByLocation != false {
+      try visitor.visitSingularBoolField(value: self.filterByLocation, fieldNumber: 4)
+    }
+    if self.filterLatitude.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.filterLatitude, fieldNumber: 5)
+    }
+    if self.filterLongitude.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.filterLongitude, fieldNumber: 6)
+    }
+    if self.filterRadiusKm.bitPattern != 0 {
+      try visitor.visitSingularDoubleField(value: self.filterRadiusKm, fieldNumber: 7)
+    }
+    if self.filterMinRating != 0 {
+      try visitor.visitSingularInt32Field(value: self.filterMinRating, fieldNumber: 8)
+    }
+    if !self.filterColorLabel.isEmpty {
+      try visitor.visitSingularStringField(value: self.filterColorLabel, fieldNumber: 9)
+    }
+    if !self.searchQuery.isEmpty {
+      try visitor.visitSingularStringField(value: self.searchQuery, fieldNumber: 10)
+    }
+    if !self.columns.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.columns, fieldNumber: 11)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Reelvault_MetadataFacetsRequest, rhs: Reelvault_MetadataFacetsRequest) -> Bool {
+    if lhs.locationPath != rhs.locationPath {return false}
+    if lhs.filterTags != rhs.filterTags {return false}
+    if lhs.collectionID != rhs.collectionID {return false}
+    if lhs.filterByLocation != rhs.filterByLocation {return false}
+    if lhs.filterLatitude != rhs.filterLatitude {return false}
+    if lhs.filterLongitude != rhs.filterLongitude {return false}
+    if lhs.filterRadiusKm != rhs.filterRadiusKm {return false}
+    if lhs.filterMinRating != rhs.filterMinRating {return false}
+    if lhs.filterColorLabel != rhs.filterColorLabel {return false}
+    if lhs.searchQuery != rhs.searchQuery {return false}
+    if lhs.columns != rhs.columns {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_FacetValue: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".FacetValue"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}token\0\u{1}display\0\u{1}count\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.token) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.display) }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self.count) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.token.isEmpty {
+      try visitor.visitSingularStringField(value: self.token, fieldNumber: 1)
+    }
+    if !self.display.isEmpty {
+      try visitor.visitSingularStringField(value: self.display, fieldNumber: 2)
+    }
+    if self.count != 0 {
+      try visitor.visitSingularInt64Field(value: self.count, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Reelvault_FacetValue, rhs: Reelvault_FacetValue) -> Bool {
+    if lhs.token != rhs.token {return false}
+    if lhs.display != rhs.display {return false}
+    if lhs.count != rhs.count {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_MetadataFacetColumn: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".MetadataFacetColumn"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}key\0\u{3}display_name\0\u{3}is_numeric\0\u{1}values\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.key) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.displayName) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.isNumeric) }()
+      case 4: try { try decoder.decodeRepeatedMessageField(value: &self.values) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.key.isEmpty {
+      try visitor.visitSingularStringField(value: self.key, fieldNumber: 1)
+    }
+    if !self.displayName.isEmpty {
+      try visitor.visitSingularStringField(value: self.displayName, fieldNumber: 2)
+    }
+    if self.isNumeric != false {
+      try visitor.visitSingularBoolField(value: self.isNumeric, fieldNumber: 3)
+    }
+    if !self.values.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.values, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Reelvault_MetadataFacetColumn, rhs: Reelvault_MetadataFacetColumn) -> Bool {
+    if lhs.key != rhs.key {return false}
+    if lhs.displayName != rhs.displayName {return false}
+    if lhs.isNumeric != rhs.isNumeric {return false}
+    if lhs.values != rhs.values {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_MetadataKeyInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".MetadataKeyInfo"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}key\0\u{3}display_name\0\u{3}is_numeric\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.key) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.displayName) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.isNumeric) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.key.isEmpty {
+      try visitor.visitSingularStringField(value: self.key, fieldNumber: 1)
+    }
+    if !self.displayName.isEmpty {
+      try visitor.visitSingularStringField(value: self.displayName, fieldNumber: 2)
+    }
+    if self.isNumeric != false {
+      try visitor.visitSingularBoolField(value: self.isNumeric, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Reelvault_MetadataKeyInfo, rhs: Reelvault_MetadataKeyInfo) -> Bool {
+    if lhs.key != rhs.key {return false}
+    if lhs.displayName != rhs.displayName {return false}
+    if lhs.isNumeric != rhs.isNumeric {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_MetadataFacetsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".MetadataFacetsResponse"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}columns\0\u{3}available_keys\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.columns) }()
+      case 2: try { try decoder.decodeRepeatedMessageField(value: &self.availableKeys) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.columns.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.columns, fieldNumber: 1)
+    }
+    if !self.availableKeys.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.availableKeys, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Reelvault_MetadataFacetsResponse, rhs: Reelvault_MetadataFacetsResponse) -> Bool {
+    if lhs.columns != rhs.columns {return false}
+    if lhs.availableKeys != rhs.availableKeys {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

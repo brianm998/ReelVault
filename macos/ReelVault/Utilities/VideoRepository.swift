@@ -161,21 +161,16 @@ class VideoRepository: ObservableObject {
         filterMinRating: Int32 = 0,
         /// "" = no colour filter; otherwise exact-match the colour label.
         filterColorLabel: String = "",
+        /// Generic metadata filters from the Library Filter's metadata columns.
+        /// Camera/lens/codec/year now travel here rather than as scalar args.
+        metadataFilters: [(key: String, value: String)] = [],
         /// nil = no collection filter; otherwise restrict to members of this collection.
         collectionId: String? = nil
     ) async throws -> (videos: [VideoSummary], totalCount: Int64) {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
 
-        if !searchQuery.isEmpty {
-            var request = Reelvault_SearchRequest()
-            request.query = searchQuery
-            request.limit = limit
-            request.offset = offset
-            request.filterTags = filterTagIds
-            let response = try await client.searchVideos(request)
-            return (response.videos.map(Self.makeSummary), response.totalCount)
-        }
-
+        // The text query is folded into ListVideos so it composes with every
+        // other filter (the separate SearchVideos RPC is no longer used here).
         var request = Reelvault_ListVideosRequest()
         request.limit = limit
         request.offset = offset
@@ -195,6 +190,13 @@ class VideoRepository: ObservableObject {
         }
         request.filterMinRating = filterMinRating
         request.filterColorLabel = filterColorLabel
+        request.searchQuery = searchQuery
+        request.metadataFilters = metadataFilters.map {
+            var m = Reelvault_MetadataFilter()
+            m.key = $0.key
+            m.value = $0.value
+            return m
+        }
         if let cid = collectionId { request.collectionID = cid }
         let response = try await client.listVideos(request)
         return (response.videos.map(Self.makeSummary), response.totalCount)
@@ -366,6 +368,62 @@ class VideoRepository: ObservableObject {
         } catch {
             NSLog("Failed to fetch filter options: \(error)")
             return FilterOptions()
+        }
+    }
+
+    /// Faceted metadata values for the Library Filter's "metadata" mode. Given
+    /// the upstream filters + the ordered metadata columns, the daemon returns
+    /// the available values for each column (cascaded left→right) plus the set
+    /// of keys that have data in the current filtered set. Returns an empty
+    /// result on error so the UI degrades to "no values" rather than throwing.
+    func getMetadataFacets(
+        locationPath: String = "",
+        filterTagIds: [String] = [],
+        collectionId: String? = nil,
+        geoFilter: (latitude: Double, longitude: Double, radiusKm: Double)? = nil,
+        filterMinRating: Int32 = 0,
+        filterColorLabel: String = "",
+        searchQuery: String = "",
+        columns: [(key: String, value: String)] = []
+    ) async -> MetadataFacetsResult {
+        guard let client = serviceClient else { return MetadataFacetsResult() }
+        do {
+            var request = Reelvault_MetadataFacetsRequest()
+            request.locationPath = locationPath
+            request.filterTags = filterTagIds
+            if let cid = collectionId { request.collectionID = cid }
+            if let geo = geoFilter {
+                request.filterByLocation = true
+                request.filterLatitude = geo.latitude
+                request.filterLongitude = geo.longitude
+                request.filterRadiusKm = geo.radiusKm
+            }
+            request.filterMinRating = filterMinRating
+            request.filterColorLabel = filterColorLabel
+            request.searchQuery = searchQuery
+            request.columns = columns.map {
+                var m = Reelvault_MetadataFilter()
+                m.key = $0.key
+                m.value = $0.value
+                return m
+            }
+            let response = try await client.getMetadataFacets(request)
+            return MetadataFacetsResult(
+                columns: response.columns.map { c in
+                    MetadataFacetColumn(
+                        key: c.key,
+                        displayName: c.displayName,
+                        isNumeric: c.isNumeric,
+                        values: c.values.map { FacetValue(token: $0.token, display: $0.display, count: $0.count) }
+                    )
+                },
+                availableKeys: response.availableKeys.map {
+                    MetadataKeyInfo(key: $0.key, displayName: $0.displayName, isNumeric: $0.isNumeric)
+                }
+            )
+        } catch {
+            NSLog("Failed to fetch metadata facets: \(error)")
+            return MetadataFacetsResult()
         }
     }
 

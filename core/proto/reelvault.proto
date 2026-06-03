@@ -55,6 +55,14 @@ service ReelVault {
   // Filter options (distinct values for the grid's dropdowns)
   rpc GetFilterOptions(GetFilterOptionsRequest) returns (FilterOptions);
 
+  // Faceted filter values for the Library Filter's "metadata" mode. Given the
+  // upstream filters (library location, keywords, attributes, text) and an
+  // ordered list of metadata columns, returns the distinct values available
+  // for each column — where column i is constrained by every column to its
+  // left (the left→right cascade) — plus the set of metadata keys that have
+  // any data in the current filtered set (for the column key picker).
+  rpc GetMetadataFacets(MetadataFacetsRequest) returns (MetadataFacetsResponse);
+
   // System
   rpc GetStatus(GetStatusRequest) returns (StatusResponse);
   rpc GetConfig(GetConfigRequest) returns (ConfigResponse);
@@ -132,6 +140,18 @@ service ReelVault {
 
 // Messages for queries
 
+// A single generic metadata filter. `key` is a canonical metadata token
+// recognized by the daemon's metadata-key registry (see
+// core/src/metadata_keys.rs) — one of `camera`, `lens`, `codec`, `year`,
+// `iso`, `aperture`, `exposure`, `focal_length`, `keyword`, with room to grow
+// to arbitrary XMP keys later. `value` is the exact token to match (the
+// `token` field of a FacetValue); an empty `value` means "no constraint" (the
+// column is a placeholder / "All").
+message MetadataFilter {
+  string key = 1;
+  string value = 2;
+}
+
 message ListVideosRequest {
   int32 limit = 1;
   int32 offset = 2;
@@ -167,6 +187,16 @@ message ListVideosRequest {
   //     against one of "red" | "yellow" | "green" | "blue" | "purple".
   int32 filter_min_rating = 16;
   string filter_color_label = 17;
+  // Generic metadata filters from the Library Filter's "metadata" columns.
+  // AND-combined with everything else. Camera/lens/codec/year now travel here;
+  // the scalar fields 8–11 above remain honored for back-compat but new
+  // clients leave them empty and send these instead.
+  repeated MetadataFilter metadata_filters = 18;
+  // Full-text query (filename / notes), matched the same way as SearchVideos.
+  // Empty = no text filter. Folding search into ListVideos lets the text
+  // filter compose with all the others; the separate SearchVideos RPC remains
+  // for legacy callers.
+  string search_query = 19;
 }
 
 message VideoSummary {
@@ -691,6 +721,62 @@ message FilterOptions {
   // verbatim. Clients can use these as the dropdown labels while
   // sending the matching `cameras` entry as the filter value.
   repeated string camera_display_names = 5;
+}
+
+// --- Faceted metadata filtering (Library Filter "metadata" mode) ---
+
+message MetadataFacetsRequest {
+  // Upstream narrowing filters — the same higher-level filters that scope the
+  // grid (library location, keyword/tags, collection, geo proximity, the
+  // Lightroom user-mark "attribute" filters, and the text query). Facet values
+  // are computed within the set these select.
+  string location_path = 1;
+  repeated string filter_tags = 2;
+  string collection_id = 3;
+  bool filter_by_location = 4;
+  double filter_latitude = 5;
+  double filter_longitude = 6;
+  double filter_radius_km = 7;
+  int32 filter_min_rating = 8;
+  string filter_color_label = 9;
+  string search_query = 10;
+  // The ordered metadata columns, left→right. Column i's returned values are
+  // computed with every column to its LEFT applied (the cascade) plus all the
+  // upstream filters above. A column whose `value` is empty adds no constraint;
+  // a column whose `key` is empty is a placeholder slot (returns no values but
+  // still occupies a position so the response stays index-aligned).
+  repeated MetadataFilter columns = 11;
+}
+
+// One selectable value within a facet column.
+message FacetValue {
+  string token = 1;     // exact value to echo back as MetadataFilter.value
+  string display = 2;   // human-readable label (e.g. "Sony a7R III", "1/4000 s", "f/1.8")
+  int64 count = 3;      // videos matching this value within the column's cascade
+}
+
+// The available values for one metadata column.
+message MetadataFacetColumn {
+  string key = 1;            // echoes the request column's key ("" for a placeholder)
+  string display_name = 2;   // human-readable column title ("Camera", "ISO", "Exposure")
+  bool is_numeric = 3;       // formatting / sorting hint
+  repeated FacetValue values = 4;
+}
+
+// A metadata key the user can choose for a column.
+message MetadataKeyInfo {
+  string key = 1;
+  string display_name = 2;
+  bool is_numeric = 3;
+}
+
+message MetadataFacetsResponse {
+  // One entry per request column, in the SAME order (placeholder columns get an
+  // empty `values` list) so clients align facets to columns by index.
+  repeated MetadataFacetColumn columns = 1;
+  // Every metadata key that has at least one value in the current upstream-
+  // filtered set — populates each column's "change key" picker.
+  repeated MetadataKeyInfo available_keys = 2;
 }
 
 // Catalog lifecycle

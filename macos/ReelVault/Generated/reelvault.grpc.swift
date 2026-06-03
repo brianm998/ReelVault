@@ -18,13 +18,13 @@ import GRPCProtobuf
 
 /// Namespace containing generated types for the "reelvault.ReelVault" service.
 @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-internal enum Reelvault_ReelVault: Sendable {
+internal enum Reelvault_ReelVault {
     /// Service descriptor for the "reelvault.ReelVault" service.
     internal static let descriptor = GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault")
     /// Namespace for method metadata.
-    internal enum Method: Sendable {
+    internal enum Method {
         /// Namespace for "ListVideos" metadata.
-        internal enum ListVideos: Sendable {
+        internal enum ListVideos {
             /// Request type for "ListVideos".
             internal typealias Input = Reelvault_ListVideosRequest
             /// Response type for "ListVideos".
@@ -36,7 +36,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "SearchVideos" metadata.
-        internal enum SearchVideos: Sendable {
+        internal enum SearchVideos {
             /// Request type for "SearchVideos".
             internal typealias Input = Reelvault_SearchRequest
             /// Response type for "SearchVideos".
@@ -48,7 +48,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "GetMetadata" metadata.
-        internal enum GetMetadata: Sendable {
+        internal enum GetMetadata {
             /// Request type for "GetMetadata".
             internal typealias Input = Reelvault_GetMetadataRequest
             /// Response type for "GetMetadata".
@@ -60,7 +60,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "GetThumbnail" metadata.
-        internal enum GetThumbnail: Sendable {
+        internal enum GetThumbnail {
             /// Request type for "GetThumbnail".
             internal typealias Input = Reelvault_GetThumbnailRequest
             /// Response type for "GetThumbnail".
@@ -72,7 +72,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "AddLibraryLocation" metadata.
-        internal enum AddLibraryLocation: Sendable {
+        internal enum AddLibraryLocation {
             /// Request type for "AddLibraryLocation".
             internal typealias Input = Reelvault_AddLocationRequest
             /// Response type for "AddLibraryLocation".
@@ -84,7 +84,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "RemoveLibraryLocation" metadata.
-        internal enum RemoveLibraryLocation: Sendable {
+        internal enum RemoveLibraryLocation {
             /// Request type for "RemoveLibraryLocation".
             internal typealias Input = Reelvault_RemoveLocationRequest
             /// Response type for "RemoveLibraryLocation".
@@ -96,7 +96,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "ListLibraryLocations" metadata.
-        internal enum ListLibraryLocations: Sendable {
+        internal enum ListLibraryLocations {
             /// Request type for "ListLibraryLocations".
             internal typealias Input = Reelvault_ListLocationsRequest
             /// Response type for "ListLibraryLocations".
@@ -108,7 +108,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "ScanLibrary" metadata.
-        internal enum ScanLibrary: Sendable {
+        internal enum ScanLibrary {
             /// Request type for "ScanLibrary".
             internal typealias Input = Reelvault_ScanLibraryRequest
             /// Response type for "ScanLibrary".
@@ -120,7 +120,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "GetScanStatus" metadata.
-        internal enum GetScanStatus: Sendable {
+        internal enum GetScanStatus {
             /// Request type for "GetScanStatus".
             internal typealias Input = Reelvault_GetScanStatusRequest
             /// Response type for "GetScanStatus".
@@ -132,7 +132,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "CreateTag" metadata.
-        internal enum CreateTag: Sendable {
+        internal enum CreateTag {
             /// Request type for "CreateTag".
             internal typealias Input = Reelvault_CreateTagRequest
             /// Response type for "CreateTag".
@@ -144,7 +144,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "DeleteTag" metadata.
-        internal enum DeleteTag: Sendable {
+        internal enum DeleteTag {
             /// Request type for "DeleteTag".
             internal typealias Input = Reelvault_DeleteTagRequest
             /// Response type for "DeleteTag".
@@ -156,7 +156,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "ListTags" metadata.
-        internal enum ListTags: Sendable {
+        internal enum ListTags {
             /// Request type for "ListTags".
             internal typealias Input = Reelvault_ListTagsRequest
             /// Response type for "ListTags".
@@ -168,7 +168,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "TagVideos" metadata.
-        internal enum TagVideos: Sendable {
+        internal enum TagVideos {
             /// Request type for "TagVideos".
             internal typealias Input = Reelvault_TagVideosRequest
             /// Response type for "TagVideos".
@@ -180,7 +180,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UntagVideos" metadata.
-        internal enum UntagVideos: Sendable {
+        internal enum UntagVideos {
             /// Request type for "UntagVideos".
             internal typealias Input = Reelvault_UntagVideosRequest
             /// Response type for "UntagVideos".
@@ -192,7 +192,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "CreateCollection" metadata.
-        internal enum CreateCollection: Sendable {
+        internal enum CreateCollection {
             /// Request type for "CreateCollection".
             internal typealias Input = Reelvault_CreateCollectionRequest
             /// Response type for "CreateCollection".
@@ -204,7 +204,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "DeleteCollection" metadata.
-        internal enum DeleteCollection: Sendable {
+        internal enum DeleteCollection {
             /// Request type for "DeleteCollection".
             internal typealias Input = Reelvault_DeleteCollectionRequest
             /// Response type for "DeleteCollection".
@@ -216,7 +216,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "ListCollections" metadata.
-        internal enum ListCollections: Sendable {
+        internal enum ListCollections {
             /// Request type for "ListCollections".
             internal typealias Input = Reelvault_ListCollectionsRequest
             /// Response type for "ListCollections".
@@ -228,7 +228,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "AddToCollection" metadata.
-        internal enum AddToCollection: Sendable {
+        internal enum AddToCollection {
             /// Request type for "AddToCollection".
             internal typealias Input = Reelvault_AddToCollectionRequest
             /// Response type for "AddToCollection".
@@ -240,7 +240,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "RemoveFromCollection" metadata.
-        internal enum RemoveFromCollection: Sendable {
+        internal enum RemoveFromCollection {
             /// Request type for "RemoveFromCollection".
             internal typealias Input = Reelvault_RemoveFromCollectionRequest
             /// Response type for "RemoveFromCollection".
@@ -252,7 +252,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UpdateVideoNotes" metadata.
-        internal enum UpdateVideoNotes: Sendable {
+        internal enum UpdateVideoNotes {
             /// Request type for "UpdateVideoNotes".
             internal typealias Input = Reelvault_UpdateNotesRequest
             /// Response type for "UpdateVideoNotes".
@@ -264,7 +264,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "DeleteVideo" metadata.
-        internal enum DeleteVideo: Sendable {
+        internal enum DeleteVideo {
             /// Request type for "DeleteVideo".
             internal typealias Input = Reelvault_DeleteVideoRequest
             /// Response type for "DeleteVideo".
@@ -276,7 +276,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "ListGroupMembers" metadata.
-        internal enum ListGroupMembers: Sendable {
+        internal enum ListGroupMembers {
             /// Request type for "ListGroupMembers".
             internal typealias Input = Reelvault_ListGroupMembersRequest
             /// Response type for "ListGroupMembers".
@@ -288,7 +288,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "CreateGroup" metadata.
-        internal enum CreateGroup: Sendable {
+        internal enum CreateGroup {
             /// Request type for "CreateGroup".
             internal typealias Input = Reelvault_CreateGroupRequest
             /// Response type for "CreateGroup".
@@ -300,7 +300,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UngroupVideo" metadata.
-        internal enum UngroupVideo: Sendable {
+        internal enum UngroupVideo {
             /// Request type for "UngroupVideo".
             internal typealias Input = Reelvault_UngroupVideoRequest
             /// Response type for "UngroupVideo".
@@ -312,7 +312,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "SetGroupPreferred" metadata.
-        internal enum SetGroupPreferred: Sendable {
+        internal enum SetGroupPreferred {
             /// Request type for "SetGroupPreferred".
             internal typealias Input = Reelvault_SetGroupPreferredRequest
             /// Response type for "SetGroupPreferred".
@@ -324,7 +324,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "AutoGroupVideos" metadata.
-        internal enum AutoGroupVideos: Sendable {
+        internal enum AutoGroupVideos {
             /// Request type for "AutoGroupVideos".
             internal typealias Input = Reelvault_AutoGroupRequest
             /// Response type for "AutoGroupVideos".
@@ -336,7 +336,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "GenerateProxy" metadata.
-        internal enum GenerateProxy: Sendable {
+        internal enum GenerateProxy {
             /// Request type for "GenerateProxy".
             internal typealias Input = Reelvault_GenerateProxyRequest
             /// Response type for "GenerateProxy".
@@ -348,7 +348,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "ListProxies" metadata.
-        internal enum ListProxies: Sendable {
+        internal enum ListProxies {
             /// Request type for "ListProxies".
             internal typealias Input = Reelvault_ListProxiesRequest
             /// Response type for "ListProxies".
@@ -360,7 +360,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "SetProxyOf" metadata.
-        internal enum SetProxyOf: Sendable {
+        internal enum SetProxyOf {
             /// Request type for "SetProxyOf".
             internal typealias Input = Reelvault_SetProxyOfRequest
             /// Response type for "SetProxyOf".
@@ -372,7 +372,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "RemoveProxyLink" metadata.
-        internal enum RemoveProxyLink: Sendable {
+        internal enum RemoveProxyLink {
             /// Request type for "RemoveProxyLink".
             internal typealias Input = Reelvault_RemoveProxyLinkRequest
             /// Response type for "RemoveProxyLink".
@@ -384,7 +384,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "DetectProxies" metadata.
-        internal enum DetectProxies: Sendable {
+        internal enum DetectProxies {
             /// Request type for "DetectProxies".
             internal typealias Input = Reelvault_DetectProxiesRequest
             /// Response type for "DetectProxies".
@@ -396,7 +396,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "GetFilterOptions" metadata.
-        internal enum GetFilterOptions: Sendable {
+        internal enum GetFilterOptions {
             /// Request type for "GetFilterOptions".
             internal typealias Input = Reelvault_GetFilterOptionsRequest
             /// Response type for "GetFilterOptions".
@@ -407,8 +407,20 @@ internal enum Reelvault_ReelVault: Sendable {
                 method: "GetFilterOptions"
             )
         }
+        /// Namespace for "GetMetadataFacets" metadata.
+        internal enum GetMetadataFacets {
+            /// Request type for "GetMetadataFacets".
+            internal typealias Input = Reelvault_MetadataFacetsRequest
+            /// Response type for "GetMetadataFacets".
+            internal typealias Output = Reelvault_MetadataFacetsResponse
+            /// Descriptor for "GetMetadataFacets".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "GetMetadataFacets"
+            )
+        }
         /// Namespace for "GetStatus" metadata.
-        internal enum GetStatus: Sendable {
+        internal enum GetStatus {
             /// Request type for "GetStatus".
             internal typealias Input = Reelvault_GetStatusRequest
             /// Response type for "GetStatus".
@@ -420,7 +432,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "GetConfig" metadata.
-        internal enum GetConfig: Sendable {
+        internal enum GetConfig {
             /// Request type for "GetConfig".
             internal typealias Input = Reelvault_GetConfigRequest
             /// Response type for "GetConfig".
@@ -432,7 +444,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UpdateConfig" metadata.
-        internal enum UpdateConfig: Sendable {
+        internal enum UpdateConfig {
             /// Request type for "UpdateConfig".
             internal typealias Input = Reelvault_UpdateConfigRequest
             /// Response type for "UpdateConfig".
@@ -444,7 +456,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "OpenCatalog" metadata.
-        internal enum OpenCatalog: Sendable {
+        internal enum OpenCatalog {
             /// Request type for "OpenCatalog".
             internal typealias Input = Reelvault_OpenCatalogRequest
             /// Response type for "OpenCatalog".
@@ -456,7 +468,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "CloseCatalog" metadata.
-        internal enum CloseCatalog: Sendable {
+        internal enum CloseCatalog {
             /// Request type for "CloseCatalog".
             internal typealias Input = Reelvault_CloseCatalogRequest
             /// Response type for "CloseCatalog".
@@ -468,7 +480,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "GetCurrentCatalog" metadata.
-        internal enum GetCurrentCatalog: Sendable {
+        internal enum GetCurrentCatalog {
             /// Request type for "GetCurrentCatalog".
             internal typealias Input = Reelvault_GetCurrentCatalogRequest
             /// Response type for "GetCurrentCatalog".
@@ -480,7 +492,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UpdateVideoLocation" metadata.
-        internal enum UpdateVideoLocation: Sendable {
+        internal enum UpdateVideoLocation {
             /// Request type for "UpdateVideoLocation".
             internal typealias Input = Reelvault_UpdateVideoLocationRequest
             /// Response type for "UpdateVideoLocation".
@@ -492,7 +504,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "ListVideosWithLocations" metadata.
-        internal enum ListVideosWithLocations: Sendable {
+        internal enum ListVideosWithLocations {
             /// Request type for "ListVideosWithLocations".
             internal typealias Input = Reelvault_ListVideosWithLocationsRequest
             /// Response type for "ListVideosWithLocations".
@@ -504,7 +516,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "ListNamedLocations" metadata.
-        internal enum ListNamedLocations: Sendable {
+        internal enum ListNamedLocations {
             /// Request type for "ListNamedLocations".
             internal typealias Input = Reelvault_ListNamedLocationsRequest
             /// Response type for "ListNamedLocations".
@@ -516,7 +528,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UpsertNamedLocation" metadata.
-        internal enum UpsertNamedLocation: Sendable {
+        internal enum UpsertNamedLocation {
             /// Request type for "UpsertNamedLocation".
             internal typealias Input = Reelvault_UpsertNamedLocationRequest
             /// Response type for "UpsertNamedLocation".
@@ -528,7 +540,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "DeleteNamedLocation" metadata.
-        internal enum DeleteNamedLocation: Sendable {
+        internal enum DeleteNamedLocation {
             /// Request type for "DeleteNamedLocation".
             internal typealias Input = Reelvault_DeleteNamedLocationRequest
             /// Response type for "DeleteNamedLocation".
@@ -540,7 +552,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UpdateVideoCaptureDate" metadata.
-        internal enum UpdateVideoCaptureDate: Sendable {
+        internal enum UpdateVideoCaptureDate {
             /// Request type for "UpdateVideoCaptureDate".
             internal typealias Input = Reelvault_UpdateVideoCaptureDateRequest
             /// Response type for "UpdateVideoCaptureDate".
@@ -552,7 +564,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UpdateVideoRating" metadata.
-        internal enum UpdateVideoRating: Sendable {
+        internal enum UpdateVideoRating {
             /// Request type for "UpdateVideoRating".
             internal typealias Input = Reelvault_UpdateVideoRatingRequest
             /// Response type for "UpdateVideoRating".
@@ -564,7 +576,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UpdateVideoColorLabel" metadata.
-        internal enum UpdateVideoColorLabel: Sendable {
+        internal enum UpdateVideoColorLabel {
             /// Request type for "UpdateVideoColorLabel".
             internal typealias Input = Reelvault_UpdateVideoColorLabelRequest
             /// Response type for "UpdateVideoColorLabel".
@@ -576,7 +588,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "GetGridSettings" metadata.
-        internal enum GetGridSettings: Sendable {
+        internal enum GetGridSettings {
             /// Request type for "GetGridSettings".
             internal typealias Input = Reelvault_GetGridSettingsRequest
             /// Response type for "GetGridSettings".
@@ -588,7 +600,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UpdateGridSettings" metadata.
-        internal enum UpdateGridSettings: Sendable {
+        internal enum UpdateGridSettings {
             /// Request type for "UpdateGridSettings".
             internal typealias Input = Reelvault_GridSettings
             /// Response type for "UpdateGridSettings".
@@ -600,7 +612,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "SubscribeCatalogEvents" metadata.
-        internal enum SubscribeCatalogEvents: Sendable {
+        internal enum SubscribeCatalogEvents {
             /// Request type for "SubscribeCatalogEvents".
             internal typealias Input = Reelvault_SubscribeCatalogEventsRequest
             /// Response type for "SubscribeCatalogEvents".
@@ -612,7 +624,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "GetWatchSettings" metadata.
-        internal enum GetWatchSettings: Sendable {
+        internal enum GetWatchSettings {
             /// Request type for "GetWatchSettings".
             internal typealias Input = Reelvault_GetWatchSettingsRequest
             /// Response type for "GetWatchSettings".
@@ -624,7 +636,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UpdateWatchSettings" metadata.
-        internal enum UpdateWatchSettings: Sendable {
+        internal enum UpdateWatchSettings {
             /// Request type for "UpdateWatchSettings".
             internal typealias Input = Reelvault_WatchSettings
             /// Response type for "UpdateWatchSettings".
@@ -636,7 +648,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "ListCameraNameMappings" metadata.
-        internal enum ListCameraNameMappings: Sendable {
+        internal enum ListCameraNameMappings {
             /// Request type for "ListCameraNameMappings".
             internal typealias Input = Reelvault_ListCameraNameMappingsRequest
             /// Response type for "ListCameraNameMappings".
@@ -648,7 +660,7 @@ internal enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "SetCameraNameMapping" metadata.
-        internal enum SetCameraNameMapping: Sendable {
+        internal enum SetCameraNameMapping {
             /// Request type for "SetCameraNameMapping".
             internal typealias Input = Reelvault_SetCameraNameMappingRequest
             /// Response type for "SetCameraNameMapping".
@@ -693,6 +705,7 @@ internal enum Reelvault_ReelVault: Sendable {
             RemoveProxyLink.descriptor,
             DetectProxies.descriptor,
             GetFilterOptions.descriptor,
+            GetMetadataFacets.descriptor,
             GetStatus.descriptor,
             GetConfig.descriptor,
             UpdateConfig.descriptor,
@@ -1222,6 +1235,29 @@ extension Reelvault_ReelVault {
             request: GRPCCore.StreamingServerRequest<Reelvault_GetFilterOptionsRequest>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_FilterOptions>
+
+        /// Handle the "GetMetadataFacets" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Faceted filter values for the Library Filter's "metadata" mode. Given the
+        /// > upstream filters (library location, keywords, attributes, text) and an
+        /// > ordered list of metadata columns, returns the distinct values available
+        /// > for each column — where column i is constrained by every column to its
+        /// > left (the left→right cascade) — plus the set of metadata keys that have
+        /// > any data in the current filtered set (for the column key picker).
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Reelvault_MetadataFacetsRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Reelvault_MetadataFacetsResponse` messages.
+        func getMetadataFacets(
+            request: GRPCCore.StreamingServerRequest<Reelvault_MetadataFacetsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_MetadataFacetsResponse>
 
         /// Handle the "GetStatus" method.
         ///
@@ -2081,6 +2117,29 @@ extension Reelvault_ReelVault {
             request: GRPCCore.ServerRequest<Reelvault_GetFilterOptionsRequest>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.ServerResponse<Reelvault_FilterOptions>
+
+        /// Handle the "GetMetadataFacets" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Faceted filter values for the Library Filter's "metadata" mode. Given the
+        /// > upstream filters (library location, keywords, attributes, text) and an
+        /// > ordered list of metadata columns, returns the distinct values available
+        /// > for each column — where column i is constrained by every column to its
+        /// > left (the left→right cascade) — plus the set of metadata keys that have
+        /// > any data in the current filtered set (for the column key picker).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_MetadataFacetsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Reelvault_MetadataFacetsResponse` message.
+        func getMetadataFacets(
+            request: GRPCCore.ServerRequest<Reelvault_MetadataFacetsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Reelvault_MetadataFacetsResponse>
 
         /// Handle the "GetStatus" method.
         ///
@@ -2942,6 +3001,29 @@ extension Reelvault_ReelVault {
             context: GRPCCore.ServerContext
         ) async throws -> Reelvault_FilterOptions
 
+        /// Handle the "GetMetadataFacets" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Faceted filter values for the Library Filter's "metadata" mode. Given the
+        /// > upstream filters (library location, keywords, attributes, text) and an
+        /// > ordered list of metadata columns, returns the distinct values available
+        /// > for each column — where column i is constrained by every column to its
+        /// > left (the left→right cascade) — plus the set of metadata keys that have
+        /// > any data in the current filtered set (for the column key picker).
+        ///
+        /// - Parameters:
+        ///   - request: A `Reelvault_MetadataFacetsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Reelvault_MetadataFacetsResponse` to respond with.
+        func getMetadataFacets(
+            request: Reelvault_MetadataFacetsRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Reelvault_MetadataFacetsResponse
+
         /// Handle the "GetStatus" method.
         ///
         /// > Source IDL Documentation:
@@ -3668,6 +3750,17 @@ extension Reelvault_ReelVault.StreamingServiceProtocol {
             }
         )
         router.registerHandler(
+            forMethod: Reelvault_ReelVault.Method.GetMetadataFacets.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_MetadataFacetsRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_MetadataFacetsResponse>(),
+            handler: { request, context in
+                try await self.getMetadataFacets(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
             forMethod: Reelvault_ReelVault.Method.GetStatus.descriptor,
             deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_GetStatusRequest>(),
             serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_StatusResponse>(),
@@ -4250,6 +4343,17 @@ extension Reelvault_ReelVault.ServiceProtocol {
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_FilterOptions> {
         let response = try await self.getFilterOptions(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func getMetadataFacets(
+        request: GRPCCore.StreamingServerRequest<Reelvault_MetadataFacetsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_MetadataFacetsResponse> {
+        let response = try await self.getMetadataFacets(
             request: GRPCCore.ServerRequest(stream: request),
             context: context
         )
@@ -4912,6 +5016,19 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
     ) async throws -> GRPCCore.ServerResponse<Reelvault_FilterOptions> {
         return GRPCCore.ServerResponse<Reelvault_FilterOptions>(
             message: try await self.getFilterOptions(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func getMetadataFacets(
+        request: GRPCCore.ServerRequest<Reelvault_MetadataFacetsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Reelvault_MetadataFacetsResponse> {
+        return GRPCCore.ServerResponse<Reelvault_MetadataFacetsResponse>(
+            message: try await self.getMetadataFacets(
                 request: request.message,
                 context: context
             ),
@@ -5848,6 +5965,34 @@ extension Reelvault_ReelVault {
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_FilterOptions>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_FilterOptions>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "GetMetadataFacets" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Faceted filter values for the Library Filter's "metadata" mode. Given the
+        /// > upstream filters (library location, keywords, attributes, text) and an
+        /// > ordered list of metadata columns, returns the distinct values available
+        /// > for each column — where column i is constrained by every column to its
+        /// > left (the left→right cascade) — plus the set of metadata keys that have
+        /// > any data in the current filtered set (for the column key picker).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_MetadataFacetsRequest` message.
+        ///   - serializer: A serializer for `Reelvault_MetadataFacetsRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_MetadataFacetsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func getMetadataFacets<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_MetadataFacetsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_MetadataFacetsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_MetadataFacetsResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_MetadataFacetsResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
         /// Call the "GetStatus" method.
@@ -7321,6 +7466,45 @@ extension Reelvault_ReelVault {
             try await self.client.unary(
                 request: request,
                 descriptor: Reelvault_ReelVault.Method.GetFilterOptions.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "GetMetadataFacets" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Faceted filter values for the Library Filter's "metadata" mode. Given the
+        /// > upstream filters (library location, keywords, attributes, text) and an
+        /// > ordered list of metadata columns, returns the distinct values available
+        /// > for each column — where column i is constrained by every column to its
+        /// > left (the left→right cascade) — plus the set of metadata keys that have
+        /// > any data in the current filtered set (for the column key picker).
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_MetadataFacetsRequest` message.
+        ///   - serializer: A serializer for `Reelvault_MetadataFacetsRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_MetadataFacetsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func getMetadataFacets<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_MetadataFacetsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_MetadataFacetsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_MetadataFacetsResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_MetadataFacetsResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Reelvault_ReelVault.Method.GetMetadataFacets.descriptor,
                 serializer: serializer,
                 deserializer: deserializer,
                 options: options,
@@ -8854,6 +9038,40 @@ extension Reelvault_ReelVault.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_GetFilterOptionsRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_FilterOptions>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetMetadataFacets" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Faceted filter values for the Library Filter's "metadata" mode. Given the
+    /// > upstream filters (library location, keywords, attributes, text) and an
+    /// > ordered list of metadata columns, returns the distinct values available
+    /// > for each column — where column i is constrained by every column to its
+    /// > left (the left→right cascade) — plus the set of metadata keys that have
+    /// > any data in the current filtered set (for the column key picker).
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Reelvault_MetadataFacetsRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func getMetadataFacets<Result>(
+        request: GRPCCore.ClientRequest<Reelvault_MetadataFacetsRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_MetadataFacetsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getMetadataFacets(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_MetadataFacetsRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_MetadataFacetsResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -10406,6 +10624,44 @@ extension Reelvault_ReelVault.ClientProtocol {
             metadata: metadata
         )
         return try await self.getFilterOptions(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetMetadataFacets" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Faceted filter values for the Library Filter's "metadata" mode. Given the
+    /// > upstream filters (library location, keywords, attributes, text) and an
+    /// > ordered list of metadata columns, returns the distinct values available
+    /// > for each column — where column i is constrained by every column to its
+    /// > left (the left→right cascade) — plus the set of metadata keys that have
+    /// > any data in the current filtered set (for the column key picker).
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func getMetadataFacets<Result>(
+        _ message: Reelvault_MetadataFacetsRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_MetadataFacetsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Reelvault_MetadataFacetsRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getMetadataFacets(
             request: request,
             options: options,
             onResponse: handleResponse

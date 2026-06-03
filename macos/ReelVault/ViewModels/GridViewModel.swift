@@ -37,12 +37,14 @@ class GridViewModel: ObservableObject {
     /// whose filters are applied via individual filter fields instead).
     private var collectionIdFilter: String? = nil
 
-    // Top-bar dropdown filters and their distinct-value options.
-    @Published var filterCamera: String = ""
-    @Published var filterLens: String = ""
-    @Published var filterCodec: String = ""
-    @Published var filterCaptureYear: Int32 = 0
-    @Published var filterOptions = FilterOptions()
+    // Library Filter — "metadata" mode. `metadataColumns` is the ordered list
+    // of columns (camera/lens/exposure/iso by default); `facetColumns` holds
+    // the server's per-column available values (1:1 with columns by index);
+    // `availableMetadataKeys` populates each column's key picker.
+    @Published var libraryFilterMode: LibraryFilterMode = .text
+    @Published var metadataColumns: [MetadataColumn] = LibraryFilterPrefs.loadColumns()
+    @Published var facetColumns: [MetadataFacetColumn] = []
+    @Published var availableMetadataKeys: [MetadataKeyInfo] = []
 
     // Lightroom-style user-mark filters.
     //   filterMinRating: 0 = no filter; 1..5 = "show videos with ≥ N stars".
@@ -458,6 +460,8 @@ class GridViewModel: ObservableObject {
     /// fetch is in flight.
     private func reloadForFilterChange() {
         reloadFromTop(showSpinner: true)
+        // Every filter change also re-narrows the available metadata facets.
+        scheduleFacetRefresh()
     }
 
     /// - Parameter showSpinner: When true, clear the current grid and flip
@@ -513,13 +517,10 @@ class GridViewModel: ObservableObject {
                 sortAscending: sortAscending,
                 locationPath: selectedLocationPath,
                 filterTagIds: filterTagIds,
-                filterCamera: filterCamera,
-                filterLens: filterLens,
-                filterCodec: filterCodec,
-                filterCaptureYear: filterCaptureYear,
                 geoFilter: geo,
                 filterMinRating: filterMinRating,
                 filterColorLabel: filterColorLabel,
+                metadataFilters: activeMetadataFilters(),
                 collectionId: collectionIdFilter
             )
             // A newer reload may have superseded us while listVideos was in
@@ -579,12 +580,11 @@ class GridViewModel: ObservableObject {
         }
         if col.isSmart, !col.filterJson.isEmpty,
            let f = SmartCollectionFilters.from(json: col.filterJson) {
-            // Smart collection: apply its saved filters as individual fields.
+            // Smart collection: apply its saved filters. Camera/lens/codec/year
+            // map onto metadata columns; the rest stay as dedicated fields.
             collectionIdFilter = nil
-            filterCamera = f.camera
-            filterLens = f.lens
-            filterCodec = f.codec
-            filterCaptureYear = f.captureYear
+            metadataColumns = Self.metadataColumns(from: f)
+            LibraryFilterPrefs.saveColumns(metadataColumns)
             filterMinRating = f.minRating
             filterColorLabel = f.colorLabel
             filterTagId = f.tagIds.first ?? ""
@@ -640,16 +640,30 @@ class GridViewModel: ObservableObject {
     }
 
     func buildSmartCollectionFilterJson() -> String {
+        func colValue(_ key: String) -> String {
+            metadataColumns.first { $0.key == key && !$0.value.isEmpty }?.value ?? ""
+        }
         let f = SmartCollectionFilters(
-            camera: filterCamera,
-            lens: filterLens,
-            codec: filterCodec,
-            captureYear: filterCaptureYear,
+            camera: colValue("camera"),
+            lens: colValue("lens"),
+            codec: colValue("codec"),
+            captureYear: Int32(colValue("year")) ?? 0,
             minRating: filterMinRating,
             colorLabel: filterColorLabel,
             tagIds: filterTagId.isEmpty ? [] : [filterTagId]
         )
         return f.toJson()
+    }
+
+    /// Build metadata columns from a smart collection's saved scalar filters.
+    /// Falls back to the defaults when the saved filter set is empty.
+    private static func metadataColumns(from f: SmartCollectionFilters) -> [MetadataColumn] {
+        var cols: [MetadataColumn] = []
+        if !f.camera.isEmpty { cols.append(MetadataColumn(key: "camera", value: f.camera)) }
+        if !f.lens.isEmpty { cols.append(MetadataColumn(key: "lens", value: f.lens)) }
+        if !f.codec.isEmpty { cols.append(MetadataColumn(key: "codec", value: f.codec)) }
+        if f.captureYear != 0 { cols.append(MetadataColumn(key: "year", value: String(f.captureYear))) }
+        return cols.isEmpty ? defaultMetadataColumns : cols
     }
 
     // MARK: - Keywords / tags
@@ -670,32 +684,7 @@ class GridViewModel: ObservableObject {
         reloadForFilterChange()
     }
 
-    func loadFilterOptions() {
-        Task {
-            filterOptions = await repository.getFilterOptions()
-        }
-    }
-
-    func setCameraFilter(_ value: String) {
-        guard filterCamera != value else { return }
-        filterCamera = value
-        reloadForFilterChange()
-    }
-    func setLensFilter(_ value: String) {
-        guard filterLens != value else { return }
-        filterLens = value
-        reloadForFilterChange()
-    }
-    func setCodecFilter(_ value: String) {
-        guard filterCodec != value else { return }
-        filterCodec = value
-        reloadForFilterChange()
-    }
-    func setCaptureYearFilter(_ year: Int32) {
-        guard filterCaptureYear != year else { return }
-        filterCaptureYear = year
-        reloadForFilterChange()
-    }
+    // MARK: - Library Filter: attribute mode (rating + colour)
 
     func setMinRatingFilter(_ n: Int32) {
         guard filterMinRating != n else { return }
@@ -709,16 +698,118 @@ class GridViewModel: ObservableObject {
         reloadForFilterChange()
     }
 
-    func clearAllDropdownFilters() {
+    // MARK: - Library Filter: mode + metadata columns
+
+    /// Switch which Library Filter editor is visible. The Clear button calls
+    /// `clearLibraryFilter()` directly (it's a momentary action, not a mode).
+    func setLibraryFilterMode(_ mode: LibraryFilterMode) {
+        if mode == .clear { clearLibraryFilter(); return }
+        guard libraryFilterMode != mode else { return }
+        libraryFilterMode = mode
+        if mode == .metadata { scheduleFacetRefresh() }
+    }
+
+    /// The active metadata-column constraints sent to the daemon.
+    private func activeMetadataFilters() -> [(key: String, value: String)] {
+        metadataColumns
+            .filter { !$0.key.isEmpty && !$0.value.isEmpty }
+            .map { (key: $0.key, value: $0.value) }
+    }
+
+    /// Facet column matched to `metadataColumns[index]` by position (nil while
+    /// a refresh is in flight or for placeholder columns).
+    func facetColumn(at index: Int) -> MetadataFacetColumn? {
+        facetColumns.indices.contains(index) ? facetColumns[index] : nil
+    }
+
+    /// Pick a value (facet token) in metadata column `index`; "" = "All".
+    func setMetadataColumnValue(at index: Int, token: String) {
+        guard metadataColumns.indices.contains(index),
+              metadataColumns[index].value != token else { return }
+        metadataColumns[index].value = token
+        reloadForFilterChange()
+    }
+
+    /// Change the metadata key of column `index`; resets its selected value.
+    func setMetadataColumnKey(at index: Int, key: String) {
+        guard metadataColumns.indices.contains(index),
+              metadataColumns[index].key != key else { return }
+        let hadActiveValue = !metadataColumns[index].key.isEmpty && !metadataColumns[index].value.isEmpty
+        metadataColumns[index] = MetadataColumn(key: key, value: "")
+        LibraryFilterPrefs.saveColumns(metadataColumns)
+        if hadActiveValue { reloadForFilterChange() } else { scheduleFacetRefresh() }
+    }
+
+    enum ColumnInsertPosition { case front, end }
+
+    /// Insert a new (empty) metadata column at the front or the end.
+    func addMetadataColumn(at position: ColumnInsertPosition) {
+        switch position {
+        case .front: metadataColumns.insert(MetadataColumn(), at: 0)
+        case .end:   metadataColumns.append(MetadataColumn())
+        }
+        LibraryFilterPrefs.saveColumns(metadataColumns)
+        scheduleFacetRefresh()
+    }
+
+    /// Remove metadata column `index`. No-op when only one column remains.
+    func removeMetadataColumn(at index: Int) {
+        guard metadataColumns.count > 1, metadataColumns.indices.contains(index) else { return }
+        let removed = metadataColumns.remove(at: index)
+        LibraryFilterPrefs.saveColumns(metadataColumns)
+        if !removed.key.isEmpty && !removed.value.isEmpty { reloadForFilterChange() }
+        else { scheduleFacetRefresh() }
+    }
+
+    /// Reset the Library Filter (search + attribute + metadata values) so all
+    /// videos show, subject to the higher-level location / keyword filters. The
+    /// metadata column layout (keys/order) is preserved.
+    func clearLibraryFilter() {
         var changed = false
-        if !filterCamera.isEmpty { filterCamera = ""; changed = true }
-        if !filterLens.isEmpty { filterLens = ""; changed = true }
-        if !filterCodec.isEmpty { filterCodec = ""; changed = true }
-        if filterCaptureYear != 0 { filterCaptureYear = 0; changed = true }
-        if !filterTagId.isEmpty { filterTagId = ""; changed = true }
+        if !searchQuery.isEmpty { searchQuery = ""; changed = true }
         if filterMinRating != 0 { filterMinRating = 0; changed = true }
         if !filterColorLabel.isEmpty { filterColorLabel = ""; changed = true }
-        if changed { reloadForFilterChange() }
+        for i in metadataColumns.indices where !metadataColumns[i].value.isEmpty {
+            metadataColumns[i].value = ""
+            changed = true
+        }
+        // Clear is a resting mode: it stays selected and shows nothing below.
+        libraryFilterMode = .clear
+        if changed { reloadForFilterChange() } else { scheduleFacetRefresh() }
+    }
+
+    /// Trigger an initial facet load (e.g. right after a catalog opens).
+    func refreshMetadataFacets() { scheduleFacetRefresh() }
+
+    private var facetLoadTask: Task<Void, Never>?
+
+    /// Recompute the metadata facets (cancel-in-flight). The server owns the
+    /// cascade, so we always send the full ordered column list and replace the
+    /// results wholesale. Mirrors `loadCurrentPage`'s stale-guard pattern.
+    private func scheduleFacetRefresh() {
+        facetLoadTask?.cancel()
+        facetLoadTask = Task { [weak self] in
+            await self?.performFacetLoad()
+        }
+    }
+
+    private func performFacetLoad() async {
+        let geo: (latitude: Double, longitude: Double, radiusKm: Double)? = filterLocation.map {
+            (latitude: $0.latitude, longitude: $0.longitude, radiusKm: $0.radiusKm)
+        }
+        let result = await repository.getMetadataFacets(
+            locationPath: selectedLocationPath,
+            filterTagIds: filterTagId.isEmpty ? [] : [filterTagId],
+            collectionId: collectionIdFilter,
+            geoFilter: geo,
+            filterMinRating: filterMinRating,
+            filterColorLabel: filterColorLabel,
+            searchQuery: searchQuery,
+            columns: metadataColumns.map { (key: $0.key, value: $0.value) }
+        )
+        if Task.isCancelled { return }
+        facetColumns = result.columns
+        availableMetadataKeys = result.availableKeys
     }
 
     /// Expand `videoIds` so that any video in a COLLAPSED stack is replaced
@@ -955,7 +1046,7 @@ class GridViewModel: ObservableObject {
                 isLoading = false
                 loadVideos()
                 loadLibraryLocations()
-                loadFilterOptions()
+                refreshMetadataFacets()
             } catch {
                 scanResult = ScanResult(
                     success: false,
@@ -1111,7 +1202,7 @@ class GridViewModel: ObservableObject {
             batchScanProgress = nil
             loadVideos()
             loadLibraryLocations()
-            loadFilterOptions()
+            refreshMetadataFacets()
         }
     }
 
@@ -1534,11 +1625,10 @@ class GridViewModel: ObservableObject {
         selectedLocationPath = ""
         tags = []
         filterTagId = ""
-        filterCamera = ""
-        filterLens = ""
-        filterCodec = ""
-        filterCaptureYear = 0
-        filterOptions = FilterOptions()
+        metadataColumns = defaultMetadataColumns
+        facetColumns = []
+        availableMetadataKeys = []
+        libraryFilterMode = .text
         filterMinRating = 0
         filterColorLabel = ""
         topSlots = defaultGridTopSlots
@@ -1710,18 +1800,15 @@ class GridViewModel: ObservableObject {
                 let (page, total) = try await repository.listVideos(
                     limit: batchSize,
                     offset: offset,
-                    searchQuery: "",
+                    searchQuery: searchQuery,
                     sortBy: sortBy,
                     sortAscending: sortAscending,
                     locationPath: selectedLocationPath,
                     filterTagIds: filterTagIds,
-                    filterCamera: filterCamera,
-                    filterLens: filterLens,
-                    filterCodec: filterCodec,
-                    filterCaptureYear: filterCaptureYear,
                     geoFilter: nil,
                     filterMinRating: filterMinRating,
-                    filterColorLabel: filterColorLabel
+                    filterColorLabel: filterColorLabel,
+                    metadataFilters: activeMetadataFilters()
                 )
                 for v in page where v.hasLocation {
                     accumulated.append(VideoLocation(
@@ -1890,7 +1977,7 @@ class GridViewModel: ObservableObject {
                 if success { ok += 1 }
             }
             NSLog("Updated capture date on \(ok)/\(videoIds.count) video(s)")
-            filterOptions = await repository.getFilterOptions()
+            refreshMetadataFacets()
             await loadCurrentPage(replace: true)
             onComplete()
         }
@@ -1930,5 +2017,22 @@ private actor ThumbnailSemaphore {
         } else {
             available += 1
         }
+    }
+}
+
+/// Persists only the metadata column *layout* (the ordered keys) across
+/// sessions; selected values are intentionally transient (reset on relaunch).
+private enum LibraryFilterPrefs {
+    private static let key = "reelvault.libraryFilter.metadataColumns"
+
+    static func loadColumns() -> [MetadataColumn] {
+        let raw = UserDefaults.standard.string(forKey: key) ?? ""
+        let cols = raw.split(separator: ",").map { MetadataColumn(key: String($0)) }
+        return cols.isEmpty ? defaultMetadataColumns : cols
+    }
+
+    static func saveColumns(_ cols: [MetadataColumn]) {
+        let joined = cols.filter { !$0.key.isEmpty }.map(\.key).joined(separator: ",")
+        UserDefaults.standard.set(joined, forKey: key)
     }
 }
