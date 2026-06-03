@@ -640,8 +640,11 @@ class GridViewModel: ObservableObject {
     }
 
     func buildSmartCollectionFilterJson() -> String {
+        // A column's multiple selected values are persisted joined by the wire
+        // separator; the daemon (and metadataColumns(from:)) split it.
         func colValue(_ key: String) -> String {
-            metadataColumns.first { $0.key == key && !$0.value.isEmpty }?.value ?? ""
+            metadataColumns.first { $0.key == key && !$0.values.isEmpty }?
+                .values.sorted().joined(separator: metadataValueSeparator) ?? ""
         }
         let f = SmartCollectionFilters(
             camera: colValue("camera"),
@@ -658,11 +661,14 @@ class GridViewModel: ObservableObject {
     /// Build metadata columns from a smart collection's saved scalar filters.
     /// Falls back to the defaults when the saved filter set is empty.
     private static func metadataColumns(from f: SmartCollectionFilters) -> [MetadataColumn] {
+        func parse(_ s: String) -> Set<String> {
+            Set(s.components(separatedBy: metadataValueSeparator).filter { !$0.isEmpty })
+        }
         var cols: [MetadataColumn] = []
-        if !f.camera.isEmpty { cols.append(MetadataColumn(key: "camera", value: f.camera)) }
-        if !f.lens.isEmpty { cols.append(MetadataColumn(key: "lens", value: f.lens)) }
-        if !f.codec.isEmpty { cols.append(MetadataColumn(key: "codec", value: f.codec)) }
-        if f.captureYear != 0 { cols.append(MetadataColumn(key: "year", value: String(f.captureYear))) }
+        if !f.camera.isEmpty { cols.append(MetadataColumn(key: "camera", values: parse(f.camera))) }
+        if !f.lens.isEmpty { cols.append(MetadataColumn(key: "lens", values: parse(f.lens))) }
+        if !f.codec.isEmpty { cols.append(MetadataColumn(key: "codec", values: parse(f.codec))) }
+        if f.captureYear != 0 { cols.append(MetadataColumn(key: "year", values: [String(f.captureYear)])) }
         return cols.isEmpty ? defaultMetadataColumns : cols
     }
 
@@ -709,11 +715,13 @@ class GridViewModel: ObservableObject {
         if mode == .metadata { scheduleFacetRefresh() }
     }
 
-    /// The active metadata-column constraints sent to the daemon.
+    /// The active metadata-column constraints sent to the daemon. Each column
+    /// with a non-empty selection becomes one filter whose value is its selected
+    /// tokens joined by `metadataValueSeparator`; the daemon OR-matches them.
     private func activeMetadataFilters() -> [(key: String, value: String)] {
         metadataColumns
-            .filter { !$0.key.isEmpty && !$0.value.isEmpty }
-            .map { (key: $0.key, value: $0.value) }
+            .filter { !$0.key.isEmpty && !$0.values.isEmpty }
+            .map { (key: $0.key, value: $0.values.sorted().joined(separator: metadataValueSeparator)) }
     }
 
     /// Facet column matched to `metadataColumns[index]` by position (nil while
@@ -722,20 +730,56 @@ class GridViewModel: ObservableObject {
         facetColumns.indices.contains(index) ? facetColumns[index] : nil
     }
 
-    /// Pick a value (facet token) in metadata column `index`; "" = "All".
-    func setMetadataColumnValue(at index: Int, token: String) {
-        guard metadataColumns.indices.contains(index),
-              metadataColumns[index].value != token else { return }
-        metadataColumns[index].value = token
+    /// Handle a click on facet `token` in metadata column `index`. `token` == ""
+    /// is the "All" row (clears the column). `shift` / `toggle` carry the
+    /// keyboard modifiers (toggle = Cmd or Ctrl on macOS).
+    ///
+    /// Lightroom / Finder multi-select semantics:
+    ///  - "All" selected (empty set) + any value → select only that value,
+    ///    regardless of modifiers.
+    ///  - toggle-click → flip that value's membership; empties back to "All".
+    ///  - shift-click → select the contiguous range from the anchor to the
+    ///    clicked value (in the displayed facet order).
+    ///  - plain click → select only that value.
+    /// Selected values within one column are OR-ed by the daemon.
+    func onMetadataValueClicked(at index: Int, token: String, shift: Bool, toggle: Bool) {
+        guard metadataColumns.indices.contains(index) else { return }
+        var col = metadataColumns[index]
+        let before = col.values
+        if token.isEmpty {
+            col.values = []
+            col.anchor = ""
+        } else if col.values.isEmpty {
+            col.values = [token]
+            col.anchor = token
+        } else if toggle {
+            if col.values.contains(token) { col.values.remove(token) } else { col.values.insert(token) }
+            col.anchor = token
+        } else if shift {
+            let order = facetColumn(at: index)?.values.map { $0.token } ?? []
+            let anchorTok = col.anchor.isEmpty ? (col.values.first ?? token) : col.anchor
+            if let ai = order.firstIndex(of: anchorTok), let ci = order.firstIndex(of: token) {
+                col.values = Set(order[min(ai, ci)...max(ai, ci)])
+                col.anchor = anchorTok
+            } else {
+                col.values = [token]
+                col.anchor = token
+            }
+        } else {
+            col.values = [token]
+            col.anchor = token
+        }
+        guard col.values != before else { return }
+        metadataColumns[index] = col
         reloadForFilterChange()
     }
 
-    /// Change the metadata key of column `index`; resets its selected value.
+    /// Change the metadata key of column `index`; resets its selected values.
     func setMetadataColumnKey(at index: Int, key: String) {
         guard metadataColumns.indices.contains(index),
               metadataColumns[index].key != key else { return }
-        let hadActiveValue = !metadataColumns[index].key.isEmpty && !metadataColumns[index].value.isEmpty
-        metadataColumns[index] = MetadataColumn(key: key, value: "")
+        let hadActiveValue = !metadataColumns[index].key.isEmpty && !metadataColumns[index].values.isEmpty
+        metadataColumns[index] = MetadataColumn(key: key)
         LibraryFilterPrefs.saveColumns(metadataColumns)
         if hadActiveValue { reloadForFilterChange() } else { scheduleFacetRefresh() }
     }
@@ -757,7 +801,7 @@ class GridViewModel: ObservableObject {
         guard metadataColumns.count > 1, metadataColumns.indices.contains(index) else { return }
         let removed = metadataColumns.remove(at: index)
         LibraryFilterPrefs.saveColumns(metadataColumns)
-        if !removed.key.isEmpty && !removed.value.isEmpty { reloadForFilterChange() }
+        if !removed.key.isEmpty && !removed.values.isEmpty { reloadForFilterChange() }
         else { scheduleFacetRefresh() }
     }
 
@@ -769,8 +813,9 @@ class GridViewModel: ObservableObject {
         if !searchQuery.isEmpty { searchQuery = ""; changed = true }
         if filterMinRating != 0 { filterMinRating = 0; changed = true }
         if !filterColorLabel.isEmpty { filterColorLabel = ""; changed = true }
-        for i in metadataColumns.indices where !metadataColumns[i].value.isEmpty {
-            metadataColumns[i].value = ""
+        for i in metadataColumns.indices where !metadataColumns[i].values.isEmpty {
+            metadataColumns[i].values = []
+            metadataColumns[i].anchor = ""
             changed = true
         }
         // Clear is a resting mode: it stays selected and shows nothing below.
@@ -805,7 +850,9 @@ class GridViewModel: ObservableObject {
             filterMinRating: filterMinRating,
             filterColorLabel: filterColorLabel,
             searchQuery: searchQuery,
-            columns: metadataColumns.map { (key: $0.key, value: $0.value) }
+            columns: metadataColumns.map {
+                (key: $0.key, value: $0.values.sorted().joined(separator: metadataValueSeparator))
+            }
         )
         if Task.isCancelled { return }
         facetColumns = result.columns

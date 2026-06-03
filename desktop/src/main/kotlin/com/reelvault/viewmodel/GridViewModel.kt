@@ -843,18 +843,59 @@ class GridViewModel(
         if (mode == com.reelvault.data.models.LibraryFilterMode.Metadata) scheduleFacetRefresh()
     }
 
-    /** The active metadata-column constraints sent to the daemon. */
+    /** The active metadata-column constraints sent to the daemon. Each column
+     *  with a non-empty selection becomes one filter whose value is its selected
+     *  tokens joined by [METADATA_VALUE_SEPARATOR]; the daemon OR-matches them. */
     private fun activeMetadataFilters(): List<com.reelvault.data.models.MetadataFilter> =
         _metadataColumns.value
-            .filter { it.key.isNotEmpty() && it.value.isNotEmpty() }
-            .map { com.reelvault.data.models.MetadataFilter(it.key, it.value) }
+            .filter { it.key.isNotEmpty() && it.values.isNotEmpty() }
+            .map {
+                com.reelvault.data.models.MetadataFilter(
+                    it.key,
+                    it.values.joinToString(com.reelvault.data.models.METADATA_VALUE_SEPARATOR),
+                )
+            }
 
-    /** Pick a value (facet token) in metadata column [index]; "" = "All". */
-    fun setMetadataColumnValue(index: Int, token: String) {
+    /** Handle a click on facet [token] in metadata column [index]. [token] ==
+     *  "" is the "All" row (clears the column). [shift] / [toggle] carry the
+     *  keyboard modifiers (toggle = Ctrl on Windows/Linux, Cmd on macOS).
+     *
+     *  Lightroom / file-manager multi-select semantics:
+     *   - "All" selected (empty set) + any value → select only that value,
+     *     regardless of modifiers.
+     *   - toggle-click → flip that value's membership; empties back to "All".
+     *   - shift-click → select the contiguous range from the anchor to the
+     *     clicked value (in the displayed facet order).
+     *   - plain click → select only that value.
+     *  Selected values within one column are OR-ed by the daemon. */
+    fun onMetadataValueClicked(index: Int, token: String, shift: Boolean, toggle: Boolean) {
         val cur = _metadataColumns.value
         val col = cur.getOrNull(index) ?: return
-        if (col.value == token) return
-        _metadataColumns.value = cur.toMutableList().also { it[index] = col.copy(value = token) }
+        val newCol = when {
+            token.isEmpty() ->
+                col.copy(values = emptySet(), anchor = "")
+            col.values.isEmpty() ->
+                col.copy(values = setOf(token), anchor = token)
+            toggle -> {
+                val next = col.values.toMutableSet().apply { if (!add(token)) remove(token) }
+                col.copy(values = next, anchor = token)
+            }
+            shift -> {
+                val order = _metadataFacets.value.getOrNull(index)?.values?.map { it.token } ?: emptyList()
+                val anchorTok = col.anchor.ifEmpty { col.values.firstOrNull() ?: token }
+                val ai = order.indexOf(anchorTok)
+                val ci = order.indexOf(token)
+                if (ai >= 0 && ci >= 0) {
+                    col.copy(values = order.subList(minOf(ai, ci), maxOf(ai, ci) + 1).toSet(), anchor = anchorTok)
+                } else {
+                    col.copy(values = setOf(token), anchor = token)
+                }
+            }
+            else ->
+                col.copy(values = setOf(token), anchor = token)
+        }
+        if (newCol == col) return
+        _metadataColumns.value = cur.toMutableList().also { it[index] = newCol }
         reloadForFilterChange()
     }
 
@@ -863,9 +904,9 @@ class GridViewModel(
         val cur = _metadataColumns.value
         val col = cur.getOrNull(index) ?: return
         if (col.key == key) return
-        val hadActiveValue = col.key.isNotEmpty() && col.value.isNotEmpty()
+        val hadActiveValue = col.key.isNotEmpty() && col.values.isNotEmpty()
         _metadataColumns.value = cur.toMutableList()
-            .also { it[index] = com.reelvault.data.models.MetadataColumn(key, "") }
+            .also { it[index] = com.reelvault.data.models.MetadataColumn(key = key) }
         LibraryFilterPrefs.saveColumns(_metadataColumns.value)
         // Grid only changes if this column was actively filtering; otherwise
         // just re-fetch facets so the new key's values appear.
@@ -875,7 +916,7 @@ class GridViewModel(
     /** Insert a new (empty) metadata column at the front or the end. */
     fun addMetadataColumn(atFront: Boolean) {
         val cur = _metadataColumns.value.toMutableList()
-        val newCol = com.reelvault.data.models.MetadataColumn("", "")
+        val newCol = com.reelvault.data.models.MetadataColumn()
         if (atFront) cur.add(0, newCol) else cur.add(newCol)
         _metadataColumns.value = cur
         LibraryFilterPrefs.saveColumns(cur)
@@ -889,7 +930,7 @@ class GridViewModel(
         val removed = cur.getOrNull(index) ?: return
         _metadataColumns.value = cur.toMutableList().also { it.removeAt(index) }
         LibraryFilterPrefs.saveColumns(_metadataColumns.value)
-        if (removed.key.isNotEmpty() && removed.value.isNotEmpty()) reloadForFilterChange()
+        if (removed.key.isNotEmpty() && removed.values.isNotEmpty()) reloadForFilterChange()
         else scheduleFacetRefresh()
     }
 
@@ -901,8 +942,8 @@ class GridViewModel(
         if (_searchQuery.value.isNotEmpty()) { _searchQuery.value = ""; changed = true }
         if (_filterMinRating.value != 0) { _filterMinRating.value = 0; changed = true }
         if (_filterColorLabel.value.isNotEmpty()) { _filterColorLabel.value = ""; changed = true }
-        if (_metadataColumns.value.any { it.value.isNotEmpty() }) {
-            _metadataColumns.value = _metadataColumns.value.map { it.copy(value = "") }
+        if (_metadataColumns.value.any { it.values.isNotEmpty() }) {
+            _metadataColumns.value = _metadataColumns.value.map { it.copy(values = emptySet(), anchor = "") }
             changed = true
         }
         // Clear is a resting mode: it stays selected and shows nothing below.
@@ -1499,8 +1540,11 @@ class GridViewModel(
     fun buildSmartCollectionFilterJson(): String {
         val tagId = _filterTagId.value
         val cols = _metadataColumns.value
+        // A column's multiple selected values are persisted joined by the wire
+        // separator; the daemon (and metadataColumnsFromSmartFilters) split it.
         fun colValue(key: String): String =
-            cols.firstOrNull { it.key == key && it.value.isNotEmpty() }?.value ?: ""
+            cols.firstOrNull { it.key == key && it.values.isNotEmpty() }
+                ?.values?.joinToString(com.reelvault.data.models.METADATA_VALUE_SEPARATOR) ?: ""
         return com.reelvault.data.models.SmartCollectionFilters(
             camera = colValue("camera"),
             lens = colValue("lens"),
@@ -1518,11 +1562,13 @@ class GridViewModel(
         f: com.reelvault.data.models.SmartCollectionFilters
     ): List<com.reelvault.data.models.MetadataColumn> {
         val cols = mutableListOf<com.reelvault.data.models.MetadataColumn>()
-        if (f.camera.isNotEmpty()) cols.add(com.reelvault.data.models.MetadataColumn("camera", f.camera))
-        if (f.lens.isNotEmpty()) cols.add(com.reelvault.data.models.MetadataColumn("lens", f.lens))
-        if (f.codec.isNotEmpty()) cols.add(com.reelvault.data.models.MetadataColumn("codec", f.codec))
+        val sep = com.reelvault.data.models.METADATA_VALUE_SEPARATOR
+        fun parse(s: String): Set<String> = s.split(sep).filter { it.isNotEmpty() }.toSet()
+        if (f.camera.isNotEmpty()) cols.add(com.reelvault.data.models.MetadataColumn("camera", parse(f.camera)))
+        if (f.lens.isNotEmpty()) cols.add(com.reelvault.data.models.MetadataColumn("lens", parse(f.lens)))
+        if (f.codec.isNotEmpty()) cols.add(com.reelvault.data.models.MetadataColumn("codec", parse(f.codec)))
         if (f.captureYear != 0) {
-            cols.add(com.reelvault.data.models.MetadataColumn("year", f.captureYear.toString()))
+            cols.add(com.reelvault.data.models.MetadataColumn("year", setOf(f.captureYear.toString())))
         }
         return cols.ifEmpty { com.reelvault.data.models.defaultMetadataColumns }
     }

@@ -200,7 +200,9 @@ private struct LibraryFilterMetadataEditor: View {
                             availableKeys: vm.availableMetadataKeys,
                             canRemove: vm.metadataColumns.count > 1,
                             onPickKey: { vm.setMetadataColumnKey(at: index, key: $0) },
-                            onPickValue: { vm.setMetadataColumnValue(at: index, token: $0) },
+                            onValueClick: { token, shift, toggle in
+                                vm.onMetadataValueClicked(at: index, token: token, shift: shift, toggle: toggle)
+                            },
                             onRemove: { vm.removeMetadataColumn(at: index) }
                         )
                         Divider()
@@ -230,7 +232,7 @@ private struct MetadataColumnView: View {
     let availableKeys: [MetadataKeyInfo]
     let canRemove: Bool
     let onPickKey: (String) -> Void
-    let onPickValue: (String) -> Void
+    let onValueClick: (_ token: String, _ shift: Bool, _ toggle: Bool) -> Void
     let onRemove: () -> Void
 
     var body: some View {
@@ -292,7 +294,8 @@ private struct MetadataColumnView: View {
 
     @ViewBuilder
     private func valueRow(token: String, label: String, count: Int64?) -> some View {
-        let isSelected = column.value == token
+        // The "All" row (token == "") is selected when no values are chosen.
+        let isSelected = token.isEmpty ? column.values.isEmpty : column.values.contains(token)
         HStack {
             Text(label)
                 .font(.system(size: 11))
@@ -309,7 +312,15 @@ private struct MetadataColumnView: View {
         .padding(.horizontal, 4)
         .padding(.vertical, 1)
         .contentShape(Rectangle())
-        .onTapGesture { onPickValue(token) }
+        // Read the modifiers captured at mouse-DOWN (see ModifierSnapshot) so
+        // shift extends a range and Cmd/Ctrl toggles a single value. Mirrors
+        // the grid's multi-select.
+        .onTapGesture {
+            let mods = ModifierSnapshot.lastMouseDownModifiers
+            let shift = mods.contains(.shift)
+            let toggle = mods.contains(.command) || mods.contains(.control)
+            onValueClick(token, shift, toggle)
+        }
     }
 }
 

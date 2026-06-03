@@ -612,10 +612,16 @@ enum class LibraryFilterMode { Text, Attribute, Metadata, Clear }
 /**
  * One column in the Library Filter's "metadata" mode. [key] is a canonical
  * metadata token (see the core's metadata_keys registry); "" means "not chosen
- * yet" (a placeholder that prompts the key picker). [value] is the selected
- * facet token; "" means "All" (no constraint from this column).
+ * yet" (a placeholder that prompts the key picker). [values] are the selected
+ * facet tokens, OR-ed together; an empty set means "All" (no constraint from
+ * this column). [anchor] is the value a range-select (shift-click) extends
+ * from — the last value picked by a plain or toggle click.
  */
-data class MetadataColumn(val key: String = "", val value: String = "")
+data class MetadataColumn(
+    val key: String = "",
+    val values: Set<String> = emptySet(),
+    val anchor: String = "",
+)
 
 /** One selectable value within a metadata facet column. */
 data class FacetValue(val token: String, val display: String, val count: Long)
@@ -631,8 +637,16 @@ data class FacetColumn(
 /** A metadata key the user can pick for a column. */
 data class MetadataKeyInfo(val key: String, val displayName: String, val isNumeric: Boolean)
 
-/** Generic (key, value) metadata filter sent to the daemon. */
+/** Generic (key, value) metadata filter sent to the daemon. [value] may carry
+ *  several selected tokens joined by [METADATA_VALUE_SEPARATOR]; the core splits
+ *  on it and OR-matches the parts. */
 data class MetadataFilter(val key: String, val value: String)
+
+/** Separator joining a metadata column's multiple selected facet tokens into a
+ *  single [MetadataFilter.value] over the wire. ASCII Unit Separator (0x1F),
+ *  which never appears in real metadata values. Must match the core's
+ *  `METADATA_VALUE_SEPARATOR`. */
+const val METADATA_VALUE_SEPARATOR = "\u001F"
 
 /** Result of a GetMetadataFacets call: per-column values + the key picker set. */
 data class MetadataFacetsResult(

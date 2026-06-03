@@ -7,8 +7,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,7 +58,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isMetaPressed
+import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -322,7 +329,9 @@ private fun LibraryMetadataEditor(viewModel: GridViewModel, height: Dp) {
                 availableKeys = availableKeys,
                 canRemove = columns.size > 1,
                 onPickKey = { key -> viewModel.setMetadataColumnKey(i, key) },
-                onPickValue = { token -> viewModel.setMetadataColumnValue(i, token) },
+                onValueClick = { token, shift, toggle ->
+                    viewModel.onMetadataValueClicked(i, token, shift, toggle)
+                },
                 onRemove = { viewModel.removeMetadataColumn(i) },
             )
         }
@@ -351,7 +360,7 @@ private fun MetadataColumnView(
     availableKeys: List<MetadataKeyInfo>,
     canRemove: Boolean,
     onPickKey: (String) -> Unit,
-    onPickValue: (String) -> Unit,
+    onValueClick: (token: String, shift: Boolean, toggle: Boolean) -> Unit,
     onRemove: () -> Unit,
 ) {
     Column(modifier = Modifier.width(168.dp).fillMaxHeight()) {
@@ -437,18 +446,19 @@ private fun MetadataColumnView(
             else -> {
                 LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     item {
+                        // "All" clears the column; modifiers don't apply to it.
                         FacetValueRow(
                             label = "All",
                             count = null,
-                            selected = column.value.isEmpty(),
-                        ) { onPickValue("") }
+                            selected = column.values.isEmpty(),
+                        ) { _, _ -> onValueClick("", false, false) }
                     }
                     items(facet.values) { v ->
                         FacetValueRow(
                             label = v.display.ifEmpty { v.token },
                             count = v.count,
-                            selected = column.value == v.token,
-                        ) { onPickValue(v.token) }
+                            selected = v.token in column.values,
+                        ) { shift, toggle -> onValueClick(v.token, shift, toggle) }
                     }
                 }
             }
@@ -461,12 +471,12 @@ private fun FacetValueRow(
     label: String,
     count: Long?,
     selected: Boolean,
-    onClick: () -> Unit,
+    onClick: (shift: Boolean, toggle: Boolean) -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .multiSelectClickable(onClick)
             .background(
                 if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
             )
@@ -488,6 +498,25 @@ private fun FacetValueRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+/** A [clickable]-like modifier that also reports the Shift / toggle (Ctrl on
+ *  Windows/Linux, Cmd on macOS) modifier state held at press time, so facet
+ *  rows can implement range- and toggle-select. Reads
+ *  [AwaitPointerEventScope.currentEvent] — the most reliable way to capture
+ *  modifiers on Compose Desktop, independent of which widget holds keyboard
+ *  focus. Mirrors VideoCard's shiftAwareClickable (without double-click). */
+private fun Modifier.multiSelectClickable(
+    onClick: (shiftPressed: Boolean, togglePressed: Boolean) -> Unit,
+): Modifier = this.pointerInput(onClick) {
+    awaitEachGesture {
+        awaitFirstDown(requireUnconsumed = true)
+        val mods = currentEvent.keyboardModifiers
+        val shift = mods.isShiftPressed
+        val toggle = mods.isMetaPressed || mods.isCtrlPressed
+        waitForUpOrCancellation() ?: return@awaitEachGesture
+        onClick(shift, toggle)
     }
 }
 

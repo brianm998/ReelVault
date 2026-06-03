@@ -29,6 +29,12 @@ pub(crate) const REPRESENTATIVE_FILTER: &str = "v.proxy_of IS NULL \
      OR (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id) IS NULL \
         AND v.id = (SELECT MIN(v2.id) FROM videos v2 WHERE v2.group_id = v.group_id))";
 
+/// Separator joining a metadata column's multiple selected facet tokens into a
+/// single `MetadataFilter.value` over the wire. ASCII Unit Separator (0x1F),
+/// which never appears in real metadata values; [`Database::build_filter_clauses`]
+/// splits on it and OR-matches the parts. The clients must use the same byte.
+pub(crate) const METADATA_VALUE_SEPARATOR: char = '\u{1f}';
+
 /// Everything that scopes a video listing or a facet query. Built by the
 /// service layer and consumed by [`Database::list_videos_grouped`],
 /// [`Database::distinct_facet_values`], and
@@ -1553,24 +1559,51 @@ impl Database {
         }
 
         // Generic metadata filters (camera / lens / codec / year / iso / … and
-        // keyword), resolved through the metadata-key registry.
+        // keyword), resolved through the metadata-key registry. A single
+        // filter's `value` may carry several selected tokens joined by the
+        // ASCII Unit Separator (0x1F) — the Library Filter's per-column
+        // multi-select. Tokens within one filter are OR-ed; distinct keys stay
+        // AND-ed. A plain single value (no separator) splits to a one-element
+        // list, so the legacy single-select path is unchanged.
         for (key, value) in &spec.metadata_filters {
-            if value.is_empty() {
+            let values: Vec<&str> = value.split(METADATA_VALUE_SEPARATOR).filter(|s| !s.is_empty()).collect();
+            if values.is_empty() {
                 continue;
             }
             if key == "keyword" {
-                sql.push_str(" AND v.id IN (SELECT video_id FROM video_tags WHERE tag_id = ?)");
-                bind.push(Box::new(value.clone()));
+                // Match a video carrying ANY of the selected keyword tags.
+                let placeholders = std::iter::repeat("?").take(values.len()).collect::<Vec<_>>().join(", ");
+                sql.push_str(&format!(
+                    " AND v.id IN (SELECT video_id FROM video_tags WHERE tag_id IN ({placeholders}))"
+                ));
+                for v in &values {
+                    bind.push(Box::new(v.to_string()));
+                }
                 continue;
             }
             if let Some(mk) = metadata_keys::lookup(key) {
-                if let (Some(pred), Some(val)) = (mk.predicate_sql(), mk.parse_value(value)) {
-                    sql.push_str(" AND ");
-                    sql.push_str(&pred);
-                    match val {
-                        SqlVal::Text(s) => bind.push(Box::new(s)),
-                        SqlVal::Int(i) => bind.push(Box::new(i)),
-                        SqlVal::Real(f) => bind.push(Box::new(f)),
+                if let Some(pred) = mk.predicate_sql() {
+                    // Build (pred OR pred OR …) over the values that parse for
+                    // this key, binding each in the order the OR terms appear.
+                    let mut terms: Vec<String> = Vec::new();
+                    let mut vals: Vec<SqlVal> = Vec::new();
+                    for v in &values {
+                        if let Some(parsed) = mk.parse_value(v) {
+                            terms.push(pred.clone());
+                            vals.push(parsed);
+                        }
+                    }
+                    if !terms.is_empty() {
+                        sql.push_str(" AND (");
+                        sql.push_str(&terms.join(" OR "));
+                        sql.push(')');
+                        for parsed in vals {
+                            match parsed {
+                                SqlVal::Text(s) => bind.push(Box::new(s)),
+                                SqlVal::Int(i) => bind.push(Box::new(i)),
+                                SqlVal::Real(f) => bind.push(Box::new(f)),
+                            }
+                        }
                     }
                 }
             }

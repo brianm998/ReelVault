@@ -281,8 +281,13 @@ class VideoRepository(
                     .setFilterRadiusKm(geoFilter.third)
             }
             columns.forEach {
+                // A column's selected values ride over the wire joined by the
+                // separator; the daemon splits and OR-matches them.
                 builder.addColumns(
-                    Reelvault.MetadataFilter.newBuilder().setKey(it.key).setValue(it.value).build()
+                    Reelvault.MetadataFilter.newBuilder()
+                        .setKey(it.key)
+                        .setValue(it.values.joinToString(com.reelvault.data.models.METADATA_VALUE_SEPARATOR))
+                        .build()
                 )
             }
             val response = s.getMetadataFacets(builder.build())

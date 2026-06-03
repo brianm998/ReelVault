@@ -772,12 +772,21 @@ enum LibraryFilterMode: String, CaseIterable, Identifiable, Hashable {
 }
 
 /// One column in the metadata-mode browser. `key` is a canonical metadata
-/// token ("" = not chosen yet); `value` is the selected facet token ("" = All).
+/// token ("" = not chosen yet); `values` are the selected facet tokens, OR-ed
+/// together (empty = All). `anchor` is the value a range-select (shift-click)
+/// extends from — the last value picked by a plain or toggle click.
 struct MetadataColumn: Identifiable, Equatable {
     let id = UUID()
     var key: String = ""
-    var value: String = ""
+    var values: Set<String> = []
+    var anchor: String = ""
 }
+
+/// Separator joining a metadata column's multiple selected facet tokens into a
+/// single MetadataFilter value over the wire. ASCII Unit Separator (0x1F),
+/// which never appears in real metadata values; the daemon splits on it and
+/// OR-matches the parts. Must match the core's `METADATA_VALUE_SEPARATOR`.
+let metadataValueSeparator = "\u{1F}"
 
 /// One selectable value within a metadata facet column.
 struct FacetValue: Equatable, Hashable {
