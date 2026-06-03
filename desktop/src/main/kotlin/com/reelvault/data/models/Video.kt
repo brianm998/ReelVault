@@ -579,3 +579,52 @@ val defaultGridTopSlots: List<String> = listOf(
     GridStatKey.ResolutionName.raw,
     GridStatKey.Fps.raw,
 )
+
+// --- Library Filter (the bar below the top bar) ---
+
+/**
+ * Which editor the Library Filter bar is showing. Under COMBINE semantics the
+ * Text/Attribute/Metadata filters all stay applied at once; this only chooses
+ * which one is visible. [Clear] is a momentary action (reset everything), not a
+ * resting mode — the view model snaps back to [Text] after a clear.
+ */
+enum class LibraryFilterMode { Text, Attribute, Metadata, Clear }
+
+/**
+ * One column in the Library Filter's "metadata" mode. [key] is a canonical
+ * metadata token (see the core's metadata_keys registry); "" means "not chosen
+ * yet" (a placeholder that prompts the key picker). [value] is the selected
+ * facet token; "" means "All" (no constraint from this column).
+ */
+data class MetadataColumn(val key: String = "", val value: String = "")
+
+/** One selectable value within a metadata facet column. */
+data class FacetValue(val token: String, val display: String, val count: Long)
+
+/** The available values for one metadata column, as computed by the server. */
+data class FacetColumn(
+    val key: String,
+    val displayName: String,
+    val isNumeric: Boolean,
+    val values: List<FacetValue>,
+)
+
+/** A metadata key the user can pick for a column. */
+data class MetadataKeyInfo(val key: String, val displayName: String, val isNumeric: Boolean)
+
+/** Generic (key, value) metadata filter sent to the daemon. */
+data class MetadataFilter(val key: String, val value: String)
+
+/** Result of a GetMetadataFacets call: per-column values + the key picker set. */
+data class MetadataFacetsResult(
+    val columns: List<FacetColumn> = emptyList(),
+    val availableKeys: List<MetadataKeyInfo> = emptyList(),
+)
+
+/** Default metadata columns shown before the user customizes the bar. */
+val defaultMetadataColumns: List<MetadataColumn> = listOf(
+    MetadataColumn("camera"),
+    MetadataColumn("lens"),
+    MetadataColumn("exposure"),
+    MetadataColumn("iso"),
+)

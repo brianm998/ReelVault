@@ -180,6 +180,11 @@ class VideoRepository(
         filterMinRating: Int = 0,
         /** "" = no colour filter; otherwise exact-match the label. */
         filterColorLabel: String = "",
+        /** Generic metadata filters from the Library Filter's metadata columns.
+         *  Camera/lens/codec/year now travel here rather than as scalar args. */
+        metadataFilters: List<com.reelvault.data.models.MetadataFilter> = emptyList(),
+        /** Full-text query (filename / notes). "" = no text filter. */
+        searchQuery: String = "",
     ): Pair<List<VideoSummary>, Long> = withContext(Dispatchers.IO) {
         val s = stub ?: return@withContext Pair(emptyList(), 0L)
         try {
@@ -197,12 +202,18 @@ class VideoRepository(
                 .setFilterCaptureYear(filterCaptureYear)
                 .setFilterMinRating(filterMinRating)
                 .setFilterColorLabel(filterColorLabel)
+                .setSearchQuery(searchQuery)
             if (geoFilter != null) {
                 builder
                     .setFilterByLocation(true)
                     .setFilterLatitude(geoFilter.first)
                     .setFilterLongitude(geoFilter.second)
                     .setFilterRadiusKm(geoFilter.third)
+            }
+            metadataFilters.forEach {
+                builder.addMetadataFilters(
+                    Reelvault.MetadataFilter.newBuilder().setKey(it.key).setValue(it.value).build()
+                )
             }
             val request = builder.build()
 
@@ -234,6 +245,67 @@ class VideoRepository(
         } catch (e: Exception) {
             logger.error("Failed to get filter options: ${e.message}", e)
             com.reelvault.data.models.FilterOptions()
+        }
+    }
+
+    /**
+     * Faceted metadata values for the Library Filter's "metadata" mode. Given
+     * the upstream filters + the ordered metadata columns, the daemon returns
+     * the available values for each column (cascaded left→right) plus the set
+     * of keys that have data in the current filtered set.
+     */
+    suspend fun getMetadataFacets(
+        locationPath: String = "",
+        filterTags: List<String> = emptyList(),
+        collectionId: String? = null,
+        geoFilter: Triple<Double, Double, Double>? = null,
+        filterMinRating: Int = 0,
+        filterColorLabel: String = "",
+        searchQuery: String = "",
+        columns: List<com.reelvault.data.models.MetadataColumn> = emptyList(),
+    ): com.reelvault.data.models.MetadataFacetsResult = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext com.reelvault.data.models.MetadataFacetsResult()
+        try {
+            val builder = Reelvault.MetadataFacetsRequest.newBuilder()
+                .setLocationPath(locationPath)
+                .addAllFilterTags(filterTags)
+                .setCollectionId(collectionId ?: "")
+                .setFilterMinRating(filterMinRating)
+                .setFilterColorLabel(filterColorLabel)
+                .setSearchQuery(searchQuery)
+            if (geoFilter != null) {
+                builder
+                    .setFilterByLocation(true)
+                    .setFilterLatitude(geoFilter.first)
+                    .setFilterLongitude(geoFilter.second)
+                    .setFilterRadiusKm(geoFilter.third)
+            }
+            columns.forEach {
+                builder.addColumns(
+                    Reelvault.MetadataFilter.newBuilder().setKey(it.key).setValue(it.value).build()
+                )
+            }
+            val response = s.getMetadataFacets(builder.build())
+            com.reelvault.data.models.MetadataFacetsResult(
+                columns = response.columnsList.map { c ->
+                    com.reelvault.data.models.FacetColumn(
+                        key = c.key,
+                        displayName = c.displayName,
+                        isNumeric = c.isNumeric,
+                        values = c.valuesList.map { v ->
+                            com.reelvault.data.models.FacetValue(v.token, v.display, v.count)
+                        },
+                    )
+                },
+                availableKeys = response.availableKeysList.map {
+                    com.reelvault.data.models.MetadataKeyInfo(it.key, it.displayName, it.isNumeric)
+                },
+            )
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.error("Failed to get metadata facets: ${e.message}", e)
+            com.reelvault.data.models.MetadataFacetsResult()
         }
     }
 

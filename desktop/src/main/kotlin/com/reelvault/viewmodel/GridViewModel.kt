@@ -71,7 +71,10 @@ class GridViewModel(
     private var sortAscending = false
     private var filterTags = emptyList<String>()
     private var collectionId: String? = null
-    private var searchQuery = ""
+    // Library Filter "text" mode. A StateFlow so the editor can bind to it and
+    // the value survives switching the visible editor (COMBINE semantics).
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
     /** Currently selected library location to filter by. Empty string = all. */
     private var locationPathFilter: String = ""
 
@@ -97,15 +100,26 @@ class GridViewModel(
     private val _selectedCollectionId = MutableStateFlow<String?>(null)
     val selectedCollectionId: StateFlow<String?> = _selectedCollectionId.asStateFlow()
 
-    // Top-bar dropdown filters. The empty string / 0 means "no filter (---)".
-    private val _filterCamera = MutableStateFlow("")
-    val filterCamera: StateFlow<String> = _filterCamera.asStateFlow()
-    private val _filterLens = MutableStateFlow("")
-    val filterLens: StateFlow<String> = _filterLens.asStateFlow()
-    private val _filterCodec = MutableStateFlow("")
-    val filterCodec: StateFlow<String> = _filterCodec.asStateFlow()
-    private val _filterCaptureYear = MutableStateFlow(0)
-    val filterCaptureYear: StateFlow<Int> = _filterCaptureYear.asStateFlow()
+    // Library Filter — "metadata" mode. `metadataColumns` is the ordered list
+    // of columns (camera/lens/exposure/iso by default); `metadataFacets` holds
+    // the server's per-column available values (1:1 with columns by index);
+    // `metadataAvailableKeys` populates each column's key picker.
+    private val _libraryFilterMode =
+        MutableStateFlow(com.reelvault.data.models.LibraryFilterMode.Text)
+    val libraryFilterMode: StateFlow<com.reelvault.data.models.LibraryFilterMode> =
+        _libraryFilterMode.asStateFlow()
+    private val _metadataColumns =
+        MutableStateFlow(LibraryFilterPrefs.loadColumns())
+    val metadataColumns: StateFlow<List<com.reelvault.data.models.MetadataColumn>> =
+        _metadataColumns.asStateFlow()
+    private val _metadataFacets =
+        MutableStateFlow<List<com.reelvault.data.models.FacetColumn>>(emptyList())
+    val metadataFacets: StateFlow<List<com.reelvault.data.models.FacetColumn>> =
+        _metadataFacets.asStateFlow()
+    private val _metadataAvailableKeys =
+        MutableStateFlow<List<com.reelvault.data.models.MetadataKeyInfo>>(emptyList())
+    val metadataAvailableKeys: StateFlow<List<com.reelvault.data.models.MetadataKeyInfo>> =
+        _metadataAvailableKeys.asStateFlow()
 
     // Lightroom-style user-mark filters. `_filterMinRating` of 0 = no filter;
     // 1..5 = "show videos with at least N stars". `_filterColorLabel` of ""
@@ -119,10 +133,6 @@ class GridViewModel(
     // GridStatKey.raw value. Defaults until `loadGridSettings` answers.
     private val _topSlots = MutableStateFlow(com.reelvault.data.models.defaultGridTopSlots)
     val topSlots: StateFlow<List<String>> = _topSlots.asStateFlow()
-
-    // Distinct values fetched from the backend to populate the dropdowns.
-    private val _filterOptions = MutableStateFlow(com.reelvault.data.models.FilterOptions())
-    val filterOptions: StateFlow<com.reelvault.data.models.FilterOptions> = _filterOptions.asStateFlow()
 
     // Geographic proximity filter — set when the user taps a pin on the
     // global map. Triple of (latitude, longitude, radius_km). Null = no
@@ -522,6 +532,8 @@ class GridViewModel(
      */
     private fun reloadForFilterChange() {
         reloadFromTop(showSpinner = true)
+        // Every filter change also re-narrows the available metadata facets.
+        scheduleFacetRefresh()
     }
 
     /**
@@ -557,31 +569,20 @@ class GridViewModel(
 
         listLoadJob = viewModelScope.launch {
             try {
-                val (videosList, totalCount) = if (searchQuery.isNotEmpty()) {
-                    repository.searchVideos(
-                        query = searchQuery,
-                        limit = pageSize,
-                        offset = 0,
-                        filterTags = filterTags
-                    )
-                } else {
-                    repository.listVideos(
-                        limit = pageSize,
-                        offset = 0,
-                        sortBy = sortBy,
-                        sortAscending = sortAscending,
-                        filterTags = filterTags,
-                        collectionId = collectionId,
-                        locationPath = locationPathFilter,
-                        filterCamera = _filterCamera.value,
-                        filterLens = _filterLens.value,
-                        filterCodec = _filterCodec.value,
-                        filterCaptureYear = _filterCaptureYear.value,
-                        geoFilter = _filterLocation.value,
-                        filterMinRating = _filterMinRating.value,
-                        filterColorLabel = _filterColorLabel.value,
-                    )
-                }
+                val (videosList, totalCount) = repository.listVideos(
+                    limit = pageSize,
+                    offset = 0,
+                    sortBy = sortBy,
+                    sortAscending = sortAscending,
+                    filterTags = filterTags,
+                    collectionId = collectionId,
+                    locationPath = locationPathFilter,
+                    geoFilter = _filterLocation.value,
+                    filterMinRating = _filterMinRating.value,
+                    filterColorLabel = _filterColorLabel.value,
+                    metadataFilters = activeMetadataFilters(),
+                    searchQuery = _searchQuery.value,
+                )
 
                 _videos.value = videosList
                 _totalCount.value = totalCount
@@ -622,31 +623,20 @@ class GridViewModel(
 
         listLoadJob = viewModelScope.launch {
             try {
-                val (newVideos, totalCount) = if (searchQuery.isNotEmpty()) {
-                    repository.searchVideos(
-                        query = searchQuery,
-                        limit = pageSize,
-                        offset = offset,
-                        filterTags = filterTags
-                    )
-                } else {
-                    repository.listVideos(
-                        limit = pageSize,
-                        offset = offset,
-                        sortBy = sortBy,
-                        sortAscending = sortAscending,
-                        filterTags = filterTags,
-                        collectionId = collectionId,
-                        locationPath = locationPathFilter,
-                        filterCamera = _filterCamera.value,
-                        filterLens = _filterLens.value,
-                        filterCodec = _filterCodec.value,
-                        filterCaptureYear = _filterCaptureYear.value,
-                        geoFilter = _filterLocation.value,
-                        filterMinRating = _filterMinRating.value,
-                        filterColorLabel = _filterColorLabel.value,
-                    )
-                }
+                val (newVideos, totalCount) = repository.listVideos(
+                    limit = pageSize,
+                    offset = offset,
+                    sortBy = sortBy,
+                    sortAscending = sortAscending,
+                    filterTags = filterTags,
+                    collectionId = collectionId,
+                    locationPath = locationPathFilter,
+                    geoFilter = _filterLocation.value,
+                    filterMinRating = _filterMinRating.value,
+                    filterColorLabel = _filterColorLabel.value,
+                    metadataFilters = activeMetadataFilters(),
+                    searchQuery = _searchQuery.value,
+                )
 
                 // Deduplicate as a belt-and-suspenders guard: if loadVideos()
                 // ran and refreshed the list while this coroutine was
@@ -737,12 +727,14 @@ class GridViewModel(
     }
 
     fun setSearchQuery(query: String) {
-        searchQuery = query
+        if (_searchQuery.value == query) return
+        _searchQuery.value = query
         reloadForFilterChange()
     }
 
     fun clearSearch() {
-        searchQuery = ""
+        if (_searchQuery.value.isEmpty()) return
+        _searchQuery.value = ""
         reloadForFilterChange()
     }
 
@@ -822,37 +814,7 @@ class GridViewModel(
         reloadForFilterChange()
     }
 
-    /** Refresh the distinct values for the top-bar dropdowns. */
-    fun loadFilterOptions() {
-        viewModelScope.launch {
-            try {
-                _filterOptions.value = repository.getFilterOptions()
-            } catch (e: Exception) {
-                logger.warn("Failed to load filter options", e)
-            }
-        }
-    }
-
-    fun setCameraFilter(value: String) {
-        if (_filterCamera.value == value) return
-        _filterCamera.value = value
-        reloadForFilterChange()
-    }
-    fun setLensFilter(value: String) {
-        if (_filterLens.value == value) return
-        _filterLens.value = value
-        reloadForFilterChange()
-    }
-    fun setCodecFilter(value: String) {
-        if (_filterCodec.value == value) return
-        _filterCodec.value = value
-        reloadForFilterChange()
-    }
-    fun setCaptureYearFilter(year: Int) {
-        if (_filterCaptureYear.value == year) return
-        _filterCaptureYear.value = year
-        reloadForFilterChange()
-    }
+    // --- Library Filter: attribute mode (rating + colour) ---
 
     fun setMinRatingFilter(n: Int) {
         if (_filterMinRating.value == n) return
@@ -866,16 +828,138 @@ class GridViewModel(
         reloadForFilterChange()
     }
 
-    fun clearAllDropdownFilters() {
+    // --- Library Filter: mode + metadata columns ---
+
+    /** Switch which Library Filter editor is visible. Clear is a momentary
+     *  action that resets the whole library filter; the others stay applied
+     *  across mode switches (COMBINE semantics). */
+    fun setLibraryFilterMode(mode: com.reelvault.data.models.LibraryFilterMode) {
+        if (mode == com.reelvault.data.models.LibraryFilterMode.Clear) {
+            clearLibraryFilter()
+            return
+        }
+        if (_libraryFilterMode.value == mode) return
+        _libraryFilterMode.value = mode
+        if (mode == com.reelvault.data.models.LibraryFilterMode.Metadata) scheduleFacetRefresh()
+    }
+
+    /** The active metadata-column constraints sent to the daemon. */
+    private fun activeMetadataFilters(): List<com.reelvault.data.models.MetadataFilter> =
+        _metadataColumns.value
+            .filter { it.key.isNotEmpty() && it.value.isNotEmpty() }
+            .map { com.reelvault.data.models.MetadataFilter(it.key, it.value) }
+
+    /** Pick a value (facet token) in metadata column [index]; "" = "All". */
+    fun setMetadataColumnValue(index: Int, token: String) {
+        val cur = _metadataColumns.value
+        val col = cur.getOrNull(index) ?: return
+        if (col.value == token) return
+        _metadataColumns.value = cur.toMutableList().also { it[index] = col.copy(value = token) }
+        reloadForFilterChange()
+    }
+
+    /** Change the metadata key of column [index]; resets its selected value. */
+    fun setMetadataColumnKey(index: Int, key: String) {
+        val cur = _metadataColumns.value
+        val col = cur.getOrNull(index) ?: return
+        if (col.key == key) return
+        val hadActiveValue = col.key.isNotEmpty() && col.value.isNotEmpty()
+        _metadataColumns.value = cur.toMutableList()
+            .also { it[index] = com.reelvault.data.models.MetadataColumn(key, "") }
+        LibraryFilterPrefs.saveColumns(_metadataColumns.value)
+        // Grid only changes if this column was actively filtering; otherwise
+        // just re-fetch facets so the new key's values appear.
+        if (hadActiveValue) reloadForFilterChange() else scheduleFacetRefresh()
+    }
+
+    /** Insert a new (empty) metadata column at the front or the end. */
+    fun addMetadataColumn(atFront: Boolean) {
+        val cur = _metadataColumns.value.toMutableList()
+        val newCol = com.reelvault.data.models.MetadataColumn("", "")
+        if (atFront) cur.add(0, newCol) else cur.add(newCol)
+        _metadataColumns.value = cur
+        LibraryFilterPrefs.saveColumns(cur)
+        scheduleFacetRefresh()
+    }
+
+    /** Remove metadata column [index]. No-op when only one column remains. */
+    fun removeMetadataColumn(index: Int) {
+        val cur = _metadataColumns.value
+        if (cur.size <= 1) return
+        val removed = cur.getOrNull(index) ?: return
+        _metadataColumns.value = cur.toMutableList().also { it.removeAt(index) }
+        LibraryFilterPrefs.saveColumns(_metadataColumns.value)
+        if (removed.key.isNotEmpty() && removed.value.isNotEmpty()) reloadForFilterChange()
+        else scheduleFacetRefresh()
+    }
+
+    /** Reset the Library Filter (search + attribute + metadata values) so all
+     *  videos show, subject to the higher-level location / keyword filters. The
+     *  metadata column layout (keys/order) is preserved. */
+    fun clearLibraryFilter() {
         var changed = false
-        if (_filterCamera.value.isNotEmpty()) { _filterCamera.value = ""; changed = true }
-        if (_filterLens.value.isNotEmpty()) { _filterLens.value = ""; changed = true }
-        if (_filterCodec.value.isNotEmpty()) { _filterCodec.value = ""; changed = true }
-        if (_filterCaptureYear.value != 0) { _filterCaptureYear.value = 0; changed = true }
-        if (_filterLocation.value != null) { _filterLocation.value = null; changed = true }
+        if (_searchQuery.value.isNotEmpty()) { _searchQuery.value = ""; changed = true }
         if (_filterMinRating.value != 0) { _filterMinRating.value = 0; changed = true }
         if (_filterColorLabel.value.isNotEmpty()) { _filterColorLabel.value = ""; changed = true }
-        if (changed) reloadForFilterChange()
+        if (_metadataColumns.value.any { it.value.isNotEmpty() }) {
+            _metadataColumns.value = _metadataColumns.value.map { it.copy(value = "") }
+            changed = true
+        }
+        // Clear is a resting mode: it stays selected and shows nothing below.
+        _libraryFilterMode.value = com.reelvault.data.models.LibraryFilterMode.Clear
+        if (changed) reloadForFilterChange() else scheduleFacetRefresh()
+    }
+
+    /** Trigger an initial facet load (e.g. right after a catalog opens) so the
+     *  metadata editor and key picker have data before the user opens them. */
+    fun refreshMetadataFacets() = scheduleFacetRefresh()
+
+    private var facetJob: kotlinx.coroutines.Job? = null
+
+    /** Recompute the metadata facets (debounced, cancel-in-flight). The server
+     *  owns the cascade, so we always send the full ordered column list and
+     *  replace the results wholesale. */
+    private fun scheduleFacetRefresh() {
+        facetJob?.cancel()
+        facetJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(180)
+            try {
+                val result = repository.getMetadataFacets(
+                    locationPath = locationPathFilter,
+                    filterTags = filterTags,
+                    collectionId = collectionId,
+                    geoFilter = _filterLocation.value,
+                    filterMinRating = _filterMinRating.value,
+                    filterColorLabel = _filterColorLabel.value,
+                    searchQuery = _searchQuery.value,
+                    columns = _metadataColumns.value,
+                )
+                _metadataFacets.value = result.columns
+                _metadataAvailableKeys.value = result.availableKeys
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.warn("Failed to refresh metadata facets", e)
+            }
+        }
+    }
+
+    /** Persists only the metadata column *layout* (the ordered keys) across
+     *  sessions; selected values are intentionally transient. */
+    private object LibraryFilterPrefs {
+        private val prefs = java.util.prefs.Preferences.userRoot().node("com/reelvault/libraryfilter")
+
+        fun loadColumns(): List<com.reelvault.data.models.MetadataColumn> {
+            val raw = prefs.get("columns", "")
+            if (raw.isBlank()) return com.reelvault.data.models.defaultMetadataColumns
+            val cols = raw.split(",").filter { it.isNotBlank() }
+                .map { com.reelvault.data.models.MetadataColumn(it) }
+            return cols.ifEmpty { com.reelvault.data.models.defaultMetadataColumns }
+        }
+
+        fun saveColumns(cols: List<com.reelvault.data.models.MetadataColumn>) {
+            prefs.put("columns", cols.filter { it.key.isNotEmpty() }.joinToString(",") { it.key })
+        }
     }
 
     // --- Lightroom-style user marks ---
@@ -1038,13 +1122,11 @@ class GridViewModel(
                     filterTags = filterTags,
                     collectionId = collectionId,
                     locationPath = locationPathFilter,
-                    filterCamera = _filterCamera.value,
-                    filterLens = _filterLens.value,
-                    filterCodec = _filterCodec.value,
-                    filterCaptureYear = _filterCaptureYear.value,
                     geoFilter = null,
                     filterMinRating = _filterMinRating.value,
                     filterColorLabel = _filterColorLabel.value,
+                    metadataFilters = activeMetadataFilters(),
+                    searchQuery = _searchQuery.value,
                 )
                 page.filter { it.hasLocation }.forEach { v ->
                     accumulated += com.reelvault.data.models.VideoLocation(
@@ -1221,7 +1303,7 @@ class GridViewModel(
                 if (repository.updateVideoCaptureDate(id, timestampMs, writeToFile)) ok++
             }
             logger.info("Updated capture date on $ok/${videoIds.size} video(s)")
-            loadFilterOptions()
+            scheduleFacetRefresh()
             loadVideos()
             onComplete()
         }
@@ -1347,10 +1429,8 @@ class GridViewModel(
             // fields. The grid is driven by the filters, not by collection_id.
             val f = com.reelvault.data.models.SmartCollectionFilters.fromJson(col.filterJson)
             collectionId = null
-            _filterCamera.value = f.camera
-            _filterLens.value = f.lens
-            _filterCodec.value = f.codec
-            _filterCaptureYear.value = f.captureYear
+            _metadataColumns.value = metadataColumnsFromSmartFilters(f)
+            LibraryFilterPrefs.saveColumns(_metadataColumns.value)
             _filterMinRating.value = f.minRating
             _filterColorLabel.value = f.colorLabel
             filterTags = f.tagIds
@@ -1418,15 +1498,33 @@ class GridViewModel(
 
     fun buildSmartCollectionFilterJson(): String {
         val tagId = _filterTagId.value
+        val cols = _metadataColumns.value
+        fun colValue(key: String): String =
+            cols.firstOrNull { it.key == key && it.value.isNotEmpty() }?.value ?: ""
         return com.reelvault.data.models.SmartCollectionFilters(
-            camera = _filterCamera.value,
-            lens = _filterLens.value,
-            codec = _filterCodec.value,
-            captureYear = _filterCaptureYear.value,
+            camera = colValue("camera"),
+            lens = colValue("lens"),
+            codec = colValue("codec"),
+            captureYear = colValue("year").toIntOrNull() ?: 0,
             minRating = _filterMinRating.value,
             colorLabel = _filterColorLabel.value,
             tagIds = if (tagId.isEmpty()) emptyList() else listOf(tagId)
         ).toJson()
+    }
+
+    /** Build metadata columns from a smart collection's saved scalar filters.
+     *  Falls back to the defaults when the saved filter set is empty. */
+    private fun metadataColumnsFromSmartFilters(
+        f: com.reelvault.data.models.SmartCollectionFilters
+    ): List<com.reelvault.data.models.MetadataColumn> {
+        val cols = mutableListOf<com.reelvault.data.models.MetadataColumn>()
+        if (f.camera.isNotEmpty()) cols.add(com.reelvault.data.models.MetadataColumn("camera", f.camera))
+        if (f.lens.isNotEmpty()) cols.add(com.reelvault.data.models.MetadataColumn("lens", f.lens))
+        if (f.codec.isNotEmpty()) cols.add(com.reelvault.data.models.MetadataColumn("codec", f.codec))
+        if (f.captureYear != 0) {
+            cols.add(com.reelvault.data.models.MetadataColumn("year", f.captureYear.toString()))
+        }
+        return cols.ifEmpty { com.reelvault.data.models.defaultMetadataColumns }
     }
 
     fun clearError() {
@@ -1906,7 +2004,7 @@ class GridViewModel(
                 // appeared).
                 loadVideos()
                 loadLibraryLocations()
-                loadFilterOptions()
+                scheduleFacetRefresh()
             } catch (e: Exception) {
                 _scanResult.value = ScanResult(
                     success = false,
@@ -2136,7 +2234,7 @@ class GridViewModel(
             _batchScanProgress.value = null
             loadVideos()
             loadLibraryLocations()
-            loadFilterOptions()
+            scheduleFacetRefresh()
         }
     }
 
@@ -2164,18 +2262,17 @@ class GridViewModel(
         _selectedLocationPath.value = ""
         _tags.value = emptyList()
         _filterTagId.value = ""
-        _filterCamera.value = ""
-        _filterLens.value = ""
-        _filterCodec.value = ""
-        _filterCaptureYear.value = 0
-        _filterOptions.value = com.reelvault.data.models.FilterOptions()
+        _metadataColumns.value = com.reelvault.data.models.defaultMetadataColumns
+        _metadataFacets.value = emptyList()
+        _metadataAvailableKeys.value = emptyList()
+        _libraryFilterMode.value = com.reelvault.data.models.LibraryFilterMode.Text
         _filterMinRating.value = 0
         _filterColorLabel.value = ""
         _topSlots.value = com.reelvault.data.models.defaultGridTopSlots
         _thumbnails.value = emptyMap()
         _scrubFrames.value = emptyMap()
         _scanStatus.value = null
-        searchQuery = ""
+        _searchQuery.value = ""
         currentPage = 0
         collapseAllStacks()
     }

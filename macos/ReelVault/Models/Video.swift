@@ -730,3 +730,66 @@ let defaultGridTopSlots: [String] = [
     GridStatKey.resolutionName.rawValue,
     GridStatKey.fps.rawValue,
 ]
+
+// MARK: - Library Filter (the bar below the top bar)
+
+/// Which Library Filter editor is visible. Under COMBINE semantics the
+/// Text / Attribute / Metadata filters all stay applied at once; this only
+/// chooses which editor is shown. (Clear is a momentary action handled by the
+/// view model, not a resting mode.)
+enum LibraryFilterMode: String, CaseIterable, Identifiable, Hashable {
+    case text, attribute, metadata, clear
+    var id: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .text:      return "Text"
+        case .attribute: return "Attribute"
+        case .metadata:  return "Metadata"
+        case .clear:     return "Clear"
+        }
+    }
+}
+
+/// One column in the metadata-mode browser. `key` is a canonical metadata
+/// token ("" = not chosen yet); `value` is the selected facet token ("" = All).
+struct MetadataColumn: Identifiable, Equatable {
+    let id = UUID()
+    var key: String = ""
+    var value: String = ""
+}
+
+/// One selectable value within a metadata facet column.
+struct FacetValue: Equatable, Hashable {
+    let token: String
+    let display: String
+    let count: Int64
+}
+
+/// The available values for one metadata column (server-computed cascade).
+struct MetadataFacetColumn: Equatable {
+    let key: String
+    let displayName: String
+    let isNumeric: Bool
+    let values: [FacetValue]
+}
+
+/// A metadata key the user can choose for a column.
+struct MetadataKeyInfo: Equatable, Hashable {
+    let key: String
+    let displayName: String
+    let isNumeric: Bool
+}
+
+/// Result of a GetMetadataFacets call: per-column values + the key picker set.
+struct MetadataFacetsResult: Equatable {
+    var columns: [MetadataFacetColumn] = []
+    var availableKeys: [MetadataKeyInfo] = []
+}
+
+/// Default metadata columns shown before the user customizes the bar.
+let defaultMetadataColumns: [MetadataColumn] = [
+    MetadataColumn(key: "camera"),
+    MetadataColumn(key: "lens"),
+    MetadataColumn(key: "exposure"),
+    MetadataColumn(key: "iso"),
+]

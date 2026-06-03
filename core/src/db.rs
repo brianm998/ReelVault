@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 use crate::error::{Result, ReelVaultError};
+use crate::metadata_keys::{self, SqlVal};
 use chrono::Utc;
 use rusqlite::{params, Connection, OptionalExtension};
 use std::path::{Path, PathBuf};
@@ -16,6 +17,52 @@ use uuid::Uuid;
 /// turns those into `FailedPrecondition` for the client.
 pub struct Database {
     path: RwLock<Option<PathBuf>>,
+}
+
+/// Representative-row selection shared by the grid listing and the facet
+/// queries: proxies are always hidden, and grouped videos collapse to their
+/// group's preferred row (falling back to the lowest id when no preference is
+/// set). Kept as one const so the grid and its facets count identically.
+pub(crate) const REPRESENTATIVE_FILTER: &str = "v.proxy_of IS NULL \
+     AND (v.group_id IS NULL \
+     OR v.id = (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id) \
+     OR (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id) IS NULL \
+        AND v.id = (SELECT MIN(v2.id) FROM videos v2 WHERE v2.group_id = v.group_id))";
+
+/// Everything that scopes a video listing or a facet query. Built by the
+/// service layer and consumed by [`Database::list_videos_grouped`],
+/// [`Database::distinct_facet_values`], and
+/// [`Database::metadata_keys_with_data`] so the WHERE clause is assembled in
+/// exactly one place ([`Database::build_filter_clauses`]).
+#[derive(Default)]
+pub struct FilterSpec {
+    /// Directory prefix (recursive). Empty = all locations. Tilde-expanded.
+    pub location_filter: String,
+    /// Tag IDs; a matching video must carry ALL of them.
+    pub tag_ids: Vec<String>,
+    /// `(lat, lon, radius_km)` bounding-box proximity. None = no geo filter.
+    pub geo: Option<(f64, f64, f64)>,
+    /// Minimum star rating (0 = no filter; 1..5 = "≥ this many stars").
+    pub min_rating: i32,
+    /// Exact color label ("" = no filter).
+    pub color_label: String,
+    /// Manual collection membership (None / "" = no filter).
+    pub collection_id: Option<String>,
+    /// Full-text query over filename / notes ("" = no filter).
+    pub search_query: String,
+    /// Generic metadata filters: `(key token, value token)`. An empty value is
+    /// skipped. Keys are resolved through [`crate::metadata_keys`].
+    pub metadata_filters: Vec<(String, String)>,
+}
+
+/// One distinct value of a facet column, with the number of representative
+/// videos that carry it under the current cascade. `display` is `Some` only
+/// when it can't be derived from `token` by the client (i.e. keywords, where
+/// the token is a tag id and the display is the tag name).
+pub struct FacetCount {
+    pub token: String,
+    pub display: Option<String>,
+    pub count: i64,
 }
 
 /// Build the half-open `[lower, upper)` byte range that contains every
@@ -1357,29 +1404,7 @@ impl Database {
         offset: i64,
         sort_by: &str,
         ascending: bool,
-        location_filter: &str,
-        filter_tag_ids: &[String],
-        filter_camera: &str,
-        filter_lens: &str,
-        filter_codec: &str,
-        filter_capture_year: i32,
-        // Geographic proximity filter. When `Some`, restricts results to
-        // videos whose recorded GPS coordinates fall inside a bounding box
-        // computed from (latitude, longitude, radius_km). A bounding box is
-        // used instead of true Haversine because SQLite's math functions
-        // aren't guaranteed to be compiled in everywhere, and at radii
-        // < 100km the approximation differs by < 1% from a great-circle
-        // computation — well within "videos near this pin" tolerance.
-        filter_location: Option<(f64, f64, f64)>,
-        // Lightroom-style user-mark filters. `filter_min_rating` of 0 means
-        // "no rating filter" (include unrated videos); 1..5 means "≥ this
-        // many stars". `filter_color_label` of "" means no filter; otherwise
-        // exact-match against the video's color_label.
-        filter_min_rating: i32,
-        filter_color_label: &str,
-        // Manual collection membership filter. When `Some`, restricts results
-        // to videos that are members of the given collection.
-        filter_collection_id: Option<&str>,
+        spec: &FilterSpec,
     ) -> Result<(Vec<VideoRecord>, i64)> {
         let conn = self.get_connection()?;
 
@@ -1424,171 +1449,18 @@ impl Database {
             _ => format!("v.filename {}", direction),
         };
 
-        // Representative selection:
-        //   - Proxies are always hidden from the grid and the total count.
-        //     They only surface through the "P×N" badge and the ListProxies RPC.
-        //   - If video is ungrouped: it represents itself
-        //   - If grouped: use the group's preferred_video_id (falling back to itself if it IS that video)
-        let representative_filter = "v.proxy_of IS NULL \
-             AND (v.group_id IS NULL \
-             OR v.id = (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id) \
-             OR (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id) IS NULL \
-                AND v.id = (SELECT MIN(v2.id) FROM videos v2 WHERE v2.group_id = v.group_id))";
-
-        // Build the optional location-prefix filter. We match the directory plus
-        // a trailing slash to avoid spurious matches (so `/foo/bar` doesn't match
-        // `/foo/barbaz/...`).
-        let location_param: Option<String> = if location_filter.is_empty() {
-            None
-        } else {
-            let mut prefix = location_filter.to_string();
-            if !prefix.ends_with('/') {
-                prefix.push('/');
-            }
-            Some(format!("{}%", prefix))
-        };
-        let location_clause = if location_param.is_some() {
-            " AND v.path LIKE ?"
-        } else {
-            ""
-        };
-
-        // Tag filter: a video must have ALL specified tag IDs. We dedup just in
-        // case the caller passes the same id twice.
-        let tag_ids: Vec<String> = {
-            let mut seen = std::collections::HashSet::new();
-            filter_tag_ids
-                .iter()
-                .filter(|id| !id.is_empty() && seen.insert((*id).clone()))
-                .cloned()
-                .collect()
-        };
-        let (tag_clause, tag_count_param) = if tag_ids.is_empty() {
-            (String::new(), 0i64)
-        } else {
-            let placeholders = std::iter::repeat_n("?", tag_ids.len())
-                .collect::<Vec<_>>()
-                .join(", ");
-            // EXISTS subquery — counts how many of the requested tags this
-            // video has and requires it to equal the requested count.
-            let clause = format!(
-                " AND (SELECT COUNT(DISTINCT vt.tag_id) FROM video_tags vt \
-                       WHERE vt.video_id = v.id AND vt.tag_id IN ({})) = ?",
-                placeholders
-            );
-            (clause, tag_ids.len() as i64)
-        };
-
-        // Per-field metadata filters. Each is appended only when set so the
-        // generated SQL stays clean.
-        let camera_clause = if filter_camera.is_empty() { "" } else { " AND m.camera_model = ?" };
-        let lens_clause = if filter_lens.is_empty() { "" } else { " AND m.lens_model = ?" };
-        let codec_clause = if filter_codec.is_empty() { "" } else { " AND m.codec_video = ?" };
-        // creation_date is stored as Unix-ms; we compute year via SQLite's
-        // strftime on the ISO conversion. SQLite epoch helpers expect seconds,
-        // so divide.
-        let year_clause = if filter_capture_year > 0 {
-            " AND CAST(strftime('%Y', m.creation_date / 1000, 'unixepoch') AS INTEGER) = ?"
-        } else {
-            ""
-        };
-
-        // Geo proximity bounding box. 1° latitude ≈ 111 km everywhere; 1°
-        // longitude ≈ 111·cos(lat) km, so longitude span widens near the
-        // equator and shrinks at the poles. We clamp the cos at 0.01 to
-        // avoid blowing up exactly at the pole.
-        let geo_bounds: Option<(f64, f64, f64, f64)> = filter_location.map(|(lat, lon, radius_km)| {
-            let lat_delta = (radius_km / 111.0).abs();
-            let cos_lat = lat.to_radians().cos().abs().max(0.01);
-            let lon_delta = (radius_km / (111.0 * cos_lat)).abs();
-            (lat - lat_delta, lat + lat_delta, lon - lon_delta, lon + lon_delta)
-        });
-        let geo_clause = if geo_bounds.is_some() {
-            " AND m.gps_latitude IS NOT NULL AND m.gps_longitude IS NOT NULL \
-             AND m.gps_latitude BETWEEN ? AND ? AND m.gps_longitude BETWEEN ? AND ?"
-        } else {
-            ""
-        };
-
-        // Star-rating / color-label filters. The LEFT JOIN to video_user_marks
-        // happens unconditionally in the SQL below; the clauses here are
-        // appended only when the caller asks for them. COALESCE on the rating
-        // means rows with no marks default to 0 so "≥ 1" naturally excludes
-        // unrated videos.
-        let rating_clause = if filter_min_rating > 0 {
-            " AND COALESCE(um.rating, 0) >= ?"
-        } else {
-            ""
-        };
-        let color_clause = if filter_color_label.is_empty() {
-            ""
-        } else {
-            " AND COALESCE(um.color_label, '') = ?"
-        };
-
-        let collection_clause = if filter_collection_id.is_some() {
-            " AND v.id IN (SELECT video_id FROM collection_members WHERE collection_id = ?)"
-        } else {
-            ""
-        };
-
-        // Helper to bind all dynamic params in order:
-        // [location_param?, tag_id_1, tag_id_2, ..., tag_count?, camera?, lens?, codec?, year?, geo_min_lat?, geo_max_lat?, geo_min_lon?, geo_max_lon?, rating?, color?, collection_id?]
-        let mut bind: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
-        if let Some(p) = &location_param {
-            bind.push(Box::new(p.clone()));
-        }
-        if !tag_ids.is_empty() {
-            for id in &tag_ids {
-                bind.push(Box::new(id.clone()));
-            }
-            bind.push(Box::new(tag_count_param));
-        }
-        if !filter_camera.is_empty() {
-            bind.push(Box::new(filter_camera.to_string()));
-        }
-        if !filter_lens.is_empty() {
-            bind.push(Box::new(filter_lens.to_string()));
-        }
-        if !filter_codec.is_empty() {
-            bind.push(Box::new(filter_codec.to_string()));
-        }
-        if filter_capture_year > 0 {
-            bind.push(Box::new(filter_capture_year));
-        }
-        if let Some((min_lat, max_lat, min_lon, max_lon)) = geo_bounds {
-            bind.push(Box::new(min_lat));
-            bind.push(Box::new(max_lat));
-            bind.push(Box::new(min_lon));
-            bind.push(Box::new(max_lon));
-        }
-        if filter_min_rating > 0 {
-            bind.push(Box::new(filter_min_rating));
-        }
-        if !filter_color_label.is_empty() {
-            bind.push(Box::new(filter_color_label.to_string()));
-        }
-        if let Some(cid) = filter_collection_id {
-            bind.push(Box::new(cid.to_string()));
-        }
+        // All WHERE clauses (everything after the representative filter) plus
+        // their ordered binds are assembled once, shared with the facet
+        // queries.
+        let (filter_sql, bind) = self.build_filter_clauses(spec);
+        let rep = REPRESENTATIVE_FILTER;
 
         // ---- COUNT(*) ----
         let count_sql = format!(
             "SELECT COUNT(*) FROM videos v
              LEFT JOIN metadata m ON v.id = m.video_id
              LEFT JOIN video_user_marks um ON v.id = um.video_id
-             WHERE ({}){}{}{}{}{}{}{}{}{}{}",
-            representative_filter,
-            location_clause,
-            tag_clause,
-            camera_clause,
-            lens_clause,
-            codec_clause,
-            year_clause,
-            geo_clause,
-            rating_clause,
-            color_clause,
-            collection_clause
+             WHERE ({rep}){filter_sql}"
         );
         let count_params: Vec<&dyn rusqlite::ToSql> =
             bind.iter().map(|b| b.as_ref() as &dyn rusqlite::ToSql).collect();
@@ -1602,20 +1474,8 @@ impl Database {
              FROM videos v
              LEFT JOIN metadata m ON v.id = m.video_id
              LEFT JOIN video_user_marks um ON v.id = um.video_id
-             WHERE ({}){}{}{}{}{}{}{}{}{}{}
-             ORDER BY {} LIMIT ? OFFSET ?",
-            representative_filter,
-            location_clause,
-            tag_clause,
-            camera_clause,
-            lens_clause,
-            codec_clause,
-            year_clause,
-            geo_clause,
-            rating_clause,
-            color_clause,
-            collection_clause,
-            order_by
+             WHERE ({rep}){filter_sql}
+             ORDER BY {order_by} LIMIT ? OFFSET ?"
         );
 
         let mut bind_with_limit: Vec<Box<dyn rusqlite::ToSql>> = bind;
@@ -1646,6 +1506,243 @@ impl Database {
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok((videos, total))
+    }
+
+    /// Build the AND-fragment (everything after `WHERE (<representative>)`)
+    /// plus its ordered bind values for `spec`. The query's FROM must alias
+    /// `videos` as `v`, `metadata` as `m`, and `video_user_marks` as `um`
+    /// (`list_videos_grouped` and the facet queries all do). Bind order
+    /// matches the order clauses are appended, so callers append the limit /
+    /// offset (if any) after these binds.
+    fn build_filter_clauses(&self, spec: &FilterSpec) -> (String, Vec<Box<dyn rusqlite::ToSql>>) {
+        let mut sql = String::new();
+        let mut bind: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+        // Location prefix — match the directory plus a trailing slash so
+        // `/foo/bar` doesn't also match `/foo/barbaz/...`.
+        if !spec.location_filter.is_empty() {
+            let mut prefix = spec.location_filter.clone();
+            if !prefix.ends_with('/') {
+                prefix.push('/');
+            }
+            sql.push_str(" AND v.path LIKE ?");
+            bind.push(Box::new(format!("{prefix}%")));
+        }
+
+        // Tags — a video must carry ALL of the requested (deduped) ids.
+        let tag_ids: Vec<String> = {
+            let mut seen = std::collections::HashSet::new();
+            spec.tag_ids
+                .iter()
+                .filter(|id| !id.is_empty() && seen.insert((*id).clone()))
+                .cloned()
+                .collect()
+        };
+        if !tag_ids.is_empty() {
+            let placeholders = std::iter::repeat_n("?", tag_ids.len())
+                .collect::<Vec<_>>()
+                .join(", ");
+            sql.push_str(&format!(
+                " AND (SELECT COUNT(DISTINCT vt.tag_id) FROM video_tags vt \
+                   WHERE vt.video_id = v.id AND vt.tag_id IN ({placeholders})) = ?"
+            ));
+            for id in &tag_ids {
+                bind.push(Box::new(id.clone()));
+            }
+            bind.push(Box::new(tag_ids.len() as i64));
+        }
+
+        // Generic metadata filters (camera / lens / codec / year / iso / … and
+        // keyword), resolved through the metadata-key registry.
+        for (key, value) in &spec.metadata_filters {
+            if value.is_empty() {
+                continue;
+            }
+            if key == "keyword" {
+                sql.push_str(" AND v.id IN (SELECT video_id FROM video_tags WHERE tag_id = ?)");
+                bind.push(Box::new(value.clone()));
+                continue;
+            }
+            if let Some(mk) = metadata_keys::lookup(key) {
+                if let (Some(pred), Some(val)) = (mk.predicate_sql(), mk.parse_value(value)) {
+                    sql.push_str(" AND ");
+                    sql.push_str(&pred);
+                    match val {
+                        SqlVal::Text(s) => bind.push(Box::new(s)),
+                        SqlVal::Int(i) => bind.push(Box::new(i)),
+                        SqlVal::Real(f) => bind.push(Box::new(f)),
+                    }
+                }
+            }
+        }
+
+        // Geo proximity bounding box. 1° latitude ≈ 111 km everywhere; 1°
+        // longitude ≈ 111·cos(lat) km. We clamp cos at 0.01 near the poles.
+        if let Some((lat, lon, radius_km)) = spec.geo {
+            let lat_delta = (radius_km / 111.0).abs();
+            let cos_lat = lat.to_radians().cos().abs().max(0.01);
+            let lon_delta = (radius_km / (111.0 * cos_lat)).abs();
+            sql.push_str(
+                " AND m.gps_latitude IS NOT NULL AND m.gps_longitude IS NOT NULL \
+                 AND m.gps_latitude BETWEEN ? AND ? AND m.gps_longitude BETWEEN ? AND ?",
+            );
+            bind.push(Box::new(lat - lat_delta));
+            bind.push(Box::new(lat + lat_delta));
+            bind.push(Box::new(lon - lon_delta));
+            bind.push(Box::new(lon + lon_delta));
+        }
+
+        // Lightroom user marks. COALESCE so unmarked rows default to 0 / '',
+        // which makes "≥ 1" naturally exclude unrated videos.
+        if spec.min_rating > 0 {
+            sql.push_str(" AND COALESCE(um.rating, 0) >= ?");
+            bind.push(Box::new(spec.min_rating));
+        }
+        if !spec.color_label.is_empty() {
+            sql.push_str(" AND COALESCE(um.color_label, '') = ?");
+            bind.push(Box::new(spec.color_label.clone()));
+        }
+
+        // Manual collection membership.
+        if let Some(cid) = spec.collection_id.as_deref().filter(|c| !c.is_empty()) {
+            sql.push_str(" AND v.id IN (SELECT video_id FROM collection_members WHERE collection_id = ?)");
+            bind.push(Box::new(cid.to_string()));
+        }
+
+        // Full-text query over filename / notes — mirrors SearchEngine::search
+        // (a LIKE over both) so folding search into the listing keeps the same
+        // matching semantics while letting it compose with every other filter.
+        if !spec.search_query.is_empty() {
+            let like = format!("%{}%", spec.search_query);
+            sql.push_str(
+                " AND (v.filename LIKE ? OR EXISTS \
+                 (SELECT 1 FROM video_notes vn WHERE vn.video_id = v.id AND vn.notes LIKE ?))",
+            );
+            bind.push(Box::new(like.clone()));
+            bind.push(Box::new(like));
+        }
+
+        (sql, bind)
+    }
+
+    /// Distinct values (with representative-video counts) for facet `key`,
+    /// computed within the set `spec` selects. The left→right cascade is the
+    /// caller's job: it puts the columns to the left of `key` into
+    /// `spec.metadata_filters`. Returns an empty vec for an unknown key.
+    pub fn distinct_facet_values(&self, key: &str, spec: &FilterSpec) -> Result<Vec<FacetCount>> {
+        let conn = self.get_connection()?;
+        let rep = REPRESENTATIVE_FILTER;
+        let (filter_sql, bind) = self.build_filter_clauses(spec);
+        let params: Vec<&dyn rusqlite::ToSql> =
+            bind.iter().map(|b| b.as_ref() as &dyn rusqlite::ToSql).collect();
+
+        // Keyword is tag-backed: token = tag id, display = tag name.
+        if key == "keyword" {
+            let sql = format!(
+                "SELECT t.id, t.name, COUNT(DISTINCT v.id) AS c
+                 FROM videos v
+                 LEFT JOIN metadata m ON v.id = m.video_id
+                 LEFT JOIN video_user_marks um ON v.id = um.video_id
+                 JOIN video_tags vt ON vt.video_id = v.id
+                 JOIN tags t ON t.id = vt.tag_id
+                 WHERE ({rep}){filter_sql}
+                 GROUP BY t.id, t.name
+                 ORDER BY t.name COLLATE NOCASE"
+            );
+            let mut stmt = conn
+                .prepare(&sql)
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            let rows = stmt
+                .query_map(params.as_slice(), |row| {
+                    Ok(FacetCount {
+                        token: row.get::<_, String>(0)?,
+                        display: Some(row.get::<_, String>(1)?),
+                        count: row.get::<_, i64>(2)?,
+                    })
+                })
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
+                .collect::<std::result::Result<Vec<_>, _>>()
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            return Ok(rows);
+        }
+
+        let Some(mk) = metadata_keys::lookup(key) else {
+            return Ok(Vec::new());
+        };
+        let (Some(expr), Some(guard)) = (mk.distinct_expr(), mk.distinct_guard()) else {
+            return Ok(Vec::new());
+        };
+        let order = mk.distinct_order();
+        let sql = format!(
+            "SELECT {expr} AS val, COUNT(*) AS c
+             FROM videos v
+             LEFT JOIN metadata m ON v.id = m.video_id
+             LEFT JOIN video_user_marks um ON v.id = um.video_id
+             WHERE ({rep}) AND {guard}{filter_sql}
+             GROUP BY val
+             ORDER BY val {order}"
+        );
+        let mut stmt = conn
+            .prepare(&sql)
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let rows = stmt
+            .query_map(params.as_slice(), |row| {
+                // The raw value's SQLite type depends on the column; stringify
+                // it into a round-trippable token (Rust's `{}` for f64 emits
+                // the shortest decimal that parses back to the same value).
+                let token = match row.get::<_, rusqlite::types::Value>(0)? {
+                    rusqlite::types::Value::Integer(i) => i.to_string(),
+                    rusqlite::types::Value::Real(f) => format!("{f}"),
+                    rusqlite::types::Value::Text(s) => s,
+                    _ => String::new(),
+                };
+                Ok(FacetCount { token, display: None, count: row.get::<_, i64>(1)? })
+            })
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(rows.into_iter().filter(|fc| !fc.token.is_empty()).collect())
+    }
+
+    /// Which registry keys have at least one value in the set `spec` selects —
+    /// i.e. which columns are worth offering in the facet key picker. Returned
+    /// in registry order.
+    pub fn metadata_keys_with_data(&self, spec: &FilterSpec) -> Result<Vec<String>> {
+        let conn = self.get_connection()?;
+        let rep = REPRESENTATIVE_FILTER;
+        let (filter_sql, bind) = self.build_filter_clauses(spec);
+
+        let mut out = Vec::new();
+        for mk in metadata_keys::KEYS {
+            let sql = if mk.token == "keyword" {
+                format!(
+                    "SELECT EXISTS(SELECT 1 FROM videos v
+                       LEFT JOIN metadata m ON v.id = m.video_id
+                       LEFT JOIN video_user_marks um ON v.id = um.video_id
+                       JOIN video_tags vt ON vt.video_id = v.id
+                       WHERE ({rep}){filter_sql})"
+                )
+            } else {
+                let Some(guard) = mk.distinct_guard() else {
+                    continue;
+                };
+                format!(
+                    "SELECT EXISTS(SELECT 1 FROM videos v
+                       LEFT JOIN metadata m ON v.id = m.video_id
+                       LEFT JOIN video_user_marks um ON v.id = um.video_id
+                       WHERE ({rep}) AND {guard}{filter_sql})"
+                )
+            };
+            let params: Vec<&dyn rusqlite::ToSql> =
+                bind.iter().map(|b| b.as_ref() as &dyn rusqlite::ToSql).collect();
+            let exists: i64 = conn
+                .query_row(&sql, params.as_slice(), |row| row.get(0))
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            if exists == 1 {
+                out.push(mk.token.to_string());
+            }
+        }
+        Ok(out)
     }
 
     /// Distinct non-empty values for a single metadata column.
@@ -2635,5 +2732,106 @@ mod tests {
             Some(2048),
             "re-index must converge videos.file_size_bytes to the on-disk size"
         );
+    }
+
+    /// Add a video plus a `metadata` row with the given camera/lens/iso so the
+    /// facet queries have something to enumerate.
+    fn seed_meta(
+        db: &Database,
+        path: &str,
+        filename: &str,
+        camera: Option<&str>,
+        lens: Option<&str>,
+        iso: Option<i64>,
+    ) -> String {
+        let id = db
+            .add_video(path, filename, None, None, Some(1000))
+            .expect("add_video");
+        let conn = db.get_connection().expect("conn");
+        conn.execute(
+            "INSERT OR REPLACE INTO metadata (video_id, camera_model, lens_model, iso) \
+             VALUES (?, ?, ?, ?)",
+            rusqlite::params![id, camera, lens, iso],
+        )
+        .expect("insert metadata");
+        id
+    }
+
+    fn open_db(tmp: &tempfile::TempDir) -> Database {
+        let db = Database::new_empty();
+        db.set_path(&tmp.path().join("catalog.db")).expect("init schema");
+        db
+    }
+
+    #[test]
+    fn facet_cascade_constrains_columns_to_the_right() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        seed_meta(&db, "/l/a.mov", "a.mov", Some("Sony A7"), Some("FE 24"), Some(100));
+        seed_meta(&db, "/l/b.mov", "b.mov", Some("Sony A7"), Some("FE 50"), Some(200));
+        seed_meta(&db, "/l/c.mov", "c.mov", Some("Canon R5"), Some("RF 50"), Some(400));
+
+        // Unconstrained camera facet: both cameras present.
+        let cams = db.distinct_facet_values("camera", &FilterSpec::default()).unwrap();
+        let cam_tokens: Vec<_> = cams.iter().map(|c| c.token.as_str()).collect();
+        assert!(cam_tokens.contains(&"Sony A7") && cam_tokens.contains(&"Canon R5"));
+
+        // Lens facet with camera=Sony A7 applied to its left: only Sony lenses.
+        let spec = FilterSpec {
+            metadata_filters: vec![("camera".into(), "Sony A7".into())],
+            ..Default::default()
+        };
+        let lenses = db.distinct_facet_values("lens", &spec).unwrap();
+        let lens_tokens: Vec<_> = lenses.iter().map(|c| c.token.as_str()).collect();
+        assert_eq!(lens_tokens.len(), 2);
+        assert!(lens_tokens.contains(&"FE 24") && lens_tokens.contains(&"FE 50"));
+        assert!(
+            !lens_tokens.contains(&"RF 50"),
+            "the Canon lens must be filtered out by the camera cascade"
+        );
+    }
+
+    #[test]
+    fn metadata_keys_with_data_reflects_present_columns_and_tags() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let id = seed_meta(&db, "/l/a.mov", "a.mov", Some("Sony A7"), None, Some(100));
+
+        let keys = db.metadata_keys_with_data(&FilterSpec::default()).unwrap();
+        assert!(keys.contains(&"camera".to_string()));
+        assert!(keys.contains(&"iso".to_string()));
+        assert!(!keys.contains(&"lens".to_string()), "lens has no values yet");
+        assert!(!keys.contains(&"keyword".to_string()), "no tags yet");
+
+        // Tagging a video makes 'keyword' available, and its facet carries the
+        // tag id as the token and the tag name as the display.
+        let tag = db.create_tag("beach", None).unwrap();
+        db.tag_video(&id, &tag).unwrap();
+        let keys = db.metadata_keys_with_data(&FilterSpec::default()).unwrap();
+        assert!(keys.contains(&"keyword".to_string()));
+        let kw = db.distinct_facet_values("keyword", &FilterSpec::default()).unwrap();
+        assert_eq!(kw.len(), 1);
+        assert_eq!(kw[0].token, tag);
+        assert_eq!(kw[0].display.as_deref(), Some("beach"));
+    }
+
+    #[test]
+    fn list_composes_search_and_metadata_filters() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        seed_meta(&db, "/l/beach_sony.mov", "beach_sony.mov", Some("Sony A7"), None, None);
+        seed_meta(&db, "/l/beach_canon.mov", "beach_canon.mov", Some("Canon R5"), None, None);
+        seed_meta(&db, "/l/forest_sony.mov", "forest_sony.mov", Some("Sony A7"), None, None);
+
+        // search "beach" AND camera=Sony A7 → only beach_sony.mov.
+        let spec = FilterSpec {
+            search_query: "beach".into(),
+            metadata_filters: vec![("camera".into(), "Sony A7".into())],
+            ..Default::default()
+        };
+        let (vids, total) = db.list_videos_grouped(50, 0, "name", true, &spec).unwrap();
+        assert_eq!(total, 1);
+        assert_eq!(vids.len(), 1);
+        assert_eq!(vids[0].filename, "beach_sony.mov");
     }
 }

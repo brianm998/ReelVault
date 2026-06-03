@@ -1,0 +1,535 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 ReelVault Contributors
+
+package com.reelvault.ui.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import com.reelvault.data.models.ColorLabel
+import com.reelvault.data.models.FacetColumn
+import com.reelvault.data.models.LibraryFilterMode
+import com.reelvault.data.models.MetadataColumn
+import com.reelvault.data.models.MetadataKeyInfo
+import com.reelvault.ui.theme.ReelVaultSpacing
+import com.reelvault.viewmodel.GridViewModel
+import java.awt.Cursor
+import java.util.prefs.Preferences
+
+/**
+ * The Library Filter bar. Sits at the top of the centre content column (below
+ * the top bar, between the two side panels) and offers four modes — Text /
+ * Attribute / Metadata / Clear. Under COMBINE semantics the Text/Attribute/
+ * Metadata filters all stay applied at once; the selector only chooses which
+ * editor is shown. "Clear" is a resting mode that resets the filter and shows
+ * nothing below.
+ */
+@Composable
+fun LibraryFilterBar(
+    viewModel: GridViewModel,
+    onSearchFocusChanged: (Boolean) -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
+    val mode by viewModel.libraryFilterMode.collectAsState()
+    // Drag-adjustable height for the metadata editor. Persisted across sessions.
+    val metadataHeight = remember { mutableStateOf(LibraryFilterBarPrefs.loadHeight().dp) }
+
+    Surface(modifier = modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface) {
+        Column {
+            // Top row: "Filter:" pinned left, the mode selector centred.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = ReelVaultSpacing.Small, vertical = ReelVaultSpacing.XSmall)
+            ) {
+                Text(
+                    text = "Filter:",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.CenterStart),
+                )
+                Box(modifier = Modifier.align(Alignment.Center)) {
+                    LibraryFilterModeSelector(mode) { viewModel.setLibraryFilterMode(it) }
+                }
+            }
+
+            if (mode != LibraryFilterMode.Clear) {
+                // Border between the two views (selector ↑ / editor ↓).
+                HorizontalDivider()
+                when (mode) {
+                    LibraryFilterMode.Text -> LibraryTextEditor(viewModel, onSearchFocusChanged)
+                    LibraryFilterMode.Attribute -> LibraryAttributeEditor(viewModel)
+                    LibraryFilterMode.Metadata -> LibraryMetadataEditor(viewModel, metadataHeight.value)
+                    LibraryFilterMode.Clear -> {}
+                }
+            }
+
+            // Bottom border of the bar. In metadata mode it doubles as a
+            // drag handle that resizes the editor's height.
+            if (mode == LibraryFilterMode.Metadata) {
+                MetadataResizeHandle(metadataHeight)
+            } else {
+                HorizontalDivider()
+            }
+        }
+    }
+}
+
+/** Segmented Text | Attribute | Metadata | Clear selector. */
+@Composable
+private fun LibraryFilterModeSelector(
+    current: LibraryFilterMode,
+    onSelect: (LibraryFilterMode) -> Unit,
+) {
+    val entries = listOf(
+        LibraryFilterMode.Text to "Text",
+        LibraryFilterMode.Attribute to "Attribute",
+        LibraryFilterMode.Metadata to "Metadata",
+        LibraryFilterMode.Clear to "Clear",
+    )
+    Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        Row {
+            entries.forEachIndexed { idx, (modeValue, label) ->
+                val selected = modeValue == current
+                if (idx > 0) {
+                    Box(
+                        Modifier
+                            .width(1.dp)
+                            .height(24.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .clickable { onSelect(modeValue) }
+                        .background(
+                            if (selected) MaterialTheme.colorScheme.primary else Color.Transparent
+                        )
+                        .padding(horizontal = ReelVaultSpacing.Medium, vertical = ReelVaultSpacing.XSmall),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (selected) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Text mode: the search box (filename / notes), centred, bound to the flow. */
+@Composable
+private fun LibraryTextEditor(viewModel: GridViewModel, onSearchFocusChanged: (Boolean) -> Unit) {
+    val query by viewModel.searchQuery.collectAsState()
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = ReelVaultSpacing.Small, vertical = ReelVaultSpacing.XSmall),
+        contentAlignment = Alignment.Center,
+    ) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = { viewModel.setSearchQuery(it) },
+            placeholder = {
+                Text(
+                    "Search videos...",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            modifier = Modifier
+                .width(360.dp)
+                .onFocusChanged { onSearchFocusChanged(it.isFocused) },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurface),
+            leadingIcon = {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = "Search",
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            shape = MaterialTheme.shapes.small,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+            ),
+        )
+    }
+}
+
+/** Attribute mode: direct-click star rating + colour swatches, centred. */
+@Composable
+private fun LibraryAttributeEditor(viewModel: GridViewModel) {
+    val minRating by viewModel.filterMinRating.collectAsState()
+    val colorLabel by viewModel.filterColorLabel.collectAsState()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = ReelVaultSpacing.Small, vertical = ReelVaultSpacing.Small),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(ReelVaultSpacing.Medium, Alignment.CenterHorizontally),
+    ) {
+        Text("Rating", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        MinRatingStarPicker(minRating) { viewModel.setMinRatingFilter(it) }
+        Spacer(Modifier.width(ReelVaultSpacing.Medium))
+        Text("Color", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ColorSwatchPicker(colorLabel) { viewModel.setColorLabelFilter(it) }
+    }
+}
+
+/** Five tappable stars. Clicking star N sets "≥ N"; re-clicking N clears to 0. */
+@Composable
+private fun MinRatingStarPicker(minRating: Int, onPick: (Int) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        (1..5).forEach { pos ->
+            val filled = pos <= minRating
+            Box(
+                modifier = Modifier
+                    .size(26.dp)
+                    .clickable { onPick(if (minRating == pos) 0 else pos) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Default.Star,
+                    contentDescription = "At least $pos star(s)",
+                    modifier = Modifier.size(18.dp),
+                    tint = if (filled) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+                    },
+                )
+            }
+        }
+    }
+}
+
+/** Colour squares: filled with the label colour, narrow black border, accent
+ *  ring when selected. Re-clicking the active swatch clears the filter. */
+@Composable
+private fun ColorSwatchPicker(selectedRaw: String, onPick: (String) -> Unit) {
+    val selected = ColorLabel.from(selectedRaw)
+    Row(horizontalArrangement = Arrangement.spacedBy(ReelVaultSpacing.XSmall)) {
+        ColorLabel.values().filter { it != ColorLabel.None }.forEach { label ->
+            val isSelected = label == selected
+            Tooltip(text = label.displayName) {
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .border(
+                            width = if (isSelected) 2.dp else 1.dp,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Black,
+                            shape = RoundedCornerShape(4.dp),
+                        )
+                        .padding(2.dp)
+                        .background(label.swatch, RoundedCornerShape(2.dp))
+                        .clickable { onPick(if (isSelected) "" else label.raw) },
+                )
+            }
+        }
+    }
+}
+
+/** Metadata mode: a horizontal, cascading set of metadata columns, centred,
+ *  with a drag-adjustable [height]. */
+@Composable
+private fun LibraryMetadataEditor(viewModel: GridViewModel, height: Dp) {
+    val columns by viewModel.metadataColumns.collectAsState()
+    val facets by viewModel.metadataFacets.collectAsState()
+    val availableKeys by viewModel.metadataAvailableKeys.collectAsState()
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height)
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = ReelVaultSpacing.Small, vertical = ReelVaultSpacing.Small),
+        horizontalArrangement = Arrangement.spacedBy(ReelVaultSpacing.Small, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.Top,
+    ) {
+        AddColumnButton { viewModel.addMetadataColumn(atFront = true) }
+        columns.forEachIndexed { i, col ->
+            MetadataColumnView(
+                column = col,
+                facet = facets.getOrNull(i),
+                availableKeys = availableKeys,
+                canRemove = columns.size > 1,
+                onPickKey = { key -> viewModel.setMetadataColumnKey(i, key) },
+                onPickValue = { token -> viewModel.setMetadataColumnValue(i, token) },
+                onRemove = { viewModel.removeMetadataColumn(i) },
+            )
+        }
+        AddColumnButton { viewModel.addMetadataColumn(atFront = false) }
+    }
+}
+
+@Composable
+private fun AddColumnButton(onClick: () -> Unit) {
+    Tooltip(text = "Add a metadata column") {
+        IconButton(onClick = onClick, modifier = Modifier.size(32.dp)) {
+            Icon(
+                Icons.Default.Add,
+                contentDescription = "Add column",
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MetadataColumnView(
+    column: MetadataColumn,
+    facet: FacetColumn?,
+    availableKeys: List<MetadataKeyInfo>,
+    canRemove: Boolean,
+    onPickKey: (String) -> Unit,
+    onPickValue: (String) -> Unit,
+    onRemove: () -> Unit,
+) {
+    Column(modifier = Modifier.width(168.dp).fillMaxHeight()) {
+        // Header: clickable title (key picker) + optional remove.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            var menuOpen by remember { mutableStateOf(false) }
+            Box(modifier = Modifier.weight(1f)) {
+                TextButton(
+                    onClick = { menuOpen = true },
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        horizontal = ReelVaultSpacing.XSmall,
+                        vertical = 2.dp,
+                    ),
+                ) {
+                    Text(
+                        text = when {
+                            column.key.isEmpty() -> "Choose field"
+                            else -> facet?.displayName?.takeIf { it.isNotEmpty() } ?: column.key
+                        },
+                        style = MaterialTheme.typography.labelMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Icon(
+                        Icons.Default.ArrowDropDown,
+                        contentDescription = "Change field",
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    if (availableKeys.isEmpty()) {
+                        DropdownMenuItem(text = { Text("No metadata available") }, onClick = {}, enabled = false)
+                    }
+                    availableKeys.forEach { info ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    info.displayName,
+                                    color = if (info.key == column.key) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    },
+                                )
+                            },
+                            onClick = {
+                                onPickKey(info.key)
+                                menuOpen = false
+                            },
+                        )
+                    }
+                }
+            }
+            if (canRemove) {
+                Tooltip(text = "Remove this column") {
+                    IconButton(onClick = onRemove, modifier = Modifier.size(24.dp)) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Remove column",
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+
+        when {
+            column.key.isEmpty() -> {
+                Text(
+                    "Pick a metadata field",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(ReelVaultSpacing.XSmall),
+                )
+            }
+            facet == null -> {
+                Box(Modifier.padding(ReelVaultSpacing.Small)) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                }
+            }
+            else -> {
+                LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    item {
+                        FacetValueRow(
+                            label = "All",
+                            count = null,
+                            selected = column.value.isEmpty(),
+                        ) { onPickValue("") }
+                    }
+                    items(facet.values) { v ->
+                        FacetValueRow(
+                            label = v.display.ifEmpty { v.token },
+                            count = v.count,
+                            selected = column.value == v.token,
+                        ) { onPickValue(v.token) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FacetValueRow(
+    label: String,
+    count: Long?,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .background(
+                if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+            )
+            .padding(horizontal = ReelVaultSpacing.XSmall, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        if (count != null) {
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** The bar's bottom border in metadata mode — a vertical-resize drag handle
+ *  that grows / shrinks the metadata editor. Mirrors [PanelResizeHandle]'s
+ *  idiom (predefined AWT cursor + `draggable`). */
+@Composable
+private fun MetadataResizeHandle(height: MutableState<Dp>) {
+    val density = LocalDensity.current
+    val resizeCursor = remember { PointerIcon(Cursor.getPredefinedCursor(Cursor.N_RESIZE_CURSOR)) }
+    val state = rememberDraggableState { deltaPx ->
+        val deltaDp = with(density) { deltaPx.toDp() }
+        val clamped = (height.value + deltaDp).coerceIn(LibraryFilterBarPrefs.MIN_HEIGHT.dp, LibraryFilterBarPrefs.MAX_HEIGHT.dp)
+        height.value = clamped
+        LibraryFilterBarPrefs.saveHeight(clamped.value)
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(7.dp)
+            .pointerHoverIcon(resizeCursor)
+            .draggable(orientation = Orientation.Vertical, state = state),
+        contentAlignment = Alignment.Center,
+    ) {
+        HorizontalDivider()
+    }
+}
+
+/** Persists the metadata editor's drag-adjusted height across sessions. */
+private object LibraryFilterBarPrefs {
+    const val DEFAULT_HEIGHT: Float = 240f
+    const val MIN_HEIGHT: Float = 120f
+    const val MAX_HEIGHT: Float = 600f
+
+    private val prefs = Preferences.userRoot().node("com/reelvault/libraryfilter")
+
+    fun loadHeight(): Float {
+        val raw = prefs.getFloat("metadataHeight", -1f)
+        return if (raw > 0f) raw.coerceIn(MIN_HEIGHT, MAX_HEIGHT) else DEFAULT_HEIGHT
+    }
+
+    fun saveHeight(value: Float) {
+        prefs.putFloat("metadataHeight", value)
+    }
+}
