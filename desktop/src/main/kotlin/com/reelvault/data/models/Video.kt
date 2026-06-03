@@ -171,10 +171,14 @@ data class VideoMetadata(
             else -> String.format("%.2f KB", sizeBytes / 1024.0)
         }
     }
+    /** Capture date as year-month-day only. The time-of-day from a video's
+     *  creation timestamp is frequently wrong (cameras store local wall-clock
+     *  without a timezone), so we deliberately show no finer granularity than
+     *  the day. */
     val creationDateFormatted: String get() {
         return if (creationDate > 0) {
             val instant = Instant.ofEpochMilli(creationDate)
-            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
                 .withZone(ZoneId.systemDefault())
             formatter.format(instant)
         } else {

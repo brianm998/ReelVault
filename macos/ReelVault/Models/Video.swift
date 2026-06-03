@@ -290,10 +290,14 @@ struct VideoMetadata: Identifiable {
         return "\(bitrateKbps) kbps"
     }
 
+    /// Capture date as year-month-day only. The time-of-day from a video's
+    /// creation timestamp is frequently wrong (cameras store local wall-clock
+    /// without a timezone), so we deliberately show no finer granularity than
+    /// the day.
     var creationDateFormatted: String {
         if creationDate == 0 { return "Unknown" }
         let date = Date(timeIntervalSince1970: TimeInterval(creationDate / 1000))
-        return date.formatted(date: .abbreviated, time: .shortened)
+        return date.formatted(date: .abbreviated, time: .omitted)
     }
 }
 

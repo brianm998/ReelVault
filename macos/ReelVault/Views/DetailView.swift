@@ -641,7 +641,7 @@ struct MetadataItemView: View {
             return "\"Full\" when the recorded dimensions match a known native sensor mode for this camera (e.g. a timelapse rendered at full sensor resolution). \"Not full\" when the camera is known but the recorded size doesn't match either a native mode or a common video standard."
         case "Camera":      return "Camera model recorded in the file's metadata (when available)."
         case "Lens":        return "Lens model recorded in the file's metadata."
-        case "Captured":    return "Original recording date and time from the file's metadata."
+        case "Captured":    return "Original recording date (year-month-day) from the file's metadata."
         case "GPS":         return "Latitude and longitude where the video was recorded (when present)."
         default:            return "\(label): \(value)"
         }

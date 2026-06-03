@@ -356,7 +356,7 @@ private struct InfoOverlayView: View {
                     if let m = metadata, m.creationDate > 0 { return m.creationDateFormatted }
                     if video.creationDate > 0 {
                         let d = Date(timeIntervalSince1970: TimeInterval(video.creationDate / 1000))
-                        return d.formatted(date: .abbreviated, time: .shortened)
+                        return d.formatted(date: .abbreviated, time: .omitted)
                     }
                     return "Unknown"
                 }()

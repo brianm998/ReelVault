@@ -518,7 +518,7 @@ private fun InfoOverlay(
                     val captured = metadata?.creationDateFormatted?.takeIf { it != "Unknown" }
                         ?: if (video.creationDate > 0) {
                             java.time.format.DateTimeFormatter
-                                .ofPattern("yyyy-MM-dd HH:mm:ss")
+                                .ofPattern("yyyy-MM-dd")
                                 .withZone(java.time.ZoneId.systemDefault())
                                 .format(java.time.Instant.ofEpochMilli(video.creationDate))
                         } else "Unknown"
