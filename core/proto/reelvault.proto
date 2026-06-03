@@ -136,6 +136,18 @@ service ReelVault {
   rpc ListCameraNameMappings(ListCameraNameMappingsRequest)
       returns (ListCameraNameMappingsResponse);
   rpc SetCameraNameMapping(SetCameraNameMappingRequest) returns (Response);
+
+  // Lens display-name overrides — raw lens string (as stored in the
+  // catalog, i.e. the value extracted from `exifEX:LensModel`) → a
+  // user-chosen display name. Unlike cameras there is no built-in
+  // table: the universe is the set of lens strings actually present in
+  // the catalog. List returns one row per distinct catalog lens, plus
+  // any custom-only overrides whose lens no longer appears, each
+  // carrying the active display name and a custom flag. Setting an
+  // alias equal to "" removes the override and reveals the raw value.
+  rpc ListLensNameMappings(ListLensNameMappingsRequest)
+      returns (ListLensNameMappingsResponse);
+  rpc SetLensNameMapping(SetLensNameMappingRequest) returns (Response);
 }
 
 // Messages for queries
@@ -1040,6 +1052,29 @@ message ListCameraNameMappingsResponse {
 message SetCameraNameMappingRequest {
   string internal = 1;
   string marketing = 2;
+}
+
+message LensNameMapping {
+  string raw = 1;        // lens string exactly as stored in the catalog
+  string alias = 2;      // active display name (custom alias, else `raw`)
+  bool is_custom = 3;    // true when a user override is in effect
+  bool in_catalog = 4;   // true when this lens currently appears in the catalog
+}
+
+message ListLensNameMappingsRequest {}
+
+message ListLensNameMappingsResponse {
+  // Catalog lenses first (alphabetised by raw value), then any
+  // custom-only overrides whose raw value no longer appears in the
+  // catalog. Each entry's `alias` already reflects the override.
+  repeated LensNameMapping mappings = 1;
+}
+
+// Add or update a custom lens alias. Sending `alias = ""` deletes the
+// override and falls back to displaying the raw lens string.
+message SetLensNameMappingRequest {
+  string raw = 1;
+  string alias = 2;
 }
 
 // Generic responses

@@ -64,6 +64,18 @@ pub struct CustomCameraName {
     pub marketing: String,
 }
 
+/// A user-supplied display-name override for a lens. `raw` is the lens
+/// string as stored in the catalog (the value extracted from
+/// `exifEX:LensModel`), kept verbatim so it round-trips back into the
+/// editor; `alias` is what the user wants shown instead. Lookups
+/// normalise the `raw` side via `camera_names::normalise`. There is no
+/// built-in lens table — these overrides are the only mapping layer.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomLensName {
+    pub raw: String,
+    pub alias: String,
+}
+
 impl Config {
     pub async fn load(db: &Database) -> Result<Self> {
         // When the daemon was started with `--no-catalog` there's no DB to

@@ -467,6 +467,45 @@ class VideoRepository: ObservableObject {
         return response.message
     }
 
+    // MARK: - Lens display-name aliases (user overrides only)
+
+    /// Fetch the lens mapping table: one row per distinct lens in the
+    /// catalog, plus any custom-only overrides whose lens no longer
+    /// appears. Each `LensNameMapping.alias` already reflects the active
+    /// override (when any).
+    func listLensNameMappings() async throws -> [LensNameMapping] {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        let response = try await client.listLensNameMappings(
+            Reelvault_ListLensNameMappingsRequest()
+        )
+        return response.mappings.map {
+            LensNameMapping(
+                rawName: $0.raw,
+                alias: $0.alias,
+                isCustom: $0.isCustom,
+                inCatalog: $0.inCatalog
+            )
+        }
+    }
+
+    /// Save a custom lens alias. Pass `alias == ""` to delete the
+    /// override and fall back to displaying the raw lens string.
+    @discardableResult
+    func setLensNameMapping(raw: String, alias: String) async throws -> String {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        var req = Reelvault_SetLensNameMappingRequest()
+        req.raw = raw
+        req.alias = alias
+        let response = try await client.setLensNameMapping(req)
+        if !response.success {
+            throw RepositoryError.serverError(
+                response.error.isEmpty ? "set_lens_name_mapping failed"
+                                       : response.error
+            )
+        }
+        return response.message
+    }
+
     // MARK: - Tags / keywords
 
     func listTags() async throws -> [Tag] {

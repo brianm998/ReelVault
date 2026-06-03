@@ -95,8 +95,13 @@ impl MetadataExtractor {
             .and_then(|s| s.codec_name.clone());
 
         // Extract EXIF data from tags - check format tags first (where camera/lens usually live for MOV/MP4)
-        let mut camera_model = Self::build_camera_name(&format.tags)
-            .or_else(|| Self::build_camera_name(&video_stream.tags));
+        // Keep make and model as separate fields so the XMP merge below
+        // can fall back per-field (see the camera_model merge note).
+        let ff_make = Self::extract_make(&format.tags)
+            .or_else(|| Self::extract_make(&video_stream.tags));
+        let ff_model = Self::extract_model(&format.tags)
+            .or_else(|| Self::extract_model(&video_stream.tags));
+        let mut camera_model = combine_make_model(ff_make.as_deref(), ff_model.as_deref());
         let mut lens_model = Self::extract_lens(&format.tags)
             .or_else(|| Self::extract_lens(&video_stream.tags));
         let mut creation_date = Self::extract_creation_date(&format.tags)
@@ -110,7 +115,20 @@ impl MetadataExtractor {
         // XMP rather than failing the whole metadata extraction.
         let xmp = crate::xmp::read_xmp(video_path).ok().flatten();
         if let Some(ref x) = xmp {
-            if let Some(name) = combine_make_model(x.make.as_deref(), x.model.as_deref()) {
+            // Merge make and model *per field*, preferring XMP but falling
+            // back to the ffprobe tag for whichever half XMP omits. A
+            // sidecar that wrote `tiff:Model` but not `tiff:Make` (common
+            // when only the body, not the make, was in the source) must
+            // not blank out ffprobe's make — otherwise the same camera
+            // lands in the catalog twice, e.g. "ILCE-7RM4" alongside
+            // "SONY ILCE-7RM4". Combining make-less leaves the model code
+            // bare and breaks the marketing-name lookup downstream.
+            if let Some(name) = merge_make_model(
+                x.make.as_deref(),
+                x.model.as_deref(),
+                ff_make.as_deref(),
+                ff_model.as_deref(),
+            ) {
                 camera_model = Some(name);
             }
             if let Some(ref l) = x.lens {
@@ -465,14 +483,16 @@ impl MetadataExtractor {
         tags.as_ref().and_then(|t| t.get(key).cloned())
     }
 
-    /// Combine `make` and `model` tags into a readable camera name.
-    /// Example: "SONY ILCE-7RM3" -> "Sony A7R III" friendly is hard, so just use raw values.
-    fn build_camera_name(tags: &Option<FFProbeTagMap>) -> Option<String> {
-        let make = Self::extract_tag(tags, "make")
-            .or_else(|| Self::extract_tag(tags, "com.apple.quicktime.make"));
-        let model = Self::extract_tag(tags, "model")
-            .or_else(|| Self::extract_tag(tags, "com.apple.quicktime.model"));
-        combine_make_model(make.as_deref(), model.as_deref())
+    /// The camera make tag, accepting the QuickTime-namespaced variant.
+    fn extract_make(tags: &Option<FFProbeTagMap>) -> Option<String> {
+        Self::extract_tag(tags, "make")
+            .or_else(|| Self::extract_tag(tags, "com.apple.quicktime.make"))
+    }
+
+    /// The camera model tag, accepting the QuickTime-namespaced variant.
+    fn extract_model(tags: &Option<FFProbeTagMap>) -> Option<String> {
+        Self::extract_tag(tags, "model")
+            .or_else(|| Self::extract_tag(tags, "com.apple.quicktime.model"))
     }
 
     /// Look for lens info in various tag formats used by different cameras.
@@ -802,6 +822,29 @@ pub(crate) fn combine_make_model(make: Option<&str>, model: Option<&str>) -> Opt
     }
 }
 
+/// Merge make/model from a primary source (the XMP packet) over a
+/// fallback source (ffprobe container tags) **field by field**, then
+/// combine into a single camera name.
+///
+/// The per-field fallback is the important part: an XMP packet that
+/// carries `tiff:Model` but no `tiff:Make` (a common shape for
+/// sidecar-embedded metadata) must still pick up the make from ffprobe.
+/// Overriding wholesale would store the bare model code ("ILCE-7RM4")
+/// for those files while files with a full XMP packet store
+/// "SONY ILCE-7RM4" — the same body listed as two cameras, and the
+/// make-less form misses the marketing-name lookup entirely.
+pub(crate) fn merge_make_model(
+    primary_make: Option<&str>,
+    primary_model: Option<&str>,
+    fallback_make: Option<&str>,
+    fallback_model: Option<&str>,
+) -> Option<String> {
+    combine_make_model(
+        primary_make.or(fallback_make),
+        primary_model.or(fallback_model),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -816,6 +859,37 @@ mod tests {
             m.insert(k.to_lowercase(), v.to_string());
         }
         Some(FFProbeTagMap(m))
+    }
+
+    #[test]
+    fn merge_make_model_recovers_make_from_fallback() {
+        // The regression case: XMP carries the model but no make; the
+        // make must come from the ffprobe fallback so we don't store a
+        // bare "ILCE-7RM4" that splits the camera off from its
+        // "SONY ILCE-7RM4" siblings.
+        assert_eq!(
+            merge_make_model(None, Some("ILCE-7RM4"), Some("SONY"), Some("ILCE-7RM4")),
+            Some("SONY ILCE-7RM4".to_string())
+        );
+    }
+
+    #[test]
+    fn merge_make_model_prefers_primary_per_field() {
+        // XMP make/model win when present.
+        assert_eq!(
+            merge_make_model(Some("Nikon"), Some("Z 8"), Some("SONY"), Some("ILCE-9")),
+            Some("Nikon Z 8".to_string())
+        );
+        // Falls back entirely to ffprobe when XMP has neither.
+        assert_eq!(
+            merge_make_model(None, None, Some("SONY"), Some("ILCE-9")),
+            Some("SONY ILCE-9".to_string())
+        );
+        // Model from XMP, make absent everywhere → bare model (best we can do).
+        assert_eq!(
+            merge_make_model(None, Some("ILCE-9"), None, None),
+            Some("ILCE-9".to_string())
+        );
     }
 
     #[test]

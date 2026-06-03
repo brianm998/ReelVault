@@ -447,6 +447,7 @@ fun ReelVaultApp(
     var showAppearanceDialog by remember { mutableStateOf(false) }
     // Camera-names editor dialog visibility (internal → marketing).
     var showCameraNamesDialog by remember { mutableStateOf(false) }
+    var showLensNamesDialog by remember { mutableStateOf(false) }
     // Library-wide auto-tagging / detection settings (currently houses
     // the timelapse auto-tag toggle; future home for other library knobs).
     var showLibrarySettingsDialog by remember { mutableStateOf(false) }
@@ -756,6 +757,7 @@ fun ReelVaultApp(
                         onGroupSelected = { gridViewModel.groupSelectedVideos() },
                         onConfigureWatcher = { showWatchSettingsDialog = true },
                         onConfigureCameraNames = { showCameraNamesDialog = true },
+                        onConfigureLensNames = { showLensNamesDialog = true },
                         onConfigureLibrary = { showLibrarySettingsDialog = true },
                         onConfigureAppearance = { showAppearanceDialog = true },
                         onOpenCatalog = {
@@ -1487,6 +1489,13 @@ fun ReelVaultApp(
                     )
                 }
 
+                if (showLensNamesDialog) {
+                    com.reelvault.ui.screens.LensNamesDialog(
+                        repository = repository,
+                        onDismiss = { showLensNamesDialog = false }
+                    )
+                }
+
                 // Library-wide auto-tagging / detection settings
                 // (timelapse auto-tag, etc.).
                 if (showLibrarySettingsDialog) {
@@ -2061,6 +2070,8 @@ fun ReelVaultTopBar(
     onConfigureWatcher: () -> Unit = {},
     /** Opens the camera-names editor dialog. */
     onConfigureCameraNames: () -> Unit = {},
+    /** Opens the lens-names editor dialog. */
+    onConfigureLensNames: () -> Unit = {},
     /** Opens the library-wide auto-tagging/detection settings dialog. */
     onConfigureLibrary: () -> Unit = {},
     /** Opens the appearance (accent color scheme) dialog. */
@@ -2259,6 +2270,22 @@ fun ReelVaultTopBar(
                             Icon(
                                 imageVector = Icons.Default.Camera,
                                 contentDescription = "Camera Names"
+                            )
+                        }
+                    }
+
+                    // Lens names editor — rename the lens strings recorded
+                    // in the catalog (e.g. shorten a verbose third-party name).
+                    com.reelvault.ui.components.Tooltip(
+                        text = "Rename the lens names recorded in your catalog — " +
+                            "shorten verbose third-party names (e.g. \"14mm F1.8 " +
+                            "DG HSM | Art 018\" → \"Sigma 14mm F1.8 Art\") or fold a " +
+                            "stray variant onto a canonical name."
+                    ) {
+                        IconButton(onClick = onConfigureLensNames) {
+                            Icon(
+                                imageVector = Icons.Default.Lens,
+                                contentDescription = "Lens Names"
                             )
                         }
                     }

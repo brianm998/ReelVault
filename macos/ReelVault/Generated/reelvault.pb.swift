@@ -2312,6 +2312,69 @@ nonisolated struct Reelvault_SetCameraNameMappingRequest: Sendable {
   init() {}
 }
 
+nonisolated struct Reelvault_LensNameMapping: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// lens string exactly as stored in the catalog
+  var raw: String = String()
+
+  /// active display name (custom alias, else `raw`)
+  var alias: String = String()
+
+  /// true when a user override is in effect
+  var isCustom: Bool = false
+
+  /// true when this lens currently appears in the catalog
+  var inCatalog: Bool = false
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Reelvault_ListLensNameMappingsRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Reelvault_ListLensNameMappingsResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Catalog lenses first (alphabetised by raw value), then any
+  /// custom-only overrides whose raw value no longer appears in the
+  /// catalog. Each entry's `alias` already reflects the override.
+  var mappings: [Reelvault_LensNameMapping] = []
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+/// Add or update a custom lens alias. Sending `alias = ""` deletes the
+/// override and falls back to displaying the raw lens string.
+nonisolated struct Reelvault_SetLensNameMappingRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var raw: String = String()
+
+  var alias: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
 nonisolated struct Reelvault_Response: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -6436,6 +6499,135 @@ nonisolated extension Reelvault_SetCameraNameMappingRequest: SwiftProtobuf.Messa
   static func ==(lhs: Reelvault_SetCameraNameMappingRequest, rhs: Reelvault_SetCameraNameMappingRequest) -> Bool {
     if lhs.`internal` != rhs.`internal` {return false}
     if lhs.marketing != rhs.marketing {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_LensNameMapping: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".LensNameMapping"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}raw\0\u{1}alias\0\u{3}is_custom\0\u{3}in_catalog\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.raw) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.alias) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.isCustom) }()
+      case 4: try { try decoder.decodeSingularBoolField(value: &self.inCatalog) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.raw.isEmpty {
+      try visitor.visitSingularStringField(value: self.raw, fieldNumber: 1)
+    }
+    if !self.alias.isEmpty {
+      try visitor.visitSingularStringField(value: self.alias, fieldNumber: 2)
+    }
+    if self.isCustom != false {
+      try visitor.visitSingularBoolField(value: self.isCustom, fieldNumber: 3)
+    }
+    if self.inCatalog != false {
+      try visitor.visitSingularBoolField(value: self.inCatalog, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Reelvault_LensNameMapping, rhs: Reelvault_LensNameMapping) -> Bool {
+    if lhs.raw != rhs.raw {return false}
+    if lhs.alias != rhs.alias {return false}
+    if lhs.isCustom != rhs.isCustom {return false}
+    if lhs.inCatalog != rhs.inCatalog {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_ListLensNameMappingsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".ListLensNameMappingsRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Reelvault_ListLensNameMappingsRequest, rhs: Reelvault_ListLensNameMappingsRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_ListLensNameMappingsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".ListLensNameMappingsResponse"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}mappings\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.mappings) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.mappings.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.mappings, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Reelvault_ListLensNameMappingsResponse, rhs: Reelvault_ListLensNameMappingsResponse) -> Bool {
+    if lhs.mappings != rhs.mappings {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_SetLensNameMappingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".SetLensNameMappingRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}raw\0\u{1}alias\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.raw) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.alias) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.raw.isEmpty {
+      try visitor.visitSingularStringField(value: self.raw, fieldNumber: 1)
+    }
+    if !self.alias.isEmpty {
+      try visitor.visitSingularStringField(value: self.alias, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Reelvault_SetLensNameMappingRequest, rhs: Reelvault_SetLensNameMappingRequest) -> Bool {
+    if lhs.raw != rhs.raw {return false}
+    if lhs.alias != rhs.alias {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

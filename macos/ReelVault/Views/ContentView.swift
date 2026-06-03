@@ -38,6 +38,7 @@ struct ContentView: View {
     @State private var showWatchSettingsSheet = false
     @State private var showPlaybackSettingsSheet = false
     @State private var showCameraNamesSheet = false
+    @State private var showLensNamesSheet = false
     @State private var showAppearanceSettingsSheet = false
     @State private var showLibrarySettingsSheet = false
     @State private var showOpenCatalogSheet = false
@@ -206,6 +207,9 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showCameraNamesSheet) {
             CameraNamesView()
+        }
+        .sheet(isPresented: $showLensNamesSheet) {
+            LensNamesView()
         }
         .sheet(isPresented: $showOpenCatalogSheet) {
             OpenCatalogDialog(
@@ -550,6 +554,16 @@ struct ContentView: View {
             }
             .buttonStyle(.borderless)
             .help("Manage the table that maps internal camera model codes (e.g. \"SONY ILCE-7RM3A\") to marketing-friendly names (e.g. \"Sony a7R IIIA\"). Add custom rows for cameras not in the built-in list, or override built-in entries you'd prefer named differently.")
+
+            // Lens Names editor — rename the lens strings recorded in the
+            // catalog (e.g. shorten a verbose third-party name).
+            Button {
+                showLensNamesSheet = true
+            } label: {
+                Image(systemName: "camera.aperture")
+            }
+            .buttonStyle(.borderless)
+            .help("Rename the lens names recorded in your catalog — shorten verbose third-party names (e.g. \"14mm F1.8 DG HSM | Art 018\" → \"Sigma 14mm F1.8 Art\") or fold a stray variant onto a canonical name.")
 
             // Live-updates pill — shows whether the server's file watcher
             // is active and offers a one-click entry into its settings.

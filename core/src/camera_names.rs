@@ -13,7 +13,7 @@
 //! make:  "FUJIFILM"      model: "X-T5"
 //! ```
 //!
-//! [`crate::metadata::Metadata::build_camera_name`] concatenates these into
+//! [`crate::metadata::combine_make_model`] concatenates these into
 //! a single human-readable string like `"SONY ILCE-7RM3"`. That string is
 //! what we store in the catalog's `metadata.camera_model` column.
 //!

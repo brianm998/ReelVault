@@ -271,6 +271,21 @@ data class CameraNameMapping(
     val isCustom: Boolean,
 )
 
+/**
+ * One row in the Lens Names editor. [rawName] is the lens string exactly
+ * as stored in the catalog (the value ReelVault extracts from
+ * `exifEX:LensModel`); [alias] is the display name shown for it. Unlike
+ * cameras there is no built-in table, so [alias] equals [rawName] unless
+ * the user set a custom override ([isCustom]). [inCatalog] is false for a
+ * stale override whose lens no longer appears in any video.
+ */
+data class LensNameMapping(
+    val rawName: String,
+    val alias: String,
+    val isCustom: Boolean,
+    val inCatalog: Boolean,
+)
+
 data class FilterOptions(
     val cameras: List<String> = emptyList(),
     /**

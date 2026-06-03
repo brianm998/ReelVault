@@ -671,6 +671,30 @@ internal enum Reelvault_ReelVault {
                 method: "SetCameraNameMapping"
             )
         }
+        /// Namespace for "ListLensNameMappings" metadata.
+        internal enum ListLensNameMappings {
+            /// Request type for "ListLensNameMappings".
+            internal typealias Input = Reelvault_ListLensNameMappingsRequest
+            /// Response type for "ListLensNameMappings".
+            internal typealias Output = Reelvault_ListLensNameMappingsResponse
+            /// Descriptor for "ListLensNameMappings".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "ListLensNameMappings"
+            )
+        }
+        /// Namespace for "SetLensNameMapping" metadata.
+        internal enum SetLensNameMapping {
+            /// Request type for "SetLensNameMapping".
+            internal typealias Input = Reelvault_SetLensNameMappingRequest
+            /// Response type for "SetLensNameMapping".
+            internal typealias Output = Reelvault_Response
+            /// Descriptor for "SetLensNameMapping".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "SetLensNameMapping"
+            )
+        }
         /// Descriptors for all methods in the "reelvault.ReelVault" service.
         internal static let descriptors: [GRPCCore.MethodDescriptor] = [
             ListVideos.descriptor,
@@ -726,7 +750,9 @@ internal enum Reelvault_ReelVault {
             GetWatchSettings.descriptor,
             UpdateWatchSettings.descriptor,
             ListCameraNameMappings.descriptor,
-            SetCameraNameMapping.descriptor
+            SetCameraNameMapping.descriptor,
+            ListLensNameMappings.descriptor,
+            SetLensNameMapping.descriptor
         ]
     }
 }
@@ -1624,6 +1650,45 @@ extension Reelvault_ReelVault {
             request: GRPCCore.StreamingServerRequest<Reelvault_SetCameraNameMappingRequest>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response>
+
+        /// Handle the "ListLensNameMappings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Lens display-name overrides — raw lens string (as stored in the
+        /// > catalog, i.e. the value extracted from `exifEX:LensModel`) → a
+        /// > user-chosen display name. Unlike cameras there is no built-in
+        /// > table: the universe is the set of lens strings actually present in
+        /// > the catalog. List returns one row per distinct catalog lens, plus
+        /// > any custom-only overrides whose lens no longer appears, each
+        /// > carrying the active display name and a custom flag. Setting an
+        /// > alias equal to "" removes the override and reveals the raw value.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Reelvault_ListLensNameMappingsRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Reelvault_ListLensNameMappingsResponse` messages.
+        func listLensNameMappings(
+            request: GRPCCore.StreamingServerRequest<Reelvault_ListLensNameMappingsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ListLensNameMappingsResponse>
+
+        /// Handle the "SetLensNameMapping" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Reelvault_SetLensNameMappingRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Reelvault_Response` messages.
+        func setLensNameMapping(
+            request: GRPCCore.StreamingServerRequest<Reelvault_SetLensNameMappingRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response>
     }
 
     /// Service protocol for the "reelvault.ReelVault" service.
@@ -2504,6 +2569,45 @@ extension Reelvault_ReelVault {
         /// - Returns: A response containing a single `Reelvault_Response` message.
         func setCameraNameMapping(
             request: GRPCCore.ServerRequest<Reelvault_SetCameraNameMappingRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Reelvault_Response>
+
+        /// Handle the "ListLensNameMappings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Lens display-name overrides — raw lens string (as stored in the
+        /// > catalog, i.e. the value extracted from `exifEX:LensModel`) → a
+        /// > user-chosen display name. Unlike cameras there is no built-in
+        /// > table: the universe is the set of lens strings actually present in
+        /// > the catalog. List returns one row per distinct catalog lens, plus
+        /// > any custom-only overrides whose lens no longer appears, each
+        /// > carrying the active display name and a custom flag. Setting an
+        /// > alias equal to "" removes the override and reveals the raw value.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_ListLensNameMappingsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Reelvault_ListLensNameMappingsResponse` message.
+        func listLensNameMappings(
+            request: GRPCCore.ServerRequest<Reelvault_ListLensNameMappingsRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Reelvault_ListLensNameMappingsResponse>
+
+        /// Handle the "SetLensNameMapping" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_SetLensNameMappingRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Reelvault_Response` message.
+        func setLensNameMapping(
+            request: GRPCCore.ServerRequest<Reelvault_SetLensNameMappingRequest>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.ServerResponse<Reelvault_Response>
     }
@@ -3390,6 +3494,45 @@ extension Reelvault_ReelVault {
             request: Reelvault_SetCameraNameMappingRequest,
             context: GRPCCore.ServerContext
         ) async throws -> Reelvault_Response
+
+        /// Handle the "ListLensNameMappings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Lens display-name overrides — raw lens string (as stored in the
+        /// > catalog, i.e. the value extracted from `exifEX:LensModel`) → a
+        /// > user-chosen display name. Unlike cameras there is no built-in
+        /// > table: the universe is the set of lens strings actually present in
+        /// > the catalog. List returns one row per distinct catalog lens, plus
+        /// > any custom-only overrides whose lens no longer appears, each
+        /// > carrying the active display name and a custom flag. Setting an
+        /// > alias equal to "" removes the override and reveals the raw value.
+        ///
+        /// - Parameters:
+        ///   - request: A `Reelvault_ListLensNameMappingsRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Reelvault_ListLensNameMappingsResponse` to respond with.
+        func listLensNameMappings(
+            request: Reelvault_ListLensNameMappingsRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Reelvault_ListLensNameMappingsResponse
+
+        /// Handle the "SetLensNameMapping" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Reelvault_SetLensNameMappingRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Reelvault_Response` to respond with.
+        func setLensNameMapping(
+            request: Reelvault_SetLensNameMappingRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Reelvault_Response
     }
 }
 
@@ -3991,6 +4134,28 @@ extension Reelvault_ReelVault.StreamingServiceProtocol {
                 )
             }
         )
+        router.registerHandler(
+            forMethod: Reelvault_ReelVault.Method.ListLensNameMappings.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_ListLensNameMappingsRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_ListLensNameMappingsResponse>(),
+            handler: { request, context in
+                try await self.listLensNameMappings(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Reelvault_ReelVault.Method.SetLensNameMapping.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_SetLensNameMappingRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_Response>(),
+            handler: { request, context in
+                try await self.setLensNameMapping(
+                    request: request,
+                    context: context
+                )
+            }
+        )
     }
 }
 
@@ -4585,6 +4750,28 @@ extension Reelvault_ReelVault.ServiceProtocol {
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
         let response = try await self.setCameraNameMapping(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func listLensNameMappings(
+        request: GRPCCore.StreamingServerRequest<Reelvault_ListLensNameMappingsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ListLensNameMappingsResponse> {
+        let response = try await self.listLensNameMappings(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func setLensNameMapping(
+        request: GRPCCore.StreamingServerRequest<Reelvault_SetLensNameMappingRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
+        let response = try await self.setLensNameMapping(
             request: GRPCCore.ServerRequest(stream: request),
             context: context
         )
@@ -5306,6 +5493,32 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
         return GRPCCore.ServerResponse<Reelvault_Response>(
             message: try await self.setCameraNameMapping(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func listLensNameMappings(
+        request: GRPCCore.ServerRequest<Reelvault_ListLensNameMappingsRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Reelvault_ListLensNameMappingsResponse> {
+        return GRPCCore.ServerResponse<Reelvault_ListLensNameMappingsResponse>(
+            message: try await self.listLensNameMappings(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func setLensNameMapping(
+        request: GRPCCore.ServerRequest<Reelvault_SetLensNameMappingRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
+        return GRPCCore.ServerResponse<Reelvault_Response>(
+            message: try await self.setLensNameMapping(
                 request: request.message,
                 context: context
             ),
@@ -6461,6 +6674,55 @@ extension Reelvault_ReelVault {
         func setCameraNameMapping<Result>(
             request: GRPCCore.ClientRequest<Reelvault_SetCameraNameMappingRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_SetCameraNameMappingRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "ListLensNameMappings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Lens display-name overrides — raw lens string (as stored in the
+        /// > catalog, i.e. the value extracted from `exifEX:LensModel`) → a
+        /// > user-chosen display name. Unlike cameras there is no built-in
+        /// > table: the universe is the set of lens strings actually present in
+        /// > the catalog. List returns one row per distinct catalog lens, plus
+        /// > any custom-only overrides whose lens no longer appears, each
+        /// > carrying the active display name and a custom flag. Setting an
+        /// > alias equal to "" removes the override and reveals the raw value.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_ListLensNameMappingsRequest` message.
+        ///   - serializer: A serializer for `Reelvault_ListLensNameMappingsRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_ListLensNameMappingsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func listLensNameMappings<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_ListLensNameMappingsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_ListLensNameMappingsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_ListLensNameMappingsResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListLensNameMappingsResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "SetLensNameMapping" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_SetLensNameMappingRequest` message.
+        ///   - serializer: A serializer for `Reelvault_SetLensNameMappingRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func setLensNameMapping<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_SetLensNameMappingRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_SetLensNameMappingRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result
@@ -8211,6 +8473,77 @@ extension Reelvault_ReelVault {
                 onResponse: handleResponse
             )
         }
+
+        /// Call the "ListLensNameMappings" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Lens display-name overrides — raw lens string (as stored in the
+        /// > catalog, i.e. the value extracted from `exifEX:LensModel`) → a
+        /// > user-chosen display name. Unlike cameras there is no built-in
+        /// > table: the universe is the set of lens strings actually present in
+        /// > the catalog. List returns one row per distinct catalog lens, plus
+        /// > any custom-only overrides whose lens no longer appears, each
+        /// > carrying the active display name and a custom flag. Setting an
+        /// > alias equal to "" removes the override and reveals the raw value.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_ListLensNameMappingsRequest` message.
+        ///   - serializer: A serializer for `Reelvault_ListLensNameMappingsRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_ListLensNameMappingsResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func listLensNameMappings<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_ListLensNameMappingsRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_ListLensNameMappingsRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_ListLensNameMappingsResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListLensNameMappingsResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Reelvault_ReelVault.Method.ListLensNameMappings.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "SetLensNameMapping" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_SetLensNameMappingRequest` message.
+        ///   - serializer: A serializer for `Reelvault_SetLensNameMappingRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func setLensNameMapping<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_SetLensNameMappingRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_SetLensNameMappingRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Reelvault_ReelVault.Method.SetLensNameMapping.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
     }
 }
 
@@ -9666,6 +9999,67 @@ extension Reelvault_ReelVault.ClientProtocol {
         try await self.setCameraNameMapping(
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_SetCameraNameMappingRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_Response>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ListLensNameMappings" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Lens display-name overrides — raw lens string (as stored in the
+    /// > catalog, i.e. the value extracted from `exifEX:LensModel`) → a
+    /// > user-chosen display name. Unlike cameras there is no built-in
+    /// > table: the universe is the set of lens strings actually present in
+    /// > the catalog. List returns one row per distinct catalog lens, plus
+    /// > any custom-only overrides whose lens no longer appears, each
+    /// > carrying the active display name and a custom flag. Setting an
+    /// > alias equal to "" removes the override and reveals the raw value.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Reelvault_ListLensNameMappingsRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func listLensNameMappings<Result>(
+        request: GRPCCore.ClientRequest<Reelvault_ListLensNameMappingsRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListLensNameMappingsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.listLensNameMappings(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_ListLensNameMappingsRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_ListLensNameMappingsResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SetLensNameMapping" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Reelvault_SetLensNameMappingRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func setLensNameMapping<Result>(
+        request: GRPCCore.ClientRequest<Reelvault_SetLensNameMappingRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.setLensNameMapping(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_SetLensNameMappingRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_Response>(),
             options: options,
             onResponse: handleResponse
@@ -11341,6 +11735,75 @@ extension Reelvault_ReelVault.ClientProtocol {
             metadata: metadata
         )
         return try await self.setCameraNameMapping(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ListLensNameMappings" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Lens display-name overrides — raw lens string (as stored in the
+    /// > catalog, i.e. the value extracted from `exifEX:LensModel`) → a
+    /// > user-chosen display name. Unlike cameras there is no built-in
+    /// > table: the universe is the set of lens strings actually present in
+    /// > the catalog. List returns one row per distinct catalog lens, plus
+    /// > any custom-only overrides whose lens no longer appears, each
+    /// > carrying the active display name and a custom flag. Setting an
+    /// > alias equal to "" removes the override and reveals the raw value.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func listLensNameMappings<Result>(
+        _ message: Reelvault_ListLensNameMappingsRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListLensNameMappingsResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Reelvault_ListLensNameMappingsRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.listLensNameMappings(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "SetLensNameMapping" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func setLensNameMapping<Result>(
+        _ message: Reelvault_SetLensNameMappingRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Reelvault_SetLensNameMappingRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.setLensNameMapping(
             request: request,
             options: options,
             onResponse: handleResponse

@@ -60,8 +60,9 @@ pub struct XmpMetadata {
     pub make: Option<String>,
     /// Camera model, from `tiff:Model`.
     pub model: Option<String>,
-    /// Lens designation, from `aux:Lens` (Adobe-canonical) or the
-    /// less common `exif:LensModel`.
+    /// Lens designation. Prefers `exifEX:LensModel` (the full,
+    /// disambiguating identity) over `aux:Lens` (often a lossier
+    /// sidecar value); see the extraction logic in [`parse_xmp`].
     pub lens: Option<String>,
     /// ISO speed, from `exif:ISOSpeedRatings` (first entry of the Seq).
     pub iso: Option<i64>,
@@ -238,9 +239,20 @@ fn parse_xmp(xml: &str) -> XmpMetadata {
     if let Some(v) = scrape(xml, "Model") {
         out.model = Some(v);
     }
-    // Lens lives under `aux:Lens` for Adobe; we also accept LensModel
-    // for writers that prefer the EXIF tag name.
-    if let Some(v) = scrape(xml, "Lens").or_else(|| scrape(xml, "LensModel")) {
+    // A single file commonly carries the lens under *two* names that
+    // disagree: `exifEX:LensModel` holds the camera/Adobe-resolved full
+    // identity ("FE 14mm F1.8 GM", or "14mm F1.8 DG HSM | Art 018" for a
+    // third-party lens), while `aux:Lens` is often a shorter, lossier
+    // string — frequently a sidecar-supplied value that drops the "GM"
+    // suffix or the make. Prefer `LensModel`: it's the value that
+    // actually distinguishes one lens from another (e.g. a Sigma 14/1.8
+    // Art from a Sony FE 14/1.8 GM, which share focal length and
+    // aperture), so cataloguing on it avoids both spurious duplicates and
+    // wrongly-merged distinct lenses. Fall back to `aux:Lens` for files
+    // that only carry that one (e.g. manual lenses with no electronic
+    // contacts). `scrape` matches the exact local name, so asking for
+    // "LensModel" never picks up "LensInfo" / "LensSpecification".
+    if let Some(v) = scrape(xml, "LensModel").or_else(|| scrape(xml, "Lens")) {
         out.lens = Some(v);
     }
     if let Some(v) = scrape_iso(xml) {
@@ -537,6 +549,51 @@ mod tests {
         assert!((m.focal_length_mm.unwrap() - 8.0).abs() < 1e-9);
         assert_eq!(m.exposure_mode.as_deref(), Some("Manual"));
         assert_eq!(m.white_balance.as_deref(), Some("Auto"));
+    }
+
+    /// When a file carries both `exifEX:LensModel` and `aux:Lens` and
+    /// they disagree, the full `LensModel` must win — that's the field
+    /// that tells a Sigma 14/1.8 Art apart from a Sony FE 14/1.8 GM and
+    /// keeps the catalog from listing the same lens under two names.
+    /// `LensInfo` / `LensSpecification` siblings must not be mistaken
+    /// for the lens name.
+    #[test]
+    fn lens_model_wins_over_aux_lens() {
+        let xml = r#"<x:xmpmeta xmlns:x='adobe:ns:meta/'>
+<rdf:RDF xmlns:rdf='http://www.w3.org/1999/02/22-rdf-syntax-ns#'>
+ <rdf:Description rdf:about='' xmlns:aux='http://ns.adobe.com/exif/1.0/aux/'>
+  <aux:Lens>E 14mm F1.8</aux:Lens>
+ </rdf:Description>
+ <rdf:Description rdf:about='' xmlns:exifEX='http://cipa.jp/exif/1.0/'>
+  <exifEX:LensInfo>14mm f/1.8</exifEX:LensInfo>
+  <exifEX:LensModel>14mm F1.8 DG HSM | Art 018</exifEX:LensModel>
+ </rdf:Description>
+</rdf:RDF>
+</x:xmpmeta>"#;
+        let m = parse_xmp(xml);
+        assert_eq!(
+            m.lens.as_deref(),
+            Some("14mm F1.8 DG HSM | Art 018"),
+            "exifEX:LensModel should win over the lossier aux:Lens"
+        );
+    }
+
+    /// With only `aux:Lens` present (e.g. a manual lens, or a writer that
+    /// never emits exifEX), the parser falls back to it.
+    #[test]
+    fn aux_lens_used_when_no_lens_model() {
+        let xml = r#"<x:xmpmeta xmlns:x='adobe:ns:meta/'>
+<rdf:RDF xmlns:rdf='http://www.w3.org/1999/02/22-rdf-syntax-ns#'>
+ <rdf:Description rdf:about='' xmlns:aux='http://ns.adobe.com/exif/1.0/aux/'>
+  <aux:Lens>Voigtlander NOKTON 21mm F1.4 Aspherical</aux:Lens>
+ </rdf:Description>
+</rdf:RDF>
+</x:xmpmeta>"#;
+        let m = parse_xmp(xml);
+        assert_eq!(
+            m.lens.as_deref(),
+            Some("Voigtlander NOKTON 21mm F1.4 Aspherical")
+        );
     }
 
     #[test]

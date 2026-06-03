@@ -219,6 +219,60 @@ impl ReelVaultService {
         Ok(())
     }
 
+    /// Lens display-name overrides, normalised into the `raw → alias`
+    /// map used when resolving facet display names. Mirrors
+    /// [`Self::load_custom_camera_names`]; stored under the
+    /// `custom_lens_names` config key as `[{"raw": …, "alias": …}, …]`.
+    /// Any failure yields an empty map so a malformed override never
+    /// breaks the metadata pipeline. Reuses the generic normalise /
+    /// build_custom_overrides helpers from `camera_names`.
+    fn load_custom_lens_names(&self) -> std::collections::HashMap<String, String> {
+        let parsed = self.read_custom_lens_names();
+        if parsed.is_empty() {
+            return std::collections::HashMap::new();
+        }
+        crate::camera_names::build_custom_overrides(
+            parsed.into_iter().map(|e| (e.raw, e.alias)),
+        )
+    }
+
+    /// Raw `Vec<CustomLensName>` from the config table (unfiltered,
+    /// unsorted) — used by the editor RPCs so we can mutate and write
+    /// the list back while preserving the user's chosen `raw` casing.
+    fn read_custom_lens_names(&self) -> Vec<crate::config::CustomLensName> {
+        let raw: Option<String> = self
+            .db
+            .get_connection()
+            .ok()
+            .and_then(|c| {
+                c.query_row(
+                    "SELECT value FROM config WHERE key = ?",
+                    ["custom_lens_names"],
+                    |row| row.get::<_, String>(0),
+                )
+                .ok()
+            });
+        match raw {
+            Some(s) if !s.trim().is_empty() => serde_json::from_str(&s).unwrap_or_default(),
+            _ => Vec::new(),
+        }
+    }
+
+    /// Serialise + persist a custom-lens-name list to the config table.
+    fn write_custom_lens_names(&self, entries: &[crate::config::CustomLensName]) -> Result<()> {
+        let json = serde_json::to_string(entries).map_err(|e| {
+            ReelVaultError::DatabaseError(format!("custom_lens_names serialize failed: {e}"))
+        })?;
+        let conn = self.db.get_connection()?;
+        conn.execute(
+            "INSERT INTO config (key, value) VALUES (?, ?)
+             ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP",
+            rusqlite::params!["custom_lens_names", json, json],
+        )
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
     fn get_video_metadata_sync(&self, video_id: &str) -> Result<VideoMetadata> {
         let db = self.db.as_ref();
         let video = db
@@ -1888,6 +1942,7 @@ impl ReelVaultTrait for ReelVaultService {
             .collect();
 
         let custom_overrides = self.load_custom_camera_names();
+        let lens_overrides = self.load_custom_lens_names();
         let mut columns_out = Vec::with_capacity(req.columns.len());
         for (i, col) in req.columns.iter().enumerate() {
             // Placeholder column (no key chosen yet) — keep its position so the
@@ -1925,7 +1980,8 @@ impl ReelVaultTrait for ReelVaultService {
                 .into_iter()
                 .map(|fc| {
                     // Keyword carries its own display (tag name); camera resolves
-                    // to a marketing name; the rest format from the token.
+                    // to a marketing name; lens resolves to a custom alias if the
+                    // user set one; the rest format from the token.
                     let display = fc.display.unwrap_or_else(|| {
                         if col.key == "camera" {
                             crate::camera_names::marketing_name_for_with_custom(
@@ -1933,6 +1989,11 @@ impl ReelVaultTrait for ReelVaultService {
                                 &custom_overrides,
                             )
                             .unwrap_or_else(|| fc.token.clone())
+                        } else if col.key == "lens" {
+                            lens_overrides
+                                .get(&crate::camera_names::normalise(&fc.token))
+                                .cloned()
+                                .unwrap_or_else(|| fc.token.clone())
                         } else {
                             mk.map(|m| m.format_value(&fc.token))
                                 .unwrap_or_else(|| fc.token.clone())
@@ -2527,6 +2588,102 @@ impl ReelVaultTrait for ReelVaultService {
             format!("Removed custom mapping for \"{internal_raw}\"")
         } else {
             format!("Saved custom mapping: \"{internal_raw}\" → \"{marketing}\"")
+        };
+        Ok(Response::new(reelvault::Response {
+            success: true,
+            message,
+            error: String::new(),
+        }))
+    }
+
+    async fn list_lens_name_mappings(
+        &self,
+        _request: Request<ListLensNameMappingsRequest>,
+    ) -> std::result::Result<Response<ListLensNameMappingsResponse>, Status> {
+        // Custom overrides keyed by normalised raw lens string. Keep the
+        // user-typed raw + alias so the editor renders them verbatim.
+        let mut custom_by_normalised: std::collections::HashMap<String, (String, String)> =
+            std::collections::HashMap::new();
+        for c in self.read_custom_lens_names() {
+            let key = crate::camera_names::normalise(&c.raw);
+            let alias = c.alias.trim();
+            if key.is_empty() || alias.is_empty() {
+                continue;
+            }
+            custom_by_normalised.insert(key, (c.raw.clone(), alias.to_string()));
+        }
+
+        // One row per distinct lens currently in the catalog, alphabetised.
+        // A matching override (popped out) supplies the alias + custom flag.
+        let mut catalog_lenses = self.db.list_distinct_lenses().unwrap_or_default();
+        catalog_lenses.sort_by_key(|s| s.to_ascii_uppercase());
+        let mut mappings = Vec::new();
+        for raw in catalog_lenses {
+            let key = crate::camera_names::normalise(&raw);
+            let overridden = custom_by_normalised.remove(&key);
+            let (alias, is_custom) = match overridden {
+                Some((_, alias)) => (alias, true),
+                None => (raw.clone(), false),
+            };
+            mappings.push(LensNameMapping {
+                raw,
+                alias,
+                is_custom,
+                in_catalog: true,
+            });
+        }
+
+        // Custom-only overrides whose lens no longer appears in the catalog,
+        // alphabetised after the live entries so the table is stable.
+        let mut custom_only: Vec<(String, String)> = custom_by_normalised.into_values().collect();
+        custom_only.sort_by_key(|a| a.0.to_ascii_uppercase());
+        for (raw, alias) in custom_only {
+            mappings.push(LensNameMapping {
+                raw,
+                alias,
+                is_custom: true,
+                in_catalog: false,
+            });
+        }
+
+        Ok(Response::new(ListLensNameMappingsResponse { mappings }))
+    }
+
+    async fn set_lens_name_mapping(
+        &self,
+        request: Request<SetLensNameMappingRequest>,
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
+        let req = request.into_inner();
+        let raw = req.raw.trim().to_string();
+        let alias = req.alias.trim().to_string();
+
+        if raw.is_empty() {
+            return Ok(Response::new(reelvault::Response {
+                success: false,
+                message: String::new(),
+                error: "lens name must not be blank".to_string(),
+            }));
+        }
+
+        let normalised_key = crate::camera_names::normalise(&raw);
+        let mut entries = self.read_custom_lens_names();
+        // Drop any existing override for the same normalised lens, then
+        // (re-)add it. An empty alias just removes the override.
+        entries.retain(|e| crate::camera_names::normalise(&e.raw) != normalised_key);
+        if !alias.is_empty() {
+            entries.push(crate::config::CustomLensName {
+                raw: raw.clone(),
+                alias: alias.clone(),
+            });
+        }
+
+        self.write_custom_lens_names(&entries)
+            .map_err(|e| Status::internal(format!("Failed to save lens mappings: {e}")))?;
+
+        let message = if alias.is_empty() {
+            format!("Removed lens alias for \"{raw}\"")
+        } else {
+            format!("Saved lens alias: \"{raw}\" → \"{alias}\"")
         };
         Ok(Response::new(reelvault::Response {
             success: true,

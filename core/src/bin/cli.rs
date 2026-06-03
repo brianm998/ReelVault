@@ -74,6 +74,18 @@ enum Commands {
         file: PathBuf,
     },
 
+    /// Re-extract metadata (camera / lens / EXIF) for videos already in
+    /// the catalog, in place. Unlike `scan` this does NOT walk the
+    /// filesystem, regenerate thumbnails, or run post-index work — it
+    /// only refreshes the `metadata` table. Use it to apply a metadata
+    /// extraction change to an existing catalog without a full rescan.
+    RefreshMetadata {
+        /// Only refresh videos whose stored path starts with this prefix
+        /// (default: every video in the catalog).
+        #[arg(long, default_value = "")]
+        under: String,
+    },
+
     /// Generate thumbnail for a video
     Thumbnail {
         /// Path to video file
@@ -167,6 +179,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Meta { video_id } => cmd_meta(&db, &video_id).await?,
         Commands::Search { query, limit } => cmd_search(&db, &query, limit).await?,
         Commands::Extract { file } => cmd_extract(&file)?,
+        Commands::RefreshMetadata { under } => cmd_refresh_metadata(Arc::clone(&db), &under)?,
         Commands::Thumbnail { file, output } => cmd_thumbnail(&file, &output)?,
         Commands::Stats => cmd_stats(&db).await?,
         Commands::AddLib { path, recursive } => cmd_add_lib(&db, &path, recursive).await?,
@@ -384,10 +397,98 @@ fn cmd_extract(file: &std::path::Path) -> anyhow::Result<()> {
                 println!("  {}: {}", key, value);
             }
         }
+
+        // What ReelVault's native XMP parser pulls out of the embedded
+        // packet — this is what actually drives camera_model / lens_model,
+        // and it isn't visible in the ffprobe tags above.
+        match reelvault_core::xmp::read_xmp(file) {
+            Ok(Some(x)) => {
+                println!("\nNative XMP packet:");
+                println!("  make:  {:?}", x.make);
+                println!("  model: {:?}", x.model);
+                println!("  lens:  {:?}", x.lens);
+            }
+            Ok(None) => println!("\nNative XMP packet: (none embedded)"),
+            Err(e) => println!("\nNative XMP packet: (read error: {e})"),
+        }
     } else {
         println!("❌ No video stream found");
     }
 
+    Ok(())
+}
+
+/// Re-extract metadata in place for already-indexed videos. Metadata
+/// only — no filesystem walk, no thumbnails, no post-index. Parallel
+/// over rayon; the FFmpeg semaphore in `extract` bounds concurrent
+/// ffprobe processes so this won't fork one per video.
+fn cmd_refresh_metadata(db: Arc<Database>, under: &str) -> anyhow::Result<()> {
+    use rayon::prelude::*;
+    use std::sync::atomic::{AtomicI64, Ordering};
+
+    // Snapshot (id, path) up front so we don't hold a DB handle across
+    // the parallel work.
+    let rows: Vec<(String, String)> = {
+        let conn = db.get_connection()?;
+        if under.is_empty() {
+            let mut stmt = conn.prepare("SELECT id, path FROM videos ORDER BY path")?;
+            let it = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?;
+            it.collect::<std::result::Result<_, _>>()?
+        } else {
+            let mut stmt =
+                conn.prepare("SELECT id, path FROM videos WHERE path LIKE ?1 ORDER BY path")?;
+            let pat = format!("{under}%");
+            let it = stmt.query_map([pat], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?;
+            it.collect::<std::result::Result<_, _>>()?
+        }
+    };
+
+    let total = rows.len();
+    println!("🔄 Refreshing metadata for {total} videos (metadata only, no thumbnails)…\n");
+
+    let done = AtomicI64::new(0);
+    let updated = AtomicI64::new(0);
+    let missing = AtomicI64::new(0);
+    let failed = AtomicI64::new(0);
+
+    rows.par_iter().for_each(|(id, path)| {
+        let p = std::path::Path::new(path);
+        if !p.exists() {
+            missing.fetch_add(1, Ordering::Relaxed);
+        } else {
+            match MetadataExtractor::extract(p) {
+                Ok(probe) => match MetadataExtractor::store_metadata(&db, id, p, &probe, 0) {
+                    Ok(_) => {
+                        updated.fetch_add(1, Ordering::Relaxed);
+                    }
+                    Err(e) => {
+                        failed.fetch_add(1, Ordering::Relaxed);
+                        tracing::warn!("store_metadata failed for {path}: {e}");
+                    }
+                },
+                Err(e) => {
+                    failed.fetch_add(1, Ordering::Relaxed);
+                    tracing::warn!("extract failed for {path}: {e}");
+                }
+            }
+        }
+        let n = done.fetch_add(1, Ordering::Relaxed) + 1;
+        if n % 100 == 0 || n as usize == total {
+            println!(
+                "  {n}/{total}  (updated {}, missing {}, failed {})",
+                updated.load(Ordering::Relaxed),
+                missing.load(Ordering::Relaxed),
+                failed.load(Ordering::Relaxed),
+            );
+        }
+    });
+
+    println!(
+        "\n✅ Refresh complete: updated {}, missing {}, failed {} (of {total}).",
+        updated.load(Ordering::Relaxed),
+        missing.load(Ordering::Relaxed),
+        failed.load(Ordering::Relaxed),
+    );
     Ok(())
 }
 

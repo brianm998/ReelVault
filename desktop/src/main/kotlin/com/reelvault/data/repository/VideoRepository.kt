@@ -363,6 +363,56 @@ class VideoRepository(
         response.message
     }
 
+    /**
+     * List the lens display-name mappings: one row per distinct lens in
+     * the catalog, plus any custom-only overrides whose lens no longer
+     * appears. Each entry's [com.reelvault.data.models.LensNameMapping.alias]
+     * already reflects the active override (if any).
+     */
+    suspend fun listLensNameMappings(): List<com.reelvault.data.models.LensNameMapping> =
+        withContext(Dispatchers.IO) {
+            val s = stub ?: return@withContext emptyList()
+            try {
+                val response = s.listLensNameMappings(
+                    Reelvault.ListLensNameMappingsRequest.newBuilder().build()
+                )
+                response.mappingsList.map {
+                    com.reelvault.data.models.LensNameMapping(
+                        rawName = it.raw,
+                        alias = it.alias,
+                        isCustom = it.isCustom,
+                        inCatalog = it.inCatalog
+                    )
+                }
+            } catch (e: Exception) {
+                logger.error("Failed to list lens name mappings: ${e.message}", e)
+                emptyList()
+            }
+        }
+
+    /**
+     * Save (or remove) a custom lens alias. Pass an empty [alias] to
+     * delete the override for [rawName] — the lens then falls back to
+     * displaying its raw string. Returns the server's status message.
+     */
+    suspend fun setLensNameMapping(
+        rawName: String,
+        alias: String,
+    ): String = withContext(Dispatchers.IO) {
+        val s = stub ?: throw IllegalStateException("Not connected to ReelVault backend")
+        val req = Reelvault.SetLensNameMappingRequest.newBuilder()
+            .setRaw(rawName)
+            .setAlias(alias)
+            .build()
+        val response = s.setLensNameMapping(req)
+        if (!response.success) {
+            throw RuntimeException(
+                response.error.ifEmpty { "Failed to save lens name mapping" }
+            )
+        }
+        response.message
+    }
+
     suspend fun searchVideos(
         query: String,
         limit: Int = 50,

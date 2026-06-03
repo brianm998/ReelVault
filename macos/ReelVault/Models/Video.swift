@@ -402,6 +402,23 @@ struct CameraNameMapping: Identifiable, Hashable {
     var id: String { internalName }
 }
 
+/// One row in the Lens Names editor. `rawName` is the lens string exactly
+/// as stored in the catalog (the value ReelVault extracts from
+/// `exifEX:LensModel`); `alias` is the display name shown for it. Unlike
+/// cameras there is no built-in table, so `alias` equals `rawName` unless
+/// the user set a custom override (`isCustom`). `inCatalog` is false for
+/// a stale override whose lens no longer appears in any video.
+struct LensNameMapping: Identifiable, Hashable {
+    let rawName: String
+    let alias: String
+    let isCustom: Bool
+    let inCatalog: Bool
+
+    /// Stable identity for SwiftUI List/ForEach. The raw lens string is
+    /// the catalog-unique key for a mapping.
+    var id: String { rawName }
+}
+
 struct FilterOptions: Equatable {
     var cameras: [String] = []
     /// Marketing-friendly names for each entry in `cameras`, same order
