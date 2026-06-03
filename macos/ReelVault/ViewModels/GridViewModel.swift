@@ -537,7 +537,10 @@ class GridViewModel: ObservableObject {
             isLoading = false
 
             // Keep map locations in sync with the active grid filters.
-            Task { await loadVideoLocationsFilteredAsync() }
+            // Debounced (see scheduleVideoLocationsRefresh) so a burst of
+            // filter/selection changes doesn't kick off a full-library
+            // re-pagination per change.
+            scheduleVideoLocationsRefresh()
         } catch {
             if Task.isCancelled { return }
             self.error = "Failed to load videos: \(error.localizedDescription)"
@@ -1804,16 +1807,25 @@ class GridViewModel: ObservableObject {
         }
     }
 
-    /// Persist the four-slot configuration. The optimistic local update
-    /// already happened when the picker mutated `topSlots`; this just
-    /// shoves the value across the wire.
+    private var gridSettingsSaveTask: Task<Void, Never>?
+
+    /// Persist the four-slot configuration. The optimistic local update already
+    /// happened when the picker mutated `topSlots`; the persistence write is
+    /// debounced so reconfiguring several slots in quick succession collapses to
+    /// a single round-trip instead of one DB write per click — which on a slow
+    /// NAS-backed catalog could otherwise back up behind each other.
     func saveGridSettings() {
         let slots = Self.normaliseSlots(topSlots)
-        Task {
+        gridSettingsSaveTask?.cancel()
+        gridSettingsSaveTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            if Task.isCancelled { return }
             do {
-                try await repository.updateGridSettings(topSlots: slots)
+                try await self?.repository.updateGridSettings(topSlots: slots)
+            } catch is CancellationError {
+                // Superseded by a newer edit.
             } catch {
-                self.error = "Failed to save grid settings: \(error.localizedDescription)"
+                self?.error = "Failed to save grid settings: \(error.localizedDescription)"
             }
         }
     }
@@ -1858,6 +1870,22 @@ class GridViewModel: ObservableObject {
     /// so the pin list is not constrained by an active proximity circle.
     func loadVideoLocationsFiltered() {
         Task { await loadVideoLocationsFilteredAsync() }
+    }
+
+    private var locationsRefreshTask: Task<Void, Never>?
+
+    /// Debounced trigger for `loadVideoLocationsFilteredAsync` (mirrors the
+    /// Compose client). Collapses a burst of grid reloads into a single
+    /// full-library pagination once activity settles. The map / location-picker
+    /// dialogs that consume `videoLocations` are opened on demand, so a short
+    /// delay before they're warm is harmless.
+    private func scheduleVideoLocationsRefresh() {
+        locationsRefreshTask?.cancel()
+        locationsRefreshTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            if Task.isCancelled { return }
+            await self?.loadVideoLocationsFilteredAsync()
+        }
     }
 
     func loadVideoLocationsFilteredAsync() async {

@@ -593,7 +593,11 @@ class GridViewModel(
                     if (locationPathFilter.isNotEmpty()) " (filtered to $locationPathFilter)" else "")
 
                 // Keep map locations in sync with the active grid filters.
-                launch { loadVideoLocationsFilteredAsync() }
+                // Debounced and run off the UI thread (see
+                // scheduleVideoLocationsRefresh) so a burst of filter/selection
+                // changes doesn't kick off a full-library re-pagination per
+                // change on the UI dispatcher.
+                scheduleVideoLocationsRefresh()
             } catch (e: CancellationException) {
                 // Superseded by a newer load — leave state alone so the
                 // newer load owns isLoading / videos.
@@ -1115,15 +1119,25 @@ class GridViewModel(
         }
     }
 
-    /** Update one slot's stat key and persist the full set to the catalog. */
+    private var gridSettingsSaveJob: Job? = null
+
+    /** Update one slot's stat key and persist the full set to the catalog. The
+     *  local [topSlots] update is immediate (the cards repaint at once); the
+     *  persistence RPC is debounced so reconfiguring several slots in quick
+     *  succession collapses to a single write instead of one DB write per
+     *  click — which on a slow NAS-backed catalog could otherwise back up. */
     fun updateGridTopSlot(slotIndex: Int, statKey: String) {
         if (slotIndex !in 0..3) return
         val current = normaliseSlots(_topSlots.value).toMutableList()
         current[slotIndex] = statKey
         _topSlots.value = current.toList()
-        viewModelScope.launch {
+        gridSettingsSaveJob?.cancel()
+        gridSettingsSaveJob = viewModelScope.launch {
+            delay(500)
             try {
-                repository.updateGridSettings(current.toList())
+                repository.updateGridSettings(_topSlots.value)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 logger.error("updateGridSettings failed: ${e.message}", e)
             }
@@ -1172,41 +1186,65 @@ class GridViewModel(
         viewModelScope.launch { loadVideoLocationsFilteredAsync() }
     }
 
+    private var locationsRefreshJob: Job? = null
+
+    /** Debounced trigger for [loadVideoLocationsFilteredAsync]. Collapses a
+     *  burst of grid reloads (rapid filtering, selection) into a single
+     *  full-library pagination once activity settles, instead of one per
+     *  reload. The map / location-picker dialogs that consume [videoLocations]
+     *  are opened on demand, so a short delay before they're warm is harmless. */
+    private fun scheduleVideoLocationsRefresh() {
+        locationsRefreshJob?.cancel()
+        locationsRefreshJob = viewModelScope.launch {
+            delay(400)
+            loadVideoLocationsFilteredAsync()
+        }
+    }
+
     suspend fun loadVideoLocationsFilteredAsync() {
         try {
-            val batchSize = 500
-            val accumulated = mutableListOf<com.reelvault.data.models.VideoLocation>()
-            var offset = 0
-            while (true) {
-                val (page, total) = repository.listVideos(
-                    limit = batchSize,
-                    offset = offset,
-                    sortBy = sortBy,
-                    sortAscending = sortAscending,
-                    filterTags = filterTags,
-                    collectionId = collectionId,
-                    locationPath = locationPathFilter,
-                    geoFilter = null,
-                    filterMinRating = _filterMinRating.value,
-                    filterColorLabel = _filterColorLabel.value,
-                    metadataFilters = activeMetadataFilters(),
-                    searchQuery = _searchQuery.value,
-                )
-                page.filter { it.hasLocation }.forEach { v ->
-                    accumulated += com.reelvault.data.models.VideoLocation(
-                        id = v.id,
-                        filename = v.filename,
-                        path = v.path,
-                        latitude = v.gpsLatitude,
-                        longitude = v.gpsLongitude,
-                        hasThumbnail = v.hasThumbnail
+            // The full-library pagination runs entirely off the UI thread: on a
+            // slow NAS-backed catalog this can be several seconds of round-trips,
+            // and it must never compete with grid recomposition / input handling
+            // on the UI dispatcher.
+            val accumulated = withContext(Dispatchers.IO) {
+                val batchSize = 500
+                val acc = mutableListOf<com.reelvault.data.models.VideoLocation>()
+                var offset = 0
+                while (true) {
+                    val (page, total) = repository.listVideos(
+                        limit = batchSize,
+                        offset = offset,
+                        sortBy = sortBy,
+                        sortAscending = sortAscending,
+                        filterTags = filterTags,
+                        collectionId = collectionId,
+                        locationPath = locationPathFilter,
+                        geoFilter = null,
+                        filterMinRating = _filterMinRating.value,
+                        filterColorLabel = _filterColorLabel.value,
+                        metadataFilters = activeMetadataFilters(),
+                        searchQuery = _searchQuery.value,
                     )
+                    page.filter { it.hasLocation }.forEach { v ->
+                        acc += com.reelvault.data.models.VideoLocation(
+                            id = v.id,
+                            filename = v.filename,
+                            path = v.path,
+                            latitude = v.gpsLatitude,
+                            longitude = v.gpsLongitude,
+                            hasThumbnail = v.hasThumbnail
+                        )
+                    }
+                    offset += page.size
+                    if (page.isEmpty() || offset >= total) break
                 }
-                offset += page.size
-                if (page.isEmpty() || offset >= total) break
+                acc
             }
             _videoLocations.value = accumulated
             logger.info("Loaded ${accumulated.size} geotagged videos (filtered)")
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logger.error("Failed to load filtered video locations", e)
         }
