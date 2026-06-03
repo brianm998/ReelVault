@@ -968,7 +968,14 @@ struct ContentView: View {
                             }
                         }
                     )
-                    .frame(maxWidth: .infinity)
+                    // Always claim the full height (not just width) so the
+                    // centre column never collapses to the spinner's intrinsic
+                    // size during a reload — otherwise the VStack shrinks and
+                    // the enclosing HStack centres it, making the filter bar
+                    // jump to the middle and back. The grid's ScrollView is
+                    // already greedy; this keeps the loading / empty states
+                    // greedy too.
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 case .list:
                     ListView(
                         viewModel: gridViewModel,
@@ -987,7 +994,9 @@ struct ContentView: View {
                             }
                         }
                     )
-                    .frame(maxWidth: .infinity)
+                    // Same full-height claim as grid mode (see above) so the
+                    // filter bar stays pinned while the list reloads.
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 case .detail:
                     DetailLoupeView(
                         gridViewModel: gridViewModel,
