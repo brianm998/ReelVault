@@ -685,9 +685,10 @@ enum GridStatKey: String, CaseIterable, Identifiable, Hashable {
             // "Camera" slot without a per-video metadata roundtrip.
             return video.cameraDisplayName.isEmpty ? video.cameraModel : video.cameraDisplayName
         case .lensModel:
-            // Still on VideoMetadata, not the summary — render blank
-            // until/unless a future change surfaces it the same way.
-            return ""
+            // Surfaced on the summary (like .cameraModel) so the grid
+            // card's configurable "Lens" slot renders without a per-video
+            // VideoMetadata roundtrip. Empty when the clip carries no XMP.
+            return video.lensModel
         case .captureDate:
             if video.creationDate <= 0 { return "" }
             let date = Date(timeIntervalSince1970: TimeInterval(video.creationDate / 1000))
