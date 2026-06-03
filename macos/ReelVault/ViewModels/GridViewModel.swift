@@ -1693,6 +1693,27 @@ class GridViewModel: ObservableObject {
 
     // MARK: - User marks (rating + color label)
 
+    /// After an optimistic rating/colour change, drop any cached video that no
+    /// longer satisfies the active Lightroom mark-filters so it leaves the view
+    /// immediately, instead of lingering until the next watcher-driven refresh
+    /// (tens of seconds out on a slow NAS). Additions — a video that now matches
+    /// the filter — still surface on the next reload, since they aren't in the
+    /// loaded page to begin with.
+    private func pruneVideosFailingMarkFilters() {
+        let colorFilter = filterColorLabel
+        let minRating = filterMinRating
+        guard !colorFilter.isEmpty || minRating > 0 else { return }
+        let before = videos.count
+        videos = videos.filter { v in
+            (colorFilter.isEmpty || v.colorLabel == colorFilter)
+                && (minRating <= 0 || Int32(v.rating) >= minRating)
+        }
+        let removed = before - videos.count
+        if removed > 0 {
+            totalCount = max(0, totalCount - Int64(removed))
+        }
+    }
+
     /// Apply a 0..5 star rating to one or more videos. Optimistically updates
     /// the cached `videos` list so the UI redraws immediately, then sends the
     /// RPC. The pattern mirrors how tag-add/-remove is handled today.
@@ -1704,6 +1725,7 @@ class GridViewModel: ObservableObject {
         videos = videos.map { v in
             ids.contains(v.id) ? v.withRating(clamped) : v
         }
+        pruneVideosFailingMarkFilters()
         Task {
             do {
                 try await repository.updateVideoRating(videoIds: Array(ids), rating: clamped)
@@ -1722,6 +1744,7 @@ class GridViewModel: ObservableObject {
         videos = videos.map { v in
             ids.contains(v.id) ? v.withColorLabel(label) : v
         }
+        pruneVideosFailingMarkFilters()
         Task {
             do {
                 try await repository.updateVideoColorLabel(videoIds: Array(ids), colorLabel: label)

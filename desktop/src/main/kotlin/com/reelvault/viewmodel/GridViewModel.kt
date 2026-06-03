@@ -1005,6 +1005,27 @@ class GridViewModel(
 
     // --- Lightroom-style user marks ---
 
+    /** After an optimistic rating/colour change, drop any cached video that no
+     *  longer satisfies the active Lightroom mark-filters so it leaves the view
+     *  immediately, instead of lingering until the next watcher-driven refresh
+     *  (tens of seconds out on a slow NAS). Additions — a video that now matches
+     *  the filter — still surface on the next reload, since they aren't in the
+     *  loaded page to begin with. */
+    private fun pruneVideosFailingMarkFilters() {
+        val colorFilter = _filterColorLabel.value
+        val minRating = _filterMinRating.value
+        if (colorFilter.isEmpty() && minRating <= 0) return
+        val before = _videos.value
+        val after = before.filter { v ->
+            (colorFilter.isEmpty() || v.colorLabel == colorFilter) &&
+                (minRating <= 0 || v.rating >= minRating)
+        }
+        if (after.size != before.size) {
+            _videos.value = after
+            _totalCount.value = (_totalCount.value - (before.size - after.size)).coerceAtLeast(0)
+        }
+    }
+
     /** Apply a 0..5 star rating to the given videos. Optimistic local update
      *  followed by an RPC; the cached list is replaced in-place so the
      *  grid repaints immediately. */
@@ -1015,6 +1036,7 @@ class GridViewModel(
         _videos.value = _videos.value.map { v ->
             if (v.id in ids) v.copy(rating = clamped) else v
         }
+        pruneVideosFailingMarkFilters()
         viewModelScope.launch {
             try {
                 repository.updateVideoRating(ids.toList(), clamped)
@@ -1031,6 +1053,7 @@ class GridViewModel(
         _videos.value = _videos.value.map { v ->
             if (v.id in ids) v.copy(colorLabel = label) else v
         }
+        pruneVideosFailingMarkFilters()
         viewModelScope.launch {
             try {
                 repository.updateVideoColorLabel(ids.toList(), label)
