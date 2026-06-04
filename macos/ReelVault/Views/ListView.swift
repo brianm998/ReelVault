@@ -85,7 +85,6 @@ struct ListView: View {
                             item: item,
                             thumbnail: viewModel.thumbnails[item.video.id],
                             thumbnailHeight: thumbnailHeight,
-                            columns: viewModel.listColumns,
                             isPrimarySelected: viewModel.selectedVideoId == item.video.id,
                             isInMultiSelection: viewModel.selectedVideoIds.contains(item.video.id),
                             isAnchor: viewModel.anchorVideoId == item.video.id && viewModel.selectedVideoIds.count > 1,
@@ -408,7 +407,6 @@ struct VideoListRowView: View {
     let item: GridItemRow
     let thumbnail: NSImage?
     var thumbnailHeight: CGFloat = 100
-    let columns: Set<String>
     let isPrimarySelected: Bool
     let isInMultiSelection: Bool
     let isAnchor: Bool
@@ -479,8 +477,8 @@ struct VideoListRowView: View {
         // the list-row), with the textual metadata living *beside* the
         // card rather than inside it. That keeps the card's geometry
         // identical to its grid-mode counterpart while letting list
-        // mode surface filename / tech / date / tags / proxy in a
-        // dedicated trailing column.
+        // mode surface the filename + the four configurable stat labels
+        // in a dedicated trailing column.
         HStack(alignment: .top, spacing: 10) {
             if isStackChild {
                 Spacer().frame(width: 12)
@@ -596,57 +594,23 @@ struct VideoListRowView: View {
     }
 
     /// Textual metadata column rendered alongside (trailing) the
-    /// `cardContainer`. Same content the row used to embed in its
-    /// middle band: filename, tech line, date + size line, tags, and
-    /// the proxy badge.
+    /// `cardContainer`: the filename plus the four configurable stat
+    /// labels (the same catalog-wide slots the grid card shows on top,
+    /// relocated to a vertical list here in list view).
     private var infoColumn: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        let slots = padSlots(topSlots)
+        return VStack(alignment: .leading, spacing: 3) {
             Text(video.filename)
                 .font(.body)
                 .fontWeight(.medium)
                 .lineLimit(1)
 
-            let techLine = buildTechLine()
-            if !techLine.isEmpty {
-                Text(techLine)
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-            }
-
-            let dateLine = buildDateLine()
-            if !dateLine.isEmpty {
-                Text(dateLine)
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-            }
-
-            if columns.contains("tags") && !video.tags.isEmpty {
-                HStack(spacing: 4) {
-                    ForEach(video.tags, id: \.self) { tag in
-                        Text(tag)
-                            .font(.system(size: 10))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.accentColor.opacity(0.2))
-                            .cornerRadius(4)
-                    }
-                }
-            }
-
-            if columns.contains("proxy") && video.hasProxies {
-                HStack(spacing: 3) {
-                    Image(systemName: "rectangle.compress.vertical")
-                        .font(.system(size: 10))
-                    Text("P×\(video.proxyCount)")
-                        .font(.system(size: 10, weight: .medium))
-                }
-                .foregroundColor(.white)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 2)
-                .background(Color(red: 0.25, green: 0.55, blue: 0.55))
-                .cornerRadius(4)
+            // Four configurable stat labels — the same catalog-wide slots the
+            // grid card shows in its top band, relocated to a vertical list
+            // here in list view. Each is click-to-configure via the shared
+            // picker, so grid and list stay in sync.
+            ForEach(0..<4, id: \.self) { slotIndex in
+                statCell(slotIndex: slotIndex, key: slots[slotIndex], alignTrailing: false)
             }
 
             // Collapsed stack: list the other members of the stack so the
@@ -666,20 +630,6 @@ struct VideoListRowView: View {
 
     // MARK: - Lightroom bands
 
-    /// Top band: a single horizontal row of four configurable stat cells,
-    /// mirroring the 4 catalog-scoped slots used by the grid card.
-    @ViewBuilder
-    private var topStatBand: some View {
-        let slots = padSlots(topSlots)
-        HStack(spacing: 12) {
-            statCell(slotIndex: 0, key: slots[0], alignTrailing: false)
-            statCell(slotIndex: 1, key: slots[1], alignTrailing: false)
-            statCell(slotIndex: 2, key: slots[2], alignTrailing: false)
-            statCell(slotIndex: 3, key: slots[3], alignTrailing: true)
-        }
-        .padding(.horizontal, 10)
-    }
-
     @ViewBuilder
     private func statCell(slotIndex: Int, key: String, alignTrailing: Bool) -> some View {
         // Same popover-driven approach as the grid card — see
@@ -695,7 +645,7 @@ struct VideoListRowView: View {
         }()
         Text(displayed)
             .font(.system(size: 10, weight: slotIndex == 0 ? .semibold : .regular))
-            .foregroundColor(stat == .none ? Color.black.opacity(0.4) : Color.black.opacity(0.85))
+            .foregroundColor(stat == .none ? Color.secondary : Color.primary)
             .lineLimit(1)
             .truncationMode(.middle)
             .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
@@ -921,24 +871,6 @@ struct VideoListRowView: View {
                       : "Expand this stack to see all \(video.groupSize) variants inline.")
             }
 
-            // Resolution badge (top-right)
-            if video.height > 0 {
-                VStack {
-                    HStack {
-                        Spacer()
-                        Text("\(video.height)p")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 2)
-                            .background(Color.black.opacity(0.7))
-                            .cornerRadius(3)
-                    }
-                    Spacer()
-                }
-                .padding(4)
-            }
-
             // Bottom-left location badge — shown when the video has GPS
             // coordinates. Tapping opens the global map focused on this video.
             if video.hasLocation, let handler = onLocationClick {
@@ -962,6 +894,58 @@ struct VideoListRowView: View {
                 }
                 .padding(4)
             }
+
+            // Bottom-right status badges — keyword / proxy / full-resolution,
+            // mirroring the grid card so list and grid cards read identically.
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    HStack(spacing: 4) {
+                        if !video.tags.isEmpty {
+                            Image(systemName: "tag.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white)
+                                .padding(3)
+                                .background(Color.black.opacity(0.55))
+                                .clipShape(Circle())
+                                .help("\(video.tags.count) keyword\(video.tags.count == 1 ? "" : "s")")
+                        }
+                        if video.hasProxies {
+                            Image(systemName: "rectangle.on.rectangle.angled")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white)
+                                .padding(3)
+                                .background(Color.black.opacity(0.55))
+                                .clipShape(Circle())
+                                .help("\(video.proxyCount) proxy/proxies available for inline playback.")
+                        }
+                        // Full-resolution badge — only when the daemon's
+                        // classifier was sure either way; unspecified renders nothing.
+                        switch video.fullResolution {
+                        case .full:
+                            Image(systemName: "checkmark.seal.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white)
+                                .padding(3)
+                                .background(Color.black.opacity(0.55))
+                                .clipShape(Circle())
+                                .help("Full resolution — matches a known native sensor mode for \(video.cameraDisplayName.isEmpty ? "this camera" : video.cameraDisplayName).")
+                        case .notFull:
+                            Image(systemName: "crop")
+                                .font(.system(size: 10))
+                                .foregroundColor(.white)
+                                .padding(3)
+                                .background(Color.black.opacity(0.55))
+                                .clipShape(Circle())
+                                .help("Not full resolution — recorded dimensions don't match any native sensor mode for \(video.cameraDisplayName.isEmpty ? "this camera" : video.cameraDisplayName).")
+                        case .unspecified:
+                            EmptyView()
+                        }
+                    }
+                }
+            }
+            .padding(6)
         }
         .opacity(isStackChild ? 0.85 : 1.0)
     }
@@ -977,38 +961,6 @@ struct VideoListRowView: View {
         if item.isExpandedRepresentative { return Color.accentColor }
         if item.isStackChild { return Color(red: 0.12, green: 0.43, blue: 0.92).opacity(0.85) }
         return Color.accentColor.opacity(0.85)
-    }
-
-    private func buildTechLine() -> String {
-        var parts: [String] = []
-        if columns.contains("resolution") && !video.resolution.isEmpty {
-            parts.append(video.resolution)
-        }
-        if columns.contains("codec") && !video.codecVideo.isEmpty {
-            parts.append(video.codecVideo)
-        }
-        if columns.contains("fps") && video.fps > 0 {
-            parts.append(String(format: "%.2gfps", video.fps))
-        }
-        if columns.contains("duration") && !video.durationFormatted.isEmpty {
-            parts.append(video.durationFormatted)
-        }
-        return parts.joined(separator: " · ")
-    }
-
-    private func buildDateLine() -> String {
-        var parts: [String] = []
-        if columns.contains("date") && video.creationDate > 0 {
-            let date = Date(timeIntervalSince1970: Double(video.creationDate) / 1000.0)
-            let formatter = DateFormatter()
-            formatter.dateStyle = .medium
-            formatter.timeStyle = .none
-            parts.append(formatter.string(from: date))
-        }
-        if columns.contains("filesize") && !video.sizeFormatted.isEmpty {
-            parts.append(video.sizeFormatted)
-        }
-        return parts.joined(separator: "  ")
     }
 
     // Row selection / border styling now lives in the band-color helpers

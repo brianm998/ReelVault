@@ -76,60 +76,6 @@ fun DetailScreen(
             )
         }
 
-        // List columns — only shown when List view is active
-        if (viewMode == ViewMode.LIST) {
-            val cols = gridViewModel.listColumns.collectAsState()
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = ReelVaultSpacing.Small),
-                color = MaterialTheme.colorScheme.outlineVariant
-            )
-            Text(
-                text = "LIST COLUMNS",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(
-                    start = ReelVaultSpacing.Medium,
-                    end = ReelVaultSpacing.Medium,
-                    top = ReelVaultSpacing.Medium,
-                    bottom = ReelVaultSpacing.XSmall
-                )
-            )
-            listOf(
-                "resolution" to "Resolution",
-                "duration"   to "Duration",
-                "fps"        to "FPS",
-                "codec"      to "Codec",
-                "filesize"   to "File Size",
-                "date"       to "Date",
-                "tags"       to "Tags",
-                "proxy"      to "Proxy",
-            ).forEach { (key, label) ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { gridViewModel.toggleListColumn(key) }
-                        .padding(horizontal = ReelVaultSpacing.Medium, vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = key in cols.value,
-                        onCheckedChange = { gridViewModel.toggleListColumn(key) },
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(ReelVaultSpacing.Small))
-                    // Explicit color — the surrounding Column is not a Surface,
-                    // so without this the Text falls back to LocalContentColor,
-                    // which in this scope resolves to a near-black that's
-                    // unreadable on the panel's dark background.
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-        }
-
         HorizontalDivider(
             modifier = Modifier.padding(horizontal = ReelVaultSpacing.Small),
             color = MaterialTheme.colorScheme.outlineVariant

@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.withTimeoutOrNull
 import com.reelvault.LocalAppWindow
 import com.reelvault.LocalShiftPressed
+import com.reelvault.data.models.FullResolutionStatus
 import com.reelvault.data.models.VideoSummary
 import com.reelvault.ui.components.ComposeVideoPlayer
 import com.reelvault.ui.components.Tooltip
@@ -46,9 +47,6 @@ import com.reelvault.ui.components.VlcUnavailableOverlay
 import com.reelvault.ui.theme.ReelVaultSpacing
 import com.reelvault.util.FileDragSource
 import com.reelvault.viewmodel.GridViewModel
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import org.jetbrains.skia.Image as SkiaImage
 import androidx.compose.ui.graphics.toComposeImageBitmap
 
@@ -76,7 +74,6 @@ fun ListScreen(
     val expandedGroupIds = viewModel.expandedGroupIds.collectAsState()
     val expandedMembers = viewModel.expandedGroupMembers.collectAsState()
     val shiftPressed = LocalShiftPressed.current
-    val listColumns = viewModel.listColumns.collectAsState()
     val topSlots = viewModel.topSlots.collectAsState()
     val playingVideoId = viewModel.playingVideoId.collectAsState()
     val playingVideoPath = viewModel.playingVideoPath.collectAsState()
@@ -327,7 +324,10 @@ fun ListScreen(
                                         thumbnailBytes = thumbnails.value[video.id],
                                         scrubFrames = scrubFrames.value[video.id] ?: emptyList(),
                                         thumbnailHeight = thumbnailHeight,
-                                        visibleColumns = listColumns.value,
+                                        topSlots = topSlots.value,
+                                        onPickStatSlot = { slotIndex, key ->
+                                            viewModel.updateGridTopSlot(slotIndex, key)
+                                        },
                                         stackMemberFilenames = if (video.isInGroup) {
                                             expandedMembers.value[video.groupId]
                                                 ?.filter { it.id != video.id }
@@ -538,8 +538,6 @@ fun ListScreen(
     }
 }
 
-private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-
 @Composable
 fun VideoListRow(
     item: GridItem,
@@ -549,7 +547,9 @@ fun VideoListRow(
     thumbnailBytes: ByteArray? = null,
     scrubFrames: List<ByteArray?> = emptyList(),
     thumbnailHeight: Dp = 80.dp,
-    visibleColumns: Set<String> = emptySet(),
+    /** The four catalog-scoped stat-slot keys (the same slots the grid card
+     *  shows on top), rendered as a vertical list in the row's info column. */
+    topSlots: List<String> = emptyList(),
     /**
      * Filenames of the other members of this row's stack — empty when
      * the video isn't in a stack or the members haven't been fetched
@@ -563,6 +563,9 @@ fun VideoListRow(
     onDoubleClick: () -> Unit = {},
     /** Fired when one of the five rating positions is clicked. */
     onSetRating: (Int) -> Unit = {},
+    /** Fired when the user picks a different stat for one of the four
+     *  info-column slots. Receives (slotIndex 0..3, GridStatKey.raw). */
+    onPickStatSlot: (Int, String) -> Unit = { _, _ -> },
     /** Fired when the user clicks the location badge. The doubles are
      *  (latitude, longitude). Callers should open the global map focused
      *  on that coordinate. */
@@ -821,31 +824,58 @@ fun VideoListRow(
                         }
                     }
                 }
-                // Stack count badge for collapsed group representatives.
+                // Stack/group badge — mirrors the grid card: a colour-coded
+                // Surface with the Layers icon + member count. Clicking it
+                // toggles the stack's expansion; the pointer-input consume
+                // pattern stops the same click from also selecting the row.
                 if (video.isInGroup) {
                     Tooltip(
                         text = if (item.isExpandedRepresentative)
                             "Collapse this stack of ${video.groupSize} videos"
                         else
                             "Expand this stack to see all ${video.groupSize} variants",
-                        modifier = Modifier.align(Alignment.TopStart),
+                        modifier = Modifier.align(Alignment.TopStart).padding(ReelVaultSpacing.Small),
                     ) {
-                        Box(
+                        Surface(
                             modifier = Modifier
-                                .padding(3.dp)
-                                .background(
-                                    Color.Black.copy(alpha = 0.6f),
-                                    shape = MaterialTheme.shapes.extraSmall
-                                )
-                                .clickable(onClick = onStackToggle)
-                                .padding(horizontal = 4.dp, vertical = 2.dp)
+                                .pointerInput(onStackToggle) {
+                                    awaitEachGesture {
+                                        val down = awaitFirstDown(requireUnconsumed = false)
+                                        down.consume()
+                                        val up = waitForUpOrCancellation()
+                                        if (up != null) {
+                                            up.consume()
+                                            onStackToggle()
+                                        }
+                                    }
+                                },
+                            color = when {
+                                item.isExpandedRepresentative -> MaterialTheme.colorScheme.primary
+                                item.isStackChild -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.85f)
+                                else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+                            },
+                            shape = MaterialTheme.shapes.small
                         ) {
-                            Text(
-                                text = "${video.groupSize}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Row(
+                                modifier = Modifier.padding(
+                                    horizontal = ReelVaultSpacing.Small,
+                                    vertical = 2.dp
+                                ),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Layers,
+                                    contentDescription = if (item.isExpandedRepresentative) "Collapse stack" else "Expand stack",
+                                    modifier = Modifier.size(12.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimary
+                                )
+                                Spacer(modifier = Modifier.width(2.dp))
+                                Text(
+                                    text = "${video.groupSize}",
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
                         }
                     }
                 }
@@ -885,6 +915,97 @@ fun VideoListRow(
                                 tint = Color.White
                             )
                         }
+                    }
+                }
+
+                // Bottom-right status badges — keyword / proxy / full-resolution,
+                // mirroring the grid card so list and grid cards read identically.
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    if (video.tags.isNotEmpty()) {
+                        Tooltip(
+                            text = "${video.tags.size} keyword${if (video.tags.size == 1) "" else "s"}: ${video.tags.joinToString(", ")}"
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Sell,
+                                    contentDescription = "${video.tags.size} keyword(s)",
+                                    modifier = Modifier.size(10.dp),
+                                    tint = Color.White
+                                )
+                            }
+                        }
+                    }
+                    if (video.hasProxies) {
+                        Tooltip(
+                            text = "${video.proxyCount} proxy/proxies available for inline playback"
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PictureInPicture,
+                                    contentDescription = "${video.proxyCount} proxy/proxies",
+                                    modifier = Modifier.size(10.dp),
+                                    tint = Color.White
+                                )
+                            }
+                        }
+                    }
+                    // Full-resolution badge — only when the daemon's classifier
+                    // was sure either way; Unspecified renders nothing.
+                    when (video.fullResolution) {
+                        FullResolutionStatus.Full -> {
+                            Tooltip(
+                                text = "Full resolution — matches a known native sensor mode for ${video.cameraDisplayName.ifEmpty { "this camera" }}"
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.HighQuality,
+                                        contentDescription = "Full resolution",
+                                        modifier = Modifier.size(10.dp),
+                                        tint = Color.White
+                                    )
+                                }
+                            }
+                        }
+                        FullResolutionStatus.NotFull -> {
+                            Tooltip(
+                                text = "Not full resolution — recorded dimensions don't match any native sensor mode for ${video.cameraDisplayName.ifEmpty { "this camera" }}"
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Crop,
+                                        contentDescription = "Not full resolution",
+                                        modifier = Modifier.size(10.dp),
+                                        tint = Color.White
+                                    )
+                                }
+                            }
+                        }
+                        FullResolutionStatus.Unspecified -> {}
                     }
                 }
             }
@@ -955,57 +1076,22 @@ fun VideoListRow(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            val secondaryParts = buildList {
-                if ("resolution" in visibleColumns && video.width > 0 && video.height > 0) {
-                    add("${video.width}×${video.height}")
-                }
-                if ("duration" in visibleColumns) {
-                    add(video.durationFormatted)
-                }
-                if ("fps" in visibleColumns && video.fps > 0) {
-                    add(String.format("%.2f fps", video.fps))
-                }
-                if ("codec" in visibleColumns && video.codecVideo.isNotEmpty()) {
-                    add(video.codecVideo)
-                }
-                if ("filesize" in visibleColumns && video.sizeBytes > 0) {
-                    add("${video.sizeBytes / 1_048_576} MB")
-                }
-                if ("date" in visibleColumns && video.creationDate > 0) {
-                    val instant = Instant.ofEpochMilli(video.creationDate)
-                    add(dateFormatter.format(instant.atZone(ZoneId.systemDefault())))
-                }
+            // Four configurable stat labels — the same catalog-wide slots the
+            // grid card shows in its top band, relocated to a vertical list
+            // here in list view. Each is click-to-configure via the shared
+            // picker, so grid and list stay in sync.
+            val paddedSlots = remember(topSlots) {
+                val s = topSlots.toMutableList()
+                while (s.size < 4) s.add("")
+                s.take(4)
             }
-            if (secondaryParts.isNotEmpty()) {
-                Text(
-                    text = secondaryParts.joinToString(" • "),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+            for (slotIndex in 0..3) {
+                ListColumnStatLabel(
+                    slotIndex = slotIndex,
+                    key = paddedSlots[slotIndex],
+                    video = video,
+                    onPick = onPickStatSlot,
                 )
-            }
-            if ("tags" in visibleColumns && video.tags.isNotEmpty()) {
-                Text(
-                    text = video.tags.joinToString(", "),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.tertiary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            if ("proxy" in visibleColumns && video.proxyCount > 0) {
-                Surface(
-                    color = Color(0xFF408888),
-                    shape = MaterialTheme.shapes.small
-                ) {
-                    Text(
-                        text = "P×${video.proxyCount}",
-                        color = Color.White,
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = ReelVaultSpacing.Small, vertical = 2.dp)
-                    )
-                }
             }
             // Collapsed stack: list the other members of the stack so the
             // user can see what's inside without expanding. Skipped when
@@ -1017,6 +1103,63 @@ fun VideoListRow(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+}
+
+/** One of the four configurable stat labels shown in [VideoListRow]'s info
+ *  column. Mirrors [ListRowStatCell] but stacks vertically (no [RowScope]
+ *  weight) and is always start-aligned. It uses theme-surface text colours
+ *  because it sits on the panel background rather than the card's light stat
+ *  band. Clicking opens the same picker, so the list shares the grid's
+ *  catalog-wide slot configuration. */
+@Composable
+private fun ListColumnStatLabel(
+    slotIndex: Int,
+    key: String,
+    video: VideoSummary,
+    onPick: (Int, String) -> Unit,
+) {
+    val stat = com.reelvault.data.models.GridStatKey.fromRaw(key)
+    val value = stat.valueFor(video)
+    val displayed: String = if (value.isEmpty()) "—" else value
+    var expanded by remember { mutableStateOf(false) }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 14.dp)
+            .clickable { expanded = true },
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Text(
+            text = displayed,
+            style = if (slotIndex == 0) MaterialTheme.typography.labelMedium
+                    else MaterialTheme.typography.labelSmall,
+            color = if (stat == com.reelvault.data.models.GridStatKey.None)
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            else
+                MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            com.reelvault.data.models.GridStatKey.values().forEach { choice ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            if (choice == stat) "✓ ${choice.displayName}"
+                            else choice.displayName
+                        )
+                    },
+                    onClick = {
+                        onPick(slotIndex, choice.raw)
+                        expanded = false
+                    }
                 )
             }
         }

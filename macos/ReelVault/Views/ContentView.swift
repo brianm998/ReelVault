@@ -1024,7 +1024,6 @@ struct ContentView: View {
                     viewModel: detailViewModel,
                     gridViewModel: gridViewModel,
                     onCollapse: { setRightPanelExpanded(false) },
-                    isListMode: viewMode == .list,
                     isLoupeMode: viewMode == .detail,
                     onEditLocation: { videoIds, initial in
                         // Await before showing the sheet so the picker's

@@ -8,8 +8,6 @@ struct DetailView: View {
     @ObservedObject var viewModel: DetailViewModel
     @ObservedObject var gridViewModel: GridViewModel
     let onCollapse: () -> Void
-    /// When `true`, a "List Columns" toggle section appears below the metadata.
-    var isListMode: Bool = false
     /// When `true`, the proxy section rows are clickable: a click swaps
     /// the detail-view (loupe) player to the selected proxy. In Grid
     /// and List mode the section is read-only because inline playback
@@ -43,45 +41,7 @@ struct DetailView: View {
             .padding(.top, 12)
             .padding(.bottom, 8)
 
-            if isListMode {
-                Divider()
-                // Outer VStack uses default .center alignment, so individual
-                // children (the header + each Toggle) need .frame(maxWidth:
-                // .infinity, alignment: .leading) — otherwise they collapse
-                // to their intrinsic width and end up centred in the panel.
-                Text("LIST COLUMNS")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 12)
-                    .padding(.top, 8)
-                    .padding(.bottom, 2)
-
-                let columnDefs: [(String, String)] = [
-                    ("resolution", "Resolution"),
-                    ("duration",   "Duration"),
-                    ("fps",        "FPS"),
-                    ("codec",      "Codec"),
-                    ("filesize",   "File Size"),
-                    ("date",       "Date"),
-                    ("tags",       "Tags"),
-                    ("proxy",      "Proxy"),
-                ]
-                ForEach(columnDefs, id: \.0) { key, label in
-                    Toggle(label, isOn: Binding(
-                        get: { gridViewModel.listColumns.contains(key) },
-                        set: { _ in gridViewModel.toggleListColumn(key) }
-                    ))
-                    .toggleStyle(.checkbox)
-                    .controlSize(.small)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 1)
-                }
-                Divider()
-            } else {
-                Divider()
-            }
+            Divider()
 
             // Content
             if let metadata = viewModel.metadata {
