@@ -2138,7 +2138,8 @@ impl Database {
                         COALESCE(m.width, 0), COALESCE(m.height, 0),
                         COALESCE(m.fps, 0), COALESCE(m.frame_count, 0),
                         COALESCE(m.camera_model, ''),
-                        COALESCE(v.file_size_bytes, 0)
+                        COALESCE(v.file_size_bytes, 0),
+                        COALESCE(m.audio_channels, 0)
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id",
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
@@ -2162,6 +2163,7 @@ impl Database {
                     frame_count: row.get(7)?,
                     camera_model: row.get(8)?,
                     file_size_bytes: row.get(9)?,
+                    audio_channels: row.get(10)?,
                 })
             })
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
@@ -2194,7 +2196,8 @@ impl Database {
                         COALESCE(m.width, 0), COALESCE(m.height, 0),
                         COALESCE(m.fps, 0), COALESCE(m.frame_count, 0),
                         COALESCE(m.camera_model, ''),
-                        COALESCE(v.file_size_bytes, 0)
+                        COALESCE(v.file_size_bytes, 0),
+                        COALESCE(m.audio_channels, 0)
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
                  WHERE (v.path >= ?1 AND v.path < ?2)
                     OR (v.group_id IS NOT NULL
@@ -2226,6 +2229,7 @@ impl Database {
                     frame_count: row.get(7)?,
                     camera_model: row.get(8)?,
                     file_size_bytes: row.get(9)?,
+                    audio_channels: row.get(10)?,
                 })
             })
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
@@ -2247,7 +2251,8 @@ impl Database {
                         COALESCE(m.width, 0), COALESCE(m.height, 0),
                         COALESCE(m.fps, 0), COALESCE(m.frame_count, 0),
                         COALESCE(m.camera_model, ''),
-                        COALESCE(v.file_size_bytes, 0)
+                        COALESCE(v.file_size_bytes, 0),
+                        COALESCE(m.audio_channels, 0)
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
                  WHERE v.id = ?",
                 [video_id],
@@ -2270,6 +2275,7 @@ impl Database {
                         frame_count: row.get(7)?,
                         camera_model: row.get(8)?,
                         file_size_bytes: row.get(9)?,
+                        audio_channels: row.get(10)?,
                     })
                 },
             )
@@ -2303,7 +2309,8 @@ impl Database {
                         COALESCE(m.width, 0), COALESCE(m.height, 0),
                         COALESCE(m.fps, 0), COALESCE(m.frame_count, 0),
                         COALESCE(m.camera_model, ''),
-                        COALESCE(v.file_size_bytes, 0)
+                        COALESCE(v.file_size_bytes, 0),
+                        COALESCE(m.audio_channels, 0)
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
                  WHERE v.id != ?
                    AND v.path >= ? AND v.path < ?",
@@ -2329,6 +2336,7 @@ impl Database {
                     frame_count: row.get(7)?,
                     camera_model: row.get(8)?,
                     file_size_bytes: row.get(9)?,
+                    audio_channels: row.get(10)?,
                 })
             })
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
@@ -2358,7 +2366,8 @@ impl Database {
                         COALESCE(m.width, 0), COALESCE(m.height, 0),
                         COALESCE(m.fps, 0), COALESCE(m.frame_count, 0),
                         COALESCE(m.camera_model, ''),
-                        COALESCE(v.file_size_bytes, 0)
+                        COALESCE(v.file_size_bytes, 0),
+                        COALESCE(m.audio_channels, 0)
                  FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
                  WHERE v.group_id = ?
                    AND v.id != ?",
@@ -2384,6 +2393,7 @@ impl Database {
                     frame_count: row.get(7)?,
                     camera_model: row.get(8)?,
                     file_size_bytes: row.get(9)?,
+                    audio_channels: row.get(10)?,
                 })
             })
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
@@ -2704,6 +2714,11 @@ pub struct ProxyDetectCandidate {
     /// true duplicates — a ≥ 2.5× size ratio at the same resolution is a
     /// strong signal for a codec-quality proxy relationship.
     pub file_size_bytes: i64,
+    /// Number of audio channels (0 when the file has no audio stream).
+    /// Used by the Proxies-folder detection path: editor-generated proxies
+    /// (e.g. Premiere) of silent timelapse footage carry no audio, which is
+    /// one of the gates that lets us relax the usual same-fps requirement.
+    pub audio_channels: i32,
 }
 
 #[derive(Debug, Clone)]
