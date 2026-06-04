@@ -159,16 +159,6 @@ class GridViewModel(
     private val _currentSortAscending = MutableStateFlow(sortAscending)
     val currentSortAscending: StateFlow<Boolean> = _currentSortAscending.asStateFlow()
 
-    // Columns visible in list mode. Persists only for session lifetime.
-    private val _listColumns = MutableStateFlow(
-        setOf("resolution", "duration", "fps", "codec", "date", "tags", "proxy")
-    )
-    val listColumns: StateFlow<Set<String>> = _listColumns.asStateFlow()
-
-    fun toggleListColumn(column: String) {
-        _listColumns.update { if (column in it) it - column else it + column }
-    }
-
     // UI state
     private val _selectedVideo = mutableStateOf<VideoSummary?>(null)
     val selectedVideo: State<VideoSummary?> = _selectedVideo
