@@ -382,60 +382,6 @@ fn tonemap_prefix(ci: &ColorInfo) -> Option<String> {
     None
 }
 
-#[cfg(test)]
-mod color_tests {
-    use super::*;
-
-    fn ci(codec: &str, pix: &str, space: &str, trc: &str, prim: &str) -> ColorInfo {
-        ColorInfo {
-            codec_name: codec.into(),
-            pix_fmt: pix.into(),
-            color_space: space.into(),
-            color_transfer: trc.into(),
-            color_primaries: prim.into(),
-        }
-    }
-
-    #[test]
-    fn sdr_rec709_passes_through_unchanged() {
-        let info = ci("h264", "yuv420p", "bt709", "bt709", "bt709");
-        let vf = build_thumbnail_vf(&info, "scale=400:-1");
-        assert_eq!(vf, "scale=400:-1");
-    }
-
-    #[test]
-    fn sdr_smpte170m_passes_through_unchanged() {
-        // The "BT2020F"-named ProRes proxies on disk actually carry
-        // smpte170m/bt709 tags — they must NOT be tone-mapped.
-        let info = ci("prores", "yuv422p10le", "smpte170m", "bt709", "smpte170m");
-        let vf = build_thumbnail_vf(&info, "scale=400:-1");
-        assert_eq!(vf, "scale=400:-1");
-    }
-
-    #[test]
-    fn prores_raw_triggers_tonemap() {
-        let info = ci("prores_raw", "gbrpf32le", "", "", "");
-        let vf = build_thumbnail_vf(&info, "scale=400:-1");
-        assert!(vf.starts_with("format=gbrpf32le,tonemap="));
-        assert!(vf.ends_with("scale=400:-1"));
-    }
-
-    #[test]
-    fn bt2020_pq_uses_colorspace_fallback() {
-        let info = ci("hevc", "yuv420p10le", "bt2020nc", "smpte2084", "bt2020");
-        let vf = build_thumbnail_vf(&info, "scale=400:-1");
-        assert!(vf.contains("colorspace=all=bt709:iall=bt2020"));
-        assert!(vf.ends_with("scale=400:-1"));
-    }
-
-    #[test]
-    fn bt2020_sdr_uses_colorspace_with_native_trc() {
-        let info = ci("hevc", "yuv420p10le", "bt2020nc", "bt2020-10", "bt2020");
-        let vf = build_thumbnail_vf(&info, "scale=400:-1");
-        assert!(vf.contains("itrc=bt2020-10"));
-    }
-}
-
 pub struct ProxyGenerator;
 
 impl ProxyGenerator {
@@ -530,5 +476,59 @@ impl ProxyGenerator {
             .output()
             .map(|o| o.status.success())
             .unwrap_or(false)
+    }
+}
+
+#[cfg(test)]
+mod color_tests {
+    use super::*;
+
+    fn ci(codec: &str, pix: &str, space: &str, trc: &str, prim: &str) -> ColorInfo {
+        ColorInfo {
+            codec_name: codec.into(),
+            pix_fmt: pix.into(),
+            color_space: space.into(),
+            color_transfer: trc.into(),
+            color_primaries: prim.into(),
+        }
+    }
+
+    #[test]
+    fn sdr_rec709_passes_through_unchanged() {
+        let info = ci("h264", "yuv420p", "bt709", "bt709", "bt709");
+        let vf = build_thumbnail_vf(&info, "scale=400:-1");
+        assert_eq!(vf, "scale=400:-1");
+    }
+
+    #[test]
+    fn sdr_smpte170m_passes_through_unchanged() {
+        // The "BT2020F"-named ProRes proxies on disk actually carry
+        // smpte170m/bt709 tags — they must NOT be tone-mapped.
+        let info = ci("prores", "yuv422p10le", "smpte170m", "bt709", "smpte170m");
+        let vf = build_thumbnail_vf(&info, "scale=400:-1");
+        assert_eq!(vf, "scale=400:-1");
+    }
+
+    #[test]
+    fn prores_raw_triggers_tonemap() {
+        let info = ci("prores_raw", "gbrpf32le", "", "", "");
+        let vf = build_thumbnail_vf(&info, "scale=400:-1");
+        assert!(vf.starts_with("format=gbrpf32le,tonemap="));
+        assert!(vf.ends_with("scale=400:-1"));
+    }
+
+    #[test]
+    fn bt2020_pq_uses_colorspace_fallback() {
+        let info = ci("hevc", "yuv420p10le", "bt2020nc", "smpte2084", "bt2020");
+        let vf = build_thumbnail_vf(&info, "scale=400:-1");
+        assert!(vf.contains("colorspace=all=bt709:iall=bt2020"));
+        assert!(vf.ends_with("scale=400:-1"));
+    }
+
+    #[test]
+    fn bt2020_sdr_uses_colorspace_with_native_trc() {
+        let info = ci("hevc", "yuv420p10le", "bt2020nc", "bt2020-10", "bt2020");
+        let vf = build_thumbnail_vf(&info, "scale=400:-1");
+        assert!(vf.contains("itrc=bt2020-10"));
     }
 }

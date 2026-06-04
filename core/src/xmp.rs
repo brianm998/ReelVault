@@ -644,8 +644,8 @@ mod tests {
 
         let exiftool = Command::new("exiftool").arg("-ver").output().ok();
         let ffmpeg = Command::new("ffmpeg").arg("-version").output().ok();
-        let have_tools = exiftool.as_ref().map_or(false, |o| o.status.success())
-            && ffmpeg.as_ref().map_or(false, |o| o.status.success());
+        let have_tools = exiftool.as_ref().is_some_and(|o| o.status.success())
+            && ffmpeg.as_ref().is_some_and(|o| o.status.success());
         if !have_tools {
             eprintln!("skipping round_trip_through_exiftool: exiftool or ffmpeg not available");
             return;

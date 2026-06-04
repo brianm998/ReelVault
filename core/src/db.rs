@@ -1572,7 +1572,7 @@ impl Database {
             }
             if key == "keyword" {
                 // Match a video carrying ANY of the selected keyword tags.
-                let placeholders = std::iter::repeat("?").take(values.len()).collect::<Vec<_>>().join(", ");
+                let placeholders = std::iter::repeat_n("?", values.len()).collect::<Vec<_>>().join(", ");
                 sql.push_str(&format!(
                     " AND v.id IN (SELECT video_id FROM video_tags WHERE tag_id IN ({placeholders}))"
                 ));
