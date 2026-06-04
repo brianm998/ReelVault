@@ -36,6 +36,14 @@
 //!    dimensions match exactly, which is the codec-proxy signature
 //!    (UHQ vs MQ at the same crop and resolution) and gets through.
 //!
+//!    A separate relaxation handles **editor-generated proxies** (Adobe
+//!    Premiere, DaVinci Resolve) that land in a dedicated `Proxies/`
+//!    subfolder and are re-rated to a different fps — either of which
+//!    otherwise keeps them out of the original's `(parent_dir, fps)`
+//!    bucket. See [`detect_proxies_folder_pairs`] for the strict gates
+//!    (no audio, "proxy" in the name, exact frame count, …) that make
+//!    ignoring fps safe in that case.
+//!
 //! 2. **On-demand creation** ([`create_proxy`]). When the client asks
 //!    for a proxy at a specific height, we invoke ffmpeg with
 //!    `scale=-2:H` (preserves aspect, ensures even dimensions),
@@ -115,6 +123,21 @@ fn run_detection(
         return Ok(DetectSummary::default());
     }
 
+    let mut summary = DetectSummary::default();
+
+    // Pass 1 — Proxies-folder pairs. Editor-generated proxies (Adobe
+    // Premiere, DaVinci Resolve, …) land in a dedicated `Proxies/`
+    // subdirectory and are frequently re-encoded at a different frame rate
+    // than the source. Either difference alone keeps them out of the
+    // `(parent_dir, fps_rounded)` buckets below, so the main loop never
+    // compares them to the original one directory up. This pass links them
+    // under a strict set of gates that substitute for the relaxed fps
+    // requirement — see [`proxies_folder_pair_gates_pass`]. Run before
+    // bucketing so it can borrow `candidates` by reference.
+    detect_proxies_folder_pairs(db, thumbnail_cache, &candidates, &mut summary);
+
+    // Pass 2 — directory/fps- and group-bucketed detection.
+    //
     // Two bucketing strategies, chosen per-video:
     //
     // • **Grouped** (`group_id IS NOT NULL`): use the group ID as the sole
@@ -168,8 +191,6 @@ fn run_detection(
             "proxy detection: bucket",
         );
     }
-
-    let mut summary = DetectSummary::default();
 
     for ((bucket_dir, bucket_fps), mut members) in buckets {
         if members.len() < 2 {
@@ -269,6 +290,183 @@ fn run_detection(
     }
 
     Ok(summary)
+}
+
+/// Detection pass for **Proxies-folder pairs** — proxies an editor (Adobe
+/// Premiere, DaVinci Resolve, …) generated into a dedicated `Proxies/`
+/// subdirectory beside the source clip.
+///
+/// These defeat the main detector's `(parent_dir, fps_rounded)` bucketing
+/// twice over: the proxy lives one directory deeper than the original, and
+/// editors frequently conform the proxy to a different frame rate than the
+/// source. Either difference alone keeps the pair out of the same bucket,
+/// so [`run_detection`]'s main loop never compares them.
+///
+/// For each no-audio, `proxy`-named file inside a `Proxies`-like folder we
+/// look one directory up for an original it out-resolves, apply
+/// [`proxies_folder_pair_gates_pass`], and link when the thumbnails clear
+/// [`PROXY_SIMILARITY_THRESHOLD`]. Like the main loop this is many-to-many:
+/// a proxy can link to every same-lineage master in the parent directory
+/// (e.g. an OriRes master plus a same-name codec proxy of it).
+fn detect_proxies_folder_pairs(
+    db: &Database,
+    thumbnail_cache: &Path,
+    candidates: &[ProxyDetectCandidate],
+    summary: &mut DetectSummary,
+) {
+    use std::collections::HashMap;
+
+    // Index every candidate by its parent directory so each proxy can find
+    // the originals one level up in O(1).
+    let mut by_dir: HashMap<&str, Vec<&ProxyDetectCandidate>> = HashMap::new();
+    for c in candidates {
+        by_dir.entry(c.parent_dir.as_str()).or_default().push(c);
+    }
+
+    // Cache thumbnail loads so a directory full of proxies sharing one
+    // original doesn't re-decode the original's JPEGs for every pair.
+    let mut img_cache: HashMap<String, ThumbImages> = HashMap::new();
+
+    for proxy in candidates {
+        // Cheap pre-filter: only no-audio files in a `Proxies`-like folder
+        // whose name mentions "proxy" can ever qualify.
+        if !is_proxies_folder_candidate(proxy) {
+            continue;
+        }
+        // Originals live in the directory that contains the Proxies folder.
+        let Some(parent_dir) = Path::new(&proxy.parent_dir).parent().and_then(|p| p.to_str()) else {
+            continue;
+        };
+        let Some(originals) = by_dir.get(parent_dir) else {
+            continue;
+        };
+
+        for original in originals {
+            if original.id == proxy.id {
+                continue;
+            }
+            // Direction + relationship gates. is_master_of confirms the
+            // original out-resolves the proxy; the folder gate enforces the
+            // strict no-audio / name / frame-count / directory criteria.
+            if !is_master_of(original, proxy) {
+                continue;
+            }
+            if !proxies_folder_pair_gates_pass(original, proxy) {
+                continue;
+            }
+
+            let master_imgs = img_cache
+                .entry(original.id.clone())
+                .or_insert_with(|| thumb_images_for(thumbnail_cache, &original.id))
+                .clone();
+            let proxy_imgs = img_cache
+                .entry(proxy.id.clone())
+                .or_insert_with(|| thumb_images_for(thumbnail_cache, &proxy.id))
+                .clone();
+
+            summary.pairs_compared += 1;
+            let conf = compare_thumb_sets(&master_imgs, &proxy_imgs);
+            tracing::debug!(
+                master = %original.filename,
+                proxy = %proxy.filename,
+                res_master = %format!("{}×{}", original.width, original.height),
+                res_proxy = %format!("{}×{}", proxy.width, proxy.height),
+                fps_master = original.fps,
+                fps_proxy = proxy.fps,
+                frame_count = original.frame_count,
+                confidence = %format!("{:.3}", conf),
+                "Proxies-folder pair compared",
+            );
+            if conf >= PROXY_SIMILARITY_THRESHOLD {
+                if let Err(e) = db.set_proxy_of(&proxy.id, &original.id, conf, true) {
+                    tracing::warn!(
+                        "Failed to link {} as Proxies-folder proxy of {}: {}",
+                        proxy.filename, original.filename, e,
+                    );
+                    continue;
+                }
+                tracing::info!(
+                    "Auto-detected Proxies-folder proxy: {} → {} (confidence {:.3}, fps {} vs {})",
+                    proxy.filename, original.filename, conf, proxy.fps, original.fps,
+                );
+                summary.proxies_marked += 1;
+            }
+        }
+    }
+}
+
+/// Pair gate for the Proxies-folder path ([`detect_proxies_folder_pairs`]).
+/// Returns true when `proxy` is an editor-generated proxy of `original`
+/// that should link despite living in a separate folder and (possibly)
+/// carrying a different frame rate. The combination is deliberately strict
+/// — each clause rules out a different false positive, and together they
+/// substitute for the same-fps signal the main detector relies on:
+///
+///   * **No audio on the proxy.** Editor proxies of timelapse footage are
+///     silent; this avoids treating an unrelated audio-bearing clip that
+///     happens to sit in a `Proxies` folder as a proxy.
+///   * **Filename mentions "proxy" and shares the original's name_part.**
+///     `name_part` equality is the detector's standing definition of "very
+///     close filename match" (enforced by [`proxy_pair_gates_pass`]); the
+///     literal "proxy" token confirms intent.
+///   * **`proxy` sits in a `Proxies`-like folder directly under
+///     `original`'s directory** — the on-disk convention editors follow.
+///   * **Frame counts match exactly.** A re-rate changes fps and duration
+///     but not the number of source frames, so this is the strongest
+///     "same recording" signal once fps is off the table. Stricter than
+///     the ±tolerance in [`proxy_pair_gates_pass`], which still also runs.
+///
+/// [`is_master_of`] (original out-resolves the proxy) and the thumbnail
+/// threshold are checked separately by the caller.
+pub(crate) fn proxies_folder_pair_gates_pass(
+    original: &ProxyDetectCandidate,
+    proxy: &ProxyDetectCandidate,
+) -> bool {
+    // proxy must be a no-audio, "proxy"-named file in a Proxies-like folder.
+    if !is_proxies_folder_candidate(proxy) {
+        return false;
+    }
+    // …directly beneath the original's directory.
+    match Path::new(&proxy.parent_dir).parent().and_then(|p| p.to_str()) {
+        Some(grandparent) if grandparent == original.parent_dir => {}
+        _ => return false,
+    }
+    // Exact frame-count match: same number of source frames even though the
+    // frame rate (and therefore duration) may differ.
+    if original.frame_count <= 0
+        || proxy.frame_count <= 0
+        || original.frame_count != proxy.frame_count
+    {
+        return false;
+    }
+    // Reuse the standard gates: name_part equality (the "very close filename
+    // match"), shared-dimension, frame-count tolerance, and camera-model.
+    proxy_pair_gates_pass(original, proxy)
+}
+
+/// Cheap per-file pre-filter for the Proxies-folder pass: a no-audio file,
+/// inside a `Proxies`-like directory, whose filename mentions "proxy".
+fn is_proxies_folder_candidate(c: &ProxyDetectCandidate) -> bool {
+    c.audio_channels == 0
+        && filename_mentions_proxy(&c.filename)
+        && Path::new(&c.parent_dir)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .map(looks_like_proxies_dir)
+            .unwrap_or(false)
+}
+
+/// True when a directory name follows the editor convention for a proxy
+/// folder — "Proxies", "Proxy", or a close variant — matched
+/// case-insensitively.
+fn looks_like_proxies_dir(name: &str) -> bool {
+    let n = name.to_ascii_lowercase();
+    n.contains("proxies") || n.contains("proxy")
+}
+
+/// True when a filename contains the literal token "proxy" (any case).
+fn filename_mentions_proxy(filename: &str) -> bool {
+    filename.to_ascii_lowercase().contains("proxy")
 }
 
 /// Does `master` qualify as a potential master for `candidate`?
@@ -653,6 +851,38 @@ mod tests {
             frame_count: fc,
             camera_model: String::new(),
             file_size_bytes: size_mb * 1_048_576,
+            audio_channels: 2,
+        }
+    }
+
+    /// Build a candidate from an explicit path (filename + parent_dir
+    /// derived from it) with explicit fps and audio-channel count — for the
+    /// Proxies-folder tests, which depend on directory layout, frame rate,
+    /// and audio presence.
+    #[allow(clippy::too_many_arguments)]
+    fn mk_at(
+        path: &str,
+        w: i32,
+        h: i32,
+        fc: i64,
+        size_mb: i64,
+        fps: f64,
+        audio_channels: i32,
+    ) -> ProxyDetectCandidate {
+        let p = std::path::Path::new(path);
+        ProxyDetectCandidate {
+            id: path.to_string(),
+            filename: p.file_name().unwrap().to_str().unwrap().to_string(),
+            path: path.to_string(),
+            parent_dir: p.parent().unwrap().to_str().unwrap().to_string(),
+            group_id: None,
+            width: w,
+            height: h,
+            fps,
+            frame_count: fc,
+            camera_model: String::new(),
+            file_size_bytes: size_mb * 1_048_576,
+            audio_channels,
         }
     }
 
@@ -789,5 +1019,131 @@ mod tests {
             3840, 2160, 900, 800,
         );
         assert!(proxy_pair_gates_pass(&uhq, &mq));
+    }
+
+    // ---- Proxies-folder (editor proxy) detection ------------------------
+
+    /// The concrete field case: an Adobe Premiere proxy in a `Proxies/`
+    /// subfolder, re-rated to 25 fps, no audio, identical frame count, with
+    /// `_Proxy` appended to an otherwise-identical filename. It must link
+    /// even though the fps differs and it lives one directory deeper than
+    /// the original.
+    #[test]
+    fn proxies_folder_gate_accepts_premiere_reencode() {
+        let original = mk_at(
+            "/lib/2024-video/06_05_2024-a7iv-2-aurora-topaz-star-v-0_6_7-exp_ProRes-444_Rec.709F_OriRes_30_UHQ.mov",
+            3840, 2160, 9000, 4000, 30.0, 0,
+        );
+        let proxy = mk_at(
+            "/lib/2024-video/Proxies/06_05_2024-a7iv-2-aurora-topaz-star-v-0_6_7-exp_ProRes-444_Rec.709F_OriRes_30_UHQ_Proxy.mov",
+            1280, 720, 9000, 120, 25.0, 0,
+        );
+        assert!(is_master_of(&original, &proxy));
+        assert!(proxies_folder_pair_gates_pass(&original, &proxy));
+    }
+
+    /// Audio on the proxy disqualifies it — an audio-bearing clip that
+    /// merely sits in a Proxies folder isn't an editor proxy of silent
+    /// timelapse footage.
+    #[test]
+    fn proxies_folder_gate_rejects_proxy_with_audio() {
+        let original = mk_at(
+            "/lib/v/clip_ProRes-444_Rec.709F_OriRes_30_UHQ.mov",
+            3840, 2160, 9000, 4000, 30.0, 0,
+        );
+        let proxy = mk_at(
+            "/lib/v/Proxies/clip_ProRes-444_Rec.709F_OriRes_30_UHQ_Proxy.mov",
+            1280, 720, 9000, 120, 25.0, 2,
+        );
+        assert!(!proxies_folder_pair_gates_pass(&original, &proxy));
+    }
+
+    /// A filename without the "proxy" token doesn't qualify, even with
+    /// everything else (no audio, Proxies folder, matching frames) lined up.
+    #[test]
+    fn proxies_folder_gate_requires_proxy_in_filename() {
+        let original = mk_at(
+            "/lib/v/clip_ProRes-444_Rec.709F_OriRes_30_UHQ.mov",
+            3840, 2160, 9000, 4000, 30.0, 0,
+        );
+        let proxy = mk_at(
+            "/lib/v/Proxies/clip_ProRes-422_Rec.709F_720p_25_MQ.mov",
+            1280, 720, 9000, 120, 25.0, 0,
+        );
+        assert!(!proxies_folder_pair_gates_pass(&original, &proxy));
+    }
+
+    /// A different-fps re-encode sitting *next to* the original (not in a
+    /// Proxies folder) must NOT take this relaxed path — same-directory
+    /// pairs are governed by the main detector's same-fps bucketing.
+    #[test]
+    fn proxies_folder_gate_requires_proxies_dir() {
+        let original = mk_at(
+            "/lib/v/clip_ProRes-444_Rec.709F_OriRes_30_UHQ.mov",
+            3840, 2160, 9000, 4000, 30.0, 0,
+        );
+        let proxy = mk_at(
+            "/lib/v/clip_ProRes-444_Rec.709F_OriRes_30_UHQ_Proxy.mov",
+            1280, 720, 9000, 120, 25.0, 0,
+        );
+        assert!(!proxies_folder_pair_gates_pass(&original, &proxy));
+    }
+
+    /// The original must live directly above the Proxies folder. A
+    /// same-named proxy under some *other* directory's Proxies folder must
+    /// not link to it.
+    #[test]
+    fn proxies_folder_gate_requires_original_one_level_up() {
+        let original = mk_at(
+            "/lib/other/clip_ProRes-444_Rec.709F_OriRes_30_UHQ.mov",
+            3840, 2160, 9000, 4000, 30.0, 0,
+        );
+        let proxy = mk_at(
+            "/lib/v/Proxies/clip_ProRes-444_Rec.709F_OriRes_30_UHQ_Proxy.mov",
+            1280, 720, 9000, 120, 25.0, 0,
+        );
+        assert!(!proxies_folder_pair_gates_pass(&original, &proxy));
+    }
+
+    /// Differing source-frame counts mean it isn't the same recording —
+    /// reject even when everything else matches. (The relaxed fps path
+    /// leans entirely on exact frame-count equality.)
+    #[test]
+    fn proxies_folder_gate_requires_exact_frame_count() {
+        let original = mk_at(
+            "/lib/v/clip_ProRes-444_Rec.709F_OriRes_30_UHQ.mov",
+            3840, 2160, 9000, 4000, 30.0, 0,
+        );
+        let proxy = mk_at(
+            "/lib/v/Proxies/clip_ProRes-444_Rec.709F_OriRes_30_UHQ_Proxy.mov",
+            1280, 720, 8999, 120, 25.0, 0,
+        );
+        assert!(!proxies_folder_pair_gates_pass(&original, &proxy));
+    }
+
+    /// Wrong direction: the file in the Proxies folder out-resolves the
+    /// "original", so it isn't a proxy of it — is_master_of gates the
+    /// caller before the pair gate even runs.
+    #[test]
+    fn proxies_folder_wrong_direction_is_not_master() {
+        let smaller = mk_at(
+            "/lib/v/clip_ProRes-444_Rec.709F_720p_30_MQ.mov",
+            1280, 720, 9000, 120, 30.0, 0,
+        );
+        let bigger = mk_at(
+            "/lib/v/Proxies/clip_ProRes-444_Rec.709F_OriRes_30_UHQ_Proxy.mov",
+            3840, 2160, 9000, 4000, 25.0, 0,
+        );
+        assert!(!is_master_of(&smaller, &bigger));
+    }
+
+    #[test]
+    fn looks_like_proxies_dir_matches_conventions() {
+        assert!(looks_like_proxies_dir("Proxies"));
+        assert!(looks_like_proxies_dir("proxies"));
+        assert!(looks_like_proxies_dir("Proxy"));
+        assert!(looks_like_proxies_dir("PROXY"));
+        assert!(!looks_like_proxies_dir("2024-video"));
+        assert!(!looks_like_proxies_dir("renders"));
     }
 }
