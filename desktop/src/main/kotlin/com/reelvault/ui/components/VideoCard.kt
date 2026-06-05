@@ -862,20 +862,20 @@ fun VideoCard(
                     contentAlignment = Alignment.Center
                 ) {
                     if (filled) {
-                        // Black stars match the Lightroom Library
-                        // filmstrip aesthetic against the light band.
+                        // Light stars — brighter than the (now dark) band.
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = "$position star",
                             modifier = Modifier.size(14.dp),
-                            tint = Color.Black
+                            tint = Color.White
                         )
                     } else {
-                        // Darker grey dots for unrated positions.
+                        // Light grey dots so the empty rating slots stay
+                        // visible on the dark band.
                         Box(
                             modifier = Modifier
                                 .size(4.dp)
-                                .background(Color(0xFF595959), RoundedCornerShape(50))
+                                .background(Color(0xFFB8B8B8), RoundedCornerShape(50))
                         )
                     }
                 }
@@ -979,10 +979,11 @@ private fun RowScope.StatCell(
                 } else {
                     MaterialTheme.typography.labelSmall
                 },
+                // Light text — brighter than the (now dark) top band.
                 color = if (stat == com.reelvault.data.models.GridStatKey.None)
-                    Color.Black.copy(alpha = 0.4f)
+                    Color.White.copy(alpha = 0.5f)
                 else
-                    Color.Black.copy(alpha = 0.85f),
+                    Color.White.copy(alpha = 0.92f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = if (alignEnd) {

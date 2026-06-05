@@ -1050,7 +1050,7 @@ fun VideoListRow(
                             Icon(
                                 imageVector = Icons.Filled.Star,
                                 contentDescription = "Rating $position",
-                                tint = Color.Black,
+                                tint = Color.White,
                                 modifier = Modifier.size(11.dp)
                             )
                         } else {
@@ -1058,7 +1058,7 @@ fun VideoListRow(
                                 modifier = Modifier
                                     .size(4.dp)
                                     .background(
-                                        Color(0xFF595959),
+                                        Color(0xFFB8B8B8),
                                         shape = androidx.compose.foundation.shape.CircleShape
                                     )
                             )
@@ -1204,10 +1204,11 @@ private fun RowScope.ListRowStatCell(
             text = displayed,
             style = if (slotIndex == 0) MaterialTheme.typography.labelMedium
                     else MaterialTheme.typography.labelSmall,
+            // Light text — brighter than the (now dark) top band.
             color = if (stat == com.reelvault.data.models.GridStatKey.None)
-                Color.Black.copy(alpha = 0.4f)
+                Color.White.copy(alpha = 0.5f)
             else
-                Color.Black.copy(alpha = 0.85f),
+                Color.White.copy(alpha = 0.92f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = if (alignEnd) androidx.compose.ui.text.style.TextAlign.End
@@ -1492,7 +1493,7 @@ private fun VideoListHorizontalCard(
                             Icon(
                                 imageVector = Icons.Filled.Star,
                                 contentDescription = "Rating $position",
-                                tint = Color.Black,
+                                tint = Color.White,
                                 modifier = Modifier.size(9.dp)
                             )
                         } else {
@@ -1500,7 +1501,7 @@ private fun VideoListHorizontalCard(
                                 Modifier
                                     .size(3.dp)
                                     .background(
-                                        Color(0xFF595959),
+                                        Color(0xFFB8B8B8),
                                         shape = androidx.compose.foundation.shape.CircleShape
                                     )
                             )

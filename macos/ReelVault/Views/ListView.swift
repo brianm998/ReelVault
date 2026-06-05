@@ -721,11 +721,11 @@ struct VideoListRowView: View {
                     if position <= video.rating {
                         Image(systemName: "star.fill")
                             .font(.system(size: 11))
-                            .foregroundColor(.black)
+                            .foregroundColor(.white)
                     } else {
                         Image(systemName: "circle.fill")
                             .font(.system(size: 4))
-                            .foregroundColor(Color(white: 0.35))
+                            .foregroundColor(Color(white: 0.72))
                     }
                 }
                 .frame(width: 20, height: 20)
@@ -1102,7 +1102,8 @@ struct VideoListHorizontalCardView: View {
             let displayed = value.isEmpty ? "—" : value
             Text(displayed)
                 .font(.system(size: 10, weight: .regular))
-                .foregroundColor(stat == .none ? Color.black.opacity(0.4) : Color.black.opacity(0.85))
+                // Light text — brighter than the (now dark) top band.
+                .foregroundColor(stat == .none ? Color.white.opacity(0.5) : Color.white.opacity(0.92))
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -1213,11 +1214,11 @@ struct VideoListHorizontalCardView: View {
                     if position <= video.rating {
                         Image(systemName: "star.fill")
                             .font(.system(size: 9))
-                            .foregroundColor(.black)
+                            .foregroundColor(.white)
                     } else {
                         Image(systemName: "circle.fill")
                             .font(.system(size: 3))
-                            .foregroundColor(Color(white: 0.35))
+                            .foregroundColor(Color(white: 0.72))
                     }
                 }
                 .frame(width: 16, height: 16)

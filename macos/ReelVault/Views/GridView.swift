@@ -1026,7 +1026,8 @@ struct VideoCardView: View {
         }()
         Text(displayed)
             .font(.system(size: 10, weight: slotIndex == 0 ? .semibold : .regular))
-            .foregroundColor(stat == .none ? Color.black.opacity(0.4) : Color.black.opacity(0.85))
+            // Light text — brighter than the (now dark) top band.
+            .foregroundColor(stat == .none ? Color.white.opacity(0.5) : Color.white.opacity(0.92))
             .lineLimit(1)
             .truncationMode(.middle)
             .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
@@ -1114,11 +1115,14 @@ struct VideoCardView: View {
                     if position <= video.rating {
                         Image(systemName: "star.fill")
                             .font(.system(size: 11))
-                            .foregroundColor(.black)
+                            // Light star — brighter than the (now dark) band.
+                            .foregroundColor(.white)
                     } else {
                         Image(systemName: "circle.fill")
                             .font(.system(size: 4))
-                            .foregroundColor(Color(white: 0.35))
+                            // Light placeholder dot so the empty rating slots
+                            // stay visible on the dark band.
+                            .foregroundColor(Color(white: 0.72))
                     }
                 }
                 .frame(width: 20, height: 20)
