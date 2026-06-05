@@ -26,6 +26,37 @@ import java.util.prefs.Preferences
  */
 private const val POST_INDEX_LINGER_MS = 3_500L
 
+/** Arrow-key navigation direction in the grid / list. */
+enum class NavDirection { Up, Down, Left, Right }
+
+/**
+ * Destination index for an arrow-key move, or -1 for "no move" (edge of the
+ * navigable area). Pure so the geometry is unit-testable.
+ *
+ * `cols == 1` means a single-column layout (list mode, or a one-wide grid):
+ * every direction collapses to previous/next, with Left/Up == previous and
+ * Right/Down == next. For a wider grid, Left/Right step within the row (no
+ * wrap) and Up/Down jump a whole row.
+ */
+fun navTargetIndex(current: Int, size: Int, cols: Int, dir: NavDirection): Int {
+    if (current < 0 || current >= size) return -1
+    val columns = cols.coerceAtLeast(1)
+    return when (dir) {
+        NavDirection.Left ->
+            if (columns == 1) (if (current > 0) current - 1 else -1)
+            else if (current % columns != 0) current - 1 else -1
+        NavDirection.Right ->
+            if (columns == 1) (if (current < size - 1) current + 1 else -1)
+            else if (current % columns != columns - 1 && current + 1 < size) current + 1 else -1
+        NavDirection.Up ->
+            if (columns == 1) (if (current > 0) current - 1 else -1)
+            else if (current - columns >= 0) current - columns else -1
+        NavDirection.Down ->
+            if (columns == 1) (if (current < size - 1) current + 1 else -1)
+            else if (current + columns < size) current + columns else -1
+    }
+}
+
 class GridViewModel(
     private val repository: VideoRepository
 ) {
@@ -51,6 +82,19 @@ class GridViewModel(
     // Set by a plain click or toggle-click; not changed by shift-click itself.
     private val _anchorVideoId = MutableStateFlow<String?>(null)
     val anchorVideoId: StateFlow<String?> = _anchorVideoId.asStateFlow()
+
+    // Arrow-key navigation context, pushed by whichever screen (grid / list) is
+    // currently composed: the videos in visual order (stack children spliced
+    // in) and the live column count (1 for list mode). `moveSelection` reads
+    // these; nothing in the UI binds to them so plain vars suffice.
+    private var navVideos: List<VideoSummary> = emptyList()
+    private var navColumns: Int = 1
+
+    /** Whichever of grid / list is on screen reports its layout here. */
+    fun setNavContext(orderedVideos: List<VideoSummary>, columns: Int) {
+        navVideos = orderedVideos
+        navColumns = columns
+    }
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -718,6 +762,49 @@ class GridViewModel(
     fun deselectVideo() {
         clearSelection()
         logger.info("Deselected video")
+    }
+
+    /**
+     * Move the "active" card to [video] without disturbing the multi-selection
+     * or the anchor. Used by arrow-key navigation when a multi-selection is in
+     * effect: the highlighted card steps through the selection while every
+     * selected card stays selected (Lightroom-style).
+     */
+    fun setActiveVideo(video: VideoSummary) {
+        _selectedVideoId.value = video.id
+        _selectedVideo.value = video
+    }
+
+    /**
+     * Arrow-key navigation. Moves the active card one step in [dir] over the
+     * visual order reported via [setNavContext]. With a multi-selection, the
+     * move is confined to the selected cards (stops at the selection's edges);
+     * otherwise it replace-selects the neighbouring card. Returns the card
+     * navigated to so the caller can sync the detail panel, or null on a no-op.
+     */
+    fun moveSelection(dir: NavDirection): VideoSummary? {
+        val order = navVideos
+        if (order.isEmpty()) return null
+        val currentId = _selectedVideoId.value
+        val curIdx = if (currentId != null) order.indexOfFirst { it.id == currentId } else -1
+        // Nothing active yet → an arrow key drops onto the first card.
+        if (curIdx < 0) {
+            val first = order.first()
+            selectVideo(first)
+            return first
+        }
+        val target = navTargetIndex(curIdx, order.size, navColumns, dir)
+        if (target < 0) return null
+        val targetVideo = order[target]
+        val multi = _selectedVideoIds.value
+        if (multi.size > 1) {
+            // Confined to the selection: refuse to step onto an unselected card.
+            if (targetVideo.id !in multi) return null
+            setActiveVideo(targetVideo)
+        } else {
+            selectVideo(targetVideo)
+        }
+        return targetVideo
     }
 
     fun setSearchQuery(query: String) {

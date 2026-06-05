@@ -48,6 +48,7 @@ import com.reelvault.ui.theme.ReelVaultTheme
 import com.reelvault.ui.theme.ReelVaultSpacing
 import com.reelvault.viewmodel.GridViewModel
 import com.reelvault.viewmodel.DetailViewModel
+import com.reelvault.viewmodel.NavDirection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -55,6 +56,11 @@ import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 
 private val logger = LoggerFactory.getLogger("ReelVault")
+
+// The four arrow keys, used to gate grid / list selection navigation.
+private val arrowKeys = setOf(
+    Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight
+)
 
 // Window-level shift key tracking. Updated by the Window's key listener and
 // read at click time by VideoCard / GridScreen.
@@ -180,6 +186,9 @@ fun main() {
         // Lightroom-style colour-label shortcut (digits 6..9 + backtick).
         // Carries the colour raw value; "" clears.
         val setColorLabelAction = remember { mutableStateOf<(String) -> Unit>({ _ -> }) }
+        // Arrow-key navigation in grid / list. Carries the direction; the
+        // handler moves the active selection and syncs the detail panel.
+        val moveSelectionAction = remember { mutableStateOf<(NavDirection) -> Unit>({ _ -> }) }
         // Title reflects the currently-open catalog (lifted here so Window.title
         // recomposes when the catalog changes).
         var currentCatalog by remember { mutableStateOf(CatalogInfo.Closed) }
@@ -291,6 +300,21 @@ fun main() {
                         deselectAllAction.value()
                         true
                     }
+                    // Arrow keys move the grid / list selection. Handled here
+                    // (post-focus) so a focused multi-line field keeps arrows
+                    // for caret movement; the !searchFocused guard covers the
+                    // single-line search box, which wouldn't consume Up/Down.
+                    !event.isMetaPressed && !event.isCtrlPressed && !event.isAltPressed &&
+                        !searchFocused.value &&
+                        event.key in arrowKeys -> {
+                        when (event.key) {
+                            Key.DirectionUp -> moveSelectionAction.value(NavDirection.Up)
+                            Key.DirectionDown -> moveSelectionAction.value(NavDirection.Down)
+                            Key.DirectionLeft -> moveSelectionAction.value(NavDirection.Left)
+                            Key.DirectionRight -> moveSelectionAction.value(NavDirection.Right)
+                        }
+                        true
+                    }
                     else -> false
                 }
             }
@@ -358,6 +382,7 @@ fun main() {
                         onRegisterSpacebarAction = { spacebarAction.value = it },
                         onRegisterSetRatingAction = { setRatingAction.value = it },
                         onRegisterSetColorLabelAction = { setColorLabelAction.value = it },
+                        onRegisterMoveSelection = { moveSelectionAction.value = it },
                         onSearchFocusChanged = { searchFocused.value = it },
                         onCatalogChanged = { currentCatalog = it }
                     )
@@ -394,6 +419,8 @@ fun ReelVaultApp(
     /** Called once to register the digit-key colour-label action. Receives
      *  the raw colour string ("" / red / yellow / green / blue). */
     onRegisterSetColorLabelAction: ((String) -> Unit) -> Unit = {},
+    /** Called once to register the arrow-key grid/list navigation action. */
+    onRegisterMoveSelection: ((NavDirection) -> Unit) -> Unit = {},
     /** Reports search-field focus state to the Window so it can suppress
      *  single-letter shortcuts while the user is typing. */
     onSearchFocusChanged: (Boolean) -> Unit = {},
@@ -567,6 +594,15 @@ fun ReelVaultApp(
         }
         onRegisterSetColorLabelAction { label ->
             gridViewModel.setColorLabelOnSelection(label)
+        }
+        onRegisterMoveSelection { dir ->
+            // Arrow keys only navigate the grid / list, never the loupe.
+            if (viewMode == ViewMode.GRID || viewMode == ViewMode.LIST) {
+                gridViewModel.moveSelection(dir)?.let { moved ->
+                    detailViewModel.setCurrentVideo(moved)
+                    detailViewModel.loadMetadata(moved.id)
+                }
+            }
         }
     }
     LaunchedEffect(Unit) {

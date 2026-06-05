@@ -23,6 +23,11 @@ struct GridView: View {
     let thumbnailMinWidth: CGFloat
     var onLocationClick: ((Double, Double) -> Void)? = nil
 
+    /// Live column count, derived from the grid's width (matches the adaptive
+    /// `GridItem` with zero spacing). Reported to the view-model so arrow-key
+    /// Up/Down can jump a whole row.
+    @State private var navColumns: Int = 1
+
     var body: some View {
         ZStack {
             content
@@ -163,9 +168,31 @@ struct GridView: View {
                     proxy.scrollTo(id, anchor: .center)
                 }
             }
+            // Keep the active card on screen during arrow-key navigation. Only
+            // fires on a nav move (not on every click), so visible cards aren't
+            // re-centered out from under the cursor.
+            .onChange(of: viewModel.pendingScrollVideoId) { _, id in
+                if let id { proxy.scrollTo(id, anchor: .center) }
+            }
             // Intentionally no .padding(...) here — the Lightroom-style grid
             // fills the viewport flush to the edge.
             } // ScrollViewReader
+        }
+        // Derive the column count from the actual grid width.
+        .background(GeometryReader { geo in
+            Color.clear
+                .onAppear { navColumns = max(1, Int(geo.size.width / thumbnailMinWidth)) }
+                .onChange(of: geo.size.width) { _, w in
+                    navColumns = max(1, Int(w / thumbnailMinWidth))
+                }
+        })
+        // Push the visual order + column count to the view-model for arrow nav.
+        .onAppear { viewModel.setNavContext(rendered.map { $0.video }, columns: navColumns) }
+        .onChange(of: rendered.map { $0.video.id }) { _, _ in
+            viewModel.setNavContext(rendered.map { $0.video }, columns: navColumns)
+        }
+        .onChange(of: navColumns) { _, c in
+            viewModel.setNavContext(rendered.map { $0.video }, columns: c)
         }
     }
 

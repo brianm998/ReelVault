@@ -215,22 +215,38 @@ struct ListView: View {
             // Scroll to the selected video when switching to this view.
             .onAppear {
                 if let selectedId = viewModel.selectedVideoId {
-                    let matchKey = displayRows.first { row in
-                        switch row {
-                        case .single(let item):
-                            return item.video.id == selectedId
-                        case .horizontalStack(let rep, let children):
-                            return rep.video.id == selectedId ||
-                                   children.contains { $0.video.id == selectedId }
-                        }
-                    }?.key
-                    if let key = matchKey {
+                    if let key = rowKey(for: selectedId, in: displayRows) {
                         proxy.scrollTo(key, anchor: .center)
                     }
                 }
             }
+            // Keep the active row on screen during arrow-key navigation.
+            .onChange(of: viewModel.pendingScrollVideoId) { _, id in
+                if let id, let key = rowKey(for: id, in: displayRows) {
+                    proxy.scrollTo(key, anchor: .center)
+                }
+            }
             } // ScrollViewReader
         }
+        // Single-column navigation: arrow keys step through every video in
+        // visual order. cols = 1 makes Left/Up == previous, Right/Down == next.
+        .onAppear { viewModel.setNavContext(rendered.map { $0.video }, columns: 1) }
+        .onChange(of: rendered.map { $0.video.id }) { _, _ in
+            viewModel.setNavContext(rendered.map { $0.video }, columns: 1)
+        }
+    }
+
+    /// Maps a video id to the key of the display row that contains it (a video
+    /// may be a child inside a horizontal stack row).
+    private func rowKey(for videoId: String, in displayRows: [ListDisplayRow]) -> String? {
+        displayRows.first { row in
+            switch row {
+            case .single(let item):
+                return item.video.id == videoId
+            case .horizontalStack(let rep, let children):
+                return rep.video.id == videoId || children.contains { $0.video.id == videoId }
+            }
+        }?.key
     }
 
     // MARK: - Horizontal stack helpers

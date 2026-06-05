@@ -161,6 +161,14 @@ struct ContentView: View {
             },
             onSetColorLabel: { label in
                 gridViewModel.setColorLabelOnSelection(label)
+            },
+            onArrow: { direction in
+                // Arrow keys navigate only the grid / list, never the loupe.
+                guard viewMode == .grid || viewMode == .list else { return }
+                if let moved = gridViewModel.moveSelection(direction) {
+                    detailViewModel.setCurrentVideo(moved)
+                    detailViewModel.loadMetadata(videoId: moved.id)
+                }
             }
         ))
         .sheet(isPresented: $showAddLibrarySheet) {
@@ -1251,6 +1259,8 @@ struct GlobalKeyboardShortcuts: ViewModifier {
     /// every selected video. The receiver translates the digit into the
     /// colour name; purple has no shortcut by design (right-click only).
     let onSetColorLabel: (String) -> Void
+    /// Arrow keys — move the grid / list selection in the given direction.
+    let onArrow: (MoveDirection) -> Void
 
     @State private var keyMonitor: Any?
     @State private var mouseMonitor: Any?
@@ -1383,6 +1393,14 @@ struct GlobalKeyboardShortcuts: ViewModifier {
                 case 50:
                     onSetColorLabel("")
                     return nil
+                // Arrow keys → move the grid / list selection. The
+                // isEditingTextField guard above keeps these from firing while
+                // a text field is focused, so the caret still moves there.
+                //   left = 123, right = 124, down = 125, up = 126
+                case 123: onArrow(.left); return nil
+                case 124: onArrow(.right); return nil
+                case 125: onArrow(.down); return nil
+                case 126: onArrow(.up); return nil
                 default:
                     break
                 }

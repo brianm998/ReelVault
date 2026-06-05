@@ -105,10 +105,18 @@ fun ListScreen(
         buildListDisplayRows(rendered)
     }
 
+    // Single-column navigation: arrow keys step through every video in visual
+    // order (stack children included). cols = 1 makes Left/Up == previous and
+    // Right/Down == next, per the list-mode spec.
+    LaunchedEffect(rendered) {
+        viewModel.setNavContext(rendered.map { it.video }, 1)
+    }
+
     val listState = rememberLazyListState()
-    // Scroll to the selected video when this view is first composed, e.g.
-    // immediately after switching from grid mode.
-    LaunchedEffect(Unit) {
+    // Keep the active card on screen: scroll to the selection on first compose
+    // (e.g. switching from grid mode) and whenever it moves (arrow keys). A
+    // click on an already-visible row doesn't scroll.
+    LaunchedEffect(selectedVideoId.value) {
         val selectedId = selectedVideoId.value ?: return@LaunchedEffect
         val idx = displayRows.indexOfFirst { row ->
             when (row) {
@@ -118,7 +126,10 @@ fun ListScreen(
                     row.children.any { it.video.id == selectedId }
             }
         }
-        if (idx >= 0) listState.scrollToItem(idx)
+        if (idx < 0) return@LaunchedEffect
+        if (listState.layoutInfo.visibleItemsInfo.none { it.index == idx }) {
+            listState.scrollToItem(idx)
+        }
     }
 
     if (showVlcErrorDialog) {

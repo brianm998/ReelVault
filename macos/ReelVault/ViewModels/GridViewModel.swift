@@ -4,6 +4,35 @@
 import SwiftUI
 import Combine
 
+/// Arrow-key navigation direction in the grid / list.
+enum MoveDirection { case up, down, left, right }
+
+/// Destination index for an arrow-key move, or -1 for "no move" (edge of the
+/// navigable area). Pure so the geometry is testable.
+///
+/// `cols == 1` means a single-column layout (list mode, or a one-wide grid):
+/// every direction collapses to previous/next, with Left/Up == previous and
+/// Right/Down == next. For a wider grid, Left/Right step within the row (no
+/// wrap) and Up/Down jump a whole row.
+func navTargetIndex(current: Int, size: Int, cols: Int, dir: MoveDirection) -> Int {
+    guard current >= 0, current < size else { return -1 }
+    let columns = max(1, cols)
+    switch dir {
+    case .left:
+        if columns == 1 { return current > 0 ? current - 1 : -1 }
+        return current % columns != 0 ? current - 1 : -1
+    case .right:
+        if columns == 1 { return current < size - 1 ? current + 1 : -1 }
+        return (current % columns != columns - 1 && current + 1 < size) ? current + 1 : -1
+    case .up:
+        if columns == 1 { return current > 0 ? current - 1 : -1 }
+        return current - columns >= 0 ? current - columns : -1
+    case .down:
+        if columns == 1 { return current < size - 1 ? current + 1 : -1 }
+        return current + columns < size ? current + columns : -1
+    }
+}
+
 @MainActor
 class GridViewModel: ObservableObject {
     // Grid state
@@ -1355,6 +1384,59 @@ class GridViewModel: ObservableObject {
         selectedVideoIds = []
         selectedVideoId = nil
         anchorVideoId = nil
+    }
+
+    // MARK: - Arrow-key navigation
+
+    /// Visual order + column count pushed by whichever of grid / list is on
+    /// screen. `moveSelection` reads these; nothing binds to them so plain
+    /// vars suffice. (`navColumns` is 1 in list mode.)
+    private var navVideos: [VideoSummary] = []
+    private var navColumns: Int = 1
+    /// Set when arrow navigation moves the active card, so the scrolling view
+    /// can bring it on screen without re-centering on every mouse click.
+    @Published var pendingScrollVideoId: String?
+
+    /// Whichever of grid / list is on screen reports its layout here.
+    func setNavContext(_ orderedVideos: [VideoSummary], columns: Int) {
+        navVideos = orderedVideos
+        navColumns = max(1, columns)
+    }
+
+    /// Move the active card to [video] without disturbing the multi-selection
+    /// or anchor — the highlighted card steps through the selection while every
+    /// selected card stays selected (Lightroom-style).
+    func setActiveVideo(_ video: VideoSummary) {
+        selectedVideoId = video.id
+    }
+
+    /// Arrow-key navigation. Moves the active card one step in [dir] over the
+    /// visual order from `setNavContext`. With a multi-selection the move is
+    /// confined to the selected cards (stops at their edges); otherwise it
+    /// replace-selects the neighbouring card. Returns the card moved to so the
+    /// caller can sync the detail panel, or nil on a no-op.
+    @discardableResult
+    func moveSelection(_ dir: MoveDirection) -> VideoSummary? {
+        let order = navVideos
+        guard !order.isEmpty else { return nil }
+        let curIdx = selectedVideoId.flatMap { id in order.firstIndex { $0.id == id } } ?? -1
+        if curIdx < 0 {
+            let first = order[0]
+            selectVideo(first)
+            pendingScrollVideoId = first.id
+            return first
+        }
+        let target = navTargetIndex(current: curIdx, size: order.count, cols: navColumns, dir: dir)
+        guard target >= 0 else { return nil }
+        let targetVideo = order[target]
+        if selectedVideoIds.count > 1 {
+            guard selectedVideoIds.contains(targetVideo.id) else { return nil }
+            setActiveVideo(targetVideo)
+        } else {
+            selectVideo(targetVideo)
+        }
+        pendingScrollVideoId = targetVideo.id
+        return targetVideo
     }
 
     // MARK: - Thumbnails

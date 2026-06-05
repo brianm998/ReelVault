@@ -104,12 +104,17 @@ fun GridScreen(
     }
 
     val gridState = rememberLazyGridState()
-    // Scroll to the selected video when this view is first composed, e.g.
-    // immediately after switching from list mode.
-    LaunchedEffect(Unit) {
+    // Keep the active card on screen: scroll to the selection when this view is
+    // first composed (e.g. switching from list mode) and whenever the selection
+    // moves (arrow-key navigation). A click on an already-visible card doesn't
+    // scroll, since it's already in the visible range.
+    LaunchedEffect(selectedVideoId.value) {
         val selectedId = selectedVideoId.value ?: return@LaunchedEffect
         val idx = rendered.indexOfFirst { it.video.id == selectedId }
-        if (idx >= 0) gridState.scrollToItem(idx)
+        if (idx < 0) return@LaunchedEffect
+        if (gridState.layoutInfo.visibleItemsInfo.none { it.index == idx }) {
+            gridState.scrollToItem(idx)
+        }
     }
 
     // Show when the user taps play but libvlc isn't installed.
@@ -199,7 +204,14 @@ fun GridScreen(
         )
 
         // Grid
-        Box(modifier = Modifier.fillMaxSize()) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            // Column count matches GridCells.Adaptive (zero spacing/padding):
+            // as many `thumbnailMinWidth`-wide cells as fit. Reported to the
+            // view-model so arrow-key Up/Down can jump a whole row.
+            val columns = (maxWidth / thumbnailMinWidth).toInt().coerceAtLeast(1)
+            LaunchedEffect(rendered, columns) {
+                viewModel.setNavContext(rendered.map { it.video }, columns)
+            }
             if (videos.value.isEmpty() && !isLoading.value) {
                 Column(
                     modifier = Modifier
