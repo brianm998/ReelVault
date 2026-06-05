@@ -261,10 +261,15 @@ class GridViewModel: ObservableObject {
             scheduleWatcherRefresh()
         case .postIndexStarted, .postIndexProgress:
             // A background pass is running — cancel any pending clear and
-            // show the latest snapshot.
+            // show the latest snapshot. The backend now coalesces overlapping
+            // passes into one stream, but still skip the @Published write when
+            // the snapshot is unchanged so an identical event can't trigger a
+            // needless banner re-render (@Published fires even on equal values).
             postIndexClearWorkItem?.cancel()
             postIndexClearWorkItem = nil
-            postIndexProgress = event.postIndex
+            if postIndexProgress != event.postIndex {
+                postIndexProgress = event.postIndex
+            }
         case .postIndexCompleted:
             // Refresh so newly-linked proxies / groups appear, then clear
             // the panel after a short linger to bridge consecutive watcher

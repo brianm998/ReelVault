@@ -802,6 +802,11 @@ struct ContentView: View {
                          ? "\(phaseLabel) — \(countText) (\(Int(pi.percent))%)"
                          : "\(phaseLabel) — \(countText)")
                         .font(.caption)
+                        // Crossfade when the phase changes (e.g. proxies →
+                        // tagging). Keyed on `pi.phase` so the every-second
+                        // count/percent updates snap rather than animate.
+                        .contentTransition(.opacity)
+                        .animation(.easeInOut(duration: 0.25), value: pi.phase)
                     Spacer()
                     if !etaText.isEmpty {
                         Text(etaText).font(.caption).foregroundColor(.secondary)

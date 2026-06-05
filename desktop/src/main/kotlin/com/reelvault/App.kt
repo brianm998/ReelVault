@@ -5,6 +5,7 @@
 
 package com.reelvault
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -858,12 +859,18 @@ fun ReelVaultApp(
                                         strokeWidth = 2.dp
                                     )
                                     Spacer(modifier = Modifier.width(ReelVaultSpacing.Small))
-                                    Text(
-                                        text = "$phaseLabel — $countText" +
-                                            if (pi.total > 0) " (${pi.percent.toInt()}%)" else "",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
+                                    // Crossfade keyed on the phase label only,
+                                    // so a phase change (e.g. proxies → tagging)
+                                    // fades gently while the every-second count /
+                                    // percent updates recompose in place.
+                                    Crossfade(targetState = phaseLabel) { label ->
+                                        Text(
+                                            text = "$label — $countText" +
+                                                if (pi.total > 0) " (${pi.percent.toInt()}%)" else "",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                                        )
+                                    }
                                     if (etaText.isNotEmpty()) {
                                         Spacer(modifier = Modifier.weight(1f))
                                         Text(
