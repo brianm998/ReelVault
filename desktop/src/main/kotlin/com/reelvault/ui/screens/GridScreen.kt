@@ -48,7 +48,6 @@ fun GridScreen(
     val anchorVideoId = viewModel.anchorVideoId.collectAsState()
     val isLoading = viewModel.isLoading.collectAsState()
     val hasMore = viewModel.hasMore.collectAsState()
-    val totalCount = viewModel.totalCount.collectAsState()
     val error = viewModel.error.collectAsState()
     val thumbnails = viewModel.thumbnails.collectAsState()
     val scrubFrames = viewModel.scrubFrames.collectAsState()
@@ -194,14 +193,6 @@ fun GridScreen(
                 }
             }
         }
-
-        // Video count
-        Text(
-            text = "Videos: ${videos.value.size}${if (totalCount.value > 0) " / ${totalCount.value}" else ""}",
-            modifier = Modifier.padding(ReelVaultSpacing.Medium),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
 
         // Grid
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
