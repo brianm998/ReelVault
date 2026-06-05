@@ -1164,16 +1164,22 @@ fun ReelVaultApp(
                             .weight(1f)
                     ) {
                         val libraryLocations = gridViewModel.libraryLocations.collectAsState()
-                        val selectedLocation = gridViewModel.selectedLocationPath.collectAsState()
+                        val selectedLocations = gridViewModel.selectedLocationPaths.collectAsState()
 
                         // Library panel — expanded view or collapsed strip
                         if (leftPanelExpanded) {
                             com.reelvault.ui.components.LibraryPanel(
                                 locations = libraryLocations.value,
-                                selectedPath = selectedLocation.value,
+                                selectedPaths = selectedLocations.value,
                                 totalVideosAcrossLibrary = libraryLocations.value
                                     .sumOf { it.videoCount },
-                                onSelect = { path -> gridViewModel.setLocationFilter(path) },
+                                onSelect = { path, additive, range ->
+                                    when {
+                                        range -> gridViewModel.selectLocationRange(path)
+                                        additive -> gridViewModel.toggleLocationFilter(path)
+                                        else -> gridViewModel.setLocationFilter(path)
+                                    }
+                                },
                                 onAddLocation = { showAddLibraryDialog = true },
                                 onRemoveLocation = { loc -> pendingRemoveLocation = loc },
                                 onRescan = { loc -> gridViewModel.rescanLibrary(loc.path) },

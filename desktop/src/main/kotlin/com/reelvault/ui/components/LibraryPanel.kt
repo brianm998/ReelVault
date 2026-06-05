@@ -4,9 +4,16 @@
 package com.reelvault.ui.components
 
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isMetaPressed
+import androidx.compose.ui.input.pointer.isShiftPressed
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -39,9 +46,11 @@ import com.reelvault.ui.theme.ReelVaultSpacing
 @Composable
 fun LibraryPanel(
     locations: List<LibraryLocation>,
-    selectedPath: String,
+    selectedPaths: List<String>,
     totalVideosAcrossLibrary: Long,
-    onSelect: (path: String) -> Unit,
+    /** Called when a location row is clicked. [additive] = Cmd/Ctrl-click
+     *  (toggle), [range] = Shift-click (range select). */
+    onSelect: (path: String, additive: Boolean, range: Boolean) -> Unit,
     onAddLocation: () -> Unit = {},
     /** Called when the user confirms removal of a library location. */
     onRemoveLocation: ((LibraryLocation) -> Unit)? = null,
@@ -118,10 +127,10 @@ fun LibraryPanel(
                     icon = Icons.Default.VideoLibrary,
                     label = "All Videos",
                     count = totalVideosAcrossLibrary,
-                    isSelected = selectedPath.isEmpty() && selectedCollectionId == null,
+                    isSelected = selectedPaths.isEmpty() && selectedCollectionId == null,
                     tooltip = "Show every video in your library, across all scanned folders.",
-                    onClick = {
-                        onSelect("")
+                    onClick = { _, _ ->
+                        onSelect("", false, false)
                         onSelectCollection?.invoke(null)
                     }
                 )
@@ -155,15 +164,16 @@ fun LibraryPanel(
                     }
                 ) {
                     LocationRow(
-                        icon = if (loc.path == selectedPath) Icons.Default.FolderOpen else Icons.Default.Folder,
+                        icon = if (loc.path in selectedPaths) Icons.Default.FolderOpen else Icons.Default.Folder,
                         label = displayName(loc.path),
                         sublabel = loc.path,
                         count = loc.videoCount,
-                        isSelected = loc.path == selectedPath,
+                        isSelected = loc.path in selectedPaths,
                         tooltip = "Show only videos from ${loc.path} (${loc.videoCount} videos). " +
+                            "Shift-click for a range, Cmd/Ctrl-click to add or remove. " +
                             "Right-click to remove from library.",
-                        onClick = {
-                            onSelect(loc.path)
+                        onClick = { additive, range ->
+                            onSelect(loc.path, additive, range)
                             onSelectCollection?.invoke(null)
                         },
                         onRescan = onRescan?.let { cb -> { cb(loc) } },
@@ -266,8 +276,8 @@ fun LibraryPanel(
                                 "Smart collection — filters videos automatically. Right-click to delete."
                             else
                                 "${col.videoCount} video${if (col.videoCount == 1L) "" else "s"}. Right-click to delete.",
-                            onClick = {
-                                onSelect("")
+                            onClick = { _, _ ->
+                                onSelect("", false, false)
                                 onSelectCollection?.invoke(col.id)
                             }
                         )
@@ -319,7 +329,7 @@ private fun LocationRow(
     count: Long,
     isSelected: Boolean,
     tooltip: String = "",
-    onClick: () -> Unit,
+    onClick: (additive: Boolean, range: Boolean) -> Unit,
     onRescan: (() -> Unit)? = null,
     isRescanning: Boolean = false
 ) {
@@ -341,7 +351,7 @@ private fun LocationRow(
             .fillMaxWidth()
             .background(bg)
             .hoverable(interactionSource)
-            .clickable(onClick = onClick)
+            .selectionAwareClickable(onClick)
             .padding(horizontal = ReelVaultSpacing.Medium, vertical = ReelVaultSpacing.Small),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -400,6 +410,25 @@ private fun LocationRow(
             }
         }
     }
+    }
+}
+
+/**
+ * Click handler that reports the keyboard modifiers held at press time, so a
+ * library row can support Shift-click (range) and Cmd/Ctrl-click (toggle) the
+ * same way the video grid does. `range` = Shift, `additive` = Cmd (macOS) /
+ * Ctrl (Windows/Linux).
+ */
+private fun Modifier.selectionAwareClickable(
+    onClick: (additive: Boolean, range: Boolean) -> Unit
+): Modifier = this.pointerInput(onClick) {
+    awaitEachGesture {
+        awaitFirstDown(requireUnconsumed = true)
+        val mods = currentEvent.keyboardModifiers
+        val range = mods.isShiftPressed
+        val additive = mods.isMetaPressed || mods.isCtrlPressed
+        waitForUpOrCancellation() ?: return@awaitEachGesture
+        onClick(additive, range)
     }
 }
 

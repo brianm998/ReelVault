@@ -1525,14 +1525,32 @@ impl Database {
         let mut bind: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
 
         // Location prefix — match the directory plus a trailing slash so
-        // `/foo/bar` doesn't also match `/foo/barbaz/...`.
+        // `/foo/bar` doesn't also match `/foo/barbaz/...`. `location_filter`
+        // may hold several directories joined by '\n' (the library panel's
+        // multi-select); a video matches if it's under ANY of them. A single
+        // directory has no '\n' → one LIKE, exactly as before.
         if !spec.location_filter.is_empty() {
-            let mut prefix = spec.location_filter.clone();
-            if !prefix.ends_with('/') {
-                prefix.push('/');
+            let patterns: Vec<String> = spec
+                .location_filter
+                .split('\n')
+                .filter(|p| !p.is_empty())
+                .map(|p| {
+                    let mut prefix = p.to_string();
+                    if !prefix.ends_with('/') {
+                        prefix.push('/');
+                    }
+                    format!("{prefix}%")
+                })
+                .collect();
+            if !patterns.is_empty() {
+                let ors = std::iter::repeat_n("v.path LIKE ?", patterns.len())
+                    .collect::<Vec<_>>()
+                    .join(" OR ");
+                sql.push_str(&format!(" AND ({ors})"));
+                for p in patterns {
+                    bind.push(Box::new(p));
+                }
             }
-            sql.push_str(" AND v.path LIKE ?");
-            bind.push(Box::new(format!("{prefix}%")));
         }
 
         // Tags — a video must carry ALL of the requested (deduped) ids.

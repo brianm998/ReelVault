@@ -129,6 +129,15 @@ class GridViewModel(
     private val _selectedLocationPath = MutableStateFlow("")  // "" = all locations
     val selectedLocationPath: StateFlow<String> = _selectedLocationPath.asStateFlow()
 
+    // Multi-select: the set of selected library directories (empty = all).
+    // The grid shows the union of their videos; `locationPathFilter` carries
+    // them to the backend as a '\n'-joined string. `selectedLocationPath`
+    // above stays in sync with the first entry for single-path callers.
+    private val _selectedLocationPaths = MutableStateFlow<List<String>>(emptyList())
+    val selectedLocationPaths: StateFlow<List<String>> = _selectedLocationPaths.asStateFlow()
+    // Pivot for shift-click range selection over the library list.
+    private var locationAnchorPath: String? = null
+
     // Keywords (tags). `tags` is the full list of known tags with usage counts;
     // `filterTagId` narrows the grid to a single tag (drives the `filterTags`
     // list passed to listVideos).
@@ -850,7 +859,13 @@ class GridViewModel(
             try {
                 val success = repository.removeLibraryLocation(path)
                 if (success) {
-                    if (locationPathFilter == path) setLocationFilter("")
+                    // Drop the removed directory from the selection if present.
+                    if (path in _selectedLocationPaths.value) {
+                        applyLocationSelection(
+                            _selectedLocationPaths.value - path,
+                            anchor = null,
+                        )
+                    }
                     loadLibraryLocations()
                     loadVideos()
                     logger.info("Removed library location: $path")
@@ -869,9 +884,49 @@ class GridViewModel(
      * to clear the filter and show all videos.
      */
     fun setLocationFilter(path: String) {
-        if (locationPathFilter == path) return
-        locationPathFilter = path
-        _selectedLocationPath.value = path
+        // Plain click: replace the selection with this single directory (or
+        // clear it for the "All Videos" entry, path == "").
+        val paths = if (path.isEmpty()) emptyList() else listOf(path)
+        applyLocationSelection(paths, anchor = path.ifEmpty { null })
+    }
+
+    /** Cmd/Ctrl-click: toggle this directory's membership in the selection. */
+    fun toggleLocationFilter(path: String) {
+        if (path.isEmpty()) { setLocationFilter(""); return }
+        val current = _selectedLocationPaths.value
+        val next = if (path in current) current - path else current + path
+        applyLocationSelection(next, anchor = path)
+    }
+
+    /**
+     * Shift-click: select every directory between the anchor and [path]
+     * (inclusive) in the library's display order. Falls back to a plain
+     * select when there's no usable anchor.
+     */
+    fun selectLocationRange(path: String) {
+        if (path.isEmpty()) { setLocationFilter(""); return }
+        val order = _libraryLocations.value.map { it.path }
+        val anchor = locationAnchorPath ?: _selectedLocationPaths.value.firstOrNull() ?: path
+        val ai = order.indexOf(anchor)
+        val ti = order.indexOf(path)
+        if (ai < 0 || ti < 0) { setLocationFilter(path); return }
+        val (s, e) = if (ai <= ti) ai to ti else ti to ai
+        // Anchor intentionally preserved so successive shift-clicks pivot
+        // from the same start, matching the video-grid range behaviour.
+        applyLocationSelection(order.subList(s, e + 1).toList(), anchor = anchor, keepAnchor = true)
+    }
+
+    private fun applyLocationSelection(
+        paths: List<String>,
+        anchor: String?,
+        keepAnchor: Boolean = false,
+    ) {
+        val joined = paths.joinToString("\n")
+        if (joined == locationPathFilter && paths == _selectedLocationPaths.value) return
+        locationPathFilter = joined
+        _selectedLocationPaths.value = paths
+        _selectedLocationPath.value = paths.firstOrNull() ?: ""
+        if (!keepAnchor) locationAnchorPath = anchor
         reloadForFilterChange()
     }
 
@@ -2444,6 +2499,9 @@ class GridViewModel(
         _error.value = null
         _libraryLocations.value = emptyList()
         _selectedLocationPath.value = ""
+        _selectedLocationPaths.value = emptyList()
+        locationPathFilter = ""
+        locationAnchorPath = null
         _tags.value = emptyList()
         _filterTagId.value = ""
         _metadataColumns.value = com.reelvault.data.models.defaultMetadataColumns

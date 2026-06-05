@@ -52,7 +52,15 @@ class GridViewModel: ObservableObject {
 
     // Library locations / filter
     @Published var libraryLocations: [LibraryLocation] = []
-    @Published var selectedLocationPath: String = ""  // "" = all
+    @Published var selectedLocationPath: String = ""  // first selected ("" = all)
+    // Multi-select: the set of selected library directories (empty = all). The
+    // grid shows the union of their videos; the backend receives them as a
+    // '\n'-joined string and matches a video under ANY of them.
+    @Published var selectedLocationPaths: [String] = []
+    // Pivot for Shift-click range selection over the library list.
+    private var locationAnchorPath: String?
+    /// Value sent to the backend's `location_path` (single dir or '\n'-joined).
+    private var locationFilterValue: String { selectedLocationPaths.joined(separator: "\n") }
     @Published var rescanningPaths: Set<String> = []
 
     // Keywords / tag filter
@@ -536,7 +544,7 @@ class GridViewModel: ObservableObject {
                 searchQuery: searchQuery,
                 sortBy: sortBy,
                 sortAscending: sortAscending,
-                locationPath: selectedLocationPath,
+                locationPath: locationFilterValue,
                 filterTagIds: filterTagIds,
                 geoFilter: geo,
                 filterMinRating: filterMinRating,
@@ -577,9 +585,40 @@ class GridViewModel: ObservableObject {
         reloadForFilterChange()
     }
 
+    /// Plain click: replace the selection with this single directory (or clear
+    /// it for the "All Videos" entry, path == "").
     func setLocationFilter(_ path: String) {
-        guard selectedLocationPath != path else { return }
-        selectedLocationPath = path
+        let paths = path.isEmpty ? [] : [path]
+        applyLocationSelection(paths, anchor: path.isEmpty ? nil : path)
+    }
+
+    /// Cmd-click: toggle this directory's membership in the selection.
+    func toggleLocationFilter(_ path: String) {
+        guard !path.isEmpty else { setLocationFilter(""); return }
+        var next = selectedLocationPaths
+        if let i = next.firstIndex(of: path) { next.remove(at: i) } else { next.append(path) }
+        applyLocationSelection(next, anchor: path)
+    }
+
+    /// Shift-click: select every directory between the anchor and [path]
+    /// (inclusive) in the library's display order.
+    func selectLocationRange(_ path: String) {
+        guard !path.isEmpty else { setLocationFilter(""); return }
+        let order = libraryLocations.map { $0.path }
+        let anchor = locationAnchorPath ?? selectedLocationPaths.first ?? path
+        guard let ai = order.firstIndex(of: anchor), let ti = order.firstIndex(of: path) else {
+            setLocationFilter(path); return
+        }
+        let slice = ai <= ti ? order[ai...ti] : order[ti...ai]
+        // Anchor preserved so successive Shift-clicks pivot from the same start.
+        applyLocationSelection(Array(slice), anchor: anchor, keepAnchor: true)
+    }
+
+    private func applyLocationSelection(_ paths: [String], anchor: String?, keepAnchor: Bool = false) {
+        guard paths != selectedLocationPaths else { return }
+        selectedLocationPaths = paths
+        selectedLocationPath = paths.first ?? ""
+        if !keepAnchor { locationAnchorPath = anchor }
         reloadForFilterChange()
     }
 
@@ -867,7 +906,7 @@ class GridViewModel: ObservableObject {
             (latitude: $0.latitude, longitude: $0.longitude, radiusKm: $0.radiusKm)
         }
         let result = await repository.getMetadataFacets(
-            locationPath: selectedLocationPath,
+            locationPath: locationFilterValue,
             filterTagIds: filterTagId.isEmpty ? [] : [filterTagId],
             collectionId: collectionIdFilter,
             geoFilter: geo,
@@ -1002,7 +1041,12 @@ class GridViewModel: ObservableObject {
             do {
                 let success = try await repository.removeLibraryLocation(path: path)
                 if success {
-                    if selectedLocationPath == path { setLocationFilter("") }
+                    // Drop the removed directory from the selection if present.
+                    if let i = selectedLocationPaths.firstIndex(of: path) {
+                        var next = selectedLocationPaths
+                        next.remove(at: i)
+                        applyLocationSelection(next, anchor: nil)
+                    }
                     loadLibraryLocations()
                     loadVideos()
                 } else {
@@ -1747,6 +1791,8 @@ class GridViewModel: ObservableObject {
         searchQuery = ""
         libraryLocations = []
         selectedLocationPath = ""
+        selectedLocationPaths = []
+        locationAnchorPath = nil
         tags = []
         filterTagId = ""
         metadataColumns = defaultMetadataColumns

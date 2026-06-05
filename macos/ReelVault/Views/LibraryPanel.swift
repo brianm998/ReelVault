@@ -8,7 +8,10 @@ import SwiftUI
 /// collection row scopes the grid to that collection; "All Videos" clears both.
 struct LibraryPanel: View {
     let locations: [LibraryLocation]
-    let selectedPath: String
+    /// The selected library directories. Empty = "All Videos". Clicks come
+    /// back through [onSelect]; the caller reads the keyboard modifiers
+    /// (Shift = range, Cmd = toggle) to decide how to update this set.
+    let selectedPaths: [String]
     let totalVideos: Int64
     let onSelect: (String) -> Void
     let onAddLibrary: () -> Void
@@ -65,7 +68,7 @@ struct LibraryPanel: View {
                     label: "All Videos",
                     sublabel: nil,
                     count: totalVideos,
-                    isSelected: selectedPath.isEmpty && selectedCollectionId == nil,
+                    isSelected: selectedPaths.isEmpty && selectedCollectionId == nil,
                     tooltip: "Show every video in your library, across all scanned folders.",
                     onClick: {
                         onSelect("")
@@ -82,12 +85,12 @@ struct LibraryPanel: View {
 
                 ForEach(locations) { loc in
                     LocationRow(
-                        systemImage: loc.path == selectedPath ? "folder.fill" : "folder",
+                        systemImage: selectedPaths.contains(loc.path) ? "folder.fill" : "folder",
                         label: Self.displayName(loc.path),
                         sublabel: loc.path,
                         count: loc.videoCount,
-                        isSelected: loc.path == selectedPath,
-                        tooltip: "Show only videos from \(loc.path) (\(loc.videoCount) videos).\nRight-click or swipe left to remove.",
+                        isSelected: selectedPaths.contains(loc.path),
+                        tooltip: "Show only videos from \(loc.path) (\(loc.videoCount) videos).\nShift-click for a range, ⌘-click to add or remove.\nRight-click or swipe left to remove.",
                         onClick: {
                             onSelect(loc.path)
                             onSelectCollection?(nil)

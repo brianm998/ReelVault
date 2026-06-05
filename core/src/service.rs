@@ -601,11 +601,20 @@ impl ReelVaultTrait for ReelVaultService {
         let limit = if req.limit <= 0 { 50 } else { req.limit as i64 };
         let offset = req.offset.max(0) as i64;
 
-        // Expand tilde in location filter if provided
+        // Expand tilde in the location filter if provided. The library panel
+        // supports multi-select, so `location_path` may carry several
+        // directories joined by '\n'; expand each and re-join. The DB layer
+        // splits on '\n' and matches a video under ANY of them. A single
+        // directory contains no '\n' and behaves exactly as before.
         let location_filter = if req.location_path.is_empty() {
             String::new()
         } else {
-            expand_tilde(&req.location_path)
+            req.location_path
+                .split('\n')
+                .filter(|p| !p.is_empty())
+                .map(expand_tilde)
+                .collect::<Vec<_>>()
+                .join("\n")
         };
 
         // Resolve filter_tags — callers may pass either tag IDs (UUIDs) or

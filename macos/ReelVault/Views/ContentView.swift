@@ -858,9 +858,22 @@ struct ContentView: View {
             if leftPanelExpanded {
                 LibraryPanel(
                     locations: gridViewModel.libraryLocations,
-                    selectedPath: gridViewModel.selectedLocationPath,
+                    selectedPaths: gridViewModel.selectedLocationPaths,
                     totalVideos: gridViewModel.libraryLocations.reduce(0) { $0 + $1.videoCount },
-                    onSelect: { gridViewModel.setLocationFilter($0) },
+                    onSelect: { path in
+                        // Read the modifiers captured at mouse-down (same source
+                        // the grid uses): Shift = range, ⌘ = toggle.
+                        let mods = ModifierSnapshot.lastMouseDownModifiers
+                        if path.isEmpty {
+                            gridViewModel.setLocationFilter("")
+                        } else if mods.contains(.shift) {
+                            gridViewModel.selectLocationRange(path)
+                        } else if mods.contains(.command) {
+                            gridViewModel.toggleLocationFilter(path)
+                        } else {
+                            gridViewModel.setLocationFilter(path)
+                        }
+                    },
                     onAddLibrary: { showAddLibrarySheet = true },
                     onRemoveLocation: { locationToRemove = $0 },
                     onRescan: { loc in gridViewModel.rescanLibrary(path: loc.path) },
