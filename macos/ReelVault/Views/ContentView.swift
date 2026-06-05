@@ -788,27 +788,32 @@ struct ContentView: View {
                 if s < 3600 { return "~\(s / 60) min left" }
                 return "~\(s / 3600)h \((s % 3600) / 60)m left"
             }()
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                // Single line: phase label (left) · progress bar (middle,
+                // greedy) · time estimate (right).
+                HStack(spacing: 8) {
                     ProgressView().scaleEffect(0.6)
-                    Text(pi.total > 0
-                         ? "\(phaseLabel) — \(countText) (\(Int(pi.percent))%)"
-                         : "\(phaseLabel) — \(countText)")
+                    Text("\(phaseLabel) (\(countText))")
                         .font(.caption)
+                        .lineLimit(1)
+                        .fixedSize()
                         // Crossfade when the phase changes (e.g. proxies →
-                        // tagging). Keyed on `pi.phase` so the every-second
-                        // count/percent updates snap rather than animate.
+                        // tagging). Keyed on `pi.phase` so the per-second
+                        // count updates snap rather than animate.
                         .contentTransition(.opacity)
                         .animation(.easeInOut(duration: 0.25), value: pi.phase)
-                    Spacer()
+                    if pi.total > 0 {
+                        ProgressView(value: min(max(pi.percent, 0), 100), total: 100)
+                            .progressViewStyle(.linear)
+                    } else {
+                        // Total unknown (rare) — indeterminate bar.
+                        ProgressView().progressViewStyle(.linear)
+                    }
                     if !etaText.isEmpty {
-                        Text(etaText).font(.caption).foregroundColor(.secondary)
+                        Text(etaText).font(.caption).foregroundColor(.secondary).fixedSize()
                     }
                 }
-                if pi.total > 0 {
-                    ProgressView(value: min(max(pi.percent, 0), 100), total: 100)
-                        .progressViewStyle(.linear)
-                }
+                // Optional second row: the live per-item detail.
                 if !pi.detail.isEmpty {
                     Text(pi.detail)
                         .font(.caption2)

@@ -889,45 +889,49 @@ fun ReelVaultApp(
                                     .fillMaxWidth()
                                     .padding(ReelVaultSpacing.Small)
                             ) {
+                                // Single line: phase label (left) · progress bar
+                                // (middle, greedy) · time estimate (right).
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     CircularProgressIndicator(
                                         modifier = Modifier.size(16.dp),
                                         strokeWidth = 2.dp
                                     )
                                     Spacer(modifier = Modifier.width(ReelVaultSpacing.Small))
-                                    // Crossfade keyed on the phase label only,
-                                    // so a phase change (e.g. proxies → tagging)
-                                    // fades gently while the every-second count /
-                                    // percent updates recompose in place.
+                                    // Crossfade keyed on the phase label only, so a
+                                    // phase change (e.g. proxies → tagging) fades
+                                    // gently while the per-second count updates in
+                                    // place.
                                     Crossfade(targetState = phaseLabel) { label ->
                                         Text(
-                                            text = "$label — $countText" +
-                                                if (pi.total > 0) " (${pi.percent.toInt()}%)" else "",
+                                            text = "$label ($countText)",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            maxLines = 1
                                         )
                                     }
+                                    Spacer(modifier = Modifier.width(ReelVaultSpacing.Medium))
+                                    if (pi.total > 0) {
+                                        LinearProgressIndicator(
+                                            progress = { (pi.percent / 100.0).toFloat().coerceIn(0f, 1f) },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    } else {
+                                        // Total unknown (rare) — indeterminate bar.
+                                        LinearProgressIndicator(modifier = Modifier.weight(1f))
+                                    }
                                     if (etaText.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.weight(1f))
+                                        Spacer(modifier = Modifier.width(ReelVaultSpacing.Medium))
                                         Text(
                                             text = etaText,
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            maxLines = 1
                                         )
                                     }
                                 }
-                                Spacer(modifier = Modifier.height(4.dp))
-                                if (pi.total > 0) {
-                                    LinearProgressIndicator(
-                                        progress = { (pi.percent / 100.0).toFloat().coerceIn(0f, 1f) },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                } else {
-                                    // Total unknown (rare) — indeterminate bar.
-                                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                                }
+                                // Optional second row: the live per-item detail.
                                 if (pi.detail.isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Spacer(modifier = Modifier.height(2.dp))
                                     Text(
                                         text = pi.detail,
                                         style = MaterialTheme.typography.bodySmall,
