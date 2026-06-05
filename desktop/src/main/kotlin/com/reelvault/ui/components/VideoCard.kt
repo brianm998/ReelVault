@@ -43,6 +43,7 @@ import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -553,10 +554,27 @@ fun VideoCard(
                         isStackChild -> "Member of a stack of ${video.groupSize} variants"
                         else -> "Expand this stack to see all ${video.groupSize} variants inline"
                     }
-                    com.reelvault.ui.components.Tooltip(
-                        text = stackTip,
-                        modifier = Modifier.align(Alignment.TopStart).padding(ReelVaultSpacing.Small),
+                    // Centre the badge vertically in the letterbox gap above
+                    // the video instead of letting it hug the separator above.
+                    // `thumbSize` is the (photoPadding-inset) thumbnail box the
+                    // video letterboxes inside. Clamp so a near-square clip with
+                    // a tiny gap still leaves room for the badge.
+                    val badgeAspect = if (video.width > 0 && video.height > 0)
+                        video.width.toFloat() / video.height.toFloat() else 1f
+                    val badgeAvailable = with(LocalDensity.current) {
+                        minOf(thumbSize.width, thumbSize.height).toDp()
+                    }
+                    val badgeVideoH = if (badgeAspect >= 1f) badgeAvailable / badgeAspect else badgeAvailable
+                    val badgeTopBand = ((badgeAvailable - badgeVideoH) / 2)
+                        .coerceAtLeast(ReelVaultSpacing.Large)
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .height(badgeTopBand)
+                            .padding(start = ReelVaultSpacing.Small),
+                        contentAlignment = Alignment.CenterStart,
                     ) {
+                    com.reelvault.ui.components.Tooltip(text = stackTip) {
                     Surface(
                         modifier = Modifier
                             // Consume pointer down so the parent card click handler doesn't fire.
@@ -605,6 +623,7 @@ fun VideoCard(
                         }
                     }
                     } // Tooltip
+                    } // top-band centring Box
                 }
 
                 // Bottom-right icon row — at-a-glance status (keyword, proxy).

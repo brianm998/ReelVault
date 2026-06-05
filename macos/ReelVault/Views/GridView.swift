@@ -601,6 +601,33 @@ struct VideoCardView: View {
                     thumbnailArea
                         .padding(photoPadding)
                 }
+                // Stack/group badge — centred vertically in the band between
+                // the top separator and the video's top edge (the top
+                // letterbox) instead of hugging the separator. Placed at the
+                // photo-area level (not inside the photoPadding-inset thumbnail)
+                // so the band maths use the real photo-area dimensions.
+                .overlay(alignment: .topLeading) {
+                    if video.isInGroup {
+                        GeometryReader { geo in
+                            let side = min(geo.size.width, geo.size.height)
+                            let available = max(0, side - photoPadding * 2)
+                            let aspect = (video.width > 0 && video.height > 0)
+                                ? CGFloat(video.width) / CGFloat(video.height) : 1
+                            let videoH = aspect >= 1 ? available / aspect : available
+                            // Clamp so a near-square clip's tiny letterbox can't
+                            // shove the badge up over the separator.
+                            let topBand = max(photoPadding + (available - videoH) / 2, 24)
+                            stackBadge
+                                .contentShape(Rectangle())
+                                .onTapGesture { onStackBadgeClick() }
+                                .help(item.isExpandedRepresentative
+                                      ? "Collapse this stack of \(video.groupSize) videos back to one card."
+                                      : "Expand this stack to see all \(video.groupSize) variants inline.")
+                                .padding(.leading, photoPadding + 6)
+                                .frame(width: geo.size.width, height: topBand, alignment: .leading)
+                        }
+                    }
+                }
                 // Selected + labelled cards get a thin colour-label
                 // frame wrapped tight around the video itself — sized
                 // to the video's aspect ratio, not the photo area's,
@@ -1241,16 +1268,8 @@ struct VideoCardView: View {
                 // the event-swallowing that happened when a second handler
                 // was nested inside the thumbnail.)
 
-            // Stack/group badge — clickable, doesn't propagate to the card
-            if video.isInGroup {
-                stackBadge
-                    .padding(6)
-                    .contentShape(Rectangle())
-                    .onTapGesture { onStackBadgeClick() }
-                    .help(item.isExpandedRepresentative
-                          ? "Collapse this stack of \(video.groupSize) videos back to one card."
-                          : "Expand this stack to see all \(video.groupSize) variants inline.")
-            }
+            // (The stack/group badge moved up to a photo-area overlay so it
+            // can be centred in the top letterbox band — see `body`.)
 
             // Bottom-left location badge — shown when the video has GPS
             // coordinates embedded. Tapping opens the global map focused on
