@@ -755,12 +755,12 @@ struct VideoListRowView: View {
     /// when the row is selected.
     private var topBandColor: Color {
         if isAnchor || (isPrimarySelected && !isInMultiSelection) {
-            return Color(white: 0.94)
+            return Color(white: 0.56)
         }
         if isInMultiSelection {
-            return Color(white: 0.84)
+            return Color(white: 0.50)
         }
-        return Color(white: 0.70)
+        return Color(white: 0.42)
     }
 
     /// Middle row background: takes the colour-label tint when unselected,
@@ -768,26 +768,26 @@ struct VideoListRowView: View {
     private var rowMiddleBackground: Color {
         let label = ColorLabel(video.colorLabel)
         if isAnchor || (isPrimarySelected && !isInMultiSelection) {
-            return Color(white: 0.94)
+            return Color(white: 0.56)
         }
         if isInMultiSelection {
-            return Color(white: 0.84)
+            return Color(white: 0.50)
         }
         if isInExpandedStack {
-            return Color(red: 0.52, green: 0.55, blue: 0.62)
+            return Color(red: 0.31, green: 0.33, blue: 0.37)
         }
         if label != .none { return label.dimmed }
-        return Color(white: 0.52)
+        return Color(white: 0.31)
     }
 
     private var bottomBandColor: Color {
         if isAnchor || (isPrimarySelected && !isInMultiSelection) {
-            return Color(white: 0.94)
+            return Color(white: 0.56)
         }
         if isInMultiSelection {
-            return Color(white: 0.84)
+            return Color(white: 0.50)
         }
-        return Color(white: 0.60)
+        return Color(white: 0.36)
     }
 
     private var bandDividerColor: Color {
@@ -1240,21 +1240,21 @@ struct VideoListHorizontalCardView: View {
     // MARK: Band colors (mirrors VideoListRowView)
 
     private var topBandColor: Color {
-        if isAnchor || (isPrimarySelected && !isInMultiSelection) { return Color(white: 0.94) }
-        if isInMultiSelection { return Color(white: 0.84) }
-        return Color(white: 0.70)
+        if isAnchor || (isPrimarySelected && !isInMultiSelection) { return Color(white: 0.56) }
+        if isInMultiSelection { return Color(white: 0.50) }
+        return Color(white: 0.42)
     }
     private var thumbnailBackground: Color {
         let label = ColorLabel(video.colorLabel)
-        if isAnchor || (isPrimarySelected && !isInMultiSelection) { return Color(white: 0.94) }
-        if isInMultiSelection { return Color(white: 0.84) }
+        if isAnchor || (isPrimarySelected && !isInMultiSelection) { return Color(white: 0.56) }
+        if isInMultiSelection { return Color(white: 0.50) }
         if label != .none { return label.dimmed }
-        return Color(white: 0.52)
+        return Color(white: 0.31)
     }
     private var bottomBandColor: Color {
-        if isAnchor || (isPrimarySelected && !isInMultiSelection) { return Color(white: 0.94) }
-        if isInMultiSelection { return Color(white: 0.84) }
-        return Color(white: 0.60)
+        if isAnchor || (isPrimarySelected && !isInMultiSelection) { return Color(white: 0.56) }
+        if isInMultiSelection { return Color(white: 0.50) }
+        return Color(white: 0.36)
     }
     private var bandDividerColor: Color {
         if isAnchor || isPrimarySelected || isInMultiSelection { return Color.black.opacity(0.10) }

@@ -213,21 +213,21 @@ fun VideoCard(
     // preserved as a thin frame wrapping the thumbnail.
     val colorLabelEnum = com.reelvault.data.models.ColorLabel.from(video.colorLabel)
     val topBandColor = when {
-        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFFF0F0F0)
-        isInMultiSelection -> Color(0xFFD7D7D7)
-        else -> Color(0xFFB3B3B3)
+        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFF909090)
+        isInMultiSelection -> Color(0xFF818181)
+        else -> Color(0xFF6B6B6B)
     }
     val photoAreaBackground = when {
-        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFFF0F0F0)
-        isInMultiSelection -> Color(0xFFD7D7D7)
-        isInExpandedStack -> Color(0xFF8B8FA0)
+        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFF909090)
+        isInMultiSelection -> Color(0xFF818181)
+        isInExpandedStack -> Color(0xFF535660)
         colorLabelEnum != com.reelvault.data.models.ColorLabel.None -> colorLabelEnum.dimmed
-        else -> Color(0xFF858585)
+        else -> Color(0xFF505050)
     }
     val bottomBandColor = when {
-        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFFF0F0F0)
-        isInMultiSelection -> Color(0xFFD7D7D7)
-        else -> Color(0xFF999999)
+        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFF909090)
+        isInMultiSelection -> Color(0xFF818181)
+        else -> Color(0xFF5C5C5C)
     }
     val bandDividerColor = when {
         isAnchor || isSelected || isInMultiSelection -> Color.Black.copy(alpha = 0.10f)

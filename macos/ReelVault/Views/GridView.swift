@@ -861,15 +861,16 @@ struct VideoCardView: View {
     // brighten to the same neutral and the label is preserved as a thin
     // frame wrapping the photo.
 
-    /// Top stat band. Lighter than the photo area by default.
+    /// Top stat band. Lighter than the photo area by default. Neutrals are
+    /// ~40% darker than the original Lightroom-style light greys.
     private var topBandColor: Color {
         if isAnchor || (isPrimarySelected && !isInMultiSelection) {
-            return Color(white: 0.94)
+            return Color(white: 0.56)
         }
         if isInMultiSelection {
-            return Color(white: 0.84)
+            return Color(white: 0.50)
         }
-        return Color(white: 0.70)
+        return Color(white: 0.42)
     }
 
     /// Photo area. Takes the colour-label tint when unselected; goes to
@@ -877,28 +878,28 @@ struct VideoCardView: View {
     private var photoAreaBackground: Color {
         let label = ColorLabel(video.colorLabel)
         if isAnchor || (isPrimarySelected && !isInMultiSelection) {
-            return Color(white: 0.94)
+            return Color(white: 0.56)
         }
         if isInMultiSelection {
-            return Color(white: 0.84)
+            return Color(white: 0.50)
         }
         if isInExpandedStack {
-            return Color(red: 0.52, green: 0.55, blue: 0.62)
+            return Color(red: 0.31, green: 0.33, blue: 0.37)
         }
         if label != .none { return label.dimmed }
-        return Color(white: 0.52)
+        return Color(white: 0.31)
     }
 
     /// Bottom rating band. Slightly darker than the top band when
     /// unselected; same bright neutral as the rest when selected.
     private var bottomBandColor: Color {
         if isAnchor || (isPrimarySelected && !isInMultiSelection) {
-            return Color(white: 0.94)
+            return Color(white: 0.56)
         }
         if isInMultiSelection {
-            return Color(white: 0.84)
+            return Color(white: 0.50)
         }
-        return Color(white: 0.60)
+        return Color(white: 0.36)
     }
 
     /// Thin 1 pt separator between a band and the photo area. Provides
