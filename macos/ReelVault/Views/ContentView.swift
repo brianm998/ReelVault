@@ -1423,8 +1423,14 @@ struct GlobalKeyboardShortcuts: ViewModifier {
             // Shift+arrow is caught too. The isEditingTextField guard above keeps
             // these from firing while a text field is focused.
             //   left = 123, right = 124, down = 125, up = 126
-            if mods.isEmpty || mods == .shift {
-                let extend = mods.contains(.shift)
+            //
+            // macOS reports arrow keys with the .function and .numericPad
+            // modifier flags set, so mask those out before deciding "bare press
+            // vs. Shift" — otherwise neither branch ever matches and the arrows
+            // appear dead.
+            let arrowMods = mods.subtracting([.function, .numericPad])
+            if arrowMods.isEmpty || arrowMods == .shift {
+                let extend = arrowMods.contains(.shift)
                 switch event.keyCode {
                 case 123: onArrow(.left, extend); return nil
                 case 124: onArrow(.right, extend); return nil
