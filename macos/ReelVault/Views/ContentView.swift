@@ -162,10 +162,15 @@ struct ContentView: View {
             onSetColorLabel: { label in
                 gridViewModel.setColorLabelOnSelection(label)
             },
-            onArrow: { direction in
+            onArrow: { direction, extend in
                 // Arrow keys navigate only the grid / list, never the loupe.
+                // Shift extends a range from the anchor; otherwise move the
+                // single selection.
                 guard viewMode == .grid || viewMode == .list else { return }
-                if let moved = gridViewModel.moveSelection(direction) {
+                let moved = extend
+                    ? gridViewModel.extendSelection(direction)
+                    : gridViewModel.moveSelection(direction)
+                if let moved {
                     detailViewModel.setCurrentVideo(moved)
                     detailViewModel.loadMetadata(videoId: moved.id)
                 }
@@ -1273,7 +1278,9 @@ struct GlobalKeyboardShortcuts: ViewModifier {
     /// colour name; purple has no shortcut by design (right-click only).
     let onSetColorLabel: (String) -> Void
     /// Arrow keys — move the grid / list selection in the given direction.
-    let onArrow: (MoveDirection) -> Void
+    /// Arrow keys — move the selection; the Bool is true when Shift is held
+    /// (extend a range from the anchor).
+    let onArrow: (MoveDirection, Bool) -> Void
 
     @State private var keyMonitor: Any?
     @State private var mouseMonitor: Any?
@@ -1406,16 +1413,24 @@ struct GlobalKeyboardShortcuts: ViewModifier {
                 case 50:
                     onSetColorLabel("")
                     return nil
-                // Arrow keys → move the grid / list selection. The
-                // isEditingTextField guard above keeps these from firing while
-                // a text field is focused, so the caret still moves there.
-                //   left = 123, right = 124, down = 125, up = 126
-                case 123: onArrow(.left); return nil
-                case 124: onArrow(.right); return nil
-                case 125: onArrow(.down); return nil
-                case 126: onArrow(.up); return nil
                 default:
                     break
+                }
+            }
+
+            // Arrow keys → move the grid / list selection; with Shift, extend a
+            // range from the anchor. Handled outside the `mods.isEmpty` block so
+            // Shift+arrow is caught too. The isEditingTextField guard above keeps
+            // these from firing while a text field is focused.
+            //   left = 123, right = 124, down = 125, up = 126
+            if mods.isEmpty || mods == .shift {
+                let extend = mods.contains(.shift)
+                switch event.keyCode {
+                case 123: onArrow(.left, extend); return nil
+                case 124: onArrow(.right, extend); return nil
+                case 125: onArrow(.down, extend); return nil
+                case 126: onArrow(.up, extend); return nil
+                default: break
                 }
             }
 

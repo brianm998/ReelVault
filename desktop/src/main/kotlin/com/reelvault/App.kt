@@ -188,7 +188,9 @@ fun main() {
         val setColorLabelAction = remember { mutableStateOf<(String) -> Unit>({ _ -> }) }
         // Arrow-key navigation in grid / list. Carries the direction; the
         // handler moves the active selection and syncs the detail panel.
-        val moveSelectionAction = remember { mutableStateOf<(NavDirection) -> Unit>({ _ -> }) }
+        // Second arg: true when Shift is held → extend a range from the anchor
+        // instead of moving the single selection.
+        val moveSelectionAction = remember { mutableStateOf<(NavDirection, Boolean) -> Unit>({ _, _ -> }) }
         // Title reflects the currently-open catalog (lifted here so Window.title
         // recomposes when the catalog changes).
         var currentCatalog by remember { mutableStateOf(CatalogInfo.Closed) }
@@ -300,18 +302,20 @@ fun main() {
                         deselectAllAction.value()
                         true
                     }
-                    // Arrow keys move the grid / list selection. Handled here
-                    // (post-focus) so a focused multi-line field keeps arrows
-                    // for caret movement; the !searchFocused guard covers the
-                    // single-line search box, which wouldn't consume Up/Down.
+                    // Arrow keys move the grid / list selection (Shift extends a
+                    // range). Handled here (post-focus) so a focused multi-line
+                    // field keeps arrows for caret movement; the !searchFocused
+                    // guard covers the single-line search box, which wouldn't
+                    // consume Up/Down.
                     !event.isMetaPressed && !event.isCtrlPressed && !event.isAltPressed &&
                         !searchFocused.value &&
                         event.key in arrowKeys -> {
+                        val extend = event.isShiftPressed
                         when (event.key) {
-                            Key.DirectionUp -> moveSelectionAction.value(NavDirection.Up)
-                            Key.DirectionDown -> moveSelectionAction.value(NavDirection.Down)
-                            Key.DirectionLeft -> moveSelectionAction.value(NavDirection.Left)
-                            Key.DirectionRight -> moveSelectionAction.value(NavDirection.Right)
+                            Key.DirectionUp -> moveSelectionAction.value(NavDirection.Up, extend)
+                            Key.DirectionDown -> moveSelectionAction.value(NavDirection.Down, extend)
+                            Key.DirectionLeft -> moveSelectionAction.value(NavDirection.Left, extend)
+                            Key.DirectionRight -> moveSelectionAction.value(NavDirection.Right, extend)
                         }
                         true
                     }
@@ -420,7 +424,7 @@ fun ReelVaultApp(
      *  the raw colour string ("" / red / yellow / green / blue). */
     onRegisterSetColorLabelAction: ((String) -> Unit) -> Unit = {},
     /** Called once to register the arrow-key grid/list navigation action. */
-    onRegisterMoveSelection: ((NavDirection) -> Unit) -> Unit = {},
+    onRegisterMoveSelection: ((NavDirection, Boolean) -> Unit) -> Unit = {},
     /** Reports search-field focus state to the Window so it can suppress
      *  single-letter shortcuts while the user is typing. */
     onSearchFocusChanged: (Boolean) -> Unit = {},
@@ -595,12 +599,19 @@ fun ReelVaultApp(
         onRegisterSetColorLabelAction { label ->
             gridViewModel.setColorLabelOnSelection(label)
         }
-        onRegisterMoveSelection { dir ->
+        onRegisterMoveSelection { dir, extend ->
             // Arrow keys only navigate the grid / list, never the loupe.
+            // Shift extends a range from the anchor; otherwise move the
+            // single selection.
             if (viewMode == ViewMode.GRID || viewMode == ViewMode.LIST) {
-                gridViewModel.moveSelection(dir)?.let { moved ->
-                    detailViewModel.setCurrentVideo(moved)
-                    detailViewModel.loadMetadata(moved.id)
+                val moved = if (extend) {
+                    gridViewModel.extendSelection(dir)
+                } else {
+                    gridViewModel.moveSelection(dir)
+                }
+                moved?.let {
+                    detailViewModel.setCurrentVideo(it)
+                    detailViewModel.loadMetadata(it.id)
                 }
             }
         }

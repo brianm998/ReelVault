@@ -816,6 +816,38 @@ class GridViewModel(
         return targetVideo
     }
 
+    /**
+     * Shift+arrow: extend the selection from the anchor (the originally-clicked
+     * / last plain-selected card) to where the arrow moves the active end —
+     * the same flat range a shift-click produces. The anchor is left in place
+     * so repeated Shift+arrows pivot from it. Returns the new active card, or
+     * null on a no-op (edge of the grid / empty).
+     */
+    fun extendSelection(dir: NavDirection): VideoSummary? {
+        val order = navVideos
+        if (order.isEmpty()) return null
+        val currentId = _selectedVideoId.value
+        val curIdx = if (currentId != null) order.indexOfFirst { it.id == currentId } else -1
+        // Nothing active yet → behave like a plain move onto the first card.
+        if (curIdx < 0) {
+            val first = order.first()
+            selectVideo(first)
+            return first
+        }
+        // Move the active (moving) end with the same grid geometry as a plain
+        // move; the selection spans anchor → there.
+        val target = navTargetIndex(curIdx, order.size, navColumns, dir)
+        if (target < 0) return null
+        val anchorId = _anchorVideoId.value ?: currentId
+        val anchorIdx = order.indexOfFirst { it.id == anchorId }.let { if (it < 0) curIdx else it }
+        val lo = minOf(anchorIdx, target)
+        val hi = maxOf(anchorIdx, target)
+        val rangeIds = order.subList(lo, hi + 1).map { it.id }
+        // selectRange keeps the anchor and sets the active end to [target].
+        selectRange(order[target], rangeIds)
+        return order[target]
+    }
+
     fun setSearchQuery(query: String) {
         if (_searchQuery.value == query) return
         _searchQuery.value = query

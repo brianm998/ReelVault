@@ -1488,6 +1488,34 @@ class GridViewModel: ObservableObject {
         return targetVideo
     }
 
+    /// Shift+arrow: extend the selection from the anchor (the originally-clicked
+    /// / last plain-selected card) to where the arrow moves the active end —
+    /// the same flat range a shift-click produces. The anchor stays put so
+    /// repeated Shift+arrows pivot from it. Returns the new active card, or nil
+    /// on a no-op.
+    @discardableResult
+    func extendSelection(_ dir: MoveDirection) -> VideoSummary? {
+        let order = navVideos
+        guard !order.isEmpty else { return nil }
+        let curIdx = selectedVideoId.flatMap { id in order.firstIndex { $0.id == id } } ?? -1
+        if curIdx < 0 {
+            let first = order[0]
+            selectVideo(first)
+            pendingScrollVideoId = first.id
+            return first
+        }
+        let target = navTargetIndex(current: curIdx, size: order.count, cols: navColumns, dir: dir)
+        guard target >= 0 else { return nil }
+        let anchorId = anchorVideoId ?? selectedVideoId
+        let anchorIdx = anchorId.flatMap { id in order.firstIndex { $0.id == id } } ?? curIdx
+        let lo = min(anchorIdx, target), hi = max(anchorIdx, target)
+        let rangeIds = order[lo...hi].map { $0.id }
+        // selectRange keeps the anchor and sets the active end to [target].
+        selectRange(order[target], rangeIds: rangeIds)
+        pendingScrollVideoId = order[target].id
+        return order[target]
+    }
+
     // MARK: - Thumbnails
 
     func loadThumbnail(videoId: String) {
