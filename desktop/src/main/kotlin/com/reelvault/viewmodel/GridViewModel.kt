@@ -1971,7 +1971,9 @@ class GridViewModel(
             try {
                 val file = java.io.File(path)
                 if (file.exists()) {
-                    java.awt.Desktop.getDesktop().open(file)
+                    withContext(Dispatchers.IO) {
+                        java.awt.Desktop.getDesktop().open(file)
+                    }
                     logger.info("Opened video in external app: $path")
                 } else {
                     _error.value = "File not found: $path"
