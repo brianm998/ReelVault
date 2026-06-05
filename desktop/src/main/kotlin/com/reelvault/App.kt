@@ -790,9 +790,9 @@ fun ReelVaultApp(
                     val selectedIds = gridViewModel.selectedVideoIds.collectAsState()
                     ReelVaultTopBar(
                         gridViewModel = gridViewModel,
-                        onRequestAddLibrary = { showAddLibraryDialog = true },
                         onGroupSelected = { gridViewModel.groupSelectedVideos() },
                         onConfigureWatcher = { showWatchSettingsDialog = true },
+                        onConfigurePlayback = { showPlaybackSettingsDialog = true },
                         onConfigureCameraNames = { showCameraNamesDialog = true },
                         onConfigureLensNames = { showLensNamesDialog = true },
                         onConfigureLibrary = { showLibrarySettingsDialog = true },
@@ -2112,10 +2112,11 @@ private fun HelpStep(
 @Composable
 fun ReelVaultTopBar(
     gridViewModel: com.reelvault.viewmodel.GridViewModel,
-    onRequestAddLibrary: () -> Unit,
     onGroupSelected: () -> Unit = {},
     /** Opens the watcher (live-updates) preferences dialog. */
     onConfigureWatcher: () -> Unit = {},
+    /** Opens the playback & proxy-resolution preferences dialog. */
+    onConfigurePlayback: () -> Unit = {},
     /** Opens the camera-names editor dialog. */
     onConfigureCameraNames: () -> Unit = {},
     /** Opens the lens-names editor dialog. */
@@ -2257,7 +2258,57 @@ fun ReelVaultTopBar(
 
                 Spacer(modifier = Modifier.weight(1f))
 
+                // Trailing controls, left → right: Live · Group · Map · Help ·
+                // Settings. Kept in the same order as the SwiftUI client.
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Live-updates pill (leftmost). Green dot = watcher active;
+                    // grey dot = paused. Clicking opens the watch-settings dialog.
+                    val liveOn = gridViewModel.liveUpdatesEnabled.collectAsState().value
+                    com.reelvault.ui.components.Tooltip(
+                        text = if (liveOn)
+                            "Live updates are on — ReelVault is watching your libraries " +
+                                "for new and changed files and will add them automatically. " +
+                                "Click to adjust."
+                        else
+                            "Live updates are off. Click to turn them on or adjust the " +
+                                "watcher settings."
+                    ) {
+                        Surface(
+                            onClick = onConfigureWatcher,
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                            color = androidx.compose.ui.graphics.Color.Transparent,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                androidx.compose.material3.MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                            ),
+                            modifier = Modifier.height(24.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                androidx.compose.foundation.Canvas(
+                                    modifier = Modifier.size(8.dp)
+                                ) {
+                                    drawCircle(
+                                        color = if (liveOn)
+                                            androidx.compose.ui.graphics.Color(0xFF34C759)
+                                        else
+                                            androidx.compose.ui.graphics.Color.Gray
+                                    )
+                                }
+                                Text(
+                                    "Live",
+                                    fontSize = 11.sp,
+                                    lineHeight = 11.sp,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+
                     // Group Selected button: enabled when 2+ videos are multi-selected.
                     // Shows a small count badge to make the selection visible.
                     Box {
@@ -2305,96 +2356,6 @@ fun ReelVaultTopBar(
                         }
                     }
 
-                    // Camera names editor — opens the table of internal →
-                    // marketing name mappings (built-in + user overrides).
-                    com.reelvault.ui.components.Tooltip(
-                        text = "Manage the table that maps internal camera model codes " +
-                            "(e.g. \"SONY ILCE-7RM3A\") to marketing-friendly names " +
-                            "(e.g. \"Sony a7R IIIA\"). Add custom rows for cameras " +
-                            "not in the built-in list, or override built-in entries " +
-                            "you'd prefer named differently."
-                    ) {
-                        IconButton(onClick = onConfigureCameraNames) {
-                            Icon(
-                                imageVector = Icons.Default.Camera,
-                                contentDescription = "Camera Names"
-                            )
-                        }
-                    }
-
-                    // Lens names editor — rename the lens strings recorded
-                    // in the catalog (e.g. shorten a verbose third-party name).
-                    com.reelvault.ui.components.Tooltip(
-                        text = "Rename the lens names recorded in your catalog — " +
-                            "shorten verbose third-party names (e.g. \"14mm F1.8 " +
-                            "DG HSM | Art 018\" → \"Sigma 14mm F1.8 Art\") or fold a " +
-                            "stray variant onto a canonical name."
-                    ) {
-                        IconButton(onClick = onConfigureLensNames) {
-                            Icon(
-                                imageVector = Icons.Default.Lens,
-                                contentDescription = "Lens Names"
-                            )
-                        }
-                    }
-
-                    // Live-updates pill. Green dot = watcher active; grey
-                    // dot = paused. Clicking opens the watch-settings
-                    // dialog. Same visual language as the macOS client.
-                    val liveOn = gridViewModel.liveUpdatesEnabled.collectAsState().value
-                    com.reelvault.ui.components.Tooltip(
-                        text = if (liveOn)
-                            "Live updates are on — ReelVault is watching your libraries " +
-                                "for new and changed files and will add them automatically. " +
-                                "Click to adjust."
-                        else
-                            "Live updates are off. Click to turn them on or adjust the " +
-                                "watcher settings."
-                    ) {
-                        Surface(
-                            onClick = onConfigureWatcher,
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
-                            color = androidx.compose.ui.graphics.Color.Transparent,
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                androidx.compose.material3.MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                            ),
-                            modifier = Modifier.height(24.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                            ) {
-                                androidx.compose.foundation.Canvas(
-                                    modifier = Modifier.size(8.dp)
-                                ) {
-                                    drawCircle(
-                                        color = if (liveOn)
-                                            androidx.compose.ui.graphics.Color(0xFF34C759)
-                                        else
-                                            androidx.compose.ui.graphics.Color.Gray
-                                    )
-                                }
-                                Text(
-                                    "Live",
-                                    fontSize = 11.sp,
-                                    // Compose's default `lineHeight` for inline
-                                    // Text is ~1.4× font size, which adds
-                                    // asymmetric padding above the cap height
-                                    // and visibly pushes the glyphs down
-                                    // inside a CenterVertically Row. Clamping
-                                    // line height to the font size eliminates
-                                    // that padding so "Live" sits on the
-                                    // dot's vertical axis.
-                                    lineHeight = 11.sp,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
-                    }
-
                     // World-map button
                     com.reelvault.ui.components.Tooltip(
                         text = "Show every geotagged video on a world map. " +
@@ -2409,54 +2370,8 @@ fun ReelVaultTopBar(
                         }
                     }
 
-                    // (The active location-filter affordance lives in a
-                    // full-width banner above the grid — see
-                    // `locationFilterBanner` in App.kt — rather than as a
-                    // tiny chip up here, so users actually notice why the
-                    // grid is narrowed.)
-
-                    // Add Library button
-                    com.reelvault.ui.components.Tooltip(
-                        text = "Add a folder to your library. ReelVault will scan it for videos " +
-                            "and extract their metadata in the background."
-                    ) {
-                        IconButton(onClick = onRequestAddLibrary) {
-                            Icon(
-                                imageVector = Icons.Default.CreateNewFolder,
-                                contentDescription = "Add Library Location"
-                            )
-                        }
-                    }
-
-                    // Library auto-tagging / detection settings button.
-                    com.reelvault.ui.components.Tooltip(
-                        text = "Configure catalog-wide auto-tagging — currently the " +
-                            "timelapse heuristic (auto-tags videos whose recorded " +
-                            "resolution exceeds their camera's max in-camera video " +
-                            "resolution). Off by default."
-                    ) {
-                        IconButton(onClick = onConfigureLibrary) {
-                            Icon(
-                                imageVector = Icons.Default.VideoLibrary,
-                                contentDescription = "Library settings"
-                            )
-                        }
-                    }
-
-                    // Appearance (accent color scheme) button
-                    com.reelvault.ui.components.Tooltip(
-                        text = "Choose the accent color scheme for the interface " +
-                            "(Purple or Blue)."
-                    ) {
-                        IconButton(onClick = onConfigureAppearance) {
-                            Icon(
-                                imageVector = Icons.Default.Palette,
-                                contentDescription = "Appearance"
-                            )
-                        }
-                    }
-
-                    // Help button
+                    // Help button (kept as its own affordance — on macOS this
+                    // lives in the system Help menu instead).
                     com.reelvault.ui.components.Tooltip(
                         text = "Open ReelVault Help — learn what ReelVault can do, " +
                             "keyboard shortcuts, and tips for new users."
@@ -2469,6 +2384,77 @@ fun ReelVaultTopBar(
                         }
                     }
 
+                    // Settings gear (rightmost) — every preference collapsed
+                    // into one menu so the top bar isn't a row of mystery
+                    // glyphs. Playback, Library, and Appearance sit at the top
+                    // level; the name-mapping editors live in a Names submenu.
+                    // (Adding folders is done from the Library panel.)
+                    Box {
+                        var settingsOpen by remember { mutableStateOf(false) }
+                        var namesOpen by remember { mutableStateOf(false) }
+                        com.reelvault.ui.components.Tooltip(
+                            text = "Settings — playback & proxies, library auto-tagging, " +
+                                "appearance, and camera/lens name mappings."
+                        ) {
+                            IconButton(onClick = { settingsOpen = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = "Settings"
+                                )
+                            }
+                        }
+                        DropdownMenu(
+                            expanded = settingsOpen,
+                            onDismissRequest = { settingsOpen = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Playback & Proxies…") },
+                                leadingIcon = { Icon(Icons.Default.PlayCircleOutline, contentDescription = null) },
+                                onClick = { settingsOpen = false; onConfigurePlayback() }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Library — Auto-Tagging…") },
+                                leadingIcon = { Icon(Icons.Default.VideoLibrary, contentDescription = null) },
+                                onClick = { settingsOpen = false; onConfigureLibrary() }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Appearance…") },
+                                leadingIcon = { Icon(Icons.Default.Palette, contentDescription = null) },
+                                onClick = { settingsOpen = false; onConfigureAppearance() }
+                            )
+                            HorizontalDivider()
+                            // "Names" submenu — opens a second menu to the side
+                            // holding the camera- and lens-name editors.
+                            Box {
+                                DropdownMenuItem(
+                                    text = { Text("Names") },
+                                    leadingIcon = { Icon(Icons.Default.TextFields, contentDescription = null) },
+                                    trailingIcon = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
+                                    onClick = { namesOpen = true }
+                                )
+                                DropdownMenu(
+                                    expanded = namesOpen,
+                                    onDismissRequest = { namesOpen = false },
+                                    offset = androidx.compose.ui.unit.DpOffset(x = 180.dp, y = 0.dp)
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Camera Names…") },
+                                        leadingIcon = { Icon(Icons.Default.Camera, contentDescription = null) },
+                                        onClick = {
+                                            namesOpen = false; settingsOpen = false; onConfigureCameraNames()
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Lens Names…") },
+                                        leadingIcon = { Icon(Icons.Default.Lens, contentDescription = null) },
+                                        onClick = {
+                                            namesOpen = false; settingsOpen = false; onConfigureLensNames()
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         },
