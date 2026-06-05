@@ -1274,7 +1274,11 @@ struct VideoCardView: View {
                         Spacer()
                     }
                 }
-                .padding(6)
+                // Sit 6 pt above the photo-area's bottom edge — the negative
+                // bottom cancels the surrounding `photoPadding` inset so the
+                // badge isn't left floating high above the bottom band (matches
+                // the Compose card's BottomStart placement).
+                .padding(EdgeInsets(top: 6, leading: 6, bottom: 6 - photoPadding, trailing: 6))
             }
 
             // Bottom-right icon row — Lightroom-style. The old proxy / resolution /
@@ -1333,7 +1337,9 @@ struct VideoCardView: View {
                     }
                 }
             }
-            .padding(6)
+            // See the location badge above — cancel the photoPadding inset so
+            // the icon row sits 6 pt off the photo-area bottom, not 14.
+            .padding(EdgeInsets(top: 6, leading: 6, bottom: 6 - photoPadding, trailing: 6))
 
             // (The "Too large to play here" marker now sits in the
             // letterbox area below the video, positioned by a
