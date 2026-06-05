@@ -1385,7 +1385,11 @@ fun ReelVaultApp(
                         // the two panel dividers, the bar automatically stops at
                         // the side panels and tracks their resize/collapse.
                         Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                            if (viewMode != ViewMode.DETAIL) {
+                            // Slide the filter bar in/out as the loupe is
+                            // entered or left, rather than snapping.
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = viewMode != ViewMode.DETAIL
+                            ) {
                                 com.reelvault.ui.components.LibraryFilterBar(
                                     viewModel = gridViewModel,
                                     onSearchFocusChanged = onSearchFocusChanged,

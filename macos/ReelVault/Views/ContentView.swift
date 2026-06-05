@@ -128,9 +128,9 @@ struct ContentView: View {
             onGroupSelected: { gridViewModel.groupSelectedVideos() },
             onSelectAll: { gridViewModel.selectAllVisible() },
             onDeselectAll: { gridViewModel.clearSelection() },
-            onSetGridMode: { viewMode = .grid },
-            onSetListMode: { viewMode = .list },
-            onSetDetailMode: { viewMode = .detail },
+            onSetGridMode: { withAnimation(.easeInOut(duration: 0.2)) { viewMode = .grid } },
+            onSetListMode: { withAnimation(.easeInOut(duration: 0.2)) { viewMode = .list } },
+            onSetDetailMode: { withAnimation(.easeInOut(duration: 0.2)) { viewMode = .detail } },
             onCycleInfoOverlay: {
                 infoOverlay = {
                     switch infoOverlay {
@@ -628,8 +628,14 @@ struct ContentView: View {
         VStack(spacing: 0) {
             Divider()
             HStack(spacing: 0) {
-                // Left cluster — view-mode toggle (Catalog/Detail, Grid, List)
-                Picker("", selection: $viewMode) {
+                // Left cluster — view-mode toggle (Catalog/Detail, Grid, List).
+                // Custom binding so a click animates the layout reflow.
+                Picker("", selection: Binding(
+                    get: { viewMode },
+                    set: { newMode in
+                        withAnimation(.easeInOut(duration: 0.2)) { viewMode = newMode }
+                    }
+                )) {
                     Image(systemName: "play.rectangle").tag(ViewMode.detail)
                     Image(systemName: "square.grid.2x2").tag(ViewMode.grid)
                     Image(systemName: "list.bullet").tag(ViewMode.list)
@@ -1103,11 +1109,15 @@ struct ContentView: View {
         PanelPrefs.saveWidth(side: .right, mode: viewMode, value: clamped)
     }
     private func setLeftPanelExpanded(_ open: Bool) {
-        leftPanelExpandeds[viewMode] = open
+        withAnimation(.easeInOut(duration: 0.2)) {
+            leftPanelExpandeds[viewMode] = open
+        }
         PanelPrefs.saveExpanded(side: .left, mode: viewMode, value: open)
     }
     private func setRightPanelExpanded(_ open: Bool) {
-        rightPanelExpandeds[viewMode] = open
+        withAnimation(.easeInOut(duration: 0.2)) {
+            rightPanelExpandeds[viewMode] = open
+        }
         PanelPrefs.saveExpanded(side: .right, mode: viewMode, value: open)
     }
 
