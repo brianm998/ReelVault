@@ -644,14 +644,14 @@ fun VideoListRow(
     // colour-label tint when unselected; the bands stay neutral.
     val colorLabelEnum = com.reelvault.data.models.ColorLabel.from(video.colorLabel)
     val rowMiddleBackground = when {
-        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFF909090)
+        isAnchor || isSelected -> Color(0xFF909090)
         isInMultiSelection -> Color(0xFF818181)
         isInExpandedStack -> Color(0xFF535660)
         colorLabelEnum != com.reelvault.data.models.ColorLabel.None -> colorLabelEnum.dimmed
         else -> Color(0xFF505050)
     }
     val bottomBandColor = when {
-        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFF909090)
+        isAnchor || isSelected -> Color(0xFF909090)
         isInMultiSelection -> Color(0xFF818181)
         else -> Color(0xFF5C5C5C)
     }
@@ -1332,18 +1332,18 @@ private fun VideoListHorizontalCard(
 
     val colorLabelEnum = com.reelvault.data.models.ColorLabel.from(video.colorLabel)
     val topBandColor = when {
-        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFF909090)
+        isAnchor || isSelected -> Color(0xFF909090)
         isInMultiSelection -> Color(0xFF818181)
         else -> Color(0xFF6B6B6B)
     }
     val thumbnailBackground = when {
-        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFF909090)
+        isAnchor || isSelected -> Color(0xFF909090)
         isInMultiSelection -> Color(0xFF818181)
         colorLabelEnum != com.reelvault.data.models.ColorLabel.None -> colorLabelEnum.dimmed
         else -> Color(0xFF505050)
     }
     val bottomBandColor = when {
-        isAnchor || (isSelected && !isInMultiSelection) -> Color(0xFF909090)
+        isAnchor || isSelected -> Color(0xFF909090)
         isInMultiSelection -> Color(0xFF818181)
         else -> Color(0xFF5C5C5C)
     }
