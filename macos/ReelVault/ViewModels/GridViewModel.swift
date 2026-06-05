@@ -635,6 +635,11 @@ class GridViewModel: ObservableObject {
     }
 
     func setCollectionFilter(_ id: String?) {
+        // Already viewing this collection (or already cleared) — keep the
+        // current results rather than reloading and flashing the spinner.
+        // Library rows clear the collection on every click, so without this
+        // guard re-selecting the current location would still reload.
+        guard id != selectedCollectionId else { return }
         selectedCollectionId = id
         guard let id = id, let col = collections.first(where: { $0.id == id }) else {
             collectionIdFilter = nil

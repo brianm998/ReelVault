@@ -1656,6 +1656,11 @@ class GridViewModel(
     }
 
     fun setCollection(id: String?) {
+        // Already viewing this collection (or already cleared) — keep the
+        // current results rather than reloading and flashing the spinner.
+        // Library rows clear the collection on every click, so without this
+        // guard re-selecting the current location would still reload.
+        if (id == _selectedCollectionId.value) return
         _selectedCollectionId.value = id
         val col = _collections.value.firstOrNull { it.id == id }
         if (col != null && col.isSmart && col.filterJson.isNotBlank()) {
