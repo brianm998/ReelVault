@@ -39,3 +39,15 @@ desktop/release-bin/
 
 # OS
 Thumbs.db
+
+# Python bytecode (tools/ helper scripts)
+__pycache__/
+*.py[cod]
+
+# Claude Code — personal/local settings (shared config lives in .claude/settings.json)
+.claude/settings.local.json
+
+# Local scratch notes and draft docs (not source)
+/prompt
+/prompts
+/releases/v0.1.0.md
