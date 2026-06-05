@@ -114,7 +114,7 @@ private struct LibraryFilterTextEditor: View {
     var body: some View {
         TextField("Search videos…", text: $vm.searchQuery)
             .textFieldStyle(.roundedBorder)
-            .frame(maxWidth: 320)
+            .frame(maxWidth: 180)
             .padding(.vertical, 8)
             .help("Search videos by filename or notes. Matches as you type.")
     }
@@ -327,7 +327,9 @@ private struct MetadataColumnView: View {
 /// Persists the metadata editor's drag-adjusted height across sessions.
 private enum LibraryFilterBarPrefs {
     static let defaultHeight: CGFloat = 240
-    static let minHeight: CGFloat = 120
+    // Can shrink to ~half of the old floor so the editor tucks away when only
+    // a couple of metadata rows are in use.
+    static let minHeight: CGFloat = 60
     static let maxHeight: CGFloat = 600
     private static let key = "reelvault.libraryFilter.metadataHeight"
 

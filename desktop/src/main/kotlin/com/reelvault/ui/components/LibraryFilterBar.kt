@@ -212,7 +212,7 @@ private fun LibraryTextEditor(viewModel: GridViewModel, onSearchFocusChanged: (B
                 )
             },
             modifier = Modifier
-                .width(360.dp)
+                .width(200.dp)
                 .onFocusChanged { onSearchFocusChanged(it.isFocused) },
             singleLine = true,
             textStyle = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurface),
@@ -552,7 +552,9 @@ private fun MetadataResizeHandle(height: MutableState<Dp>) {
 /** Persists the metadata editor's drag-adjusted height across sessions. */
 private object LibraryFilterBarPrefs {
     const val DEFAULT_HEIGHT: Float = 240f
-    const val MIN_HEIGHT: Float = 120f
+    // The editor can shrink to ~half of what it used to bottom out at, so it
+    // can be tucked away when only a couple of metadata rows are in use.
+    const val MIN_HEIGHT: Float = 60f
     const val MAX_HEIGHT: Float = 600f
 
     private val prefs = Preferences.userRoot().node("com/reelvault/libraryfilter")
