@@ -46,6 +46,7 @@ import com.reelvault.ui.components.Tooltip
 import com.reelvault.ui.components.VlcUnavailableOverlay
 import com.reelvault.ui.theme.ReelVaultSpacing
 import com.reelvault.util.FileDragSource
+import com.reelvault.util.openUrl
 import com.reelvault.viewmodel.GridViewModel
 import org.jetbrains.skia.Image as SkiaImage
 import androidx.compose.ui.graphics.toComposeImageBitmap
@@ -159,7 +160,7 @@ fun ListScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    java.awt.Desktop.getDesktop().browse(java.net.URI(url))
+                    openUrl(url)
                     showVlcErrorDialog = false
                 }) {
                     Text("Download VLC")

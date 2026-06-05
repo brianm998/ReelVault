@@ -546,10 +546,7 @@ fun DetailScreen(
                                 ) {
                                     IconButton(
                                         onClick = {
-                                            try {
-                                                val file = java.io.File(member.path)
-                                                if (file.exists()) java.awt.Desktop.getDesktop().open(file)
-                                            } catch (_: Exception) {}
+                                            com.reelvault.util.openWithDefault(member.path)
                                         },
                                         modifier = Modifier.size(28.dp)
                                     ) {

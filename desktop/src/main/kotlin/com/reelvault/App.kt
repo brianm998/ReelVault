@@ -1068,10 +1068,7 @@ fun ReelVaultApp(
                                     com.reelvault.ui.components.Tooltip(text = "Open the GitHub releases page to download ${release.version}") {
                                         TextButton(
                                             onClick = {
-                                                try {
-                                                    java.awt.Desktop.getDesktop()
-                                                        .browse(java.net.URI(release.releaseUrl))
-                                                } catch (_: Exception) {}
+                                                com.reelvault.util.openUrl(release.releaseUrl)
                                             }
                                         ) {
                                             Icon(

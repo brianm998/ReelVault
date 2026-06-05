@@ -23,6 +23,7 @@ import com.reelvault.data.models.VideoSummary
 import com.reelvault.ui.components.ComposeVideoPlayer
 import com.reelvault.ui.components.VideoCard
 import com.reelvault.ui.theme.ReelVaultSpacing
+import com.reelvault.util.openUrl
 import com.reelvault.util.openWithDefault
 import com.reelvault.util.revealInFileManager
 import com.reelvault.viewmodel.GridViewModel
@@ -146,7 +147,7 @@ fun GridScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    java.awt.Desktop.getDesktop().browse(java.net.URI(url))
+                    openUrl(url)
                     showVlcErrorDialog = false
                 }) {
                     Text("Download VLC")
