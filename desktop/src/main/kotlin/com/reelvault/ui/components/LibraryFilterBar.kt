@@ -95,7 +95,9 @@ fun LibraryFilterBar(
     // Drag-adjustable height for the metadata editor. Persisted across sessions.
     val metadataHeight = remember { mutableStateOf(LibraryFilterBarPrefs.loadHeight().dp) }
 
-    Surface(modifier = modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface) {
+    // Window chrome — the bar blends into the grid below it, matching the macOS
+    // filter bar (windowBackgroundColor).
+    Surface(modifier = modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background) {
         Column {
             // Top row: "Filter:" pinned left, the mode selector centred.
             Box(
@@ -150,7 +152,9 @@ private fun LibraryFilterModeSelector(
     )
     Surface(
         shape = RoundedCornerShape(6.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        // Recessed segmented control — matches the macOS selector
+        // (controlBackgroundColor) sitting on the lighter filter bar.
+        color = MaterialTheme.colorScheme.surface,
     ) {
         Row {
             entries.forEachIndexed { idx, (modeValue, label) ->

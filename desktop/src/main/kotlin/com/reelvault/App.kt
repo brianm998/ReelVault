@@ -2431,7 +2431,10 @@ fun ReelVaultTopBar(
         },
         modifier = Modifier.fillMaxWidth(),
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface,
+            // Window chrome — matches the macOS top bar (windowBackgroundColor),
+            // the bottom bar, and the grid behind it.
+            containerColor = MaterialTheme.colorScheme.background,
+            scrolledContainerColor = MaterialTheme.colorScheme.background,
             titleContentColor = MaterialTheme.colorScheme.onSurface
         )
     )
@@ -2481,7 +2484,8 @@ fun BottomBar(
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface
+        // Window chrome — matches the macOS bottom bar (windowBackgroundColor).
+        color = MaterialTheme.colorScheme.background
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             // Top divider

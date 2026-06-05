@@ -40,7 +40,13 @@ fun DetailScreen(
     val groupMembers = viewModel.groupMembers.collectAsState()
     val groupPreferredId = viewModel.groupPreferredId.collectAsState()
 
-    Column(modifier = modifier.fillMaxSize()) {
+    // Recessed side panel — the darker control background, matching the macOS
+    // detail panel (controlBackgroundColor) and the left library panel.
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface)
+    ) {
         // Header with collapse chevron (mirrors the LibraryPanel's collapse button)
         Row(
             modifier = Modifier

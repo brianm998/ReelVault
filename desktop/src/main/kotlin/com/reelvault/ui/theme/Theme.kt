@@ -35,6 +35,15 @@ object ReelVaultColors {
     val PrimaryDark = Color(0xFFBB86FC)
     val Secondary = Color(0xFF03DAC6)
     val Tertiary = Color(0xFF1F6FEB)
+
+    // Neutral backgrounds mirror the macOS client's resolved dark-mode system
+    // colors so the two clients look identical:
+    //   WindowBackground  ← NSColor.windowBackgroundColor  (#323232)
+    //       the dominant chrome: top bar, bottom bar, filter bar, grid/list area
+    //   ControlBackground ← NSColor.controlBackgroundColor (#1E1E1E)
+    //       the recessed side panels: left library panel + right detail panel
+    val WindowBackground = Color(0xFF323232)
+    val ControlBackground = Color(0xFF1E1E1E)
 }
 
 private val PurpleDarkColorScheme = darkColorScheme(
@@ -53,10 +62,10 @@ private val PurpleDarkColorScheme = darkColorScheme(
     tertiaryContainer = Color(0xFF003D8A),
     onTertiaryContainer = Color(0xFFD8E2FF),
 
-    background = Color(0xFF121212),
+    background = ReelVaultColors.WindowBackground,
     onBackground = Color(0xFFE6E1E5),
 
-    surface = Color(0xFF1E1E1E),
+    surface = ReelVaultColors.ControlBackground,
     onSurface = Color(0xFFE6E1E5),
 
     surfaceVariant = Color(0xFF2D2D2D),
@@ -89,10 +98,10 @@ private val BlueDarkColorScheme = darkColorScheme(
     tertiaryContainer = Color(0xFF005140),
     onTertiaryContainer = Color(0xFFA2F2DE),
 
-    background = Color(0xFF121212),
+    background = ReelVaultColors.WindowBackground,
     onBackground = Color(0xFFE6E1E5),
 
-    surface = Color(0xFF1E1E1E),
+    surface = ReelVaultColors.ControlBackground,
     onSurface = Color(0xFFE6E1E5),
 
     surfaceVariant = Color(0xFF2D2D2D),
