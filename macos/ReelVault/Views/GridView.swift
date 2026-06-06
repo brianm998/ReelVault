@@ -891,7 +891,7 @@ struct VideoCardView: View {
     /// Top stat band. Lighter than the photo area by default. Neutrals are
     /// ~40% darker than the original Lightroom-style light greys.
     private var topBandColor: Color {
-        if isAnchor || isPrimarySelected {
+        if isPrimarySelected {
             return Color(white: 0.56)
         }
         if isInMultiSelection {
@@ -904,7 +904,7 @@ struct VideoCardView: View {
     /// the bright selection neutral when the card is selected.
     private var photoAreaBackground: Color {
         let label = ColorLabel(video.colorLabel)
-        if isAnchor || isPrimarySelected {
+        if isPrimarySelected {
             return Color(white: 0.56)
         }
         if isInMultiSelection {
@@ -920,7 +920,7 @@ struct VideoCardView: View {
     /// Bottom rating band. Slightly darker than the top band when
     /// unselected; same bright neutral as the rest when selected.
     private var bottomBandColor: Color {
-        if isAnchor || isPrimarySelected {
+        if isPrimarySelected {
             return Color(white: 0.56)
         }
         if isInMultiSelection {

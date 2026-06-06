@@ -754,7 +754,7 @@ struct VideoListRowView: View {
     /// Top stat band: lighter than the middle row by default; bright neutral
     /// when the row is selected.
     private var topBandColor: Color {
-        if isAnchor || isPrimarySelected {
+        if isPrimarySelected {
             return Color(white: 0.56)
         }
         if isInMultiSelection {
@@ -767,7 +767,7 @@ struct VideoListRowView: View {
     /// bright neutral when selected.
     private var rowMiddleBackground: Color {
         let label = ColorLabel(video.colorLabel)
-        if isAnchor || isPrimarySelected {
+        if isPrimarySelected {
             return Color(white: 0.56)
         }
         if isInMultiSelection {
@@ -781,7 +781,7 @@ struct VideoListRowView: View {
     }
 
     private var bottomBandColor: Color {
-        if isAnchor || isPrimarySelected {
+        if isPrimarySelected {
             return Color(white: 0.56)
         }
         if isInMultiSelection {
@@ -1241,19 +1241,19 @@ struct VideoListHorizontalCardView: View {
     // MARK: Band colors (mirrors VideoListRowView)
 
     private var topBandColor: Color {
-        if isAnchor || isPrimarySelected { return Color(white: 0.56) }
+        if isPrimarySelected { return Color(white: 0.56) }
         if isInMultiSelection { return Color(white: 0.50) }
         return Color(white: 0.42)
     }
     private var thumbnailBackground: Color {
         let label = ColorLabel(video.colorLabel)
-        if isAnchor || isPrimarySelected { return Color(white: 0.56) }
+        if isPrimarySelected { return Color(white: 0.56) }
         if isInMultiSelection { return Color(white: 0.50) }
         if label != .none { return label.dimmed }
         return Color(white: 0.31)
     }
     private var bottomBandColor: Color {
-        if isAnchor || isPrimarySelected { return Color(white: 0.56) }
+        if isPrimarySelected { return Color(white: 0.56) }
         if isInMultiSelection { return Color(white: 0.50) }
         return Color(white: 0.36)
     }
