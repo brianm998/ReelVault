@@ -912,7 +912,7 @@ struct VideoCardView: View {
     /// ~40% darker than the original Lightroom-style light greys.
     private var topBandColor: Color {
         if isPrimarySelected {
-            return Color(white: 0.56)
+            return Color(white: 0.69)
         }
         if isInMultiSelection {
             return Color(white: 0.50)
@@ -925,7 +925,7 @@ struct VideoCardView: View {
     private var photoAreaBackground: Color {
         let label = ColorLabel(video.colorLabel)
         if isPrimarySelected {
-            return Color(white: 0.56)
+            return Color(white: 0.69)
         }
         if isInMultiSelection {
             return Color(white: 0.50)
@@ -941,7 +941,7 @@ struct VideoCardView: View {
     /// unselected; same bright neutral as the rest when selected.
     private var bottomBandColor: Color {
         if isPrimarySelected {
-            return Color(white: 0.56)
+            return Color(white: 0.69)
         }
         if isInMultiSelection {
             return Color(white: 0.50)
