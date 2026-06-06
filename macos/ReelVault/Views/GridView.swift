@@ -75,6 +75,15 @@ struct GridView: View {
             members: viewModel.expandedGroupMembers
         )
 
+        // For the group-selection border: selected ids as a set, plus a
+        // neighbour test, so each card knows which of its edges sit on the
+        // selection's outer boundary.
+        let cols = max(navColumns, 1)
+        let selectedSet = Set(viewModel.selectedVideoIds)
+        func selectedAt(_ i: Int) -> Bool {
+            i >= 0 && i < rendered.count && selectedSet.contains(rendered[i].video.id)
+        }
+
         return ScrollView {
             ScrollViewReader { proxy in
             // Lightroom-style: edge-to-edge cards with zero gutters so the
@@ -103,6 +112,10 @@ struct GridView: View {
                         isPrimarySelected: viewModel.selectedVideoId == item.video.id,
                         isInMultiSelection: viewModel.selectedVideoIds.contains(item.video.id),
                         isAnchor: viewModel.anchorVideoId == item.video.id && viewModel.selectedVideoIds.count > 1,
+                        selectionEdgeTop: !selectedAt(index - cols),
+                        selectionEdgeBottom: !selectedAt(index + cols),
+                        selectionEdgeLeft: index % cols == 0 || !selectedAt(index - 1),
+                        selectionEdgeRight: index % cols == cols - 1 || !selectedAt(index + 1),
                         isPlaying: viewModel.playingVideoId == item.video.id,
                         playPath: viewModel.playingVideoId == item.video.id
                             ? viewModel.playingVideoPath : nil,
@@ -450,6 +463,15 @@ struct VideoCardView: View {
     let isPrimarySelected: Bool
     let isInMultiSelection: Bool
     let isAnchor: Bool
+    // Group-selection border: each flag is true when that side is on the
+    // *outer* edge of the selection (the neighbour in that direction isn't
+    // selected). The white border is drawn only on outer edges, so a block of
+    // selected cards reads as one outlined group. Default true → a lone
+    // selected card is fully boxed.
+    var selectionEdgeTop: Bool = true
+    var selectionEdgeBottom: Bool = true
+    var selectionEdgeLeft: Bool = true
+    var selectionEdgeRight: Bool = true
     /// `true` when this card is the currently active inline player.
     let isPlaying: Bool
     /// Override URL for inline playback (proxy path). nil → `video.openPath`.
@@ -758,17 +780,15 @@ struct VideoCardView: View {
             Color.white.opacity(hoverOverlayAlpha)
                 .allowsHitTesting(false)
         )
-        // 1 pt outer border between adjacent cards. Dark by default,
-        // brightening on selection so the user always knows which card
-        // they last touched. Also non-hit-testable for the same reason
-        // — even though only the stroke line is drawn, `Rectangle()
-        // .stroke(...)` reports a hit-test area covering the whole
-        // bounding box, which would block child clicks.
-        .overlay(
-            Rectangle()
-                .stroke(cardBorderColor, lineWidth: 1)
-                .allowsHitTesting(false)
-        )
+        // 1 pt per-side border. Every card draws the faint grid line so the
+        // zero-gutter grid stays legible; a selected card paints its outer
+        // edges white so a block of selected cards reads as one group (shared
+        // edges between two selected cards stay grey). Non-hit-testable so the
+        // lines never block child clicks.
+        .overlay(alignment: .top)      { edgeLine(selectionEdgeTop, horizontal: true) }
+        .overlay(alignment: .bottom)   { edgeLine(selectionEdgeBottom, horizontal: true) }
+        .overlay(alignment: .leading)  { edgeLine(selectionEdgeLeft, horizontal: false) }
+        .overlay(alignment: .trailing) { edgeLine(selectionEdgeRight, horizontal: false) }
         // Card-level motion tracking. Fires for moves anywhere on the
         // card — over the thumbnail (where we map x → scrub frame) and
         // over the info area below (which only contributes to the
@@ -953,11 +973,18 @@ struct VideoCardView: View {
 
     /// 1 pt outer card border. Dark by default so adjacent cards in the
     /// zero-gutter grid stay distinct; brightens on selection.
-    private var cardBorderColor: Color {
-        if isAnchor || isPrimarySelected || isInMultiSelection {
-            return Color.white.opacity(0.6)
-        }
-        return Color.black.opacity(0.4)
+    /// One 1 pt border edge. White when this card is in the selection and the
+    /// side is on the group's outer boundary; otherwise the faint grid line.
+    @ViewBuilder
+    private func edgeLine(_ outer: Bool, horizontal: Bool) -> some View {
+        let color = (isInMultiSelection && outer)
+            ? Color.white.opacity(0.6)
+            : Color.black.opacity(0.4)
+        Rectangle()
+            .fill(color)
+            .frame(height: horizontal ? 1 : nil)
+            .frame(width: horizontal ? nil : 1)
+            .allowsHitTesting(false)
     }
 
     // Backwards-compatibility shim — kept so any legacy reference still

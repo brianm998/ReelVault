@@ -28,6 +28,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.compositeOver
@@ -65,6 +66,16 @@ fun VideoCard(
     isSelected: Boolean = false,
     isInMultiSelection: Boolean = false,
     isAnchor: Boolean = false,
+    // Group-selection border: each flag is true when that side of the card is
+    // on the *outer* edge of the selection (the neighbouring card in that
+    // direction is NOT selected). The white selection border is drawn only on
+    // outer edges, so a block of selected cards reads as one outlined group
+    // rather than each card boxed individually. Ignored when the card isn't
+    // part of the selection. Default true → a lone selected card is fully boxed.
+    selectionEdgeTop: Boolean = true,
+    selectionEdgeBottom: Boolean = true,
+    selectionEdgeLeft: Boolean = true,
+    selectionEdgeRight: Boolean = true,
     isStackExpanded: Boolean = false,
     isStackChild: Boolean = false,
     stackMemberPosition: Int = 0,  // 1-based, only meaningful for stack children/representatives
@@ -239,10 +250,10 @@ fun VideoCard(
             (isAnchor || isSelected || isInMultiSelection)) {
             colorLabelEnum.swatch
         } else null
-    val cardBorderColor = when {
-        isAnchor || isSelected || isInMultiSelection -> Color.White.copy(alpha = 0.6f)
-        else -> Color.Black.copy(alpha = 0.4f)
-    }
+    // White when the side is the selection group's outer edge; otherwise the
+    // faint grey grid line every card draws in the zero-gutter grid.
+    val selectionBorderColor = Color.White.copy(alpha = 0.6f)
+    val gridLineColor = Color.Black.copy(alpha = 0.4f)
     // Backwards-compat aliases — old call sites use these names.
     @Suppress("UnusedVariable") val bandBackground = topBandColor
     @Suppress("UnusedVariable") val cardBackground = photoAreaBackground
@@ -268,9 +279,23 @@ fun VideoCard(
     // scrub-tracking continue to work.
     Box(
         modifier = modifier
-            // 1 dp outer card border so adjacent cards in the zero-gutter
-            // grid remain visually distinct. Brightens on selection.
-            .border(1.dp, cardBorderColor)
+            // 1 dp per-side border. Every card draws the faint grid line so the
+            // zero-gutter grid stays legible; a selected card paints its outer
+            // edges white so a block of selected cards reads as one group
+            // (shared edges between two selected cards stay grey).
+            .drawWithContent {
+                drawContent()
+                val sw = 1.dp.toPx()
+                val o = sw / 2f
+                val w = size.width
+                val h = size.height
+                fun edge(outer: Boolean) =
+                    if (isInMultiSelection && outer) selectionBorderColor else gridLineColor
+                drawLine(edge(selectionEdgeTop), Offset(0f, o), Offset(w, o), sw)
+                drawLine(edge(selectionEdgeBottom), Offset(0f, h - o), Offset(w, h - o), sw)
+                drawLine(edge(selectionEdgeLeft), Offset(o, 0f), Offset(o, h), sw)
+                drawLine(edge(selectionEdgeRight), Offset(w - o, 0f), Offset(w - o, h), sw)
+            }
             // Drag-out support: detect drag motion in Compose then hand off
             // to AWT via FileDragSource.startDragIfPending().
             // Uses javaFileListFlavor — the cross-platform standard understood

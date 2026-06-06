@@ -204,6 +204,11 @@ fun GridScreen(
             LaunchedEffect(rendered, columns) {
                 viewModel.setNavContext(rendered.map { it.video }, columns)
             }
+            // Selected ids as a set for O(1) neighbour lookups when deciding
+            // which card edges sit on the selection group's outer boundary.
+            val selectedIdSet = selectedVideoIds.value.toSet()
+            fun selectedAt(i: Int): Boolean =
+                i in rendered.indices && rendered[i].video.id in selectedIdSet
             if (videos.value.isEmpty() && !isLoading.value) {
                 Column(
                     modifier = Modifier
@@ -250,9 +255,16 @@ fun GridScreen(
                         val item = rendered[index]
                         val video = item.video
                         val isPrimary = selectedVideoId.value == video.id
-                        val isInMultiSelect = video.id in selectedVideoIds.value
+                        val isInMultiSelect = video.id in selectedIdSet
                         val isAnchor = anchorVideoId.value == video.id &&
                                        selectedVideoIds.value.size > 1
+                        // A side is on the selection's outer edge when the
+                        // grid-neighbour in that direction isn't also selected.
+                        // Left/right only count same-row neighbours.
+                        val edgeTop = !selectedAt(index - columns)
+                        val edgeBottom = !selectedAt(index + columns)
+                        val edgeLeft = index % columns == 0 || !selectedAt(index - 1)
+                        val edgeRight = index % columns == columns - 1 || !selectedAt(index + 1)
 
                         // Trigger thumbnail load when card appears
                         LaunchedEffect(video.id) {
@@ -333,6 +345,10 @@ fun GridScreen(
                                 isSelected = isPrimary,
                                 isInMultiSelection = isInMultiSelect,
                                 isAnchor = isAnchor,
+                                selectionEdgeTop = edgeTop,
+                                selectionEdgeBottom = edgeBottom,
+                                selectionEdgeLeft = edgeLeft,
+                                selectionEdgeRight = edgeRight,
                                 isStackExpanded = item.isExpandedRepresentative,
                                 isStackChild = item.isStackChild,
                                 stackMemberPosition = item.memberPosition,
