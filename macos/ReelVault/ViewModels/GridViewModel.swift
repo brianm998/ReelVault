@@ -100,7 +100,7 @@ class GridViewModel: ObservableObject {
     // of columns (camera/lens/exposure/iso by default); `facetColumns` holds
     // the server's per-column available values (1:1 with columns by index);
     // `availableMetadataKeys` populates each column's key picker.
-    @Published var libraryFilterMode: LibraryFilterMode = .text
+    @Published var libraryFilterMode: LibraryFilterMode = .clear
     @Published var metadataColumns: [MetadataColumn] = LibraryFilterPrefs.loadColumns()
     @Published var facetColumns: [MetadataFacetColumn] = []
     @Published var availableMetadataKeys: [MetadataKeyInfo] = []
@@ -1868,7 +1868,7 @@ class GridViewModel: ObservableObject {
         metadataColumns = defaultMetadataColumns
         facetColumns = []
         availableMetadataKeys = []
-        libraryFilterMode = .text
+        libraryFilterMode = .clear
         filterMinRating = 0
         filterColorLabel = ""
         topSlots = defaultGridTopSlots

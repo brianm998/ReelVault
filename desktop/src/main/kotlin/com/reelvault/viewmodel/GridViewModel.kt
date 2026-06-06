@@ -179,7 +179,7 @@ class GridViewModel(
     // the server's per-column available values (1:1 with columns by index);
     // `metadataAvailableKeys` populates each column's key picker.
     private val _libraryFilterMode =
-        MutableStateFlow(com.reelvault.data.models.LibraryFilterMode.Text)
+        MutableStateFlow(com.reelvault.data.models.LibraryFilterMode.Clear)
     val libraryFilterMode: StateFlow<com.reelvault.data.models.LibraryFilterMode> =
         _libraryFilterMode.asStateFlow()
     private val _metadataColumns =
@@ -2579,7 +2579,7 @@ class GridViewModel(
         _metadataColumns.value = com.reelvault.data.models.defaultMetadataColumns
         _metadataFacets.value = emptyList()
         _metadataAvailableKeys.value = emptyList()
-        _libraryFilterMode.value = com.reelvault.data.models.LibraryFilterMode.Text
+        _libraryFilterMode.value = com.reelvault.data.models.LibraryFilterMode.Clear
         _filterMinRating.value = 0
         _filterColorLabel.value = ""
         _topSlots.value = com.reelvault.data.models.defaultGridTopSlots
