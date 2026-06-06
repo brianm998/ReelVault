@@ -33,6 +33,28 @@ func navTargetIndex(current: Int, size: Int, cols: Int, dir: MoveDirection) -> I
     }
 }
 
+/// Index of the next/previous card that's in [selected], scanning outward from
+/// [from] in visual (row-major) order. Drives Left/Right traversal of a
+/// multi-row selection: at a row's edge the next selected card is on the
+/// following row, so the cursor wraps a line. Returns -1 past the selection's
+/// first/last member.
+func nextSelectedIndex(_ order: [VideoSummary], from: Int, selected: Set<String>, forward: Bool) -> Int {
+    if forward {
+        var j = from + 1
+        while j < order.count {
+            if selected.contains(order[j].id) { return j }
+            j += 1
+        }
+    } else {
+        var j = from - 1
+        while j >= 0 {
+            if selected.contains(order[j].id) { return j }
+            j -= 1
+        }
+    }
+    return -1
+}
+
 @MainActor
 class GridViewModel: ObservableObject {
     // Grid state
@@ -1475,17 +1497,32 @@ class GridViewModel: ObservableObject {
             pendingScrollVideoId = first.id
             return first
         }
+        if selectedVideoIds.count > 1 {
+            // Confined to the selection. Left/Right step through the whole
+            // selection in visual order — wrapping to the prev/next row at a
+            // row boundary — so a multi-row selection is fully traversable
+            // without Up/Down. Up/Down stay geometric (±one row) within it.
+            let target: Int
+            switch dir {
+            case .left, .right:
+                target = nextSelectedIndex(order, from: curIdx,
+                                           selected: Set(selectedVideoIds),
+                                           forward: dir == .right)
+            case .up, .down:
+                let t = navTargetIndex(current: curIdx, size: order.count, cols: navColumns, dir: dir)
+                target = (t >= 0 && selectedVideoIds.contains(order[t].id)) ? t : -1
+            }
+            guard target >= 0 else { return nil }
+            setActiveVideo(order[target])
+            pendingScrollVideoId = order[target].id
+            return order[target]
+        }
+        // Single / no selection: move over the whole grid and replace-select.
         let target = navTargetIndex(current: curIdx, size: order.count, cols: navColumns, dir: dir)
         guard target >= 0 else { return nil }
-        let targetVideo = order[target]
-        if selectedVideoIds.count > 1 {
-            guard selectedVideoIds.contains(targetVideo.id) else { return nil }
-            setActiveVideo(targetVideo)
-        } else {
-            selectVideo(targetVideo)
-        }
-        pendingScrollVideoId = targetVideo.id
-        return targetVideo
+        selectVideo(order[target])
+        pendingScrollVideoId = order[target].id
+        return order[target]
     }
 
     /// Shift+arrow: extend the selection from the anchor (the originally-clicked

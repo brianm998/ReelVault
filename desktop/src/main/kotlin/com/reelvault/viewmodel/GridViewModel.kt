@@ -57,6 +57,27 @@ fun navTargetIndex(current: Int, size: Int, cols: Int, dir: NavDirection): Int {
     }
 }
 
+/**
+ * Index of the next/previous card that's in [selected], scanning outward from
+ * [from] in visual (row-major) order. Drives Left/Right traversal of a
+ * multi-row selection: at a row's edge the next selected card is on the
+ * following row, so the cursor wraps a line. Returns -1 past the selection's
+ * first/last member.
+ */
+fun nextSelectedIndex(
+    order: List<VideoSummary>,
+    from: Int,
+    selected: Set<String>,
+    forward: Boolean,
+): Int {
+    if (forward) {
+        for (j in from + 1 until order.size) if (order[j].id in selected) return j
+    } else {
+        for (j in from - 1 downTo 0) if (order[j].id in selected) return j
+    }
+    return -1
+}
+
 class GridViewModel(
     private val repository: VideoRepository
 ) {
@@ -802,18 +823,30 @@ class GridViewModel(
             selectVideo(first)
             return first
         }
-        val target = navTargetIndex(curIdx, order.size, navColumns, dir)
-        if (target < 0) return null
-        val targetVideo = order[target]
         val multi = _selectedVideoIds.value
         if (multi.size > 1) {
-            // Confined to the selection: refuse to step onto an unselected card.
-            if (targetVideo.id !in multi) return null
-            setActiveVideo(targetVideo)
-        } else {
-            selectVideo(targetVideo)
+            // Confined to the selection. Left/Right step through the whole
+            // selection in visual order — wrapping to the prev/next row at a
+            // row boundary — so a multi-row selection is fully traversable
+            // without Up/Down. Up/Down stay geometric (±one row) and only
+            // land on a selected card.
+            val target = when (dir) {
+                NavDirection.Left, NavDirection.Right ->
+                    nextSelectedIndex(order, curIdx, multi.toSet(), forward = dir == NavDirection.Right)
+                else -> {
+                    val t = navTargetIndex(curIdx, order.size, navColumns, dir)
+                    if (t >= 0 && order[t].id in multi) t else -1
+                }
+            }
+            if (target < 0) return null
+            setActiveVideo(order[target])
+            return order[target]
         }
-        return targetVideo
+        // Single / no selection: move over the whole grid and replace-select.
+        val target = navTargetIndex(curIdx, order.size, navColumns, dir)
+        if (target < 0) return null
+        selectVideo(order[target])
+        return order[target]
     }
 
     /**
