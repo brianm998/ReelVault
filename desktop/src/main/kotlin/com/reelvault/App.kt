@@ -1499,17 +1499,11 @@ fun ReelVaultApp(
                         }
                     }
 
-                    // Bottom bar — view-mode toggle (left), sort controls (centre),
-                    // thumbnail-size slider (right). Replaces the top-bar toggle and
-                    // sort button, and the detail-panel slider.
-                    val currentSort = gridViewModel.currentSortField.collectAsState()
-                    val sortAsc = gridViewModel.currentSortAscending.collectAsState()
+                    // Bottom bar — view-mode toggle (left), thumbnail-size slider
+                    // (right). The sort controls now live in the Library Filter bar.
                     BottomBar(
                         viewMode = viewMode,
                         onViewModeChange = { viewMode = it },
-                        currentSort = currentSort.value,
-                        sortAscending = sortAsc.value,
-                        onSortChange = { field, ascending -> gridViewModel.setSort(field, ascending) },
                         thumbnailWidth = thumbnailWidth,
                         onThumbnailWidthChange = {
                             thumbnailWidth = it
@@ -2496,8 +2490,9 @@ fun ReelVaultTopBar(
  *
  * Layout (left → right):
  *   • [ViewModeToggle] — three-segment Catalog/Grid/List toggle (left cluster)
- *   • Sort controls — field dropdown + ascending/descending toggle (centred)
  *   • Thumbnail-size slider — only enabled in Grid or List mode (right cluster)
+ *
+ * Sort controls live in the Library Filter bar (top-right), not here.
  *
  * Height is fixed at 44 dp with a top divider line, matching the Lightroom
  * filmstrip bar aesthetic.
@@ -2506,33 +2501,9 @@ fun ReelVaultTopBar(
 fun BottomBar(
     viewMode: ViewMode,
     onViewModeChange: (ViewMode) -> Unit,
-    currentSort: String,
-    sortAscending: Boolean,
-    onSortChange: (String, Boolean) -> Unit,
     thumbnailWidth: androidx.compose.ui.unit.Dp,
     onThumbnailWidthChange: (androidx.compose.ui.unit.Dp) -> Unit,
 ) {
-    val sortOptions = listOf(
-        "filename" to "Filename",
-        "indexed_at" to "Date Added",
-        "creation_date" to "Date Captured",
-        "duration" to "Duration",
-        "size" to "File Size",
-        "resolution" to "Resolution",
-        "fps" to "Frame Rate",
-        "codec" to "Codec",
-        "bitrate" to "Bitrate",
-        "camera" to "Camera",
-        "lens" to "Lens",
-        "iso" to "ISO",
-        "aperture" to "Aperture",
-        "exposure_time" to "Exposure Time",
-        "focal_length" to "Focal Length",
-        "keyword" to "Keyword",
-    )
-    val currentSortLabel = sortOptions.firstOrNull { it.first == currentSort }?.second ?: currentSort
-    var showSortMenu by remember { mutableStateOf(false) }
-
     Surface(
         modifier = Modifier.fillMaxWidth(),
         // Window chrome — matches the macOS bottom bar (windowBackgroundColor).
@@ -2551,104 +2522,6 @@ fun BottomBar(
             ) {
                 // Left cluster — view-mode toggle
                 ViewModeToggle(current = viewMode, onChange = onViewModeChange)
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // Centre — sort controls
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(ReelVaultSpacing.XSmall)
-                ) {
-                    // Sort field dropdown
-                    Box {
-                        com.reelvault.ui.components.Tooltip(
-                            text = "Sort the video grid. Click the same field again to reverse direction."
-                        ) {
-                            OutlinedButton(
-                                onClick = { showSortMenu = true },
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                modifier = Modifier.height(28.dp)
-                            ) {
-                                Text(
-                                    text = currentSortLabel,
-                                    style = MaterialTheme.typography.labelSmall
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Icon(
-                                    imageVector = Icons.Default.ArrowDropDown,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
-                        }
-                        DropdownMenu(
-                            expanded = showSortMenu,
-                            onDismissRequest = { showSortMenu = false }
-                        ) {
-                            Text(
-                                text = "Sort by",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(
-                                    horizontal = ReelVaultSpacing.Medium,
-                                    vertical = ReelVaultSpacing.Small
-                                )
-                            )
-                            sortOptions.forEach { (key, label) ->
-                                val isSelected = key == currentSort
-                                DropdownMenuItem(
-                                    text = {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                text = label,
-                                                color = if (isSelected)
-                                                    MaterialTheme.colorScheme.primary
-                                                else
-                                                    MaterialTheme.colorScheme.onSurface
-                                            )
-                                            if (isSelected) {
-                                                Spacer(modifier = Modifier.width(ReelVaultSpacing.Small))
-                                                Icon(
-                                                    imageVector = if (sortAscending)
-                                                        Icons.Default.ArrowUpward
-                                                    else
-                                                        Icons.Default.ArrowDownward,
-                                                    contentDescription = if (sortAscending) "Ascending" else "Descending",
-                                                    modifier = Modifier.size(16.dp),
-                                                    tint = MaterialTheme.colorScheme.primary
-                                                )
-                                            }
-                                        }
-                                    },
-                                    onClick = {
-                                        if (isSelected) {
-                                            onSortChange(key, !sortAscending)
-                                        } else {
-                                            onSortChange(key, key == "filename" || key == "camera" || key == "codec")
-                                        }
-                                        showSortMenu = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    // Ascending / descending toggle
-                    com.reelvault.ui.components.Tooltip(
-                        text = if (sortAscending) "Sorted ascending — click to reverse" else "Sorted descending — click to reverse"
-                    ) {
-                        IconButton(
-                            onClick = { onSortChange(currentSort, !sortAscending) },
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (sortAscending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
-                                contentDescription = if (sortAscending) "Ascending" else "Descending",
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                }
 
                 Spacer(modifier = Modifier.weight(1f))
 

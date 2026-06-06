@@ -19,13 +19,15 @@ struct LibraryFilterBar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Top row: "Filter:" pinned left, the mode selector centred.
+            // Top row: "Filter:" pinned left, the mode selector centred, the
+            // sort controls pinned right.
             ZStack {
                 HStack {
                     Text("Filter:")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                     Spacer()
+                    sortControls
                 }
                 modeSelector
             }
@@ -79,6 +81,95 @@ struct LibraryFilterBar: View {
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color(nsColor: .separatorColor), lineWidth: 1))
         .fixedSize()
+    }
+
+    /// Sort controls — a "sort by" field menu on the left and an ascending /
+    /// descending direction arrow on the right. Pinned to the far right of the
+    /// top row, mirroring the desktop filter bar.
+    private var sortControls: some View {
+        HStack(spacing: 6) {
+            Menu {
+                sortMenuItem(label: "Filename",       key: "filename")
+                sortMenuItem(label: "Date Added",     key: "indexed_at")
+                sortMenuItem(label: "Date Captured",  key: "creation_date")
+                sortMenuItem(label: "Duration",       key: "duration")
+                sortMenuItem(label: "File Size",      key: "size")
+                sortMenuItem(label: "Resolution",     key: "resolution")
+                sortMenuItem(label: "Frame Rate",     key: "fps")
+                sortMenuItem(label: "Codec",          key: "codec")
+                sortMenuItem(label: "Bitrate",        key: "bitrate")
+                sortMenuItem(label: "Camera",         key: "camera")
+                sortMenuItem(label: "Lens",           key: "lens")
+                sortMenuItem(label: "ISO",            key: "iso")
+                sortMenuItem(label: "Aperture",       key: "aperture")
+                sortMenuItem(label: "Exposure Time",  key: "exposure_time")
+                sortMenuItem(label: "Focal Length",   key: "focal_length")
+                sortMenuItem(label: "Keyword",        key: "keyword")
+            } label: {
+                HStack(spacing: 4) {
+                    Text(sortFieldLabel(vm.sortBy))
+                        .font(.system(size: 11))
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 9))
+                }
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .help("Sort the video grid. Pick a field; choose the same field again to reverse direction.")
+
+            // Ascending / descending direction toggle
+            Button {
+                vm.setSort(vm.sortBy, ascending: !vm.sortAscending)
+            } label: {
+                Image(systemName: vm.sortAscending ? "arrow.up" : "arrow.down")
+            }
+            .buttonStyle(.borderless)
+            .help(vm.sortAscending ? "Sorted ascending — click to reverse" : "Sorted descending — click to reverse")
+        }
+    }
+
+    /// Human-readable label for a sort field key.
+    private func sortFieldLabel(_ key: String) -> String {
+        switch key {
+        case "filename":      return "Filename"
+        case "indexed_at":    return "Date Added"
+        case "creation_date": return "Date Captured"
+        case "duration":      return "Duration"
+        case "size":          return "File Size"
+        case "resolution":    return "Resolution"
+        case "fps":           return "Frame Rate"
+        case "codec":         return "Codec"
+        case "bitrate":       return "Bitrate"
+        case "camera":        return "Camera"
+        case "lens":          return "Lens"
+        case "iso":           return "ISO"
+        case "aperture":      return "Aperture"
+        case "exposure_time": return "Exposure Time"
+        case "focal_length":  return "Focal Length"
+        case "keyword":       return "Keyword"
+        default:              return key
+        }
+    }
+
+    @ViewBuilder
+    private func sortMenuItem(label: String, key: String) -> some View {
+        let selected = vm.sortBy == key
+        Button {
+            if selected {
+                vm.setSort(key, ascending: !vm.sortAscending)
+            } else {
+                let defaultAsc = (key == "filename" || key == "camera" || key == "codec")
+                vm.setSort(key, ascending: defaultAsc)
+            }
+        } label: {
+            HStack {
+                Text(label)
+                if selected {
+                    Image(systemName: vm.sortAscending
+                        ? "arrow.up" : "arrow.down")
+                }
+            }
+        }
     }
 
     /// The bar's bottom border in metadata mode — a vertical-resize handle.

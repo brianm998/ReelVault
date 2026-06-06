@@ -627,8 +627,9 @@ struct ContentView: View {
         .overlay(Rectangle().frame(height: 1).foregroundColor(Color(.separatorColor)), alignment: .bottom)
     }
 
-    /// Full-width bottom bar: view-mode toggle (left), sort controls (centre),
-    /// thumbnail-size slider (right). Height matches a standard macOS toolbar row.
+    /// Full-width bottom bar: view-mode toggle (left), thumbnail-size slider
+    /// (right). Sort controls live in the Library Filter bar (top-right).
+    /// Height matches a standard macOS toolbar row.
     private var bottomBar: some View {
         VStack(spacing: 0) {
             Divider()
@@ -649,48 +650,6 @@ struct ContentView: View {
                 .frame(width: 135)
                 .labelsHidden()
                 .help("Switch between Catalog/Detail (D), Grid (G), and List (L) views.")
-
-                Spacer()
-
-                // Centre — sort controls
-                HStack(spacing: 6) {
-                    Menu {
-                        sortMenuItem(label: "Filename",       key: "filename")
-                        sortMenuItem(label: "Date Added",     key: "indexed_at")
-                        sortMenuItem(label: "Date Captured",  key: "creation_date")
-                        sortMenuItem(label: "Duration",       key: "duration")
-                        sortMenuItem(label: "File Size",      key: "size")
-                        sortMenuItem(label: "Resolution",     key: "resolution")
-                        sortMenuItem(label: "Frame Rate",     key: "fps")
-                        sortMenuItem(label: "Codec",          key: "codec")
-                        sortMenuItem(label: "Bitrate",        key: "bitrate")
-                        sortMenuItem(label: "Camera",         key: "camera")
-                        sortMenuItem(label: "Lens",           key: "lens")
-                        sortMenuItem(label: "ISO",            key: "iso")
-                        sortMenuItem(label: "Aperture",       key: "aperture")
-                        sortMenuItem(label: "Exposure Time",  key: "exposure_time")
-                        sortMenuItem(label: "Focal Length",   key: "focal_length")
-                        sortMenuItem(label: "Keyword",        key: "keyword")
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(sortFieldLabel(gridViewModel.sortBy))
-                                .font(.system(size: 11))
-                            Image(systemName: "chevron.up.chevron.down")
-                                .font(.system(size: 9))
-                        }
-                    }
-                    .menuStyle(.borderlessButton)
-                    .help("Sort the video grid. Pick a field; choose the same field again to reverse direction.")
-
-                    // Ascending / descending toggle button
-                    Button {
-                        gridViewModel.setSort(gridViewModel.sortBy, ascending: !gridViewModel.sortAscending)
-                    } label: {
-                        Image(systemName: gridViewModel.sortAscending ? "arrow.up" : "arrow.down")
-                    }
-                    .buttonStyle(.borderless)
-                    .help(gridViewModel.sortAscending ? "Sorted ascending — click to reverse" : "Sorted descending — click to reverse")
-                }
 
                 Spacer()
 
@@ -715,50 +674,6 @@ struct ContentView: View {
             .padding(.horizontal, 12)
             .frame(height: 44)
             .background(Color(.windowBackgroundColor))
-        }
-    }
-
-    /// Human-readable label for a sort field key.
-    private func sortFieldLabel(_ key: String) -> String {
-        switch key {
-        case "filename":      return "Filename"
-        case "indexed_at":    return "Date Added"
-        case "creation_date": return "Date Captured"
-        case "duration":      return "Duration"
-        case "size":          return "File Size"
-        case "resolution":    return "Resolution"
-        case "fps":           return "Frame Rate"
-        case "codec":         return "Codec"
-        case "bitrate":       return "Bitrate"
-        case "camera":        return "Camera"
-        case "lens":          return "Lens"
-        case "iso":           return "ISO"
-        case "aperture":      return "Aperture"
-        case "exposure_time": return "Exposure Time"
-        case "focal_length":  return "Focal Length"
-        case "keyword":       return "Keyword"
-        default:              return key
-        }
-    }
-
-    @ViewBuilder
-    private func sortMenuItem(label: String, key: String) -> some View {
-        let selected = gridViewModel.sortBy == key
-        Button {
-            if selected {
-                gridViewModel.setSort(key, ascending: !gridViewModel.sortAscending)
-            } else {
-                let defaultAsc = (key == "filename" || key == "camera" || key == "codec")
-                gridViewModel.setSort(key, ascending: defaultAsc)
-            }
-        } label: {
-            HStack {
-                Text(label)
-                if selected {
-                    Image(systemName: gridViewModel.sortAscending
-                        ? "arrow.up" : "arrow.down")
-                }
-            }
         }
     }
 

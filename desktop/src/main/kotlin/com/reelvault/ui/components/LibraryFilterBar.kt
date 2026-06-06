@@ -16,6 +16,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -30,7 +31,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
@@ -41,6 +44,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -99,7 +103,8 @@ fun LibraryFilterBar(
     // filter bar (windowBackgroundColor).
     Surface(modifier = modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.background) {
         Column {
-            // Top row: "Filter:" pinned left, the mode selector centred.
+            // Top row: "Filter:" pinned left, the mode selector centred, the
+            // sort controls pinned right.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -113,6 +118,11 @@ fun LibraryFilterBar(
                 )
                 Box(modifier = Modifier.align(Alignment.Center)) {
                     LibraryFilterModeSelector(mode) { viewModel.setLibraryFilterMode(it) }
+                }
+                // Sort: "sort by" field on the left, direction arrow on the
+                // right. Far right of the bar, mirroring the macOS filter bar.
+                Box(modifier = Modifier.align(Alignment.CenterEnd)) {
+                    LibrarySortControls(viewModel)
                 }
             }
 
@@ -186,6 +196,139 @@ private fun LibraryFilterModeSelector(
                         },
                     )
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Sort controls — a "sort by" field dropdown on the left and an ascending /
+ * descending direction arrow on the right. Pinned to the far right of the
+ * filter bar's top row, mirroring the macOS filter bar. Reads and writes the
+ * sort state directly on the [GridViewModel].
+ */
+@Composable
+private fun LibrarySortControls(viewModel: GridViewModel) {
+    val currentSort by viewModel.currentSortField.collectAsState()
+    val sortAscending by viewModel.currentSortAscending.collectAsState()
+    val sortOptions = listOf(
+        "filename" to "Filename",
+        "indexed_at" to "Date Added",
+        "creation_date" to "Date Captured",
+        "duration" to "Duration",
+        "size" to "File Size",
+        "resolution" to "Resolution",
+        "fps" to "Frame Rate",
+        "codec" to "Codec",
+        "bitrate" to "Bitrate",
+        "camera" to "Camera",
+        "lens" to "Lens",
+        "iso" to "ISO",
+        "aperture" to "Aperture",
+        "exposure_time" to "Exposure Time",
+        "focal_length" to "Focal Length",
+        "keyword" to "Keyword",
+    )
+    val currentSortLabel = sortOptions.firstOrNull { it.first == currentSort }?.second ?: currentSort
+    var showSortMenu by remember { mutableStateOf(false) }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(ReelVaultSpacing.XSmall),
+    ) {
+        // "Sort by" field dropdown (left)
+        Box {
+            Tooltip(
+                text = "Sort the video grid. Click the same field again to reverse direction."
+            ) {
+                OutlinedButton(
+                    onClick = { showSortMenu = true },
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.height(28.dp),
+                ) {
+                    Text(
+                        text = currentSortLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
+            }
+            DropdownMenu(
+                expanded = showSortMenu,
+                onDismissRequest = { showSortMenu = false },
+            ) {
+                Text(
+                    text = "Sort by",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(
+                        horizontal = ReelVaultSpacing.Medium,
+                        vertical = ReelVaultSpacing.Small,
+                    ),
+                )
+                sortOptions.forEach { (key, label) ->
+                    val isSelected = key == currentSort
+                    DropdownMenuItem(
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = label,
+                                    color = if (isSelected) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    },
+                                )
+                                if (isSelected) {
+                                    Spacer(modifier = Modifier.width(ReelVaultSpacing.Small))
+                                    Icon(
+                                        imageVector = if (sortAscending) {
+                                            Icons.Default.ArrowUpward
+                                        } else {
+                                            Icons.Default.ArrowDownward
+                                        },
+                                        contentDescription = if (sortAscending) "Ascending" else "Descending",
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            }
+                        },
+                        onClick = {
+                            if (isSelected) {
+                                viewModel.setSort(key, !sortAscending)
+                            } else {
+                                viewModel.setSort(key, key == "filename" || key == "camera" || key == "codec")
+                            }
+                            showSortMenu = false
+                        },
+                    )
+                }
+            }
+        }
+
+        // Ascending / descending direction toggle (right)
+        Tooltip(
+            text = if (sortAscending) {
+                "Sorted ascending — click to reverse"
+            } else {
+                "Sorted descending — click to reverse"
+            },
+        ) {
+            IconButton(
+                onClick = { viewModel.setSort(currentSort, !sortAscending) },
+                modifier = Modifier.size(28.dp),
+            ) {
+                Icon(
+                    imageVector = if (sortAscending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                    contentDescription = if (sortAscending) "Ascending" else "Descending",
+                    modifier = Modifier.size(16.dp),
+                )
             }
         }
     }
