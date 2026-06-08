@@ -185,6 +185,27 @@ fun MapView(
                 // fire ComponentEvent.RESIZED for the initial sizing.
                 viewer.layout = null
                 viewer.add(zoomSlider)
+
+                // Standard (OSM) ↔ satellite (Esri World Imagery) basemap
+                // toggle, persisted across sessions. Added as a Swing child of
+                // the viewer for the same reason as the zoom slider — Compose
+                // can't paint over the heavyweight map peer.
+                val osmFactory = DefaultTileFactory(ReelVaultOsmTileFactoryInfo())
+                val satelliteFactory = DefaultTileFactory(ReelVaultSatelliteTileFactoryInfo())
+                var satelliteOn = MapViewPrefs.loadSatellite()
+                viewer.tileFactory = if (satelliteOn) satelliteFactory else osmFactory
+                val satelliteToggle = javax.swing.JToggleButton("Satellite", satelliteOn).apply {
+                    isFocusable = false
+                    font = font.deriveFont(11f)
+                    toolTipText = "Switch between the standard map and satellite imagery."
+                    addActionListener {
+                        satelliteOn = isSelected
+                        viewer.tileFactory = if (satelliteOn) satelliteFactory else osmFactory
+                        MapViewPrefs.saveSatellite(satelliteOn)
+                        viewer.repaint()
+                    }
+                }
+                viewer.add(satelliteToggle)
                 // doLayout can't be overridden after construction on the
                 // existing viewer instance — instead position the slider
                 // from a ComponentListener (any resize-driven layout) AND
@@ -198,6 +219,14 @@ fun MapView(
                         ((viewer.height - sliderHeight) / 2).coerceAtLeast(0),
                         sliderWidth,
                         sliderHeight,
+                    )
+                    val btnW = 88
+                    val btnH = 24
+                    satelliteToggle.setBounds(
+                        (viewer.width - btnW - 12).coerceAtLeast(0),
+                        12,
+                        btnW,
+                        btnH,
                     )
                 }
                 reapplySliderBounds()
@@ -459,6 +488,36 @@ private class ReelVaultOsmTileFactoryInfo : TileFactoryInfo(
         val osmZ = totalMapZoom - zoom
         return "$baseURL/$osmZ/$x/$y.png"
     }
+}
+
+/**
+ * Satellite imagery tiles from Esri's free World Imagery basemap. The tile
+ * path is `/{z}/{y}/{x}` (note y before x, unlike OSM). Attribution: Esri,
+ * Maxar, Earthstar Geographics, and the GIS community.
+ */
+private class ReelVaultSatelliteTileFactoryInfo : TileFactoryInfo(
+    /* minZoom = */ 0,
+    /* maxZoom = */ 19,
+    /* totalMapZoom = */ 19,
+    /* tileSize = */ 256,
+    /* xR2L = */ true,
+    /* yT2B = */ true,
+    /* baseURL = */ "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile",
+    /* xParam = */ "x",
+    /* yParam = */ "y",
+    /* zParam = */ "z",
+) {
+    override fun getTileUrl(x: Int, y: Int, zoom: Int): String {
+        val z = totalMapZoom - zoom
+        return "$baseURL/$z/$y/$x"
+    }
+}
+
+/** Persists the satellite/standard basemap choice across sessions. */
+private object MapViewPrefs {
+    private val prefs = java.util.prefs.Preferences.userRoot().node("com/reelvault/map")
+    fun loadSatellite(): Boolean = prefs.getBoolean("satellite", false)
+    fun saveSatellite(value: Boolean) = prefs.putBoolean("satellite", value)
 }
 
 /**

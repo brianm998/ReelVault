@@ -48,6 +48,9 @@ struct OSMMapView: View {
     /// requiring callers to plumb it through.
     @State private var cameraDistance: Double
 
+    /// Standard map vs. satellite imagery; persisted across sessions.
+    @State private var satellite: Bool = UserDefaults.standard.bool(forKey: "reelvault.map.satellite")
+
     /// Closest camera distance the slider exposes — "very local" per the
     /// product spec (≤ 1 km across the screen).
     static let minCameraDistance: Double = 1_000
@@ -84,6 +87,7 @@ struct OSMMapView: View {
                 initialZoomMeters: initialZoomMeters,
                 autoFitPins: autoFitPins,
                 cameraDistance: $cameraDistance,
+                satellite: satellite,
                 onMapClick: onMapClick,
                 onPinClick: onPinClick
             )
@@ -94,6 +98,19 @@ struct OSMMapView: View {
             )
             .padding(.trailing, 12)
             .padding(.vertical, 12)
+        }
+        .overlay(alignment: .topLeading) {
+            Button {
+                satellite.toggle()
+                UserDefaults.standard.set(satellite, forKey: "reelvault.map.satellite")
+            } label: {
+                Label(satellite ? "Map" : "Satellite",
+                      systemImage: satellite ? "map" : "globe.americas.fill")
+                    .font(.system(size: 11))
+            }
+            .buttonStyle(.bordered)
+            .padding(12)
+            .help("Switch between the standard map and satellite imagery")
         }
     }
 }
@@ -117,6 +134,9 @@ private struct _OSMMapKitView: NSViewRepresentable {
     /// Two-way binding for camera-to-ground distance in meters. The slider
     /// writes it; pan/zoom gestures update it via the delegate.
     @Binding var cameraDistance: Double
+    /// `true` shows MapKit's native satellite (hybrid) imagery; `false` shows
+    /// the OSM raster tiles.
+    var satellite: Bool = false
     var onMapClick: ((CLLocationCoordinate2D) -> Void)?
     var onPinClick: ((OSMMapPin) -> Void)?
 
@@ -124,19 +144,38 @@ private struct _OSMMapKitView: NSViewRepresentable {
         Coordinator(self)
     }
 
+    /// Apply the chosen basemap: OSM raster tiles (replacing Apple's vector
+    /// basemap) for the standard map, or MapKit's native hybrid imagery for
+    /// satellite. Idempotent, so it's safe to call on every update.
+    private func applyBasemap(satellite: Bool, to mapView: MKMapView, coordinator: Coordinator) {
+        if satellite {
+            if let existing = coordinator.tileOverlay {
+                mapView.removeOverlay(existing)
+                coordinator.tileOverlay = nil
+            }
+            if mapView.mapType != .hybrid { mapView.mapType = .hybrid }
+        } else {
+            if mapView.mapType != .standard { mapView.mapType = .standard }
+            if coordinator.tileOverlay == nil {
+                let overlay = UserAgentTileOverlay(
+                    urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                )
+                overlay.canReplaceMapContent = true
+                overlay.maximumZ = 19
+                overlay.minimumZ = 0
+                mapView.addOverlay(overlay, level: .aboveLabels)
+                coordinator.tileOverlay = overlay
+            }
+        }
+    }
+
     func makeNSView(context: Context) -> MKMapView {
         let mapView = MKMapView()
         mapView.delegate = context.coordinator
 
-        // Hide Apple's vector basemap so only the OSM raster tiles show.
-        let overlay = UserAgentTileOverlay(
-            urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-        )
-        overlay.canReplaceMapContent = true
-        overlay.maximumZ = 19
-        overlay.minimumZ = 0
-        mapView.addOverlay(overlay, level: .aboveLabels)
-        context.coordinator.tileOverlay = overlay
+        // Standard = OSM raster tiles (replacing Apple's vector basemap);
+        // satellite = MapKit's native hybrid imagery. Re-applied on toggle.
+        applyBasemap(satellite: satellite, to: mapView, coordinator: context.coordinator)
 
         // Initial camera. Use `setCamera` instead of `setRegion` because
         // MapKit's `setRegion(MKCoordinateRegion(center:latitudinalMeters:longitudinalMeters:))`
@@ -183,6 +222,7 @@ private struct _OSMMapKitView: NSViewRepresentable {
     func updateNSView(_ nsView: MKMapView, context: Context) {
         context.coordinator.parent = self
         context.coordinator.syncAnnotations(to: pins)
+        applyBasemap(satellite: satellite, to: nsView, coordinator: context.coordinator)
 
         // Auto-fit on the first non-empty pin set. Late-arriving data
         // (over gRPC) is the usual culprit — without this the camera
