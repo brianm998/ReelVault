@@ -119,6 +119,10 @@ fun DetailGraphsPanel(
             color = MaterialTheme.colorScheme.outlineVariant,
         )
 
+        // if/else (not an early `return@Column`) so the Column's child-group
+        // structure stays balanced when `stats` flips from empty to populated —
+        // an early return there corrupts Compose's group stack and crashes
+        // recomposition.
         if (stats.size < 2) {
             Box(modifier = Modifier.fillMaxWidth().fillMaxHeight(), contentAlignment = Alignment.Center) {
                 Text(
@@ -127,21 +131,20 @@ fun DetailGraphsPanel(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            return@Column
-        }
+        } else {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(ReelVaultSpacing.Medium),
+                verticalArrangement = Arrangement.spacedBy(ReelVaultSpacing.Medium),
+            ) {
+                SectionLabel("Brightness")
+                BrightnessChart(stats)
 
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(ReelVaultSpacing.Medium),
-            verticalArrangement = Arrangement.spacedBy(ReelVaultSpacing.Medium),
-        ) {
-            SectionLabel("Brightness")
-            BrightnessChart(stats)
+                SectionLabel("Color over time")
+                ColorTimeline(stats)
 
-            SectionLabel("Color over time")
-            ColorTimeline(stats)
-
-            SectionLabel("RGB channels")
-            RgbChart(stats)
+                SectionLabel("RGB channels")
+                RgbChart(stats)
+            }
         }
     }
 }
