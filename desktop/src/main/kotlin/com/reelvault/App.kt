@@ -358,6 +358,15 @@ fun main() {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    // Reclaim focus whenever the whole subtree loses it (a child
+                    // that had focus was removed — e.g. a panel collapsed, or the
+                    // video surface released AWT focus). Without this, a key press
+                    // arriving while no element is focused crashes Compose's key
+                    // dispatch ("no active focus target"). `hasFocus` is true when
+                    // this node OR any descendant is focused, so we only reclaim
+                    // when focus is genuinely orphaned — never stealing it from a
+                    // focused text field.
+                    .onFocusChanged { if (!it.hasFocus) rootFocus.requestFocus() }
                     .focusRequester(rootFocus)
                     .focusable()
                     .pointerInput(Unit) {
