@@ -2014,6 +2014,22 @@ class GridViewModel(
     // duplicate requests if the user hovers in/out repeatedly.
     private val scrubLoading = mutableSetOf<String>()
 
+    // Higher-resolution detail thumbnails. Populated only while the user dwells
+    // on the detail view (see startHiResDetail). `_hiResScrubFrames` mirrors
+    // `_scrubFrames` but at the detail render resolution; `_hiResPoster` is the
+    // upgraded static (non-hover) frame. Both fill incrementally so each scrub
+    // location upgrades as soon as its frame arrives, and survive a cancel so
+    // returning to the video resumes rather than refetches.
+    private val _hiResScrubFrames = MutableStateFlow<Map<String, List<ByteArray?>>>(emptyMap())
+    val hiResScrubFrames: StateFlow<Map<String, List<ByteArray?>>> = _hiResScrubFrames.asStateFlow()
+    private val _hiResPoster = MutableStateFlow<Map<String, ByteArray?>>(emptyMap())
+    val hiResPoster: StateFlow<Map<String, ByteArray?>> = _hiResPoster.asStateFlow()
+    private val hiResJobs = mutableMapOf<String, kotlinx.coroutines.Job>()
+    private val hiResWidth = mutableMapOf<String, Int>()
+    // The base scrub width the core generates by default; a "hi-res" request at
+    // or below it would gain nothing.
+    private val baseScrubWidth = 320
+
     // Set of group IDs that are currently "open" (Lightroom-style stack expansion)
     private val _expandedGroupIds = MutableStateFlow<Set<String>>(emptySet())
     val expandedGroupIds: StateFlow<Set<String>> = _expandedGroupIds.asStateFlow()
@@ -2236,6 +2252,61 @@ class GridViewModel(
                 scrubLoading.remove(videoId)
             }
         }
+    }
+
+    /** Begin (or resume) fetching detail-resolution thumbnails for [videoId],
+     *  sized to the [targetWidth] px render area — the dwell action behind the
+     *  detail view's higher-res scrubbing. Fetches the upgraded poster first
+     *  (the frame the user is staring at), then every scrub frame, updating the
+     *  caches incrementally. Idempotent at a given width; resumes (skips frames
+     *  already fetched) after a cancel. No-op when the area is no wider than the
+     *  base scrub resolution. */
+    fun startHiResDetail(videoId: String, targetWidth: Int) {
+        if (targetWidth <= baseScrubWidth) return
+        if (hiResWidth[videoId] == targetWidth && hiResJobs.containsKey(videoId)) return
+        // A resize to a different width invalidates the cached hi-res frames.
+        if (hiResWidth[videoId] != null && hiResWidth[videoId] != targetWidth) {
+            _hiResScrubFrames.value = _hiResScrubFrames.value - videoId
+            _hiResPoster.value = _hiResPoster.value - videoId
+        }
+        hiResWidth[videoId] = targetWidth
+        hiResJobs[videoId]?.cancel()
+        val count = (_scrubFrames.value[videoId]?.size ?: uiPrefs.getInt("scrubFrameCount", 10))
+            .coerceAtLeast(1)
+        hiResJobs[videoId] = viewModelScope.launch {
+            try {
+                // 1) The static (non-hover) frame the user is currently seeing.
+                if (_hiResPoster.value[videoId] == null) {
+                    repository.getThumbnail(videoId, "large", maxWidth = targetWidth)?.let {
+                        _hiResPoster.value = _hiResPoster.value + (videoId to it)
+                    }
+                }
+                // 2) Every scrub frame, so scrubbing shows hi-res too. Filled in
+                //    place so each location upgrades as soon as its frame lands.
+                val acc = _hiResScrubFrames.value[videoId]?.toMutableList()
+                    ?: MutableList<ByteArray?>(count) { null }
+                for (i in 0 until count) {
+                    if (acc.getOrNull(i) != null) continue
+                    val bytes = repository.getThumbnail(videoId, "scrub_$i", maxWidth = targetWidth)
+                    if (bytes != null) {
+                        acc[i] = bytes
+                        _hiResScrubFrames.value = _hiResScrubFrames.value + (videoId to acc.toList())
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.warn("Hi-res detail thumbnails failed for {}", videoId, e)
+            } finally {
+                hiResJobs.remove(videoId)
+            }
+        }
+    }
+
+    /** Stop any in-flight hi-res detail fetch for [videoId] (the user left the
+     *  detail view). Frames already fetched are kept so a return resumes. */
+    fun cancelHiResDetail(videoId: String) {
+        hiResJobs.remove(videoId)?.cancel()
     }
 
     fun openVideoInExternal(path: String) {
@@ -2732,6 +2803,11 @@ class GridViewModel(
         _topSlots.value = com.reelvault.data.models.defaultGridTopSlots
         _thumbnails.value = emptyMap()
         _scrubFrames.value = emptyMap()
+        hiResJobs.values.forEach { it.cancel() }
+        hiResJobs.clear()
+        hiResWidth.clear()
+        _hiResScrubFrames.value = emptyMap()
+        _hiResPoster.value = emptyMap()
         _scanStatus.value = null
         _searchQuery.value = ""
         currentPage = 0

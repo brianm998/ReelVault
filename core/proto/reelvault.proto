@@ -419,7 +419,14 @@ message VideoMetadata {
 
 message GetThumbnailRequest {
   string video_id = 1;
-  string size = 2;  // "small", "medium", "large"
+  string size = 2;  // "small", "medium", "large", or "scrub_N"
+  // Higher-resolution request. 0 = serve the cached default for `size`. When
+  // > 0, the daemon serves (generating on demand) a variant of that frame at
+  // this pixel width, never upscaled past the source — so the detail view can
+  // ask for scrub frames sized to its render area ("all pixels at the display
+  // size") without baking full-resolution stills for high-resolution videos.
+  // Cached separately as `<id>_<size>_w<max_width>.jpg`.
+  int32 max_width = 3;
 }
 
 message ThumbnailChunk {

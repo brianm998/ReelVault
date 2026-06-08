@@ -662,12 +662,23 @@ class VideoRepository: ObservableObject {
         return NSImage(data: data)
     }
 
-    private func getThumbnailData(videoId: String, size: String) async throws -> Data {
+    /// Fetch a single thumbnail at a higher resolution (`maxWidth` px, never
+    /// upscaled past the source) — used by the detail view to upgrade scrub
+    /// frames to the render size. Returns nil on any failure.
+    func getThumbnailHiRes(videoId: String, size: String, maxWidth: Int32) async -> NSImage? {
+        guard let data = try? await getThumbnailData(videoId: videoId, size: size, maxWidth: maxWidth) else {
+            return nil
+        }
+        return NSImage(data: data)
+    }
+
+    private func getThumbnailData(videoId: String, size: String, maxWidth: Int32 = 0) async throws -> Data {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
 
         var request = Reelvault_GetThumbnailRequest()
         request.videoID = videoId
         request.size = size
+        request.maxWidth = maxWidth
 
         return try await client.getThumbnail(request) { response in
             var data = Data()

@@ -496,12 +496,16 @@ class VideoRepository(
             deferred.map { it.await() }
         }
 
-    suspend fun getThumbnail(videoId: String, size: String = "medium"): ByteArray? = withContext(Dispatchers.IO) {
+    /** Fetch a single thumbnail. [maxWidth] > 0 requests a higher-resolution
+     *  variant sized to the caller's render area (never upscaled past the
+     *  source); 0 serves the cached default for [size]. */
+    suspend fun getThumbnail(videoId: String, size: String = "medium", maxWidth: Int = 0): ByteArray? = withContext(Dispatchers.IO) {
         val s = stub ?: return@withContext null
         try {
             val request = Reelvault.GetThumbnailRequest.newBuilder()
                 .setVideoId(videoId)
                 .setSize(size)
+                .setMaxWidth(maxWidth)
                 .build()
 
             val chunks = mutableListOf<Byte>()

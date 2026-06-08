@@ -412,6 +412,67 @@ impl ReelVaultService {
         })
     }
 
+    /// Video duration in seconds, read from the cached metadata row (0.0 when
+    /// unknown). Used to seek the right frame for on-demand thumbnail work.
+    fn video_duration_secs(&self, video_id: &str) -> f64 {
+        self.db
+            .get_connection()
+            .ok()
+            .and_then(|c| {
+                c.query_row(
+                    "SELECT duration_ms FROM metadata WHERE video_id = ?",
+                    [video_id],
+                    |row| row.get::<_, i64>(0),
+                )
+                .ok()
+            })
+            .map(|ms| ms as f64 / 1000.0)
+            .unwrap_or(0.0)
+    }
+
+    /// Serve a higher-resolution thumbnail variant (`max_width` px wide),
+    /// generating just that one frame on demand if it isn't cached yet. Used by
+    /// the detail view to upgrade scrub frames to the display resolution. The
+    /// per-frame `generate_frame_at_width` is idempotent (skips if the file
+    /// exists) and parallel-safe, so concurrent requests for sibling frames run
+    /// up to the global ffmpeg concurrency limit without a per-video lock.
+    async fn load_or_generate_hires(
+        &self,
+        video_id: &str,
+        size: &str,
+        max_width: i32,
+    ) -> std::result::Result<Option<Vec<u8>>, Status> {
+        let cache = self.config.thumbnail_cache_path.clone();
+        if let Some(data) =
+            ThumbnailGenerator::get_thumbnail_at_width(&cache, video_id, size, max_width)
+                .map_err(Status::from)?
+        {
+            return Ok(Some(data));
+        }
+        if let Ok(Some(video)) = self.db.get_video(video_id) {
+            let duration = self.video_duration_secs(video_id);
+            if duration > 0.0 {
+                let cache2 = cache.clone();
+                let path = video.path.clone();
+                let vid = video_id.to_string();
+                let size_s = size.to_string();
+                let _ = tokio::task::spawn_blocking(move || {
+                    ThumbnailGenerator::generate_frame_at_width(
+                        std::path::Path::new(&path),
+                        &vid,
+                        &cache2,
+                        duration,
+                        &size_s,
+                        max_width,
+                    )
+                })
+                .await;
+            }
+        }
+        ThumbnailGenerator::get_thumbnail_at_width(&cache, video_id, size, max_width)
+            .map_err(Status::from)
+    }
+
     fn build_video_summary(&self, video_id: &str, filename: &str, path: &str,
                            size_bytes: i64, indexed_at: i64) -> VideoSummary {
         // Try to get metadata for the video. Camera model is included so
@@ -832,12 +893,19 @@ impl ReelVaultTrait for ReelVaultService {
     ) -> std::result::Result<Response<Self::GetThumbnailStream>, Status> {
         let req = request.into_inner();
 
-        let mut thumbnail_data = ThumbnailGenerator::get_thumbnail(
-            &self.config.thumbnail_cache_path,
-            &req.video_id,
-            &req.size,
-        )
-        .map_err(Status::from)?;
+        // Higher-resolution request (detail view): serve a width-specific
+        // variant, generating just that one frame on demand. Bypasses the
+        // default-size path below entirely.
+        let mut thumbnail_data = if req.max_width > 0 {
+            self.load_or_generate_hires(&req.video_id, &req.size, req.max_width).await?
+        } else {
+            ThumbnailGenerator::get_thumbnail(
+                &self.config.thumbnail_cache_path,
+                &req.video_id,
+                &req.size,
+            )
+            .map_err(Status::from)?
+        };
 
         // On-demand scrub frame generation. If a "scrub_N" frame is requested
         // but doesn't exist yet (e.g. for libraries scanned before this feature
@@ -846,7 +914,7 @@ impl ReelVaultTrait for ReelVaultService {
         // same video share a single generation pass instead of starting 10.
         // Concurrent ffmpeg invocations across all generation tasks are
         // additionally bounded by the global ffmpeg semaphore.
-        if thumbnail_data.is_none() && req.size.starts_with("scrub_") {
+        if req.max_width == 0 && thumbnail_data.is_none() && req.size.starts_with("scrub_") {
             let lock = self.scrub_lock_for(&req.video_id).await;
             let _gen_guard = lock.lock().await;
 

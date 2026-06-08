@@ -821,8 +821,16 @@ nonisolated struct Reelvault_GetThumbnailRequest: Sendable {
 
   var videoID: String = String()
 
-  /// "small", "medium", "large"
+  /// "small", "medium", "large", or "scrub_N"
   var size: String = String()
+
+  /// Higher-resolution request. 0 = serve the cached default for `size`. When
+  /// > 0, the daemon serves (generating on demand) a variant of that frame at
+  /// this pixel width, never upscaled past the source — so the detail view can
+  /// ask for scrub frames sized to its render area ("all pixels at the display
+  /// size") without baking full-resolution stills for high-resolution videos.
+  /// Cached separately as `<id>_<size>_w<max_width>.jpg`.
+  var maxWidth: Int32 = 0
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3528,7 +3536,7 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
 
 nonisolated extension Reelvault_GetThumbnailRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".GetThumbnailRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{1}size\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{1}size\0\u{3}max_width\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3538,6 +3546,7 @@ nonisolated extension Reelvault_GetThumbnailRequest: SwiftProtobuf.Message, Swif
       switch fieldNumber {
       case 1: try { try decoder.decodeSingularStringField(value: &self.videoID) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.size) }()
+      case 3: try { try decoder.decodeSingularInt32Field(value: &self.maxWidth) }()
       default: break
       }
     }
@@ -3550,12 +3559,16 @@ nonisolated extension Reelvault_GetThumbnailRequest: SwiftProtobuf.Message, Swif
     if !self.size.isEmpty {
       try visitor.visitSingularStringField(value: self.size, fieldNumber: 2)
     }
+    if self.maxWidth != 0 {
+      try visitor.visitSingularInt32Field(value: self.maxWidth, fieldNumber: 3)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
   static func ==(lhs: Reelvault_GetThumbnailRequest, rhs: Reelvault_GetThumbnailRequest) -> Bool {
     if lhs.videoID != rhs.videoID {return false}
     if lhs.size != rhs.size {return false}
+    if lhs.maxWidth != rhs.maxWidth {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

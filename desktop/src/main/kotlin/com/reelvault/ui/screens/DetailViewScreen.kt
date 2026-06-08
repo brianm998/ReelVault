@@ -63,6 +63,8 @@ fun DetailViewScreen(
     val videos by gridViewModel.videos.collectAsState()
     val scrubFramesMap by gridViewModel.scrubFrames.collectAsState()
     val thumbnailsMap by gridViewModel.thumbnails.collectAsState()
+    val hiResScrubMap by gridViewModel.hiResScrubFrames.collectAsState()
+    val hiResPosterMap by gridViewModel.hiResPoster.collectAsState()
     val metadata = detailViewModel.metadata.value
 
     val video: VideoSummary? = remember(selectedVideoId, videos) {
@@ -110,7 +112,12 @@ fun DetailViewScreen(
     // ensures we don't leak libvlc handles when the user pages through videos.
     val player = remember(video.id) { ComposeVideoPlayer() }
     DisposableEffect(video.id) {
-        onDispose { player.release() }
+        onDispose {
+            player.release()
+            // Leaving this video (or the detail view) cancels any in-flight
+            // hi-res thumbnail generation; returning resumes it.
+            gridViewModel.cancelHiResDetail(video.id)
+        }
     }
 
     // Mode flag: "play" hasn't been pressed yet → show scrub thumbnail preview.
@@ -131,6 +138,17 @@ fun DetailViewScreen(
     var areaSize by remember { mutableStateOf(IntSize.Zero) }
     val effectivePath: String = remember(video.id, selectedProxyId, proxies, areaSize.height) {
         detailViewModel.playbackPathFor(video, areaSize.height) ?: video.path
+    }
+
+    // After a 2 s dwell on this video's detail view, upgrade its thumbnails to
+    // the render resolution so scrubbing shows higher-res frames. The delay is
+    // cancelled if the user leaves (key change), so a quick glance never
+    // triggers generation; cancellation of the work itself is handled in the
+    // DisposableEffect above.
+    LaunchedEffect(video.id) {
+        kotlinx.coroutines.delay(2000)
+        val w = areaSize.width
+        if (w > 0) gridViewModel.startHiResDetail(video.id, w)
     }
     // If the user picks a different proxy (or reverts to master) while
     // a video is already playing, swap the URL in place. Skip when the
@@ -179,6 +197,8 @@ fun DetailViewScreen(
                     video = video,
                     thumbnailBytes = thumbnailsMap[video.id],
                     scrubFrames = scrubFramesMap[video.id] ?: emptyList(),
+                    hiResScrubFrames = hiResScrubMap[video.id] ?: emptyList(),
+                    hiResPosterBytes = hiResPosterMap[video.id],
                     modifier = Modifier.fillMaxSize().background(Color.Black)
                 )
             }
@@ -281,20 +301,24 @@ private fun ScrubPreview(
     video: VideoSummary,
     thumbnailBytes: ByteArray?,
     scrubFrames: List<ByteArray?>,
+    /** Detail-resolution scrub frames, filled in incrementally while the user
+     *  dwells (see GridViewModel.startHiResDetail). Preferred over the base
+     *  [scrubFrames] per location when present. */
+    hiResScrubFrames: List<ByteArray?> = emptyList(),
+    /** Detail-resolution static frame, shown when not scrubbing. */
+    hiResPosterBytes: ByteArray? = null,
     modifier: Modifier = Modifier
 ) {
-    val thumbnailImage = remember(thumbnailBytes) {
-        thumbnailBytes?.let {
-            try { SkiaImage.makeFromEncoded(it).toComposeImageBitmap() } catch (_: Exception) { null }
-        }
-    }
-    val scrubImages = remember(scrubFrames) {
-        scrubFrames.map { bytes ->
-            bytes?.let {
-                try { SkiaImage.makeFromEncoded(it).toComposeImageBitmap() } catch (_: Exception) { null }
-            }
-        }
-    }
+    fun decode(bytes: ByteArray?) =
+        bytes?.let { try { SkiaImage.makeFromEncoded(it).toComposeImageBitmap() } catch (_: Exception) { null } }
+
+    val thumbnailImage = remember(thumbnailBytes) { decode(thumbnailBytes) }
+    val hiResPosterImage = remember(hiResPosterBytes) { decode(hiResPosterBytes) }
+    val scrubImages = remember(scrubFrames) { scrubFrames.map { decode(it) } }
+    val hiResScrubImages = remember(hiResScrubFrames) { hiResScrubFrames.map { decode(it) } }
+    // Best static (non-hover) frame: the hi-res poster once it's fetched.
+    val posterImage = hiResPosterImage ?: thumbnailImage
+
     var hoverX by remember { mutableStateOf<Float?>(null) }
     var areaSize by remember { mutableStateOf(IntSize.Zero) }
 
@@ -304,8 +328,9 @@ private fun ScrubPreview(
         if (x != null && w > 0 && scrubImages.any { it != null }) {
             val frac = (x / w).coerceIn(0f, 1f)
             val idx = (frac * scrubImages.size).toInt().coerceIn(0, scrubImages.size - 1)
-            scrubImages[idx] ?: thumbnailImage
-        } else thumbnailImage
+            // Highest resolution available for this scrub location.
+            hiResScrubImages.getOrNull(idx) ?: scrubImages[idx] ?: posterImage
+        } else posterImage
     }
 
     Box(

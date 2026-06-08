@@ -41,9 +41,11 @@ struct DetailLoupeView: View {
     @State private var durationSec: Double = 0
     /// Time-observer token; we drop it when the player goes away.
     @State private var timeObserver: Any? = nil
-    /// Measured pixel height of the player render area, used to default to the
-    /// proxy whose resolution best matches the window (see `effectivePath`).
+    /// Measured pixel size of the player render area. Height defaults the proxy
+    /// to the best-matching resolution (see `effectivePath`); width sizes the
+    /// on-demand higher-resolution detail thumbnails (see `startHiResDetail`).
     @State private var playerAreaHeight: CGFloat = 0
+    @State private var playerAreaWidth: CGFloat = 0
 
     /// The video summary currently being inspected — drawn from the grid
     /// selection. Recomputes when the selection changes so the loupe always
@@ -64,9 +66,11 @@ struct DetailLoupeView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black.opacity(0.001))  // captures hover/clicks
-        .onChange(of: gridViewModel.selectedVideoId) { _, _ in
+        .onChange(of: gridViewModel.selectedVideoId) { oldId, _ in
             // Selection changed → tear down any in-flight playback so the
-            // next "play" press starts fresh on the new video.
+            // next "play" press starts fresh on the new video, and cancel the
+            // hi-res thumbnail generation for the video we just left.
+            if let oldId { gridViewModel.cancelHiResDetail(videoId: oldId) }
             teardownPlayer()
         }
         .onChange(of: detailViewModel.selectedProxyId) { _, _ in
@@ -87,7 +91,23 @@ struct DetailLoupeView: View {
                 onPlayPause(for: v)
             }
         }
-        .onDisappear { teardownPlayer() }
+        .onDisappear {
+            if let id = video?.id { gridViewModel.cancelHiResDetail(videoId: id) }
+            teardownPlayer()
+        }
+        // After a 2 s dwell on this video, upgrade its thumbnails to the render
+        // resolution so scrubbing shows higher-res frames. `.task(id:)` cancels
+        // the sleep when the selection changes or the view leaves, so a quick
+        // glance never triggers generation; the work itself is cancelled by the
+        // onChange / onDisappear handlers above.
+        .task(id: video?.id) {
+            guard let id = video?.id else { return }
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            if Task.isCancelled { return }
+            if playerAreaWidth > 0 {
+                gridViewModel.startHiResDetail(videoId: id, targetWidth: Int32(playerAreaWidth))
+            }
+        }
     }
 
     /// Resolve which on-disk path the player should load right now: an explicit
@@ -128,6 +148,8 @@ struct DetailLoupeView: View {
                 video: video,
                 thumbnail: gridViewModel.thumbnails[video.id],
                 scrubFrames: gridViewModel.scrubFrames[video.id] ?? [],
+                hiResScrubFrames: gridViewModel.hiResScrubFrames[video.id] ?? [],
+                hiResPoster: gridViewModel.hiResPoster[video.id],
                 onHoverEnter: { gridViewModel.loadScrubFrames(videoId: video.id) }
             )
             if playerVideoId == video.id, let player = player {
@@ -178,8 +200,9 @@ struct DetailLoupeView: View {
         .background(
             GeometryReader { geo in
                 Color.clear
-                    .onAppear { playerAreaHeight = geo.size.height }
+                    .onAppear { playerAreaHeight = geo.size.height; playerAreaWidth = geo.size.width }
                     .onChange(of: geo.size.height) { _, h in playerAreaHeight = h }
+                    .onChange(of: geo.size.width) { _, w in playerAreaWidth = w }
             }
         )
 
@@ -293,19 +316,29 @@ private struct ScrubPreview: View {
     let video: VideoSummary
     let thumbnail: NSImage?
     let scrubFrames: [NSImage?]
+    /// Detail-resolution scrub frames, filled in incrementally while the user
+    /// dwells (see GridViewModel.startHiResDetail). Preferred per location.
+    var hiResScrubFrames: [NSImage?] = []
+    /// Detail-resolution static frame, shown when not scrubbing.
+    var hiResPoster: NSImage? = nil
     let onHoverEnter: () -> Void
 
     @State private var hoverX: CGFloat? = nil
     @State private var areaWidth: CGFloat = 0
     @State private var didEnter: Bool = false
 
+    /// Best static (non-hover) frame: the hi-res poster once it's fetched.
+    private var posterImage: NSImage? { hiResPoster ?? thumbnail }
+
     private var displayed: NSImage? {
         if let x = hoverX, areaWidth > 0, !scrubFrames.isEmpty {
             let frac = max(0, min(1, x / areaWidth))
             let idx = min(scrubFrames.count - 1, Int(frac * CGFloat(scrubFrames.count)))
+            // Highest resolution available for this scrub location.
+            if idx < hiResScrubFrames.count, let hi = hiResScrubFrames[idx] { return hi }
             if let frame = scrubFrames[idx] { return frame }
         }
-        return thumbnail
+        return posterImage
     }
 
     var body: some View {

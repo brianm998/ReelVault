@@ -143,6 +143,17 @@ class GridViewModel: ObservableObject {
     @Published var scrubFrames: [String: [NSImage?]] = [:]
     private var scrubLoading: Set<String> = []
 
+    // Higher-resolution detail thumbnails, populated only while the user dwells
+    // on the detail view (see startHiResDetail). `hiResScrubFrames` mirrors
+    // `scrubFrames` at the render resolution; `hiResPoster` is the upgraded
+    // static (non-hover) frame. Filled incrementally and kept across a cancel
+    // so returning to the video resumes rather than refetches.
+    @Published var hiResScrubFrames: [String: [NSImage?]] = [:]
+    @Published var hiResPoster: [String: NSImage] = [:]
+    private var hiResTasks: [String: Task<Void, Never>] = [:]
+    private var hiResWidth: [String: Int32] = [:]
+    private let baseScrubWidth: Int32 = 320
+
     // Thumbnail fetch concurrency control — mirrors the scrubLoading pattern.
     // Caps simultaneous gRPC thumbnail streams so a large grid entering view
     // at once can't overwhelm the connection and drop some fetches silently.
@@ -1740,6 +1751,56 @@ class GridViewModel: ObservableObject {
                 scrubFrames[videoId] = frames
             }
         }
+    }
+
+    /// Begin (or resume) fetching detail-resolution thumbnails for `videoId`,
+    /// sized to the `targetWidth` px render area — the dwell action behind the
+    /// detail view's higher-res scrubbing. Fetches the upgraded poster first
+    /// (the frame the user is staring at), then every scrub frame, updating the
+    /// caches incrementally. Idempotent at a given width; resumes (skips frames
+    /// already fetched) after a cancel. No-op when the area is no wider than the
+    /// base scrub resolution.
+    func startHiResDetail(videoId: String, targetWidth: Int32) {
+        guard targetWidth > baseScrubWidth else { return }
+        if hiResWidth[videoId] == targetWidth && hiResTasks[videoId] != nil { return }
+        if let w = hiResWidth[videoId], w != targetWidth {
+            hiResScrubFrames[videoId] = nil
+            hiResPoster[videoId] = nil
+        }
+        hiResWidth[videoId] = targetWidth
+        hiResTasks[videoId]?.cancel()
+        let rawCount = UserDefaults.standard.integer(forKey: "scrubFrameCount")
+        let count = scrubFrames[videoId]?.count ?? (rawCount > 0 ? rawCount : 10)
+        hiResTasks[videoId] = Task { [weak self] in
+            guard let self else { return }
+            // 1) The static (non-hover) frame the user is currently seeing.
+            if self.hiResPoster[videoId] == nil {
+                if let img = await self.repository.getThumbnailHiRes(videoId: videoId, size: "large", maxWidth: targetWidth) {
+                    if Task.isCancelled { return }
+                    self.hiResPoster[videoId] = img
+                }
+            }
+            // 2) Every scrub frame, so scrubbing shows hi-res too. Filled in
+            //    place so each location upgrades as soon as its frame lands.
+            var acc = self.hiResScrubFrames[videoId] ?? Array(repeating: nil, count: count)
+            for i in 0..<count {
+                if Task.isCancelled { return }
+                if acc.indices.contains(i), acc[i] != nil { continue }
+                if let img = await self.repository.getThumbnailHiRes(videoId: videoId, size: "scrub_\(i)", maxWidth: targetWidth) {
+                    if Task.isCancelled { return }
+                    if acc.indices.contains(i) { acc[i] = img }
+                    self.hiResScrubFrames[videoId] = acc
+                }
+            }
+            self.hiResTasks[videoId] = nil
+        }
+    }
+
+    /// Stop any in-flight hi-res detail fetch for `videoId` (the user left the
+    /// detail view). Frames already fetched are kept so a return resumes.
+    func cancelHiResDetail(videoId: String) {
+        hiResTasks[videoId]?.cancel()
+        hiResTasks[videoId] = nil
     }
 
     // MARK: - Stack expansion

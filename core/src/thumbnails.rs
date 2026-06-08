@@ -164,13 +164,19 @@ impl ThumbnailGenerator {
     }
 
     pub fn cleanup_thumbnails(cache_dir: &Path, video_id: &str) -> Result<()> {
-        for size in &["small", "medium", "large"] {
-            let path = cache_dir.join(format!("{}_{}.jpg", video_id, size));
-            let _ = std::fs::remove_file(path);
-        }
-        for i in 0..Self::SCRUB_FRAME_COUNT {
-            let path = cache_dir.join(format!("{}_scrub_{}.jpg", video_id, i));
-            let _ = std::fs::remove_file(path);
+        // Sweep every cache file for this video: the fixed sizes, the scrub
+        // frames, and any higher-resolution `{id}_{size}_w{width}.jpg` detail
+        // variants (whose widths we don't track here). The `{id}_` prefix is
+        // collision-free since ids are UUIDs.
+        if let Ok(entries) = std::fs::read_dir(cache_dir) {
+            let prefix = format!("{}_", video_id);
+            for entry in entries.flatten() {
+                if let Some(name) = entry.file_name().to_str() {
+                    if name.starts_with(&prefix) {
+                        let _ = std::fs::remove_file(entry.path());
+                    }
+                }
+            }
         }
         Ok(())
     }
@@ -260,6 +266,109 @@ impl ThumbnailGenerator {
             }
         }
         Ok(())
+    }
+
+    /// Cache filename for a `(size, max_width)` thumbnail request. `max_width
+    /// <= 0` is the default `{id}_{size}.jpg`; otherwise a higher-resolution
+    /// variant keyed by the requested width, `{id}_{size}_w{max_width}.jpg`.
+    pub fn thumbnail_filename(video_id: &str, size: &str, max_width: i32) -> String {
+        if max_width > 0 {
+            format!("{}_{}_w{}.jpg", video_id, size, max_width)
+        } else {
+            format!("{}_{}.jpg", video_id, size)
+        }
+    }
+
+    /// Read a higher-resolution thumbnail variant from cache, if present.
+    pub fn get_thumbnail_at_width(
+        cache_dir: &Path,
+        video_id: &str,
+        size: &str,
+        max_width: i32,
+    ) -> Result<Option<Vec<u8>>> {
+        let path = cache_dir.join(Self::thumbnail_filename(video_id, size, max_width));
+        if path.exists() {
+            Ok(Some(std::fs::read(&path).map_err(ReelVaultError::IoError)?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Seek position (seconds) for the frame a `size` token names: `scrub_N`
+    /// resolves to the Nth of [`SCRUB_FRAME_COUNT`](Self::SCRUB_FRAME_COUNT)
+    /// positions evenly spread across 5%..95% (matching
+    /// [`generate_scrub_thumbnails`](Self::generate_scrub_thumbnails));
+    /// anything else resolves to the 50% poster frame.
+    fn frame_seek_pos(size: &str, duration_secs: f64) -> f64 {
+        if let Some(n) = size.strip_prefix("scrub_").and_then(|s| s.parse::<usize>().ok()) {
+            let count = Self::SCRUB_FRAME_COUNT;
+            let pct = if count > 1 {
+                0.05 + (n as f64 / (count - 1) as f64) * 0.9
+            } else {
+                0.5
+            };
+            duration_secs * pct
+        } else {
+            duration_secs * 0.5
+        }
+    }
+
+    /// Extract a single frame (the one `size` names) at `max_width` pixels wide,
+    /// never upscaled past the source (`scale=min(W,iw)`), and cache it under
+    /// the width-specific name. Idempotent: a no-op if the file already exists.
+    /// Used by the detail view to fetch display-resolution scrub frames on
+    /// demand without baking full-resolution stills for high-resolution videos.
+    pub fn generate_frame_at_width(
+        video_path: &Path,
+        video_id: &str,
+        cache_dir: &Path,
+        duration_secs: f64,
+        size: &str,
+        max_width: i32,
+    ) -> Result<()> {
+        if max_width <= 0 || duration_secs <= 0.0 {
+            return Ok(());
+        }
+        if !Self::ffmpeg_available() {
+            return Err(ReelVaultError::FfmpegError(
+                "ffmpeg not found in PATH".to_string(),
+            ));
+        }
+        let output = cache_dir.join(Self::thumbnail_filename(video_id, size, max_width));
+        if output.exists() {
+            return Ok(());
+        }
+        let seek_pos = Self::frame_seek_pos(size, duration_secs);
+        let color_info = probe_color_info(video_path);
+        let scale = format!("scale=min({}\\,iw):-1", max_width);
+        let vf = build_thumbnail_vf(&color_info, &scale);
+
+        let _permit = acquire_ffmpeg_permit();
+        let result = Command::new("ffmpeg")
+            .args([
+                "-v",
+                "error",
+                "-ss",
+                &format!("{:.3}", seek_pos),
+                "-i",
+                video_path.to_str().unwrap_or(""),
+                "-frames:v",
+                "1",
+                "-vf",
+                &vf,
+                "-q:v",
+                "3",
+                "-y",
+                output.to_str().unwrap_or(""),
+            ])
+            .output();
+        match result {
+            Ok(o) if o.status.success() => Ok(()),
+            Ok(o) => Err(ReelVaultError::ThumbnailGenerationFailed(
+                String::from_utf8_lossy(&o.stderr).to_string(),
+            )),
+            Err(e) => Err(ReelVaultError::FfmpegError(e.to_string())),
+        }
     }
 }
 
