@@ -210,16 +210,21 @@ struct GridView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 16) {
+        let msg = viewModel.emptyStateMessage()
+        return VStack(spacing: 16) {
             Image(systemName: "folder.badge.questionmark")
                 .font(.system(size: 48))
                 .foregroundColor(.secondary)
-            Text("No videos found")
+            Text(msg.title)
                 .font(.body)
                 .foregroundColor(.secondary)
-            Text("Click the folder+ button in the top bar to add a library location.")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            if !msg.detail.isEmpty {
+                Text(msg.detail)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 280)
+            }
         }
     }
 

@@ -89,25 +89,35 @@ fun DetailScreen(
 
         Box(modifier = Modifier.fillMaxSize()) {
         if (metadata.value == null && !isLoading.value) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(ReelVaultSpacing.Medium),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PermMedia,
-                    contentDescription = "No video selected",
-                    modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.outline
-                )
-                Spacer(modifier = Modifier.height(ReelVaultSpacing.Medium))
-                Text(
-                    text = "Select a video to view details",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            // When a smart collection is selected but no card is, explain how
+            // it gathers videos rather than just prompting for a selection.
+            val selColId by gridViewModel.selectedCollectionId.collectAsState()
+            val cols by gridViewModel.collections.collectAsState()
+            gridViewModel.tags.collectAsState().value // re-render once tag names load
+            val smartCol = cols.firstOrNull { it.id == selColId && it.isSmart }
+            if (smartCol != null) {
+                SmartCollectionCriteria(smartCol.name, gridViewModel.smartCollectionCriteria(smartCol))
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(ReelVaultSpacing.Medium),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PermMedia,
+                        contentDescription = "No video selected",
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.outline
+                    )
+                    Spacer(modifier = Modifier.height(ReelVaultSpacing.Medium))
+                    Text(
+                        text = "Select a video to view details",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         } else if (metadata.value != null) {
             Column(
@@ -1333,6 +1343,59 @@ fun CollectionsSection(
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+/** Shown in the details panel when a smart collection is selected but no card
+ *  is — explains the rules that decide what the collection gathers. */
+@Composable
+private fun SmartCollectionCriteria(name: String, criteria: List<Pair<String, String>>) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(ReelVaultSpacing.Medium)
+    ) {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(modifier = Modifier.height(ReelVaultSpacing.XSmall))
+        Text(
+            text = "Smart collection — videos are gathered automatically by these rules:",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(ReelVaultSpacing.Medium))
+        if (criteria.isEmpty()) {
+            Text(
+                text = "No rules set — this collection matches every video.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            criteria.forEach { (label, value) ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 3.dp),
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.width(76.dp),
+                    )
+                    Text(
+                        text = value,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
         }

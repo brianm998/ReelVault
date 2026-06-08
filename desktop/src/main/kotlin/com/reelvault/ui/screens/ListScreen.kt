@@ -33,6 +33,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -218,6 +219,11 @@ fun ListScreen(
 
         Box(modifier = Modifier.fillMaxSize()) {
             if (videos.value.isEmpty() && !isLoading.value) {
+                // Observe collection selection so the message updates when the
+                // user navigates between collections / the library.
+                viewModel.selectedCollectionId.collectAsState().value
+                viewModel.collections.collectAsState().value
+                val (emptyTitle, emptyDetail) = viewModel.emptyStateMessage()
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -232,10 +238,20 @@ fun ListScreen(
                     )
                     Spacer(modifier = Modifier.height(ReelVaultSpacing.Medium))
                     Text(
-                        text = "No videos found",
+                        text = emptyTitle,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurface
                     )
+                    if (emptyDetail.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(ReelVaultSpacing.XSmall))
+                        Text(
+                            text = emptyDetail,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.widthIn(max = 280.dp)
+                        )
+                    }
                 }
             } else {
                 LazyColumn(

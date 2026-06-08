@@ -667,12 +667,38 @@ class GridViewModel: ObservableObject {
         }
     }
 
+    /// Id of the smart collection whose filters are currently expanded into the
+    /// live filter fields, or nil. A smart collection isn't a `collection_id`
+    /// constraint — its saved filters are written into the bar — so we must
+    /// remember it to undo those writes when the user navigates away.
+    private var activeSmartCollectionId: String?
+
+    /// Undo the filter fields a smart collection expanded into the bar, so they
+    /// don't strand the user on an empty grid after they leave it (e.g. after
+    /// deleting a smart collection that matched nothing — the bug this fixes).
+    /// No-op when no smart collection is currently applied.
+    private func clearActiveSmartCollectionFilters() {
+        guard activeSmartCollectionId != nil else { return }
+        activeSmartCollectionId = nil
+        filterMinRating = 0
+        filterColorLabel = ""
+        filterTagId = ""
+        for i in metadataColumns.indices where !metadataColumns[i].values.isEmpty {
+            metadataColumns[i].values = []
+            metadataColumns[i].anchor = ""
+        }
+        LibraryFilterPrefs.saveColumns(metadataColumns)
+    }
+
     func setCollectionFilter(_ id: String?) {
         // Already viewing this collection (or already cleared) — keep the
         // current results rather than reloading and flashing the spinner.
         // Library rows clear the collection on every click, so without this
         // guard re-selecting the current location would still reload.
         guard id != selectedCollectionId else { return }
+        // Leaving whatever we were viewing: if it was a smart collection, undo
+        // the filters it injected so they don't linger into the next view.
+        clearActiveSmartCollectionFilters()
         selectedCollectionId = id
         guard let id = id, let col = collections.first(where: { $0.id == id }) else {
             collectionIdFilter = nil
@@ -689,6 +715,7 @@ class GridViewModel: ObservableObject {
             filterMinRating = f.minRating
             filterColorLabel = f.colorLabel
             filterTagId = f.tagIds.first ?? ""
+            activeSmartCollectionId = id
         } else {
             collectionIdFilter = id
         }
@@ -771,6 +798,68 @@ class GridViewModel: ObservableObject {
         if !f.codec.isEmpty { cols.append(MetadataColumn(key: "codec", values: parse(f.codec))) }
         if f.captureYear != 0 { cols.append(MetadataColumn(key: "year", values: [String(f.captureYear)])) }
         return cols.isEmpty ? defaultMetadataColumns : cols
+    }
+
+    /// Human-readable selection criteria for a smart `collection`, resolving
+    /// tag IDs to names. An empty array means the collection constrains nothing
+    /// (it would match every video). Shown in the details panel when no card is
+    /// selected, so the user can see why a smart collection gathers what it does.
+    func smartCollectionCriteria(_ collection: Collection) -> [(label: String, value: String)] {
+        guard let f = SmartCollectionFilters.from(json: collection.filterJson) else { return [] }
+        func multi(_ s: String) -> String {
+            s.components(separatedBy: metadataValueSeparator).filter { !$0.isEmpty }.joined(separator: ", ")
+        }
+        var out: [(label: String, value: String)] = []
+        if !f.camera.isEmpty { out.append((label: "Camera", value: multi(f.camera))) }
+        if !f.lens.isEmpty { out.append((label: "Lens", value: multi(f.lens))) }
+        if !f.codec.isEmpty { out.append((label: "Codec", value: multi(f.codec))) }
+        if f.captureYear != 0 { out.append((label: "Year", value: String(f.captureYear))) }
+        if f.minRating > 0 { out.append((label: "Rating", value: "\(f.minRating)+ stars")) }
+        if !f.colorLabel.isEmpty { out.append((label: "Color", value: f.colorLabel.capitalized)) }
+        if !f.tagIds.isEmpty {
+            let names = f.tagIds.map { id in tags.first(where: { $0.id == id })?.name ?? id }
+            out.append((label: "Keywords", value: names.joined(separator: ", ")))
+        }
+        return out
+    }
+
+    /// Title + detail for the grid/list empty state, tailored to *why* the grid
+    /// is empty. Keeps grid and list in sync and avoids the old advice to "add a
+    /// library location", which is wrong inside an empty collection.
+    func emptyStateMessage() -> (title: String, detail: String) {
+        let col = selectedCollectionId.flatMap { id in collections.first(where: { $0.id == id }) }
+        if let col = col, col.isSmart {
+            return ("No videos match this smart collection",
+                    "Its selection rules are listed in the details panel. Edit the collection to change what it gathers.")
+        }
+        if col != nil {
+            return ("This collection is empty",
+                    "Add videos by selecting them in the grid and choosing “Add to Collection”.")
+        }
+        if hasActiveLibraryFilter() {
+            return ("No videos match the current filter",
+                    "Choose “Clear” in the filter bar to show all videos again.")
+        }
+        if libraryLocations.isEmpty {
+            return ("Your library is empty",
+                    "Click the + button at the top of the Library panel to add a folder.")
+        }
+        return ("No videos found", "")
+    }
+
+    /// Whether any Library Filter constraint (text / attribute / metadata /
+    /// keyword / map proximity) is currently narrowing the grid.
+    private func hasActiveLibraryFilter() -> Bool {
+        !searchQuery.isEmpty ||
+            filterMinRating > 0 ||
+            !filterColorLabel.isEmpty ||
+            filterHasLocation != .any ||
+            filterHasKeywords != .any ||
+            filterHasProxies != .any ||
+            filterFullResolution != .any ||
+            !filterTagId.isEmpty ||
+            filterLocation != nil ||
+            metadataColumns.contains { !$0.values.isEmpty }
     }
 
     // MARK: - Keywords / tags

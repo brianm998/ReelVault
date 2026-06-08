@@ -1776,12 +1776,38 @@ class GridViewModel(
         reloadForFilterChange()
     }
 
+    /** Id of the smart collection whose filters are currently expanded into the
+     *  live filter fields, or null. A smart collection isn't a `collection_id`
+     *  constraint — its saved filters are written into the bar — so we must
+     *  remember it to undo those writes when the user navigates away. */
+    private var activeSmartCollectionId: String? = null
+
+    /** Undo the filter fields a smart collection expanded into the bar, so they
+     *  don't strand the user on an empty grid after they leave it (e.g. after
+     *  deleting a smart collection that matched nothing — the bug this fixes).
+     *  No-op when no smart collection is currently applied. */
+    private fun clearActiveSmartCollectionFilters() {
+        if (activeSmartCollectionId == null) return
+        activeSmartCollectionId = null
+        _filterMinRating.value = 0
+        _filterColorLabel.value = ""
+        filterTags = emptyList()
+        _filterTagId.value = ""
+        if (_metadataColumns.value.any { it.values.isNotEmpty() }) {
+            _metadataColumns.value = _metadataColumns.value.map { it.copy(values = emptySet(), anchor = "") }
+            LibraryFilterPrefs.saveColumns(_metadataColumns.value)
+        }
+    }
+
     fun setCollection(id: String?) {
         // Already viewing this collection (or already cleared) — keep the
         // current results rather than reloading and flashing the spinner.
         // Library rows clear the collection on every click, so without this
         // guard re-selecting the current location would still reload.
         if (id == _selectedCollectionId.value) return
+        // Leaving whatever we were viewing: if it was a smart collection, undo
+        // the filters it injected so they don't linger into the next view.
+        clearActiveSmartCollectionFilters()
         _selectedCollectionId.value = id
         val col = _collections.value.firstOrNull { it.id == id }
         if (col != null && col.isSmart && col.filterJson.isNotBlank()) {
@@ -1795,10 +1821,75 @@ class GridViewModel(
             _filterColorLabel.value = f.colorLabel
             filterTags = f.tagIds
             _filterTagId.value = f.tagIds.firstOrNull() ?: ""
+            activeSmartCollectionId = id
         } else {
             collectionId = id
         }
         reloadForFilterChange()
+    }
+
+    /** Human-readable selection criteria for a smart [collection], resolving
+     *  tag IDs to names. An empty list means the collection constrains nothing
+     *  (it would match every video). Shown in the details panel when no card is
+     *  selected, so the user can see why a smart collection gathers what it does. */
+    fun smartCollectionCriteria(
+        collection: com.reelvault.data.models.Collection
+    ): List<Pair<String, String>> {
+        val f = com.reelvault.data.models.SmartCollectionFilters.fromJson(collection.filterJson)
+        val sep = com.reelvault.data.models.METADATA_VALUE_SEPARATOR
+        fun multi(s: String) = s.split(sep).filter { it.isNotEmpty() }.joinToString(", ")
+        val out = mutableListOf<Pair<String, String>>()
+        if (f.camera.isNotEmpty()) out += "Camera" to multi(f.camera)
+        if (f.lens.isNotEmpty()) out += "Lens" to multi(f.lens)
+        if (f.codec.isNotEmpty()) out += "Codec" to multi(f.codec)
+        if (f.captureYear != 0) out += "Year" to f.captureYear.toString()
+        if (f.minRating > 0) out += "Rating" to "${f.minRating}+ stars"
+        if (f.colorLabel.isNotEmpty()) out += "Color" to f.colorLabel.replaceFirstChar { it.uppercase() }
+        if (f.tagIds.isNotEmpty()) {
+            val names = f.tagIds.map { id -> _tags.value.firstOrNull { it.id == id }?.name ?: id }
+            out += "Keywords" to names.joinToString(", ")
+        }
+        return out
+    }
+
+    /** Title + detail for the grid/list empty state, tailored to *why* the grid
+     *  is empty. Keeps grid and list in sync and avoids the old advice to "add a
+     *  library location", which is wrong inside an empty collection. */
+    fun emptyStateMessage(): Pair<String, String> {
+        val id = _selectedCollectionId.value
+        val col = id?.let { cid -> _collections.value.firstOrNull { it.id == cid } }
+        return when {
+            col != null && col.isSmart ->
+                "No videos match this smart collection" to
+                    "Its selection rules are listed in the details panel. Edit the collection to change what it gathers."
+            col != null ->
+                "This collection is empty" to
+                    "Add videos by selecting them in the grid and choosing “Add to Collection”."
+            hasActiveLibraryFilter() ->
+                "No videos match the current filter" to
+                    "Choose “Clear” in the filter bar to show all videos again."
+            _libraryLocations.value.isEmpty() ->
+                "Your library is empty" to
+                    "Click the + button at the top of the Library panel to add a folder."
+            else ->
+                "No videos found" to ""
+        }
+    }
+
+    /** Whether any Library Filter constraint (text / attribute / metadata /
+     *  keyword / map proximity) is currently narrowing the grid. */
+    private fun hasActiveLibraryFilter(): Boolean {
+        val anyAttr = com.reelvault.data.models.AttributeFilterState.Any
+        return _searchQuery.value.isNotEmpty() ||
+            _filterMinRating.value > 0 ||
+            _filterColorLabel.value.isNotEmpty() ||
+            _filterHasLocation.value != anyAttr ||
+            _filterHasKeywords.value != anyAttr ||
+            _filterHasProxies.value != anyAttr ||
+            _filterFullResolution.value != anyAttr ||
+            _filterTagId.value.isNotEmpty() ||
+            _filterLocation.value != null ||
+            _metadataColumns.value.any { it.values.isNotEmpty() }
     }
 
     fun loadCollections() {

@@ -548,18 +548,62 @@ struct DetailView: View {
         }
     }
 
+    @ViewBuilder
     private var placeholderContent: some View {
-        VStack(spacing: 12) {
-            Spacer()
-            Image(systemName: "square.and.pencil")
-                .font(.system(size: 32))
-                .foregroundColor(.secondary)
-            Text("Select a video to view details")
-                .font(.body)
-                .foregroundColor(.secondary)
-            Spacer()
+        // When a smart collection is selected but no card is, explain how it
+        // gathers videos rather than just prompting for a selection.
+        if let id = gridViewModel.selectedCollectionId,
+           let col = gridViewModel.collections.first(where: { $0.id == id }), col.isSmart {
+            smartCollectionCriteriaView(col)
+        } else {
+            VStack(spacing: 12) {
+                Spacer()
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: 32))
+                    .foregroundColor(.secondary)
+                Text("Select a video to view details")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
         }
-        .frame(maxWidth: .infinity)
+    }
+
+    /// The selection rules of a smart collection, shown in place of the
+    /// "select a video" placeholder when one is the active view.
+    private func smartCollectionCriteriaView(_ col: Collection) -> some View {
+        let criteria = gridViewModel.smartCollectionCriteria(col)
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(col.name).font(.headline)
+                Text("Smart collection — videos are gathered automatically by these rules:")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                if criteria.isEmpty {
+                    Text("No rules set — this collection matches every video.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 4)
+                } else {
+                    ForEach(criteria.indices, id: \.self) { i in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text(criteria[i].label)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .frame(width: 72, alignment: .leading)
+                            Text(criteria[i].value)
+                                .font(.callout)
+                            Spacer()
+                        }
+                    }
+                    .padding(.top, 2)
+                }
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+        }
     }
 
     /// "<height>p • <size> • auto-detected" subtitle for a proxy row.

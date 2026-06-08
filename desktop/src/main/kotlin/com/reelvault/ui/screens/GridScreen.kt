@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.reelvault.data.models.LibraryLocation
@@ -210,6 +211,11 @@ fun GridScreen(
             fun selectedAt(i: Int): Boolean =
                 i in rendered.indices && rendered[i].video.id in selectedIdSet
             if (videos.value.isEmpty() && !isLoading.value) {
+                // Observe collection selection so the message updates when the
+                // user navigates between collections / the library.
+                viewModel.selectedCollectionId.collectAsState().value
+                viewModel.collections.collectAsState().value
+                val (emptyTitle, emptyDetail) = viewModel.emptyStateMessage()
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -224,10 +230,20 @@ fun GridScreen(
                     )
                     Spacer(modifier = Modifier.height(ReelVaultSpacing.Medium))
                     Text(
-                        text = "No videos found",
+                        text = emptyTitle,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurface
                     )
+                    if (emptyDetail.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(ReelVaultSpacing.XSmall))
+                        Text(
+                            text = emptyDetail,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.widthIn(max = 280.dp)
+                        )
+                    }
                 }
             } else {
                 LazyVerticalGrid(
