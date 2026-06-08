@@ -672,6 +672,11 @@ fun VideoListRow(
         isInMultiSelection -> Color(0xFF818181)
         else -> Color(0xFF5C5C5C)
     }
+    val topBandColor = when {
+        isSelected -> Color(0xFFB0B0B0)
+        isInMultiSelection -> Color(0xFF818181)
+        else -> Color(0xFF6B6B6B)
+    }
     val bandDividerColor = when {
         isAnchor || isSelected || isInMultiSelection -> Color.Black.copy(alpha = 0.10f)
         else -> Color.Black.copy(alpha = 0.35f)
@@ -745,6 +750,29 @@ fun VideoListRow(
                 .width(cardWidth)
                 .border(1.dp, cardBorderColor)
         ) {
+            // Top stat band — the same four catalog-wide slots the grid card
+            // shows on top (slot 0 = TL, 1 = BL, 2 = TR, 3 = BR). These mirror
+            // the grid card so the stats appear "on the card" here too, in
+            // addition to the readable vertical list in the info column.
+            val cardTopSlots = (topSlots + List(4) { "" }).take(4)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(36.dp)
+                    .background(topBandColor)
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    ListRowStatCell(slotIndex = 0, key = cardTopSlots[0], video = video, onPick = onPickStatSlot, alignEnd = false, weight = 1f)
+                    ListRowStatCell(slotIndex = 2, key = cardTopSlots[2], video = video, onPick = onPickStatSlot, alignEnd = true, weight = 1f)
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    ListRowStatCell(slotIndex = 1, key = cardTopSlots[1], video = video, onPick = onPickStatSlot, alignEnd = false, weight = 1f)
+                    ListRowStatCell(slotIndex = 3, key = cardTopSlots[3], video = video, onPick = onPickStatSlot, alignEnd = true, weight = 1f)
+                }
+            }
+            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(bandDividerColor))
             // Square thumbnail (cardWidth × thumbnailHeight).
             Box(
                 modifier = Modifier

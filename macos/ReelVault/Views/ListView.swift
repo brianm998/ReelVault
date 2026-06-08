@@ -584,6 +584,11 @@ struct VideoListRowView: View {
     /// never carries redundant data.
     private var cardContainer: some View {
         VStack(alignment: .leading, spacing: 0) {
+            topStatBand
+            Rectangle()
+                .fill(bandDividerColor)
+                .frame(height: 1)
+                .allowsHitTesting(false)
             thumbnailArea
                 .frame(width: cardWidth, height: thumbnailHeight)
                 .background(rowMiddleBackground)
@@ -714,6 +719,42 @@ struct VideoListRowView: View {
         }
         .frame(minWidth: 180)
         .padding(.vertical, 4)
+    }
+
+    /// Top stat band on the card — the same four catalog-wide slots the grid
+    /// card shows on top (slot 0 = TL, 1 = BL, 2 = TR, 3 = BR). These mirror
+    /// the grid card so the stats appear "on the card" here too, in addition
+    /// to the readable vertical list in `infoColumn`. Display-only: the picker
+    /// lives in the info column (and the grid card), so we don't duplicate the
+    /// popover state here.
+    private var topStatBand: some View {
+        let slots = padSlots(topSlots)
+        return VStack(spacing: 2) {
+            HStack(spacing: 4) {
+                topBandStat(slotIndex: 0, key: slots[0], alignTrailing: false)
+                topBandStat(slotIndex: 2, key: slots[2], alignTrailing: true)
+            }
+            HStack(spacing: 4) {
+                topBandStat(slotIndex: 1, key: slots[1], alignTrailing: false)
+                topBandStat(slotIndex: 3, key: slots[3], alignTrailing: true)
+            }
+        }
+        .padding(.horizontal, 4)
+        .padding(.vertical, 2)
+        .frame(maxWidth: .infinity)
+        .frame(height: 36)
+        .background(topBandColor)
+    }
+
+    @ViewBuilder
+    private func topBandStat(slotIndex: Int, key: String, alignTrailing: Bool) -> some View {
+        let stat = GridStatKey(rawValue: key) ?? .none
+        Text(stat == .none ? "—" : stat.value(for: video))
+            .font(.system(size: 10, weight: slotIndex == 0 ? .semibold : .regular))
+            .foregroundColor(stat == .none ? Color.secondary : Color.primary)
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
     }
 
     /// Bottom band: 5 tappable star/dot positions, matching the grid card's
