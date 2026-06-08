@@ -388,13 +388,14 @@ fun GridScreen(
                                         !vlcAvailable           -> showVlcErrorDialog = true
                                         // Instance check (fallback): player built but init failed.
                                         !inlinePlayer.available -> showVlcErrorDialog = true
-                                        // Natively playable — play directly.
-                                        video.playableNatively  -> viewModel.playVideo(video.id)
-                                        // Oversize but at least one proxy is available — use the
-                                        // smallest one automatically (playVideoPreferProxy picks
-                                        // `proxies.last()` which is lowest-res from the
-                                        // descending-by-pixel-count list returned by the server).
+                                        // Prefer a proxy whenever one exists — even for natively
+                                        // playable masters. Inline playback is a hover preview, so
+                                        // the smallest proxy (playVideoPreferProxy picks
+                                        // `proxies.last()`, lowest-res from the server's
+                                        // descending-by-pixel-count list) is the right default.
                                         video.proxyCount > 0    -> viewModel.playVideoPreferProxy(video.id)
+                                        // No proxy but natively playable — play the master directly.
+                                        video.playableNatively  -> viewModel.playVideo(video.id)
                                         // Oversize and no proxy — offer to create one.
                                         else -> viewModel.requestCreateProxy(video.id)
                                     }

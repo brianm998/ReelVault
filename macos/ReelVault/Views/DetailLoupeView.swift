@@ -41,6 +41,9 @@ struct DetailLoupeView: View {
     @State private var durationSec: Double = 0
     /// Time-observer token; we drop it when the player goes away.
     @State private var timeObserver: Any? = nil
+    /// Measured pixel height of the player render area, used to default to the
+    /// proxy whose resolution best matches the window (see `effectivePath`).
+    @State private var playerAreaHeight: CGFloat = 0
 
     /// The video summary currently being inspected — drawn from the grid
     /// selection. Recomputes when the selection changes so the loupe always
@@ -87,11 +90,11 @@ struct DetailLoupeView: View {
         .onDisappear { teardownPlayer() }
     }
 
-    /// Resolve which on-disk path the player should load right now:
-    /// explicit proxy pick (right panel) > unplayable-master fallback
-    /// to the smallest proxy > the master path itself.
+    /// Resolve which on-disk path the player should load right now: an explicit
+    /// proxy pick (right panel) wins; otherwise the proxy whose resolution best
+    /// matches the player render area (`playerAreaHeight`); otherwise the master.
     private func effectivePath(for video: VideoSummary) -> String {
-        detailViewModel.playbackPath(for: video) ?? video.path
+        detailViewModel.playbackPath(for: video, areaHeightPx: Int(playerAreaHeight)) ?? video.path
     }
 
     // MARK: - Empty / placeholder
@@ -152,7 +155,7 @@ struct DetailLoupeView: View {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(detailViewModel.selectedProxyId != nil
                              ? "Playing selected proxy"
-                             : "Original too large — playing proxy")
+                             : "Playing proxy")
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundColor(.white)
                         if let proxy = activeProxy {
@@ -170,6 +173,15 @@ struct DetailLoupeView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Measure the render area (non-intrusively) so the player can default
+        // to the proxy whose resolution best fits the window.
+        .background(
+            GeometryReader { geo in
+                Color.clear
+                    .onAppear { playerAreaHeight = geo.size.height }
+                    .onChange(of: geo.size.height) { _, h in playerAreaHeight = h }
+            }
+        )
 
         ControlBar(
             video: video,

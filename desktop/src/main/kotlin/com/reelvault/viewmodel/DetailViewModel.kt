@@ -155,23 +155,41 @@ class DetailViewModel(
         }
     }
 
-    /** The on-disk path that the detail-view player should load, based
-     *  on the current proxy selection and the master's playability. The
-     *  rules:
+    /** The on-disk path that the detail-view player should load, based on the
+     *  current proxy selection and the player's render height [areaHeightPx]
+     *  (in px). The rules:
      *    • User explicitly picked a proxy → that proxy's path.
-     *    • Master is not natively playable AND a proxy exists → smallest proxy's path.
-     *    • Otherwise → null, callers should fall back to the master's own path.
+     *    • A proxy exists → the proxy whose resolution best matches the render
+     *      area (see [chooseProxyForHeight]). We prefer a proxy even for a
+     *      natively-playable master — detail playback defaults to a proxy, with
+     *      the master one click away via the right-panel picker.
+     *    • Otherwise → null; callers fall back to the master's own path.
      */
-    fun playbackPathFor(video: com.reelvault.data.models.VideoSummary): String? {
+    fun playbackPathFor(
+        video: com.reelvault.data.models.VideoSummary,
+        areaHeightPx: Int = 0,
+    ): String? {
         val pickedId = _selectedProxyId.value
         if (pickedId != null) {
             return _proxies.value.firstOrNull { it.id == pickedId }?.path
         }
-        if (!video.playableNatively && _proxies.value.isNotEmpty()) {
-            // `list_proxies` returns descending by pixel count — last = smallest.
-            return _proxies.value.lastOrNull()?.path
-        }
-        return null
+        return chooseProxyForHeight(_proxies.value, areaHeightPx)?.path
+    }
+
+    /** Pick the proxy that best fills a render area [areaHeightPx] px tall: the
+     *  smallest proxy still at least as tall as the area (so it isn't upscaled),
+     *  or — when the area is taller than every proxy — the largest proxy. Before
+     *  the area is measured ([areaHeightPx] <= 0) we fall back to the smallest.
+     *  Returns null when there are no proxies. `list_proxies` returns the list
+     *  sorted descending by pixel count (first = largest, last = smallest). */
+    private fun chooseProxyForHeight(
+        proxies: List<VideoRepository.ProxyInfo>,
+        areaHeightPx: Int,
+    ): VideoRepository.ProxyInfo? {
+        if (proxies.isEmpty()) return null
+        if (areaHeightPx <= 0) return proxies.lastOrNull()
+        return proxies.filter { it.height >= areaHeightPx }.minByOrNull { it.height }
+            ?: proxies.firstOrNull()
     }
 
     private fun loadGroupMembers(groupId: String) {

@@ -125,8 +125,12 @@ fun DetailViewScreen(
     // immediately changes what gets loaded.
     val selectedProxyId by detailViewModel.selectedProxyId.collectAsState()
     val proxies by detailViewModel.proxies.collectAsState()
-    val effectivePath: String = remember(video.id, selectedProxyId, proxies, video.playableNatively) {
-        detailViewModel.playbackPathFor(video) ?: video.path
+    // Pixel size of the player render area, measured by the layout below. The
+    // detail player defaults to the proxy whose resolution best matches this
+    // area's height (re-derived when the area is first measured / resized).
+    var areaSize by remember { mutableStateOf(IntSize.Zero) }
+    val effectivePath: String = remember(video.id, selectedProxyId, proxies, areaSize.height) {
+        detailViewModel.playbackPathFor(video, areaSize.height) ?: video.path
     }
     // If the user picks a different proxy (or reverts to master) while
     // a video is already playing, swap the URL in place. Skip when the
@@ -289,7 +293,6 @@ private fun ScrubPreview(
         }
     }
     var hoverX by remember { mutableStateOf<Float?>(null) }
-    var areaSize by remember { mutableStateOf(IntSize.Zero) }
 
     val displayed = run {
         val x = hoverX

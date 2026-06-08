@@ -395,8 +395,11 @@ fun ListScreen(
                                             when {
                                                 !vlcAvailable           -> showVlcErrorDialog = true
                                                 !inlinePlayer.available -> showVlcErrorDialog = true
-                                                video.playableNatively  -> viewModel.playVideo(video.id)
+                                                // Prefer the smallest proxy whenever one exists,
+                                                // even for natively-playable masters (inline is a
+                                                // lightweight hover preview).
                                                 video.proxyCount > 0    -> viewModel.playVideoPreferProxy(video.id)
+                                                video.playableNatively  -> viewModel.playVideo(video.id)
                                                 else                    -> viewModel.requestCreateProxy(video.id)
                                             }
                                         },

@@ -117,21 +117,34 @@ class DetailViewModel: ObservableObject {
         }
     }
 
-    /// The on-disk path that the detail-view player should load, based
-    /// on the current proxy selection and the master's playability:
+    /// The on-disk path the detail-view player should load, based on the
+    /// current proxy selection and the player's render height `areaHeightPx`
+    /// (in px):
     ///   * User explicitly picked a proxy → that proxy's path.
-    ///   * Master is not natively playable AND a proxy exists →
-    ///     smallest proxy's path.
+    ///   * A proxy exists → the proxy whose resolution best matches the render
+    ///     area (see `chooseProxy(areaHeightPx:)`). We prefer a proxy even for
+    ///     a natively-playable master — detail playback defaults to a proxy,
+    ///     with the master one click away via the right-panel picker.
     ///   * Otherwise → nil; the caller falls back to the master path.
-    func playbackPath(for video: VideoSummary) -> String? {
+    func playbackPath(for video: VideoSummary, areaHeightPx: Int = 0) -> String? {
         if let picked = selectedProxyId,
            let row = proxies.first(where: { $0.id == picked }) {
             return row.path
         }
-        if !video.playableNatively, let smallest = proxies.last {
-            return smallest.path
-        }
-        return nil
+        return chooseProxy(areaHeightPx: areaHeightPx)?.path
+    }
+
+    /// Pick the proxy that best fills a render area `areaHeightPx` px tall: the
+    /// smallest proxy still at least as tall as the area (so it isn't upscaled),
+    /// or — when the area is taller than every proxy — the largest. Before the
+    /// area is measured (`areaHeightPx <= 0`) we fall back to the smallest.
+    /// Returns nil when there are no proxies. `proxies` is sorted descending by
+    /// pixel count (first = largest, last = smallest).
+    private func chooseProxy(areaHeightPx: Int) -> VideoRepository.ProxyInfo? {
+        guard !proxies.isEmpty else { return nil }
+        if areaHeightPx <= 0 { return proxies.last }
+        return proxies.filter { $0.height >= areaHeightPx }.min(by: { $0.height < $1.height })
+            ?? proxies.first
     }
 
     private func loadGroupMembers(groupId: String) {
