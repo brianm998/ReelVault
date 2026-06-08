@@ -1110,7 +1110,7 @@ struct VideoListHorizontalCardView: View {
         VStack(alignment: .leading, spacing: 0) {
             topBandView
                 .frame(maxWidth: .infinity)
-                .frame(height: 22)
+                .frame(height: 36)
                 .background(topBandColor)
             Rectangle()
                 .fill(bandDividerColor)
@@ -1131,44 +1131,59 @@ struct VideoListHorizontalCardView: View {
         }
     }
 
+    // Top stat band — the same four catalog-wide slots (2×2) the grid and
+    // unexpanded list cards show, so expanded stack cards match them instead of
+    // showing a lone stat. The collapse chevron sits in the top-left.
     @ViewBuilder
     private var topBandView: some View {
         let slots = padSlots(topSlots)
-        HStack(spacing: 4) {
-            if isRepresentative {
-                Button(action: onStackToggle) {
-                    Image(systemName: "chevron.up")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundColor(Color.black.opacity(0.7))
+        VStack(spacing: 2) {
+            HStack(spacing: 4) {
+                if isRepresentative {
+                    Button(action: onStackToggle) {
+                        Image(systemName: "chevron.up")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(Color.black.opacity(0.7))
+                    }
+                    .buttonStyle(.plain)
+                    .frame(width: 12, height: 12)
+                    .help("Collapse this stack")
                 }
-                .buttonStyle(.plain)
-                .frame(width: 14, height: 14)
-                .help("Collapse this stack")
+                hStatCell(slotIndex: 0, key: slots[0], alignTrailing: false)
+                hStatCell(slotIndex: 2, key: slots[2], alignTrailing: true)
             }
-            let stat = GridStatKey(rawValue: slots[0]) ?? .none
-            let value = stat.value(for: video)
-            let displayed = value.isEmpty ? "—" : value
-            Text(displayed)
-                .font(.system(size: 10, weight: .regular))
-                // Light text — brighter than the (now dark) top band.
-                .foregroundColor(stat == .none ? Color.white.opacity(0.5) : Color.white.opacity(0.92))
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-                .onTapGesture { openSlotPickerIndex = 0 }
-                .popover(
-                    isPresented: Binding(
-                        get: { openSlotPickerIndex == 0 },
-                        set: { if !$0 { openSlotPickerIndex = nil } }
-                    ),
-                    arrowEdge: .bottom
-                ) {
-                    statPickerMenu(slotIndex: 0, currentStat: stat)
-                }
-                .help("Click to choose which stat is shown in this slot")
+            HStack(spacing: 4) {
+                hStatCell(slotIndex: 1, key: slots[1], alignTrailing: false)
+                hStatCell(slotIndex: 3, key: slots[3], alignTrailing: true)
+            }
         }
-        .padding(.horizontal, 6)
+        .padding(.horizontal, 4)
+        .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private func hStatCell(slotIndex: Int, key: String, alignTrailing: Bool) -> some View {
+        let stat = GridStatKey(rawValue: key) ?? .none
+        let value = stat.value(for: video)
+        let displayed = value.isEmpty ? "—" : value
+        Text(displayed)
+            .font(.system(size: 10, weight: .regular))
+            .foregroundColor(stat == .none ? Color.white.opacity(0.5) : Color.white.opacity(0.92))
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
+            .contentShape(Rectangle())
+            .onTapGesture { openSlotPickerIndex = slotIndex }
+            .popover(
+                isPresented: Binding(
+                    get: { openSlotPickerIndex == slotIndex },
+                    set: { if !$0 { openSlotPickerIndex = nil } }
+                ),
+                arrowEdge: .bottom
+            ) {
+                statPickerMenu(slotIndex: slotIndex, currentStat: stat)
+            }
+            .help("Click to choose which stat is shown in this slot")
     }
 
     @ViewBuilder
@@ -1205,21 +1220,22 @@ struct VideoListHorizontalCardView: View {
     @ViewBuilder
     private var thumbnailArea: some View {
         ZStack {
-            Rectangle()
-                .fill(Color.black)
-                .overlay {
-                    if let image = displayedImage {
-                        Image(nsImage: image)
-                            .resizable()
-                            .scaledToFit()
-                    } else {
-                        Image(systemName: "film")
-                            .font(.system(size: 18))
-                            .foregroundColor(.secondary)
-                    }
+            // Letterbox against the card's grey middle band (from
+            // `cardContainer`'s `.background(thumbnailBackground)`) — matching
+            // the grid and unexpanded list cards, rather than a black fill.
+            Group {
+                if let image = displayedImage {
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .padding(8)
+                } else {
+                    Image(systemName: "film")
+                        .font(.system(size: 18))
+                        .foregroundColor(.secondary)
                 }
-                .frame(width: cardWidth, height: thumbnailHeight)
-                .cornerRadius(4)
+            }
+            .frame(width: cardWidth, height: thumbnailHeight)
 
             if video.hasLocation, let handler = onLocationClick {
                 VStack {

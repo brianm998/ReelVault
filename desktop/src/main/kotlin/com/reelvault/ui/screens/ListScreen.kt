@@ -1451,39 +1451,46 @@ private fun VideoListHorizontalCard(
                 .width(cardWidth)
                 .border(1.dp, cardBorderColor)
         ) {
-            // Top band — first stat slot, with collapse chevron for the representative.
-            Row(
+            // Top stat band — the same four catalog-wide slots (2×2) the grid
+            // and unexpanded list cards show, so expanded stack cards match
+            // them instead of showing a lone stat. The collapse chevron sits in
+            // the top-left beside slot 0.
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(22.dp)
+                    .height(36.dp)
                     .background(topBandColor)
-                    .padding(horizontal = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                if (isRepresentative) {
-                    Box(
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clickable(onClick = onStackToggle),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowUp,
-                            contentDescription = "Collapse stack",
-                            modifier = Modifier.size(14.dp),
-                            tint = Color.Black.copy(alpha = 0.7f)
-                        )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (isRepresentative) {
+                        Box(
+                            modifier = Modifier
+                                .size(14.dp)
+                                .clickable(onClick = onStackToggle),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowUp,
+                                contentDescription = "Collapse stack",
+                                modifier = Modifier.size(12.dp),
+                                tint = Color.Black.copy(alpha = 0.7f)
+                            )
+                        }
+                        Spacer(Modifier.width(2.dp))
                     }
-                    Spacer(Modifier.width(2.dp))
+                    ListRowStatCell(slotIndex = 0, key = paddedSlots.getOrElse(0) { "" }, video = video, onPick = onPickStatSlot, alignEnd = false, weight = 1f)
+                    ListRowStatCell(slotIndex = 2, key = paddedSlots.getOrElse(2) { "" }, video = video, onPick = onPickStatSlot, alignEnd = true, weight = 1f)
                 }
-                ListRowStatCell(
-                    slotIndex = 0,
-                    key = paddedSlots.getOrElse(0) { "" },
-                    video = video,
-                    onPick = onPickStatSlot,
-                    alignEnd = false,
-                    weight = 1f
-                )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    ListRowStatCell(slotIndex = 1, key = paddedSlots.getOrElse(1) { "" }, video = video, onPick = onPickStatSlot, alignEnd = false, weight = 1f)
+                    ListRowStatCell(slotIndex = 3, key = paddedSlots.getOrElse(3) { "" }, video = video, onPick = onPickStatSlot, alignEnd = true, weight = 1f)
+                }
             }
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(bandDividerColor))
             // Thumbnail
