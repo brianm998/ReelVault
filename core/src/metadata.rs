@@ -5,7 +5,6 @@ use crate::error::{Result, ReelVaultError};
 use crate::db::Database;
 use serde::{Deserialize, Serialize, Deserializer};
 use std::path::Path;
-use std::process::Command;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VideoMetadata {
@@ -46,7 +45,7 @@ impl MetadataExtractor {
         // concurrency budget — it does the same kind of network/disk I/O that
         // can saturate a SAN if too many run at once.
         let _permit = crate::concurrency::acquire_ffmpeg_permit();
-        let output = Command::new("ffprobe")
+        let output = crate::ffmpeg::ffprobe_command()
             .args([
                 "-v",
                 "error",
@@ -278,7 +277,7 @@ impl MetadataExtractor {
     }
 
     fn ffprobe_available() -> bool {
-        Command::new("ffprobe")
+        crate::ffmpeg::ffprobe_command()
             .arg("-version")
             .output()
             .map(|o| o.status.success())
@@ -333,7 +332,7 @@ impl MetadataExtractor {
         // Throttle the ffmpeg invocation like every other ffmpeg call.
         let _permit = crate::concurrency::acquire_ffmpeg_permit();
 
-        let status = Command::new("ffmpeg")
+        let status = crate::ffmpeg::ffmpeg_command()
             .arg("-nostdin")
             .arg("-loglevel").arg("error")
             .arg("-y")
@@ -416,7 +415,7 @@ impl MetadataExtractor {
 
         let _permit = crate::concurrency::acquire_ffmpeg_permit();
 
-        let status = Command::new("ffmpeg")
+        let status = crate::ffmpeg::ffmpeg_command()
             .arg("-nostdin")
             .arg("-loglevel").arg("error")
             .arg("-y")
@@ -455,7 +454,7 @@ impl MetadataExtractor {
     }
 
     fn ffmpeg_available() -> bool {
-        Command::new("ffmpeg")
+        crate::ffmpeg::ffmpeg_command()
             .arg("-version")
             .output()
             .map(|o| o.status.success())
@@ -981,8 +980,6 @@ mod tests {
     /// pass the pure-helper tests above.
     #[test]
     fn round_trip_through_ffmpeg_udta() {
-        use std::process::Command;
-
         if !MetadataExtractor::ffmpeg_available() || !MetadataExtractor::ffprobe_available() {
             eprintln!("skipping round_trip_through_ffmpeg_udta: ffmpeg/ffprobe not available");
             return;
@@ -991,7 +988,7 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tmpdir");
         let path = tmp.path().join("clip.mov");
 
-        let status = Command::new("ffmpeg")
+        let status = crate::ffmpeg::ffmpeg_command()
             .args([
                 "-nostdin", "-loglevel", "error", "-y",
                 "-f", "lavfi",

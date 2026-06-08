@@ -11,6 +11,7 @@ pub mod error;
 pub mod service;
 pub mod grouping;
 pub mod concurrency;
+pub mod ffmpeg;
 pub mod watcher;
 pub mod imagehash;
 pub mod proxies;

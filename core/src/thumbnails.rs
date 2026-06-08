@@ -5,7 +5,6 @@ use crate::concurrency::acquire_ffmpeg_permit;
 use crate::db::Database;
 use crate::error::{Result, ReelVaultError};
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 pub struct ThumbnailGenerator;
 
@@ -80,7 +79,7 @@ impl ThumbnailGenerator {
         let vf = build_thumbnail_vf(&color_info, "scale=min(400\\,iw):-1");
 
         let _permit = acquire_ffmpeg_permit();
-        let output = Command::new("ffmpeg")
+        let output = crate::ffmpeg::ffmpeg_command()
             .args([
                 "-v",
                 "error",
@@ -116,7 +115,7 @@ impl ThumbnailGenerator {
     ) -> Result<()> {
         let output_path = cache_dir.join(format!("{}_{}.jpg", video_id, size_name));
 
-        let output = Command::new("ffmpeg")
+        let output = crate::ffmpeg::ffmpeg_command()
             .args([
                 "-v",
                 "error",
@@ -140,7 +139,7 @@ impl ThumbnailGenerator {
     }
 
     fn ffmpeg_available() -> bool {
-        Command::new("ffmpeg")
+        crate::ffmpeg::ffmpeg_command()
             .arg("-version")
             .output()
             .map(|o| o.status.success())
@@ -229,7 +228,7 @@ impl ThumbnailGenerator {
             // permit is dropped at the end of the loop iteration, freeing
             // a slot for another concurrent ffmpeg run.
             let _permit = acquire_ffmpeg_permit();
-            let result = Command::new("ffmpeg")
+            let result = crate::ffmpeg::ffmpeg_command()
                 .args([
                     "-v",
                     "error",
@@ -344,7 +343,7 @@ impl ThumbnailGenerator {
         let vf = build_thumbnail_vf(&color_info, &scale);
 
         let _permit = acquire_ffmpeg_permit();
-        let result = Command::new("ffmpeg")
+        let result = crate::ffmpeg::ffmpeg_command()
             .args([
                 "-v",
                 "error",
@@ -389,7 +388,7 @@ struct ColorInfo {
 /// to the plain scale filter (preserving prior behavior).
 fn probe_color_info(video_path: &Path) -> ColorInfo {
     let mut info = ColorInfo::default();
-    let output = Command::new("ffprobe")
+    let output = crate::ffmpeg::ffprobe_command()
         .args([
             "-v",
             "error",
@@ -511,7 +510,7 @@ impl ProxyGenerator {
         }
 
         // Calculate new dimensions
-        let output = Command::new("ffprobe")
+        let output = crate::ffmpeg::ffprobe_command()
             .args([
                 "-v",
                 "error",
@@ -548,7 +547,7 @@ impl ProxyGenerator {
 
         let filter = format!("scale={}:{}", new_width, new_height);
 
-        let output = Command::new("ffmpeg")
+        let output = crate::ffmpeg::ffmpeg_command()
             .args([
                 "-v",
                 "error",
@@ -580,7 +579,7 @@ impl ProxyGenerator {
     }
 
     fn ffmpeg_available() -> bool {
-        Command::new("ffmpeg")
+        crate::ffmpeg::ffmpeg_command()
             .arg("-version")
             .output()
             .map(|o| o.status.success())

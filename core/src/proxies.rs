@@ -731,7 +731,7 @@ pub fn create_proxy(
     // `-nostats` suppresses the interleaved per-frame stat lines that
     // would otherwise clutter stdout.
     let scale_filter = format!("scale=-2:{}", target_height);
-    let mut child = std::process::Command::new("ffmpeg")
+    let mut child = crate::ffmpeg::ffmpeg_command()
         .args([
             "-y",
             "-i",

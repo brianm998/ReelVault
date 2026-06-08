@@ -131,6 +131,20 @@ package_target() {
     cp "${bin_dir}/reelvault-cli${ext}"   "${pkg_dir}/"
     cp -r "${CORE_DIR}/dist/"*            "${pkg_dir}/" 2>/dev/null || true
 
+    # Bundle ffmpeg/ffprobe next to the daemon so it doesn't depend on a
+    # system install (core/src/ffmpeg.rs resolves a binary beside the
+    # executable before falling back to PATH). Opt-in: drop static builds
+    # under vendor/ffmpeg/<platform-label>/ and they're packaged here. A
+    # no-op when the directory is absent, so existing releases are unchanged.
+    #   Static builds: johnvansickle.com/ffmpeg (Linux),
+    #   evermeet.cx/ffmpeg (macOS), gyan.dev/ffmpeg/builds (Windows).
+    local vendor_dir="${SCRIPT_DIR}/vendor/ffmpeg/${platform_label}"
+    if [[ -d "$vendor_dir" ]]; then
+        echo "  [${platform_label}] bundling ffmpeg from vendor/ffmpeg/${platform_label}"
+        cp "${vendor_dir}/ffmpeg${ext}"  "${pkg_dir}/" 2>/dev/null || true
+        cp "${vendor_dir}/ffprobe${ext}" "${pkg_dir}/" 2>/dev/null || true
+    fi
+
     # Add a quick-start README.
     cat > "${pkg_dir}/INSTALL.txt" << EOF
 ReelVault Core v${VERSION} — ${platform_label}

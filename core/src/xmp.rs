@@ -643,7 +643,7 @@ mod tests {
         use std::process::Command;
 
         let exiftool = Command::new("exiftool").arg("-ver").output().ok();
-        let ffmpeg = Command::new("ffmpeg").arg("-version").output().ok();
+        let ffmpeg = crate::ffmpeg::ffmpeg_command().arg("-version").output().ok();
         let have_tools = exiftool.as_ref().is_some_and(|o| o.status.success())
             && ffmpeg.as_ref().is_some_and(|o| o.status.success());
         if !have_tools {
@@ -656,7 +656,7 @@ mod tests {
 
         // 1-second 320x240 ProRes clip — small, valid MOV that
         // exiftool will happily attach an XMP atom to.
-        let status = Command::new("ffmpeg")
+        let status = crate::ffmpeg::ffmpeg_command()
             .args([
                 "-nostdin",
                 "-loglevel",
