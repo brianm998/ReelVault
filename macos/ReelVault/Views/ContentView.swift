@@ -785,8 +785,17 @@ struct ContentView: View {
 
     private var mainContent: some View {
         HStack(spacing: 0) {
-            // Left library panel — expanded or collapsed strip
+            // Left panel — in detail mode the slot shows the brightness/colour
+            // graphs (a per-video view); otherwise the library navigation panel
+            // or its collapsed strip.
             if leftPanelExpanded {
+                if viewMode == .detail {
+                    DetailGraphsPanel(
+                        gridViewModel: gridViewModel,
+                        onCollapse: { setLeftPanelExpanded(false) }
+                    )
+                    .frame(width: leftPanelWidth)
+                } else {
                 LibraryPanel(
                     locations: gridViewModel.libraryLocations,
                     selectedPaths: gridViewModel.selectedLocationPaths,
@@ -871,6 +880,7 @@ struct ContentView: View {
                     )
                 }
                 .frame(width: leftPanelWidth)
+                } // end else — library vs. graphs panel
                 // Drag handle on the inner edge — drag right to widen,
                 // left to shrink. Cursor switches to a horizontal
                 // resize affordance while hovering the handle.

@@ -1178,8 +1178,18 @@ fun ReelVaultApp(
                         val libraryLocations = gridViewModel.libraryLocations.collectAsState()
                         val selectedLocations = gridViewModel.selectedLocationPaths.collectAsState()
 
-                        // Library panel — expanded view or collapsed strip
-                        if (leftPanelExpanded) {
+                        // Left panel — in detail mode the slot shows the
+                        // brightness/colour graphs (a per-video view), otherwise
+                        // the library navigation panel or its collapsed strip.
+                        if (leftPanelExpanded && viewMode == ViewMode.DETAIL) {
+                            com.reelvault.ui.components.DetailGraphsPanel(
+                                viewModel = gridViewModel,
+                                onCollapse = { setLeftPanelExpanded(false) },
+                                modifier = Modifier
+                                    .width(leftPanelWidth.dp)
+                                    .fillMaxHeight(),
+                            )
+                        } else if (leftPanelExpanded) {
                             com.reelvault.ui.components.LibraryPanel(
                                 locations = libraryLocations.value,
                                 selectedPaths = selectedLocations.value,
