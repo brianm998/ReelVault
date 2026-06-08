@@ -1150,11 +1150,13 @@ struct VideoCardView: View {
                             // Light star — brighter than the (now dark) band.
                             .foregroundColor(.white)
                     } else {
-                        Image(systemName: "circle.fill")
-                            .font(.system(size: 4))
-                            // Light placeholder dot so the empty rating slots
-                            // stay visible on the dark band.
-                            .foregroundColor(Color(white: 0.72))
+                        // Light placeholder dot with a 2 pt black ring so the
+                        // empty rating slots stay legible even on a bright
+                        // selected card (where a plain light dot would wash out).
+                        Circle()
+                            .fill(Color(white: 0.72))
+                            .frame(width: 8, height: 8)
+                            .overlay(Circle().stroke(Color.black, lineWidth: 2))
                     }
                 }
                 .frame(width: 20, height: 20)

@@ -1104,7 +1104,8 @@ fun VideoListRow(
                         } else {
                             Box(
                                 modifier = Modifier
-                                    .size(4.dp)
+                                    .size(8.dp)
+                                    .border(2.dp, Color.Black, androidx.compose.foundation.shape.CircleShape)
                                     .background(
                                         Color(0xFFB8B8B8),
                                         shape = androidx.compose.foundation.shape.CircleShape
@@ -1547,7 +1548,8 @@ private fun VideoListHorizontalCard(
                         } else {
                             Box(
                                 Modifier
-                                    .size(3.dp)
+                                    .size(8.dp)
+                                    .border(2.dp, Color.Black, androidx.compose.foundation.shape.CircleShape)
                                     .background(
                                         Color(0xFFB8B8B8),
                                         shape = androidx.compose.foundation.shape.CircleShape

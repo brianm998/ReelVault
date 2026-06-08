@@ -895,11 +895,13 @@ fun VideoCard(
                             tint = Color.White
                         )
                     } else {
-                        // Light grey dots so the empty rating slots stay
-                        // visible on the dark band.
+                        // Light grey dots with a 2 px black ring so the empty
+                        // rating slots stay legible even on a bright selected
+                        // card (where a plain light dot would wash out).
                         Box(
                             modifier = Modifier
-                                .size(4.dp)
+                                .size(8.dp)
+                                .border(2.dp, Color.Black, RoundedCornerShape(50))
                                 .background(Color(0xFFB8B8B8), RoundedCornerShape(50))
                         )
                     }
