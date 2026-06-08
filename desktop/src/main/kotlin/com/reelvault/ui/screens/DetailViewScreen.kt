@@ -164,7 +164,10 @@ fun DetailViewScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f),
+                .weight(1f)
+                // Measure the player render area so effectivePath can default to
+                // the proxy whose resolution best matches it.
+                .onSizeChanged { areaSize = it },
             contentAlignment = Alignment.Center
         ) {
             if (playbackStarted && player.available) {
@@ -215,7 +218,7 @@ fun DetailViewScreen(
                     Column(modifier = Modifier.padding(ReelVaultSpacing.Small)) {
                         Text(
                             text = if (selectedProxyId != null) "Playing selected proxy"
-                                else "Original too large — playing proxy",
+                                else "Playing proxy",
                             color = Color.White,
                             style = MaterialTheme.typography.labelSmall,
                         )
@@ -293,6 +296,7 @@ private fun ScrubPreview(
         }
     }
     var hoverX by remember { mutableStateOf<Float?>(null) }
+    var areaSize by remember { mutableStateOf(IntSize.Zero) }
 
     val displayed = run {
         val x = hoverX
