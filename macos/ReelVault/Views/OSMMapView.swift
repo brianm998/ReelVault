@@ -462,7 +462,8 @@ private struct _OSMMapKitView: NSViewRepresentable {
                     id: "cluster-\(memberIDs.first ?? "")",
                     coordinate: cluster.coordinate,
                     label: "\(count) videos here",
-                    clusteredCount: count
+                    clusteredCount: count,
+                    memberIds: memberIDs
                 )
                 parent.onPinClick?(synthetic)
                 mapView.deselectAnnotation(annotation, animated: false)
@@ -715,6 +716,11 @@ struct OSMMapPin: Identifiable, Hashable {
     var label: String = ""
     var clusteredCount: Int = 1
     var style: OSMMapPinStyle = .primary
+    /// Video ids this pin stands for. A single video pin carries its own id;
+    /// a cluster carries every member's id (filled in by the coordinator when
+    /// it hands back a tapped cluster). Lets a click resolve straight to the
+    /// underlying videos — e.g. to list them in the map view's right panel.
+    var memberIds: [String] = []
 
     static func == (lhs: OSMMapPin, rhs: OSMMapPin) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }

@@ -196,7 +196,7 @@ fun LocationPickerDialog(
                             candidateName = newMatch?.name ?: ""
                             showCoords = false
                         },
-                        onPinClick = { pin ->
+                        onPinClick = { pin, _ ->
                             if (pin.id == "candidate") return@MapView
                             pinLat = pin.latitude
                             pinLon = pin.longitude
@@ -422,7 +422,7 @@ private fun haversineMeters(
  *
  * Padding +2 zoom levels, floor 9, for a wider-than-tight initial view —
  * see the previous revision for the full rationale. `internal` so other
- * map-bearing dialogs (e.g. [GlobalMapDialog]) can reuse the framing.
+ * map-bearing screens (e.g. [MapScreen]) can reuse the framing.
  */
 internal fun bboxFraming(points: List<Pair<Double, Double>>): Triple<Double, Double, Int> {
     if (points.isEmpty()) return Triple(51.4769, 0.0, 3)

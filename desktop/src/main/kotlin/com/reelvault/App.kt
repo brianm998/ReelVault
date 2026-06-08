@@ -86,7 +86,7 @@ val LocalAppWindow = compositionLocalOf<java.awt.Window?> { null }
 val LocalPathFieldFocused = compositionLocalOf { mutableStateOf(false) }
 
 /** Top-level view mode for the central content area. */
-enum class ViewMode { GRID, LIST, DETAIL }
+enum class ViewMode { GRID, LIST, DETAIL, MAP }
 
 fun main() {
     // apple.awt.application.name drives the macOS Dock tooltip and menu-bar
@@ -177,6 +177,7 @@ fun main() {
         val setGridModeAction = remember { mutableStateOf<() -> Unit>({}) }
         val setListModeAction = remember { mutableStateOf<() -> Unit>({}) }
         val setDetailModeAction = remember { mutableStateOf<() -> Unit>({}) }
+        val setMapModeAction = remember { mutableStateOf<() -> Unit>({}) }
         val cycleInfoOverlayAction = remember { mutableStateOf<() -> Unit>({}) }
         // Space bar: toggle inline playback of the selected video.
         val spacebarAction = remember { mutableStateOf<() -> Unit>({}) }
@@ -255,6 +256,7 @@ fun main() {
                         Key.G -> { setGridModeAction.value(); return@Window true }
                         Key.L -> { setListModeAction.value(); return@Window true }
                         Key.D -> { setDetailModeAction.value(); return@Window true }
+                        Key.M -> { setMapModeAction.value(); return@Window true }
                         Key.I -> { cycleInfoOverlayAction.value(); return@Window true }
                         Key.Spacebar -> { spacebarAction.value(); return@Window true }
                         // Lightroom-style rating shortcuts (number-row digits).
@@ -391,6 +393,7 @@ fun main() {
                         onRegisterSetGridMode = { setGridModeAction.value = it },
                         onRegisterSetListMode = { setListModeAction.value = it },
                         onRegisterSetDetailMode = { setDetailModeAction.value = it },
+                        onRegisterSetMapMode = { setMapModeAction.value = it },
                         onRegisterCycleInfoOverlay = { cycleInfoOverlayAction.value = it },
                         onRegisterSpacebarAction = { spacebarAction.value = it },
                         onRegisterSetRatingAction = { setRatingAction.value = it },
@@ -423,6 +426,8 @@ fun ReelVaultApp(
     onRegisterSetListMode: (() -> Unit) -> Unit = {},
     /** Called once to register the "switch to detail" action for the 'd' shortcut. */
     onRegisterSetDetailMode: (() -> Unit) -> Unit = {},
+    /** Called once to register the "switch to map" action for the 'm' shortcut. */
+    onRegisterSetMapMode: (() -> Unit) -> Unit = {},
     /** Called once to register the "cycle info overlay" action for the 'i' shortcut. */
     onRegisterCycleInfoOverlay: (() -> Unit) -> Unit = {},
     /** Called once to register the space-bar play/pause action. */
@@ -499,12 +504,14 @@ fun ReelVaultApp(
     // Smart-collection name dialog.
     var showSmartCollectionDialog by remember { mutableStateOf(false) }
     var smartCollectionName by remember { mutableStateOf("") }
-    // Global-map dialog visibility.
-    var showGlobalMap by remember { mutableStateOf(false) }
-    // When non-null, the map opens focused on this (lat, lon) instead of
-    // fitting the full pin bounding-box. Set when the user taps a video
-    // card's location badge; cleared when the dialog is dismissed.
+    // Map view (a top-level view, like grid/list/detail). When non-null,
+    // `globalMapFocusLocation` makes the map open centred on this (lat, lon)
+    // instead of framing all pins — set when the user taps a card's location
+    // badge, then cleared by the map once applied. `mapSelectedVideoIds` are
+    // the videos under the pin(s) the user has clicked, listed as cards in the
+    // right panel.
     var globalMapFocusLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    var mapSelectedVideoIds by remember { mutableStateOf<List<String>>(emptyList()) }
     // Location-picker state. `videoIdsForLocationPicker` non-null means the
     // dialog is open and operates on that set of video ids.
     var videoIdsForLocationPicker by remember { mutableStateOf<List<String>?>(null) }
@@ -600,6 +607,8 @@ fun ReelVaultApp(
                         }
                     }
                 }
+                // No inline playback context on the map.
+                ViewMode.MAP -> {}
             }
         }
         onRegisterSetRatingAction { rating ->
@@ -646,6 +655,7 @@ fun ReelVaultApp(
         onRegisterSetGridMode { viewMode = ViewMode.GRID }
         onRegisterSetListMode { viewMode = ViewMode.LIST }
         onRegisterSetDetailMode { viewMode = ViewMode.DETAIL }
+        onRegisterSetMapMode { viewMode = ViewMode.MAP }
         onRegisterCycleInfoOverlay {
             infoOverlay = when (infoOverlay) {
                 InfoOverlayState.NONE -> InfoOverlayState.CAMERA
@@ -653,6 +663,12 @@ fun ReelVaultApp(
                 InfoOverlayState.FILE -> InfoOverlayState.NONE
             }
         }
+    }
+    // Refresh the map's pins from the current filter whenever the map becomes
+    // the active view. Filter edits made while the map is up already refresh
+    // videoLocations via the grid reload's debounced trigger.
+    LaunchedEffect(viewMode) {
+        if (viewMode == ViewMode.MAP) gridViewModel.loadVideoLocationsFilteredAsync()
     }
 
     val scope = rememberCoroutineScope()
@@ -826,19 +842,6 @@ fun ReelVaultApp(
                         catalogIsOpen = currentCatalog.isOpen,
                         catalogName = currentCatalog.name,
                         recents = recents.list(),
-                        onShowGlobalMap = {
-                            // Await the loads before opening the dialog so
-                            // the map frames the centroid of real data
-                            // instead of (51.4769, 0) — Europe — when the
-                            // catalog's locations haven't arrived yet.
-                            // Pre-load on catalog open keeps this fast in
-                            // steady state.
-                            scope.launch {
-                                gridViewModel.loadVideoLocationsFilteredAsync()
-                                gridViewModel.loadNamedLocationsAsync()
-                                showGlobalMap = true
-                            }
-                        },
                         selectedCount = selectedIds.value.size,
                         onShowHelp = { showHelpDialog = true },
                         accentScheme = accentScheme,
@@ -1402,9 +1405,17 @@ fun ReelVaultApp(
                         val onCardLocationClick: (Double, Double) -> Unit = { lat, lon ->
                             scope.launch {
                                 gridViewModel.loadVideoLocationsFilteredAsync()
-                                gridViewModel.loadNamedLocationsAsync()
+                                // Pre-select the videos sharing this exact
+                                // coordinate so the map's right panel is
+                                // populated the instant the view switches.
+                                mapSelectedVideoIds = gridViewModel.videoLocations.value
+                                    .filter {
+                                        kotlin.math.abs(it.latitude - lat) < 1e-9 &&
+                                            kotlin.math.abs(it.longitude - lon) < 1e-9
+                                    }
+                                    .map { it.id }
                                 globalMapFocusLocation = lat to lon
-                                showGlobalMap = true
+                                viewMode = ViewMode.MAP
                             }
                         }
 
@@ -1455,6 +1466,17 @@ fun ReelVaultApp(
                                     playToggle = detailPlayToggle,
                                     modifier = Modifier.weight(1f).fillMaxWidth()
                                 )
+                                ViewMode.MAP -> {
+                                    val mapLocations = gridViewModel.videoLocations.collectAsState()
+                                    com.reelvault.ui.screens.MapScreen(
+                                        locations = mapLocations.value,
+                                        selectedVideoIds = mapSelectedVideoIds,
+                                        onSelectionChange = { mapSelectedVideoIds = it },
+                                        focusedLocation = globalMapFocusLocation,
+                                        onFocusConsumed = { globalMapFocusLocation = null },
+                                        modifier = Modifier.weight(1f).fillMaxWidth()
+                                    )
+                                }
                             }
                         }
 
@@ -1480,8 +1502,34 @@ fun ReelVaultApp(
                             }
                         }
 
-                        // Detail panel — expanded view or collapsed strip
-                        if (rightPanelExpanded) {
+                        // Right panel — in map mode, the videos at the selected
+                        // location(s) as cards; otherwise the metadata inspector.
+                        // Collapsed strip when hidden.
+                        val openMapVideoInView = { video: com.reelvault.data.models.VideoSummary, mode: ViewMode ->
+                            gridViewModel.selectVideo(video)
+                            detailViewModel.setCurrentVideo(video)
+                            detailViewModel.loadMetadata(video.id)
+                            viewMode = mode
+                        }
+                        if (rightPanelExpanded && viewMode == ViewMode.MAP) {
+                            val sel = mapSelectedVideoIds.toSet()
+                            val mapPanelVideos = gridViewModel.geotaggedVideos.collectAsState().value
+                                .filter { it.id in sel }
+                            com.reelvault.ui.screens.MapVideoListPanel(
+                                videos = mapPanelVideos,
+                                thumbnails = gridViewModel.thumbnails.collectAsState().value,
+                                currentVideoId = gridViewModel.selectedVideoId.collectAsState().value,
+                                onLoadThumbnail = { gridViewModel.loadThumbnail(it) },
+                                onCardClick = { openMapVideoInView(it, ViewMode.MAP) },
+                                onOpenInGrid = { openMapVideoInView(it, ViewMode.GRID) },
+                                onOpenInList = { openMapVideoInView(it, ViewMode.LIST) },
+                                onOpenInDetail = { openMapVideoInView(it, ViewMode.DETAIL) },
+                                onCollapse = { setRightPanelExpanded(false) },
+                                modifier = Modifier
+                                    .width(rightPanelWidth.dp)
+                                    .fillMaxHeight()
+                            )
+                        } else if (rightPanelExpanded) {
                             DetailScreen(
                                 viewModel = detailViewModel,
                                 gridViewModel = gridViewModel,
@@ -1614,23 +1662,8 @@ fun ReelVaultApp(
                     }
                 }
 
-                // Global map dialog — shows every geotagged video.
-                if (showGlobalMap) {
-                    val locs = gridViewModel.videoLocations.collectAsState()
-                    com.reelvault.ui.screens.GlobalMapDialog(
-                        locations = locs.value,
-                        onDismiss = {
-                            showGlobalMap = false
-                            globalMapFocusLocation = null
-                        },
-                        onLocationPick = { lat, lon, radius ->
-                            gridViewModel.setLocationFilter(lat, lon, radius)
-                            showGlobalMap = false
-                            globalMapFocusLocation = null
-                        },
-                        focusedLocation = globalMapFocusLocation,
-                    )
-                }
+                // The global map is now a top-level view (ViewMode.MAP), not a
+                // dialog — see the `when (viewMode)` block above.
 
                 // Location-picker dialog — set/replace GPS on one or more videos.
                 videoIdsForLocationPicker?.let { ids ->
@@ -2167,8 +2200,6 @@ fun ReelVaultTopBar(
     catalogIsOpen: Boolean = false,
     catalogName: String = "",
     recents: List<String> = emptyList(),
-    /** Opens the global map dialog showing every geotagged video. */
-    onShowGlobalMap: () -> Unit = {},
     selectedCount: Int = 0,
     /** Opens the full in-app help reference. */
     onShowHelp: () -> Unit = {},
@@ -2435,19 +2466,9 @@ fun ReelVaultTopBar(
                         }
                     }
 
-                    // World-map button
-                    com.reelvault.ui.components.Tooltip(
-                        text = "Show every geotagged video on a world map. " +
-                            "Click a pin to filter the grid to videos taken near " +
-                            "that location."
-                    ) {
-                        IconButton(onClick = onShowGlobalMap) {
-                            Icon(
-                                imageVector = Icons.Default.Map,
-                                contentDescription = "Map view"
-                            )
-                        }
-                    }
+                    // (The world map is now a top-level view — reachable from
+                    // the view-mode toggle in the bottom bar, or the 'M'
+                    // shortcut — so it no longer has a top-bar button.)
 
                     // Help button (kept as its own affordance — on macOS this
                     // lives in the system Help menu instead).
@@ -2589,7 +2610,7 @@ fun BottomBar(
                 Spacer(modifier = Modifier.weight(1f))
 
                 // Right cluster — thumbnail size slider (disabled in Catalog/Detail mode)
-                val sliderEnabled = viewMode != ViewMode.DETAIL
+                val sliderEnabled = viewMode == ViewMode.GRID || viewMode == ViewMode.LIST
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(ReelVaultSpacing.XSmall)
@@ -2645,7 +2666,8 @@ fun ViewModeToggle(
     val modes = listOf(
         Triple(ViewMode.GRID,   Icons.Default.GridView,          "Grid view (G)"),
         Triple(ViewMode.LIST,   Icons.Default.ViewList,          "List view (L)"),
-        Triple(ViewMode.DETAIL, Icons.Default.PlayCircleOutline, "Detail view (D)")
+        Triple(ViewMode.DETAIL, Icons.Default.PlayCircleOutline, "Detail view (D)"),
+        Triple(ViewMode.MAP,    Icons.Default.Map,               "Map view (M)")
     )
     Surface(
         shape = MaterialTheme.shapes.small,

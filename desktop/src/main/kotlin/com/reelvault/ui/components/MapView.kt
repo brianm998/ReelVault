@@ -54,6 +54,11 @@ data class MapPin(
     /** Label shown on hover; e.g. the filename for single pins. */
     val label: String = "",
     val style: MapPinStyle = MapPinStyle.PRIMARY,
+    /** Video ids this pin stands for. A single video pin carries its own id;
+     *  a cluster carries every member's id. Lets a click resolve straight to
+     *  the underlying videos (e.g. to list them in the map view's right
+     *  panel) instead of re-deriving them from a proximity radius. */
+    val memberIds: List<String> = emptyList(),
 )
 
 /**
@@ -78,8 +83,10 @@ fun MapView(
     /** Fired when the user clicks (or drags onto) the map at the given lat/lon. */
     onMapClick: ((latitude: Double, longitude: Double) -> Unit)? = null,
     /** Fired when the user clicks a pin (or cluster). For clusters [MapPin.count]
-     *  is > 1 and you'll probably want to zoom in rather than treat it as a leaf. */
-    onPinClick: ((MapPin) -> Unit)? = null,
+     *  is > 1 and [MapPin.memberIds] holds every member. `additive` is true when
+     *  the click carried Shift/Cmd/Ctrl — callers that support multi-select use
+     *  it to add to the current selection rather than replace it. */
+    onPinClick: ((pin: MapPin, additive: Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     // Hold the live JXMapViewer reference so we can re-set its pins as the
@@ -131,7 +138,8 @@ fun MapView(
                             onMarker || onLabel
                         }
                         if (hit != null) {
-                            onPinClick?.invoke(hit.pin)
+                            val additive = e.isShiftDown || e.isMetaDown || e.isControlDown
+                            onPinClick?.invoke(hit.pin, additive)
                             return
                         }
                         if (onMapClick != null) {
@@ -393,6 +401,7 @@ private class ClusterPainter(private val holder: MapHolder) : Painter<JXMapViewe
                     count = displayCount,
                     label = "${cluster.members.size} videos here",
                     style = style,
+                    memberIds = cluster.members.flatMap { it.memberIds },
                 )
             val fill = when (style) {
                 MapPinStyle.PRIMARY -> AwtColor(0x6750A4) // Material primary

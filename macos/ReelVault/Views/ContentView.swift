@@ -52,10 +52,13 @@ struct ContentView: View {
     }
     @State private var openCatalogIsStartup = false
     @State private var currentCatalog: CatalogInfo = .closed
-    @State private var showGlobalMapSheet = false
-    /// When non-nil, the map sheet opens centred on this coordinate instead of
-    /// auto-fitting all pins. Set when the user taps a card's location badge.
+    /// When non-nil, the map view opens centred on this coordinate instead of
+    /// auto-fitting all pins. Set when the user taps a card's location badge;
+    /// cleared on the next non-badge navigation into the map.
     @State private var globalMapFocusCoord: CLLocationCoordinate2D? = nil
+    /// Videos under the pin(s) the user has clicked on the map — listed as
+    /// cards in the right panel while the map is the active view.
+    @State private var mapSelectedVideoIds: [String] = []
     /// Non-nil → LocationPicker sheet is presenting for these video IDs.
     @State private var locationPickerTargets: [String]? = nil
     @State private var locationPickerInitial: CLLocationCoordinate2D? = nil
@@ -82,7 +85,7 @@ struct ContentView: View {
     @ObservedObject private var recents = RecentCatalogs.shared
 
     enum ConnectionState { case connecting, connected, failed }
-    enum ViewMode { case grid, list, detail }
+    enum ViewMode { case grid, list, detail, map }
 
     var body: some View {
         Group {
@@ -131,6 +134,12 @@ struct ContentView: View {
             onSetGridMode: { withAnimation(.easeInOut(duration: 0.2)) { viewMode = .grid } },
             onSetListMode: { withAnimation(.easeInOut(duration: 0.2)) { viewMode = .list } },
             onSetDetailMode: { withAnimation(.easeInOut(duration: 0.2)) { viewMode = .detail } },
+            onSetMapMode: {
+                // Entering the map by shortcut frames all pins (no card-badge
+                // focus), so clear any stale focus coordinate first.
+                globalMapFocusCoord = nil
+                withAnimation(.easeInOut(duration: 0.2)) { viewMode = .map }
+            },
             onCycleInfoOverlay: {
                 infoOverlay = {
                     switch infoOverlay {
@@ -154,6 +163,9 @@ struct ContentView: View {
                 case .detail:
                     // Delegate to DetailLoupeView via the toggle token.
                     detailPlayToggle += 1
+                case .map:
+                    // No inline playback context on the map.
+                    break
                 }
             },
             onSetRating: { rating in
@@ -232,21 +244,6 @@ struct ContentView: View {
                     Task { await openCatalog(path: path) }
                 },
                 isStartup: openCatalogIsStartup
-            )
-        }
-        .sheet(isPresented: $showGlobalMapSheet) {
-            GlobalMapView(
-                locations: gridViewModel.videoLocations,
-                onDismiss: {
-                    showGlobalMapSheet = false
-                    globalMapFocusCoord = nil
-                },
-                onLocationPick: { lat, lon, radius in
-                    gridViewModel.setLocationFilter(latitude: lat, longitude: lon, radiusKm: radius)
-                    showGlobalMapSheet = false
-                    globalMapFocusCoord = nil
-                },
-                focusedCoordinate: globalMapFocusCoord
             )
         }
         .sheet(item: Binding(
@@ -370,6 +367,14 @@ struct ContentView: View {
             locationFilterBanner
             mainContent
             bottomBar
+        }
+        // Refresh the map's pins from the current filter whenever the map
+        // becomes the active view. Filter edits made while the map is up
+        // already refresh videoLocations via the grid reload.
+        .onChange(of: viewMode) { _, newMode in
+            if newMode == .map {
+                Task { await gridViewModel.loadVideoLocationsFilteredAsync() }
+            }
         }
     }
 
@@ -577,23 +582,9 @@ struct ContentView: View {
                   ? "Stack the \(gridViewModel.selectedVideoIds.count) selected videos into a group (⌘G). One representative will be shown in the grid; click its stack badge to expand."
                   : "Shift-click or ⌘-click two or more videos in the grid to enable grouping.")
 
-            // World-map button — shows every geotagged video.
-            Button {
-                // Await the loads before the sheet appears so the map
-                // frames the centroid of real data instead of (25, 0) in
-                // the ocean. Typically instant thanks to the catalog-open
-                // pre-load; the worst case (cold catalog) is a few hundred
-                // ms of perceived button delay before the sheet animates in.
-                Task {
-                    await gridViewModel.loadVideoLocationsFilteredAsync()
-                    await gridViewModel.loadNamedLocationsAsync()
-                    showGlobalMapSheet = true
-                }
-            } label: {
-                Image(systemName: "map")
-            }
-            .buttonStyle(.borderless)
-            .help("Show every geotagged video on a world map. Click a pin to filter the grid to videos taken near that location.")
+            // (The world map is now a top-level view — reachable from the
+            // view-mode toggle in the bottom bar, or the 'M' shortcut — so it
+            // no longer has a top-bar button.)
 
             // (The active location-filter affordance lives in
             // `locationFilterBanner` — a full-width strip above the grid —
@@ -661,22 +652,26 @@ struct ContentView: View {
                 Picker("", selection: Binding(
                     get: { viewMode },
                     set: { newMode in
+                        // Entering the map from the toggle frames all pins, so
+                        // drop any card-badge focus coordinate first.
+                        if newMode == .map { globalMapFocusCoord = nil }
                         withAnimation(.easeInOut(duration: 0.2)) { viewMode = newMode }
                     }
                 )) {
                     Image(systemName: "play.rectangle").tag(ViewMode.detail)
                     Image(systemName: "square.grid.2x2").tag(ViewMode.grid)
                     Image(systemName: "list.bullet").tag(ViewMode.list)
+                    Image(systemName: "map").tag(ViewMode.map)
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 135)
+                .frame(width: 180)
                 .labelsHidden()
-                .help("Switch between Catalog/Detail (D), Grid (G), and List (L) views.")
+                .help("Switch between Catalog/Detail (D), Grid (G), List (L), and Map (M) views.")
 
                 Spacer()
 
                 // Right cluster — thumbnail-size slider (disabled in Catalog/Detail mode)
-                let sliderEnabled = viewMode != .detail
+                let sliderEnabled = viewMode == .grid || viewMode == .list
                 HStack(spacing: 6) {
                     Image(systemName: "photo")
                         .font(.system(size: 10))
@@ -936,9 +931,16 @@ struct ContentView: View {
                         onLocationClick: { lat, lon in
                             Task {
                                 await gridViewModel.loadVideoLocationsFilteredAsync()
-                                await gridViewModel.loadNamedLocationsAsync()
+                                // Pre-select the videos at this exact coordinate
+                                // so the map's right panel is populated as soon
+                                // as the view switches.
+                                mapSelectedVideoIds = gridViewModel.videoLocations
+                                    .filter {
+                                        abs($0.latitude - lat) < 1e-9 && abs($0.longitude - lon) < 1e-9
+                                    }
+                                    .map { $0.id }
                                 globalMapFocusCoord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
-                                showGlobalMapSheet = true
+                                withAnimation(.easeInOut(duration: 0.2)) { viewMode = .map }
                             }
                         }
                     )
@@ -962,9 +964,16 @@ struct ContentView: View {
                         onLocationClick: { lat, lon in
                             Task {
                                 await gridViewModel.loadVideoLocationsFilteredAsync()
-                                await gridViewModel.loadNamedLocationsAsync()
+                                // Pre-select the videos at this exact coordinate
+                                // so the map's right panel is populated as soon
+                                // as the view switches.
+                                mapSelectedVideoIds = gridViewModel.videoLocations
+                                    .filter {
+                                        abs($0.latitude - lat) < 1e-9 && abs($0.longitude - lon) < 1e-9
+                                    }
+                                    .map { $0.id }
                                 globalMapFocusCoord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
-                                showGlobalMapSheet = true
+                                withAnimation(.easeInOut(duration: 0.2)) { viewMode = .map }
                             }
                         }
                     )
@@ -979,6 +988,14 @@ struct ContentView: View {
                         playToggle: detailPlayToggle
                     )
                     .frame(maxWidth: .infinity)
+                case .map:
+                    MapTopLevelView(
+                        locations: gridViewModel.videoLocations,
+                        selectedVideoIds: mapSelectedVideoIds,
+                        onSelectionChange: { mapSelectedVideoIds = $0 },
+                        focusedCoordinate: globalMapFocusCoord
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -994,6 +1011,22 @@ struct ContentView: View {
                                   currentWidth: rightPanelWidth) { newWidth in
                     setRightPanelWidth(newWidth)
                 }
+                if viewMode == .map {
+                    // Map mode: the videos at the selected location(s) as cards,
+                    // in place of the metadata inspector.
+                    let selSet = Set(mapSelectedVideoIds)
+                    MapVideoListPanel(
+                        gridViewModel: gridViewModel,
+                        videos: gridViewModel.geotaggedVideos.filter { selSet.contains($0.id) },
+                        currentVideoId: gridViewModel.selectedVideoId,
+                        onCardClick: { openMapVideo($0, in: .map) },
+                        onOpenInGrid: { openMapVideo($0, in: .grid) },
+                        onOpenInList: { openMapVideo($0, in: .list) },
+                        onOpenInDetail: { openMapVideo($0, in: .detail) },
+                        onCollapse: { setRightPanelExpanded(false) }
+                    )
+                    .frame(width: rightPanelWidth)
+                } else {
                 DetailView(
                     viewModel: detailViewModel,
                     gridViewModel: gridViewModel,
@@ -1020,6 +1053,7 @@ struct ContentView: View {
                     }
                 )
                 .frame(width: rightPanelWidth)
+                } // end else — map list vs. metadata inspector
             } else {
                 CollapsedPanelStrip(
                     expandIconLeft: true,
@@ -1028,6 +1062,16 @@ struct ContentView: View {
                 )
             }
         }
+    }
+
+    /// Navigate to `mode` focused on `video` — used by the map's right-panel
+    /// "Open in Grid/List/Detail" actions and card clicks. Selects the video
+    /// and loads its metadata so the target view shows it as the current pick.
+    private func openMapVideo(_ video: VideoSummary, in mode: ViewMode) {
+        gridViewModel.selectVideo(video)
+        detailViewModel.setCurrentVideo(video)
+        detailViewModel.loadMetadata(videoId: video.id)
+        withAnimation(.easeInOut(duration: 0.2)) { viewMode = mode }
     }
 
     // MARK: - Panel width / open-state accessors
@@ -1214,6 +1258,8 @@ struct GlobalKeyboardShortcuts: ViewModifier {
     let onSetListMode: () -> Void
     /// Plain 'd' — switch to detail (loupe) view mode.
     let onSetDetailMode: () -> Void
+    /// Plain 'm' — switch to the map view mode.
+    let onSetMapMode: () -> Void
     /// Plain 'i' — cycle the info overlay through none → camera → file → none.
     let onCycleInfoOverlay: () -> Void
     /// Space bar — toggle inline playback (grid) or play/pause (detail).
@@ -1337,6 +1383,9 @@ struct GlobalKeyboardShortcuts: ViewModifier {
                     return nil
                 case 2:
                     onSetDetailMode()
+                    return nil
+                case 46:
+                    onSetMapMode()
                     return nil
                 case 34:
                     onCycleInfoOverlay()

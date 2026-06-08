@@ -131,6 +131,12 @@ class GridViewModel: ObservableObject {
     // the global map view.
     @Published var videoLocations: [VideoLocation] = []
 
+    /// Full VideoSummary for every geotagged video in the current filtered
+    /// set — captured alongside `videoLocations` so the map view's right panel
+    /// can render real video cards for a selected pin without an extra
+    /// round-trip. Same filter and order as `videoLocations`.
+    @Published var geotaggedVideos: [VideoSummary] = []
+
     // Catalog's user-defined named places (e.g. "Home"). Refreshed by
     // [loadNamedLocations]; used by [nameForLocation] to render named pins
     // on the map and named GPS readouts in the detail panel.
@@ -2275,6 +2281,7 @@ class GridViewModel: ObservableObject {
         let batchSize: Int32 = 500
         let filterTagIds = filterTagId.isEmpty ? [] : [filterTagId]
         var accumulated: [VideoLocation] = []
+        var accumulatedVideos: [VideoSummary] = []
         var offset: Int32 = 0
         do {
             while true {
@@ -2301,11 +2308,13 @@ class GridViewModel: ObservableObject {
                         altitude: 0.0,
                         hasThumbnail: v.hasThumbnail
                     ))
+                    accumulatedVideos.append(v)
                 }
                 offset += Int32(page.count)
                 if page.isEmpty || Int64(offset) >= total { break }
             }
             videoLocations = accumulated
+            geotaggedVideos = accumulatedVideos
         } catch {
             // Silently ignore — the existing locations remain in place.
         }

@@ -231,6 +231,13 @@ class GridViewModel(
     private val _videoLocations = MutableStateFlow<List<com.reelvault.data.models.VideoLocation>>(emptyList())
     val videoLocations: StateFlow<List<com.reelvault.data.models.VideoLocation>> = _videoLocations.asStateFlow()
 
+    // Full VideoSummary for every geotagged video in the current filtered
+    // set — captured alongside [_videoLocations] so the map view's right
+    // panel can render real video cards for a selected pin without an extra
+    // round-trip. Same filter and order as [videoLocations].
+    private val _geotaggedVideos = MutableStateFlow<List<VideoSummary>>(emptyList())
+    val geotaggedVideos: StateFlow<List<VideoSummary>> = _geotaggedVideos.asStateFlow()
+
     // Catalog's user-defined named places (e.g. "Home"). Refreshed by
     // `loadNamedLocations`; used by `nameForLocation` to render named pins
     // on the map and named GPS readouts in the detail panel.
@@ -1459,6 +1466,7 @@ class GridViewModel(
             val accumulated = withContext(Dispatchers.IO) {
                 val batchSize = 500
                 val acc = mutableListOf<com.reelvault.data.models.VideoLocation>()
+                val accVideos = mutableListOf<VideoSummary>()
                 var offset = 0
                 while (true) {
                     val (page, total) = repository.listVideos(
@@ -1488,14 +1496,16 @@ class GridViewModel(
                             longitude = v.gpsLongitude,
                             hasThumbnail = v.hasThumbnail
                         )
+                        accVideos += v
                     }
                     offset += page.size
                     if (page.isEmpty() || offset >= total) break
                 }
-                acc
+                acc to accVideos
             }
-            _videoLocations.value = accumulated
-            logger.info("Loaded ${accumulated.size} geotagged videos (filtered)")
+            _videoLocations.value = accumulated.first
+            _geotaggedVideos.value = accumulated.second
+            logger.info("Loaded ${accumulated.first.size} geotagged videos (filtered)")
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
