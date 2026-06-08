@@ -261,6 +261,9 @@ struct VideoMetadata: Identifiable {
     /// Mirrors `VideoSummary.fullResolution` — the detail panel shows a
     /// "Resolution Status" row in addition to the card badge.
     let fullResolution: FullResolutionStatus
+    /// Total frame count (ffprobe nb_frames), or 0 when the container didn't
+    /// report one — `frameCountFormatted` then estimates from duration × fps.
+    let frameCount: Int64
 
     var resolution: String { "\(width)×\(height)" }
 
@@ -273,6 +276,17 @@ struct VideoMetadata: Identifiable {
             return String(format: "%d:%02d:%02d", hours, minutes, seconds)
         }
         return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    /// Frame count for display: the exact stored count when known, otherwise a
+    /// "~" estimate from duration × fps, or nil when neither is available.
+    var frameCountFormatted: String? {
+        if frameCount > 0 { return frameCount.formatted() }
+        if fps > 0 && durationMs > 0 {
+            let est = Int64((Double(durationMs) / 1000.0 * fps).rounded())
+            if est > 0 { return "~" + est.formatted() }
+        }
+        return nil
     }
 
     var sizeFormatted: String {

@@ -165,6 +165,7 @@ class VideoRepository(
             exposureProgram = proto.exposureProgram,
             whiteBalance = proto.whiteBalance,
             fullResolution = FullResolutionStatus.fromWire(proto.fullResolutionValue),
+            frameCount = proto.frameCount,
         )
     }
 

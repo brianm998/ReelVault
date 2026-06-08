@@ -1225,7 +1225,8 @@ class VideoRepository: ObservableObject {
             exposureMode: p.exposureMode,
             exposureProgram: p.exposureProgram,
             whiteBalance: p.whiteBalance,
-            fullResolution: FullResolutionStatus.from(wire: Int(p.fullResolution.rawValue))
+            fullResolution: FullResolutionStatus.from(wire: Int(p.fullResolution.rawValue)),
+            frameCount: p.frameCount
         )
     }
 

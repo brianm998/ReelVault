@@ -150,6 +150,9 @@ data class VideoMetadata(
     /** Mirrors [VideoSummary.fullResolution] — the detail panel shows
      *  a richer "Resolution status" row in addition to the card badge. */
     val fullResolution: FullResolutionStatus = FullResolutionStatus.Unspecified,
+    /** Total frame count (ffprobe nb_frames), or 0 when the container didn't
+     *  report one — [frameCountFormatted] then estimates from duration × fps. */
+    val frameCount: Long = 0,
 ) {
     val resolution: String get() = "$width x $height"
     val durationFormatted: String get() {
@@ -162,6 +165,16 @@ data class VideoMetadata(
             minutes > 0 -> String.format("%d:%02d", minutes, secs)
             else -> String.format("%ds", secs)
         }
+    }
+    /** Frame count for display: the exact stored count when known, otherwise a
+     *  "~" estimate from duration × fps, or null when neither is available. */
+    val frameCountFormatted: String? get() {
+        if (frameCount > 0) return "%,d".format(frameCount)
+        if (fps > 0 && durationMs > 0) {
+            val est = Math.round(durationMs / 1000.0 * fps)
+            if (est > 0) return "~%,d".format(est)
+        }
+        return null
     }
     val bitrateFormatted: String get() = "${bitrate / 1000} kbps"
     val sizeFormatted: String get() {

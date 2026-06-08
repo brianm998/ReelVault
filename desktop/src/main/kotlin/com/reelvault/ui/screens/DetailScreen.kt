@@ -164,6 +164,7 @@ fun DetailScreen(
                 MetadataItem("Resolution", metadata.value!!.resolution)
                 MetadataItem("Duration", metadata.value!!.durationFormatted)
                 MetadataItem("FPS", "%.2f".format(metadata.value!!.fps))
+                metadata.value!!.frameCountFormatted?.let { MetadataItem("Frames", it) }
                 MetadataItem("Video Codec", metadata.value!!.codecVideo.ifEmpty { "—" })
                 if (metadata.value!!.codecAudio.isNotEmpty()) {
                     MetadataItem("Audio Codec", metadata.value!!.codecAudio)
@@ -929,6 +930,7 @@ private fun defaultMetadataTooltip(label: String, value: String): String = when 
     "Resolution" -> "Image dimensions in pixels. Larger numbers = sharper picture."
     "Duration" -> "Total playback length of this clip."
     "FPS" -> "Frames per second — higher values mean smoother motion."
+    "Frames" -> "Total number of frames. A \"~\" prefix means it's estimated from duration × frame rate (the container didn't store an exact count)."
     "Video Codec" -> "Compression format used to encode the video stream (e.g. h264, hevc, prores)."
     "Audio Codec" -> "Compression format used for the audio track."
     "Bitrate" -> "Average data rate. Higher generally means better quality at a given resolution."

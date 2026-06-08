@@ -92,6 +92,9 @@ struct DetailView: View {
                 MetadataItemView(label: "Resolution", value: metadata.resolution)
                 MetadataItemView(label: "Duration", value: metadata.durationFormatted)
                 MetadataItemView(label: "FPS", value: String(format: "%.2f", metadata.fps))
+                if let frames = metadata.frameCountFormatted {
+                    MetadataItemView(label: "Frames", value: frames)
+                }
                 MetadataItemView(label: "Video Codec", value: metadata.codecVideo.isEmpty ? "—" : metadata.codecVideo)
                 if !metadata.codecAudio.isEmpty {
                     MetadataItemView(label: "Audio Codec", value: metadata.codecAudio)

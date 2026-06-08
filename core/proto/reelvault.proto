@@ -411,6 +411,10 @@ message VideoMetadata {
   // comment and the FullResolutionStatus enum for semantics. Computed
   // server-side via core/src/full_resolution.rs.
   FullResolutionStatus full_resolution = 39;
+  // Total frame count from the container (ffprobe's nb_frames), or 0 when the
+  // container doesn't report one. Clients fall back to duration × fps for an
+  // (approximate) estimate when this is 0.
+  int64 frame_count = 40;
 }
 
 message GetThumbnailRequest {

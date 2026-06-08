@@ -364,6 +364,10 @@ impl ReelVaultService {
             height,
         );
 
+        // ffprobe's nb_frames, stored at index time (0 when the container
+        // didn't report one; clients estimate from duration × fps in that case).
+        let frame_count = db.get_video_frame_count(video_id);
+
         Ok(VideoMetadata {
             id: video_id.to_string(),
             filename: video.filename,
@@ -404,6 +408,7 @@ impl ReelVaultService {
             exposure_program: exposure_program.unwrap_or_default(),
             white_balance: white_balance.unwrap_or_default(),
             full_resolution,
+            frame_count,
         })
     }
 
