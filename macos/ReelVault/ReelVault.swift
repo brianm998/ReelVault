@@ -141,4 +141,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         true
     }
+
+    /// Kill the core daemon we spawned (if any) when the app quits, so it
+    /// doesn't linger as an orphan. `shutdown()` is a no-op when we connected
+    /// to an externally-running daemon (we only track a daemon we started).
+    func applicationWillTerminate(_ notification: Notification) {
+        ServerLauncher.shared.shutdown()
+    }
 }

@@ -32,6 +32,11 @@ class ServerLauncher {
     @Volatile
     private var process: Process? = null
 
+    /** JVM shutdown hook that kills a spawned daemon on any process exit that
+     *  bypasses the UI's onDispose (e.g. Cmd+Q). Registered lazily on the
+     *  first spawn; only ever kills a daemon this launcher started. */
+    private var shutdownHook: Thread? = null
+
     /**
      * Quick liveness check on [host]:[port] using a TCP connect. Used by the
      * client at startup before deciding whether to spawn its own daemon.
@@ -145,6 +150,7 @@ class ServerLauncher {
             return null
         }
         process = proc
+        registerShutdownHook()
 
         // Read stdout line-by-line in a background thread; we block here for
         // up to ~10 seconds waiting for the listening line. Anything past
@@ -191,7 +197,8 @@ class ServerLauncher {
         return listening
     }
 
-    /** Best-effort shutdown of any daemon this launcher started. */
+    /** Best-effort shutdown of any daemon this launcher started. No-op when we
+     *  connected to an externally-running daemon (then [process] is null). */
     fun shutdown() {
         val p = process ?: return
         process = null
@@ -201,6 +208,19 @@ class ServerLauncher {
                 p.destroyForcibly()
             }
         } catch (_: Exception) { /* ignore */ }
+    }
+
+    /** Register a one-time JVM shutdown hook so a spawned daemon is killed even
+     *  when the app exits without disposing the UI (Cmd+Q, JVM exit). The hook
+     *  just calls [shutdown], which is idempotent and a no-op once the process
+     *  is gone, so it composes safely with the UI's own onDispose shutdown. */
+    private fun registerShutdownHook() {
+        if (shutdownHook != null) return
+        val hook = Thread({ shutdown() }, "reelvault-core-killer")
+        try {
+            Runtime.getRuntime().addShutdownHook(hook)
+            shutdownHook = hook
+        } catch (_: IllegalStateException) { /* JVM already shutting down */ }
     }
 
     private fun isWindows(): Boolean =
