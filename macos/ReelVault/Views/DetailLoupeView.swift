@@ -163,36 +163,13 @@ struct DetailLoupeView: View {
                     .padding(12)
             }
 
-            // Proxy-playback banner (top-right). Visible whenever the
-            // player is loading a proxy instead of the master — either
-            // because the master is too large to play inline (auto
-            // fallback) or because the user explicitly picked a proxy
-            // in the right panel. Reassures the user that yes, this is
-            // playable, and tells them which file they're seeing.
-            let effective = effectivePath(for: video)
-            if effective != video.path {
-                let activeProxy = detailViewModel.proxies.first(where: { $0.path == effective })
-                HStack {
-                    Spacer()
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(detailViewModel.selectedProxyId != nil
-                             ? "Playing selected proxy"
-                             : "Playing proxy")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(.white)
-                        if let proxy = activeProxy {
-                            Text("\(proxy.filename) • \(proxy.height)p")
-                                .font(.system(size: 10))
-                                .foregroundColor(.white.opacity(0.85))
-                        }
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-                    .background(Color(red: 0.16, green: 0.53, blue: 0.53).opacity(0.85))
-                    .cornerRadius(4)
-                }
-                .padding(12)
-            }
+            // Proxy-playback indicator. Shown whenever the player is loading
+            // a proxy instead of the master — either because the master is
+            // too large to play inline (auto fallback) or because the user
+            // explicitly picked a proxy in the right panel. The badge itself
+            // now lives in the top bar (so it never covers the frame); here we
+            // just publish its content via `updateProxyBanner`, recomputing it
+            // whenever the effective path could change.
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // Measure the render area (non-intrusively) so the player can default
@@ -205,6 +182,13 @@ struct DetailLoupeView: View {
                     .onChange(of: geo.size.width) { _, w in playerAreaWidth = w }
             }
         )
+        .onChange(of: effectivePath(for: video)) { _, _ in
+            detailViewModel.updateProxyBanner(for: video, areaHeightPx: Int(playerAreaHeight))
+        }
+        .onAppear {
+            detailViewModel.updateProxyBanner(for: video, areaHeightPx: Int(playerAreaHeight))
+        }
+        .onDisappear { detailViewModel.clearProxyBanner() }
 
         ControlBar(
             video: video,

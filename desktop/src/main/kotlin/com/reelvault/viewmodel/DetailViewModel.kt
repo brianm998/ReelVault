@@ -60,6 +60,28 @@ class DetailViewModel(
     private val _selectedProxyId = MutableStateFlow<String?>(null)
     val selectedProxyId: StateFlow<String?> = _selectedProxyId.asStateFlow()
 
+    /** Content for the top-bar proxy-playback indicator. */
+    data class ProxyBanner(
+        /** True when the user explicitly picked this proxy in the right
+         *  panel; false when it's the automatic unplayable-master fallback. */
+        val selected: Boolean,
+        /** "filename • 1080p"-style detail, or null when the proxy row is
+         *  unknown. Surfaced in the indicator's tooltip. */
+        val detail: String?,
+    )
+
+    // Drives the proxy-playback indicator that now lives in the top bar
+    // (see ReelVaultTopBar) rather than as an overlay on the video itself.
+    // `null` hides it — the master is playing, or the loupe isn't on screen.
+    // [DetailViewScreen] sets this as it resolves the effective playback path
+    // and clears it when the loupe is left.
+    private val _proxyBanner = MutableStateFlow<ProxyBanner?>(null)
+    val proxyBanner: StateFlow<ProxyBanner?> = _proxyBanner.asStateFlow()
+
+    fun setProxyBanner(banner: ProxyBanner?) {
+        _proxyBanner.value = banner
+    }
+
     // The summary backing the currently-selected card. Exposed as a
     // StateFlow so the right-panel proxy section (which keys off
     // `playableNatively` and `hasProxies` — neither carried by
@@ -390,6 +412,7 @@ class DetailViewModel(
         _error.value = null
         _proxies.value = emptyList()
         _selectedProxyId.value = null
+        _proxyBanner.value = null
     }
 
     fun onDestroy() {

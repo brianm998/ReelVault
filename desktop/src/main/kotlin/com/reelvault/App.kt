@@ -842,6 +842,7 @@ fun ReelVaultApp(
                         selectedCount = selectedIds.value.size,
                         onShowHelp = { showHelpDialog = true },
                         accentScheme = accentScheme,
+                        proxyBanner = detailViewModel.proxyBanner.collectAsState().value,
                     )
 
                     // Horizontal border separating the top bar from the content
@@ -2173,6 +2174,9 @@ fun ReelVaultTopBar(
     onShowHelp: () -> Unit = {},
     /** Drives which colour variant of the title-bar icon is shown. */
     accentScheme: AccentScheme = AccentScheme.Purple,
+    /** When non-null, the detail player is showing a proxy — render the
+     *  proxy-playback indicator. null hides it. */
+    proxyBanner: com.reelvault.viewmodel.DetailViewModel.ProxyBanner? = null,
 ) {
     var showFileMenu by remember { mutableStateOf(false) }
 
@@ -2296,6 +2300,46 @@ fun ReelVaultTopBar(
                 // Trailing controls, left → right: Live · Group · Map · Help ·
                 // Settings. Kept in the same order as the SwiftUI client.
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Proxy-playback indicator — relocated here from an overlay
+                    // on the video itself so it never covers the frame. Visible
+                    // only while the detail player is showing a proxy.
+                    proxyBanner?.let { banner ->
+                        com.reelvault.ui.components.Tooltip(
+                            text = (banner.detail?.let { "Showing proxy: $it. " } ?: "") +
+                                "The detail player is showing a proxy, not the master " +
+                                "file. Pick a different proxy or revert to the master " +
+                                "in the details panel."
+                        ) {
+                            Surface(
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                                color = Color(0xFF408888).copy(alpha = 0.85f),
+                                modifier = Modifier.height(24.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Movie,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Text(
+                                        text = if (banner.selected) "Playing selected proxy"
+                                            else "Playing proxy",
+                                        fontSize = 11.sp,
+                                        lineHeight = 11.sp,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+
                     // Live-updates pill (leftmost). Green dot = watcher active;
                     // grey dot = paused. Clicking opens the watch-settings dialog.
                     val liveOn = gridViewModel.liveUpdatesEnabled.collectAsState().value

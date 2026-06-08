@@ -27,6 +27,23 @@ class DetailViewModel: ObservableObject {
     /// `playbackPath(for:)`).
     @Published var selectedProxyId: String?
 
+    /// Content for the top-bar proxy-playback indicator.
+    struct ProxyBanner: Equatable {
+        /// True when the user explicitly picked this proxy in the right
+        /// panel; false when it's the automatic unplayable-master fallback.
+        var selected: Bool
+        /// "filename • 1080p"-style detail, or nil when the proxy row is
+        /// unknown. Surfaced in the indicator's tooltip.
+        var detail: String?
+    }
+
+    /// Drives the proxy-playback indicator that now lives in the top bar
+    /// (see `ContentView.topBar`) rather than as an overlay on the video.
+    /// `nil` hides it — the master is playing, or the loupe isn't on screen.
+    /// `DetailLoupeView` sets this as it resolves the effective playback path
+    /// and clears it when the loupe is left.
+    @Published var proxyBanner: ProxyBanner?
+
     /// The summary backing the currently-selected card. Exposed so the
     /// right panel's proxy section can decide whether to render itself
     /// (keys off `hasProxies` and `playableNatively`, neither of which
@@ -73,6 +90,28 @@ class DetailViewModel: ObservableObject {
     /// Pass `nil` to revert to playing the master.
     func setSelectedProxy(_ proxyId: String?) {
         selectedProxyId = proxyId
+    }
+
+    /// Recompute the top-bar proxy indicator from the current proxy
+    /// selection and the player's render height. Called by `DetailLoupeView`
+    /// whenever the effective path could change (selection, proxy list,
+    /// render-area resize). Sets `proxyBanner` to nil when the master plays.
+    func updateProxyBanner(for video: VideoSummary, areaHeightPx: Int) {
+        let effective = playbackPath(for: video, areaHeightPx: areaHeightPx) ?? video.path
+        if effective != video.path {
+            let active = proxies.first(where: { $0.path == effective })
+            proxyBanner = ProxyBanner(
+                selected: selectedProxyId != nil,
+                detail: active.map { "\($0.filename) • \($0.height)p" }
+            )
+        } else {
+            proxyBanner = nil
+        }
+    }
+
+    /// Hide the top-bar proxy indicator (loupe left, or selection cleared).
+    func clearProxyBanner() {
+        proxyBanner = nil
     }
 
     /// Break the link between the currently-displayed master and one

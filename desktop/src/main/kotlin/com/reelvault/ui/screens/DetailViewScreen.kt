@@ -119,6 +119,11 @@ fun DetailViewScreen(
             gridViewModel.cancelHiResDetail(video.id)
         }
     }
+    // Hide the top-bar proxy indicator when the loupe leaves the screen
+    // (switching to grid/list, or clearing the selection).
+    DisposableEffect(Unit) {
+        onDispose { detailViewModel.setProxyBanner(null) }
+    }
 
     // Mode flag: "play" hasn't been pressed yet → show scrub thumbnail preview.
     // After "play", VLCJ takes over the preview area.
@@ -215,42 +220,23 @@ fun DetailViewScreen(
                 )
             }
 
-            // Proxy-playback banner (top-right). Visible whenever the
-            // player is loading a proxy instead of the master — either
-            // because the master is too large to play inline (auto
-            // fallback) or because the user explicitly picked a proxy
-            // in the right panel. Reassures the user that yes, this is
-            // playable, and tells them which file they're seeing.
-            //
-            // The badge is informational only; the right panel is where
-            // the user picks a different proxy or reverts to master.
-            if (effectivePath != video.path) {
-                val activeProxy = remember(effectivePath, proxies) {
-                    proxies.firstOrNull { it.path == effectivePath }
-                }
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(ReelVaultSpacing.Medium),
-                    color = Color(0xFF408888).copy(alpha = 0.85f),
-                    shape = MaterialTheme.shapes.small,
-                ) {
-                    Column(modifier = Modifier.padding(ReelVaultSpacing.Small)) {
-                        Text(
-                            text = if (selectedProxyId != null) "Playing selected proxy"
-                                else "Playing proxy",
-                            color = Color.White,
-                            style = MaterialTheme.typography.labelSmall,
+            // Proxy-playback indicator. Shown whenever the player is loading
+            // a proxy instead of the master — either because the master is
+            // too large to play inline (auto fallback) or because the user
+            // explicitly picked a proxy in the right panel. The badge itself
+            // now lives in the top bar (so it never covers the frame); here
+            // we just publish its content. The right panel remains where the
+            // user picks a different proxy or reverts to the master.
+            LaunchedEffect(effectivePath, video.id, video.path, selectedProxyId, proxies) {
+                detailViewModel.setProxyBanner(
+                    if (effectivePath != video.path) {
+                        val activeProxy = proxies.firstOrNull { it.path == effectivePath }
+                        DetailViewModel.ProxyBanner(
+                            selected = selectedProxyId != null,
+                            detail = activeProxy?.let { "${it.filename} • ${it.height}p" },
                         )
-                        if (activeProxy != null) {
-                            Text(
-                                text = "${activeProxy.filename} • ${activeProxy.height}p",
-                                color = Color.White.copy(alpha = 0.85f),
-                                style = MaterialTheme.typography.labelSmall,
-                            )
-                        }
-                    }
-                }
+                    } else null
+                )
             }
 
             // "VLC not installed" or "VLC found but video surface is black"
