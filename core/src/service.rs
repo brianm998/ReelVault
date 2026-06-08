@@ -1919,6 +1919,8 @@ impl ReelVaultTrait for ReelVaultService {
                 height: r.height,
                 confidence: r.proxy_confidence,
                 auto_detected: r.auto_detected,
+                playable_natively: self.config.max_native_playback_height == 0
+                    || r.height <= self.config.max_native_playback_height,
             })
             .collect();
         Ok(Response::new(ListProxiesResponse { proxies }))

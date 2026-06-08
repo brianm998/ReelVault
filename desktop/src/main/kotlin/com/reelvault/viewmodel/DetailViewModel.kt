@@ -173,7 +173,18 @@ class DetailViewModel(
         if (pickedId != null) {
             return _proxies.value.firstOrNull { it.id == pickedId }?.path
         }
-        return chooseProxyForHeight(_proxies.value, areaHeightPx)?.path
+        val all = _proxies.value
+        if (all.isEmpty()) return null
+        // When the master itself can't play locally (above the configured
+        // playable height), restrict to proxies that *can* play — so detail
+        // playback defaults to something that actually decodes. If somehow no
+        // proxy qualifies, fall back to all (chooseProxyForHeight's smallest).
+        val candidates = if (!video.playableNatively) {
+            all.filter { it.playableNatively }.ifEmpty { all }
+        } else {
+            all
+        }
+        return chooseProxyForHeight(candidates, areaHeightPx)?.path
     }
 
     /** Pick the proxy that best fills a render area [areaHeightPx] px tall: the

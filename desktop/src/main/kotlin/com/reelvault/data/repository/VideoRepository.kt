@@ -720,6 +720,9 @@ class VideoRepository(
         val height: Int,
         val confidence: Double,
         val autoDetected: Boolean,
+        /** Server's verdict that this proxy fits under the locally-playable
+         *  height — the detail view prefers a playable proxy for oversize masters. */
+        val playableNatively: Boolean = true,
     )
 
     suspend fun listProxies(videoId: String): List<ProxyInfo> = withContext(Dispatchers.IO) {
@@ -738,6 +741,7 @@ class VideoRepository(
                     height = it.height,
                     confidence = it.confidence,
                     autoDetected = it.autoDetected,
+                    playableNatively = it.playableNatively,
                 )
             }
         } catch (e: Exception) {

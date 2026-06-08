@@ -617,6 +617,11 @@ message ProxyInfo {
   // that ReelVault generated itself or that the user marked manually.
   double confidence = 7;
   bool auto_detected = 8;    // True if ReelVault inferred this link.
+  // The server's verdict that this proxy fits under the user-configured
+  // `max_native_playback_height` (same test as VideoSummary.playable_natively).
+  // Lets the detail view default to a *playable* proxy when the master is too
+  // large to play locally.
+  bool playable_natively = 9;
 }
 
 message ListProxiesResponse {

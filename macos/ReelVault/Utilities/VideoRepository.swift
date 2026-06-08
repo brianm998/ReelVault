@@ -893,6 +893,9 @@ class VideoRepository: ObservableObject {
         let height: Int
         let confidence: Double
         let autoDetected: Bool
+        /// Server's verdict that this proxy fits under the locally-playable
+        /// height — the detail view prefers a playable proxy for oversize masters.
+        var playableNatively: Bool = true
     }
 
     /// Break a single master ↔ proxy junction-table edge without
@@ -929,7 +932,8 @@ class VideoRepository: ObservableObject {
                 width: Int($0.width),
                 height: Int($0.height),
                 confidence: $0.confidence,
-                autoDetected: $0.autoDetected
+                autoDetected: $0.autoDetected,
+                playableNatively: $0.playableNatively
             )
         }
     }

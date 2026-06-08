@@ -131,20 +131,34 @@ class DetailViewModel: ObservableObject {
            let row = proxies.first(where: { $0.id == picked }) {
             return row.path
         }
-        return chooseProxy(areaHeightPx: areaHeightPx)?.path
+        guard !proxies.isEmpty else { return nil }
+        // When the master itself can't play locally (above the configured
+        // playable height), restrict to proxies that *can* play — so detail
+        // playback defaults to something that actually decodes. If none
+        // qualifies, fall back to all (chooseProxy's smallest).
+        var candidates = proxies
+        if !video.playableNatively {
+            let playable = proxies.filter { $0.playableNatively }
+            if !playable.isEmpty { candidates = playable }
+        }
+        return chooseProxy(from: candidates, areaHeightPx: areaHeightPx)?.path
     }
 
     /// Pick the proxy that best fills a render area `areaHeightPx` px tall: the
     /// smallest proxy still at least as tall as the area (so it isn't upscaled),
     /// or — when the area is taller than every proxy — the largest. Before the
     /// area is measured (`areaHeightPx <= 0`) we fall back to the smallest.
-    /// Returns nil when there are no proxies. `proxies` is sorted descending by
-    /// pixel count (first = largest, last = smallest).
-    private func chooseProxy(areaHeightPx: Int) -> VideoRepository.ProxyInfo? {
-        guard !proxies.isEmpty else { return nil }
-        if areaHeightPx <= 0 { return proxies.last }
-        return proxies.filter { $0.height >= areaHeightPx }.min(by: { $0.height < $1.height })
-            ?? proxies.first
+    /// Returns nil when `candidates` is empty. `proxies` is sorted descending by
+    /// pixel count (first = largest, last = smallest); `candidates` preserves
+    /// that order.
+    private func chooseProxy(
+        from candidates: [VideoRepository.ProxyInfo],
+        areaHeightPx: Int
+    ) -> VideoRepository.ProxyInfo? {
+        guard !candidates.isEmpty else { return nil }
+        if areaHeightPx <= 0 { return candidates.last }
+        return candidates.filter { $0.height >= areaHeightPx }.min(by: { $0.height < $1.height })
+            ?? candidates.first
     }
 
     private func loadGroupMembers(groupId: String) {

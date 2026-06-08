@@ -1314,6 +1314,12 @@ nonisolated struct Reelvault_ProxyInfo: Sendable {
   /// True if ReelVault inferred this link.
   var autoDetected: Bool = false
 
+  /// The server's verdict that this proxy fits under the user-configured
+  /// `max_native_playback_height` (same test as VideoSummary.playable_natively).
+  /// Lets the detail view default to a *playable* proxy when the master is too
+  /// large to play locally.
+  var playableNatively: Bool = false
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -4622,7 +4628,7 @@ nonisolated extension Reelvault_ListProxiesRequest: SwiftProtobuf.Message, Swift
 
 nonisolated extension Reelvault_ProxyInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ProxyInfo"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{1}width\0\u{1}height\0\u{1}confidence\0\u{3}auto_detected\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{1}width\0\u{1}height\0\u{1}confidence\0\u{3}auto_detected\0\u{3}playable_natively\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -4638,6 +4644,7 @@ nonisolated extension Reelvault_ProxyInfo: SwiftProtobuf.Message, SwiftProtobuf.
       case 6: try { try decoder.decodeSingularInt32Field(value: &self.height) }()
       case 7: try { try decoder.decodeSingularDoubleField(value: &self.confidence) }()
       case 8: try { try decoder.decodeSingularBoolField(value: &self.autoDetected) }()
+      case 9: try { try decoder.decodeSingularBoolField(value: &self.playableNatively) }()
       default: break
       }
     }
@@ -4668,6 +4675,9 @@ nonisolated extension Reelvault_ProxyInfo: SwiftProtobuf.Message, SwiftProtobuf.
     if self.autoDetected != false {
       try visitor.visitSingularBoolField(value: self.autoDetected, fieldNumber: 8)
     }
+    if self.playableNatively != false {
+      try visitor.visitSingularBoolField(value: self.playableNatively, fieldNumber: 9)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -4680,6 +4690,7 @@ nonisolated extension Reelvault_ProxyInfo: SwiftProtobuf.Message, SwiftProtobuf.
     if lhs.height != rhs.height {return false}
     if lhs.confidence != rhs.confidence {return false}
     if lhs.autoDetected != rhs.autoDetected {return false}
+    if lhs.playableNatively != rhs.playableNatively {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
