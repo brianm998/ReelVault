@@ -771,6 +771,22 @@ enum LibraryFilterMode: String, CaseIterable, Identifiable, Hashable {
     }
 }
 
+/// Tri-state presence toggle for a Library Filter "attribute" (video has a
+/// known location / keywords / proxies, or is full resolution). `any` applies
+/// no constraint; `yes` keeps only videos that have the attribute; `no` keeps
+/// only those that don't. Maps 1:1 to the proto `AttributeFilter`.
+enum AttributeFilterState: String, CaseIterable, Identifiable, Hashable {
+    case any, yes, no
+    var id: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .any: return "Any"
+        case .yes: return "Yes"
+        case .no:  return "No"
+        }
+    }
+}
+
 /// One column in the metadata-mode browser. `key` is a canonical metadata
 /// token ("" = not chosen yet); `values` are the selected facet tokens, OR-ed
 /// together (empty = All). `anchor` is the value a range-select (shift-click)

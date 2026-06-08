@@ -59,6 +59,36 @@ pub struct FilterSpec {
     /// Generic metadata filters: `(key token, value token)`. An empty value is
     /// skipped. Keys are resolved through [`crate::metadata_keys`].
     pub metadata_filters: Vec<(String, String)>,
+    /// Tri-state presence filters from the Library Filter's "attribute" mode.
+    /// `None` = no constraint; `Some(true)` = must have; `Some(false)` = must
+    /// not have. `Some(false)` is the exact complement of `Some(true)`.
+    ///   - `has_location`: a non-null, non-(0,0) GPS pair.
+    ///   - `has_keywords`: at least one tag.
+    ///   - `has_proxies`: at least one linked proxy.
+    pub has_location: Option<bool>,
+    pub has_keywords: Option<bool>,
+    pub has_proxies: Option<bool>,
+    /// Full-resolution presence filter. `None` = no constraint; otherwise the
+    /// precomputed tuple set + the tri-state target (see [`FullResolutionFilter`]).
+    pub full_resolution: Option<FullResolutionFilter>,
+}
+
+/// The full-resolution attribute filter, resolved into a SQL-friendly form by
+/// the service layer. Classifying a video as full resolution needs the sensor
+/// cache + built-in table (see `core/src/full_resolution.rs`), which live
+/// above the SQL layer — so the service enumerates the catalog's distinct
+/// `(camera_model, width, height)` combinations that classify as FULL and
+/// hands them down as `full_tuples`. [`Database::build_filter_clauses`] then
+/// turns that into a plain in-query membership test, which keeps pagination
+/// and counts correct without storing a derived column that could go stale
+/// when camera mappings or the sensor cache change.
+#[derive(Clone)]
+pub struct FullResolutionFilter {
+    /// `true` keeps only videos whose `(camera, w, h)` is in `full_tuples`;
+    /// `false` keeps only those that are NOT (which includes UNSPECIFIED).
+    pub want_full: bool,
+    /// Distinct `(camera_model, width, height)` combos that classify as FULL.
+    pub full_tuples: Vec<(String, i64, i64)>,
 }
 
 /// One distinct value of a facet column, with the number of representative
@@ -1654,6 +1684,67 @@ impl Database {
             bind.push(Box::new(spec.color_label.clone()));
         }
 
+        // Tri-state presence filters from the Library Filter's "attribute"
+        // mode. Each `Some(false)` clause is the exact negation of its
+        // `Some(true)` form, so YES ∪ NO covers every representative video.
+        if let Some(has) = spec.has_location {
+            // A "known location" is a non-null, non-(0,0) GPS pair — the same
+            // test the global map uses (see list_videos_with_locations).
+            if has {
+                sql.push_str(
+                    " AND m.gps_latitude IS NOT NULL AND m.gps_longitude IS NOT NULL \
+                     AND NOT (m.gps_latitude = 0 AND m.gps_longitude = 0)",
+                );
+            } else {
+                sql.push_str(
+                    " AND (m.gps_latitude IS NULL OR m.gps_longitude IS NULL \
+                     OR (m.gps_latitude = 0 AND m.gps_longitude = 0))",
+                );
+            }
+        }
+        if let Some(has) = spec.has_keywords {
+            let exists = "EXISTS (SELECT 1 FROM video_tags vt WHERE vt.video_id = v.id)";
+            sql.push_str(if has { " AND " } else { " AND NOT " });
+            sql.push_str(exists);
+        }
+        if let Some(has) = spec.has_proxies {
+            // "Has proxies" mirrors the grid's proxy badge: a representative
+            // (master) row with at least one linked proxy (see list_proxies).
+            let exists = "EXISTS (SELECT 1 FROM proxy_links pl WHERE pl.master_id = v.id)";
+            sql.push_str(if has { " AND " } else { " AND NOT " });
+            sql.push_str(exists);
+        }
+        if let Some(fr) = &spec.full_resolution {
+            if fr.full_tuples.is_empty() {
+                // No catalog video classifies as full resolution. "Is full"
+                // then matches nothing; "is not full" matches everything (no
+                // clause needed).
+                if fr.want_full {
+                    sql.push_str(" AND 0");
+                }
+            } else {
+                // (camera, width, height) membership over the precomputed FULL
+                // tuples. COALESCE keeps each term NULL-free so the negated
+                // ("is not full") form stays exact for rows with no camera /
+                // dimensions.
+                let one = "(COALESCE(m.camera_model, '') = ? \
+                    AND COALESCE(m.width, 0) = ? AND COALESCE(m.height, 0) = ?)";
+                let chain = std::iter::repeat_n(one, fr.full_tuples.len())
+                    .collect::<Vec<_>>()
+                    .join(" OR ");
+                if fr.want_full {
+                    sql.push_str(&format!(" AND ({chain})"));
+                } else {
+                    sql.push_str(&format!(" AND NOT ({chain})"));
+                }
+                for (cam, w, h) in &fr.full_tuples {
+                    bind.push(Box::new(cam.clone()));
+                    bind.push(Box::new(*w));
+                    bind.push(Box::new(*h));
+                }
+            }
+        }
+
         // Manual collection membership.
         if let Some(cid) = spec.collection_id.as_deref().filter(|c| !c.is_empty()) {
             sql.push_str(" AND v.id IN (SELECT video_id FROM collection_members WHERE collection_id = ?)");
@@ -2899,5 +2990,121 @@ mod tests {
         assert_eq!(total, 1);
         assert_eq!(vids.len(), 1);
         assert_eq!(vids[0].filename, "beach_sony.mov");
+    }
+
+    #[test]
+    fn attribute_presence_filters_are_tri_state() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+
+        let a = seed_meta(&db, "/l/a.mov", "a.mov", Some("Cam"), None, None); // GPS
+        let b = seed_meta(&db, "/l/b.mov", "b.mov", Some("Cam"), None, None); // tagged
+        let c = seed_meta(&db, "/l/c.mov", "c.mov", Some("Cam"), None, None); // has proxy
+        let c_proxy = seed_meta(&db, "/l/c_proxy.mov", "c_proxy.mov", Some("Cam"), None, None);
+
+        {
+            let conn = db.get_connection().unwrap();
+            conn.execute(
+                "UPDATE metadata SET gps_latitude = 37.77, gps_longitude = -122.41 WHERE video_id = ?",
+                [&a],
+            )
+            .unwrap();
+        }
+        let tag = db.create_tag("beach", None).unwrap();
+        db.tag_video(&b, &tag).unwrap();
+        // Linking a proxy under `c` hides the proxy row but leaves `c` listed.
+        db.set_proxy_of(&c_proxy, &c, 1.0, false).unwrap();
+
+        let names = |spec: &FilterSpec| -> Vec<String> {
+            db.list_videos_grouped(50, 0, "name", true, spec)
+                .unwrap()
+                .0
+                .into_iter()
+                .map(|v| v.filename)
+                .collect()
+        };
+
+        assert_eq!(names(&FilterSpec { has_location: Some(true), ..Default::default() }), vec!["a.mov"]);
+        assert_eq!(
+            names(&FilterSpec { has_location: Some(false), ..Default::default() }),
+            vec!["b.mov", "c.mov"]
+        );
+        assert_eq!(names(&FilterSpec { has_keywords: Some(true), ..Default::default() }), vec!["b.mov"]);
+        assert_eq!(
+            names(&FilterSpec { has_keywords: Some(false), ..Default::default() }),
+            vec!["a.mov", "c.mov"]
+        );
+        assert_eq!(names(&FilterSpec { has_proxies: Some(true), ..Default::default() }), vec!["c.mov"]);
+        assert_eq!(
+            names(&FilterSpec { has_proxies: Some(false), ..Default::default() }),
+            vec!["a.mov", "b.mov"]
+        );
+    }
+
+    #[test]
+    fn full_resolution_filter_membership_is_null_safe() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let full = db.add_video("/l/full.mov", "full.mov", None, None, Some(1)).unwrap();
+        let other = db.add_video("/l/other.mov", "other.mov", None, None, Some(1)).unwrap();
+        let nocam = db.add_video("/l/nocam.mov", "nocam.mov", None, None, Some(1)).unwrap();
+        {
+            let conn = db.get_connection().unwrap();
+            conn.execute(
+                "INSERT OR REPLACE INTO metadata (video_id, camera_model, width, height) \
+                 VALUES (?, 'TestCam', 6000, 4000)",
+                [&full],
+            )
+            .unwrap();
+            conn.execute(
+                "INSERT OR REPLACE INTO metadata (video_id, camera_model, width, height) \
+                 VALUES (?, 'TestCam', 1920, 1080)",
+                [&other],
+            )
+            .unwrap();
+            // A row with NULL camera and NULL dimensions — must count as "not full".
+            conn.execute("INSERT OR REPLACE INTO metadata (video_id) VALUES (?)", [&nocam]).unwrap();
+        }
+
+        let names = |spec: &FilterSpec| -> Vec<String> {
+            db.list_videos_grouped(50, 0, "name", true, spec)
+                .unwrap()
+                .0
+                .into_iter()
+                .map(|v| v.filename)
+                .collect()
+        };
+        let full_tuples = vec![("TestCam".to_string(), 6000_i64, 4000_i64)];
+
+        assert_eq!(
+            names(&FilterSpec {
+                full_resolution: Some(FullResolutionFilter { want_full: true, full_tuples: full_tuples.clone() }),
+                ..Default::default()
+            }),
+            vec!["full.mov"]
+        );
+        // "Not full" must include the NULL-camera row — the COALESCE keeps the
+        // negated membership test from silently dropping NULL rows.
+        assert_eq!(
+            names(&FilterSpec {
+                full_resolution: Some(FullResolutionFilter { want_full: false, full_tuples }),
+                ..Default::default()
+            }),
+            vec!["nocam.mov", "other.mov"]
+        );
+        // Empty tuple set: "is full" matches nothing; "is not full" matches all.
+        assert!(names(&FilterSpec {
+            full_resolution: Some(FullResolutionFilter { want_full: true, full_tuples: vec![] }),
+            ..Default::default()
+        })
+        .is_empty());
+        assert_eq!(
+            names(&FilterSpec {
+                full_resolution: Some(FullResolutionFilter { want_full: false, full_tuples: vec![] }),
+                ..Default::default()
+            })
+            .len(),
+            3
+        );
     }
 }

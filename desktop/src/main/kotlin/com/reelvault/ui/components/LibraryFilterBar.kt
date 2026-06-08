@@ -71,6 +71,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.reelvault.data.models.AttributeFilterState
 import com.reelvault.data.models.ColorLabel
 import com.reelvault.data.models.FacetColumn
 import com.reelvault.data.models.LibraryFilterMode
@@ -378,23 +379,102 @@ private fun LibraryTextEditor(viewModel: GridViewModel, onSearchFocusChanged: (B
     }
 }
 
-/** Attribute mode: direct-click star rating + colour swatches, centred. */
+/** Attribute mode: rating + colour on the first row, then the tri-state
+ *  presence toggles (location / keywords / proxies / full resolution). */
 @Composable
 private fun LibraryAttributeEditor(viewModel: GridViewModel) {
     val minRating by viewModel.filterMinRating.collectAsState()
     val colorLabel by viewModel.filterColorLabel.collectAsState()
-    Row(
+    val hasLocation by viewModel.filterHasLocation.collectAsState()
+    val hasKeywords by viewModel.filterHasKeywords.collectAsState()
+    val hasProxies by viewModel.filterHasProxies.collectAsState()
+    val fullResolution by viewModel.filterFullResolution.collectAsState()
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = ReelVaultSpacing.Small, vertical = ReelVaultSpacing.Small),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(ReelVaultSpacing.Medium, Alignment.CenterHorizontally),
+        verticalArrangement = Arrangement.spacedBy(ReelVaultSpacing.Small),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("Rating", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        MinRatingStarPicker(minRating) { viewModel.setMinRatingFilter(it) }
-        Spacer(Modifier.width(ReelVaultSpacing.Medium))
-        Text("Color", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        ColorSwatchPicker(colorLabel) { viewModel.setColorLabelFilter(it) }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(ReelVaultSpacing.Medium, Alignment.CenterHorizontally),
+        ) {
+            Text("Rating", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            MinRatingStarPicker(minRating) { viewModel.setMinRatingFilter(it) }
+            Spacer(Modifier.width(ReelVaultSpacing.Medium))
+            Text("Color", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            ColorSwatchPicker(colorLabel) { viewModel.setColorLabelFilter(it) }
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(ReelVaultSpacing.Medium, Alignment.CenterHorizontally),
+        ) {
+            AttributeTriState("Location", hasLocation, "Filter by whether a video has a known GPS location") {
+                viewModel.setHasLocationFilter(it)
+            }
+            AttributeTriState("Keywords", hasKeywords, "Filter by whether a video has any keywords") {
+                viewModel.setHasKeywordsFilter(it)
+            }
+            AttributeTriState("Proxies", hasProxies, "Filter by whether a video has any proxies") {
+                viewModel.setHasProxiesFilter(it)
+            }
+            AttributeTriState("Full Res", fullResolution, "Filter by whether a video is full resolution") {
+                viewModel.setFullResolutionFilter(it)
+            }
+        }
+    }
+}
+
+/** A labelled three-segment toggle — Any / Yes / No — for one presence
+ *  attribute. Mirrors [LibraryFilterModeSelector]'s segmented-control styling. */
+@Composable
+private fun AttributeTriState(
+    label: String,
+    state: AttributeFilterState,
+    tooltip: String,
+    onChange: (AttributeFilterState) -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(ReelVaultSpacing.XSmall),
+    ) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Tooltip(text = tooltip) {
+            Surface(shape = RoundedCornerShape(6.dp), color = MaterialTheme.colorScheme.surface) {
+                Row {
+                    val entries = listOf(
+                        AttributeFilterState.Any to "Any",
+                        AttributeFilterState.Yes to "Yes",
+                        AttributeFilterState.No to "No",
+                    )
+                    entries.forEachIndexed { idx, (value, text) ->
+                        if (idx > 0) {
+                            Box(
+                                Modifier
+                                    .width(1.dp)
+                                    .height(20.dp)
+                                    .background(MaterialTheme.colorScheme.outlineVariant)
+                            )
+                        }
+                        val selected = value == state
+                        Box(
+                            modifier = Modifier
+                                .clickable { onChange(value) }
+                                .background(if (selected) MaterialTheme.colorScheme.primary else Color.Transparent)
+                                .padding(horizontal = ReelVaultSpacing.Small, vertical = 2.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = text,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

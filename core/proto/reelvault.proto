@@ -164,6 +164,17 @@ message MetadataFilter {
   string value = 2;
 }
 
+// Tri-state toggle for the Library Filter's "attribute" presence filters
+// (has location / has keywords / has proxies / is full resolution). ANY is
+// the proto3 default (0) so an unset field means "no constraint". YES keeps
+// only videos that have the attribute; NO keeps only those that don't — NO
+// is the exact complement of YES, so YES ∪ NO together cover every video.
+enum AttributeFilter {
+  ATTRIBUTE_FILTER_ANY = 0;
+  ATTRIBUTE_FILTER_YES = 1;
+  ATTRIBUTE_FILTER_NO = 2;
+}
+
 message ListVideosRequest {
   int32 limit = 1;
   int32 offset = 2;
@@ -209,6 +220,17 @@ message ListVideosRequest {
   // filter compose with all the others; the separate SearchVideos RPC remains
   // for legacy callers.
   string search_query = 19;
+  // Tri-state presence filters from the Library Filter's "attribute" mode.
+  // ANY (the default) leaves the dimension unconstrained; YES / NO keep only
+  // videos that do / don't have the attribute. AND-combined with everything
+  // else. `filter_full_resolution` YES keeps videos whose recorded resolution
+  // matches a known native sensor mode for their camera (see
+  // FullResolutionStatus / core/src/full_resolution.rs); NO keeps the rest
+  // (NOT_FULL and UNSPECIFIED alike).
+  AttributeFilter filter_has_location = 20;
+  AttributeFilter filter_has_keywords = 21;
+  AttributeFilter filter_has_proxies = 22;
+  AttributeFilter filter_full_resolution = 23;
 }
 
 message VideoSummary {
@@ -758,6 +780,13 @@ message MetadataFacetsRequest {
   // a column whose `key` is empty is a placeholder slot (returns no values but
   // still occupies a position so the response stays index-aligned).
   repeated MetadataFilter columns = 11;
+  // The same tri-state presence filters the grid applies (see
+  // ListVideosRequest). Facet values are computed within the set these
+  // select, so the counts stay consistent with the visible grid.
+  AttributeFilter filter_has_location = 12;
+  AttributeFilter filter_has_keywords = 13;
+  AttributeFilter filter_has_proxies = 14;
+  AttributeFilter filter_full_resolution = 15;
 }
 
 // One selectable value within a facet column.

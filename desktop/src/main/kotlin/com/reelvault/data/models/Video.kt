@@ -610,6 +610,21 @@ val defaultGridTopSlots: List<String> = listOf(
 enum class LibraryFilterMode { Text, Attribute, Metadata, Clear }
 
 /**
+ * Tri-state presence toggle for a Library Filter "attribute" (video has a known
+ * location / keywords / proxies, or is full resolution). [Any] applies no
+ * constraint; [Yes] keeps only videos that have the attribute; [No] keeps only
+ * those that don't. Maps 1:1 to the proto `AttributeFilter`.
+ */
+enum class AttributeFilterState { Any, Yes, No;
+    /** Cycle Any → Yes → No → Any for a single click-through control. */
+    fun next(): AttributeFilterState = when (this) {
+        Any -> Yes
+        Yes -> No
+        No -> Any
+    }
+}
+
+/**
  * One column in the Library Filter's "metadata" mode. [key] is a canonical
  * metadata token (see the core's metadata_keys registry); "" means "not chosen
  * yet" (a placeholder that prompts the key picker). [values] are the selected

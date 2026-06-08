@@ -211,21 +211,67 @@ private struct LibraryFilterTextEditor: View {
     }
 }
 
-/// Attribute mode: direct-click star rating + colour swatches, centred.
+/// Attribute mode: rating + colour on the first row, then the tri-state
+/// presence toggles (location / keywords / proxies / full resolution).
 private struct LibraryFilterAttributeEditor: View {
     @ObservedObject var vm: GridViewModel
     var body: some View {
-        HStack(spacing: 24) {
-            HStack(spacing: 6) {
-                Text("Rating").font(.system(size: 11)).foregroundColor(.secondary)
-                RatingPickerRow(minRating: vm.filterMinRating) { vm.setMinRatingFilter($0) }
+        VStack(spacing: 10) {
+            HStack(spacing: 24) {
+                HStack(spacing: 6) {
+                    Text("Rating").font(.system(size: 11)).foregroundColor(.secondary)
+                    RatingPickerRow(minRating: vm.filterMinRating) { vm.setMinRatingFilter($0) }
+                }
+                HStack(spacing: 6) {
+                    Text("Color").font(.system(size: 11)).foregroundColor(.secondary)
+                    ColorSwatchRow(selected: ColorLabel(vm.filterColorLabel)) { vm.setColorLabelFilter($0.rawValue) }
+                }
             }
-            HStack(spacing: 6) {
-                Text("Color").font(.system(size: 11)).foregroundColor(.secondary)
-                ColorSwatchRow(selected: ColorLabel(vm.filterColorLabel)) { vm.setColorLabelFilter($0.rawValue) }
+            HStack(spacing: 16) {
+                AttributeTriState(
+                    label: "Location",
+                    help: "Filter by whether a video has a known GPS location",
+                    state: Binding(get: { vm.filterHasLocation }, set: { vm.setHasLocationFilter($0) })
+                )
+                AttributeTriState(
+                    label: "Keywords",
+                    help: "Filter by whether a video has any keywords",
+                    state: Binding(get: { vm.filterHasKeywords }, set: { vm.setHasKeywordsFilter($0) })
+                )
+                AttributeTriState(
+                    label: "Proxies",
+                    help: "Filter by whether a video has any proxies",
+                    state: Binding(get: { vm.filterHasProxies }, set: { vm.setHasProxiesFilter($0) })
+                )
+                AttributeTriState(
+                    label: "Full Res",
+                    help: "Filter by whether a video is full resolution",
+                    state: Binding(get: { vm.filterFullResolution }, set: { vm.setFullResolutionFilter($0) })
+                )
             }
         }
         .padding(.vertical, 8)
+    }
+}
+
+/// A labelled native segmented Any / Yes / No control for one presence attribute.
+private struct AttributeTriState: View {
+    let label: String
+    let help: String
+    @Binding var state: AttributeFilterState
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(label).font(.system(size: 11)).foregroundColor(.secondary)
+            Picker("", selection: $state) {
+                ForEach(AttributeFilterState.allCases) { s in
+                    Text(s.displayName).tag(s)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+            .help(help)
+        }
     }
 }
 

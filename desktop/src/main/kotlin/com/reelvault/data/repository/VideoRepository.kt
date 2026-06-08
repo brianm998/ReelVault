@@ -18,6 +18,13 @@ import org.slf4j.LoggerFactory
 import reelvault.Reelvault
 import reelvault.ReelVaultGrpcKt
 
+/** Map a tri-state attribute toggle to its proto enum. */
+private fun AttributeFilterState.toProto(): Reelvault.AttributeFilter = when (this) {
+    AttributeFilterState.Any -> Reelvault.AttributeFilter.ATTRIBUTE_FILTER_ANY
+    AttributeFilterState.Yes -> Reelvault.AttributeFilter.ATTRIBUTE_FILTER_YES
+    AttributeFilterState.No -> Reelvault.AttributeFilter.ATTRIBUTE_FILTER_NO
+}
+
 /**
  * Repository for communicating with the ReelVault Rust backend via gRPC.
  */
@@ -185,6 +192,11 @@ class VideoRepository(
         metadataFilters: List<com.reelvault.data.models.MetadataFilter> = emptyList(),
         /** Full-text query (filename / notes). "" = no text filter. */
         searchQuery: String = "",
+        /** Tri-state presence filters from the Library Filter's attribute mode. */
+        hasLocation: com.reelvault.data.models.AttributeFilterState = com.reelvault.data.models.AttributeFilterState.Any,
+        hasKeywords: com.reelvault.data.models.AttributeFilterState = com.reelvault.data.models.AttributeFilterState.Any,
+        hasProxies: com.reelvault.data.models.AttributeFilterState = com.reelvault.data.models.AttributeFilterState.Any,
+        fullResolution: com.reelvault.data.models.AttributeFilterState = com.reelvault.data.models.AttributeFilterState.Any,
     ): Pair<List<VideoSummary>, Long> = withContext(Dispatchers.IO) {
         val s = stub ?: return@withContext Pair(emptyList(), 0L)
         try {
@@ -203,6 +215,10 @@ class VideoRepository(
                 .setFilterMinRating(filterMinRating)
                 .setFilterColorLabel(filterColorLabel)
                 .setSearchQuery(searchQuery)
+                .setFilterHasLocation(hasLocation.toProto())
+                .setFilterHasKeywords(hasKeywords.toProto())
+                .setFilterHasProxies(hasProxies.toProto())
+                .setFilterFullResolution(fullResolution.toProto())
             if (geoFilter != null) {
                 builder
                     .setFilterByLocation(true)
@@ -263,6 +279,10 @@ class VideoRepository(
         filterColorLabel: String = "",
         searchQuery: String = "",
         columns: List<com.reelvault.data.models.MetadataColumn> = emptyList(),
+        hasLocation: com.reelvault.data.models.AttributeFilterState = com.reelvault.data.models.AttributeFilterState.Any,
+        hasKeywords: com.reelvault.data.models.AttributeFilterState = com.reelvault.data.models.AttributeFilterState.Any,
+        hasProxies: com.reelvault.data.models.AttributeFilterState = com.reelvault.data.models.AttributeFilterState.Any,
+        fullResolution: com.reelvault.data.models.AttributeFilterState = com.reelvault.data.models.AttributeFilterState.Any,
     ): com.reelvault.data.models.MetadataFacetsResult = withContext(Dispatchers.IO) {
         val s = stub ?: return@withContext com.reelvault.data.models.MetadataFacetsResult()
         try {
@@ -273,6 +293,10 @@ class VideoRepository(
                 .setFilterMinRating(filterMinRating)
                 .setFilterColorLabel(filterColorLabel)
                 .setSearchQuery(searchQuery)
+                .setFilterHasLocation(hasLocation.toProto())
+                .setFilterHasKeywords(hasKeywords.toProto())
+                .setFilterHasProxies(hasProxies.toProto())
+                .setFilterFullResolution(fullResolution.toProto())
             if (geoFilter != null) {
                 builder
                     .setFilterByLocation(true)

@@ -203,6 +203,17 @@ class GridViewModel(
     private val _filterColorLabel = MutableStateFlow("")
     val filterColorLabel: StateFlow<String> = _filterColorLabel.asStateFlow()
 
+    // Tri-state presence filters (Library Filter "attribute" mode). Any = no
+    // constraint; Yes = must have; No = must not have.
+    private val _filterHasLocation = MutableStateFlow(com.reelvault.data.models.AttributeFilterState.Any)
+    val filterHasLocation: StateFlow<com.reelvault.data.models.AttributeFilterState> = _filterHasLocation.asStateFlow()
+    private val _filterHasKeywords = MutableStateFlow(com.reelvault.data.models.AttributeFilterState.Any)
+    val filterHasKeywords: StateFlow<com.reelvault.data.models.AttributeFilterState> = _filterHasKeywords.asStateFlow()
+    private val _filterHasProxies = MutableStateFlow(com.reelvault.data.models.AttributeFilterState.Any)
+    val filterHasProxies: StateFlow<com.reelvault.data.models.AttributeFilterState> = _filterHasProxies.asStateFlow()
+    private val _filterFullResolution = MutableStateFlow(com.reelvault.data.models.AttributeFilterState.Any)
+    val filterFullResolution: StateFlow<com.reelvault.data.models.AttributeFilterState> = _filterFullResolution.asStateFlow()
+
     // Lightroom-style top-of-card slot configuration. Four entries, each a
     // GridStatKey.raw value. Defaults until `loadGridSettings` answers.
     private val _topSlots = MutableStateFlow(com.reelvault.data.models.defaultGridTopSlots)
@@ -646,6 +657,10 @@ class GridViewModel(
                     filterColorLabel = _filterColorLabel.value,
                     metadataFilters = activeMetadataFilters(),
                     searchQuery = _searchQuery.value,
+                    hasLocation = _filterHasLocation.value,
+                    hasKeywords = _filterHasKeywords.value,
+                    hasProxies = _filterHasProxies.value,
+                    fullResolution = _filterFullResolution.value,
                 )
 
                 _videos.value = videosList
@@ -704,6 +719,10 @@ class GridViewModel(
                     filterColorLabel = _filterColorLabel.value,
                     metadataFilters = activeMetadataFilters(),
                     searchQuery = _searchQuery.value,
+                    hasLocation = _filterHasLocation.value,
+                    hasKeywords = _filterHasKeywords.value,
+                    hasProxies = _filterHasProxies.value,
+                    fullResolution = _filterFullResolution.value,
                 )
 
                 // Deduplicate as a belt-and-suspenders guard: if loadVideos()
@@ -1029,6 +1048,30 @@ class GridViewModel(
         reloadForFilterChange()
     }
 
+    fun setHasLocationFilter(state: com.reelvault.data.models.AttributeFilterState) {
+        if (_filterHasLocation.value == state) return
+        _filterHasLocation.value = state
+        reloadForFilterChange()
+    }
+
+    fun setHasKeywordsFilter(state: com.reelvault.data.models.AttributeFilterState) {
+        if (_filterHasKeywords.value == state) return
+        _filterHasKeywords.value = state
+        reloadForFilterChange()
+    }
+
+    fun setHasProxiesFilter(state: com.reelvault.data.models.AttributeFilterState) {
+        if (_filterHasProxies.value == state) return
+        _filterHasProxies.value = state
+        reloadForFilterChange()
+    }
+
+    fun setFullResolutionFilter(state: com.reelvault.data.models.AttributeFilterState) {
+        if (_filterFullResolution.value == state) return
+        _filterFullResolution.value = state
+        reloadForFilterChange()
+    }
+
     // --- Library Filter: mode + metadata columns ---
 
     /** Switch which Library Filter editor is visible. Clear is a momentary
@@ -1143,6 +1186,11 @@ class GridViewModel(
         if (_searchQuery.value.isNotEmpty()) { _searchQuery.value = ""; changed = true }
         if (_filterMinRating.value != 0) { _filterMinRating.value = 0; changed = true }
         if (_filterColorLabel.value.isNotEmpty()) { _filterColorLabel.value = ""; changed = true }
+        val anyAttr = com.reelvault.data.models.AttributeFilterState.Any
+        if (_filterHasLocation.value != anyAttr) { _filterHasLocation.value = anyAttr; changed = true }
+        if (_filterHasKeywords.value != anyAttr) { _filterHasKeywords.value = anyAttr; changed = true }
+        if (_filterHasProxies.value != anyAttr) { _filterHasProxies.value = anyAttr; changed = true }
+        if (_filterFullResolution.value != anyAttr) { _filterFullResolution.value = anyAttr; changed = true }
         if (_metadataColumns.value.any { it.values.isNotEmpty() }) {
             _metadataColumns.value = _metadataColumns.value.map { it.copy(values = emptySet(), anchor = "") }
             changed = true
@@ -1175,6 +1223,10 @@ class GridViewModel(
                     filterColorLabel = _filterColorLabel.value,
                     searchQuery = _searchQuery.value,
                     columns = _metadataColumns.value,
+                    hasLocation = _filterHasLocation.value,
+                    hasKeywords = _filterHasKeywords.value,
+                    hasProxies = _filterHasProxies.value,
+                    fullResolution = _filterFullResolution.value,
                 )
                 _metadataFacets.value = result.columns
                 _metadataAvailableKeys.value = result.availableKeys
@@ -1422,6 +1474,10 @@ class GridViewModel(
                         filterColorLabel = _filterColorLabel.value,
                         metadataFilters = activeMetadataFilters(),
                         searchQuery = _searchQuery.value,
+                        hasLocation = _filterHasLocation.value,
+                        hasKeywords = _filterHasKeywords.value,
+                        hasProxies = _filterHasProxies.value,
+                        fullResolution = _filterFullResolution.value,
                     )
                     page.filter { it.hasLocation }.forEach { v ->
                         acc += com.reelvault.data.models.VideoLocation(

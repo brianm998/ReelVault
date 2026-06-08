@@ -28,6 +28,49 @@ fileprivate nonisolated struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobu
   typealias Version = _2
 }
 
+/// Tri-state toggle for the Library Filter's "attribute" presence filters
+/// (has location / has keywords / has proxies / is full resolution). ANY is
+/// the proto3 default (0) so an unset field means "no constraint". YES keeps
+/// only videos that have the attribute; NO keeps only those that don't — NO
+/// is the exact complement of YES, so YES ∪ NO together cover every video.
+nonisolated enum Reelvault_AttributeFilter: SwiftProtobuf.Enum, Swift.CaseIterable {
+  typealias RawValue = Int
+  case any // = 0
+  case yes // = 1
+  case no // = 2
+  case UNRECOGNIZED(Int)
+
+  init() {
+    self = .any
+  }
+
+  init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .any
+    case 1: self = .yes
+    case 2: self = .no
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  var rawValue: Int {
+    switch self {
+    case .any: return 0
+    case .yes: return 1
+    case .no: return 2
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  static let allCases: [Reelvault_AttributeFilter] = [
+    .any,
+    .yes,
+    .no,
+  ]
+
+}
+
 nonisolated enum Reelvault_FullResolutionStatus: SwiftProtobuf.Enum, Swift.CaseIterable {
   typealias RawValue = Int
 
@@ -214,6 +257,33 @@ nonisolated struct Reelvault_ListVideosRequest: @unchecked Sendable {
   var searchQuery: String {
     get {_storage._searchQuery}
     set {_uniqueStorage()._searchQuery = newValue}
+  }
+
+  /// Tri-state presence filters from the Library Filter's "attribute" mode.
+  /// ANY (the default) leaves the dimension unconstrained; YES / NO keep only
+  /// videos that do / don't have the attribute. AND-combined with everything
+  /// else. `filter_full_resolution` YES keeps videos whose recorded resolution
+  /// matches a known native sensor mode for their camera (see
+  /// FullResolutionStatus / core/src/full_resolution.rs); NO keeps the rest
+  /// (NOT_FULL and UNSPECIFIED alike).
+  var filterHasLocation: Reelvault_AttributeFilter {
+    get {_storage._filterHasLocation}
+    set {_uniqueStorage()._filterHasLocation = newValue}
+  }
+
+  var filterHasKeywords: Reelvault_AttributeFilter {
+    get {_storage._filterHasKeywords}
+    set {_uniqueStorage()._filterHasKeywords = newValue}
+  }
+
+  var filterHasProxies: Reelvault_AttributeFilter {
+    get {_storage._filterHasProxies}
+    set {_uniqueStorage()._filterHasProxies = newValue}
+  }
+
+  var filterFullResolution: Reelvault_AttributeFilter {
+    get {_storage._filterFullResolution}
+    set {_uniqueStorage()._filterFullResolution = newValue}
   }
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -1602,6 +1672,17 @@ nonisolated struct Reelvault_MetadataFacetsRequest: Sendable {
   /// still occupies a position so the response stays index-aligned).
   var columns: [Reelvault_MetadataFilter] = []
 
+  /// The same tri-state presence filters the grid applies (see
+  /// ListVideosRequest). Facet values are computed within the set these
+  /// select, so the counts stay consistent with the visible grid.
+  var filterHasLocation: Reelvault_AttributeFilter = .any
+
+  var filterHasKeywords: Reelvault_AttributeFilter = .any
+
+  var filterHasProxies: Reelvault_AttributeFilter = .any
+
+  var filterFullResolution: Reelvault_AttributeFilter = .any
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -2395,6 +2476,10 @@ nonisolated struct Reelvault_Response: Sendable {
 
 fileprivate nonisolated let _protobuf_package = "reelvault"
 
+nonisolated extension Reelvault_AttributeFilter: SwiftProtobuf._ProtoNameProviding {
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0ATTRIBUTE_FILTER_ANY\0\u{1}ATTRIBUTE_FILTER_YES\0\u{1}ATTRIBUTE_FILTER_NO\0")
+}
+
 nonisolated extension Reelvault_FullResolutionStatus: SwiftProtobuf._ProtoNameProviding {
   static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0FULL_RESOLUTION_STATUS_UNSPECIFIED\0\u{1}FULL_RESOLUTION_STATUS_FULL\0\u{1}FULL_RESOLUTION_STATUS_NOT_FULL\0")
 }
@@ -2436,7 +2521,7 @@ nonisolated extension Reelvault_MetadataFilter: SwiftProtobuf.Message, SwiftProt
 
 nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".ListVideosRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}limit\0\u{1}offset\0\u{3}sort_by\0\u{3}sort_ascending\0\u{3}filter_tags\0\u{3}collection_id\0\u{3}location_path\0\u{3}filter_camera\0\u{3}filter_lens\0\u{3}filter_codec\0\u{3}filter_capture_year\0\u{3}filter_by_location\0\u{3}filter_latitude\0\u{3}filter_longitude\0\u{3}filter_radius_km\0\u{3}filter_min_rating\0\u{3}filter_color_label\0\u{3}metadata_filters\0\u{3}search_query\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}limit\0\u{1}offset\0\u{3}sort_by\0\u{3}sort_ascending\0\u{3}filter_tags\0\u{3}collection_id\0\u{3}location_path\0\u{3}filter_camera\0\u{3}filter_lens\0\u{3}filter_codec\0\u{3}filter_capture_year\0\u{3}filter_by_location\0\u{3}filter_latitude\0\u{3}filter_longitude\0\u{3}filter_radius_km\0\u{3}filter_min_rating\0\u{3}filter_color_label\0\u{3}metadata_filters\0\u{3}search_query\0\u{3}filter_has_location\0\u{3}filter_has_keywords\0\u{3}filter_has_proxies\0\u{3}filter_full_resolution\0")
 
   fileprivate class _StorageClass {
     var _limit: Int32 = 0
@@ -2458,6 +2543,10 @@ nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftP
     var _filterColorLabel: String = String()
     var _metadataFilters: [Reelvault_MetadataFilter] = []
     var _searchQuery: String = String()
+    var _filterHasLocation: Reelvault_AttributeFilter = .any
+    var _filterHasKeywords: Reelvault_AttributeFilter = .any
+    var _filterHasProxies: Reelvault_AttributeFilter = .any
+    var _filterFullResolution: Reelvault_AttributeFilter = .any
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2487,6 +2576,10 @@ nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftP
       _filterColorLabel = source._filterColorLabel
       _metadataFilters = source._metadataFilters
       _searchQuery = source._searchQuery
+      _filterHasLocation = source._filterHasLocation
+      _filterHasKeywords = source._filterHasKeywords
+      _filterHasProxies = source._filterHasProxies
+      _filterFullResolution = source._filterFullResolution
     }
   }
 
@@ -2524,6 +2617,10 @@ nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftP
         case 17: try { try decoder.decodeSingularStringField(value: &_storage._filterColorLabel) }()
         case 18: try { try decoder.decodeRepeatedMessageField(value: &_storage._metadataFilters) }()
         case 19: try { try decoder.decodeSingularStringField(value: &_storage._searchQuery) }()
+        case 20: try { try decoder.decodeSingularEnumField(value: &_storage._filterHasLocation) }()
+        case 21: try { try decoder.decodeSingularEnumField(value: &_storage._filterHasKeywords) }()
+        case 22: try { try decoder.decodeSingularEnumField(value: &_storage._filterHasProxies) }()
+        case 23: try { try decoder.decodeSingularEnumField(value: &_storage._filterFullResolution) }()
         default: break
         }
       }
@@ -2589,6 +2686,18 @@ nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftP
       if !_storage._searchQuery.isEmpty {
         try visitor.visitSingularStringField(value: _storage._searchQuery, fieldNumber: 19)
       }
+      if _storage._filterHasLocation != .any {
+        try visitor.visitSingularEnumField(value: _storage._filterHasLocation, fieldNumber: 20)
+      }
+      if _storage._filterHasKeywords != .any {
+        try visitor.visitSingularEnumField(value: _storage._filterHasKeywords, fieldNumber: 21)
+      }
+      if _storage._filterHasProxies != .any {
+        try visitor.visitSingularEnumField(value: _storage._filterHasProxies, fieldNumber: 22)
+      }
+      if _storage._filterFullResolution != .any {
+        try visitor.visitSingularEnumField(value: _storage._filterFullResolution, fieldNumber: 23)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -2617,6 +2726,10 @@ nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftP
         if _storage._filterColorLabel != rhs_storage._filterColorLabel {return false}
         if _storage._metadataFilters != rhs_storage._metadataFilters {return false}
         if _storage._searchQuery != rhs_storage._searchQuery {return false}
+        if _storage._filterHasLocation != rhs_storage._filterHasLocation {return false}
+        if _storage._filterHasKeywords != rhs_storage._filterHasKeywords {return false}
+        if _storage._filterHasProxies != rhs_storage._filterHasProxies {return false}
+        if _storage._filterFullResolution != rhs_storage._filterFullResolution {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -5277,7 +5390,7 @@ nonisolated extension Reelvault_FilterOptions: SwiftProtobuf.Message, SwiftProto
 
 nonisolated extension Reelvault_MetadataFacetsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".MetadataFacetsRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}location_path\0\u{3}filter_tags\0\u{3}collection_id\0\u{3}filter_by_location\0\u{3}filter_latitude\0\u{3}filter_longitude\0\u{3}filter_radius_km\0\u{3}filter_min_rating\0\u{3}filter_color_label\0\u{3}search_query\0\u{1}columns\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}location_path\0\u{3}filter_tags\0\u{3}collection_id\0\u{3}filter_by_location\0\u{3}filter_latitude\0\u{3}filter_longitude\0\u{3}filter_radius_km\0\u{3}filter_min_rating\0\u{3}filter_color_label\0\u{3}search_query\0\u{1}columns\0\u{3}filter_has_location\0\u{3}filter_has_keywords\0\u{3}filter_has_proxies\0\u{3}filter_full_resolution\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -5296,6 +5409,10 @@ nonisolated extension Reelvault_MetadataFacetsRequest: SwiftProtobuf.Message, Sw
       case 9: try { try decoder.decodeSingularStringField(value: &self.filterColorLabel) }()
       case 10: try { try decoder.decodeSingularStringField(value: &self.searchQuery) }()
       case 11: try { try decoder.decodeRepeatedMessageField(value: &self.columns) }()
+      case 12: try { try decoder.decodeSingularEnumField(value: &self.filterHasLocation) }()
+      case 13: try { try decoder.decodeSingularEnumField(value: &self.filterHasKeywords) }()
+      case 14: try { try decoder.decodeSingularEnumField(value: &self.filterHasProxies) }()
+      case 15: try { try decoder.decodeSingularEnumField(value: &self.filterFullResolution) }()
       default: break
       }
     }
@@ -5335,6 +5452,18 @@ nonisolated extension Reelvault_MetadataFacetsRequest: SwiftProtobuf.Message, Sw
     if !self.columns.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.columns, fieldNumber: 11)
     }
+    if self.filterHasLocation != .any {
+      try visitor.visitSingularEnumField(value: self.filterHasLocation, fieldNumber: 12)
+    }
+    if self.filterHasKeywords != .any {
+      try visitor.visitSingularEnumField(value: self.filterHasKeywords, fieldNumber: 13)
+    }
+    if self.filterHasProxies != .any {
+      try visitor.visitSingularEnumField(value: self.filterHasProxies, fieldNumber: 14)
+    }
+    if self.filterFullResolution != .any {
+      try visitor.visitSingularEnumField(value: self.filterFullResolution, fieldNumber: 15)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -5350,6 +5479,10 @@ nonisolated extension Reelvault_MetadataFacetsRequest: SwiftProtobuf.Message, Sw
     if lhs.filterColorLabel != rhs.filterColorLabel {return false}
     if lhs.searchQuery != rhs.searchQuery {return false}
     if lhs.columns != rhs.columns {return false}
+    if lhs.filterHasLocation != rhs.filterHasLocation {return false}
+    if lhs.filterHasKeywords != rhs.filterHasKeywords {return false}
+    if lhs.filterHasProxies != rhs.filterHasProxies {return false}
+    if lhs.filterFullResolution != rhs.filterFullResolution {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -587,6 +587,74 @@ fn classify_full_resolution(
     proto_enum as i32
 }
 
+/// Map a proto `AttributeFilter` to the DB layer's tri-state `Option<bool>`:
+/// ANY → no constraint, YES → must have, NO → must not have.
+fn attribute_filter_opt(v: AttributeFilter) -> Option<bool> {
+    match v {
+        AttributeFilter::Yes => Some(true),
+        AttributeFilter::No => Some(false),
+        AttributeFilter::Any => None,
+    }
+}
+
+/// Resolve the request's `filter_full_resolution` toggle into the DB layer's
+/// [`FullResolutionFilter`], precomputing the catalog's FULL `(camera, w, h)`
+/// tuples (see [`full_resolution_full_tuples`]) only when the filter is active.
+fn full_resolution_filter(
+    db: &crate::db::Database,
+    toggle: AttributeFilter,
+) -> Option<crate::db::FullResolutionFilter> {
+    attribute_filter_opt(toggle).map(|want_full| crate::db::FullResolutionFilter {
+        want_full,
+        full_tuples: full_resolution_full_tuples(db),
+    })
+}
+
+/// The catalog's distinct `(camera_model, width, height)` combinations that
+/// classify as full resolution. Translates the Rust-side classifier into a
+/// SQL membership test for the "is full resolution" attribute filter (see
+/// [`crate::db::FullResolutionFilter`]). Returns an empty vec when the catalog
+/// is unreachable — the caller treats that as "nothing is full".
+fn full_resolution_full_tuples(db: &crate::db::Database) -> Vec<(String, i64, i64)> {
+    use crate::full_resolution::Classification;
+    let conn = match db.get_connection() {
+        Ok(c) => c,
+        Err(_) => return Vec::new(),
+    };
+    // Distinct camera+resolution combos that could be FULL (a known camera
+    // with real dimensions); classify each through the sensor cache.
+    let combos: Vec<(String, i64, i64)> = {
+        let mut stmt = match conn.prepare(
+            "SELECT DISTINCT camera_model, width, height FROM metadata \
+             WHERE camera_model IS NOT NULL AND camera_model != '' \
+               AND width > 0 AND height > 0",
+        ) {
+            Ok(s) => s,
+            Err(_) => return Vec::new(),
+        };
+        let rows = stmt.query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, i64>(2)?,
+            ))
+        });
+        match rows {
+            Ok(r) => r.filter_map(std::result::Result::ok).collect(),
+            Err(_) => return Vec::new(),
+        }
+    };
+    combos
+        .into_iter()
+        .filter(|(cam, w, h)| {
+            matches!(
+                crate::sensor_cache::classify_with_cache(&conn, cam, *w as u32, *h as u32),
+                Classification::Full
+            )
+        })
+        .collect()
+}
+
 #[tonic::async_trait]
 impl ReelVaultTrait for ReelVaultService {
     type ScanLibraryStream = Pin<Box<dyn Stream<Item = std::result::Result<ScanProgress, Status>> + Send>>;
@@ -681,6 +749,10 @@ impl ReelVaultTrait for ReelVaultService {
             },
             search_query: req.search_query.clone(),
             metadata_filters,
+            has_location: attribute_filter_opt(req.filter_has_location()),
+            has_keywords: attribute_filter_opt(req.filter_has_keywords()),
+            has_proxies: attribute_filter_opt(req.filter_has_proxies()),
+            full_resolution: full_resolution_filter(&self.db, req.filter_full_resolution()),
         };
 
         // Use grouped listing — returns one representative per group + ungrouped videos
@@ -1921,6 +1993,14 @@ impl ReelVaultTrait for ReelVaultService {
             Some(req.collection_id.clone())
         };
 
+        // The attribute presence filters scope the facet set just like the
+        // grid. Resolved once (the full-resolution tuple scan is not free) and
+        // shared across every per-column spec below.
+        let has_location = attribute_filter_opt(req.filter_has_location());
+        let has_keywords = attribute_filter_opt(req.filter_has_keywords());
+        let has_proxies = attribute_filter_opt(req.filter_has_proxies());
+        let full_resolution = full_resolution_filter(&self.db, req.filter_full_resolution());
+
         // Base FilterSpec for the upstream filters; `extra` carries the
         // metadata columns to the left of whichever column we're computing.
         let base_spec = |extra: Vec<(String, String)>| FilterSpec {
@@ -1932,6 +2012,10 @@ impl ReelVaultTrait for ReelVaultService {
             collection_id: collection_id.clone(),
             search_query: req.search_query.clone(),
             metadata_filters: extra,
+            has_location,
+            has_keywords,
+            has_proxies,
+            full_resolution: full_resolution.clone(),
         };
 
         // Available keys = registry keys with data under the upstream filters

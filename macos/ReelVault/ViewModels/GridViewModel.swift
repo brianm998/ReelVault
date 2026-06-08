@@ -111,6 +111,13 @@ class GridViewModel: ObservableObject {
     @Published var filterMinRating: Int32 = 0
     @Published var filterColorLabel: String = ""
 
+    // Tri-state presence filters (Library Filter "attribute" mode). .any = no
+    // constraint; .yes = must have; .no = must not have.
+    @Published var filterHasLocation: AttributeFilterState = .any
+    @Published var filterHasKeywords: AttributeFilterState = .any
+    @Published var filterHasProxies: AttributeFilterState = .any
+    @Published var filterFullResolution: AttributeFilterState = .any
+
     // Lightroom-style top-of-card stat slots. Exactly four entries — empty
     // string means "blank slot". Defaults to a sensible set on first launch;
     // overwritten by `loadGridSettings()` once the daemon answers.
@@ -572,7 +579,11 @@ class GridViewModel: ObservableObject {
                 filterMinRating: filterMinRating,
                 filterColorLabel: filterColorLabel,
                 metadataFilters: activeMetadataFilters(),
-                collectionId: collectionIdFilter
+                collectionId: collectionIdFilter,
+                hasLocation: filterHasLocation,
+                hasKeywords: filterHasKeywords,
+                hasProxies: filterHasProxies,
+                fullResolution: filterFullResolution
             )
             // A newer reload may have superseded us while listVideos was in
             // flight; if so, drop the result on the floor so it can't overwrite
@@ -794,6 +805,30 @@ class GridViewModel: ObservableObject {
         reloadForFilterChange()
     }
 
+    func setHasLocationFilter(_ state: AttributeFilterState) {
+        guard filterHasLocation != state else { return }
+        filterHasLocation = state
+        reloadForFilterChange()
+    }
+
+    func setHasKeywordsFilter(_ state: AttributeFilterState) {
+        guard filterHasKeywords != state else { return }
+        filterHasKeywords = state
+        reloadForFilterChange()
+    }
+
+    func setHasProxiesFilter(_ state: AttributeFilterState) {
+        guard filterHasProxies != state else { return }
+        filterHasProxies = state
+        reloadForFilterChange()
+    }
+
+    func setFullResolutionFilter(_ state: AttributeFilterState) {
+        guard filterFullResolution != state else { return }
+        filterFullResolution = state
+        reloadForFilterChange()
+    }
+
     // MARK: - Library Filter: mode + metadata columns
 
     /// Switch which Library Filter editor is visible. The Clear button calls
@@ -903,6 +938,10 @@ class GridViewModel: ObservableObject {
         if !searchQuery.isEmpty { searchQuery = ""; changed = true }
         if filterMinRating != 0 { filterMinRating = 0; changed = true }
         if !filterColorLabel.isEmpty { filterColorLabel = ""; changed = true }
+        if filterHasLocation != .any { filterHasLocation = .any; changed = true }
+        if filterHasKeywords != .any { filterHasKeywords = .any; changed = true }
+        if filterHasProxies != .any { filterHasProxies = .any; changed = true }
+        if filterFullResolution != .any { filterFullResolution = .any; changed = true }
         for i in metadataColumns.indices where !metadataColumns[i].values.isEmpty {
             metadataColumns[i].values = []
             metadataColumns[i].anchor = ""
@@ -942,7 +981,11 @@ class GridViewModel: ObservableObject {
             searchQuery: searchQuery,
             columns: metadataColumns.map {
                 (key: $0.key, value: $0.values.sorted().joined(separator: metadataValueSeparator))
-            }
+            },
+            hasLocation: filterHasLocation,
+            hasKeywords: filterHasKeywords,
+            hasProxies: filterHasProxies,
+            fullResolution: filterFullResolution
         )
         if Task.isCancelled { return }
         facetColumns = result.columns

@@ -6,6 +6,17 @@ import AppKit
 import GRPCCore
 import GRPCNIOTransportHTTP2
 
+extension AttributeFilterState {
+    /// The proto enum value for this tri-state attribute toggle.
+    var proto: Reelvault_AttributeFilter {
+        switch self {
+        case .any: return .any
+        case .yes: return .yes
+        case .no:  return .no
+        }
+    }
+}
+
 @MainActor
 class VideoRepository: ObservableObject {
     static let shared = VideoRepository()
@@ -165,7 +176,12 @@ class VideoRepository: ObservableObject {
         /// Camera/lens/codec/year now travel here rather than as scalar args.
         metadataFilters: [(key: String, value: String)] = [],
         /// nil = no collection filter; otherwise restrict to members of this collection.
-        collectionId: String? = nil
+        collectionId: String? = nil,
+        /// Tri-state presence filters from the Library Filter's attribute mode.
+        hasLocation: AttributeFilterState = .any,
+        hasKeywords: AttributeFilterState = .any,
+        hasProxies: AttributeFilterState = .any,
+        fullResolution: AttributeFilterState = .any
     ) async throws -> (videos: [VideoSummary], totalCount: Int64) {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
 
@@ -197,6 +213,10 @@ class VideoRepository: ObservableObject {
             m.value = $0.value
             return m
         }
+        request.filterHasLocation = hasLocation.proto
+        request.filterHasKeywords = hasKeywords.proto
+        request.filterHasProxies = hasProxies.proto
+        request.filterFullResolution = fullResolution.proto
         if let cid = collectionId { request.collectionID = cid }
         let response = try await client.listVideos(request)
         return (response.videos.map(Self.makeSummary), response.totalCount)
@@ -384,7 +404,11 @@ class VideoRepository: ObservableObject {
         filterMinRating: Int32 = 0,
         filterColorLabel: String = "",
         searchQuery: String = "",
-        columns: [(key: String, value: String)] = []
+        columns: [(key: String, value: String)] = [],
+        hasLocation: AttributeFilterState = .any,
+        hasKeywords: AttributeFilterState = .any,
+        hasProxies: AttributeFilterState = .any,
+        fullResolution: AttributeFilterState = .any
     ) async -> MetadataFacetsResult {
         guard let client = serviceClient else { return MetadataFacetsResult() }
         do {
@@ -401,6 +425,10 @@ class VideoRepository: ObservableObject {
             request.filterMinRating = filterMinRating
             request.filterColorLabel = filterColorLabel
             request.searchQuery = searchQuery
+            request.filterHasLocation = hasLocation.proto
+            request.filterHasKeywords = hasKeywords.proto
+            request.filterHasProxies = hasProxies.proto
+            request.filterFullResolution = fullResolution.proto
             request.columns = columns.map {
                 var m = Reelvault_MetadataFilter()
                 m.key = $0.key
