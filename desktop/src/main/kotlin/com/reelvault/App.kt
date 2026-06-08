@@ -88,6 +88,27 @@ val LocalPathFieldFocused = compositionLocalOf { mutableStateOf(false) }
 /** Top-level view mode for the central content area. */
 enum class ViewMode { GRID, LIST, DETAIL, MAP }
 
+/**
+ * Request focus, swallowing the transient focus-tree inconsistencies Compose
+ * Desktop can throw while a heavyweight SwingPanel (the map's JXMapViewer or
+ * the video surface) hands AWT focus back to Compose. In that window
+ * `requestFocus()` can throw "ActiveParent with no focused child"
+ * (IllegalArgumentException) or hit a not-yet-attached target
+ * (IllegalStateException) — both on the EDT, which kills the app. The
+ * orphaned-focus state is self-correcting on the next event, so skipping one
+ * reclaim attempt is far better than crashing. Used for every root-focus
+ * reclaim (the focus-reclaim Box and the Escape handler).
+ */
+private fun FocusRequester.requestFocusSafely() {
+    try {
+        requestFocus()
+    } catch (_: IllegalArgumentException) {
+        // Focus tree mid-transition (heavyweight peer handing focus back).
+    } catch (_: IllegalStateException) {
+        // No active focus target yet; the next event reclaims it.
+    }
+}
+
 fun main() {
     // apple.awt.application.name drives the macOS Dock tooltip and menu-bar
     // app label. The reliable place to set it is as a JVM `-D` arg
@@ -242,7 +263,7 @@ fun main() {
                     event.key == Key.Escape &&
                     searchFocused.value
                 ) {
-                    rootFocus.requestFocus()
+                    rootFocus.requestFocusSafely()
                     return@Window true
                 }
                 // Single-letter shortcuts: only when no modifier is held AND the
@@ -355,7 +376,7 @@ fun main() {
                 // requestFocus() must run after the first composition pass so the
                 // node is actually attached to the owner. LaunchedEffect(Unit)
                 // fires after the first frame — exactly the right moment.
-                rootFocus.requestFocus()
+                rootFocus.requestFocusSafely()
             }
             Box(
                 modifier = Modifier
@@ -368,11 +389,11 @@ fun main() {
                     // this node OR any descendant is focused, so we only reclaim
                     // when focus is genuinely orphaned — never stealing it from a
                     // focused text field.
-                    .onFocusChanged { if (!it.hasFocus) rootFocus.requestFocus() }
+                    .onFocusChanged { if (!it.hasFocus) rootFocus.requestFocusSafely() }
                     .focusRequester(rootFocus)
                     .focusable()
                     .pointerInput(Unit) {
-                        detectTapGestures(onTap = { rootFocus.requestFocus() })
+                        detectTapGestures(onTap = { rootFocus.requestFocusSafely() })
                     }
             ) {
                 CompositionLocalProvider(
