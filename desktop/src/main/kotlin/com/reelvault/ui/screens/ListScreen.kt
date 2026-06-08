@@ -1040,7 +1040,8 @@ fun VideoListRow(
                                         imageVector = Icons.Default.HighQuality,
                                         contentDescription = "Full resolution",
                                         modifier = Modifier.size(10.dp),
-                                        tint = Color.White
+                                        // Subtle green marks "full resolution" (matches the grid card).
+                                        tint = Color(0xFF81C784)
                                     )
                                 }
                             }

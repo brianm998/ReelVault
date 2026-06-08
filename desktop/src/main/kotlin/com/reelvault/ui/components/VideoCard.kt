@@ -717,7 +717,9 @@ fun VideoCard(
                                         imageVector = Icons.Default.HighQuality,
                                         contentDescription = "Full resolution",
                                         modifier = Modifier.size(10.dp),
-                                        tint = Color.White
+                                        // Subtle green marks "full resolution" — distinct from
+                                        // the neutral/white of the other card glyphs.
+                                        tint = Color(0xFF81C784)
                                     )
                                 }
                             }

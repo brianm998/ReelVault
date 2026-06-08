@@ -989,7 +989,8 @@ struct VideoListRowView: View {
                         case .full:
                             Image(systemName: "checkmark.seal.fill")
                                 .font(.system(size: 10))
-                                .foregroundColor(.white)
+                                // Subtle green marks "full resolution" (matches the grid card).
+                                .foregroundColor(Color(red: 0.51, green: 0.78, blue: 0.52))
                                 .padding(3)
                                 .background(Color.black.opacity(0.55))
                                 .clipShape(Circle())
