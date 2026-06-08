@@ -120,11 +120,15 @@ fun MapView(
                         // handles those; mouseClicked still fires for true clicks).
                         if (e.button != MouseEvent.BUTTON1) return
                         val v = mapHolder.viewer ?: return
-                        // Hit-test against the rendered pins in pixel space.
+                        // Hit-test against the rendered pins in pixel space —
+                        // the marker circle OR the name label, so clicking
+                        // either snaps to that pin's exact location.
                         val hit = mapHolder.lastRenderedPins.firstOrNull { rendered ->
                             val dx = rendered.screenX - e.x
                             val dy = rendered.screenY - e.y
-                            dx * dx + dy * dy <= PIN_HIT_RADIUS_PX * PIN_HIT_RADIUS_PX
+                            val onMarker = dx * dx + dy * dy <= PIN_HIT_RADIUS_PX * PIN_HIT_RADIUS_PX
+                            val onLabel = rendered.labelBounds?.contains(e.x, e.y) == true
+                            onMarker || onLabel
                         }
                         if (hit != null) {
                             onPinClick?.invoke(hit.pin)
@@ -237,7 +241,14 @@ private class MapHolder {
     var lastRenderedPins: List<RenderedPin> = emptyList()
 }
 
-private data class RenderedPin(val pin: MapPin, val screenX: Int, val screenY: Int)
+private data class RenderedPin(
+    val pin: MapPin,
+    val screenX: Int,
+    val screenY: Int,
+    /** Screen rect of the pin's text label (NAMED pins only), so a click on the
+     *  label snaps to the pin's exact location just like a click on the icon. */
+    val labelBounds: java.awt.Rectangle? = null,
+)
 
 /** Pixel radius around a pin center that counts as a click. */
 private const val PIN_HIT_RADIUS_PX = 14
@@ -354,8 +365,6 @@ private class ClusterPainter(private val holder: MapHolder) : Painter<JXMapViewe
                     label = "${cluster.members.size} videos here",
                     style = style,
                 )
-            rendered += RenderedPin(displayPin, sx, sy)
-
             val fill = when (style) {
                 MapPinStyle.PRIMARY -> AwtColor(0x6750A4) // Material primary
                 // Soft gray — present but recessive, so the candidate
@@ -393,7 +402,9 @@ private class ClusterPainter(private val holder: MapHolder) : Painter<JXMapViewe
             // Named pins get a permanently visible label to the right of
             // the marker — that's the whole reason they exist. We render
             // a small dark background under the text for readability over
-            // arbitrary map tiles.
+            // arbitrary map tiles, and record its screen rect so a click on
+            // the label selects the pin's exact location (not a nearby point).
+            var labelBounds: java.awt.Rectangle? = null
             if (style == MapPinStyle.NAMED && displayPin.label.isNotEmpty()) {
                 val label = displayPin.label
                 val fm = g2.fontMetrics
@@ -403,15 +414,17 @@ private class ClusterPainter(private val holder: MapHolder) : Painter<JXMapViewe
                 val padY = 2
                 val tx = sx + radius + 4
                 val ty = sy + th / 2 - 2
-                g2.color = AwtColor(0, 0, 0, 140)
-                g2.fillRoundRect(
+                val rect = java.awt.Rectangle(
                     tx - padX, ty - th - padY + 2,
                     tw + padX * 2, th + padY * 2,
-                    6, 6,
                 )
+                labelBounds = rect
+                g2.color = AwtColor(0, 0, 0, 140)
+                g2.fillRoundRect(rect.x, rect.y, rect.width, rect.height, 6, 6)
                 g2.color = AwtColor.WHITE
                 g2.drawString(label, tx, ty)
             }
+            rendered += RenderedPin(displayPin, sx, sy, labelBounds)
         }
         return rendered
     }

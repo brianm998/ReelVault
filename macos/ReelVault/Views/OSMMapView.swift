@@ -461,8 +461,43 @@ private struct _OSMMapKitView: NSViewRepresentable {
             // If MapKit dispatched a selection for this click, didSelect
             // already fired and we shouldn't ALSO call onMapClick.
             if mapView.selectedAnnotations.first != nil { return }
+            // The always-visible name label sits outside MapKit's marker tap
+            // target, so a click on it wouldn't select the annotation and would
+            // otherwise drop a candidate at a nearby point. Hit-test the pins
+            // ourselves (with a tolerance that covers the label) and snap to the
+            // nearest existing one; only a click clear of every pin drops a
+            // fresh candidate. To pick a spot near a pin, the user zooms in.
+            if let pin = nearestPin(to: point, in: mapView, tolerance: 32) {
+                parent.onPinClick?(pin)
+                return
+            }
             let coord = mapView.convert(point, toCoordinateFrom: mapView)
             parent.onMapClick?(coord)
+        }
+
+        /// The non-candidate pin whose marker is within `tolerance` screen
+        /// points of `point`, nearest first, or nil. Lets a click on (or beside,
+        /// i.e. on the label of) an existing pin select its exact coordinate.
+        private func nearestPin(
+            to point: CGPoint,
+            in mapView: MKMapView,
+            tolerance: CGFloat
+        ) -> OSMMapPin? {
+            var best: OSMMapPin?
+            var bestDistance = tolerance * tolerance
+            for annotation in mapView.annotations {
+                guard let pinAnnotation = annotation as? PinAnnotation,
+                      pinAnnotation.pin.id != "candidate" else { continue }
+                let p = mapView.convert(pinAnnotation.coordinate, toPointTo: mapView)
+                let dx = p.x - point.x
+                let dy = p.y - point.y
+                let distance = dx * dx + dy * dy
+                if distance <= bestDistance {
+                    bestDistance = distance
+                    best = pinAnnotation.pin
+                }
+            }
+            return best
         }
 
         // MARK: Pinch-to-zoom
