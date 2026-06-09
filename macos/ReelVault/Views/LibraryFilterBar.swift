@@ -211,50 +211,49 @@ private struct LibraryFilterTextEditor: View {
     }
 }
 
-/// Attribute mode: rating + colour on the first row, then the tri-state
-/// presence toggles (location / keywords / proxies / full resolution).
+/// Attribute mode: a single row leading with the presence selectors
+/// (location / keywords / proxies / full resolution), then rating + colour.
+/// Each presence selector shows only its current value and opens a pop-up
+/// menu with the other choices on click.
 private struct LibraryFilterAttributeEditor: View {
     @ObservedObject var vm: GridViewModel
     var body: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 24) {
-                HStack(spacing: 6) {
-                    Text("Rating").font(.system(size: 11)).foregroundColor(.secondary)
-                    RatingPickerRow(minRating: vm.filterMinRating) { vm.setMinRatingFilter($0) }
-                }
-                HStack(spacing: 6) {
-                    Text("Color").font(.system(size: 11)).foregroundColor(.secondary)
-                    ColorSwatchRow(selected: ColorLabel(vm.filterColorLabel)) { vm.setColorLabelFilter($0.rawValue) }
-                }
+        HStack(spacing: 16) {
+            AttributeTriState(
+                label: "Location",
+                help: "Filter by whether a video has a known GPS location",
+                state: Binding(get: { vm.filterHasLocation }, set: { vm.setHasLocationFilter($0) })
+            )
+            AttributeTriState(
+                label: "Keywords",
+                help: "Filter by whether a video has any keywords",
+                state: Binding(get: { vm.filterHasKeywords }, set: { vm.setHasKeywordsFilter($0) })
+            )
+            AttributeTriState(
+                label: "Proxies",
+                help: "Filter by whether a video has any proxies",
+                state: Binding(get: { vm.filterHasProxies }, set: { vm.setHasProxiesFilter($0) })
+            )
+            AttributeTriState(
+                label: "Full Res",
+                help: "Filter by whether a video is full resolution",
+                state: Binding(get: { vm.filterFullResolution }, set: { vm.setFullResolutionFilter($0) })
+            )
+            HStack(spacing: 6) {
+                Text("Rating").font(.system(size: 11)).foregroundColor(.secondary)
+                RatingPickerRow(minRating: vm.filterMinRating) { vm.setMinRatingFilter($0) }
             }
-            HStack(spacing: 16) {
-                AttributeTriState(
-                    label: "Location",
-                    help: "Filter by whether a video has a known GPS location",
-                    state: Binding(get: { vm.filterHasLocation }, set: { vm.setHasLocationFilter($0) })
-                )
-                AttributeTriState(
-                    label: "Keywords",
-                    help: "Filter by whether a video has any keywords",
-                    state: Binding(get: { vm.filterHasKeywords }, set: { vm.setHasKeywordsFilter($0) })
-                )
-                AttributeTriState(
-                    label: "Proxies",
-                    help: "Filter by whether a video has any proxies",
-                    state: Binding(get: { vm.filterHasProxies }, set: { vm.setHasProxiesFilter($0) })
-                )
-                AttributeTriState(
-                    label: "Full Res",
-                    help: "Filter by whether a video is full resolution",
-                    state: Binding(get: { vm.filterFullResolution }, set: { vm.setFullResolutionFilter($0) })
-                )
+            HStack(spacing: 6) {
+                Text("Color").font(.system(size: 11)).foregroundColor(.secondary)
+                ColorSwatchRow(selected: ColorLabel(vm.filterColorLabel)) { vm.setColorLabelFilter($0.rawValue) }
             }
         }
         .padding(.vertical, 8)
     }
 }
 
-/// A labelled native segmented Any / Yes / No control for one presence attribute.
+/// A labelled pop-up menu for one presence attribute: the button shows only
+/// the current Any / Yes / No value, and the other choices appear on click.
 private struct AttributeTriState: View {
     let label: String
     let help: String
@@ -267,7 +266,7 @@ private struct AttributeTriState: View {
                     Text(s.displayName).tag(s)
                 }
             }
-            .pickerStyle(.segmented)
+            .pickerStyle(.menu)
             .labelsHidden()
             .fixedSize()
             .help(help)
