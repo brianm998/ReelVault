@@ -482,28 +482,36 @@ class ComposeVideoPlayer {
             "--intf=dummy",
             "--no-video-title-show",
 
-            // --- Don't drop late frames ---
+            // --- Smooth playback on the software callback path ---
             //
-            // The vmem vout (our callback path) silently skips display()
-            // for any picture past its presentation deadline. On 4K HEVC
-            // the decoder + CVPP→I0AL→I420→RV32 conversion chain takes
-            // longer than the first frame's display deadline, so libvlc
-            // logs "picture is too late" and our render callback never
-            // fires — the user sees black.
+            // Our vmem/callback renderer (the only path that works under
+            // Compose Desktop's SwingPanel on macOS) copies every decoded
+            // frame on the CPU and rebuilds a Skia image. Above ~480p that
+            // work can't always hit the display deadline.
             //
-            // `--no-drop-late-frames` forces libvlc to display late
-            // pictures anyway. Playback may judder, but at least the
-            // user sees frames.
-            "--no-drop-late-frames",
+            // We used to force late pictures to be displayed
+            // (`--no-drop-late-frames`) so 4K HEVC wouldn't start black. But
+            // that makes libvlc queue the late frames and then flush them in
+            // a burst, which the user sees as a periodic "freeze, then jump
+            // ahead" every few seconds.
+            //
+            // Let the video output DROP pictures that miss their deadline
+            // instead, so the playback clock never stalls — a few frames are
+            // skipped rather than the whole image freezing and catching up.
+            // Paired with the generous pre-roll cache below, enough frames
+            // are decoded ahead that the first display isn't late, so we keep
+            // the no-black startup behavior without the mid-stream judder.
+            "--drop-late-frames",
 
-            // Don't skip frames in the decoder either — same reasoning.
-            // Skipping in the decoder would drop the very first I-frame
-            // on a slow-start file, leaving us with no reference frames.
+            // The DECODER still decodes every frame (only the on-screen
+            // display of already-late frames is dropped, above), so we never
+            // lose reference frames or the first I-frame on a slow-start file.
             "--no-skip-frames",
 
-            // Larger file cache so libvlc has more headroom to absorb
-            // the decode + filter-chain latency before the playback clock
-            // starts. Default is 300 ms.
+            // Larger file cache so libvlc decodes a healthy pre-roll before
+            // the playback clock starts: headroom to absorb decode + filter
+            // latency, and (with --drop-late-frames) frames ready in time for
+            // the first display. Default is 300 ms.
             "--file-caching=1500",
 
             // verbose=2 enables libvlc's DEBUG-level messages; NativeLog

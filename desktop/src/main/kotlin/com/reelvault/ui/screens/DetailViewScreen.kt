@@ -370,6 +370,20 @@ private fun ControlBar(
     val isPlaying by player.isPlaying
     val fps = video.fps.takeIf { it > 0.0 } ?: 30.0
 
+    // Scrub state. While the user drags the slider we show their finger
+    // position (dragMs); after they release we hold that position
+    // (pendingSeekMs) until libvlc's clock catches up. Without this the Slider
+    // value is bound straight to the event-driven currentTimeMs, so the thumb
+    // snaps back to the last reported time and never appears to move after a
+    // seek — and not at all while paused, when no timeChanged events fire.
+    var dragMs by remember(video.id) { mutableStateOf<Float?>(null) }
+    var pendingSeekMs by remember(video.id) { mutableStateOf<Long?>(null) }
+    // Release the held position once playback's reported time reaches it.
+    LaunchedEffect(currentMs) {
+        val p = pendingSeekMs
+        if (p != null && kotlin.math.abs(currentMs - p) <= 400L) pendingSeekMs = null
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -380,7 +394,10 @@ private fun ControlBar(
         // to the video's reported duration so the bar still renders before
         // playback has been started.
         val maxMs = if (lengthMs > 0) lengthMs else video.durationMs.coerceAtLeast(1L)
-        val displayedMs = if (lengthMs > 0) currentMs else 0L
+        // Finger position while dragging, the held seek target just after
+        // release, otherwise the live playback position.
+        val displayedMs: Long = dragMs?.toLong() ?: pendingSeekMs
+            ?: if (lengthMs > 0) currentMs else 0L
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = formatTime(displayedMs),
@@ -389,11 +406,19 @@ private fun ControlBar(
                 modifier = Modifier.width(56.dp)
             )
             Slider(
-                value = displayedMs.toFloat(),
+                value = displayedMs.toFloat().coerceIn(0f, maxMs.toFloat()),
                 onValueChange = { v ->
                     if (playbackStarted && player.available) {
+                        // Move the thumb with the finger and scrub live.
+                        dragMs = v
                         player.seek(v.toLong())
                     }
+                },
+                onValueChangeFinished = {
+                    // Hold the thumb where the user dropped it until the
+                    // player's reported time catches up (cleared above).
+                    dragMs?.let { pendingSeekMs = it.toLong().coerceIn(0L, maxMs) }
+                    dragMs = null
                 },
                 valueRange = 0f..maxMs.toFloat(),
                 enabled = playbackStarted && player.available,
