@@ -6,6 +6,7 @@
 package com.reelvault.ui.screens
 
 import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.Icons
@@ -113,8 +114,21 @@ fun GridScreen(
         val selectedId = selectedVideoId.value ?: return@LaunchedEffect
         val idx = rendered.indexOfFirst { it.video.id == selectedId }
         if (idx < 0) return@LaunchedEffect
-        if (gridState.layoutInfo.visibleItemsInfo.none { it.index == idx }) {
+        val info = gridState.layoutInfo
+        val visible = info.visibleItemsInfo.firstOrNull { it.index == idx }
+        // Only scroll when the card isn't already fully on screen — so an
+        // already-visible click (or arrow-key step) doesn't jump the grid, but
+        // a partially-clipped or off-screen card (e.g. "Open in Grid" from the
+        // map) is brought in and centred vertically.
+        val fullyVisible = visible != null &&
+            visible.offset.y >= info.viewportStartOffset &&
+            visible.offset.y + visible.size.height <= info.viewportEndOffset
+        if (!fullyVisible) {
             gridState.scrollToItem(idx)
+            gridState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == idx }?.let { item ->
+                val target = (gridState.layoutInfo.viewportSize.height - item.size.height) / 2
+                if (target > 0) gridState.scrollBy((item.offset.y - target).toFloat())
+            }
         }
     }
 

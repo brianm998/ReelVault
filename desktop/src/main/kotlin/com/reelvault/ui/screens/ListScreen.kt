@@ -7,6 +7,7 @@ package com.reelvault.ui.screens
 
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -129,8 +130,21 @@ fun ListScreen(
             }
         }
         if (idx < 0) return@LaunchedEffect
-        if (listState.layoutInfo.visibleItemsInfo.none { it.index == idx }) {
+        val info = listState.layoutInfo
+        val visible = info.visibleItemsInfo.firstOrNull { it.index == idx }
+        // Only scroll when the row isn't already fully on screen — so an
+        // already-visible click (or arrow step) doesn't jump the list, but a
+        // partially-clipped or off-screen row (e.g. "Open in List" from the
+        // map) is brought in and centred vertically.
+        val fullyVisible = visible != null &&
+            visible.offset >= info.viewportStartOffset &&
+            visible.offset + visible.size <= info.viewportEndOffset
+        if (!fullyVisible) {
             listState.scrollToItem(idx)
+            listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == idx }?.let { item ->
+                val target = (listState.layoutInfo.viewportSize.height - item.size) / 2
+                if (target > 0) listState.scrollBy((item.offset - target).toFloat())
+            }
         }
     }
 
