@@ -509,7 +509,23 @@ private class ClusterPainter(private val holder: MapHolder) : Painter<JXMapViewe
                     latitude = avgLat,
                     longitude = avgLon,
                     count = displayCount,
-                    label = "${cluster.members.size} videos here",
+                    // A numbered (clustered) PRIMARY pin still surfaces the place
+                    // name its members sit on — the most common one among them —
+                    // so a cluster resting on a named location shows that name
+                    // beside its count rather than dropping it. Other styles keep
+                    // a plain placeholder (never drawn for SECONDARY; a clustered
+                    // NAMED pin is vanishingly rare).
+                    label = if (style == MapPinStyle.PRIMARY) {
+                        cluster.members
+                            .mapNotNull { it.label.ifBlank { null } }
+                            .groupingBy { it }
+                            .eachCount()
+                            .maxByOrNull { it.value }
+                            ?.key
+                            ?: ""
+                    } else {
+                        "${cluster.members.size} videos here"
+                    },
                     style = style,
                     memberIds = cluster.members.flatMap { it.memberIds },
                 )
@@ -549,15 +565,14 @@ private class ClusterPainter(private val holder: MapHolder) : Painter<JXMapViewe
 
             // Permanently-visible label to the right of the marker, showing
             // the place name. Named pins always carry one; video (PRIMARY)
-            // pins carry one only when a single location resolves to a known
-            // place — a cluster shows its count in the circle instead, so we
-            // gate on displayCount <= 1. A small dark background keeps the
-            // text readable over arbitrary tiles; we record its screen rect so
-            // a click on the label still selects the pin.
+            // pins carry one whenever their location resolves to a known place
+            // — including numbered clusters, which show the place name beside
+            // the count in the circle rather than dropping it. A small dark
+            // background keeps the text readable over arbitrary tiles; we record
+            // its screen rect so a click on the label still selects the pin.
             var labelBounds: java.awt.Rectangle? = null
             val drawLabel = displayPin.label.isNotEmpty() && (
-                style == MapPinStyle.NAMED ||
-                    (style == MapPinStyle.PRIMARY && displayCount <= 1)
+                style == MapPinStyle.NAMED || style == MapPinStyle.PRIMARY
             )
             if (drawLabel) {
                 val label = displayPin.label
