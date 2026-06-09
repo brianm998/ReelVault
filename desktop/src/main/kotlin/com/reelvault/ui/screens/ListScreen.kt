@@ -81,7 +81,10 @@ fun ListScreen(
     val playingVideoId = viewModel.playingVideoId.collectAsState()
     val playingVideoPath = viewModel.playingVideoPath.collectAsState()
     val vlcAvailable = remember { ComposeVideoPlayer.isLibVlcAvailable }
-    val inlinePlayer = remember { ComposeVideoPlayer() }
+    // allowEmbedded = false: the inline card player must use the lightweight
+    // callback surface — a heavyweight native surface inside the scrolling list
+    // would clip and z-order badly, and card-sized playback doesn't skip frames.
+    val inlinePlayer = remember { ComposeVideoPlayer(allowEmbedded = false) }
     DisposableEffect(Unit) { onDispose { inlinePlayer.release() } }
     LaunchedEffect(playingVideoId.value) {
         val id = playingVideoId.value ?: run { inlinePlayer.stop(); return@LaunchedEffect }

@@ -66,7 +66,10 @@ fun GridScreen(
 
     // Single VLCJ player instance shared by all cards. Only one card plays
     // at a time; swapping is handled by loading a new path into this player.
-    val inlinePlayer = remember { ComposeVideoPlayer() }
+    // allowEmbedded = false: the inline card player must use the lightweight
+    // callback surface — a heavyweight native surface inside the scrolling grid
+    // would clip and z-order badly, and card-sized playback doesn't skip frames.
+    val inlinePlayer = remember { ComposeVideoPlayer(allowEmbedded = false) }
     DisposableEffect(Unit) { onDispose { inlinePlayer.release() } }
 
     val playingVideoPath = viewModel.playingVideoPath.collectAsState()

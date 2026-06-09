@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.layout.ContentScale
 import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.ColorInfo
@@ -27,6 +28,8 @@ import uk.co.caprica.vlcj.log.NativeLog
 import uk.co.caprica.vlcj.player.base.MediaPlayer
 import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter
 import uk.co.caprica.vlcj.player.component.CallbackMediaPlayerComponent
+import uk.co.caprica.vlcj.player.component.EmbeddedMediaPlayerComponent
+import uk.co.caprica.vlcj.player.embedded.EmbeddedMediaPlayer
 import uk.co.caprica.vlcj.player.embedded.videosurface.callback.BufferFormat
 import uk.co.caprica.vlcj.player.embedded.videosurface.callback.BufferFormatCallback
 import uk.co.caprica.vlcj.player.embedded.videosurface.callback.RenderCallback
@@ -36,31 +39,36 @@ import javax.swing.SwingUtilities
 import org.jetbrains.skia.Image as SkiaImage
 
 /**
- * VLCJ-backed video player rendered into a Compose `Image` composable.
+ * VLCJ-backed video player. Renders one of two ways depending on the platform
+ * (see [useEmbedded]); the public API is identical either way.
  *
- * ## Why not EmbeddedMediaPlayerComponent?
+ * ## macOS — callback rendering (CPU)
  *
  * The straightforward integration would use VLCJ's `EmbeddedMediaPlayerComponent`,
  * which hosts an AWT `Canvas` that libvlc's native `vout` module renders into
  * directly. On macOS the vout reads an `NSObject` (NSView or CALayer) pointer
  * via JNA's `Native.getComponentPointer(canvas)` — which delegates to JAWT.
- *
  * Compose Desktop's `SwingPanel` does host the Canvas, but it lives inside a
  * popup-window hierarchy that JAWT can't extract a usable layer pointer from:
  * `getComponentPointer` returns 0, libvlc's vout init logs "No drawable-nsobject
  * found!" and the surface stays blank forever (audio plays fine).
  *
- * ## Callback rendering instead
+ * So macOS uses `CallbackMediaPlayerComponent`: libvlc decodes into a memory
+ * buffer (BGRA via `RV32BufferFormat`) and calls `RenderCallback.display` on
+ * each frame. We copy the buffer into a `ByteArray`, wrap it as a Skia `Image`,
+ * convert to a Compose `ImageBitmap`, and a `mutableStateOf<ImageBitmap>` drives
+ * a Compose `Image`. That per-frame CPU copy + Skia build (~250 MB/s for 1080p30)
+ * is what makes this path skip frames above ~480p — unavoidable on macOS.
  *
- * We use `CallbackMediaPlayerComponent`: libvlc decodes into a memory buffer
- * (BGRA via `RV32BufferFormat`) and calls `RenderCallback.display` on each
- * frame. We copy the buffer into a `ByteArray`, wrap it as a Skia `Image`,
- * convert to a Compose `ImageBitmap`, and a `mutableStateOf<ImageBitmap>`
- * drives a Compose `Image` composable.
+ * ## Linux / Windows — embedded rendering (native, GPU)
  *
- * Performance: 1080p BGRA at 30 fps is ~250 MB/s of memcpy plus one Skia
- * Image build per frame — non-trivial but well within budget on modern
- * hardware. The Skia draw is GPU-accelerated by Compose Desktop's renderer.
+ * There JAWT *can* hand libvlc the window handle (X11 XID / HWND) from a
+ * `SwingPanel`-hosted component, so we use `EmbeddedMediaPlayerComponent`:
+ * libvlc renders straight into the component's native surface with no per-frame
+ * CPU copy, and no >480p frame-skipping. [Surface] then hosts that component in
+ * a `SwingPanel` instead of drawing a Compose `Image`. (Inline grid/list cards
+ * still force the callback path — a heavyweight surface inside a scrolling grid
+ * clips/z-orders badly, and card-sized playback never skips anyway.)
  *
  * ## Setup requirements
  *
@@ -73,14 +81,42 @@ import org.jetbrains.skia.Image as SkiaImage
  * playback fails the log line *immediately preceding* the silent failure
  * usually localises the cause.
  */
-class ComposeVideoPlayer {
+class ComposeVideoPlayer(
+    /** When false, always use the software callback path regardless of OS.
+     *  The inline grid/list player passes false: a heavyweight native surface
+     *  inside a scrolling LazyGrid clips and z-orders badly, and card-sized
+     *  playback doesn't skip frames anyway. Detail playback leaves it true. */
+    private val allowEmbedded: Boolean = true,
+) {
     private val logger = LoggerFactory.getLogger(ComposeVideoPlayer::class.java)
     /** Separate logger so libvlc's own diagnostics are easy to filter. */
     private val libvlcLogger = LoggerFactory.getLogger("libvlc")
+    /** Callback (CPU) component — used on macOS and for inline grid/list cards. */
     private var component: CallbackMediaPlayerComponent? = null
+    /** Embedded (native GPU) component — used for detail playback on Linux/Windows. */
+    private var embeddedComponent: EmbeddedMediaPlayerComponent? = null
     private var factory: MediaPlayerFactory? = null
     private var nativeLog: NativeLog? = null
     private var initFailure: Throwable? = null
+
+    /**
+     * Which rendering path to build (see the class doc):
+     *  - false → callback (CPU copy + Skia) — macOS, or any inline grid player.
+     *  - true  → embedded native surface in a SwingPanel — Linux/Windows detail.
+     * Overridable with `-Dreelvault.video.renderer=callback|embedded` for
+     * testing or to work around a platform quirk without a rebuild.
+     */
+    private val useEmbedded: Boolean = run {
+        if (!allowEmbedded) return@run false
+        when (System.getProperty("reelvault.video.renderer", "").trim().lowercase()) {
+            "embedded" -> true
+            "callback" -> false
+            else -> {
+                val os = System.getProperty("os.name", "").lowercase()
+                !(os.contains("mac") || os.contains("darwin"))
+            }
+        }
+    }
 
     /** Most-recent currentTime in ms, updated by the time-changed event. */
     val currentTimeMs = mutableStateOf(0L)
@@ -243,27 +279,40 @@ class ComposeVideoPlayer {
                         }
                     }
                 }
-                // CallbackMediaPlayerComponent(factory, fullScreenStrategy,
-                //   inputEvents, lockBuffers, renderCallback,
-                //   bufferFormatCallback, videoSurfaceComponent).
-                //
-                // lockBuffers=true: vlcj acquires a JNA lock around buffer
-                // access during the libvlc lock/unlock callbacks. Doesn't
-                // affect whether callbacks fire, just synchronisation.
-                //
-                // CRITICAL: renderCallback and bufferFormatCallback are
-                // initialised *above* this init block; passing nulls here
-                // makes vlcj silently fall back to its own defaults and
-                // our callbacks never fire. See the big comment block
-                // above their declarations.
-                val c = CallbackMediaPlayerComponent(
-                    f, null, null, true,
-                    renderCallback, bufferFormatCallback, null
-                )
-                attachEventListeners(c)
-                component = c
-                logger.info("ComposeVideoPlayer ready (libvlc {}, callback rendering)",
-                    try { f.application().version() } catch (_: Throwable) { "<unknown>" })
+                if (useEmbedded) {
+                    // Native embedded surface (Linux/Windows): libvlc renders
+                    // directly into the component's Canvas — no per-frame CPU
+                    // copy, so no >480p frame-skipping. Constructor args are
+                    //   (factory, videoSurfaceComponent, fullScreenStrategy,
+                    //    inputEvents, overlay); all but the factory left default.
+                    val e = EmbeddedMediaPlayerComponent(f, null, null, null, null)
+                    attachEventListeners(e.mediaPlayer())
+                    embeddedComponent = e
+                    logger.info("ComposeVideoPlayer ready (libvlc {}, embedded rendering)",
+                        try { f.application().version() } catch (_: Throwable) { "<unknown>" })
+                } else {
+                    // CallbackMediaPlayerComponent(factory, fullScreenStrategy,
+                    //   inputEvents, lockBuffers, renderCallback,
+                    //   bufferFormatCallback, videoSurfaceComponent).
+                    //
+                    // lockBuffers=true: vlcj acquires a JNA lock around buffer
+                    // access during the libvlc lock/unlock callbacks. Doesn't
+                    // affect whether callbacks fire, just synchronisation.
+                    //
+                    // CRITICAL: renderCallback and bufferFormatCallback are
+                    // initialised *above* this init block; passing nulls here
+                    // makes vlcj silently fall back to its own defaults and
+                    // our callbacks never fire. See the big comment block
+                    // above their declarations.
+                    val c = CallbackMediaPlayerComponent(
+                        f, null, null, true,
+                        renderCallback, bufferFormatCallback, null
+                    )
+                    attachEventListeners(c.mediaPlayer())
+                    component = c
+                    logger.info("ComposeVideoPlayer ready (libvlc {}, callback rendering)",
+                        try { f.application().version() } catch (_: Throwable) { "<unknown>" })
+                }
             } catch (t: Throwable) {
                 logger.error("VLCJ player init failed — is libvlc installed?  " +
                     "macOS: install VLC.app from videolan.org. " +
@@ -289,8 +338,8 @@ class ComposeVideoPlayer {
      * which never do. On a healthy playback the expected order is:
      *   opening → buffering → playing → timeChanged*
      */
-    private fun attachEventListeners(c: CallbackMediaPlayerComponent) {
-        c.mediaPlayer().events().addMediaPlayerEventListener(object : MediaPlayerEventAdapter() {
+    private fun attachEventListeners(target: EmbeddedMediaPlayer) {
+        target.events().addMediaPlayerEventListener(object : MediaPlayerEventAdapter() {
             override fun opening(mp: MediaPlayer) {
                 logger.debug("event: opening")
             }
@@ -340,14 +389,18 @@ class ComposeVideoPlayer {
         })
     }
 
-    /** True if libvlc was found and the component was created successfully. */
-    val available: Boolean get() = component != null
+    /** The active media player, whichever rendering path was built. */
+    private fun activeMediaPlayer(): EmbeddedMediaPlayer? =
+        component?.mediaPlayer() ?: embeddedComponent?.mediaPlayer()
+
+    /** True if libvlc was found and a component was created successfully. */
+    val available: Boolean get() = component != null || embeddedComponent != null
     val initError: Throwable? get() = initFailure
 
     fun load(path: String, playImmediately: Boolean) {
-        val c = component
-        if (c == null) {
-            logger.warn("load({}) ignored: component is null (init failed)", path)
+        val mp = activeMediaPlayer()
+        if (mp == null) {
+            logger.warn("load({}) ignored: no media player (init failed)", path)
             return
         }
         // Clear stale frame synchronously so callers that show the thumbnail
@@ -363,9 +416,9 @@ class ComposeVideoPlayer {
         SwingUtilities.invokeLater {
             try {
                 val ok = if (playImmediately) {
-                    c.mediaPlayer().media().play(path)
+                    mp.media().play(path)
                 } else {
-                    c.mediaPlayer().media().startPaused(path)
+                    mp.media().startPaused(path)
                 }
                 logger.info("media().{} returned {}",
                     if (playImmediately) "play" else "startPaused", ok)
@@ -381,21 +434,21 @@ class ComposeVideoPlayer {
     }
 
     fun togglePause() {
-        val c = component ?: run {
-            logger.warn("togglePause ignored: component is null")
+        val mp = activeMediaPlayer() ?: run {
+            logger.warn("togglePause ignored: no media player")
             return
         }
         logger.debug("togglePause")
-        SwingUtilities.invokeLater { c.mediaPlayer().controls().pause() }
+        SwingUtilities.invokeLater { mp.controls().pause() }
     }
 
     fun play() {
-        val c = component ?: run {
-            logger.warn("play ignored: component is null")
+        val mp = activeMediaPlayer() ?: run {
+            logger.warn("play ignored: no media player")
             return
         }
         logger.debug("play")
-        SwingUtilities.invokeLater { c.mediaPlayer().controls().play() }
+        SwingUtilities.invokeLater { mp.controls().play() }
     }
 
     /**
@@ -404,13 +457,13 @@ class ComposeVideoPlayer {
      * also nudge our own state flags to keep the UI in sync.
      */
     fun stop() {
-        val c = component ?: run {
-            logger.warn("stop ignored: component is null")
+        val mp = activeMediaPlayer() ?: run {
+            logger.warn("stop ignored: no media player")
             return
         }
         logger.debug("stop")
         SwingUtilities.invokeLater {
-            try { c.mediaPlayer().controls().stop() } catch (t: Throwable) {
+            try { mp.controls().stop() } catch (t: Throwable) {
                 logger.warn("Exception during stop", t)
             }
         }
@@ -420,8 +473,8 @@ class ComposeVideoPlayer {
 
     /** Step forward exactly one frame (libvlc supports this natively). */
     fun stepForwardOneFrame() {
-        val c = component ?: return
-        SwingUtilities.invokeLater { c.mediaPlayer().controls().nextFrame() }
+        val mp = activeMediaPlayer() ?: return
+        SwingUtilities.invokeLater { mp.controls().nextFrame() }
     }
 
     /**
@@ -430,9 +483,8 @@ class ComposeVideoPlayer {
      */
     fun skipFrames(frames: Int, fps: Double) {
         if (fps <= 0.0 || frames == 0) return
-        val c = component ?: return
+        val mp = activeMediaPlayer() ?: return
         SwingUtilities.invokeLater {
-            val mp = c.mediaPlayer()
             val deltaMs = ((frames.toDouble() / fps) * 1000.0).toLong()
             val current = mp.status().time()
             val total = mp.status().length().takeIf { it > 0 } ?: 0L
@@ -442,27 +494,33 @@ class ComposeVideoPlayer {
     }
 
     fun seek(timeMs: Long) {
-        val c = component ?: return
-        SwingUtilities.invokeLater { c.mediaPlayer().controls().setTime(timeMs) }
+        val mp = activeMediaPlayer() ?: return
+        SwingUtilities.invokeLater { mp.controls().setTime(timeMs) }
     }
 
     fun release() {
-        val c = component ?: return
+        val cb = component
+        val emb = embeddedComponent
+        if (cb == null && emb == null) return
         logger.debug("release")
         SwingUtilities.invokeLater {
-            try { c.release() } catch (t: Throwable) {
-                logger.warn("Exception during release (component)", t)
+            try { cb?.release() } catch (t: Throwable) {
+                logger.warn("Exception during release (callback component)", t)
+            }
+            try { emb?.release() } catch (t: Throwable) {
+                logger.warn("Exception during release (embedded component)", t)
             }
             try { nativeLog?.release() } catch (t: Throwable) {
                 logger.warn("Exception during release (nativeLog)", t)
             }
-            // CallbackMediaPlayerComponent only releases the factory when
-            // it created it; we passed one in, so we own the release.
+            // The component only releases the factory when it created it; we
+            // passed one in, so we own the release.
             try { factory?.release() } catch (t: Throwable) {
                 logger.warn("Exception during release (factory)", t)
             }
         }
         component = null
+        embeddedComponent = null
         nativeLog = null
         factory = null
         frame.value = null
@@ -542,6 +600,26 @@ class ComposeVideoPlayer {
      */
     @Composable
     fun Surface(modifier: Modifier = Modifier, targetAspectRatio: Float? = null) {
+        // Embedded (native) path: host libvlc's own video component in a
+        // SwingPanel. Force the original aspect ratio so a mismatched-ratio
+        // proxy is stretched to the original's shape (parity with the callback
+        // path); the native surface is opaque, so even if that no-ops a mismatch
+        // just black-letterboxes — still fine, never revealing anything behind.
+        val emb = embeddedComponent
+        if (emb != null) {
+            LaunchedEffect(targetAspectRatio, renderingHealthy.value) {
+                if (renderingHealthy.value) applyEmbeddedAspectRatio(targetAspectRatio)
+            }
+            val swingFactory = remember(emb) { { emb } }
+            // Black SwingPanel background (defaults to white) so any letterbox
+            // or pre-first-frame gap matches libvlc's own black vout, no flash.
+            SwingPanel(
+                background = androidx.compose.ui.graphics.Color.Black,
+                modifier = modifier,
+                factory = swingFactory,
+            )
+            return
+        }
         val bitmap = frame.value ?: return
         if (targetAspectRatio != null && targetAspectRatio > 0f) {
             // Stretch the decoded frame to a box of the given aspect ratio (the
@@ -564,6 +642,30 @@ class ComposeVideoPlayer {
                 modifier = modifier,
                 contentScale = ContentScale.Fit,
             )
+        }
+    }
+
+    /**
+     * Force libvlc's display aspect ratio to [targetAspectRatio] (the original
+     * video's) so the embedded surface stretches a mismatched-ratio proxy to
+     * the original's shape; null restores the source ratio. No-op on the
+     * callback path (which sizes the frame in Compose instead).
+     */
+    private fun applyEmbeddedAspectRatio(targetAspectRatio: Float?) {
+        val mp = embeddedComponent?.mediaPlayer() ?: return
+        SwingUtilities.invokeLater {
+            try {
+                if (targetAspectRatio != null && targetAspectRatio > 0f) {
+                    // Express the ratio as W:H integers; libvlc then scales the
+                    // (possibly mismatched-AR) source to that display ratio.
+                    val w = kotlin.math.round(targetAspectRatio * 10_000f).toInt()
+                    mp.video().setAspectRatio("$w:10000")
+                } else {
+                    mp.video().setAspectRatio(null)
+                }
+            } catch (t: Throwable) {
+                logger.warn("setAspectRatio({}) failed", targetAspectRatio, t)
+            }
         }
     }
 
