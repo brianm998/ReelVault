@@ -194,8 +194,14 @@ fun DetailViewScreen(
             contentAlignment = Alignment.Center
         ) {
             if (playbackStarted && player.available) {
+                // Stretch the proxy/master to the ORIGINAL video's aspect ratio
+                // so a mismatched-ratio proxy fills the frame (black letterbox)
+                // rather than being aspect-fit to its own shape.
+                val originalAspect = if (video.width > 0 && video.height > 0)
+                    video.width.toFloat() / video.height.toFloat() else null
                 player.Surface(
-                    modifier = Modifier.fillMaxSize().background(Color.Black)
+                    modifier = Modifier.fillMaxSize().background(Color.Black),
+                    targetAspectRatio = originalAspect
                 )
             } else {
                 ScrubPreview(

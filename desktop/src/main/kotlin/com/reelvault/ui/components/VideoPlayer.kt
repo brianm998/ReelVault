@@ -6,8 +6,10 @@ package com.reelvault.ui.components
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
@@ -531,14 +533,30 @@ class ComposeVideoPlayer {
      * previous video.
      */
     @Composable
-    fun Surface(modifier: Modifier = Modifier) {
+    fun Surface(modifier: Modifier = Modifier, targetAspectRatio: Float? = null) {
         val bitmap = frame.value ?: return
-        Image(
-            bitmap = bitmap,
-            contentDescription = null,
-            modifier = modifier,
-            contentScale = ContentScale.Fit,
-        )
+        if (targetAspectRatio != null && targetAspectRatio > 0f) {
+            // Stretch the decoded frame to a box of the given aspect ratio (the
+            // ORIGINAL video's), centered with black letterbox around it. A
+            // proxy encoded at a different ratio is therefore squished to the
+            // original's shape instead of being aspect-fit to its own — keeping
+            // playback shape consistent and never revealing anything behind it.
+            Box(modifier = modifier, contentAlignment = Alignment.Center) {
+                Image(
+                    bitmap = bitmap,
+                    contentDescription = null,
+                    modifier = Modifier.aspectRatio(targetAspectRatio),
+                    contentScale = ContentScale.FillBounds,
+                )
+            }
+        } else {
+            Image(
+                bitmap = bitmap,
+                contentDescription = null,
+                modifier = modifier,
+                contentScale = ContentScale.Fit,
+            )
+        }
     }
 
     companion object {

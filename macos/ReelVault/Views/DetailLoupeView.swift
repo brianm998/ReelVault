@@ -153,8 +153,23 @@ struct DetailLoupeView: View {
                 onHoverEnter: { gridViewModel.loadScrubFrames(videoId: video.id) }
             )
             if playerVideoId == video.id, let player = player {
-                AVPlayerNSView(player: player)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // Stretch whatever is playing (master or proxy) to the
+                // ORIGINAL video's aspect ratio. We size the surface to that
+                // ratio — the same box the `.scaledToFit()` thumbnail beneath
+                // occupies — and use `.resize` so the decoded frame fills it
+                // exactly. A proxy encoded at a different ratio is therefore
+                // squished to the original's shape rather than letterboxed
+                // (which would reveal the still thumbnail at the edges). When
+                // dimensions are unknown we fall back to aspect-preserving fill.
+                if video.width > 0 && video.height > 0 {
+                    AVPlayerNSView(player: player, videoGravity: .resize)
+                        .aspectRatio(CGFloat(video.width) / CGFloat(video.height),
+                                     contentMode: .fit)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    AVPlayerNSView(player: player)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
 
             // Cycling info overlay (top-left).

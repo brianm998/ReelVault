@@ -3,6 +3,7 @@
 
 import SwiftUI
 import AVKit
+import AVFoundation
 
 /// NSViewRepresentable that hosts an `AVPlayerLayer` directly inside a plain
 /// `NSView` — no `AVPlayerView`, no AVKit chrome.
@@ -21,16 +22,24 @@ import AVKit
 /// likewise avoids the demangling path.)
 struct AVPlayerNSView: NSViewRepresentable {
     let player: AVPlayer
+    /// How the video fills the layer. Default preserves the file's own aspect
+    /// ratio (letterboxed). The detail loupe passes `.resize` and sizes this
+    /// view to the *original* video's aspect ratio so a proxy encoded at a
+    /// different ratio is stretched to the original's shape rather than
+    /// letterboxed (which would reveal the still thumbnail behind it).
+    var videoGravity: AVLayerVideoGravity = .resizeAspect
 
     func makeNSView(context: Context) -> PlayerHostView {
         let view = PlayerHostView()
         view.wantsLayer = true
         view.layer?.backgroundColor = .clear
+        view.videoGravity = videoGravity
         view.player = player
         return view
     }
 
     func updateNSView(_ nsView: PlayerHostView, context: Context) {
+        nsView.videoGravity = videoGravity
         if nsView.player !== player {
             nsView.player = player
         }
@@ -47,6 +56,11 @@ struct AVPlayerNSView: NSViewRepresentable {
             layer.videoGravity = .resizeAspect
             layer.backgroundColor = .clear
             return layer
+        }
+
+        var videoGravity: AVLayerVideoGravity {
+            get { (layer as? AVPlayerLayer)?.videoGravity ?? .resizeAspect }
+            set { (layer as? AVPlayerLayer)?.videoGravity = newValue }
         }
 
         var player: AVPlayer? {
