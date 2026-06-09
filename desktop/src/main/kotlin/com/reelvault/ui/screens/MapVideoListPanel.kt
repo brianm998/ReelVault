@@ -5,6 +5,7 @@ package com.reelvault.ui.screens
 
 import androidx.compose.foundation.ContextMenuArea
 import androidx.compose.foundation.ContextMenuItem
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -45,7 +46,15 @@ fun MapVideoListPanel(
     onCollapse: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxHeight()) {
+    // Recessed side-panel background, matching DetailScreen. (DetailScreen uses
+    // .background() + per-Text colours rather than a Surface, so it doesn't set
+    // LocalContentColor — we must colour our own Text/Icon explicitly, else they
+    // default to black and vanish on the dark panel.)
+    Column(
+        modifier = modifier
+            .fillMaxHeight()
+            .background(MaterialTheme.colorScheme.surface)
+    ) {
         // Header — title + collapse chevron, matching the details panel.
         Row(
             modifier = Modifier
@@ -57,6 +66,7 @@ fun MapVideoListPanel(
                 text = if (videos.isEmpty()) "Selected location"
                     else "${videos.size} video${if (videos.size == 1) "" else "s"} here",
                 style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(modifier = Modifier.weight(1f))
             com.reelvault.ui.components.Tooltip(text = "Hide this panel (Tab)") {
@@ -64,6 +74,7 @@ fun MapVideoListPanel(
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowRight,
                         contentDescription = "Collapse panel",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
