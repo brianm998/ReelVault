@@ -103,8 +103,9 @@ struct HelpView: View {
                             ("G — Grid",   "Adaptive thumbnail grid. Drag the slider in the bottom bar to resize cards."),
                             ("L — List",   "Horizontal rows: thumbnail left, metadata columns right. Toggle columns in the right panel."),
                             ("D — Detail", "Full-window video player and inspector. Step through your library with ← / →."),
+                            ("M — Map",    "Geotagged clips on a world map. Click a pin to filter to that location."),
                         ])
-                        HelpParagraph("Switch views with the segment control in the **bottom bar**, or press G, L, or D.")
+                        HelpParagraph("Switch views with the segment control in the **bottom bar**, or press G, L, D, or M.")
                     }
 
                     HelpSection(icon: "cursorarrow.click.2", title: "Selecting clips") {
@@ -181,14 +182,19 @@ struct HelpView: View {
                             ("G",       "Grid view"),
                             ("L",       "List view"),
                             ("D",       "Detail / Catalog view"),
+                            ("M",       "Map view"),
                             ("I",       "Cycle info overlay (Detail mode: none → camera → file → …)"),
                             ("Tab",     "Toggle both side panels"),
                             ("Space",   "Play / pause selected clip"),
+                            ("0–5",     "Rate the selected clips (0 clears)"),
+                            ("6–9",     "Color-label the selection (red / yellow / green / blue)"),
+                            ("`",       "Clear the color label"),
                             ("⌘G",      "Stack selected clips into a group"),
                             ("⌘A",      "Select all currently-visible clips"),
                             ("⌘D",      "Deselect all"),
                             ("⌘O",      "Open Catalog…"),
                             ("⌘⇧W",     "Close current catalog"),
+                            ("⌘?",      "Show this help"),
                             ("← ↑ → ↓", "Navigate the grid"),
                             ("Escape",  "Clear search field focus"),
                         ])
