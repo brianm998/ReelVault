@@ -62,6 +62,11 @@ class GridViewModel: ObservableObject {
     @Published var selectedVideoId: String?
     @Published var selectedVideoIds: [String] = []
     @Published var anchorVideoId: String?
+    /// Cached summary of the primary selection (the global "selected video"
+    /// shared by grid, list, and the map's right panel). Lets the detail loupe
+    /// show a video that isn't in the loaded (paginated) `videos` page — e.g.
+    /// one picked from the map, whose full geotagged set is loaded separately.
+    @Published var selectedVideo: VideoSummary?
     @Published var isLoading = false
     @Published var error: String?
     @Published var totalCount: Int64 = 0
@@ -1580,6 +1585,7 @@ class GridViewModel: ObservableObject {
         selectedVideoIds = [video.id]
         anchorVideoId = video.id
         selectedVideoId = video.id
+        selectedVideo = video
     }
 
     func toggleVideoSelection(_ video: VideoSummary) {
@@ -1593,6 +1599,7 @@ class GridViewModel: ObservableObject {
             anchorVideoId = video.id
         }
         selectedVideoId = video.id
+        selectedVideo = video
     }
 
     /// Shift-click range selection. The caller computes [rangeIds] in visual order.
@@ -1603,6 +1610,7 @@ class GridViewModel: ObservableObject {
         }
         selectedVideoIds = rangeIds
         selectedVideoId = target.id
+        selectedVideo = target
         // anchor stays
     }
 
@@ -1610,6 +1618,7 @@ class GridViewModel: ObservableObject {
         selectedVideoIds = []
         selectedVideoId = nil
         anchorVideoId = nil
+        selectedVideo = nil
     }
 
     // MARK: - Arrow-key navigation
@@ -1634,6 +1643,7 @@ class GridViewModel: ObservableObject {
     /// selected card stays selected (Lightroom-style).
     func setActiveVideo(_ video: VideoSummary) {
         selectedVideoId = video.id
+        selectedVideo = video
     }
 
     /// Arrow-key navigation. Moves the active card one step in [dir] over the
@@ -2057,6 +2067,7 @@ class GridViewModel: ObservableObject {
     func clearState() {
         videos = []
         selectedVideoId = nil
+        selectedVideo = nil
         selectedVideoIds = []
         anchorVideoId = nil
         isLoading = false

@@ -51,7 +51,17 @@ struct DetailLoupeView: View {
     /// selection. Recomputes when the selection changes so the loupe always
     /// follows the user's pick.
     private var video: VideoSummary? {
-        gridViewModel.videos.first(where: { $0.id == gridViewModel.selectedVideoId })
+        // Prefer the loaded grid page; fall back to the global selection's
+        // cached summary so a video picked from the map — which usually isn't
+        // in the paginated `videos` — still opens here instead of showing the
+        // empty placeholder.
+        if let v = gridViewModel.videos.first(where: { $0.id == gridViewModel.selectedVideoId }) {
+            return v
+        }
+        if let s = gridViewModel.selectedVideo, s.id == gridViewModel.selectedVideoId {
+            return s
+        }
+        return nil
     }
 
     private var metadata: VideoMetadata? { detailViewModel.metadata }

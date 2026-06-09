@@ -2801,6 +2801,7 @@ class GridViewModel(
     fun clearState() {
         _videos.value = emptyList()
         _selectedVideoId.value = null
+        _selectedVideo.value = null
         _selectedVideoIds.value = emptyList()
         _anchorVideoId.value = null
         _totalCount.value = 0

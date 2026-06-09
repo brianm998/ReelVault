@@ -61,14 +61,24 @@ fun DetailViewScreen(
 ) {
     val selectedVideoId by gridViewModel.selectedVideoId.collectAsState()
     val videos by gridViewModel.videos.collectAsState()
+    // Cached summary of the global selection — written by every selection path
+    // (grid, list, and the map's right panel). Used as the fallback below.
+    val selectedSummary by gridViewModel.selectedVideo
     val scrubFramesMap by gridViewModel.scrubFrames.collectAsState()
     val thumbnailsMap by gridViewModel.thumbnails.collectAsState()
     val hiResScrubMap by gridViewModel.hiResScrubFrames.collectAsState()
     val hiResPosterMap by gridViewModel.hiResPoster.collectAsState()
     val metadata = detailViewModel.metadata.value
 
-    val video: VideoSummary? = remember(selectedVideoId, videos) {
+    // Resolve the selected video from the loaded grid page when possible, else
+    // fall back to the global selection's cached summary. The grid paginates,
+    // so a video chosen from the map (whose full geotagged set is loaded
+    // separately) usually isn't in `videos` — without the fallback the loupe
+    // would show its empty "select a video" placeholder even though one is
+    // selected.
+    val video: VideoSummary? = remember(selectedVideoId, videos, selectedSummary) {
         videos.firstOrNull { it.id == selectedVideoId }
+            ?: selectedSummary?.takeIf { it.id == selectedVideoId }
     }
 
     // Configurable step size for ±N-frame buttons. Default 20.
