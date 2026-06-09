@@ -694,7 +694,11 @@ fun ReelVaultApp(
     // the active view. Filter edits made while the map is up already refresh
     // videoLocations via the grid reload's debounced trigger.
     LaunchedEffect(viewMode) {
-        if (viewMode == ViewMode.MAP) gridViewModel.loadVideoLocationsFilteredAsync()
+        if (viewMode == ViewMode.MAP) {
+            gridViewModel.loadVideoLocationsFilteredAsync()
+            // Named places drive the pin labels.
+            gridViewModel.loadNamedLocationsAsync()
+        }
     }
 
     val scope = rememberCoroutineScope()
@@ -1494,10 +1498,18 @@ fun ReelVaultApp(
                                 )
                                 ViewMode.MAP -> {
                                     val mapLocations = gridViewModel.videoLocations.collectAsState()
+                                    // Subscribe to named locations so pin labels
+                                    // appear as soon as they load.
+                                    val namedLocs = gridViewModel.namedLocations.collectAsState().value
                                     com.reelvault.ui.screens.MapScreen(
                                         locations = mapLocations.value,
                                         selectedVideoIds = mapSelectedVideoIds,
                                         onSelectionChange = { mapSelectedVideoIds = it },
+                                        pinColor = MaterialTheme.colorScheme.primary,
+                                        placeNameFor = { lat, lon ->
+                                            if (namedLocs.isEmpty()) null
+                                            else gridViewModel.nameForLocation(lat, lon)?.name
+                                        },
                                         focusedLocation = globalMapFocusLocation,
                                         modifier = Modifier.weight(1f).fillMaxWidth()
                                     )

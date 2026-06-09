@@ -42,6 +42,8 @@ struct OSMMapView: View {
     /// Fired when the user clicks an annotation. For clusters,
     /// `pin.clusteredCount > 1`.
     var onPinClick: ((OSMMapPin) -> Void)? = nil
+    /// Fill color for `.video` pins — the user's chosen accent.
+    var pinColor: NSColor = .controlAccentColor
 
     /// Visible camera-to-ground distance in meters. State (not a Binding) so
     /// internal slider and pan/zoom interactions stay in sync without
@@ -64,7 +66,8 @@ struct OSMMapView: View {
         initialZoomMeters: Double,
         autoFitPins: Bool = false,
         onMapClick: ((CLLocationCoordinate2D) -> Void)? = nil,
-        onPinClick: ((OSMMapPin) -> Void)? = nil
+        onPinClick: ((OSMMapPin) -> Void)? = nil,
+        pinColor: NSColor = .controlAccentColor
     ) {
         self.pins = pins
         self.initialCenter = initialCenter
@@ -72,6 +75,7 @@ struct OSMMapView: View {
         self.autoFitPins = autoFitPins
         self.onMapClick = onMapClick
         self.onPinClick = onPinClick
+        self.pinColor = pinColor
         _cameraDistance = State(initialValue: Self.clampDistance(initialZoomMeters))
     }
 
@@ -89,7 +93,8 @@ struct OSMMapView: View {
                 cameraDistance: $cameraDistance,
                 satellite: satellite,
                 onMapClick: onMapClick,
-                onPinClick: onPinClick
+                onPinClick: onPinClick,
+                pinColor: pinColor
             )
             VerticalZoomSlider(
                 distance: $cameraDistance,
@@ -139,6 +144,8 @@ private struct _OSMMapKitView: NSViewRepresentable {
     var satellite: Bool = false
     var onMapClick: ((CLLocationCoordinate2D) -> Void)?
     var onPinClick: ((OSMMapPin) -> Void)?
+    /// Fill color for `.video` pins — the user's chosen accent.
+    var pinColor: NSColor = .controlAccentColor
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -453,6 +460,28 @@ private struct _OSMMapKitView: NSViewRepresentable {
                 view.titleVisibility = .visible
                 view.clusteringIdentifier = nil
                 return view
+            case .video:
+                // Map-view video pin: accent circle with the co-located count
+                // and the place name (when known) below — matching the Kotlin
+                // client. A drawn image rather than a marker so it reads as a
+                // circle, not a teardrop.
+                let identifier = "reelvault.pin.video"
+                let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
+                    ?? MKAnnotationView(annotation: pin, reuseIdentifier: identifier)
+                view.annotation = pin
+                let (image, offset) = makeVideoPinImage(
+                    count: pin.pin.clusteredCount,
+                    label: pin.pin.label,
+                    color: parent.pinColor
+                )
+                view.image = image
+                view.centerOffset = offset
+                view.canShowCallout = false
+                view.clusteringIdentifier = nil
+                // Show every pin (don't let MapKit cull overlapping ones), to
+                // match the Kotlin client which plots them all.
+                view.displayPriority = .required
+                return view
             }
         }
 
@@ -602,6 +631,69 @@ private struct _OSMMapKitView: NSViewRepresentable {
     }
 }
 
+// MARK: - Video pin image
+
+/// Build the image for a `.video` annotation: an accent-colored circle with
+/// the co-located video count (when > 1) and, when known, the place name in a
+/// pill below. Returns the image plus the `centerOffset` that keeps the circle
+/// centred on the coordinate — zero when there's no label (the common case),
+/// so the circle sits exactly on the spot.
+private func makeVideoPinImage(count: Int, label: String, color: NSColor) -> (NSImage, CGPoint) {
+    let diameter: CGFloat = count <= 1 ? 18 : (count < 10 ? 26 : 34)
+    let border: CGFloat = 2
+    let hasLabel = !label.isEmpty
+    let labelAttrs: [NSAttributedString.Key: Any] = [
+        .font: NSFont.systemFont(ofSize: 11, weight: .medium),
+        .foregroundColor: NSColor.white,
+    ]
+    let labelSize = hasLabel ? (label as NSString).size(withAttributes: labelAttrs) : .zero
+    let labelPadX: CGFloat = 5
+    let labelPadY: CGFloat = 2
+    let labelGap: CGFloat = hasLabel ? 3 : 0
+    let labelBoxW = hasLabel ? labelSize.width + labelPadX * 2 : 0
+    let labelBoxH = hasLabel ? labelSize.height + labelPadY * 2 : 0
+    let width = max(diameter, labelBoxW)
+    let height = diameter + labelGap + labelBoxH
+
+    let image = NSImage(size: CGSize(width: width, height: height))
+    image.lockFocus()
+    // NSImage origin is bottom-left (y up); draw the circle at the TOP.
+    let circleX = (width - diameter) / 2
+    let circleY = height - diameter
+    let circleRect = CGRect(x: circleX + border / 2, y: circleY + border / 2,
+                            width: diameter - border, height: diameter - border)
+    let circle = NSBezierPath(ovalIn: circleRect)
+    color.setFill(); circle.fill()
+    NSColor.white.setStroke(); circle.lineWidth = border; circle.stroke()
+
+    if count > 1 {
+        let countAttrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: diameter * 0.44, weight: .semibold),
+            .foregroundColor: NSColor.white,
+        ]
+        let s = "\(count)" as NSString
+        let sz = s.size(withAttributes: countAttrs)
+        s.draw(at: CGPoint(x: circleX + (diameter - sz.width) / 2,
+                           y: circleY + (diameter - sz.height) / 2),
+               withAttributes: countAttrs)
+    }
+
+    if hasLabel {
+        let boxX = (width - labelBoxW) / 2
+        let boxRect = CGRect(x: boxX, y: 0, width: labelBoxW, height: labelBoxH)
+        NSColor(white: 0, alpha: 0.55).setFill()
+        NSBezierPath(roundedRect: boxRect, xRadius: 4, yRadius: 4).fill()
+        (label as NSString).draw(at: CGPoint(x: boxX + labelPadX, y: labelPadY),
+                                 withAttributes: labelAttrs)
+    }
+    image.unlockFocus()
+
+    // Positive y nudges the image down so the circle (drawn at the top) stays
+    // on the coordinate when a label extends the image downward; zero when
+    // unlabeled so the circle is exactly on the spot.
+    return (image, CGPoint(x: 0, y: (height - diameter) / 2))
+}
+
 // MARK: - Vertical zoom slider
 
 /// Right-edge zoom control. Drives `distance` exponentially because zoom
@@ -709,6 +801,10 @@ enum OSMMapPinStyle: Hashable {
     case primary
     case secondary
     case named
+    /// Map-view video-location pin: an accent-colored circle showing the
+    /// number of co-located videos, with the place name (when known) below.
+    /// Matches the Kotlin client's pins.
+    case video
 }
 
 /// One pin to draw on an [OSMMapView]. `clusteredCount` is filled in only

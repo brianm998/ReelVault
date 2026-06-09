@@ -37,23 +37,29 @@ fun MapScreen(
     locations: List<VideoLocation>,
     selectedVideoIds: List<String>,
     onSelectionChange: (List<String>) -> Unit,
+    /** Accent color for the pins (the user's chosen highlight). */
+    pinColor: Color,
+    /** Resolve a coordinate to a known place name, or null if the spot isn't a
+     *  named place. Drives the pin labels (no label when null). */
+    placeNameFor: (latitude: Double, longitude: Double) -> String?,
     /** When non-null, open centered here (≈ neighbourhood zoom) instead of
      *  framing all pins. Set when the user taps a card's location badge; the
      *  caller clears it at the next non-badge navigation into the map. */
     focusedLocation: Pair<Double, Double>? = null,
     modifier: Modifier = Modifier,
 ) {
-    val pins = remember(locations) {
-        locations.map { loc ->
-            MapPin(
-                id = loc.id,
-                latitude = loc.latitude,
-                longitude = loc.longitude,
-                count = 1,
-                label = loc.filename,
-                memberIds = listOf(loc.id),
-            )
-        }
+    // Recomputed each recomposition (cheap) rather than remembered, so labels
+    // appear as soon as the named-location list loads. The pin label is the
+    // place name when known, otherwise blank (the painter then draws no label).
+    val pins = locations.map { loc ->
+        MapPin(
+            id = loc.id,
+            latitude = loc.latitude,
+            longitude = loc.longitude,
+            count = 1,
+            label = placeNameFor(loc.latitude, loc.longitude) ?: "",
+            memberIds = listOf(loc.id),
+        )
     }
 
     // Focused on a specific video → centre there at zoom 12 (neighbourhood).
@@ -96,6 +102,7 @@ fun MapScreen(
                 pins = pins,
                 initialCenter = initLat to initLon,
                 initialZoom = initZoom,
+                pinColor = pinColor,
                 // Frame the actual pins once laid out (and re-frame when the
                 // filtered set replaces the broader startup set) — except when
                 // focused on a specific coordinate from a card's location badge.

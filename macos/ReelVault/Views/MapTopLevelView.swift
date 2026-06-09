@@ -18,10 +18,37 @@ struct MapTopLevelView: View {
     let locations: [VideoLocation]
     let selectedVideoIds: [String]
     let onSelectionChange: ([String]) -> Void
+    /// Accent color for the pins (the user's chosen highlight).
+    var pinColor: NSColor = .controlAccentColor
+    /// Resolve a coordinate to a known place name, or nil if it isn't a named
+    /// place. Drives the pin labels (no label when nil).
+    var placeName: (CLLocationCoordinate2D) -> String? = { _ in nil }
     /// When non-nil, open centred here (≈ neighbourhood zoom) instead of
     /// framing all pins. Set when the user taps a card's location badge; the
     /// caller clears it at the next non-badge navigation into the map.
     var focusedCoordinate: CLLocationCoordinate2D? = nil
+
+    /// Co-located videos grouped into one pin so a single marker shows the
+    /// count and clicking it selects the whole group. Bucketed to ~1 m. The
+    /// label is the place name when known, else blank (no label drawn).
+    private var videoPins: [OSMMapPin] {
+        let groups = Dictionary(grouping: locations) { loc in
+            "\(Int((loc.latitude * 1e5).rounded()))_\(Int((loc.longitude * 1e5).rounded()))"
+        }
+        return groups.values.map { group in
+            let first = group[0]
+            let coord = CLLocationCoordinate2D(
+                latitude: first.latitude, longitude: first.longitude)
+            return OSMMapPin(
+                id: first.id,
+                coordinate: coord,
+                label: placeName(coord) ?? "",
+                clusteredCount: group.count,
+                style: .video,
+                memberIds: group.map { $0.id }
+            )
+        }
+    }
 
     var body: some View {
         ZStack {
@@ -38,15 +65,7 @@ struct MapTopLevelView: View {
                 }
             } else {
                 OSMMapView(
-                    pins: locations.map { loc in
-                        OSMMapPin(
-                            id: loc.id,
-                            coordinate: CLLocationCoordinate2D(
-                                latitude: loc.latitude, longitude: loc.longitude),
-                            label: loc.filename,
-                            memberIds: [loc.id]
-                        )
-                    },
+                    pins: videoPins,
                     initialCenter: center,
                     // Tight zoom when focused on a video (≈ 5 km across);
                     // moderate bbox-fitting otherwise.
@@ -59,15 +78,8 @@ struct MapTopLevelView: View {
                         if !selectedVideoIds.isEmpty { onSelectionChange([]) }
                     },
                     onPinClick: { pin in
-                        // Videos at one spot overlap into a single marker, so a
-                        // click resolves to every video at the tapped pin's
-                        // coordinate — not just the one stacked on top.
-                        let clicked = pin.coordinate
-                        let coLocated = locations.filter {
-                            abs($0.latitude - clicked.latitude) < 1e-6
-                                && abs($0.longitude - clicked.longitude) < 1e-6
-                        }.map { $0.id }
-                        let ids = coLocated.isEmpty ? [pin.id] : coLocated
+                        // Each pin carries the ids of all co-located videos.
+                        let ids = pin.memberIds.isEmpty ? [pin.id] : pin.memberIds
                         // Read the live modifier state — Shift/⌘ accumulates.
                         let mods = NSEvent.modifierFlags
                         if mods.contains(.shift) || mods.contains(.command) {
@@ -77,7 +89,8 @@ struct MapTopLevelView: View {
                         } else {
                             onSelectionChange(ids)
                         }
-                    }
+                    },
+                    pinColor: pinColor
                 )
 
                 // Usage hint, bottom-leading — clear of the satellite toggle

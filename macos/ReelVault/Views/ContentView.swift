@@ -373,7 +373,11 @@ struct ContentView: View {
         // already refresh videoLocations via the grid reload.
         .onChange(of: viewMode) { _, newMode in
             if newMode == .map {
-                Task { await gridViewModel.loadVideoLocationsFilteredAsync() }
+                Task {
+                    await gridViewModel.loadVideoLocationsFilteredAsync()
+                    // Named places drive the pin labels.
+                    await gridViewModel.loadNamedLocationsAsync()
+                }
             }
         }
     }
@@ -993,6 +997,11 @@ struct ContentView: View {
                         locations: gridViewModel.videoLocations,
                         selectedVideoIds: mapSelectedVideoIds,
                         onSelectionChange: { mapSelectedVideoIds = $0 },
+                        pinColor: accentScheme == "purple" ? .systemPurple : .systemBlue,
+                        placeName: { coord in
+                            gridViewModel.nameForLocation(
+                                latitude: coord.latitude, longitude: coord.longitude)?.name
+                        },
                         focusedCoordinate: globalMapFocusCoord
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

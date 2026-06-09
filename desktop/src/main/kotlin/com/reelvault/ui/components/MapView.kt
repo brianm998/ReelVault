@@ -9,6 +9,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.SwingPanel
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import org.jxmapviewer.JXMapViewer
 import org.jxmapviewer.input.CenterMapListener
 import org.jxmapviewer.input.PanKeyListener
@@ -87,6 +89,10 @@ fun MapView(
      *  leaving the camera stranded at the stale [initialCenter]. When false the
      *  camera uses [initialCenter]/[initialZoom] only (e.g. a focused view). */
     autoFitPins: Boolean = false,
+    /** Fill color for PRIMARY pins — the user's accent. Defaults to the
+     *  classic ReelVault purple so callers that don't theme (the location
+     *  picker) look unchanged. */
+    pinColor: Color = Color(0xFF6750A4),
     /** Fired when the user clicks (or drags onto) the map at the given lat/lon. */
     onMapClick: ((latitude: Double, longitude: Double) -> Unit)? = null,
     /** Fired when the user clicks a pin (or cluster). For clusters [MapPin.count]
@@ -109,6 +115,7 @@ fun MapView(
     mapHolder.onMapClick = onMapClick
     mapHolder.initialCenter = initialCenter
     mapHolder.initialZoom = initialZoom
+    mapHolder.pinColor = AwtColor(pinColor.toArgb())
 
     val factory: () -> JXMapViewer = remember {
         {
@@ -334,6 +341,8 @@ private class MapHolder {
     var onMapClick: ((Double, Double) -> Unit)? = null
     var initialCenter: Pair<Double, Double> = 0.0 to 0.0
     var initialZoom: Int = 7
+    /** Fill for PRIMARY pins — the user's accent color. */
+    var pinColor: AwtColor = AwtColor(0x6750A4)
 }
 
 /** Frame the current pins if auto-fit is enabled, the user hasn't taken over,
@@ -487,7 +496,7 @@ private class ClusterPainter(private val holder: MapHolder) : Painter<JXMapViewe
                     memberIds = cluster.members.flatMap { it.memberIds },
                 )
             val fill = when (style) {
-                MapPinStyle.PRIMARY -> AwtColor(0x6750A4) // Material primary
+                MapPinStyle.PRIMARY -> holder.pinColor // user's accent color
                 // Soft gray — present but recessive, so the candidate
                 // remains the obvious eye-catcher.
                 MapPinStyle.SECONDARY -> AwtColor(0x9E9E9E)
@@ -520,13 +529,19 @@ private class ClusterPainter(private val holder: MapHolder) : Painter<JXMapViewe
                 g2.drawString(text, sx - tw / 2, sy + th / 2 - 2)
             }
 
-            // Named pins get a permanently visible label to the right of
-            // the marker — that's the whole reason they exist. We render
-            // a small dark background under the text for readability over
-            // arbitrary map tiles, and record its screen rect so a click on
-            // the label selects the pin's exact location (not a nearby point).
+            // Permanently-visible label to the right of the marker, showing
+            // the place name. Named pins always carry one; video (PRIMARY)
+            // pins carry one only when a single location resolves to a known
+            // place — a cluster shows its count in the circle instead, so we
+            // gate on displayCount <= 1. A small dark background keeps the
+            // text readable over arbitrary tiles; we record its screen rect so
+            // a click on the label still selects the pin.
             var labelBounds: java.awt.Rectangle? = null
-            if (style == MapPinStyle.NAMED && displayPin.label.isNotEmpty()) {
+            val drawLabel = displayPin.label.isNotEmpty() && (
+                style == MapPinStyle.NAMED ||
+                    (style == MapPinStyle.PRIMARY && displayCount <= 1)
+            )
+            if (drawLabel) {
                 val label = displayPin.label
                 val fm = g2.fontMetrics
                 val tw = fm.stringWidth(label)
