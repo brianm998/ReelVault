@@ -398,6 +398,74 @@ impl Database {
         Ok(())
     }
 
+    /// Soft-delete (`is_online = 0`) every currently-online video under `dir`
+    /// whose path was NOT seen in `present`. With `recursive == false` only
+    /// direct children of `dir` are considered, matching a non-recursive scan.
+    /// Returns the ids that flipped offline. Called at the end of a scan so
+    /// entries whose files were moved, renamed, or unmounted since the last
+    /// index get flagged offline instead of silently failing on playback.
+    pub fn mark_missing_offline(
+        &self,
+        dir: &std::path::Path,
+        recursive: bool,
+        present: &std::collections::HashSet<std::path::PathBuf>,
+    ) -> Result<Vec<String>> {
+        let conn = self.get_connection()?;
+
+        // Restrict to the scanned subtree with a prefix match so we don't walk
+        // the whole catalog; the path's own LIKE metacharacters are escaped,
+        // and the exact direct-child vs descendant rule is applied in Rust.
+        let mut prefix = dir.to_string_lossy().to_string();
+        if !prefix.ends_with(std::path::MAIN_SEPARATOR) {
+            prefix.push(std::path::MAIN_SEPARATOR);
+        }
+        let mut like = String::with_capacity(prefix.len() + 1);
+        for ch in prefix.chars() {
+            if matches!(ch, '\\' | '%' | '_') {
+                like.push('\\');
+            }
+            like.push(ch);
+        }
+        like.push('%');
+
+        let candidates: Vec<(String, String)> = {
+            let mut stmt = conn
+                .prepare(
+                    "SELECT id, path FROM videos \
+                     WHERE is_online = 1 AND path LIKE ?1 ESCAPE '\\'",
+                )
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            let rows = stmt
+                .query_map(params![like], |row| {
+                    Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+                })
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            rows.filter_map(|r| r.ok()).collect()
+        };
+
+        let mut offlined = Vec::new();
+        for (id, path) in candidates {
+            let p = std::path::PathBuf::from(&path);
+            // A non-recursive scan only "saw" the directory's direct children,
+            // so it must not retire deeper entries it never looked at.
+            let in_scope = if recursive {
+                true
+            } else {
+                p.parent().map(|par| par == dir).unwrap_or(false)
+            };
+            if in_scope && !present.contains(&p) {
+                offlined.push(id);
+            }
+        }
+
+        for id in &offlined {
+            conn.execute("UPDATE videos SET is_online = 0 WHERE id = ?1", params![id])
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        }
+
+        Ok(offlined)
+    }
+
     pub fn get_video(&self, video_id: &str) -> Result<Option<VideoRecord>> {
         let conn = self.get_connection()?;
 

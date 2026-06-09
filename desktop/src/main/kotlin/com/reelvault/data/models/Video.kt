@@ -73,6 +73,10 @@ data class VideoSummary(
      *  [FullResolutionStatus.Unspecified] (the default) renders no badge;
      *  the other two render the "Full" / "Not full" chip on the card. */
     val fullResolution: FullResolutionStatus = FullResolutionStatus.Unspecified,
+    /** False when the daemon found the file missing at the last scan — moved,
+     *  renamed, or on an unmounted drive. The grid dims such cards and shows an
+     *  "offline" badge instead of only failing when the user hits play. */
+    val isOnline: Boolean = true,
 ) {
     val isInGroup: Boolean get() = groupId.isNotEmpty() && groupSize > 1
     val hasProxies: Boolean get() = proxyCount > 0

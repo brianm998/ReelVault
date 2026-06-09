@@ -303,6 +303,11 @@ message VideoSummary {
   // we deliberately refuse to classify. Clients render badges for FULL
   // and NOT_FULL; UNSPECIFIED renders no badge.
   FullResolutionStatus full_resolution = 33;
+  // True when the file was present at the most recent scan; false when it has
+  // been moved, renamed, or its drive is unmounted (soft-deleted via
+  // is_online = 0 in the catalog). Clients dim such cards and badge them
+  // "offline" rather than only failing when the user hits play.
+  bool is_online = 34;
 }
 
 enum FullResolutionStatus {

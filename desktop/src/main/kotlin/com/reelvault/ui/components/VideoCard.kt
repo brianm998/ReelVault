@@ -14,6 +14,7 @@ import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Layers
@@ -504,7 +505,7 @@ fun VideoCard(
                 //     user gets immediate feedback about what's missing
                 //     rather than nothing happening on click.
                 val canPlayInline = video.playableNatively || video.hasProxies
-                if (!isPlayingInline && isSelected && isHovered && (canPlayInline || !playEnabled)) {
+                if (!isPlayingInline && video.isOnline && isSelected && isHovered && (canPlayInline || !playEnabled)) {
                     com.reelvault.ui.components.Tooltip(
                         text = if (playEnabled) "Play inline" else "Install VLC to enable inline playback"
                     ) {
@@ -532,6 +533,49 @@ fun VideoCard(
                                 // Dimmed when VLC is absent to signal the disabled state.
                                 tint = if (playEnabled) Color.White else Color.White.copy(alpha = 0.45f),
                             )
+                        }
+                    }
+                }
+
+                // Offline indicator — the file was missing at the last scan
+                // (moved/renamed, or its drive isn't mounted). Dim the thumbnail
+                // and badge it so the user sees it can't play before clicking,
+                // rather than hitting a playback error; the play affordance is
+                // suppressed above for the same reason. Always shown (not gated
+                // on hover) so offline clips are obvious at a glance.
+                if (!video.isOnline && !isPlayingInline) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.45f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        com.reelvault.ui.components.Tooltip(
+                            text = "File offline — moved, renamed, or its drive isn't " +
+                                "mounted. Re-scan the library to update its location.",
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .background(
+                                        Color.Black.copy(alpha = 0.7f),
+                                        RoundedCornerShape(50),
+                                    )
+                                    .padding(horizontal = ReelVaultSpacing.Small, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CloudOff,
+                                    contentDescription = "Offline",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = Color.White,
+                                )
+                                Text(
+                                    text = "Offline",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White,
+                                )
+                            }
                         }
                     }
                 }

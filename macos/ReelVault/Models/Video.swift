@@ -92,6 +92,10 @@ struct VideoSummary: Identifiable, Hashable {
     /// `.unspecified` (the default) renders no badge; the other two
     /// render the "Full" / "Not full" chip on the card.
     let fullResolution: FullResolutionStatus
+    /// False when the daemon found the file missing at the last scan — moved,
+    /// renamed, or on an unmounted drive. The grid dims such cards and shows an
+    /// "offline" badge instead of only failing when the user hits play.
+    let isOnline: Bool
 
     var isInGroup: Bool { !groupId.isEmpty && groupSize > 1 }
     var hasProxies: Bool { proxyCount > 0 }
@@ -141,7 +145,8 @@ struct VideoSummary: Identifiable, Hashable {
             gpsLatitude: gpsLatitude, gpsLongitude: gpsLongitude,
             lensModel: lensModel, iso: iso, aperture: aperture,
             exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm,
-            fullResolution: fullResolution
+            fullResolution: fullResolution,
+            isOnline: isOnline
         )
     }
 
@@ -163,7 +168,8 @@ struct VideoSummary: Identifiable, Hashable {
             gpsLatitude: gpsLatitude, gpsLongitude: gpsLongitude,
             lensModel: lensModel, iso: iso, aperture: aperture,
             exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm,
-            fullResolution: fullResolution
+            fullResolution: fullResolution,
+            isOnline: isOnline
         )
     }
 
@@ -185,7 +191,8 @@ struct VideoSummary: Identifiable, Hashable {
             gpsLatitude: latitude, gpsLongitude: longitude,
             lensModel: lensModel, iso: iso, aperture: aperture,
             exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm,
-            fullResolution: fullResolution
+            fullResolution: fullResolution,
+            isOnline: isOnline
         )
     }
 
@@ -207,7 +214,8 @@ struct VideoSummary: Identifiable, Hashable {
             gpsLatitude: gpsLatitude, gpsLongitude: gpsLongitude,
             lensModel: lensModel, iso: iso, aperture: aperture,
             exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm,
-            fullResolution: fullResolution
+            fullResolution: fullResolution,
+            isOnline: isOnline
         )
     }
 }

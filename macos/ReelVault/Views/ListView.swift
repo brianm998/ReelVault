@@ -883,7 +883,7 @@ struct VideoListRowView: View {
             }
             // Play button — center of thumbnail when hovered + selected + not playing.
             .overlay(alignment: .center) {
-                if !isPlaying && isPrimarySelected && isHovered {
+                if !isPlaying && video.isOnline && isPrimarySelected && isHovered {
                     Button(action: onPlayClick) {
                         Image(systemName: "play.fill")
                             .font(.system(size: 14))
@@ -910,6 +910,24 @@ struct VideoListRowView: View {
                     .buttonStyle(.plain)
                     .padding(3)
                     .help("Stop inline playback")
+                }
+            }
+            // Offline indicator — dim + badge when the file was missing at the
+            // last scan (moved/renamed, or its drive isn't mounted); the play
+            // button is suppressed for offline clips above. Icon-only — the row
+            // thumbnail is small.
+            .overlay {
+                if !video.isOnline {
+                    ZStack {
+                        Color.black.opacity(0.45)
+                        Image(systemName: "icloud.slash")
+                            .font(.system(size: 16))
+                            .foregroundColor(.white)
+                            .frame(width: 30, height: 30)
+                            .background(Color.black.opacity(0.7))
+                            .clipShape(Circle())
+                    }
+                    .allowsHitTesting(false)
                 }
             }
 

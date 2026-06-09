@@ -584,6 +584,18 @@ impl ReelVaultService {
             height,
         );
 
+        // Online status — false when the file was missing at the most recent
+        // scan (moved/renamed, or its drive isn't mounted). Surfaced on the
+        // summary so the grid can flag offline clips up front instead of only
+        // failing when the user presses play.
+        let is_online = self
+            .db
+            .get_video(video_id)
+            .ok()
+            .flatten()
+            .map(|v| v.is_online != 0)
+            .unwrap_or(true);
+
         VideoSummary {
             id: video_id.to_string(),
             filename: filename.to_string(),
@@ -619,6 +631,7 @@ impl ReelVaultService {
             exposure_time_s: exposure_time_s.unwrap_or(0.0),
             focal_length_mm: focal_length_mm.unwrap_or(0.0),
             full_resolution,
+            is_online,
         }
     }
 }

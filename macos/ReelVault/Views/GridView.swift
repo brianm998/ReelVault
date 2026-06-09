@@ -734,6 +734,30 @@ struct VideoCardView: View {
                         .allowsHitTesting(false)
                     }
                 }
+                // Offline indicator — the file was missing at the last scan
+                // (moved/renamed, or its drive isn't mounted). Dim the photo and
+                // badge it so offline clips are obvious before the user tries to
+                // play; the play button is suppressed for them too. Always shown
+                // (not gated on hover) so offline clips read at a glance.
+                .overlay {
+                    if !video.isOnline {
+                        ZStack {
+                            Color.black.opacity(0.45)
+                            HStack(spacing: 4) {
+                                Image(systemName: "icloud.slash")
+                                    .font(.system(size: 12))
+                                Text("Offline")
+                                    .font(.system(size: 11, weight: .medium))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.black.opacity(0.7))
+                            .clipShape(Capsule())
+                        }
+                        .allowsHitTesting(false)
+                    }
+                }
                 .clipped()
             // 1 pt separator above the bottom band.
             Rectangle()
@@ -1261,7 +1285,7 @@ struct VideoCardView: View {
                 // bug where `.contentShape(Circle().size(…))` positions the
                 // hit region at the view's top-left corner, not its centre.
                 .overlay(alignment: .center) {
-                    if !isPlaying && isPrimarySelected && isHovered {
+                    if !isPlaying && video.isOnline && isPrimarySelected && isHovered {
                         Button(action: onPlayClick) {
                             Image(systemName: "play.fill")
                                 .font(.system(size: 18))

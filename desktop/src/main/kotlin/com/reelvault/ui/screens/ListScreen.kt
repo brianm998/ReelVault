@@ -843,7 +843,7 @@ fun VideoListRow(
                 }
                 // Play-button overlay — visible on hover when selected and not playing.
                 val canPlayInline = video.playableNatively || video.hasProxies
-                if (!isPlayingInline && isSelected && isHovered && (canPlayInline || !playEnabled)) {
+                if (!isPlayingInline && video.isOnline && isSelected && isHovered && (canPlayInline || !playEnabled)) {
                     Tooltip(text = if (playEnabled) "Play inline" else "Install VLC to enable inline playback") {
                         Box(
                             modifier = Modifier
@@ -871,6 +871,39 @@ fun VideoListRow(
                         }
                     }
                 }
+                // Offline indicator — mirrors the grid card. The file was
+                // missing at the last scan (moved/renamed, or its drive isn't
+                // mounted); dim the thumbnail and badge it so it's obvious
+                // before the user tries to play. Play is suppressed above for
+                // the same reason. Icon-only here — the row thumbnail is small.
+                if (!video.isOnline && !isPlayingInline) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.45f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Tooltip(
+                            text = "File offline — moved, renamed, or its drive isn't " +
+                                "mounted. Re-scan the library to update its location.",
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(26.dp)
+                                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(50)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CloudOff,
+                                    contentDescription = "Offline",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = Color.White,
+                                )
+                            }
+                        }
+                    }
+                }
+
                 // Stop button — top-end corner while playing.
                 if (isPlayingInline) {
                     Tooltip(

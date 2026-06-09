@@ -178,7 +178,7 @@ impl IndexingEngine {
         // First pass: find all videos
         let mut video_paths = Vec::new();
 
-        for entry in WalkDir::new(path)
+        for entry in WalkDir::new(&path)
             .into_iter()
             .filter_map(|e| e.ok())
             .filter(|e| recursive || e.depth() <= 1)
@@ -289,6 +289,23 @@ impl IndexingEngine {
             progress_percent: 99.0,
         });
         post_index.finish();
+
+        // Retire catalog entries whose files have vanished since the last index
+        // (moved, renamed, or an unmounted drive). The found set is the paths we
+        // just walked; any online video under this directory that isn't in it
+        // gets soft-deleted (is_online = 0) so clients can flag it offline.
+        // Found files were re-asserted online by index_video's size refresh.
+        let present: std::collections::HashSet<std::path::PathBuf> =
+            video_paths.iter().cloned().collect();
+        match db.mark_missing_offline(&path, recursive, &present) {
+            Ok(offlined) if !offlined.is_empty() => tracing::info!(
+                "Scan: marked {} missing video(s) offline under {}",
+                offlined.len(),
+                path.display()
+            ),
+            Ok(_) => {}
+            Err(e) => tracing::warn!("Scan: offline sweep failed: {}", e),
+        }
 
         let videos_indexed_final = videos_indexed.load(Ordering::Relaxed);
 

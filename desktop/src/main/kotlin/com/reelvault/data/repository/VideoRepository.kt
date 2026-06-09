@@ -121,6 +121,7 @@ class VideoRepository(
             exposureTimeS = proto.exposureTimeS,
             focalLengthMm = proto.focalLengthMm,
             fullResolution = FullResolutionStatus.fromWire(proto.fullResolutionValue),
+            isOnline = proto.isOnline,
         )
     }
 

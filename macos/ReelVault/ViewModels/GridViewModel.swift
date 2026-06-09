@@ -1882,7 +1882,8 @@ class GridViewModel: ObservableObject {
                     gpsLatitude: v.gpsLatitude, gpsLongitude: v.gpsLongitude,
                     lensModel: v.lensModel, iso: v.iso, aperture: v.aperture,
                     exposureTimeS: v.exposureTimeS, focalLengthMm: v.focalLengthMm,
-                    fullResolution: v.fullResolution
+                    fullResolution: v.fullResolution,
+                    isOnline: v.isOnline
                 )
             }
             return v
