@@ -137,6 +137,12 @@ class GridViewModel: ObservableObject {
     /// round-trip. Same filter and order as `videoLocations`.
     @Published var geotaggedVideos: [VideoSummary] = []
 
+    /// True while a filtered video-locations load is in flight. The map view's
+    /// right panel shows a progress indicator (instead of an empty/stale list)
+    /// while a clicked location's videos are still being resolved — important on
+    /// a slow NAS catalog, where pins can appear before `geotaggedVideos` fills.
+    @Published var isLoadingVideoLocations = false
+
     // Catalog's user-defined named places (e.g. "Home"). Refreshed by
     // [loadNamedLocations]; used by [nameForLocation] to render named pins
     // on the map and named GPS readouts in the detail panel.
@@ -2278,6 +2284,8 @@ class GridViewModel: ObservableObject {
     }
 
     func loadVideoLocationsFilteredAsync() async {
+        isLoadingVideoLocations = true
+        defer { isLoadingVideoLocations = false }
         let batchSize: Int32 = 500
         let filterTagIds = filterTagId.isEmpty ? [] : [filterTagId]
         var accumulated: [VideoLocation] = []

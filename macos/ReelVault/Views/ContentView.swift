@@ -1024,9 +1024,14 @@ struct ContentView: View {
                     // Map mode: the videos at the selected location(s) as cards,
                     // in place of the metadata inspector.
                     let selSet = Set(mapSelectedVideoIds)
+                    let mapVideos = gridViewModel.geotaggedVideos.filter { selSet.contains($0.id) }
                     MapVideoListPanel(
                         gridViewModel: gridViewModel,
-                        videos: gridViewModel.geotaggedVideos.filter { selSet.contains($0.id) },
+                        videos: mapVideos,
+                        // Spinner while a clicked location's videos are still
+                        // being resolved (and none are showing yet).
+                        loading: !selSet.isEmpty && mapVideos.isEmpty
+                            && gridViewModel.isLoadingVideoLocations,
                         currentVideoId: gridViewModel.selectedVideoId,
                         onCardClick: { openMapVideo($0, in: .map) },
                         onOpenInGrid: { openMapVideo($0, in: .grid) },

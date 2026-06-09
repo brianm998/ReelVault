@@ -12,6 +12,11 @@ import SwiftUI
 struct MapVideoListPanel: View {
     @ObservedObject var gridViewModel: GridViewModel
     let videos: [VideoSummary]
+    /// Show a progress indicator in place of the empty placeholder: a pin was
+    /// clicked but its videos are still being resolved (e.g. the filtered
+    /// location load is still in flight). Keeps stale/empty content off-screen
+    /// while the selection catches up.
+    let loading: Bool
     let currentVideoId: String?
     let onCardClick: (VideoSummary) -> Void
     let onOpenInGrid: (VideoSummary) -> Void
@@ -26,7 +31,7 @@ struct MapVideoListPanel: View {
             // Header — title + collapse chevron, matching the details panel.
             HStack {
                 Text(videos.isEmpty
-                     ? "Selected location"
+                     ? (loading ? "Loading…" : "Selected location")
                      : "\(videos.count) video\(videos.count == 1 ? "" : "s") here")
                     .font(.headline)
                 Spacer()
@@ -42,16 +47,28 @@ struct MapVideoListPanel: View {
 
             if videos.isEmpty {
                 Spacer()
-                VStack(spacing: 8) {
-                    Image(systemName: "mappin.and.ellipse")
-                        .font(.system(size: 32))
-                        .foregroundColor(.secondary)
-                    Text("Click a location on the map to see its videos here.")
-                        .font(.callout)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
+                if loading {
+                    // A location was clicked; its videos are still resolving.
+                    VStack(spacing: 8) {
+                        ProgressView()
+                        Text("Loading videos at this location…")
+                            .font(.callout)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(20)
+                } else {
+                    VStack(spacing: 8) {
+                        Image(systemName: "mappin.and.ellipse")
+                            .font(.system(size: 32))
+                            .foregroundColor(.secondary)
+                        Text("Click a location on the map to see its videos here.")
+                            .font(.callout)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(20)
                 }
-                .padding(20)
                 Spacer()
             } else {
                 ScrollView {

@@ -238,6 +238,13 @@ class GridViewModel(
     private val _geotaggedVideos = MutableStateFlow<List<VideoSummary>>(emptyList())
     val geotaggedVideos: StateFlow<List<VideoSummary>> = _geotaggedVideos.asStateFlow()
 
+    // True while a filtered video-locations load is in flight. The map view's
+    // right panel shows a progress indicator (instead of an empty/stale list)
+    // while a clicked location's videos are still being resolved — important on
+    // a slow NAS catalog, where pins can appear before [geotaggedVideos] fills.
+    private val _isLoadingVideoLocations = MutableStateFlow(false)
+    val isLoadingVideoLocations: StateFlow<Boolean> = _isLoadingVideoLocations.asStateFlow()
+
     // Catalog's user-defined named places (e.g. "Home"). Refreshed by
     // `loadNamedLocations`; used by `nameForLocation` to render named pins
     // on the map and named GPS readouts in the detail panel.
@@ -1458,6 +1465,7 @@ class GridViewModel(
     }
 
     suspend fun loadVideoLocationsFilteredAsync() {
+        _isLoadingVideoLocations.value = true
         try {
             // The full-library pagination runs entirely off the UI thread: on a
             // slow NAS-backed catalog this can be several seconds of round-trips,
@@ -1510,6 +1518,8 @@ class GridViewModel(
             throw e
         } catch (e: Exception) {
             logger.error("Failed to load filtered video locations", e)
+        } finally {
+            _isLoadingVideoLocations.value = false
         }
     }
 

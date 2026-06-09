@@ -541,7 +541,7 @@ private struct _OSMMapKitView: NSViewRepresentable {
             // ourselves (with a tolerance that covers the label) and snap to the
             // nearest existing one; only a click clear of every pin drops a
             // fresh candidate. To pick a spot near a pin, the user zooms in.
-            if let pin = nearestPin(to: point, in: mapView, tolerance: 32) {
+            if let pin = nearestPin(to: point, in: mapView, tolerance: 40) {
                 parent.onPinClick?(pin)
                 return
             }

@@ -1552,8 +1552,13 @@ fun ReelVaultApp(
                             val sel = mapSelectedVideoIds.toSet()
                             val mapPanelVideos = gridViewModel.geotaggedVideos.collectAsState().value
                                 .filter { it.id in sel }
+                            val mapLocLoading = gridViewModel.isLoadingVideoLocations
+                                .collectAsState().value
                             com.reelvault.ui.screens.MapVideoListPanel(
                                 videos = mapPanelVideos,
+                                // Spinner while a clicked location's videos are
+                                // still being resolved (and none are showing yet).
+                                loading = sel.isNotEmpty() && mapPanelVideos.isEmpty() && mapLocLoading,
                                 thumbnails = gridViewModel.thumbnails.collectAsState().value,
                                 scrubFrames = gridViewModel.scrubFrames.collectAsState().value,
                                 currentVideoId = gridViewModel.selectedVideoId.collectAsState().value,

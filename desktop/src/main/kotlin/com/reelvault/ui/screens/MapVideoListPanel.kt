@@ -36,6 +36,11 @@ import com.reelvault.ui.theme.ReelVaultSpacing
 @Composable
 fun MapVideoListPanel(
     videos: List<VideoSummary>,
+    /** Show a progress indicator in place of the empty placeholder: a pin was
+     *  clicked but its videos are still being resolved (e.g. the filtered
+     *  location load is still in flight). Keeps stale/empty content off-screen
+     *  while the selection catches up. */
+    loading: Boolean,
     thumbnails: Map<String, ByteArray>,
     scrubFrames: Map<String, List<ByteArray?>>,
     currentVideoId: String?,
@@ -65,8 +70,12 @@ fun MapVideoListPanel(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = if (videos.isEmpty()) "Selected location"
-                    else "${videos.size} video${if (videos.size == 1) "" else "s"} here",
+                text = when {
+                    videos.isNotEmpty() ->
+                        "${videos.size} video${if (videos.size == 1) "" else "s"} here"
+                    loading -> "Loading…"
+                    else -> "Selected location"
+                },
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -92,18 +101,32 @@ fun MapVideoListPanel(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
-                Icon(
-                    imageVector = Icons.Default.PinDrop,
-                    contentDescription = null,
-                    modifier = Modifier.size(36.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
-                Text(
-                    text = "Click a location on the map to see its videos here.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (loading) {
+                    // A location was clicked; its videos are still resolving.
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(36.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
+                    Text(
+                        text = "Loading videos at this location…",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.PinDrop,
+                        contentDescription = null,
+                        modifier = Modifier.size(36.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
+                    Text(
+                        text = "Click a location on the map to see its videos here.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         } else {
             LazyColumn(

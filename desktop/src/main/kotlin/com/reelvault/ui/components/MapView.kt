@@ -150,11 +150,25 @@ fun MapView(
 
                 // Click-to-act: if the click hits a pin, fire onPinClick;
                 // otherwise fire onMapClick with the geographic coordinate.
+                //
+                // We hit-test on mouseReleased (with a small movement slop)
+                // rather than mouseClicked: AWT only emits mouseClicked when the
+                // press and release land on the *exact* same pixel, so a trackpad
+                // tap that jitters even one pixel never fires — which made pins
+                // feel unclickable ("clicking does nothing"). A release within
+                // CLICK_SLOP_PX of the press is treated as a click; anything
+                // larger is a pan and left to PanMouseInputListener.
                 viewer.addMouseListener(object : MouseAdapter() {
-                    override fun mouseClicked(e: MouseEvent) {
-                        // Ignore drags-that-ended-as-clicks (PanMouseInputListener
-                        // handles those; mouseClicked still fires for true clicks).
+                    private var pressX = 0
+                    private var pressY = 0
+                    override fun mousePressed(e: MouseEvent) {
+                        if (e.button == MouseEvent.BUTTON1) { pressX = e.x; pressY = e.y }
+                    }
+                    override fun mouseReleased(e: MouseEvent) {
                         if (e.button != MouseEvent.BUTTON1) return
+                        val mdx = e.x - pressX
+                        val mdy = e.y - pressY
+                        if (mdx * mdx + mdy * mdy > CLICK_SLOP_PX * CLICK_SLOP_PX) return
                         val v = mapHolder.viewer ?: return
                         // Hit-test against the rendered pins in pixel space —
                         // the marker circle OR the name label, so clicking
@@ -379,8 +393,12 @@ private data class RenderedPin(
     val labelBounds: java.awt.Rectangle? = null,
 )
 
-/** Pixel radius around a pin center that counts as a click. */
-private const val PIN_HIT_RADIUS_PX = 14
+/** Pixel radius around a pin center that counts as a click. Generous so small
+ *  single-video circles (≈10 px) are easy to hit. */
+private const val PIN_HIT_RADIUS_PX = 20
+
+/** Max press→release movement (px) still treated as a click rather than a pan. */
+private const val CLICK_SLOP_PX = 6
 
 /** Cluster cell size in pixels — pins inside the same cell are merged. */
 private const val CLUSTER_CELL_PX = 60
