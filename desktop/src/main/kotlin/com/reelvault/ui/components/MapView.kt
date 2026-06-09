@@ -96,15 +96,22 @@ fun MapView(
     onPinClick: ((pin: MapPin, additive: Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    // Hold the live JXMapViewer reference so we can re-set its pins as the
-    // composition's `pins` argument changes. Wrapped in a remember{} keyed on
-    // nothing so the same instance survives recompositions.
+    // Live JXMapViewer holder, stable across recompositions. All changing
+    // inputs are pushed into it below so the factory can capture only
+    // `mapHolder` and keep a stable identity — SwingPanel keys its
+    // component-creating DisposableEffect on `factory`, so an unstable factory
+    // would rebuild the heavyweight map peer (resetting zoom/center) on every
+    // recomposition, e.g. on every pin selection.
     val mapHolder = remember { MapHolder() }
+    mapHolder.pins = pins
+    mapHolder.autoFitPins = autoFitPins
+    mapHolder.onPinClick = onPinClick
+    mapHolder.onMapClick = onMapClick
+    mapHolder.initialCenter = initialCenter
+    mapHolder.initialZoom = initialZoom
 
-    Box(modifier = modifier.fillMaxSize()) {
-        SwingPanel(
-            modifier = Modifier.fillMaxSize(),
-            factory = {
+    val factory: () -> JXMapViewer = remember {
+        {
                 // OpenStreetMap's tile policy requires a non-default User-Agent
                 // and rejects Java's default `Java/<version>` UA — so JXMapViewer
                 // out of the box renders blank-white because every tile HTTP
@@ -115,8 +122,9 @@ fun MapView(
                 val viewer = JXMapViewer().apply {
                     tileFactory = DefaultTileFactory(ReelVaultOsmTileFactoryInfo())
                     isOpaque = true
-                    zoom = initialZoom
-                    addressLocation = GeoPosition(initialCenter.first, initialCenter.second)
+                    zoom = mapHolder.initialZoom
+                    addressLocation = GeoPosition(
+                        mapHolder.initialCenter.first, mapHolder.initialCenter.second)
                 }
                 // Standard pan + zoom interactions shipped with JXMapViewer.
                 val panner = PanMouseInputListener(viewer)
@@ -153,9 +161,10 @@ fun MapView(
                         }
                         if (hit != null) {
                             val additive = e.isShiftDown || e.isMetaDown || e.isControlDown
-                            onPinClick?.invoke(hit.pin, additive)
+                            mapHolder.onPinClick?.invoke(hit.pin, additive)
                             return
                         }
+                        val onMapClick = mapHolder.onMapClick
                         if (onMapClick != null) {
                             val pos = v.tileFactory.pixelToGeo(
                                 java.awt.geom.Point2D.Double(
@@ -172,8 +181,6 @@ fun MapView(
                 // Custom painter handles clustering + numbered circles.
                 viewer.overlayPainter = ClusterPainter(mapHolder)
                 mapHolder.viewer = viewer
-                mapHolder.pins = pins
-                mapHolder.autoFitPins = autoFitPins
 
                 // Vertical zoom slider, hosted as a *child* of the
                 // JXMapViewer. We can't use a Compose `Slider` overlay here:
@@ -279,16 +286,17 @@ fun MapView(
                     mapHolder.maybeAutoFit()
                 }
                 viewer
-            },
+        }
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        SwingPanel(
+            modifier = Modifier.fillMaxSize(),
+            factory = factory,
             update = {
-                // The factory returns a JLayeredPane wrapping the viewer; the
-                // viewer is mapHolder.viewer (set in factory). Push updated
-                // pins through there.
-                mapHolder.pins = pins
-                mapHolder.autoFitPins = autoFitPins
-                // Re-frame when the pin set changes (e.g. the filtered set
-                // replacing the broader startup set), unless the user has taken
-                // over the camera.
+                // Live inputs were pushed into mapHolder on this recomposition
+                // (above). Re-frame when the pin set changes — unless the user
+                // took over the camera — and repaint to reflect updated pins.
                 mapHolder.maybeAutoFit()
                 mapHolder.viewer?.repaint()
             },
@@ -316,6 +324,16 @@ private class MapHolder {
     /** Ids of the pin set the camera was last auto-fit to, so we only re-fit
      *  when the set actually changes. */
     var lastFitIds: Set<String>? = null
+    // Live inputs routed through the holder rather than captured by the factory
+    // lambda. SwingPanel keys its component-creating DisposableEffect on the
+    // `factory` reference, so a factory that closed over these (which change on
+    // every selection) would rebuild the heavyweight map peer on each click —
+    // resetting zoom/center and flinging the camera to the default (north-pole)
+    // view. Reading them from the (stable) holder keeps the factory stable.
+    var onPinClick: ((MapPin, Boolean) -> Unit)? = null
+    var onMapClick: ((Double, Double) -> Unit)? = null
+    var initialCenter: Pair<Double, Double> = 0.0 to 0.0
+    var initialZoom: Int = 7
 }
 
 /** Frame the current pins if auto-fit is enabled, the user hasn't taken over,
