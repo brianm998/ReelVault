@@ -132,6 +132,14 @@ class ComposeVideoPlayer(
     val renderingHealthy = mutableStateOf(false)
 
     /**
+     * True when the most recent [load] was handed a path that doesn't exist on
+     * disk — a moved/renamed file, or an unmounted drive. Lets the unavailable
+     * overlay say "file not found" instead of mislabelling a missing file as
+     * "libvlc isn't installed".
+     */
+    val mediaMissing = mutableStateOf(false)
+
+    /**
      * Latest decoded frame as a Compose `ImageBitmap`. Updated by the render
      * callback on libvlc's display thread; read by `Surface` on the Compose
      * main thread. `mutableStateOf` is thread-safe for writes (Compose
@@ -410,9 +418,13 @@ class ComposeVideoPlayer(
         renderingHealthy.value = false
         frameCount = 0L
         val file = java.io.File(path)
+        val exists = file.exists()
+        // Record up-front whether the file is even there so the unavailable
+        // overlay can distinguish a moved/unmounted file from a missing libvlc.
+        mediaMissing.value = !exists
         logger.info("load(path={}, playImmediately={}): exists={} readable={} size={}",
-            path, playImmediately, file.exists(), file.canRead(),
-            if (file.exists()) file.length() else -1)
+            path, playImmediately, exists, file.canRead(),
+            if (exists) file.length() else -1)
         SwingUtilities.invokeLater {
             try {
                 val ok = if (playImmediately) {
