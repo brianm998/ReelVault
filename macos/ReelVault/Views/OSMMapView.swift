@@ -414,14 +414,13 @@ private struct _OSMMapKitView: NSViewRepresentable {
                     systemSymbolName: "film.fill", accessibilityDescription: nil)
                 view.markerTintColor = NSColor.controlAccentColor
                 view.canShowCallout = true
-                // The location-picker candidate (id "candidate") must never
-                // cluster — the user needs to see exactly where their pick
-                // lands. Every other primary pin is a map-view video pin, which
-                // DOES cluster, so multiple videos at one place collapse into a
-                // single marker that selects them all when clicked (otherwise
-                // overlapping pins hide all but the topmost video).
-                view.clusteringIdentifier =
-                    pin.pin.id == "candidate" ? nil : "reelvault.cluster.primary"
+                // Don't cluster primary pins. Clustering breaks click handling
+                // (a tapped cluster's members aren't in `annotations`, so the
+                // click-gesture's `nearestPin` misses and the tap is treated as
+                // an empty-map click). Co-located videos are instead resolved on
+                // click by gathering every video at the tapped coordinate — see
+                // MapTopLevelView's onPinClick.
+                view.clusteringIdentifier = nil
                 view.zPriority = .max
                 return view
             case .secondary:

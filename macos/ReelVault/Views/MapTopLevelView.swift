@@ -59,7 +59,15 @@ struct MapTopLevelView: View {
                         if !selectedVideoIds.isEmpty { onSelectionChange([]) }
                     },
                     onPinClick: { pin in
-                        let ids = pin.memberIds.isEmpty ? [pin.id] : pin.memberIds
+                        // Videos at one spot overlap into a single marker, so a
+                        // click resolves to every video at the tapped pin's
+                        // coordinate — not just the one stacked on top.
+                        let clicked = pin.coordinate
+                        let coLocated = locations.filter {
+                            abs($0.latitude - clicked.latitude) < 1e-6
+                                && abs($0.longitude - clicked.longitude) < 1e-6
+                        }.map { $0.id }
+                        let ids = coLocated.isEmpty ? [pin.id] : coLocated
                         // Read the live modifier state — Shift/⌘ accumulates.
                         let mods = NSEvent.modifierFlags
                         if mods.contains(.shift) || mods.contains(.command) {
