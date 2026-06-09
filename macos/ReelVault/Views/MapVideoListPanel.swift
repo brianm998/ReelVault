@@ -66,7 +66,8 @@ struct MapVideoListPanel: View {
                                     memberCount: 0
                                 ),
                                 thumbnail: gridViewModel.thumbnails[video.id],
-                                scrubFrames: [],
+                                // Hover-scrub through frames, same as grid/list.
+                                scrubFrames: gridViewModel.scrubFrames[video.id] ?? [],
                                 isPrimarySelected: video.id == currentVideoId,
                                 isInMultiSelection: false,
                                 isAnchor: false,

@@ -1543,8 +1543,10 @@ fun ReelVaultApp(
                             com.reelvault.ui.screens.MapVideoListPanel(
                                 videos = mapPanelVideos,
                                 thumbnails = gridViewModel.thumbnails.collectAsState().value,
+                                scrubFrames = gridViewModel.scrubFrames.collectAsState().value,
                                 currentVideoId = gridViewModel.selectedVideoId.collectAsState().value,
                                 onLoadThumbnail = { gridViewModel.loadThumbnail(it) },
+                                onHoverEnter = { gridViewModel.loadScrubFrames(it) },
                                 onCardClick = { openMapVideoInView(it, ViewMode.MAP) },
                                 onOpenInGrid = { openMapVideoInView(it, ViewMode.GRID) },
                                 onOpenInList = { openMapVideoInView(it, ViewMode.LIST) },

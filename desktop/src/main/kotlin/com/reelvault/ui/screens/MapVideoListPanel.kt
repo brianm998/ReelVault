@@ -37,8 +37,10 @@ import com.reelvault.ui.theme.ReelVaultSpacing
 fun MapVideoListPanel(
     videos: List<VideoSummary>,
     thumbnails: Map<String, ByteArray>,
+    scrubFrames: Map<String, List<ByteArray?>>,
     currentVideoId: String?,
     onLoadThumbnail: (String) -> Unit,
+    onHoverEnter: (String) -> Unit,
     onCardClick: (VideoSummary) -> Unit,
     onOpenInGrid: (VideoSummary) -> Unit,
     onOpenInList: (VideoSummary) -> Unit,
@@ -124,6 +126,9 @@ fun MapVideoListPanel(
                             video = video,
                             isSelected = video.id == currentVideoId,
                             thumbnailBytes = thumbnails[video.id],
+                            // Hover-scrub through frames, same as grid/list.
+                            scrubFrames = scrubFrames[video.id] ?: emptyList(),
+                            onHoverEnter = { onHoverEnter(video.id) },
                             onClick = { _, _ -> onCardClick(video) },
                             onDoubleClick = { onOpenInDetail(video) },
                             // Already on the map; the badge would be redundant
