@@ -144,18 +144,22 @@ struct DetailGraphsPanel: View {
 
     private func recompute() {
         if let id = selectedId { gridViewModel.loadScrubFrames(videoId: id) }
-        let imgs = frames
+        // Snapshot each frame to an immutable CGImage on the main actor before
+        // handing work off: NSImage isn't Sendable and these instances stay
+        // owned by the view model, but CGImage is, so the per-pixel averaging
+        // can run off-main without risking a data race on the shared images.
+        let cgImages = frames.compactMap { $0?.cgImage(forProposedRect: nil, context: nil, hints: nil) }
         Task.detached(priority: .utility) {
-            let computed = imgs.compactMap { $0.flatMap(Self.computeFrameStat) }
+            let computed = cgImages.compactMap(Self.computeFrameStat)
             await MainActor.run { self.stats = computed }
         }
     }
 
     /// Downscale a frame to a small RGBA bitmap (Core Graphics averages while
-    /// it scales) and average the pixels. Returns nil if the image can't be
-    /// rasterised. Safe to call off the main thread.
-    nonisolated private static func computeFrameStat(_ image: NSImage) -> FrameStat? {
-        guard let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
+    /// it scales) and average the pixels. Returns nil if the bitmap context
+    /// can't be created. Takes a Sendable CGImage so it's safe to call
+    /// off the main thread.
+    nonisolated private static func computeFrameStat(_ cg: CGImage) -> FrameStat? {
         let side = 12
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         // Let CGContext own the pixel buffer (valid for the context's lifetime)
