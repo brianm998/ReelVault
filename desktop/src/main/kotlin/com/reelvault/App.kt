@@ -213,6 +213,13 @@ fun main() {
         // Second arg: true when Shift is held → extend a range from the anchor
         // instead of moving the single selection.
         val moveSelectionAction = remember { mutableStateOf<(NavDirection, Boolean) -> Unit>({ _, _ -> }) }
+        // Catalog + help shortcuts. The SwiftUI client gets these from its
+        // native menu bar (⌘O / ⌘⇧W / ⌘?); the Compose client's File/Help menus
+        // are in-window dropdowns with no key accelerators, so we drive them
+        // from the Window-level key listener instead.
+        val openCatalogAction = remember { mutableStateOf<() -> Unit>({}) }
+        val closeCatalogAction = remember { mutableStateOf<() -> Unit>({}) }
+        val showHelpAction = remember { mutableStateOf<() -> Unit>({}) }
         // Title reflects the currently-open catalog (lifted here so Window.title
         // recomposes when the catalog changes).
         var currentCatalog by remember { mutableStateOf(CatalogInfo.Closed) }
@@ -325,6 +332,29 @@ fun main() {
                         deselectAllAction.value()
                         true
                     }
+                    // Cmd/Ctrl+O — Open Catalog. No text field uses it, so the
+                    // post-focus placement is harmless and keeps the policy
+                    // "Window shortcuts never steal from a focused widget".
+                    event.key == Key.O &&
+                        (event.isMetaPressed || event.isCtrlPressed) &&
+                        !event.isShiftPressed && !event.isAltPressed -> {
+                        openCatalogAction.value()
+                        true
+                    }
+                    // Cmd/Ctrl+Shift+W — Close Catalog. Shift mirrors macOS's
+                    // ⌘⇧W and dodges the bare ⌘W/Ctrl+W "close the window" reflex.
+                    event.key == Key.W &&
+                        (event.isMetaPressed || event.isCtrlPressed) &&
+                        event.isShiftPressed && !event.isAltPressed -> {
+                        closeCatalogAction.value()
+                        true
+                    }
+                    // F1 — Help. The cross-platform help key; macOS also exposes
+                    // ⌘? from its native menu bar.
+                    event.key == Key.F1 -> {
+                        showHelpAction.value()
+                        true
+                    }
                     // Arrow keys move the grid / list selection (Shift extends a
                     // range). Handled here (post-focus) so a focused multi-line
                     // field keeps arrows for caret movement; the !searchFocused
@@ -420,6 +450,9 @@ fun main() {
                         onRegisterSetRatingAction = { setRatingAction.value = it },
                         onRegisterSetColorLabelAction = { setColorLabelAction.value = it },
                         onRegisterMoveSelection = { moveSelectionAction.value = it },
+                        onRegisterOpenCatalog = { openCatalogAction.value = it },
+                        onRegisterCloseCatalog = { closeCatalogAction.value = it },
+                        onRegisterShowHelp = { showHelpAction.value = it },
                         onSearchFocusChanged = { searchFocused.value = it },
                         onCatalogChanged = { currentCatalog = it }
                     )
@@ -460,6 +493,12 @@ fun ReelVaultApp(
     onRegisterSetColorLabelAction: ((String) -> Unit) -> Unit = {},
     /** Called once to register the arrow-key grid/list navigation action. */
     onRegisterMoveSelection: ((NavDirection, Boolean) -> Unit) -> Unit = {},
+    /** Called once to register the Open-Catalog action for the Cmd/Ctrl+O shortcut. */
+    onRegisterOpenCatalog: (() -> Unit) -> Unit = {},
+    /** Called once to register the Close-Catalog action for the Cmd/Ctrl+Shift+W shortcut. */
+    onRegisterCloseCatalog: (() -> Unit) -> Unit = {},
+    /** Called once to register the Help action for the F1 shortcut. */
+    onRegisterShowHelp: (() -> Unit) -> Unit = {},
     /** Reports search-field focus state to the Window so it can suppress
      *  single-letter shortcuts while the user is typing. */
     onSearchFocusChanged: (Boolean) -> Unit = {},
@@ -753,6 +792,18 @@ fun ReelVaultApp(
             openDialogIsStartup = false
             showOpenCatalogDialog = true
         }
+    }
+
+    // Wire the catalog + help shortcuts to the Window-level key listener. Done
+    // here (not with the view-mode shortcuts above) because closeCatalog() is a
+    // local fun declared just above and can't be forward-referenced earlier.
+    LaunchedEffect(Unit) {
+        onRegisterOpenCatalog {
+            openDialogIsStartup = false
+            showOpenCatalogDialog = true
+        }
+        onRegisterCloseCatalog { closeCatalog() }
+        onRegisterShowHelp { showHelpDialog = true }
     }
 
     /**
@@ -1957,8 +2008,9 @@ fun HelpDialog(onDismiss: () -> Unit) {
                             "G — Grid" to "Adaptive thumbnail grid. Drag the slider in the bottom bar to resize cards.",
                             "L — List" to "Horizontal rows: thumbnail left, metadata columns right.",
                             "D — Detail" to "Full-window video player and inspector. Step through your library with ← / →.",
+                            "M — Map" to "Geotagged clips on a world map. Click a pin to filter to that location.",
                         ))
-                        HelpPara("Switch views with the segment control in the bottom bar, or press G, L, or D.")
+                        HelpPara("Switch views with the segment control in the bottom bar, or press G, L, D, or M.")
                     }
 
                     HelpSection(icon = Icons.Default.TouchApp, title = "Selecting clips") {
@@ -2050,13 +2102,19 @@ fun HelpDialog(onDismiss: () -> Unit) {
                             "G" to "Grid view",
                             "L" to "List view",
                             "D" to "Detail / Catalog view",
+                            "M" to "Map view",
                             "I" to "Cycle info overlay (Detail mode: none → camera → file → …)",
                             "Tab" to "Toggle both side panels",
                             "Space" to "Play / pause selected clip",
+                            "0–5" to "Rate the selected clips (0 clears)",
+                            "6–9" to "Color-label the selection (red / yellow / green / blue)",
+                            "`" to "Clear the color label",
                             "Ctrl+G" to "Stack selected clips into a group",
                             "Ctrl+A" to "Select all currently-visible clips",
                             "Ctrl+D" to "Deselect all",
                             "Ctrl+O" to "Open Catalog…",
+                            "Ctrl+Shift+W" to "Close Catalog",
+                            "F1" to "Show this help",
                             "← ↑ → ↓" to "Navigate the grid",
                             "Escape" to "Clear search field focus",
                         ))
