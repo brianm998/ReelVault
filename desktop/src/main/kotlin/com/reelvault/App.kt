@@ -676,7 +676,12 @@ fun ReelVaultApp(
         onRegisterSetGridMode { viewMode = ViewMode.GRID }
         onRegisterSetListMode { viewMode = ViewMode.LIST }
         onRegisterSetDetailMode { viewMode = ViewMode.DETAIL }
-        onRegisterSetMapMode { viewMode = ViewMode.MAP }
+        onRegisterSetMapMode {
+            // Entering the map by shortcut frames all pins (no card-badge
+            // focus), so drop any stale focus coordinate first.
+            globalMapFocusLocation = null
+            viewMode = ViewMode.MAP
+        }
         onRegisterCycleInfoOverlay {
             infoOverlay = when (infoOverlay) {
                 InfoOverlayState.NONE -> InfoOverlayState.CAMERA
@@ -1494,7 +1499,6 @@ fun ReelVaultApp(
                                         selectedVideoIds = mapSelectedVideoIds,
                                         onSelectionChange = { mapSelectedVideoIds = it },
                                         focusedLocation = globalMapFocusLocation,
-                                        onFocusConsumed = { globalMapFocusLocation = null },
                                         modifier = Modifier.weight(1f).fillMaxWidth()
                                     )
                                 }
@@ -1592,7 +1596,12 @@ fun ReelVaultApp(
                     // (right). The sort controls now live in the Library Filter bar.
                     BottomBar(
                         viewMode = viewMode,
-                        onViewModeChange = { viewMode = it },
+                        onViewModeChange = { newMode ->
+                            // Switching to the map via the toggle frames all
+                            // pins; only a card's location badge sets a focus.
+                            if (newMode == ViewMode.MAP) globalMapFocusLocation = null
+                            viewMode = newMode
+                        },
                         thumbnailWidth = thumbnailWidth,
                         onThumbnailWidthChange = {
                             thumbnailWidth = it

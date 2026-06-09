@@ -11,7 +11,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,11 +38,9 @@ fun MapScreen(
     selectedVideoIds: List<String>,
     onSelectionChange: (List<String>) -> Unit,
     /** When non-null, open centered here (≈ neighbourhood zoom) instead of
-     *  framing all pins. Set when the user taps a card's location badge. */
+     *  framing all pins. Set when the user taps a card's location badge; the
+     *  caller clears it at the next non-badge navigation into the map. */
     focusedLocation: Pair<Double, Double>? = null,
-    /** Called once the one-shot [focusedLocation] has been applied, so the
-     *  caller can clear it (a later re-entry then frames all pins again). */
-    onFocusConsumed: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val pins = remember(locations) {
@@ -68,14 +65,6 @@ fun MapScreen(
             locations.isEmpty() -> Triple(0.0, 0.0, 2)
             else -> bboxFraming(locations.map { it.latitude to it.longitude })
         }
-    }
-
-    // Clear the one-shot focus once it has been applied on this composition,
-    // so a later re-entry frames all pins instead of re-locking onto the old
-    // coordinate. Safe because MapView only reads initialCenter/Zoom when it
-    // first creates its Swing peer — clearing the prop won't move the map.
-    LaunchedEffect(focusedLocation) {
-        if (focusedLocation != null) onFocusConsumed()
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -107,6 +96,10 @@ fun MapScreen(
                 pins = pins,
                 initialCenter = initLat to initLon,
                 initialZoom = initZoom,
+                // Frame the actual pins once laid out (and re-frame when the
+                // filtered set replaces the broader startup set) — except when
+                // focused on a specific coordinate from a card's location badge.
+                autoFitPins = focusedLocation == null,
                 onPinClick = { pin, additive ->
                     val ids = pin.memberIds.ifEmpty { listOf(pin.id) }
                     onSelectionChange(

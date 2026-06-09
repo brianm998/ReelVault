@@ -80,6 +80,13 @@ fun MapView(
     /** Initial map center; updated only when this value changes between recompositions. */
     initialCenter: Pair<Double, Double> = 0.0 to 0.0,
     initialZoom: Int = 7,
+    /** When true, the camera frames the bounding box of [pins] once the panel is
+     *  laid out, and re-frames whenever the pin set changes — until the user
+     *  pans or zooms, after which it never re-frames. Handles pins that arrive
+     *  asynchronously (and the filtered set replacing a broader one) without
+     *  leaving the camera stranded at the stale [initialCenter]. When false the
+     *  camera uses [initialCenter]/[initialZoom] only (e.g. a focused view). */
+    autoFitPins: Boolean = false,
     /** Fired when the user clicks (or drags onto) the map at the given lat/lon. */
     onMapClick: ((latitude: Double, longitude: Double) -> Unit)? = null,
     /** Fired when the user clicks a pin (or cluster). For clusters [MapPin.count]
@@ -118,6 +125,13 @@ fun MapView(
                 viewer.addMouseListener(CenterMapListener(viewer))
                 viewer.addMouseWheelListener(ZoomMouseWheelListenerCursor(viewer))
                 viewer.addKeyListener(PanKeyListener(viewer))
+
+                // Once the user pans (drag) or zooms (wheel), stop auto-fitting
+                // so we never yank the camera back from where they navigated.
+                viewer.addMouseMotionListener(object : java.awt.event.MouseMotionAdapter() {
+                    override fun mouseDragged(e: MouseEvent) { mapHolder.userInteracted = true }
+                })
+                viewer.addMouseWheelListener { mapHolder.userInteracted = true }
 
                 // Click-to-act: if the click hits a pin, fire onPinClick;
                 // otherwise fire onMapClick with the geographic coordinate.
@@ -159,6 +173,7 @@ fun MapView(
                 viewer.overlayPainter = ClusterPainter(mapHolder)
                 mapHolder.viewer = viewer
                 mapHolder.pins = pins
+                mapHolder.autoFitPins = autoFitPins
 
                 // Vertical zoom slider, hosted as a *child* of the
                 // JXMapViewer. We can't use a Compose `Slider` overlay here:
@@ -181,6 +196,12 @@ fun MapView(
                 zoomSlider.addChangeListener {
                     if (viewer.zoom != zoomSlider.value) viewer.zoom = zoomSlider.value
                 }
+                // A press on the slider is a deliberate zoom — freeze auto-fit.
+                // (We don't key off the change listener: programmatic auto-fit
+                // moves the slider too, and that must not count as user input.)
+                zoomSlider.addMouseListener(object : MouseAdapter() {
+                    override fun mousePressed(e: MouseEvent) { mapHolder.userInteracted = true }
+                })
                 viewer.addPropertyChangeListener("zoom") { evt ->
                     val z = evt.newValue as? Int ?: return@addPropertyChangeListener
                     if (zoomSlider.value != z) zoomSlider.value = z
@@ -241,6 +262,9 @@ fun MapView(
                 viewer.addComponentListener(object : ComponentAdapter() {
                     override fun componentResized(e: ComponentEvent) {
                         reapplySliderBounds()
+                        // The viewer now has a real size — frame the pins if we
+                        // were waiting on layout.
+                        mapHolder.maybeAutoFit()
                     }
                 })
                 // Belt-and-suspenders: post a one-shot bounds update once
@@ -250,7 +274,10 @@ fun MapView(
                 // the slider stranded at 0×0 until the first user-driven
                 // resize. invokeLater after construction guarantees the
                 // slider is positioned for the initial paint.
-                javax.swing.SwingUtilities.invokeLater { reapplySliderBounds() }
+                javax.swing.SwingUtilities.invokeLater {
+                    reapplySliderBounds()
+                    mapHolder.maybeAutoFit()
+                }
                 viewer
             },
             update = {
@@ -258,6 +285,11 @@ fun MapView(
                 // viewer is mapHolder.viewer (set in factory). Push updated
                 // pins through there.
                 mapHolder.pins = pins
+                mapHolder.autoFitPins = autoFitPins
+                // Re-frame when the pin set changes (e.g. the filtered set
+                // replacing the broader startup set), unless the user has taken
+                // over the camera.
+                mapHolder.maybeAutoFit()
                 mapHolder.viewer?.repaint()
             },
         )
@@ -276,6 +308,39 @@ private class MapHolder {
     /** Pin → on-screen pixel position, snapshotted by the painter each draw
      *  so the click handler can hit-test without recomputing. */
     var lastRenderedPins: List<RenderedPin> = emptyList()
+    /** See [MapView]'s `autoFitPins`. */
+    var autoFitPins: Boolean = false
+    /** Set once the user pans or zooms, freezing auto-fit so we never yank the
+     *  camera out from under them. */
+    var userInteracted: Boolean = false
+    /** Ids of the pin set the camera was last auto-fit to, so we only re-fit
+     *  when the set actually changes. */
+    var lastFitIds: Set<String>? = null
+}
+
+/** Frame the current pins if auto-fit is enabled, the user hasn't taken over,
+ *  the panel is laid out, and the pin set changed since the last fit. Safe to
+ *  call repeatedly (on resize, on update, post-construction). */
+private fun MapHolder.maybeAutoFit() {
+    if (!autoFitPins || userInteracted) return
+    val v = viewer ?: return
+    // JXMapViewer needs a real size to compute a fit; skip until laid out.
+    if (v.width <= 0 || v.height <= 0) return
+    val current = pins
+    if (current.isEmpty()) return
+    val ids = current.mapTo(HashSet()) { it.id }
+    if (ids == lastFitIds) return
+    lastFitIds = ids
+    val positions = current.mapTo(HashSet()) { GeoPosition(it.latitude, it.longitude) }
+    if (positions.size == 1) {
+        v.addressLocation = positions.first()
+        // Neighbourhood-level view for a lone pin (JXMapViewer zoom counts up
+        // as it zooms out; 5 ≈ a few streets across).
+        v.zoom = 5
+    } else {
+        // Fit all positions into ~70% of the viewport.
+        v.zoomToBestFit(positions, 0.7)
+    }
 }
 
 private data class RenderedPin(
