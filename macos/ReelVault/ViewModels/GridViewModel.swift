@@ -545,6 +545,10 @@ class GridViewModel: ObservableObject {
     /// took effect immediately instead of staring at stale data while the new
     /// fetch is in flight.
     private func reloadForFilterChange() {
+        // If the active selection no longer passes the (just-changed) filters,
+        // drop it now — before reloadFromTop clears `videos` — so the loupe and
+        // inspector don't strand the now-hidden video's details on screen.
+        clearSelectionIfFilteredOut()
         reloadFromTop(showSpinner: true)
         // Every filter change also re-narrows the available metadata facets.
         scheduleFacetRefresh()
@@ -2121,6 +2125,59 @@ class GridViewModel: ObservableObject {
         let removed = before - videos.count
         if removed > 0 {
             totalCount = max(0, totalCount - Int64(removed))
+        }
+    }
+
+    /// Does [s] still satisfy the attribute + Lightroom-mark filters we can
+    /// evaluate client-side? Mirrors the daemon's `build_filter_clauses`
+    /// (core/src/db.rs) for exactly those filters, so a filter change can tell
+    /// when the current selection has just been filtered out of the grid
+    /// without waiting for the reload to come back. Search / metadata /
+    /// location / tag / collection filters need the server and aren't checked
+    /// here, so `true` means only "not filtered out by anything we can see
+    /// locally".
+    private func summaryMatchesLocalFilters(_ s: VideoSummary) -> Bool {
+        switch filterHasLocation {
+        case .yes: if !s.hasLocation { return false }
+        case .no:  if s.hasLocation  { return false }
+        case .any: break
+        }
+        switch filterHasKeywords {
+        case .yes: if s.tags.isEmpty  { return false }
+        case .no:  if !s.tags.isEmpty { return false }
+        case .any: break
+        }
+        switch filterHasProxies {
+        case .yes: if !s.hasProxies { return false }
+        case .no:  if s.hasProxies  { return false }
+        case .any: break
+        }
+        // The daemon classifies "full resolution" via a (camera, w, h) tuple
+        // set; the summary's already-classified status is the client-side
+        // mirror, so `.full` ⇔ in that set and anything else (incl.
+        // `.unspecified`) counts as "not full".
+        switch filterFullResolution {
+        case .yes: if s.fullResolution != .full { return false }
+        case .no:  if s.fullResolution == .full { return false }
+        case .any: break
+        }
+        if filterMinRating > 0 && Int32(s.rating) < filterMinRating { return false }
+        if !filterColorLabel.isEmpty && s.colorLabel != filterColorLabel { return false }
+        return true
+    }
+
+    /// Drop the primary selection when it no longer passes the active filters —
+    /// e.g. the user sets "location: no" while a geotagged video is selected, so
+    /// its card is about to leave the grid. The loupe keys off `selectedVideoId`
+    /// and the inspector is gated on it, so clearing here sends both back to
+    /// their "select a video" placeholder instead of stranding the now-hidden
+    /// video on screen. Call before the reload empties `videos` so the
+    /// selection's summary is still resolvable.
+    private func clearSelectionIfFilteredOut() {
+        guard let id = selectedVideoId else { return }
+        guard let summary = videos.first(where: { $0.id == id }) ?? selectedVideo else { return }
+        if !summaryMatchesLocalFilters(summary) {
+            clearSelection()
         }
     }
 

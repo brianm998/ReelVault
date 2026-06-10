@@ -39,6 +39,11 @@ fun DetailScreen(
     val notes = viewModel.notes.collectAsState()
     val groupMembers = viewModel.groupMembers.collectAsState()
     val groupPreferredId = viewModel.groupPreferredId.collectAsState()
+    // Primary grid/list selection. The detail view-model keeps the last
+    // video's metadata until the next selection loads, so gate the inspector
+    // on this: when nothing is selected (or the selected video was just
+    // filtered out of the grid) show the placeholder, not stale metadata.
+    val selectedVideoId by gridViewModel.selectedVideoId.collectAsState()
 
     // Recessed side panel — the darker control background, matching the macOS
     // detail panel (controlBackgroundColor) and the left library panel.
@@ -88,7 +93,7 @@ fun DetailScreen(
         )
 
         Box(modifier = Modifier.fillMaxSize()) {
-        if (metadata.value == null && !isLoading.value) {
+        if (selectedVideoId == null || (metadata.value == null && !isLoading.value)) {
             // When a smart collection is selected but no card is, explain how
             // it gathers videos rather than just prompting for a selection.
             val selColId by gridViewModel.selectedCollectionId.collectAsState()

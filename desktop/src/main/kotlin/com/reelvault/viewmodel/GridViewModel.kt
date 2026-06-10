@@ -620,9 +620,71 @@ class GridViewModel(
      * fetch is in flight.
      */
     private fun reloadForFilterChange() {
+        // If the active selection no longer passes the (just-changed) filters,
+        // drop it now — before reloadFromTop clears `videos` — so the loupe and
+        // inspector don't strand the now-hidden video's details on screen.
+        clearSelectionIfFilteredOut()
         reloadFromTop(showSpinner = true)
         // Every filter change also re-narrows the available metadata facets.
         scheduleFacetRefresh()
+    }
+
+    /**
+     * Does [s] still satisfy the attribute + Lightroom-mark filters we can
+     * evaluate client-side? Mirrors the daemon's `build_filter_clauses`
+     * (core/src/db.rs) for exactly those filters, so a filter change can tell
+     * when the current selection has just been filtered out of the grid
+     * without waiting for the reload. Search / metadata / location / tag /
+     * collection filters need the server and aren't checked here, so `true`
+     * means only "not filtered out by anything we can see locally".
+     */
+    private fun summaryMatchesLocalFilters(s: VideoSummary): Boolean {
+        when (_filterHasLocation.value) {
+            com.reelvault.data.models.AttributeFilterState.Yes -> if (!s.hasLocation) return false
+            com.reelvault.data.models.AttributeFilterState.No -> if (s.hasLocation) return false
+            com.reelvault.data.models.AttributeFilterState.Any -> {}
+        }
+        when (_filterHasKeywords.value) {
+            com.reelvault.data.models.AttributeFilterState.Yes -> if (s.tags.isEmpty()) return false
+            com.reelvault.data.models.AttributeFilterState.No -> if (s.tags.isNotEmpty()) return false
+            com.reelvault.data.models.AttributeFilterState.Any -> {}
+        }
+        when (_filterHasProxies.value) {
+            com.reelvault.data.models.AttributeFilterState.Yes -> if (!s.hasProxies) return false
+            com.reelvault.data.models.AttributeFilterState.No -> if (s.hasProxies) return false
+            com.reelvault.data.models.AttributeFilterState.Any -> {}
+        }
+        // The daemon classifies "full resolution" via a (camera, w, h) tuple
+        // set; the summary's already-classified status is the client-side
+        // mirror, so Full ⇔ in that set and anything else (incl. Unspecified)
+        // counts as "not full".
+        when (_filterFullResolution.value) {
+            com.reelvault.data.models.AttributeFilterState.Yes ->
+                if (s.fullResolution != com.reelvault.data.models.FullResolutionStatus.Full) return false
+            com.reelvault.data.models.AttributeFilterState.No ->
+                if (s.fullResolution == com.reelvault.data.models.FullResolutionStatus.Full) return false
+            com.reelvault.data.models.AttributeFilterState.Any -> {}
+        }
+        if (_filterMinRating.value > 0 && s.rating < _filterMinRating.value) return false
+        if (_filterColorLabel.value.isNotEmpty() && s.colorLabel != _filterColorLabel.value) return false
+        return true
+    }
+
+    /**
+     * Drop the primary selection when it no longer passes the active filters —
+     * e.g. the user sets "location: no" while a geotagged video is selected, so
+     * its card is about to leave the grid. The loupe keys off [selectedVideoId]
+     * and the inspector is gated on it, so clearing here sends both back to
+     * their "select a video" placeholder instead of stranding the now-hidden
+     * video on screen. Call before the reload empties [videos] so the
+     * selection's summary is still resolvable.
+     */
+    private fun clearSelectionIfFilteredOut() {
+        val id = _selectedVideoId.value ?: return
+        val summary = _videos.value.firstOrNull { it.id == id } ?: _selectedVideo.value ?: return
+        if (!summaryMatchesLocalFilters(summary)) {
+            clearSelection()
+        }
     }
 
     /**

@@ -44,7 +44,13 @@ struct DetailView: View {
             Divider()
 
             // Content
-            if let metadata = viewModel.metadata {
+            if gridViewModel.selectedVideoId == nil {
+                // No primary selection — nothing selected, or the selected video
+                // was just filtered out of the grid. Show the placeholder rather
+                // than the (now-hidden) video's leftover metadata, which the
+                // detail view-model still holds until the next selection.
+                placeholderContent
+            } else if let metadata = viewModel.metadata {
                 ScrollView {
                     metadataContent(metadata)
                         .padding(16)
