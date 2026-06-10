@@ -41,6 +41,9 @@ fun MapVideoListPanel(
      *  location load is still in flight). Keeps stale/empty content off-screen
      *  while the selection catches up. */
     loading: Boolean,
+    /** Name of the selected location when it resolves to a named place — shown
+     *  in the header instead of the generic "here". Null for an unnamed spot. */
+    locationName: String?,
     thumbnails: Map<String, ByteArray>,
     scrubFrames: Map<String, List<ByteArray?>>,
     currentVideoId: String?,
@@ -71,9 +74,13 @@ fun MapVideoListPanel(
         ) {
             Text(
                 text = when {
+                    // A selected named place reads by its name instead of "here".
+                    videos.isNotEmpty() && locationName != null ->
+                        "${videos.size} video${if (videos.size == 1) "" else "s"} at $locationName"
                     videos.isNotEmpty() ->
                         "${videos.size} video${if (videos.size == 1) "" else "s"} here"
                     loading -> "Loading…"
+                    locationName != null -> locationName
                     else -> "Selected location"
                 },
                 style = MaterialTheme.typography.titleSmall,

@@ -27,6 +27,9 @@ struct MapTopLevelView: View {
     /// framing all pins. Set when the user taps a card's location badge; the
     /// caller clears it at the next non-badge navigation into the map.
     var focusedCoordinate: CLLocationCoordinate2D? = nil
+    /// Fired when the user right-clicks a pin and picks Name/Rename — the caller
+    /// opens the naming sheet and persists via the named-locations RPC.
+    var onRequestNameLocation: (CLLocationCoordinate2D) -> Void = { _ in }
 
     /// Co-located videos grouped into one pin so a single marker shows the
     /// count and clicking it selects the whole group. Bucketed to ~1 m. The
@@ -89,6 +92,9 @@ struct MapTopLevelView: View {
                         } else {
                             onSelectionChange(ids)
                         }
+                    },
+                    onRenameLocationRequest: { pin in
+                        onRequestNameLocation(pin.coordinate)
                     },
                     pinColor: pinColor
                 )

@@ -17,6 +17,9 @@ struct MapVideoListPanel: View {
     /// location load is still in flight). Keeps stale/empty content off-screen
     /// while the selection catches up.
     let loading: Bool
+    /// Name of the selected location when it resolves to a named place — shown
+    /// in the header instead of the generic "here". Nil for an unnamed spot.
+    let locationName: String?
     let currentVideoId: String?
     let onCardClick: (VideoSummary) -> Void
     let onOpenInGrid: (VideoSummary) -> Void
@@ -26,13 +29,24 @@ struct MapVideoListPanel: View {
 
     private let columns = [GridItem(.flexible())]
 
+    /// "N videos at <name>" for a named place, "N videos here" otherwise; the
+    /// place name (or a generic prompt) when nothing's resolved yet.
+    private var headerTitle: String {
+        if !videos.isEmpty {
+            let n = videos.count
+            let noun = "video\(n == 1 ? "" : "s")"
+            if let name = locationName { return "\(n) \(noun) at \(name)" }
+            return "\(n) \(noun) here"
+        }
+        if loading { return "Loading…" }
+        return locationName ?? "Selected location"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Header — title + collapse chevron, matching the details panel.
             HStack {
-                Text(videos.isEmpty
-                     ? (loading ? "Loading…" : "Selected location")
-                     : "\(videos.count) video\(videos.count == 1 ? "" : "s") here")
+                Text(headerTitle)
                     .font(.headline)
                 Spacer()
                 Button { onCollapse() } label: {

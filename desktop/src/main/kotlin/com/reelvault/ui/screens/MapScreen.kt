@@ -46,6 +46,9 @@ fun MapScreen(
      *  framing all pins. Set when the user taps a card's location badge; the
      *  caller clears it at the next non-badge navigation into the map. */
     focusedLocation: Pair<Double, Double>? = null,
+    /** Fired when the user right-clicks a pin and chooses Name/Rename. The
+     *  caller opens the naming dialog and persists via the named-locations RPC. */
+    onRenameLocationRequest: ((com.reelvault.ui.components.MapPin) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     // Recomputed each recomposition (cheap) rather than remembered, so labels
@@ -117,6 +120,7 @@ fun MapScreen(
                     // A click clear of every pin clears the selection.
                     if (selectedVideoIds.isNotEmpty()) onSelectionChange(emptyList())
                 },
+                onRenameLocationRequest = onRenameLocationRequest,
                 modifier = Modifier.fillMaxSize(),
             )
 

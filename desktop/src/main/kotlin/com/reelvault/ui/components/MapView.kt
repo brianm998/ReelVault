@@ -103,6 +103,12 @@ fun MapView(
      *  the click carried Shift/Cmd/Ctrl — callers that support multi-select use
      *  it to add to the current selection rather than replace it. */
     onPinClick: ((pin: MapPin, additive: Boolean) -> Unit)? = null,
+    /** Fired when the user right-clicks a (non-candidate) pin and chooses
+     *  Name/Rename from the native context menu. Only wired when non-null (the
+     *  location picker omits it). The menu is a Swing popup so it layers over
+     *  the heavyweight JXMapViewer peer; the caller opens the themed naming
+     *  dialog. */
+    onRenameLocationRequest: ((pin: MapPin) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     // Live JXMapViewer holder, stable across recompositions. All changing
@@ -116,6 +122,7 @@ fun MapView(
     mapHolder.autoFitPins = autoFitPins
     mapHolder.onPinClick = onPinClick
     mapHolder.onMapClick = onMapClick
+    mapHolder.onRenameLocationRequest = onRenameLocationRequest
     mapHolder.initialCenter = initialCenter
     mapHolder.initialZoom = initialZoom
     mapHolder.pinColor = AwtColor(pinColor.toArgb())
@@ -165,9 +172,13 @@ fun MapView(
                     private var pressX = 0
                     private var pressY = 0
                     override fun mousePressed(e: MouseEvent) {
+                        // Right-click (popup trigger) over a pin → name/rename menu.
+                        if (mapHolder.tryShowPinMenu(e)) return
                         if (e.button == MouseEvent.BUTTON1) { pressX = e.x; pressY = e.y }
                     }
                     override fun mouseReleased(e: MouseEvent) {
+                        // macOS fires the popup trigger on release for some inputs.
+                        if (mapHolder.tryShowPinMenu(e)) return
                         if (e.button != MouseEvent.BUTTON1) return
                         val mdx = e.x - pressX
                         val mdy = e.y - pressY
@@ -367,6 +378,7 @@ private class MapHolder {
     // view. Reading them from the (stable) holder keeps the factory stable.
     var onPinClick: ((MapPin, Boolean) -> Unit)? = null
     var onMapClick: ((Double, Double) -> Unit)? = null
+    var onRenameLocationRequest: ((MapPin) -> Unit)? = null
     var initialCenter: Pair<Double, Double> = 0.0 to 0.0
     var initialZoom: Int = 7
     /** Fill for PRIMARY pins — the user's accent color. */
@@ -421,6 +433,32 @@ private fun MapHolder.maybeApplyInitialCenter() {
     // Zoom first so addressLocation computes the center pixel at the right zoom.
     v.zoom = initialZoom
     v.addressLocation = GeoPosition(initialCenter.first, initialCenter.second)
+}
+
+/** On a popup trigger (right-click / Ctrl-click) over a non-candidate pin,
+ *  show a native Swing context menu offering to name (or rename) that location
+ *  and invoke [MapHolder.onRenameLocationRequest] when chosen. Swing rather than
+ *  a Compose menu so it layers correctly over the heavyweight JXMapViewer peer.
+ *  Returns true when it handled the event. */
+private fun MapHolder.tryShowPinMenu(e: MouseEvent): Boolean {
+    if (!e.isPopupTrigger) return false
+    val onRename = onRenameLocationRequest ?: return false
+    val hit = lastRenderedPins.firstOrNull { rendered ->
+        val dx = rendered.screenX - e.x
+        val dy = rendered.screenY - e.y
+        val onMarker = dx * dx + dy * dy <= PIN_HIT_RADIUS_PX * PIN_HIT_RADIUS_PX
+        val onLabel = rendered.labelBounds?.contains(e.x, e.y) == true
+        onMarker || onLabel
+    } ?: return false
+    if (hit.pin.id == "candidate") return false
+    val label = if (hit.pin.label.isBlank()) "Name this location…" else "Rename location…"
+    javax.swing.JPopupMenu().apply {
+        add(javax.swing.JMenuItem(label).apply {
+            addActionListener { onRename(hit.pin) }
+        })
+        show(e.component, e.x, e.y)
+    }
+    return true
 }
 
 private data class RenderedPin(

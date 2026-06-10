@@ -42,6 +42,10 @@ struct OSMMapView: View {
     /// Fired when the user clicks an annotation. For clusters,
     /// `pin.clusteredCount > 1`.
     var onPinClick: ((OSMMapPin) -> Void)? = nil
+    /// Fired when the user right-clicks a (non-candidate) pin and chooses
+    /// Name/Rename from the native context menu. Only wired when non-null (the
+    /// location picker omits it), which also gates whether the menu appears.
+    var onRenameLocationRequest: ((OSMMapPin) -> Void)? = nil
     /// Fill color for `.video` pins — the user's chosen accent.
     var pinColor: NSColor = .controlAccentColor
 
@@ -67,6 +71,7 @@ struct OSMMapView: View {
         autoFitPins: Bool = false,
         onMapClick: ((CLLocationCoordinate2D) -> Void)? = nil,
         onPinClick: ((OSMMapPin) -> Void)? = nil,
+        onRenameLocationRequest: ((OSMMapPin) -> Void)? = nil,
         pinColor: NSColor = .controlAccentColor
     ) {
         self.pins = pins
@@ -75,6 +80,7 @@ struct OSMMapView: View {
         self.autoFitPins = autoFitPins
         self.onMapClick = onMapClick
         self.onPinClick = onPinClick
+        self.onRenameLocationRequest = onRenameLocationRequest
         self.pinColor = pinColor
         _cameraDistance = State(initialValue: Self.clampDistance(initialZoomMeters))
     }
@@ -94,6 +100,7 @@ struct OSMMapView: View {
                 satellite: satellite,
                 onMapClick: onMapClick,
                 onPinClick: onPinClick,
+                onRenameLocationRequest: onRenameLocationRequest,
                 pinColor: pinColor
             )
             VerticalZoomSlider(
@@ -144,6 +151,7 @@ private struct _OSMMapKitView: NSViewRepresentable {
     var satellite: Bool = false
     var onMapClick: ((CLLocationCoordinate2D) -> Void)?
     var onPinClick: ((OSMMapPin) -> Void)?
+    var onRenameLocationRequest: ((OSMMapPin) -> Void)?
     /// Fill color for `.video` pins — the user's chosen accent.
     var pinColor: NSColor = .controlAccentColor
 
@@ -220,6 +228,15 @@ private struct _OSMMapKitView: NSViewRepresentable {
             action: #selector(Coordinator.handlePinch(_:))
         )
         mapView.addGestureRecognizer(pinch)
+
+        // Right-click (secondary button) → name/rename the pin under the cursor.
+        let secondaryClick = NSClickGestureRecognizer(
+            target: context.coordinator,
+            action: #selector(Coordinator.handleSecondaryClick(_:))
+        )
+        secondaryClick.buttonMask = 0x2  // secondary (right) mouse button
+        mapView.addGestureRecognizer(secondaryClick)
+
         context.coordinator.mapView = mapView
 
         context.coordinator.syncAnnotations(to: pins)
@@ -547,6 +564,33 @@ private struct _OSMMapKitView: NSViewRepresentable {
             }
             let coord = mapView.convert(point, toCoordinateFrom: mapView)
             parent.onMapClick?(coord)
+        }
+
+        // MARK: Secondary (right) click → name/rename menu
+
+        @objc func handleSecondaryClick(_ recognizer: NSClickGestureRecognizer) {
+            guard let mapView = mapView, parent.onRenameLocationRequest != nil else { return }
+            let point = recognizer.location(in: mapView)
+            // Only over an existing pin (same tolerance as the left-click path);
+            // a right-click on blank map does nothing.
+            guard let pin = nearestPin(to: point, in: mapView, tolerance: 40),
+                  pin.id != "candidate" else { return }
+            let menu = NSMenu()
+            let title = pin.label.isEmpty ? "Name this location…" : "Rename location…"
+            let item = NSMenuItem(
+                title: title,
+                action: #selector(renameMenuClicked(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = pin
+            menu.addItem(item)
+            menu.popUp(positioning: nil, at: point, in: mapView)
+        }
+
+        @objc func renameMenuClicked(_ sender: NSMenuItem) {
+            guard let pin = sender.representedObject as? OSMMapPin else { return }
+            parent.onRenameLocationRequest?(pin)
         }
 
         /// The non-candidate pin whose marker is within `tolerance` screen

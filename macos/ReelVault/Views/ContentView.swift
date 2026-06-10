@@ -59,6 +59,8 @@ struct ContentView: View {
     /// Videos under the pin(s) the user has clicked on the map — listed as
     /// cards in the right panel while the map is the active view.
     @State private var mapSelectedVideoIds: [String] = []
+    /// Non-nil while the map's right-click "Name / Rename location" sheet is up.
+    @State private var renameLocationTarget: RenameLocationTarget? = nil
     /// Non-nil → LocationPicker sheet is presenting for these video IDs.
     @State private var locationPickerTargets: [String]? = nil
     @State private var locationPickerInitial: CLLocationCoordinate2D? = nil
@@ -294,6 +296,25 @@ struct ContentView: View {
                     }
                     locationPickerTargets = nil
                     locationPickerInitial = nil
+                }
+            )
+        }
+        // Map right-click "Name / Rename location" sheet.
+        .sheet(item: $renameLocationTarget) { target in
+            LocationNameSheet(
+                initialName: target.existing?.name ?? "",
+                onCancel: { renameLocationTarget = nil },
+                onSave: { newName in
+                    gridViewModel.saveNamedLocation(
+                        id: target.existing?.id ?? "",
+                        name: newName,
+                        // Keep an existing place's centre; otherwise pin the new
+                        // name to the exact spot the user right-clicked.
+                        latitude: target.existing?.latitude ?? target.coordinate.latitude,
+                        longitude: target.existing?.longitude ?? target.coordinate.longitude,
+                        radiusMeters: target.existing?.radiusMeters ?? 250
+                    )
+                    renameLocationTarget = nil
                 }
             )
         }
@@ -1005,7 +1026,13 @@ struct ContentView: View {
                             gridViewModel.nameForLocation(
                                 latitude: coord.latitude, longitude: coord.longitude)?.name
                         },
-                        focusedCoordinate: globalMapFocusCoord
+                        focusedCoordinate: globalMapFocusCoord,
+                        onRequestNameLocation: { coord in
+                            let existing = gridViewModel.nameForLocation(
+                                latitude: coord.latitude, longitude: coord.longitude)
+                            renameLocationTarget = RenameLocationTarget(
+                                coordinate: coord, existing: existing)
+                        }
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -1028,6 +1055,12 @@ struct ContentView: View {
                     // in place of the metadata inspector.
                     let selSet = Set(mapSelectedVideoIds)
                     let mapVideos = gridViewModel.geotaggedVideos.filter { selSet.contains($0.id) }
+                    // When the selected spot is a named place, show its name in
+                    // the panel header instead of the generic "here".
+                    let mapLocationName = mapVideos.first.flatMap {
+                        gridViewModel.nameForLocation(
+                            latitude: $0.gpsLatitude, longitude: $0.gpsLongitude)?.name
+                    }
                     MapVideoListPanel(
                         gridViewModel: gridViewModel,
                         videos: mapVideos,
@@ -1035,6 +1068,7 @@ struct ContentView: View {
                         // being resolved (and none are showing yet).
                         loading: !selSet.isEmpty && mapVideos.isEmpty
                             && gridViewModel.isLoadingVideoLocations,
+                        locationName: mapLocationName,
                         currentVideoId: gridViewModel.selectedVideoId,
                         onCardClick: { openMapVideo($0, in: .map) },
                         onOpenInGrid: { openMapVideo($0, in: .grid) },
@@ -1478,6 +1512,17 @@ struct GlobalKeyboardShortcuts: ViewModifier {
 private struct LocationPickerTargets: Identifiable {
     let ids: [String]
     var id: String { ids.joined(separator: ",") }
+}
+
+/// Drives the map's "Name / Rename location" sheet off `.sheet(item:)`. Carries
+/// the right-clicked coordinate and the named location already there (if any),
+/// so the sheet pre-fills the current name and a save re-uses its row.
+private struct RenameLocationTarget: Identifiable {
+    let coordinate: CLLocationCoordinate2D
+    let existing: NamedLocation?
+    var id: String {
+        existing?.id ?? "\(coordinate.latitude),\(coordinate.longitude)"
+    }
 }
 
 // MARK: - Resizable side panels

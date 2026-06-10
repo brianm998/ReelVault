@@ -677,6 +677,9 @@ fun ReelVaultApp(
     // right panel.
     var globalMapFocusLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     var mapSelectedVideoIds by remember { mutableStateOf<List<String>>(emptyList()) }
+    // Non-null while the map's right-click "Name / Rename location" dialog is up,
+    // carrying the pin the user right-clicked.
+    var renameLocationPin by remember { mutableStateOf<com.reelvault.ui.components.MapPin?>(null) }
     // Location-picker state. `videoIdsForLocationPicker` non-null means the
     // dialog is open and operates on that set of video ids.
     var videoIdsForLocationPicker by remember { mutableStateOf<List<String>?>(null) }
@@ -1668,6 +1671,7 @@ fun ReelVaultApp(
                                             else gridViewModel.nameForLocation(lat, lon)?.name
                                         },
                                         focusedLocation = globalMapFocusLocation,
+                                        onRenameLocationRequest = { renameLocationPin = it },
                                         modifier = Modifier.weight(1f).fillMaxWidth()
                                     )
                                 }
@@ -1711,11 +1715,19 @@ fun ReelVaultApp(
                                 .filter { it.id in sel }
                             val mapLocLoading = gridViewModel.isLoadingVideoLocations
                                 .collectAsState().value
+                            // When the selected spot is a named place, show its
+                            // name in the panel header instead of the generic
+                            // "here" (all co-located videos share the spot, so
+                            // the first one's coordinate resolves the name).
+                            val mapLocationName = mapPanelVideos.firstOrNull()?.let {
+                                gridViewModel.nameForLocation(it.gpsLatitude, it.gpsLongitude)?.name
+                            }
                             com.reelvault.ui.screens.MapVideoListPanel(
                                 videos = mapPanelVideos,
                                 // Spinner while a clicked location's videos are
                                 // still being resolved (and none are showing yet).
                                 loading = sel.isNotEmpty() && mapPanelVideos.isEmpty() && mapLocLoading,
+                                locationName = mapLocationName,
                                 thumbnails = gridViewModel.thumbnails.collectAsState().value,
                                 scrubFrames = gridViewModel.scrubFrames.collectAsState().value,
                                 currentVideoId = gridViewModel.selectedVideoId.collectAsState().value,
@@ -1909,6 +1921,30 @@ fun ReelVaultApp(
                             videoIdsForLocationPicker = null
                             initialLocationForPicker = null
                         }
+                    )
+                }
+
+                // Map right-click "Name / Rename location" dialog.
+                renameLocationPin?.let { pin ->
+                    val named = gridViewModel.namedLocations.collectAsState().value
+                    val existing = com.reelvault.ui.screens.nearestNamedLocation(
+                        pin.latitude, pin.longitude, named)
+                    com.reelvault.ui.screens.LocationNameDialog(
+                        initialName = existing?.name ?: "",
+                        accentScheme = accentScheme,
+                        onDismiss = { renameLocationPin = null },
+                        onSave = { newName ->
+                            gridViewModel.saveNamedLocation(
+                                id = existing?.id ?: "",
+                                name = newName,
+                                // Keep an existing place's centre; otherwise pin
+                                // the new name to the exact spot clicked.
+                                latitude = existing?.latitude ?: pin.latitude,
+                                longitude = existing?.longitude ?: pin.longitude,
+                                radiusMeters = existing?.radiusMeters ?: 250.0,
+                            )
+                            renameLocationPin = null
+                        },
                     )
                 }
 
