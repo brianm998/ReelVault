@@ -94,6 +94,10 @@ import java.util.prefs.Preferences
 fun LibraryFilterBar(
     viewModel: GridViewModel,
     onSearchFocusChanged: (Boolean) -> Unit = {},
+    /** Hide the "Location" presence option from the attribute filter — set in
+     *  map mode, where every video is located by definition and the location
+     *  filter is forced on. */
+    hideLocationOption: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val mode by viewModel.libraryFilterMode.collectAsState()
@@ -132,7 +136,7 @@ fun LibraryFilterBar(
                 HorizontalDivider()
                 when (mode) {
                     LibraryFilterMode.Text -> LibraryTextEditor(viewModel, onSearchFocusChanged)
-                    LibraryFilterMode.Attribute -> LibraryAttributeEditor(viewModel)
+                    LibraryFilterMode.Attribute -> LibraryAttributeEditor(viewModel, hideLocationOption)
                     LibraryFilterMode.Metadata -> LibraryMetadataEditor(viewModel, metadataHeight.value)
                     LibraryFilterMode.Clear -> {}
                 }
@@ -384,7 +388,7 @@ private fun LibraryTextEditor(viewModel: GridViewModel, onSearchFocusChanged: (B
  *  Each presence selector shows only its current value and opens a menu with
  *  the other choices on click. */
 @Composable
-private fun LibraryAttributeEditor(viewModel: GridViewModel) {
+private fun LibraryAttributeEditor(viewModel: GridViewModel, hideLocation: Boolean = false) {
     val minRating by viewModel.filterMinRating.collectAsState()
     val colorLabel by viewModel.filterColorLabel.collectAsState()
     val hasLocation by viewModel.filterHasLocation.collectAsState()
@@ -398,8 +402,10 @@ private fun LibraryAttributeEditor(viewModel: GridViewModel) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(ReelVaultSpacing.Medium, Alignment.CenterHorizontally),
     ) {
-        AttributeDropdown("Location", hasLocation, "Filter by whether a video has a known GPS location") {
-            viewModel.setHasLocationFilter(it)
+        if (!hideLocation) {
+            AttributeDropdown("Location", hasLocation, "Filter by whether a video has a known GPS location") {
+                viewModel.setHasLocationFilter(it)
+            }
         }
         AttributeDropdown("Keywords", hasKeywords, "Filter by whether a video has any keywords") {
             viewModel.setHasKeywordsFilter(it)

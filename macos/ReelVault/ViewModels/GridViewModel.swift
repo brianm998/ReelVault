@@ -2372,12 +2372,23 @@ class GridViewModel: ObservableObject {
                     searchQuery: searchQuery,
                     sortBy: sortBy,
                     sortAscending: sortAscending,
-                    locationPath: selectedLocationPath,
+                    // Mirror the grid's full filter so the map honors it too:
+                    // the multi-select library paths, collection, and the
+                    // attribute filters (keywords/proxies/full-res) — not just
+                    // search/tags/rating/metadata as before.
+                    locationPath: locationFilterValue,
                     filterTagIds: filterTagIds,
                     geoFilter: nil,
                     filterMinRating: filterMinRating,
                     filterColorLabel: filterColorLabel,
-                    metadataFilters: activeMetadataFilters()
+                    metadataFilters: activeMetadataFilters(),
+                    collectionId: collectionIdFilter,
+                    // Force has-location: the map only plots located videos and
+                    // the option is hidden in map mode (a stale "no" would empty it).
+                    hasLocation: .yes,
+                    hasKeywords: filterHasKeywords,
+                    hasProxies: filterHasProxies,
+                    fullResolution: filterFullResolution
                 )
                 for v in page where v.hasLocation {
                     accumulated.append(VideoLocation(

@@ -948,7 +948,7 @@ struct ContentView: View {
             // the side panels and track their resize / collapse automatically.
             VStack(spacing: 0) {
                 if viewMode != .detail {
-                    LibraryFilterBar(vm: gridViewModel)
+                    LibraryFilterBar(vm: gridViewModel, hideLocationOption: viewMode == .map)
                 }
                 switch viewMode {
                 case .grid:

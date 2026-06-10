@@ -1563,7 +1563,11 @@ class GridViewModel(
                         filterColorLabel = _filterColorLabel.value,
                         metadataFilters = activeMetadataFilters(),
                         searchQuery = _searchQuery.value,
-                        hasLocation = _filterHasLocation.value,
+                        // The map only ever plots located videos, so force
+                        // has-location here rather than honoring the attribute
+                        // filter (which is hidden in map mode) — otherwise a
+                        // stale "location: no" from grid/list would empty it.
+                        hasLocation = com.reelvault.data.models.AttributeFilterState.Yes,
                         hasKeywords = _filterHasKeywords.value,
                         hasProxies = _filterHasProxies.value,
                         fullResolution = _filterFullResolution.value,

@@ -11,6 +11,10 @@ import SwiftUI
 /// "Clear" is a resting mode that resets the filter and shows nothing below.
 struct LibraryFilterBar: View {
     @ObservedObject var vm: GridViewModel
+    /// Hide the "Location" presence option from the attribute filter — set in
+    /// map mode, where every video is located and the location filter is forced
+    /// on.
+    var hideLocationOption: Bool = false
 
     /// Drag-adjustable height for the metadata editor, persisted across sessions.
     @State private var metadataHeight: CGFloat = LibraryFilterBarPrefs.loadHeight()
@@ -40,7 +44,7 @@ struct LibraryFilterBar: View {
                 Group {
                     switch vm.libraryFilterMode {
                     case .text:      LibraryFilterTextEditor(vm: vm)
-                    case .attribute: LibraryFilterAttributeEditor(vm: vm)
+                    case .attribute: LibraryFilterAttributeEditor(vm: vm, hideLocationOption: hideLocationOption)
                     case .metadata:  LibraryFilterMetadataEditor(vm: vm, height: metadataHeight)
                     case .clear:     EmptyView()
                     }
@@ -217,13 +221,16 @@ private struct LibraryFilterTextEditor: View {
 /// menu with the other choices on click.
 private struct LibraryFilterAttributeEditor: View {
     @ObservedObject var vm: GridViewModel
+    var hideLocationOption: Bool = false
     var body: some View {
         HStack(spacing: 16) {
-            AttributeTriState(
-                label: "Location",
-                help: "Filter by whether a video has a known GPS location",
-                state: Binding(get: { vm.filterHasLocation }, set: { vm.setHasLocationFilter($0) })
-            )
+            if !hideLocationOption {
+                AttributeTriState(
+                    label: "Location",
+                    help: "Filter by whether a video has a known GPS location",
+                    state: Binding(get: { vm.filterHasLocation }, set: { vm.setHasLocationFilter($0) })
+                )
+            }
             AttributeTriState(
                 label: "Keywords",
                 help: "Filter by whether a video has any keywords",

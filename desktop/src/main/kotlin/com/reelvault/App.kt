@@ -1622,6 +1622,10 @@ fun ReelVaultApp(
                                 com.reelvault.ui.components.LibraryFilterBar(
                                     viewModel = gridViewModel,
                                     onSearchFocusChanged = onSearchFocusChanged,
+                                    // Map mode plots only located videos, so the
+                                    // location presence filter is hidden (and
+                                    // forced on) — every other filter still applies.
+                                    hideLocationOption = viewMode == ViewMode.MAP,
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                             }
