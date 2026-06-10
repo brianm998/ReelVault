@@ -1718,6 +1718,18 @@ class GridViewModel(
                     if (v.id in idSet) v.copy(gpsLatitude = latitude, gpsLongitude = longitude) else v
                 }
             }
+            // Mirror the optimistic GPS change onto the cached selection summary,
+            // then drop the selection if the just-changed video no longer passes
+            // the active filter — e.g. giving it a location under "location: no"
+            // (or clearing one under "location: yes"). Without this the grid hides
+            // the card but the inspector strands its stale details. Same intent as
+            // the filter-change path's clearSelectionIfFilteredOut().
+            _selectedVideo.value?.let { sel ->
+                if (sel.id in idSet) {
+                    _selectedVideo.value = sel.copy(gpsLatitude = latitude, gpsLongitude = longitude)
+                }
+            }
+            clearSelectionIfFilteredOut()
             var ok = 0
             for (id in finalIds) {
                 if (repository.updateVideoLocation(id, latitude, longitude, 0.0, writeToFile)) ok++

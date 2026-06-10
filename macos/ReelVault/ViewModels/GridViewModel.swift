@@ -2503,6 +2503,16 @@ class GridViewModel: ObservableObject {
                     idSet.contains(v.id) ? v.withLocation(latitude: latitude, longitude: longitude) : v
                 }
             }
+            // Mirror the optimistic GPS change onto the cached selection summary,
+            // then drop the selection if the just-changed video no longer passes
+            // the active filter — e.g. giving it a location under "location: no"
+            // (or clearing one under "location: yes"). Without this the grid hides
+            // the card but the inspector strands its stale details. Same intent as
+            // the filter-change path's clearSelectionIfFilteredOut().
+            if let sel = selectedVideo, idSet.contains(sel.id) {
+                selectedVideo = sel.withLocation(latitude: latitude, longitude: longitude)
+            }
+            clearSelectionIfFilteredOut()
             var ok = 0
             for id in finalIds {
                 let success = await repository.updateVideoLocation(
