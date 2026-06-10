@@ -152,6 +152,53 @@ private fun FocusRequester.requestFocusSafely() {
     }
 }
 
+/**
+ * Keep the AWT event-dispatch thread alive across a Compose-Desktop focus race
+ * that [requestFocusSafely] can't cover.
+ *
+ * AWT delivers a `keyTyped` for every key press regardless of whether Compose
+ * consumed the paired `keyPressed`; Compose turns that into an internal KeyDown
+ * and routes it through `FocusOwnerImpl.dispatchKeyEvent`. If a recomposition
+ * is in flight at that instant (common during a library scan, when gRPC
+ * progress events churn the UI on the EDT) no node may hold focus, and
+ * FocusOwnerImpl throws
+ *   IllegalStateException("Event can't be processed because we do not have an
+ *   active focus target.")
+ * straight from event dispatch — not from a `requestFocus()` call, so the
+ * try/catch in [requestFocusSafely] never sees it. The exception escapes
+ * `EventDispatchThread.pumpEvents` and kills the EDT, taking the app with it.
+ *
+ * The invisible root Box already reclaims orphaned focus on the next event (see
+ * its `onFocusChanged`), so the only thing missing is surviving this one event.
+ * Push an [java.awt.EventQueue] that swallows exactly this exception — every
+ * other Throwable is rethrown untouched — so the EDT keeps running and the next
+ * event restores a valid focus target. Best-effort: if the queue can't be
+ * installed we simply keep the prior behavior.
+ */
+private fun installEdtFocusCrashGuard() {
+    runCatching {
+        java.awt.Toolkit.getDefaultToolkit().systemEventQueue.push(
+            object : java.awt.EventQueue() {
+                override fun dispatchEvent(event: java.awt.AWTEvent) {
+                    try {
+                        super.dispatchEvent(event)
+                    } catch (e: IllegalStateException) {
+                        if (e.message?.contains("active focus target") == true) {
+                            logger.warn(
+                                "Swallowed Compose focus-dispatch race on the EDT " +
+                                    "(no active focus target); root focus reclaims " +
+                                    "on the next event."
+                            )
+                        } else {
+                            throw e
+                        }
+                    }
+                }
+            }
+        )
+    }.onFailure { logger.warn("Could not install EDT focus-crash guard", it) }
+}
+
 fun main() {
     // apple.awt.application.name drives the macOS Dock tooltip and menu-bar
     // app label. The reliable place to set it is as a JVM `-D` arg
@@ -207,6 +254,11 @@ fun main() {
             }
         }
     }
+
+    // Survive the Compose focus-dispatch race that can otherwise kill the EDT
+    // mid-scan (see installEdtFocusCrashGuard). Installed before any windows
+    // exist so it wraps every event from the first one onward.
+    installEdtFocusCrashGuard()
 
     application {
         val windowState = rememberWindowState(
