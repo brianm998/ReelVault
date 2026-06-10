@@ -781,24 +781,25 @@ let defaultGridTopSlots: [String] = [
 /// chooses which editor is shown. (Clear is a momentary action handled by the
 /// view model, not a resting mode.)
 enum LibraryFilterMode: String, CaseIterable, Identifiable, Hashable {
-    // Declaration order drives the selector; "location" sits between metadata
-    // and clear.
-    case text, attribute, metadata, location, clear
+    // Declaration order drives the selector. A video's place is just another
+    // kind of metadata (the `locationMetadataKey` field inside `.metadata`),
+    // so there is no standalone location mode.
+    case text, attribute, metadata, clear
     var id: String { rawValue }
     var displayName: String {
         switch self {
         case .text:      return "Text"
         case .attribute: return "Attribute"
         case .metadata:  return "Metadata"
-        case .location:  return "Location"
         case .clear:     return "Clear"
         }
     }
 }
 
-/// One selectable entry in the Library Filter's "Location" mode: a named place
-/// or an unnamed coordinate cluster, with how many catalog videos sit there.
-/// Picking one applies a geographic proximity filter centred on it.
+/// One selectable entry in the Library Filter's "Location" metadata field
+/// (see `locationMetadataKey`): a named place or an unnamed coordinate cluster,
+/// with how many catalog videos sit there. Picking one applies a geographic
+/// proximity filter centred on it.
 struct LocationFilterGroup: Identifiable, Hashable {
     let label: String
     let latitude: Double
@@ -864,6 +865,14 @@ struct MetadataKeyInfo: Equatable, Hashable {
     let displayName: String
     let isNumeric: Bool
 }
+
+/// Canonical key of the "Location" metadata field. Unlike the registry-backed
+/// keys (camera, lens, …) this one is synthesised entirely client-side: its
+/// facet is the catalog's known places (`LocationFilterGroup`) and selecting a
+/// value applies a geographic proximity filter via `setLocationFilter` rather
+/// than a `MetadataFilter`. The daemon doesn't know this key — it returns an
+/// empty facet for it and ignores it as a filter — so it's never sent as one.
+let locationMetadataKey = "location"
 
 /// Result of a GetMetadataFacets call: per-column values + the key picker set.
 struct MetadataFacetsResult: Equatable {

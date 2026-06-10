@@ -9,6 +9,8 @@ import SwiftUI
 /// Attribute / Metadata / Clear. Under COMBINE semantics all three filter
 /// editors stay applied at once; the selector only chooses which is shown.
 /// "Clear" is a resting mode that resets the filter and shows nothing below.
+/// A video's place is one of the Metadata fields ("Location"); there is no
+/// separate Location mode.
 struct LibraryFilterBar: View {
     @ObservedObject var vm: GridViewModel
     /// Hide the "Location" presence option from the attribute filter — set in
@@ -46,7 +48,6 @@ struct LibraryFilterBar: View {
                     case .text:      LibraryFilterTextEditor(vm: vm)
                     case .attribute: LibraryFilterAttributeEditor(vm: vm, hideLocationOption: hideLocationOption)
                     case .metadata:  LibraryFilterMetadataEditor(vm: vm, height: metadataHeight)
-                    case .location:  LibraryFilterLocationEditor(vm: vm)
                     case .clear:     EmptyView()
                     }
                 }
@@ -220,59 +221,6 @@ private struct LibraryFilterTextEditor: View {
 /// (location / keywords / proxies / full resolution), then rating + colour.
 /// Each presence selector shows only its current value and opens a pop-up
 /// menu with the other choices on click.
-/// Library Filter "Location" editor: a horizontally-scrolling strip of the
-/// catalog's known places — named ones, or a coordinate when unnamed — each
-/// with its video count. Clicking one narrows the grid/list to videos at that
-/// spot (a proximity filter); clicking the active one clears it.
-private struct LibraryFilterLocationEditor: View {
-    @ObservedObject var vm: GridViewModel
-    var body: some View {
-        Group {
-            if vm.filterLocationGroups.isEmpty {
-                Text("No geotagged videos in the catalog yet.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(8)
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(vm.filterLocationGroups) { g in
-                            let isActive = vm.filterLocation.map {
-                                abs($0.latitude - g.latitude) < 1e-6 &&
-                                    abs($0.longitude - g.longitude) < 1e-6
-                            } ?? false
-                            Button {
-                                if isActive {
-                                    vm.setLocationFilter(latitude: nil, longitude: nil)
-                                } else {
-                                    vm.setLocationFilter(latitude: g.latitude,
-                                                         longitude: g.longitude,
-                                                         radiusKm: g.radiusKm)
-                                }
-                            } label: {
-                                HStack(spacing: 4) {
-                                    Image(systemName: g.isNamed ? "mappin.circle.fill" : "location.circle")
-                                    Text("\(g.label)  ·  \(g.count)")
-                                }
-                                .font(.system(size: 11))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                                .background(isActive ? Color.accentColor : Color.secondary.opacity(0.15),
-                                            in: Capsule())
-                                .foregroundColor(isActive ? .white : .primary)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                }
-            }
-        }
-        .task { vm.loadFilterLocations() }
-    }
-}
 
 private struct LibraryFilterAttributeEditor: View {
     @ObservedObject var vm: GridViewModel
@@ -379,27 +327,84 @@ private struct ColorSwatchRow: View {
     }
 }
 
+/// Stable token for a "Location" facet value / the active geo filter: the
+/// centre coordinates at fixed precision, so a place's token equals the active
+/// filter's token iff they denote the same spot.
+private func locationFacetToken(_ latitude: Double, _ longitude: Double) -> String {
+    String(format: "%.6f,%.6f", latitude, longitude)
+}
+
 /// Metadata mode: a horizontal, cascading set of metadata columns. Centred
 /// within the available width (via GeometryReader); scrolls when wider. The
-/// `height` is the drag-adjustable editor height.
+/// `height` is the drag-adjustable editor height. One of the offered fields is
+/// "Location" (`locationMetadataKey`): a client-side virtual column whose values
+/// are the catalog's known places and whose selection drives the geographic
+/// proximity filter rather than a metadata filter.
 private struct LibraryFilterMetadataEditor: View {
     @ObservedObject var vm: GridViewModel
     let height: CGFloat
 
     var body: some View {
-        GeometryReader { geo in
+        // The client-side "Location" field: its facet is the known places, a
+        // token → place lookup drives clicks, and the active place's token marks
+        // the highlighted row. Offered in the picker only when there's geodata.
+        let groups = vm.filterLocationGroups
+        let locationFacet = MetadataFacetColumn(
+            key: locationMetadataKey,
+            displayName: "Location",
+            isNumeric: false,
+            values: groups.map { g in
+                FacetValue(token: locationFacetToken(g.latitude, g.longitude),
+                           display: g.label, count: Int64(g.count))
+            }
+        )
+        let placeByToken = Dictionary(
+            groups.map { (locationFacetToken($0.latitude, $0.longitude), $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let activeToken: String? = vm.filterLocation.map { locationFacetToken($0.latitude, $0.longitude) }
+        let availableKeys: [MetadataKeyInfo] =
+            (!groups.isEmpty && !vm.availableMetadataKeys.contains { $0.key == locationMetadataKey })
+                ? vm.availableMetadataKeys
+                    + [MetadataKeyInfo(key: locationMetadataKey, displayName: "Location", isNumeric: false)]
+                : vm.availableMetadataKeys
+
+        return GeometryReader { geo in
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 0) {
                     addButton { vm.addMetadataColumn(at: .front) }
                     ForEach(Array(vm.metadataColumns.enumerated()), id: \.element.id) { index, column in
+                        let isLocation = column.key == locationMetadataKey
+                        // A "Location" column mirrors the active geo filter (not
+                        // a stored value set) and routes clicks to
+                        // setLocationFilter; others use the server facet and the
+                        // metadata click path.
+                        let displayColumn: MetadataColumn = {
+                            guard isLocation else { return column }
+                            var c = column
+                            c.values = activeToken.map { Set([$0]) } ?? []
+                            return c
+                        }()
                         MetadataColumnView(
-                            column: column,
-                            facet: vm.facetColumn(at: index),
-                            availableKeys: vm.availableMetadataKeys,
+                            column: displayColumn,
+                            facet: isLocation ? locationFacet : vm.facetColumn(at: index),
+                            availableKeys: availableKeys,
                             canRemove: vm.metadataColumns.count > 1,
                             onPickKey: { vm.setMetadataColumnKey(at: index, key: $0) },
                             onValueClick: { token, shift, toggle in
-                                vm.onMetadataValueClicked(at: index, token: token, shift: shift, toggle: toggle)
+                                if isLocation {
+                                    if token.isEmpty {
+                                        vm.setLocationFilter(latitude: nil, longitude: nil)
+                                    } else if token == activeToken {
+                                        // Already active; "All" clears it.
+                                    } else if let g = placeByToken[token] {
+                                        vm.setLocationFilter(latitude: g.latitude,
+                                                             longitude: g.longitude,
+                                                             radiusKm: g.radiusKm)
+                                    }
+                                } else {
+                                    vm.onMetadataValueClicked(at: index, token: token, shift: shift, toggle: toggle)
+                                }
                             },
                             onRemove: { vm.removeMetadataColumn(at: index) }
                         )
@@ -411,6 +416,7 @@ private struct LibraryFilterMetadataEditor: View {
             }
         }
         .frame(height: height)
+        .task { vm.loadFilterLocations() }
     }
 
     private func addButton(_ action: @escaping () -> Void) -> some View {

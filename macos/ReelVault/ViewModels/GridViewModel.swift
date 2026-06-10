@@ -975,7 +975,9 @@ class GridViewModel: ObservableObject {
     /// tokens joined by `metadataValueSeparator`; the daemon OR-matches them.
     private func activeMetadataFilters() -> [(key: String, value: String)] {
         metadataColumns
-            .filter { !$0.key.isEmpty && !$0.values.isEmpty }
+            // "location" is a client-side virtual key applied via the geo
+            // filter, not a MetadataFilter; never send it over the wire.
+            .filter { !$0.key.isEmpty && $0.key != locationMetadataKey && !$0.values.isEmpty }
             .map { (key: $0.key, value: $0.values.sorted().joined(separator: metadataValueSeparator)) }
     }
 

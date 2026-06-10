@@ -35,8 +35,6 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CircularProgressIndicator
@@ -91,7 +89,8 @@ import java.util.prefs.Preferences
  * Attribute / Metadata / Clear. Under COMBINE semantics the Text/Attribute/
  * Metadata filters all stay applied at once; the selector only chooses which
  * editor is shown. "Clear" is a resting mode that resets the filter and shows
- * nothing below.
+ * nothing below. A video's place is one of the Metadata fields ("Location");
+ * there is no separate Location mode.
  */
 @Composable
 fun LibraryFilterBar(
@@ -141,7 +140,6 @@ fun LibraryFilterBar(
                     LibraryFilterMode.Text -> LibraryTextEditor(viewModel, onSearchFocusChanged)
                     LibraryFilterMode.Attribute -> LibraryAttributeEditor(viewModel, hideLocationOption)
                     LibraryFilterMode.Metadata -> LibraryMetadataEditor(viewModel, metadataHeight.value)
-                    LibraryFilterMode.Location -> LibraryLocationEditor(viewModel)
                     LibraryFilterMode.Clear -> {}
                 }
             }
@@ -167,7 +165,6 @@ private fun LibraryFilterModeSelector(
         LibraryFilterMode.Text to "Text",
         LibraryFilterMode.Attribute to "Attribute",
         LibraryFilterMode.Metadata to "Metadata",
-        LibraryFilterMode.Location to "Location",
         LibraryFilterMode.Clear to "Clear",
     )
     Surface(
@@ -392,73 +389,6 @@ private fun LibraryTextEditor(viewModel: GridViewModel, onSearchFocusChanged: (B
  *  (location / keywords / proxies / full resolution), then rating + colour.
  *  Each presence selector shows only its current value and opens a menu with
  *  the other choices on click. */
-/** Library Filter "Location" editor: a horizontally-scrolling strip of the
- *  catalog's known places — named ones, or a coordinate when unnamed — each
- *  with its video count. Clicking one narrows the grid/list to videos at that
- *  spot (a proximity filter); clicking the active one clears it. */
-@Composable
-private fun LibraryLocationEditor(viewModel: GridViewModel) {
-    val groups by viewModel.filterLocationGroups.collectAsState()
-    val active by viewModel.filterLocation.collectAsState()
-    // Refresh the list from the full catalog whenever this editor appears.
-    LaunchedEffect(Unit) { viewModel.loadFilterLocations() }
-
-    if (groups.isEmpty()) {
-        Box(
-            modifier = Modifier.fillMaxWidth().padding(ReelVaultSpacing.Small),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = "No geotagged videos in the catalog yet.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        return
-    }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = ReelVaultSpacing.Small, vertical = ReelVaultSpacing.Small),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(ReelVaultSpacing.Small),
-    ) {
-        groups.forEach { g ->
-            val isActive = active?.let {
-                kotlin.math.abs(it.first - g.latitude) < 1e-6 &&
-                    kotlin.math.abs(it.second - g.longitude) < 1e-6
-            } ?: false
-            val bg = if (isActive) MaterialTheme.colorScheme.primary
-                     else MaterialTheme.colorScheme.surfaceVariant
-            val fg = if (isActive) MaterialTheme.colorScheme.onPrimary
-                     else MaterialTheme.colorScheme.onSurfaceVariant
-            Row(
-                modifier = Modifier
-                    .background(bg, RoundedCornerShape(16.dp))
-                    .clickable {
-                        if (isActive) viewModel.setLocationFilter(null, null)
-                        else viewModel.setLocationFilter(g.latitude, g.longitude, g.radiusKm)
-                    }
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = if (g.isNamed) Icons.Default.Place else Icons.Default.LocationOn,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = fg,
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "${g.label}  ·  ${g.count}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = fg,
-                )
-            }
-        }
-    }
-}
 
 @Composable
 private fun LibraryAttributeEditor(viewModel: GridViewModel, hideLocation: Boolean = false) {
@@ -603,13 +533,62 @@ private fun ColorSwatchPicker(selectedRaw: String, onPick: (String) -> Unit) {
     }
 }
 
+/** Stable token for a "Location" facet value / the active geo filter: the
+ *  centre coordinates at fixed precision, so a place's token equals the active
+ *  filter's token iff they denote the same spot. */
+private fun locationFacetToken(latitude: Double, longitude: Double): String =
+    "%.6f,%.6f".format(latitude, longitude)
+
 /** Metadata mode: a horizontal, cascading set of metadata columns, centred,
- *  with a drag-adjustable [height]. */
+ *  with a drag-adjustable [height]. One of the offered fields is "Location"
+ *  ([com.reelvault.data.models.LOCATION_METADATA_KEY]): a client-side virtual
+ *  column whose values are the catalog's known places and whose selection
+ *  drives the geographic proximity filter rather than a metadata filter. */
 @Composable
 private fun LibraryMetadataEditor(viewModel: GridViewModel, height: Dp) {
     val columns by viewModel.metadataColumns.collectAsState()
     val facets by viewModel.metadataFacets.collectAsState()
-    val availableKeys by viewModel.metadataAvailableKeys.collectAsState()
+    val serverKeys by viewModel.metadataAvailableKeys.collectAsState()
+    val locationGroups by viewModel.filterLocationGroups.collectAsState()
+    val activeLocation by viewModel.filterLocation.collectAsState()
+    // Keep the place list warm while the metadata editor is open: it's the
+    // facet for any "Location" column and gates whether that field is offered.
+    LaunchedEffect(Unit) { viewModel.loadFilterLocations() }
+
+    // Splice the client-side "Location" field into the key picker — but only
+    // when the catalog actually has geotagged videos, matching how the
+    // registry-backed keys appear only when they have data.
+    val availableKeys = remember(serverKeys, locationGroups) {
+        if (locationGroups.isNotEmpty() &&
+            serverKeys.none { it.key == com.reelvault.data.models.LOCATION_METADATA_KEY }
+        ) {
+            serverKeys + com.reelvault.data.models.MetadataKeyInfo(
+                com.reelvault.data.models.LOCATION_METADATA_KEY, "Location", false,
+            )
+        } else {
+            serverKeys
+        }
+    }
+    // The "Location" column's facet (places + counts) and a token → place lookup
+    // for click handling; the token also marks the active place for highlight.
+    val locationFacet = remember(locationGroups) {
+        com.reelvault.data.models.FacetColumn(
+            key = com.reelvault.data.models.LOCATION_METADATA_KEY,
+            displayName = "Location",
+            isNumeric = false,
+            values = locationGroups.map { g ->
+                com.reelvault.data.models.FacetValue(
+                    token = locationFacetToken(g.latitude, g.longitude),
+                    display = g.label,
+                    count = g.count.toLong(),
+                )
+            },
+        )
+    }
+    val placeByToken = remember(locationGroups) {
+        locationGroups.associateBy { locationFacetToken(it.latitude, it.longitude) }
+    }
+    val activeLocationToken = activeLocation?.let { locationFacetToken(it.first, it.second) }
 
     Row(
         modifier = Modifier
@@ -622,15 +601,37 @@ private fun LibraryMetadataEditor(viewModel: GridViewModel, height: Dp) {
     ) {
         AddColumnButton { viewModel.addMetadataColumn(atFront = true) }
         columns.forEachIndexed { i, col ->
+            val isLocation = col.key == com.reelvault.data.models.LOCATION_METADATA_KEY
+            // A "Location" column mirrors the active geo filter (not a stored
+            // value set) and routes clicks to setLocationFilter; every other
+            // column uses its server-computed facet and the metadata click path.
+            val columnForView = if (isLocation) {
+                col.copy(values = activeLocationToken?.let { setOf(it) } ?: emptySet())
+            } else {
+                col
+            }
+            val onValueClick: (String, Boolean, Boolean) -> Unit = if (isLocation) {
+                { token, _, _ ->
+                    when {
+                        token.isEmpty() -> viewModel.setLocationFilter(null, null)
+                        // Re-clicking the active place is a no-op (use "All" to
+                        // clear), mirroring how facet columns treat their value.
+                        token == activeLocationToken -> {}
+                        else -> placeByToken[token]?.let {
+                            viewModel.setLocationFilter(it.latitude, it.longitude, it.radiusKm)
+                        }
+                    }
+                }
+            } else {
+                { token, shift, toggle -> viewModel.onMetadataValueClicked(i, token, shift, toggle) }
+            }
             MetadataColumnView(
-                column = col,
-                facet = facets.getOrNull(i),
+                column = columnForView,
+                facet = if (isLocation) locationFacet else facets.getOrNull(i),
                 availableKeys = availableKeys,
                 canRemove = columns.size > 1,
                 onPickKey = { key -> viewModel.setMetadataColumnKey(i, key) },
-                onValueClick = { token, shift, toggle ->
-                    viewModel.onMetadataValueClicked(i, token, shift, toggle)
-                },
+                onValueClick = onValueClick,
                 onRemove = { viewModel.removeMetadataColumn(i) },
             )
         }

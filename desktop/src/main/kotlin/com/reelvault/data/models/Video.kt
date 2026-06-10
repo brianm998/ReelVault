@@ -623,12 +623,16 @@ val defaultGridTopSlots: List<String> = listOf(
  * Text/Attribute/Metadata filters all stay applied at once; this only chooses
  * which one is visible. [Clear] is a momentary action (reset everything), not a
  * resting mode — the view model snaps back to [Text] after a clear.
+ *
+ * There is no standalone "Location" mode: a video's place is just another kind
+ * of metadata, surfaced as the [LOCATION_METADATA_KEY] field inside [Metadata].
  */
-enum class LibraryFilterMode { Text, Attribute, Metadata, Location, Clear }
+enum class LibraryFilterMode { Text, Attribute, Metadata, Clear }
 
-/** One selectable entry in the Library Filter's "Location" mode: a named place
- *  or an unnamed coordinate cluster, with how many catalog videos sit there.
- *  Picking one applies a geographic proximity filter centred on it. */
+/** One selectable entry in the Library Filter's "Location" metadata field
+ *  (see [LOCATION_METADATA_KEY]): a named place or an unnamed coordinate
+ *  cluster, with how many catalog videos sit there. Picking one applies a
+ *  geographic proximity filter centred on it. */
 data class LocationFilterGroup(
     val label: String,
     val latitude: Double,
@@ -681,6 +685,14 @@ data class FacetColumn(
 
 /** A metadata key the user can pick for a column. */
 data class MetadataKeyInfo(val key: String, val displayName: String, val isNumeric: Boolean)
+
+/** Canonical key of the "Location" metadata field. Unlike the registry-backed
+ *  keys (camera, lens, …) this one is synthesised entirely client-side: its
+ *  facet is the catalog's known places ([LocationFilterGroup]) and selecting a
+ *  value applies a geographic proximity filter via `setLocationFilter` rather
+ *  than a `MetadataFilter`. The daemon doesn't know this key — it returns an
+ *  empty facet for it and ignores it as a filter — so it's never sent as one. */
+const val LOCATION_METADATA_KEY = "location"
 
 /** Generic (key, value) metadata filter sent to the daemon. [value] may carry
  *  several selected tokens joined by [METADATA_VALUE_SEPARATOR]; the core splits

@@ -1219,7 +1219,13 @@ class GridViewModel(
      *  tokens joined by [METADATA_VALUE_SEPARATOR]; the daemon OR-matches them. */
     private fun activeMetadataFilters(): List<com.reelvault.data.models.MetadataFilter> =
         _metadataColumns.value
-            .filter { it.key.isNotEmpty() && it.values.isNotEmpty() }
+            // "location" is a client-side virtual key applied via the geo filter,
+            // not a MetadataFilter; never send it over the wire.
+            .filter {
+                it.key.isNotEmpty() &&
+                    it.key != com.reelvault.data.models.LOCATION_METADATA_KEY &&
+                    it.values.isNotEmpty()
+            }
             .map {
                 com.reelvault.data.models.MetadataFilter(
                     it.key,
