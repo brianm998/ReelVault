@@ -330,6 +330,10 @@ fun ListScreen(
                                         val ratingTargets: List<String> =
                                             if (video.id in multi && multi.size > 1) multi.toList()
                                             else listOf(video.id)
+                                        val captureTargets: List<Pair<String, String>> =
+                                            if (video.id in multi && multi.size > 1)
+                                                videos.value.filter { it.id in multi }.map { it.id to it.filename }
+                                            else listOf(video.id to video.filename)
                                         buildVideoContextMenu(
                                             targetFiles = targets,
                                             stackVideoId = video.id.takeIf { video.isInGroup },
@@ -358,6 +362,10 @@ fun ListScreen(
                                             videoCollections = emptyList(),
                                             onAddToCollection = { colId, ids -> viewModel.addToCollection(ids, colId) },
                                             onRemoveFromCollection = { colId, ids -> viewModel.removeFromCollection(ids, colId) },
+                                            captureDateTargets = captureTargets,
+                                            onApplyInferredCaptureDates = { perVideo ->
+                                                viewModel.setInferredCaptureDates(perVideo)
+                                            },
                                         )
                                     }
                                 ) {
@@ -475,6 +483,10 @@ fun ListScreen(
                                                 val ratingTargets: List<String> =
                                                     if (video.id in multi && multi.size > 1) multi.toList()
                                                     else listOf(video.id)
+                                                val captureTargets: List<Pair<String, String>> =
+                                                    if (video.id in multi && multi.size > 1)
+                                                        videos.value.filter { it.id in multi }.map { it.id to it.filename }
+                                                    else listOf(video.id to video.filename)
                                                 buildVideoContextMenu(
                                                     targetFiles = targets,
                                                     stackVideoId = video.id.takeIf { video.isInGroup },
@@ -503,6 +515,10 @@ fun ListScreen(
                                                     videoCollections = emptyList(),
                                                     onAddToCollection = { colId, ids -> viewModel.addToCollection(ids, colId) },
                                                     onRemoveFromCollection = { colId, ids -> viewModel.removeFromCollection(ids, colId) },
+                                                    captureDateTargets = captureTargets,
+                                                    onApplyInferredCaptureDates = { perVideo ->
+                                                        viewModel.setInferredCaptureDates(perVideo)
+                                                    },
                                                 )
                                             }
                                         ) {

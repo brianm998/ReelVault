@@ -2675,6 +2675,31 @@ class GridViewModel: ObservableObject {
             onComplete()
         }
     }
+
+    /// Apply per-video capture dates (Unix ms), each inferred from that video's
+    /// filename — used by the grid/list right-click "Set Capture Date to …" /
+    /// "from filename" action, where every selected card can resolve to a
+    /// different date. Reloads the grid + facets afterward.
+    func setInferredCaptureDates(
+        _ perVideo: [(id: String, timestampMs: Int64)],
+        onComplete: @escaping () -> Void = {}
+    ) {
+        guard !perVideo.isEmpty else { return }
+        Task {
+            var ok = 0
+            for entry in perVideo {
+                let success = await repository.updateVideoCaptureDate(
+                    videoId: entry.id, timestampMs: entry.timestampMs, writeToFile: false)
+                if success { ok += 1 }
+            }
+            NSLog("Set inferred capture date on \(ok)/\(perVideo.count) video(s)")
+            if ok > 0 {
+                refreshMetadataFacets()
+                await loadCurrentPage(replace: true)
+            }
+            onComplete()
+        }
+    }
 }
 
 /// Proximity filter — kept as a named struct so SwiftUI can compare-and-redraw

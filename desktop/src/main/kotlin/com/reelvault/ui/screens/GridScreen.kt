@@ -334,6 +334,10 @@ fun GridScreen(
                                 val ratingTargets: List<String> =
                                     if (video.id in multi && multi.size > 1) multi.toList()
                                     else listOf(video.id)
+                                val captureTargets: List<Pair<String, String>> =
+                                    if (video.id in multi && multi.size > 1)
+                                        videos.value.filter { it.id in multi }.map { it.id to it.filename }
+                                    else listOf(video.id to video.filename)
                                 buildVideoContextMenu(
                                     targetFiles = targets,
                                     // Stack actions are surfaced only when
@@ -370,6 +374,10 @@ fun GridScreen(
                                     videoCollections = emptyList(),
                                     onAddToCollection = { colId, ids -> viewModel.addToCollection(ids, colId) },
                                     onRemoveFromCollection = { colId, ids -> viewModel.removeFromCollection(ids, colId) },
+                                    captureDateTargets = captureTargets,
+                                    onApplyInferredCaptureDates = { perVideo ->
+                                        viewModel.setInferredCaptureDates(perVideo)
+                                    },
                                 )
                             }
                         ) {
@@ -576,6 +584,11 @@ internal fun buildVideoContextMenu(
     videoCollections: List<String> = emptyList(),
     onAddToCollection: ((collectionId: String, videoIds: List<String>) -> Unit)? = null,
     onRemoveFromCollection: ((collectionId: String, videoIds: List<String>) -> Unit)? = null,
+    /** (videoId, filename) for each target card — used to offer the user's
+     *  default filename → capture-date method when a card's name matches it. */
+    captureDateTargets: List<Pair<String, String>> = emptyList(),
+    /** Apply the given (videoId, Unix-ms) capture dates inferred from filenames. */
+    onApplyInferredCaptureDates: ((List<Pair<String, Long>>) -> Unit)? = null,
 ): List<androidx.compose.foundation.ContextMenuItem> {
     val items = mutableListOf<androidx.compose.foundation.ContextMenuItem>()
     val n = targetFiles.size
@@ -625,6 +638,28 @@ internal fun buildVideoContextMenu(
         if (containing != null) {
             items += androidx.compose.foundation.ContextMenuItem("Go to Folder in Library") {
                 onGoToFolder(containing.path)
+            }
+        }
+    }
+
+    // Default filename → capture-date method. Offered only when the user has
+    // configured a default AND at least one target card's filename matches it.
+    // One target reads "Set Capture Date to <date>"; several read "from
+    // filename (N)" and apply each matching card's own inferred date.
+    if (onApplyInferredCaptureDates != null && captureDateTargets.isNotEmpty()) {
+        val capMatches = captureDateTargets.mapNotNull { (id, name) ->
+            com.reelvault.util.FilenameDateInference.inferDefault(name)?.let { (ms, label) ->
+                Triple(id, ms, label)
+            }
+        }
+        if (capMatches.isNotEmpty()) {
+            val label = if (captureDateTargets.size == 1 && capMatches.size == 1) {
+                "Set Capture Date to ${capMatches.first().third}"
+            } else {
+                "Set Capture Date from filename (${capMatches.size})"
+            }
+            items += androidx.compose.foundation.ContextMenuItem(label) {
+                onApplyInferredCaptureDates(capMatches.map { it.first to it.second })
             }
         }
     }

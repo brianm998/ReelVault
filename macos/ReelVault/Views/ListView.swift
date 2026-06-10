@@ -394,6 +394,31 @@ struct ListView: View {
             .help("Filter the library panel to show only videos from \(loc.path)")
         }
 
+        // Default filename → capture-date method. Offered only when the user
+        // has configured a default AND ≥1 target card's filename matches it.
+        // One target reads "Set Capture Date to <date>"; several apply each
+        // matching card's own inferred date.
+        let captureMatches: [(id: String, ms: Int64, label: String)] = viewModel.videos
+            .filter { targetIds.contains($0.id) }
+            .compactMap { v in
+                FilenameDateInference.inferDefault(filename: v.filename)
+                    .map { (id: v.id, ms: $0.timestampMs, label: $0.label) }
+            }
+        if !captureMatches.isEmpty {
+            Divider()
+            if targetIds.count == 1, captureMatches.count == 1 {
+                Button("Set Capture Date to \(captureMatches[0].label)") {
+                    viewModel.setInferredCaptureDates(
+                        [(id: captureMatches[0].id, timestampMs: captureMatches[0].ms)])
+                }
+            } else {
+                Button("Set Capture Date from filename (\(captureMatches.count))") {
+                    viewModel.setInferredCaptureDates(
+                        captureMatches.map { (id: $0.id, timestampMs: $0.ms) })
+                }
+            }
+        }
+
         let manualCollections = viewModel.collections.filter { !$0.isSmart }
         let videoColIds = Set<String>()
         let addableCollections = manualCollections.filter { !videoColIds.contains($0.id) }

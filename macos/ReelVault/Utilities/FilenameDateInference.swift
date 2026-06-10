@@ -111,4 +111,17 @@ enum FilenameDateInference {
         else { return nil }  // rolled-over invalid date (e.g. Feb 30)
         return date
     }
+
+    /// For the saved *default* method: the inferred capture timestamp (Unix ms,
+    /// noon local) and a short label, or nil when no default is configured or
+    /// `filename` has no match. Drives the grid/list right-click
+    /// "Set Capture Date to …".
+    static func inferDefault(filename: String) -> (timestampMs: Int64, label: String)? {
+        guard defaultEnabled() else { return nil }
+        guard let date = inferDate(filename: filename,
+                                   format: savedFormat(), position: savedPosition())
+        else { return nil }
+        let ms = Int64(date.timeIntervalSince1970 * 1000.0)
+        return (ms, date.formatted(date: .abbreviated, time: .omitted))
+    }
 }

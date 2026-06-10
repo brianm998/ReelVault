@@ -1887,6 +1887,32 @@ class GridViewModel(
     }
 
     /**
+     * Apply per-video capture dates (Unix ms), each inferred from that video's
+     * filename — used by the grid/list right-click "Set Capture Date to …" /
+     * "from filename" action, where every selected card can resolve to a
+     * different date. Reloads the grid + facets so the new dates (and the
+     * year filter) reflect it.
+     */
+    fun setInferredCaptureDates(
+        perVideo: List<Pair<String, Long>>,
+        onComplete: () -> Unit = {},
+    ) {
+        if (perVideo.isEmpty()) return
+        viewModelScope.launch {
+            var ok = 0
+            for ((id, ms) in perVideo) {
+                if (repository.updateVideoCaptureDate(id, ms, false)) ok++
+            }
+            logger.info("Set inferred capture date on $ok/${perVideo.size} video(s)")
+            if (ok > 0) {
+                scheduleFacetRefresh()
+                loadVideos()
+            }
+            onComplete()
+        }
+    }
+
+    /**
      * Expand [videoIds] so that any video in a COLLAPSED stack is replaced
      * by all of its stack members. Videos in an expanded stack or not in a
      * stack are left as-is. Used by keyword and location operations so the

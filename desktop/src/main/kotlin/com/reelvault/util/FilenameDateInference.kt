@@ -93,6 +93,19 @@ object FilenameDateInference {
         }
     }
 
+    /** For the saved *default* method: the inferred capture timestamp (Unix ms,
+     *  noon local — matching the capture-date dialog's date-only commit) and a
+     *  short ISO label, or null when no default is configured or [filename] has
+     *  no match. Drives the grid/list right-click "Set Capture Date to …". */
+    fun inferDefault(filename: String): Pair<Long, String>? {
+        if (!defaultEnabled()) return null
+        val date = inferDate(filename, defaultFormat(), defaultPosition()) ?: return null
+        val ms = date.atTime(12, 0)
+            .atZone(java.time.ZoneId.systemDefault())
+            .toInstant().toEpochMilli()
+        return ms to date.toString()
+    }
+
     fun formatLabel(value: String): String =
         FORMATS.firstOrNull { it.first == value }?.second ?: value
 
