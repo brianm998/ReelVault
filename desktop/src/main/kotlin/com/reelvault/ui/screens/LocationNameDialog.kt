@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindow
 import androidx.compose.ui.window.rememberDialogState
+import com.reelvault.requestFocusSafely
 import com.reelvault.ui.theme.AccentScheme
 import com.reelvault.ui.theme.ReelVaultTheme
 
@@ -95,7 +96,14 @@ fun LocationNameDialog(
                             .fillMaxWidth()
                             .focusRequester(focus),
                     )
-                    LaunchedEffect(Unit) { focus.requestFocus() }
+                    // requestFocusSafely, not raw requestFocus: this dialog
+                    // floats over the map's heavyweight JXMapViewer peer, so on
+                    // open the AWT focus tree can be mid-hand-off and requestFocus()
+                    // throws ("no active focus target" / "ActiveParent with no
+                    // focused child") straight off the EDT — which surfaced as an
+                    // error dialog that took the app down on dismiss. Swallow the
+                    // transient race; the field focuses on the next event.
+                    LaunchedEffect(Unit) { focus.requestFocusSafely() }
 
                     Spacer(Modifier.weight(1f))
 

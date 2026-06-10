@@ -139,10 +139,17 @@ enum class ViewMode { GRID, LIST, DETAIL, MAP }
  * (IllegalArgumentException) or hit a not-yet-attached target
  * (IllegalStateException) — both on the EDT, which kills the app. The
  * orphaned-focus state is self-correcting on the next event, so skipping one
- * reclaim attempt is far better than crashing. Used for every root-focus
- * reclaim (the focus-reclaim Box and the Escape handler).
+ * reclaim attempt is far better than crashing. Used for every focus request
+ * that can race a heavyweight-peer focus hand-off: the root-focus reclaim (the
+ * focus-reclaim Box and the Escape handler) and the map's Name/Rename-location
+ * dialog auto-focusing its field (see [com.reelvault.ui.screens.LocationNameDialog]).
+ *
+ * `internal` (not `private`) so dialogs in other files can reuse it. The global
+ * [installEdtFocusCrashGuard] only catches the `IllegalStateException` variant
+ * thrown from event dispatch; this wrapper also catches the `IllegalArgument`
+ * variant a direct `requestFocus()` can throw, so it must guard every call site.
  */
-private fun FocusRequester.requestFocusSafely() {
+internal fun FocusRequester.requestFocusSafely() {
     try {
         requestFocus()
     } catch (_: IllegalArgumentException) {
