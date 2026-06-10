@@ -2638,6 +2638,12 @@ class GridViewModel: ObservableObject {
             }
             NSLog("Updated location on \(ok)/\(finalIds.count) video(s)")
             videoLocations = await repository.listVideosWithLocations()
+            // Reload from the first page. Without resetting currentPage, a
+            // stale page offset (advanced by earlier loadMore() calls) would
+            // query past the end of the now-smaller filtered result set and
+            // come back empty — blanking the whole grid instead of just
+            // dropping the relocated cards. Mirrors Kotlin's reloadFromTop.
+            currentPage = 0
             await loadCurrentPage(replace: true)
             onComplete()
         }
@@ -2671,6 +2677,10 @@ class GridViewModel: ObservableObject {
             }
             NSLog("Updated capture date on \(ok)/\(videoIds.count) video(s)")
             refreshMetadataFacets()
+            // Reset to the first page before reloading (see setVideoLocations):
+            // a capture-date edit can push a video out of an active year filter,
+            // and a stale page offset would otherwise blank the grid.
+            currentPage = 0
             await loadCurrentPage(replace: true)
             onComplete()
         }
@@ -2695,6 +2705,8 @@ class GridViewModel: ObservableObject {
             NSLog("Set inferred capture date on \(ok)/\(perVideo.count) video(s)")
             if ok > 0 {
                 refreshMetadataFacets()
+                // Reset to the first page before reloading (see setVideoLocations).
+                currentPage = 0
                 await loadCurrentPage(replace: true)
             }
             onComplete()
