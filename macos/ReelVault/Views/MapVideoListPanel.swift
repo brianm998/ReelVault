@@ -20,6 +20,9 @@ struct MapVideoListPanel: View {
     /// Name of the selected location when it resolves to a named place — shown
     /// in the header instead of the generic "here". Nil for an unnamed spot.
     let locationName: String?
+    /// Minimum card width — drives the adaptive column count so widening the
+    /// panel adds columns (like the grid) instead of enlarging cards.
+    let thumbnailMinWidth: CGFloat
     let currentVideoId: String?
     let onCardClick: (VideoSummary) -> Void
     let onOpenInGrid: (VideoSummary) -> Void
@@ -27,7 +30,9 @@ struct MapVideoListPanel: View {
     let onOpenInDetail: (VideoSummary) -> Void
     let onCollapse: () -> Void
 
-    private let columns = [GridItem(.flexible())]
+    private var columns: [GridItem] {
+        [GridItem(.adaptive(minimum: thumbnailMinWidth), spacing: 8)]
+    }
 
     /// "N videos at <name>" for a named place, "N videos here" otherwise; the
     /// place name (or a generic prompt) when nothing's resolved yet.

@@ -1732,6 +1732,7 @@ fun ReelVaultApp(
                                 // still being resolved (and none are showing yet).
                                 loading = sel.isNotEmpty() && mapPanelVideos.isEmpty() && mapLocLoading,
                                 locationName = mapLocationName,
+                                cardMinWidth = thumbnailWidth,
                                 thumbnails = gridViewModel.thumbnails.collectAsState().value,
                                 scrubFrames = gridViewModel.scrubFrames.collectAsState().value,
                                 currentVideoId = gridViewModel.selectedVideoId.collectAsState().value,

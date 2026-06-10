@@ -7,8 +7,9 @@ import androidx.compose.foundation.ContextMenuArea
 import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -19,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.reelvault.data.models.VideoSummary
 import com.reelvault.ui.components.VideoCard
@@ -44,6 +46,9 @@ fun MapVideoListPanel(
     /** Name of the selected location when it resolves to a named place — shown
      *  in the header instead of the generic "here". Null for an unnamed spot. */
     locationName: String?,
+    /** Minimum card width — drives the adaptive column count so widening the
+     *  panel adds columns (like the grid) instead of enlarging cards. */
+    cardMinWidth: Dp,
     thumbnails: Map<String, ByteArray>,
     scrubFrames: Map<String, List<ByteArray?>>,
     currentVideoId: String?,
@@ -136,9 +141,14 @@ fun MapVideoListPanel(
                 }
             }
         } else {
-            LazyColumn(
+            LazyVerticalGrid(
+                // Adaptive columns: widening the panel introduces another column
+                // once there's room for one more `cardMinWidth`-wide card, rather
+                // than stretching the cards — matching the grid view.
+                columns = GridCells.Adaptive(minSize = cardMinWidth),
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(ReelVaultSpacing.Small),
+                horizontalArrangement = Arrangement.spacedBy(ReelVaultSpacing.Small),
                 verticalArrangement = Arrangement.spacedBy(ReelVaultSpacing.Small),
             ) {
                 items(videos, key = { it.id }) { video ->

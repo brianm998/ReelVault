@@ -1076,6 +1076,7 @@ struct ContentView: View {
                         loading: !selSet.isEmpty && mapVideos.isEmpty
                             && gridViewModel.isLoadingVideoLocations,
                         locationName: mapLocationName,
+                        thumbnailMinWidth: CGFloat(thumbnailWidth),
                         currentVideoId: gridViewModel.selectedVideoId,
                         onCardClick: { openMapVideo($0, in: .map) },
                         onOpenInGrid: { openMapVideo($0, in: .grid) },
