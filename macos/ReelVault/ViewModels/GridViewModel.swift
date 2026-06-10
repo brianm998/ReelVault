@@ -2506,20 +2506,34 @@ class GridViewModel: ObservableObject {
             // both on the grid representatives and on cached stack members
             // (so the badge shows on every card when the stack is expanded).
             let idSet = Set(finalIds)
-            videos = videos.map { v in
+            // Optimistically apply the new GPS, then drop any video the change
+            // pushes out of the active filter (e.g. it gained a location under
+            // "location: no", or lost one under "location: yes"). Doing it here
+            // — rather than leaning on the background reload — keeps the grid
+            // correct the instant the location is set: the located card leaves
+            // and the section's remaining unlocated videos stay put, instead of
+            // the whole grid blanking until the user re-picks the library
+            // section. The reload below still reconciles against the server.
+            let relocated = videos.map { v in
                 idSet.contains(v.id) ? v.withLocation(latitude: latitude, longitude: longitude) : v
             }
+            let keptVideos = relocated.filter { summaryMatchesLocalFilters($0) }
+            let droppedCount = relocated.count - keptVideos.count
+            videos = keptVideos
+            if droppedCount > 0 {
+                totalCount = max(0, totalCount - Int64(droppedCount))
+            }
             expandedGroupMembers = expandedGroupMembers.mapValues { members in
-                members.map { v in
-                    idSet.contains(v.id) ? v.withLocation(latitude: latitude, longitude: longitude) : v
-                }
+                members
+                    .map { v in
+                        idSet.contains(v.id) ? v.withLocation(latitude: latitude, longitude: longitude) : v
+                    }
+                    .filter { summaryMatchesLocalFilters($0) }
             }
             // Mirror the optimistic GPS change onto the cached selection summary,
             // then drop the selection if the just-changed video no longer passes
-            // the active filter — e.g. giving it a location under "location: no"
-            // (or clearing one under "location: yes"). Without this the grid hides
-            // the card but the inspector strands its stale details. Same intent as
-            // the filter-change path's clearSelectionIfFilteredOut().
+            // the active filter, so the inspector doesn't strand its stale
+            // details. Same intent as the filter-change clearSelectionIfFilteredOut().
             if let sel = selectedVideo, idSet.contains(sel.id) {
                 selectedVideo = sel.withLocation(latitude: latitude, longitude: longitude)
             }
