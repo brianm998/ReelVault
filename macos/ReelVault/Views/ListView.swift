@@ -489,8 +489,14 @@ struct VideoListRowView: View {
     @State private var hoverX: CGFloat? = nil
     @State private var avPlayer: AVPlayer? = nil
     /// Top-stat-band slot whose picker popover is currently open, or
-    /// `nil` if none. Same single-source pattern as the grid card.
+    /// `nil` if none. Same single-source pattern as the grid card. Used by
+    /// the info-column `statCell`.
     @State private var openSlotPickerIndex: Int? = nil
+    /// Separate picker index for the on-card top band. The band and the info
+    /// column both render slot indices 0–3, so they can't share one popover
+    /// Bool — the same index would fire two popovers at once. Both still write
+    /// through the same `onPickStatSlot`.
+    @State private var openBandSlotPickerIndex: Int? = nil
 
     private var video: VideoSummary { item.video }
     private var isStackChild: Bool { item.isStackChild }
@@ -721,7 +727,11 @@ struct VideoListRowView: View {
             ForEach(GridStatKey.allCases) { choice in
                 Button {
                     onPickStatSlot(slotIndex, choice.rawValue)
+                    // Dismiss whichever popover opened this menu — the info
+                    // column's statCell or the on-card top band. Only one is
+                    // ever set, so clearing both is safe.
                     openSlotPickerIndex = nil
+                    openBandSlotPickerIndex = nil
                 } label: {
                     HStack(spacing: 6) {
                         Group {
@@ -780,6 +790,22 @@ struct VideoListRowView: View {
             .lineLimit(1)
             .truncationMode(.middle)
             .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
+            // Click-to-configure, matching the grid card's top band and this
+            // row's info column — the four on-card slots must be pickable in
+            // list view too (parity with the Kotlin client). Uses its own
+            // picker-index state so it doesn't collide with the info column.
+            .contentShape(Rectangle())
+            .onTapGesture { openBandSlotPickerIndex = slotIndex }
+            .popover(
+                isPresented: Binding(
+                    get: { openBandSlotPickerIndex == slotIndex },
+                    set: { if !$0 { openBandSlotPickerIndex = nil } }
+                ),
+                arrowEdge: .bottom
+            ) {
+                statPickerMenu(slotIndex: slotIndex, currentStat: stat)
+            }
+            .help("Click to choose which stat is shown in this slot")
     }
 
     /// Bottom band: 5 tappable star/dot positions, matching the grid card's
