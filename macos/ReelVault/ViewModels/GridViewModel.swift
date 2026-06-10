@@ -73,9 +73,11 @@ class GridViewModel: ObservableObject {
     @Published var hasMore = false
     @Published var searchQuery = ""
 
-    // Sort
-    @Published var sortBy: String = "indexed_at"
-    @Published var sortAscending: Bool = false
+    // Sort — loaded from UserDefaults so the user's last choice survives a
+    // relaunch (written back in `setSort`). Defaults match a fresh install
+    // (newest-indexed first).
+    @Published var sortBy: String = SortPrefs.loadField()
+    @Published var sortAscending: Bool = SortPrefs.loadAscending()
 
     // Library locations / filter
     @Published var libraryLocations: [LibraryLocation] = []
@@ -647,6 +649,8 @@ class GridViewModel: ObservableObject {
     func setSort(_ field: String, ascending: Bool) {
         sortBy = field
         sortAscending = ascending
+        // Persist so the next launch restores this sort (see property init).
+        SortPrefs.save(field: field, ascending: ascending)
         reloadForFilterChange()
     }
 
@@ -2601,5 +2605,28 @@ private enum LibraryFilterPrefs {
     static func saveColumns(_ cols: [MetadataColumn]) {
         let joined = cols.filter { !$0.key.isEmpty }.map(\.key).joined(separator: ",")
         UserDefaults.standard.set(joined, forKey: key)
+    }
+}
+
+/// Persists the grid sort (field + direction) across sessions, so the app
+/// reopens with the same ordering the user last chose. Mirrors the desktop
+/// client, which stores the same two values in Java `Preferences`.
+private enum SortPrefs {
+    private static let fieldKey = "reelvault.sort.field"
+    private static let ascendingKey = "reelvault.sort.ascending"
+
+    static func loadField() -> String {
+        let raw = UserDefaults.standard.string(forKey: fieldKey) ?? ""
+        return raw.isEmpty ? "indexed_at" : raw
+    }
+
+    static func loadAscending() -> Bool {
+        // Absent key → false (descending), matching a fresh install.
+        UserDefaults.standard.bool(forKey: ascendingKey)
+    }
+
+    static func save(field: String, ascending: Bool) {
+        UserDefaults.standard.set(field, forKey: fieldKey)
+        UserDefaults.standard.set(ascending, forKey: ascendingKey)
     }
 }

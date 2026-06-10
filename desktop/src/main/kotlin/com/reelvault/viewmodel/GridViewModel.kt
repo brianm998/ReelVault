@@ -26,6 +26,11 @@ import java.util.prefs.Preferences
  */
 private const val POST_INDEX_LINGER_MS = 3_500L
 
+/** uiPrefs keys for the persisted grid sort (field + direction). Kept here so
+ *  the load (property init) and save ([GridViewModel.setSort]) can't drift. */
+private const val PREF_SORT_FIELD = "sortField"
+private const val PREF_SORT_ASCENDING = "sortAscending"
+
 /** Arrow-key navigation direction in the grid / list. */
 enum class NavDirection { Up, Down, Left, Right }
 
@@ -132,8 +137,11 @@ class GridViewModel(
     // Pagination
     private val pageSize = 50
     private var currentPage = 0
-    private var sortBy = "indexed_at"
-    private var sortAscending = false
+    // Sort field + direction. Loaded from uiPrefs so the user's last choice
+    // survives restarts; written back in [setSort]. Defaults match a fresh
+    // install (newest-indexed first).
+    private var sortBy = uiPrefs.get(PREF_SORT_FIELD, "indexed_at")
+    private var sortAscending = uiPrefs.getBoolean(PREF_SORT_ASCENDING, false)
     private var filterTags = emptyList<String>()
     private var collectionId: String? = null
     // Library Filter "text" mode. A StateFlow so the editor can bind to it and
@@ -993,6 +1001,9 @@ class GridViewModel(
         sortAscending = ascending
         _currentSortField.value = field
         _currentSortAscending.value = ascending
+        // Persist so the next launch restores this sort (see property init).
+        uiPrefs.put(PREF_SORT_FIELD, field)
+        uiPrefs.putBoolean(PREF_SORT_ASCENDING, ascending)
         reloadForFilterChange()
     }
 
