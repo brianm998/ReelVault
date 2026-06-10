@@ -106,8 +106,13 @@ fun LocationPickerDialog(
 
     val pins = remember(pinLat, pinLon, secondaryLocations, showExisting, namedLocations, matched) {
         buildList {
+            // Re-use pins are drawn as the same accent video pins the map view
+            // uses (clustered, labelled with the place name, big click target),
+            // so the picker and the map read identically.
+            //
             // Named places always render (they're the recommended re-use
-            // surface) regardless of the show-existing toggle.
+            // surface) regardless of the show-existing toggle, labelled with
+            // their name.
             for (n in namedLocations) {
                 add(
                     MapPin(
@@ -115,12 +120,13 @@ fun LocationPickerDialog(
                         latitude = n.latitude,
                         longitude = n.longitude,
                         label = n.name,
-                        style = MapPinStyle.NAMED,
+                        style = MapPinStyle.PRIMARY,
                     )
                 )
             }
-            // Secondary video pins, skipping ones already covered by a
-            // named pin within 250 m.
+            // Other videos' locations, skipping ones already covered by a
+            // named pin within 250 m. Unnamed spots carry no label, exactly
+            // like the map view; the painter clusters co-located ones.
             if (showExisting) {
                 for (loc in secondaryLocations) {
                     val nearby = nearestNamedLocation(loc.latitude, loc.longitude, namedLocations)
@@ -130,12 +136,15 @@ fun LocationPickerDialog(
                             id = "existing-${loc.id}",
                             latitude = loc.latitude,
                             longitude = loc.longitude,
-                            label = "%.4f, %.4f".format(loc.latitude, loc.longitude),
-                            style = MapPinStyle.SECONDARY,
+                            label = "",
+                            style = MapPinStyle.PRIMARY,
+                            memberIds = listOf(loc.id),
                         )
                     )
                 }
             }
+            // The candidate keeps a distinct accent marker (a centre-dotted
+            // pin) so the user's current pick reads apart from the re-use pins.
             val lat = pinLat; val lon = pinLon
             if (lat != null && lon != null) {
                 add(
@@ -144,7 +153,7 @@ fun LocationPickerDialog(
                         latitude = lat,
                         longitude = lon,
                         label = matched?.name ?: "%.4f, %.4f".format(lat, lon),
-                        style = MapPinStyle.PRIMARY,
+                        style = MapPinStyle.CANDIDATE,
                     )
                 )
             }
@@ -189,6 +198,9 @@ fun LocationPickerDialog(
                         pins = pins,
                         initialCenter = initLat to initLon,
                         initialZoom = initZoom,
+                        // Same accent the map view uses, so the picker's re-use
+                        // pins match it exactly.
+                        pinColor = MaterialTheme.colorScheme.primary,
                         onMapClick = { lat, lon ->
                             pinLat = lat
                             pinLon = lon

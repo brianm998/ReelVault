@@ -11,10 +11,12 @@ import MapKit
 /// Kotlin desktop client and isn't a webview.
 ///
 /// Two re-use mechanisms surface every coordinate the catalog already
-/// knows about:
-///   * **Secondary video pins** — other videos' GPS, as small gray dots.
-///   * **Named-place pins** — user-defined places (e.g. "Home"), shown as
-///     teal tags with the name always visible next to the marker.
+/// knows about, both drawn as the same accent video pins the map view uses
+/// (so the picker and the map look identical and the pins are easy to click):
+///   * **Existing video pins** — other videos' GPS, grouped per spot with a
+///     count, just like the map.
+///   * **Named-place pins** — user-defined places (e.g. "Home"), labelled
+///     with the name.
 ///
 /// Tapping either kind of pin promotes its coordinate to the candidate;
 /// a text field below the map lets the user attach (or rename) a name on
@@ -40,6 +42,9 @@ struct LocationPickerView: View {
     /// The caller is responsible for upserting that name into the
     /// named_locations table and for updating each target video's GPS.
     let onApply: (_ latitude: Double, _ longitude: Double, _ writeToFile: Bool, _ name: String?) -> Void
+    /// Accent color for the re-use video pins — matches the map view's pins so
+    /// the picker looks identical. The candidate marker keeps its own accent.
+    let pinColor: NSColor
 
     @State private var candidate: CLLocationCoordinate2D?
     @State private var writeToFile: Bool = false
@@ -68,11 +73,13 @@ struct LocationPickerView: View {
         initialLocation: CLLocationCoordinate2D?,
         existingLocations: [VideoLocation] = [],
         namedLocations: [NamedLocation] = [],
+        pinColor: NSColor = .controlAccentColor,
         onCancel: @escaping () -> Void,
         onApply: @escaping (Double, Double, Bool, String?) -> Void
     ) {
         self.targetVideoIds = targetVideoIds
         self.initialLocation = initialLocation
+        self.pinColor = pinColor
         // Filter target IDs out of the secondary pin set — it'd be odd to
         // offer "the video's current location" as a pick when it's also the
         // candidate we already pre-populated.
@@ -134,7 +141,7 @@ struct LocationPickerView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Show \(existingLocations.count) already-known location\(existingLocations.count == 1 ? "" : "s")")
                             .font(.body)
-                        Text("Faint gray pins are the catalog's existing GPS coordinates from other videos. Click one to re-use it for the selected video\(targetVideoIds.count == 1 ? "" : "s").")
+                        Text("These pins mark the catalog's existing GPS coordinates from other videos. Click one to re-use it for the selected video\(targetVideoIds.count == 1 ? "" : "s").")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -155,11 +162,12 @@ struct LocationPickerView: View {
                 onMapClick: { coord in setCandidate(coord) },
                 onPinClick: { pin in
                     // Tapping the candidate pin itself is a no-op; tapping
-                    // any other pin (named place or secondary video pin)
+                    // any other pin (named place or existing video location)
                     // snaps the candidate to its coordinate.
                     if pin.id == "candidate" { return }
                     setCandidate(pin.coordinate)
-                }
+                },
+                pinColor: pinColor
             )
             .frame(height: 440)
             .cornerRadius(8)
@@ -275,38 +283,47 @@ struct LocationPickerView: View {
 
     private var composedPins: [OSMMapPin] {
         var pins: [OSMMapPin] = []
-        // Named places ALWAYS render (regardless of the toggle) — they're
-        // the recommended re-use surface.
+        // Re-use pins are drawn exactly like the map view's video pins — an
+        // accent circle with the place name (when known) and a big, easy click
+        // target — so the picker and the map read identically and re-using a
+        // spot is a single confident click.
+        //
+        // Named places ALWAYS render (regardless of the toggle) — they're the
+        // recommended re-use surface — labelled with their name.
         for n in namedLocations {
             pins.append(OSMMapPin(
                 id: "named-\(n.id)",
                 coordinate: CLLocationCoordinate2D(
                     latitude: n.latitude, longitude: n.longitude),
                 label: n.name,
-                style: .named
+                style: .video
             ))
         }
-        // Secondary video pins, with a label showing their coordinate.
-        // Skipped when one is within a named location's radius — that
-        // named pin already covers them visually.
+        // Other videos' locations, grouped per coordinate like the map view so
+        // co-located clips collapse into one counted pin. A group sitting on a
+        // named place is skipped — that named pin already marks the spot.
         if showExistingLocations {
-            for loc in existingLocations {
-                let nearby = Self.nearestNamedLocation(
-                    to: CLLocationCoordinate2D(
-                        latitude: loc.latitude, longitude: loc.longitude),
-                    in: namedLocations
-                )
-                if nearby != nil { continue }
+            let groups = Dictionary(grouping: existingLocations) { loc in
+                "\(Int((loc.latitude * 1e5).rounded()))_\(Int((loc.longitude * 1e5).rounded()))"
+            }
+            for group in groups.values {
+                let first = group[0]
+                let coord = CLLocationCoordinate2D(
+                    latitude: first.latitude, longitude: first.longitude)
+                if Self.nearestNamedLocation(to: coord, in: namedLocations) != nil { continue }
                 pins.append(OSMMapPin(
-                    id: "existing-\(loc.id)",
-                    coordinate: CLLocationCoordinate2D(
-                        latitude: loc.latitude, longitude: loc.longitude),
-                    label: String(format: "%.4f, %.4f",
-                                  loc.latitude, loc.longitude),
-                    style: .secondary
+                    id: "existing-\(first.id)",
+                    coordinate: coord,
+                    // Unnamed spot → no label, exactly like the map view.
+                    label: "",
+                    clusteredCount: group.count,
+                    style: .video,
+                    memberIds: group.map { $0.id }
                 ))
             }
         }
+        // The candidate keeps a distinct accent marker (a dropped pin, not a
+        // circle) so the user's current pick reads apart from the re-use pins.
         if let c = candidate {
             let matched = Self.nearestNamedLocation(to: c, in: namedLocations)
             pins.append(OSMMapPin(

@@ -31,14 +31,17 @@ import java.awt.event.MouseEvent
 import javax.swing.JSlider
 
 /**
- * Visual weight for a pin. PRIMARY is the user's active selection (drawn
- * larger, accent-colored); SECONDARY is a re-usable known location pulled
- * from the catalog (drawn smaller, gray); NAMED is a user-defined place
- * with a name permanently visible next to the marker (teal, with label).
- * The [ClusterPainter] keeps the three pools separate so the candidate
- * never gets folded into a cluster of "everything else".
+ * Visual weight for a pin. PRIMARY is a video location — accent-colored,
+ * clustered, and labelled with its place name when known. The global map and
+ * the location picker's re-usable existing/named locations both use it, so the
+ * two render identically. CANDIDATE is the location picker's active pick: the
+ * same accent circle plus a white centre dot so it reads apart from the re-use
+ * pins, kept in its own pool so it never folds into a cluster. SECONDARY (gray
+ * dot) and NAMED (teal tag) are older picker styles retained for reuse.
+ * The [ClusterPainter] keeps each pool separate so the candidate never gets
+ * folded into a cluster of "everything else".
  */
-enum class MapPinStyle { PRIMARY, SECONDARY, NAMED }
+enum class MapPinStyle { PRIMARY, SECONDARY, NAMED, CANDIDATE }
 
 /**
  * One pin on the map: a video (or cluster of videos) at a GPS coordinate.
@@ -429,13 +432,14 @@ private class ClusterPainter(private val holder: MapHolder) : Painter<JXMapViewe
         val tileFactory = viewer.tileFactory
         val zoom = viewer.zoom
 
-        // Render order: secondary (gray) underneath, then named (teal with
-        // labels), then primary (candidate) on top. Hit-test order is the
-        // reverse so primary > named > secondary when clicks overlap.
+        // Render order: secondary (gray) underneath, then named, then the
+        // video pins (primary), then the candidate on top. Hit-test order is
+        // the reverse so candidate > primary > named > secondary on overlap.
         val rendered = mutableListOf<RenderedPin>()
         val secondary = pins.filter { it.style == MapPinStyle.SECONDARY }
         val named = pins.filter { it.style == MapPinStyle.NAMED }
         val primary = pins.filter { it.style == MapPinStyle.PRIMARY }
+        val candidate = pins.filter { it.style == MapPinStyle.CANDIDATE }
 
         val secondaryRender = paintLayer(
             g2, viewport, tileFactory, zoom, width, height,
@@ -449,8 +453,13 @@ private class ClusterPainter(private val holder: MapHolder) : Painter<JXMapViewe
             g2, viewport, tileFactory, zoom, width, height,
             pins = primary, style = MapPinStyle.PRIMARY
         )
-        // Primary first so click hit-test (firstOrNull) hits the candidate
-        // before named pins, then named, then secondary.
+        val candidateRender = paintLayer(
+            g2, viewport, tileFactory, zoom, width, height,
+            pins = candidate, style = MapPinStyle.CANDIDATE
+        )
+        // Candidate first so click hit-test (firstOrNull) hits it before the
+        // video pins, then named, then secondary.
+        rendered.addAll(candidateRender)
         rendered.addAll(primaryRender)
         rendered.addAll(namedRender)
         rendered.addAll(secondaryRender)
@@ -530,7 +539,9 @@ private class ClusterPainter(private val holder: MapHolder) : Painter<JXMapViewe
                     memberIds = cluster.members.flatMap { it.memberIds },
                 )
             val fill = when (style) {
-                MapPinStyle.PRIMARY -> holder.pinColor // user's accent color
+                // Video pins and the candidate both use the user's accent, so
+                // the picker's re-use pins match the map's.
+                MapPinStyle.PRIMARY, MapPinStyle.CANDIDATE -> holder.pinColor
                 // Soft gray — present but recessive, so the candidate
                 // remains the obvious eye-catcher.
                 MapPinStyle.SECONDARY -> AwtColor(0x9E9E9E)
@@ -542,6 +553,9 @@ private class ClusterPainter(private val holder: MapHolder) : Painter<JXMapViewe
             val radius = when (style) {
                 MapPinStyle.SECONDARY -> 7
                 MapPinStyle.NAMED -> 10
+                // The candidate is a single pick — give it the unclustered
+                // video-pin size (a touch larger, with a centre dot below).
+                MapPinStyle.CANDIDATE -> 11
                 MapPinStyle.PRIMARY -> when {
                     displayCount <= 1 -> 10
                     displayCount < 10 -> 14
@@ -553,6 +567,14 @@ private class ClusterPainter(private val holder: MapHolder) : Painter<JXMapViewe
             g2.color = AwtColor.WHITE
             g2.stroke = BasicStroke(2f)
             g2.drawOval(sx - radius, sy - radius, radius * 2, radius * 2)
+
+            // The candidate carries a white centre dot so the user's active
+            // pick reads apart from the plain accent re-use circles.
+            if (style == MapPinStyle.CANDIDATE) {
+                val dot = 4
+                g2.color = AwtColor.WHITE
+                g2.fillOval(sx - dot, sy - dot, dot * 2, dot * 2)
+            }
 
             if (drawNumber && displayCount > 1) {
                 val text = displayCount.toString()
@@ -572,7 +594,9 @@ private class ClusterPainter(private val holder: MapHolder) : Painter<JXMapViewe
             // its screen rect so a click on the label still selects the pin.
             var labelBounds: java.awt.Rectangle? = null
             val drawLabel = displayPin.label.isNotEmpty() && (
-                style == MapPinStyle.NAMED || style == MapPinStyle.PRIMARY
+                style == MapPinStyle.NAMED ||
+                    style == MapPinStyle.PRIMARY ||
+                    style == MapPinStyle.CANDIDATE
             )
             if (drawLabel) {
                 val label = displayPin.label

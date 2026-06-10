@@ -255,6 +255,9 @@ struct ContentView: View {
                 initialLocation: locationPickerInitial,
                 existingLocations: gridViewModel.videoLocations,
                 namedLocations: gridViewModel.namedLocations,
+                // Same accent the map view uses, so the picker's re-use pins
+                // match it exactly.
+                pinColor: accentScheme == "purple" ? .systemPurple : .systemBlue,
                 onCancel: {
                     locationPickerTargets = nil
                     locationPickerInitial = nil
