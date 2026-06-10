@@ -46,6 +46,7 @@ struct LibraryFilterBar: View {
                     case .text:      LibraryFilterTextEditor(vm: vm)
                     case .attribute: LibraryFilterAttributeEditor(vm: vm, hideLocationOption: hideLocationOption)
                     case .metadata:  LibraryFilterMetadataEditor(vm: vm, height: metadataHeight)
+                    case .location:  LibraryFilterLocationEditor(vm: vm)
                     case .clear:     EmptyView()
                     }
                 }
@@ -219,6 +220,60 @@ private struct LibraryFilterTextEditor: View {
 /// (location / keywords / proxies / full resolution), then rating + colour.
 /// Each presence selector shows only its current value and opens a pop-up
 /// menu with the other choices on click.
+/// Library Filter "Location" editor: a horizontally-scrolling strip of the
+/// catalog's known places — named ones, or a coordinate when unnamed — each
+/// with its video count. Clicking one narrows the grid/list to videos at that
+/// spot (a proximity filter); clicking the active one clears it.
+private struct LibraryFilterLocationEditor: View {
+    @ObservedObject var vm: GridViewModel
+    var body: some View {
+        Group {
+            if vm.filterLocationGroups.isEmpty {
+                Text("No geotagged videos in the catalog yet.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(8)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(vm.filterLocationGroups) { g in
+                            let isActive = vm.filterLocation.map {
+                                abs($0.latitude - g.latitude) < 1e-6 &&
+                                    abs($0.longitude - g.longitude) < 1e-6
+                            } ?? false
+                            Button {
+                                if isActive {
+                                    vm.setLocationFilter(latitude: nil, longitude: nil)
+                                } else {
+                                    vm.setLocationFilter(latitude: g.latitude,
+                                                         longitude: g.longitude,
+                                                         radiusKm: g.radiusKm)
+                                }
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: g.isNamed ? "mappin.circle.fill" : "location.circle")
+                                    Text("\(g.label)  ·  \(g.count)")
+                                }
+                                .font(.system(size: 11))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(isActive ? Color.accentColor : Color.secondary.opacity(0.15),
+                                            in: Capsule())
+                                .foregroundColor(isActive ? .white : .primary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                }
+            }
+        }
+        .task { vm.loadFilterLocations() }
+    }
+}
+
 private struct LibraryFilterAttributeEditor: View {
     @ObservedObject var vm: GridViewModel
     var hideLocationOption: Bool = false

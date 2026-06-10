@@ -58,6 +58,10 @@ fun MapVideoListPanel(
     onOpenInGrid: (VideoSummary) -> Unit,
     onOpenInList: (VideoSummary) -> Unit,
     onOpenInDetail: (VideoSummary) -> Unit,
+    /** Right-click the header → open every video at this location in the
+     *  grid / list view (a location filter takes the user there). */
+    onOpenAllInGrid: () -> Unit,
+    onOpenAllInList: () -> Unit,
     onCollapse: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -77,20 +81,29 @@ fun MapVideoListPanel(
                 .padding(horizontal = ReelVaultSpacing.Medium, vertical = ReelVaultSpacing.Small),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = when {
-                    // A selected named place reads by its name instead of "here".
-                    videos.isNotEmpty() && locationName != null ->
-                        "${videos.size} video${if (videos.size == 1) "" else "s"} at $locationName"
-                    videos.isNotEmpty() ->
-                        "${videos.size} video${if (videos.size == 1) "" else "s"} here"
-                    loading -> "Loading…"
-                    locationName != null -> locationName
-                    else -> "Selected location"
-                },
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            // Right-click the header to open this location's videos in the grid
+            // or list view (only meaningful when a location is actually selected).
+            ContextMenuArea(items = {
+                if (videos.isNotEmpty()) listOf(
+                    ContextMenuItem("Open in Grid view") { onOpenAllInGrid() },
+                    ContextMenuItem("Open in List view") { onOpenAllInList() },
+                ) else emptyList()
+            }) {
+                Text(
+                    text = when {
+                        // A selected named place reads by its name instead of "here".
+                        videos.isNotEmpty() && locationName != null ->
+                            "${videos.size} video${if (videos.size == 1) "" else "s"} at $locationName"
+                        videos.isNotEmpty() ->
+                            "${videos.size} video${if (videos.size == 1) "" else "s"} here"
+                        loading -> "Loading…"
+                        locationName != null -> locationName
+                        else -> "Selected location"
+                    },
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            }
             Spacer(modifier = Modifier.weight(1f))
             com.reelvault.ui.components.Tooltip(text = "Hide this panel (Tab)") {
                 IconButton(onClick = onCollapse) {

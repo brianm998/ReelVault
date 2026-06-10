@@ -1742,6 +1742,14 @@ fun ReelVaultApp(
                                 onOpenInGrid = { openMapVideoInView(it, ViewMode.GRID) },
                                 onOpenInList = { openMapVideoInView(it, ViewMode.LIST) },
                                 onOpenInDetail = { openMapVideoInView(it, ViewMode.DETAIL) },
+                                onOpenAllInGrid = {
+                                    gridViewModel.filterToVideosLocation(mapSelectedVideoIds)
+                                    viewMode = ViewMode.GRID
+                                },
+                                onOpenAllInList = {
+                                    gridViewModel.filterToVideosLocation(mapSelectedVideoIds)
+                                    viewMode = ViewMode.LIST
+                                },
                                 onCollapse = { setRightPanelExpanded(false) },
                                 modifier = Modifier
                                     .width(rightPanelWidth.dp)

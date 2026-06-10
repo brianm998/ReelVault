@@ -28,6 +28,10 @@ struct MapVideoListPanel: View {
     let onOpenInGrid: (VideoSummary) -> Void
     let onOpenInList: (VideoSummary) -> Void
     let onOpenInDetail: (VideoSummary) -> Void
+    /// Right-click the header → open every video at this location in the
+    /// grid / list view (a location filter takes the user there).
+    let onOpenAllInGrid: () -> Void
+    let onOpenAllInList: () -> Void
     let onCollapse: () -> Void
 
     private var columns: [GridItem] {
@@ -53,6 +57,13 @@ struct MapVideoListPanel: View {
             HStack {
                 Text(headerTitle)
                     .font(.headline)
+                    // Right-click to open this location's videos in grid / list.
+                    .contextMenu {
+                        if !videos.isEmpty {
+                            Button("Open in Grid view") { onOpenAllInGrid() }
+                            Button("Open in List view") { onOpenAllInList() }
+                        }
+                    }
                 Spacer()
                 Button { onCollapse() } label: {
                     Image(systemName: "chevron.right")

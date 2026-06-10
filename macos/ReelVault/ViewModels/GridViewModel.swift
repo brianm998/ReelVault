@@ -133,6 +133,11 @@ class GridViewModel: ObservableObject {
     // Geographic proximity filter — set when the user taps a pin on the
     // global map. nil = no proximity filter active.
     @Published var filterLocation: GeoFilter? = nil
+    // Known locations (named places + unnamed coordinate clusters) with video
+    // counts, for the Library Filter's "Location" mode. Refreshed via
+    // `loadFilterLocations` from the full geotagged set so the list isn't itself
+    // narrowed by the active filter.
+    @Published var filterLocationGroups: [LocationFilterGroup] = []
 
     // Snapshot of every geotagged video, refreshed when the user opens
     // the global map view.
@@ -1063,6 +1068,7 @@ class GridViewModel: ObservableObject {
         if !searchQuery.isEmpty { searchQuery = ""; changed = true }
         if filterMinRating != 0 { filterMinRating = 0; changed = true }
         if !filterColorLabel.isEmpty { filterColorLabel = ""; changed = true }
+        if filterLocation != nil { filterLocation = nil; changed = true }
         if filterHasLocation != .any { filterHasLocation = .any; changed = true }
         if filterHasKeywords != .any { filterHasKeywords = .any; changed = true }
         if filterHasProxies != .any { filterHasProxies = .any; changed = true }
@@ -2314,10 +2320,91 @@ class GridViewModel: ObservableObject {
     func setLocationFilter(latitude: Double?, longitude: Double?, radiusKm: Double = 1.0) {
         if let lat = latitude, let lon = longitude {
             filterLocation = GeoFilter(latitude: lat, longitude: lon, radiusKm: radiusKm)
+            // A geographic filter means "videos at this place", which inherently
+            // have a location — drop a stale "location: no" (or "yes") attribute
+            // filter that would otherwise contradict it and blank the grid.
+            filterHasLocation = .any
         } else {
             filterLocation = nil
         }
         reloadForFilterChange()
+    }
+
+    /// Refresh the list of known locations (named places + unnamed coordinate
+    /// clusters) with per-location video counts, for the Library Filter's
+    /// "Location" mode. Always fetches the full geotagged set so the list isn't
+    /// itself narrowed by whatever filter is currently active.
+    func loadFilterLocations() {
+        Task {
+            let locs = await repository.listVideosWithLocations()
+            filterLocationGroups = Self.buildLocationFilterGroups(locs, named: namedLocations)
+        }
+    }
+
+    /// Apply a proximity filter that frames exactly `videoIds` — used by the map
+    /// view's "open these here in grid/list". Centres on their centroid with a
+    /// radius covering the farthest member (plus a small margin), so only that
+    /// spot's videos show; unlocated videos lack coordinates and never match. A
+    /// named place containing the centroid lends its own radius instead.
+    func filterToVideosLocation(_ videoIds: [String]) {
+        let idSet = Set(videoIds)
+        var seen = Set<String>()
+        let pts: [(Double, Double)] = (geotaggedVideos + videos).compactMap { v in
+            guard idSet.contains(v.id), v.hasLocation, !seen.contains(v.id) else { return nil }
+            seen.insert(v.id)
+            return (v.gpsLatitude, v.gpsLongitude)
+        }
+        guard !pts.isEmpty else { return }
+        let cLat = pts.map(\.0).reduce(0, +) / Double(pts.count)
+        let cLon = pts.map(\.1).reduce(0, +) / Double(pts.count)
+        let radiusKm: Double
+        if let named = nameForLocation(latitude: cLat, longitude: cLon) {
+            radiusKm = named.radiusMeters / 1000.0
+        } else {
+            let maxMeters = pts.map {
+                Self.haversineMeters(lat1: cLat, lon1: cLon, lat2: $0.0, lon2: $0.1)
+            }.max() ?? 0
+            radiusKm = max(0.1, maxMeters / 1000.0 + 0.1)
+        }
+        setLocationFilter(latitude: cLat, longitude: cLon, radiusKm: radiusKm)
+    }
+
+    /// Group the catalog's geotagged videos into named places (counted within
+    /// each place's radius) and unnamed coordinate clusters (~110 m buckets),
+    /// with counts, sorted by popularity then label.
+    private static func buildLocationFilterGroups(
+        _ locs: [VideoLocation], named: [NamedLocation]
+    ) -> [LocationFilterGroup] {
+        var groups: [LocationFilterGroup] = []
+        var claimed = Set<String>()
+        for n in named {
+            let members = locs.filter {
+                !claimed.contains($0.id) &&
+                    haversineMeters(lat1: n.latitude, lon1: n.longitude,
+                                    lat2: $0.latitude, lon2: $0.longitude) <= n.radiusMeters
+            }
+            if members.isEmpty { continue }
+            members.forEach { claimed.insert($0.id) }
+            groups.append(LocationFilterGroup(
+                label: n.name, latitude: n.latitude, longitude: n.longitude,
+                radiusKm: n.radiusMeters / 1000.0, count: members.count, isNamed: true))
+        }
+        let remaining = locs.filter { !claimed.contains($0.id) }
+        let buckets = Dictionary(grouping: remaining) {
+            String(format: "%.3f,%.3f", $0.latitude, $0.longitude)
+        }
+        for (_, members) in buckets {
+            let cLat = members.map(\.latitude).reduce(0, +) / Double(members.count)
+            let cLon = members.map(\.longitude).reduce(0, +) / Double(members.count)
+            groups.append(LocationFilterGroup(
+                label: String(format: "%.4f, %.4f", cLat, cLon),
+                latitude: cLat, longitude: cLon,
+                radiusKm: 0.2, count: members.count, isNamed: false))
+        }
+        return groups.sorted {
+            $0.count != $1.count ? $0.count > $1.count
+                : $0.label.lowercased() < $1.label.lowercased()
+        }
     }
 
     /// Refresh the list of geotagged videos used by the global-map view.

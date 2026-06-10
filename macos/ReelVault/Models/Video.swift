@@ -781,16 +781,33 @@ let defaultGridTopSlots: [String] = [
 /// chooses which editor is shown. (Clear is a momentary action handled by the
 /// view model, not a resting mode.)
 enum LibraryFilterMode: String, CaseIterable, Identifiable, Hashable {
-    case text, attribute, metadata, clear
+    // Declaration order drives the selector; "location" sits between metadata
+    // and clear.
+    case text, attribute, metadata, location, clear
     var id: String { rawValue }
     var displayName: String {
         switch self {
         case .text:      return "Text"
         case .attribute: return "Attribute"
         case .metadata:  return "Metadata"
+        case .location:  return "Location"
         case .clear:     return "Clear"
         }
     }
+}
+
+/// One selectable entry in the Library Filter's "Location" mode: a named place
+/// or an unnamed coordinate cluster, with how many catalog videos sit there.
+/// Picking one applies a geographic proximity filter centred on it.
+struct LocationFilterGroup: Identifiable, Hashable {
+    let label: String
+    let latitude: Double
+    let longitude: Double
+    /// Proximity radius (km) to filter by when this entry is chosen.
+    let radiusKm: Double
+    let count: Int
+    let isNamed: Bool
+    var id: String { "\(label)|\(latitude),\(longitude)" }
 }
 
 /// Tri-state presence toggle for a Library Filter "attribute" (video has a

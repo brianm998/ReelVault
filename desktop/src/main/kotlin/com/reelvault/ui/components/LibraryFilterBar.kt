@@ -35,6 +35,8 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CircularProgressIndicator
@@ -51,6 +53,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -138,6 +141,7 @@ fun LibraryFilterBar(
                     LibraryFilterMode.Text -> LibraryTextEditor(viewModel, onSearchFocusChanged)
                     LibraryFilterMode.Attribute -> LibraryAttributeEditor(viewModel, hideLocationOption)
                     LibraryFilterMode.Metadata -> LibraryMetadataEditor(viewModel, metadataHeight.value)
+                    LibraryFilterMode.Location -> LibraryLocationEditor(viewModel)
                     LibraryFilterMode.Clear -> {}
                 }
             }
@@ -163,6 +167,7 @@ private fun LibraryFilterModeSelector(
         LibraryFilterMode.Text to "Text",
         LibraryFilterMode.Attribute to "Attribute",
         LibraryFilterMode.Metadata to "Metadata",
+        LibraryFilterMode.Location to "Location",
         LibraryFilterMode.Clear to "Clear",
     )
     Surface(
@@ -387,6 +392,74 @@ private fun LibraryTextEditor(viewModel: GridViewModel, onSearchFocusChanged: (B
  *  (location / keywords / proxies / full resolution), then rating + colour.
  *  Each presence selector shows only its current value and opens a menu with
  *  the other choices on click. */
+/** Library Filter "Location" editor: a horizontally-scrolling strip of the
+ *  catalog's known places — named ones, or a coordinate when unnamed — each
+ *  with its video count. Clicking one narrows the grid/list to videos at that
+ *  spot (a proximity filter); clicking the active one clears it. */
+@Composable
+private fun LibraryLocationEditor(viewModel: GridViewModel) {
+    val groups by viewModel.filterLocationGroups.collectAsState()
+    val active by viewModel.filterLocation.collectAsState()
+    // Refresh the list from the full catalog whenever this editor appears.
+    LaunchedEffect(Unit) { viewModel.loadFilterLocations() }
+
+    if (groups.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(ReelVaultSpacing.Small),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "No geotagged videos in the catalog yet.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        return
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = ReelVaultSpacing.Small, vertical = ReelVaultSpacing.Small),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(ReelVaultSpacing.Small),
+    ) {
+        groups.forEach { g ->
+            val isActive = active?.let {
+                kotlin.math.abs(it.first - g.latitude) < 1e-6 &&
+                    kotlin.math.abs(it.second - g.longitude) < 1e-6
+            } ?: false
+            val bg = if (isActive) MaterialTheme.colorScheme.primary
+                     else MaterialTheme.colorScheme.surfaceVariant
+            val fg = if (isActive) MaterialTheme.colorScheme.onPrimary
+                     else MaterialTheme.colorScheme.onSurfaceVariant
+            Row(
+                modifier = Modifier
+                    .background(bg, RoundedCornerShape(16.dp))
+                    .clickable {
+                        if (isActive) viewModel.setLocationFilter(null, null)
+                        else viewModel.setLocationFilter(g.latitude, g.longitude, g.radiusKm)
+                    }
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = if (g.isNamed) Icons.Default.Place else Icons.Default.LocationOn,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = fg,
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "${g.label}  ·  ${g.count}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = fg,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun LibraryAttributeEditor(viewModel: GridViewModel, hideLocation: Boolean = false) {
     val minRating by viewModel.filterMinRating.collectAsState()

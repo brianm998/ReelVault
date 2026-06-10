@@ -1082,6 +1082,14 @@ struct ContentView: View {
                         onOpenInGrid: { openMapVideo($0, in: .grid) },
                         onOpenInList: { openMapVideo($0, in: .list) },
                         onOpenInDetail: { openMapVideo($0, in: .detail) },
+                        onOpenAllInGrid: {
+                            gridViewModel.filterToVideosLocation(mapSelectedVideoIds)
+                            viewMode = .grid
+                        },
+                        onOpenAllInList: {
+                            gridViewModel.filterToVideosLocation(mapSelectedVideoIds)
+                            viewMode = .list
+                        },
                         onCollapse: { setRightPanelExpanded(false) }
                     )
                     .frame(width: rightPanelWidth)

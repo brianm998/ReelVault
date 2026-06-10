@@ -233,6 +233,15 @@ class GridViewModel(
     private val _filterLocation = MutableStateFlow<Triple<Double, Double, Double>?>(null)
     val filterLocation: StateFlow<Triple<Double, Double, Double>?> = _filterLocation.asStateFlow()
 
+    // Known locations (named places + unnamed coordinate clusters) with video
+    // counts, for the Library Filter's "Location" mode. Refreshed via
+    // [loadFilterLocations] from the full geotagged set so the list isn't itself
+    // narrowed by the active filter.
+    private val _filterLocationGroups =
+        MutableStateFlow<List<com.reelvault.data.models.LocationFilterGroup>>(emptyList())
+    val filterLocationGroups: StateFlow<List<com.reelvault.data.models.LocationFilterGroup>> =
+        _filterLocationGroups.asStateFlow()
+
     // Snapshot of every geotagged video, refreshed when the user opens the
     // global map. Kept here (not in App.kt) so the open-map button can stay
     // disabled when there's nothing to plot.
@@ -1273,6 +1282,7 @@ class GridViewModel(
         if (_searchQuery.value.isNotEmpty()) { _searchQuery.value = ""; changed = true }
         if (_filterMinRating.value != 0) { _filterMinRating.value = 0; changed = true }
         if (_filterColorLabel.value.isNotEmpty()) { _filterColorLabel.value = ""; changed = true }
+        if (_filterLocation.value != null) { _filterLocation.value = null; changed = true }
         val anyAttr = com.reelvault.data.models.AttributeFilterState.Any
         if (_filterHasLocation.value != anyAttr) { _filterHasLocation.value = anyAttr; changed = true }
         if (_filterHasKeywords.value != anyAttr) { _filterHasKeywords.value = anyAttr; changed = true }
@@ -1490,10 +1500,101 @@ class GridViewModel(
     /** Apply (or clear) the geographic proximity filter and reload the grid.
      *  Called when the user taps a pin on the global map. */
     fun setLocationFilter(latitude: Double?, longitude: Double?, radiusKm: Double = 1.0) {
-        _filterLocation.value = if (latitude != null && longitude != null) {
-            Triple(latitude, longitude, radiusKm)
-        } else null
+        if (latitude != null && longitude != null) {
+            _filterLocation.value = Triple(latitude, longitude, radiusKm)
+            // A geographic filter means "videos at this place", which inherently
+            // have a location — so drop a stale "location: no" (or "yes")
+            // attribute filter that would otherwise contradict it and blank the
+            // grid. Unlocated videos can't match a proximity radius anyway.
+            _filterHasLocation.value = com.reelvault.data.models.AttributeFilterState.Any
+        } else {
+            _filterLocation.value = null
+        }
         reloadForFilterChange()
+    }
+
+    /**
+     * Refresh the list of known locations (named places + unnamed coordinate
+     * clusters) with per-location video counts, for the Library Filter's
+     * "Location" mode. Always fetches the full geotagged set so the list isn't
+     * itself narrowed by whatever filter is currently active.
+     */
+    fun loadFilterLocations() {
+        viewModelScope.launch {
+            val locs = try {
+                withContext(Dispatchers.IO) { repository.listVideosWithLocations() }
+            } catch (e: Exception) {
+                logger.error("Failed to load locations for the Location filter", e)
+                return@launch
+            }
+            _filterLocationGroups.value = buildLocationFilterGroups(locs, _namedLocations.value)
+        }
+    }
+
+    /**
+     * Apply a proximity filter that frames exactly [videoIds] — used by the map
+     * view's "open these here in grid/list". Centres on their centroid with a
+     * radius covering the farthest member (plus a small margin), so only that
+     * spot's videos show; unlocated videos lack coordinates and never match. A
+     * named place containing the centroid lends its own radius instead.
+     */
+    fun filterToVideosLocation(videoIds: List<String>) {
+        val idSet = videoIds.toSet()
+        val pts = (_geotaggedVideos.value + _videos.value)
+            .asSequence()
+            .filter { it.id in idSet && it.hasLocation }
+            .distinctBy { it.id }
+            .map { it.gpsLatitude to it.gpsLongitude }
+            .toList()
+        if (pts.isEmpty()) return
+        val cLat = pts.sumOf { it.first } / pts.size
+        val cLon = pts.sumOf { it.second } / pts.size
+        val named = nameForLocation(cLat, cLon)
+        val radiusKm = if (named != null) {
+            named.radiusMeters / 1000.0
+        } else {
+            val maxMeters = pts.maxOf { haversineMeters(cLat, cLon, it.first, it.second) }
+            (maxMeters / 1000.0 + 0.1).coerceAtLeast(0.1)
+        }
+        setLocationFilter(cLat, cLon, radiusKm)
+    }
+
+    /** Group the catalog's geotagged videos into named places (counted within
+     *  each place's radius) and unnamed coordinate clusters (~110 m buckets),
+     *  with counts, sorted by popularity then label. */
+    private fun buildLocationFilterGroups(
+        locs: List<com.reelvault.data.models.VideoLocation>,
+        named: List<com.reelvault.data.models.NamedLocation>,
+    ): List<com.reelvault.data.models.LocationFilterGroup> {
+        val groups = mutableListOf<com.reelvault.data.models.LocationFilterGroup>()
+        val claimed = HashSet<String>()
+        for (n in named) {
+            val members = locs.filter {
+                it.id !in claimed &&
+                    haversineMeters(n.latitude, n.longitude, it.latitude, it.longitude) <= n.radiusMeters
+            }
+            if (members.isEmpty()) continue
+            members.forEach { claimed += it.id }
+            groups += com.reelvault.data.models.LocationFilterGroup(
+                label = n.name, latitude = n.latitude, longitude = n.longitude,
+                radiusKm = n.radiusMeters / 1000.0, count = members.size, isNamed = true,
+            )
+        }
+        locs.filter { it.id !in claimed }
+            .groupBy { "%.3f,%.3f".format(it.latitude, it.longitude) }
+            .forEach { (_, members) ->
+                val cLat = members.sumOf { it.latitude } / members.size
+                val cLon = members.sumOf { it.longitude } / members.size
+                groups += com.reelvault.data.models.LocationFilterGroup(
+                    label = "%.4f, %.4f".format(cLat, cLon),
+                    latitude = cLat, longitude = cLon,
+                    radiusKm = 0.2, count = members.size, isNamed = false,
+                )
+            }
+        return groups.sortedWith(
+            compareByDescending<com.reelvault.data.models.LocationFilterGroup> { it.count }
+                .thenBy { it.label.lowercase() }
+        )
     }
 
     /** Refresh the list of geotagged videos (used by the global-map screen). */

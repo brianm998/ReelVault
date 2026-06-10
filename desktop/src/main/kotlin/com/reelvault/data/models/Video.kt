@@ -624,7 +624,20 @@ val defaultGridTopSlots: List<String> = listOf(
  * which one is visible. [Clear] is a momentary action (reset everything), not a
  * resting mode — the view model snaps back to [Text] after a clear.
  */
-enum class LibraryFilterMode { Text, Attribute, Metadata, Clear }
+enum class LibraryFilterMode { Text, Attribute, Metadata, Location, Clear }
+
+/** One selectable entry in the Library Filter's "Location" mode: a named place
+ *  or an unnamed coordinate cluster, with how many catalog videos sit there.
+ *  Picking one applies a geographic proximity filter centred on it. */
+data class LocationFilterGroup(
+    val label: String,
+    val latitude: Double,
+    val longitude: Double,
+    /** Proximity radius (km) to filter by when this entry is chosen. */
+    val radiusKm: Double,
+    val count: Int,
+    val isNamed: Boolean,
+)
 
 /**
  * Tri-state presence toggle for a Library Filter "attribute" (video has a known
