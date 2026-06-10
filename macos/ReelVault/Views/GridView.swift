@@ -21,6 +21,11 @@ struct GridView: View {
     @ObservedObject var viewModel: GridViewModel
     @ObservedObject var detailViewModel: DetailViewModel
     let thumbnailMinWidth: CGFloat
+    /// Open the location picker on a set of videos, framed on the given initial
+    /// location (nil → frame on all data). Wired to the right-click
+    /// "Add/Update Location…" items. Declared before onLocationClick so the
+    /// call-site argument order (memberwise init) matches.
+    var onEditLocation: ((_ videoIds: [String], _ initial: (Double, Double)?) -> Void)? = nil
     var onLocationClick: ((Double, Double) -> Void)? = nil
 
     /// Live column count, derived from the grid's width (matches the adaptive
@@ -348,6 +353,26 @@ struct GridView: View {
                 Button("Set Capture Date from filename (\(captureMatches.count))") {
                     viewModel.setInferredCaptureDates(
                         captureMatches.map { (id: $0.id, timestampMs: $0.ms) })
+                }
+            }
+        }
+
+        // Location. "Add Location…" when no target has one yet (picker frames on
+        // all data); "Update Location…" + "Remove Location" when at least one
+        // does. The picker handles both add and update.
+        if let onEditLocation = onEditLocation {
+            let located = viewModel.videos.first { targetIds.contains($0.id) && $0.hasLocation }
+            Divider()
+            if let loc = located {
+                Button("Update Location…") {
+                    onEditLocation(targetIds, (loc.gpsLatitude, loc.gpsLongitude))
+                }
+                Button("Remove Location") {
+                    viewModel.clearVideoLocations(videoIds: targetIds)
+                }
+            } else {
+                Button("Add Location…") {
+                    onEditLocation(targetIds, nil)
                 }
             }
         }

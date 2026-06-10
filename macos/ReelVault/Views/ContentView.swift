@@ -417,6 +417,22 @@ struct ContentView: View {
         }
     }
 
+    /// Present the location-picker sheet for `videoIds`, framed on `initial`
+    /// (the current location for an "update", or nil to frame on all data for an
+    /// "add"). Awaits the location loads first so the picker's init sees
+    /// populated arrays (else it centres on (25, 0)). Shared by the grid/list/map
+    /// context menus and the detail panel.
+    private func presentLocationPicker(_ videoIds: [String], initial: (Double, Double)?) {
+        Task {
+            await gridViewModel.loadVideoLocationsAsync()
+            await gridViewModel.loadNamedLocationsAsync()
+            locationPickerTargets = videoIds
+            locationPickerInitial = initial.map {
+                CLLocationCoordinate2D(latitude: $0.0, longitude: $0.1)
+            }
+        }
+    }
+
     @ViewBuilder
     private var updateBanner: some View {
         if let release = pendingUpdate {
@@ -967,6 +983,7 @@ struct ContentView: View {
                         viewModel: gridViewModel,
                         detailViewModel: detailViewModel,
                         thumbnailMinWidth: CGFloat(thumbnailWidth),
+                        onEditLocation: { presentLocationPicker($0, initial: $1) },
                         onLocationClick: { lat, lon in
                             Task {
                                 await gridViewModel.loadVideoLocationsFilteredAsync()
@@ -1000,6 +1017,7 @@ struct ContentView: View {
                         // size slider scales both views in lockstep instead
                         // of leaving list-mode cards half the width.
                         thumbnailHeight: CGFloat(thumbnailWidth),
+                        onEditLocation: { presentLocationPicker($0, initial: $1) },
                         onLocationClick: { lat, lon in
                             Task {
                                 await gridViewModel.loadVideoLocationsFilteredAsync()
@@ -1074,6 +1092,7 @@ struct ContentView: View {
                     }
                     MapVideoListPanel(
                         gridViewModel: gridViewModel,
+                        onEditLocation: { presentLocationPicker($0, initial: $1) },
                         videos: mapVideos,
                         // Spinner while a clicked location's videos are still
                         // being resolved (and none are showing yet).
@@ -1103,21 +1122,7 @@ struct ContentView: View {
                     gridViewModel: gridViewModel,
                     onCollapse: { setRightPanelExpanded(false) },
                     isLoupeMode: viewMode == .detail,
-                    onEditLocation: { videoIds, initial in
-                        // Await before showing the sheet so the picker's
-                        // init captures populated arrays and frames the
-                        // bbox correctly. Without this, the sheet opens
-                        // before `videoLocations` arrives over gRPC and
-                        // the map centers on (25, 0) in the Atlantic.
-                        Task {
-                            await gridViewModel.loadVideoLocationsAsync()
-                            await gridViewModel.loadNamedLocationsAsync()
-                            locationPickerTargets = videoIds
-                            locationPickerInitial = initial.map {
-                                CLLocationCoordinate2D(latitude: $0.0, longitude: $0.1)
-                            }
-                        }
-                    },
+                    onEditLocation: { presentLocationPicker($0, initial: $1) },
                     onEditCaptureDate: { videoIds, initialTs in
                         datePickerTargets = videoIds
                         datePickerInitial = initialTs

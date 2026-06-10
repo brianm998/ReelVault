@@ -62,6 +62,12 @@ fun ListScreen(
      *  doubles are (latitude, longitude). Callers should open the global
      *  map focused on that coordinate. */
     onLocationClick: ((Double, Double) -> Unit)? = null,
+    /** Open the location picker on a set of videos, framed on the given initial
+     *  location (null → frame on all data). Wired to the right-click
+     *  "Add/Update Location…" items. */
+    onEditLocation: ((List<String>, Pair<Double, Double>?) -> Unit)? = null,
+    /** Clear the location on a set of videos (right-click "Remove Location"). */
+    onClearLocation: ((List<String>) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val videos = viewModel.videos.collectAsState()
@@ -334,6 +340,13 @@ fun ListScreen(
                                             if (video.id in multi && multi.size > 1)
                                                 videos.value.filter { it.id in multi }.map { it.id to it.filename }
                                             else listOf(video.id to video.filename)
+                                        val locationSummaries =
+                                            if (video.id in multi && multi.size > 1)
+                                                videos.value.filter { it.id in multi }
+                                            else listOf(video)
+                                        val locationInitial = locationSummaries
+                                            .firstOrNull { it.hasLocation }
+                                            ?.let { it.gpsLatitude to it.gpsLongitude }
                                         buildVideoContextMenu(
                                             targetFiles = targets,
                                             stackVideoId = video.id.takeIf { video.isInGroup },
@@ -366,6 +379,10 @@ fun ListScreen(
                                             onApplyInferredCaptureDates = { perVideo ->
                                                 viewModel.setInferredCaptureDates(perVideo)
                                             },
+                                            locationTargetIds = ratingTargets,
+                                            locationInitial = locationInitial,
+                                            onEditLocation = onEditLocation,
+                                            onClearLocation = onClearLocation,
                                         )
                                     }
                                 ) {
@@ -487,6 +504,13 @@ fun ListScreen(
                                                     if (video.id in multi && multi.size > 1)
                                                         videos.value.filter { it.id in multi }.map { it.id to it.filename }
                                                     else listOf(video.id to video.filename)
+                                                val locationSummaries =
+                                                    if (video.id in multi && multi.size > 1)
+                                                        videos.value.filter { it.id in multi }
+                                                    else listOf(video)
+                                                val locationInitial = locationSummaries
+                                                    .firstOrNull { it.hasLocation }
+                                                    ?.let { it.gpsLatitude to it.gpsLongitude }
                                                 buildVideoContextMenu(
                                                     targetFiles = targets,
                                                     stackVideoId = video.id.takeIf { video.isInGroup },
@@ -519,6 +543,10 @@ fun ListScreen(
                                                     onApplyInferredCaptureDates = { perVideo ->
                                                         viewModel.setInferredCaptureDates(perVideo)
                                                     },
+                                                    locationTargetIds = ratingTargets,
+                                                    locationInitial = locationInitial,
+                                                    onEditLocation = onEditLocation,
+                                                    onClearLocation = onClearLocation,
                                                 )
                                             }
                                         ) {

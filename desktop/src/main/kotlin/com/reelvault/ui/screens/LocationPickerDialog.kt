@@ -14,8 +14,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindow
+import androidx.compose.ui.window.rememberDialogState
 import com.reelvault.data.models.NamedLocation
 import com.reelvault.data.models.VideoLocation
 import com.reelvault.trackTextEntryFocus
@@ -23,7 +25,9 @@ import com.reelvault.ui.components.MapPin
 import com.reelvault.ui.components.MapPinStyle
 import com.reelvault.ui.components.MapView
 import com.reelvault.ui.components.Tooltip
+import com.reelvault.ui.theme.AccentScheme
 import com.reelvault.ui.theme.ReelVaultSpacing
+import com.reelvault.ui.theme.ReelVaultTheme
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -64,6 +68,8 @@ fun LocationPickerDialog(
     /** Catalog's user-named places — surfaced as teal pins with the name
      *  painted next to the marker. */
     namedLocations: List<NamedLocation> = emptyList(),
+    /** Accent scheme to re-apply — a child window doesn't inherit the parent theme. */
+    accentScheme: AccentScheme,
     onDismiss: () -> Unit,
     /** Fires when the user clicks Save. The closure receives the GPS,
      *  whether to embed it in the video file, and an optional name —
@@ -196,163 +202,172 @@ fun LocationPickerDialog(
         }
     }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(ReelVaultSpacing.Small))
-                Text(
-                    if (targetVideoIds.size == 1) "Set Location"
-                    else "Set Location for ${targetVideoIds.size} Videos"
-                )
-            }
-        },
-        text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "Pan and zoom the map, then click where the video was " +
-                        "captured — or click an existing pin to re-use that " +
-                        "spot. The coordinate is saved to ReelVault's catalog " +
-                        "and (optionally) embedded into the video file.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
-
-                // Map is placed before the secondary-locations toggle so that
-                // the toggle appearing/disappearing (when locations load async)
-                // does not shift the MapView's slot position in the Column and
-                // cause Compose to recreate the SwingPanel — which would reset
-                // the viewport back to the initial center.
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(440.dp)
-                ) {
-                    MapView(
-                        pins = pins,
-                        initialCenter = initLat to initLon,
-                        initialZoom = initZoom,
-                        // Same accent the map view uses, so the picker's re-use
-                        // pins match it exactly.
-                        pinColor = MaterialTheme.colorScheme.primary,
-                        onMapClick = { lat, lon ->
-                            pinLat = lat
-                            pinLon = lon
-                            candidateExistingCount = videosAtSpot(lat, lon)
-                            val newMatch = nearestNamedLocation(lat, lon, namedLocations)
-                            candidateName = newMatch?.name ?: ""
-                            showCoords = false
-                        },
-                        onPinClick = { pin, _ ->
-                            if (pin.id == "candidate") return@MapView
-                            pinLat = pin.latitude
-                            pinLon = pin.longitude
-                            // A re-use pin carries its exact members; a named pin
-                            // (no members) falls back to a radius count.
-                            candidateExistingCount = if (pin.memberIds.isNotEmpty()) {
-                                pin.memberIds.size
-                            } else {
-                                videosAtSpot(pin.latitude, pin.longitude)
-                            }
-                            val newMatch = nearestNamedLocation(
-                                pin.latitude, pin.longitude, namedLocations)
-                            candidateName = newMatch?.name ?: ""
-                            showCoords = false
-                        },
-                        modifier = Modifier.fillMaxSize()
+    DialogWindow(
+        onCloseRequest = onDismiss,
+        title = if (targetVideoIds.size == 1) "Set Location"
+                else "Set Location for ${targetVideoIds.size} Videos",
+        // A separate window, not an in-window AlertDialog, so the picker can be
+        // opened from the map view too: Compose can't paint a lightweight dialog
+        // over the map's heavyweight JXMapViewer peer (same reason as
+        // LocationNameDialog / AppearanceSettingsDialog).
+        state = rememberDialogState(size = DpSize(760.dp, 760.dp)),
+    ) {
+        // A child window doesn't inherit the parent composition's MaterialTheme.
+        ReelVaultTheme(accentScheme = accentScheme) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.surface,
+            ) {
+                Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+                    Text(
+                        text = "Pan and zoom the map, then click where the video was " +
+                            "captured — or click an existing pin to re-use that " +
+                            "spot. The coordinate is saved to ReelVault's catalog " +
+                            "and (optionally) embedded into the video file.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
+                    Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
 
-                Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
-
-                if (secondaryLocations.isNotEmpty()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(
-                            checked = showExisting,
-                            onCheckedChange = { showExisting = it },
+                    // Map is placed before the secondary-locations toggle so that
+                    // the toggle appearing/disappearing (when locations load async)
+                    // does not shift the MapView's slot position in the Column and
+                    // cause Compose to recreate the SwingPanel — which would reset
+                    // the viewport back to the initial center.
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    ) {
+                        MapView(
+                            pins = pins,
+                            initialCenter = initLat to initLon,
+                            initialZoom = initZoom,
+                            // Same accent the map view uses, so the picker's re-use
+                            // pins match it exactly.
+                            pinColor = MaterialTheme.colorScheme.primary,
+                            onMapClick = { lat, lon ->
+                                pinLat = lat
+                                pinLon = lon
+                                candidateExistingCount = videosAtSpot(lat, lon)
+                                val newMatch = nearestNamedLocation(lat, lon, namedLocations)
+                                candidateName = newMatch?.name ?: ""
+                                showCoords = false
+                            },
+                            onPinClick = { pin, _ ->
+                                if (pin.id == "candidate") return@MapView
+                                pinLat = pin.latitude
+                                pinLon = pin.longitude
+                                // A re-use pin carries its exact members; a named pin
+                                // (no members) falls back to a radius count.
+                                candidateExistingCount = if (pin.memberIds.isNotEmpty()) {
+                                    pin.memberIds.size
+                                } else {
+                                    videosAtSpot(pin.latitude, pin.longitude)
+                                }
+                                val newMatch = nearestNamedLocation(
+                                    pin.latitude, pin.longitude, namedLocations)
+                                candidateName = newMatch?.name ?: ""
+                                showCoords = false
+                            },
+                            modifier = Modifier.fillMaxSize()
                         )
+                    }
+
+                    Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
+
+                    if (secondaryLocations.isNotEmpty()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = showExisting,
+                                onCheckedChange = { showExisting = it },
+                            )
+                            Column {
+                                Text(
+                                    text = "Show ${secondaryLocations.size} already-known " +
+                                        "location" + if (secondaryLocations.size == 1) "" else "s",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Text(
+                                    text = "Faint gray pins are existing GPS coordinates from " +
+                                        "other videos. Click one to re-use it for the " +
+                                        "selected video" +
+                                        if (targetVideoIds.size == 1) "." else "s.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
+                    }
+
+                    candidateReadout(
+                        pinLat = pinLat,
+                        pinLon = pinLon,
+                        matched = matched,
+                        existingCount = candidateExistingCount,
+                        candidateName = candidateName,
+                        onNameChange = { candidateName = it },
+                        showCoords = showCoords,
+                        onToggleCoords = { showCoords = !showCoords },
+                    )
+
+                    Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = writeToFile, onCheckedChange = { writeToFile = it })
                         Column {
                             Text(
-                                text = "Show ${secondaryLocations.size} already-known " +
-                                    "location" + if (secondaryLocations.size == 1) "" else "s",
+                                text = "Also embed in video file",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
                             Text(
-                                text = "Faint gray pins are existing GPS coordinates from " +
-                                    "other videos. Click one to re-use it for the " +
-                                    "selected video" +
-                                    if (targetVideoIds.size == 1) "." else "s.",
+                                text = "Uses ffmpeg to rewrite the location atom without " +
+                                    "re-encoding. Original file is replaced atomically.",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
-                }
 
-                candidateReadout(
-                    pinLat = pinLat,
-                    pinLon = pinLon,
-                    matched = matched,
-                    existingCount = candidateExistingCount,
-                    candidateName = candidateName,
-                    onNameChange = { candidateName = it },
-                    showCoords = showCoords,
-                    onToggleCoords = { showCoords = !showCoords },
-                )
+                    Spacer(modifier = Modifier.height(ReelVaultSpacing.Medium))
 
-                Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = writeToFile, onCheckedChange = { writeToFile = it })
-                    Column {
-                        Text(
-                            text = "Also embed in video file",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            text = "Uses ffmpeg to rewrite the location atom without " +
-                                "re-encoding. Original file is replaced atomically.",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    // Action row — replaces AlertDialog's confirm/dismiss slots.
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Tooltip(text = "Close without changing any location.") {
+                            TextButton(onClick = onDismiss) { Text("Cancel") }
+                        }
+                        Spacer(modifier = Modifier.width(ReelVaultSpacing.Small))
+                        val lat = pinLat; val lon = pinLon
+                        val enabled = lat != null && lon != null
+                        Tooltip(
+                            text = if (enabled) {
+                                val n = targetVideoIds.size
+                                val plural = if (n == 1) "" else "s"
+                                "Apply (${"%.6f".format(lat)}, ${"%.6f".format(lon)}) to $n video$plural."
+                            } else "Click somewhere on the map first."
+                        ) {
+                            Button(
+                                onClick = {
+                                    if (lat != null && lon != null) {
+                                        val trimmed = candidateName.trim()
+                                        onApply(lat, lon, writeToFile, trimmed.takeIf { it.isNotEmpty() })
+                                    }
+                                },
+                                enabled = enabled,
+                            ) { Text("Save") }
+                        }
                     }
                 }
             }
-        },
-        confirmButton = {
-            val lat = pinLat; val lon = pinLon
-            val enabled = lat != null && lon != null
-            Tooltip(
-                text = if (enabled) {
-                    val n = targetVideoIds.size
-                    val plural = if (n == 1) "" else "s"
-                    "Apply (${"%.6f".format(lat)}, ${"%.6f".format(lon)}) to $n video$plural."
-                } else "Click somewhere on the map first."
-            ) {
-                Button(
-                    onClick = {
-                        if (lat != null && lon != null) {
-                            val trimmed = candidateName.trim()
-                            onApply(lat, lon, writeToFile, trimmed.takeIf { it.isNotEmpty() })
-                        }
-                    },
-                    enabled = enabled,
-                ) { Text("Save") }
-            }
-        },
-        dismissButton = {
-            Tooltip(text = "Close without changing any location.") {
-                TextButton(onClick = onDismiss) { Text("Cancel") }
-            }
-        },
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-        modifier = Modifier.width(720.dp)
-    )
+        }
+    }
 }
 
 /** The "Selected: ..." block beneath the map, plus the name-editor text

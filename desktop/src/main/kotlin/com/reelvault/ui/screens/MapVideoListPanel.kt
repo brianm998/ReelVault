@@ -58,6 +58,11 @@ fun MapVideoListPanel(
     onOpenInGrid: (VideoSummary) -> Unit,
     onOpenInList: (VideoSummary) -> Unit,
     onOpenInDetail: (VideoSummary) -> Unit,
+    /** Right-click a card → open the location picker on it (framed on its
+     *  current spot). Null hides the item. */
+    onEditLocation: ((List<String>, Pair<Double, Double>?) -> Unit)? = null,
+    /** Right-click a card → clear its location. Null hides the item. */
+    onClearLocation: ((List<String>) -> Unit)? = null,
     /** Right-click the header → open every video at this location in the
      *  grid / list view (a location filter takes the user there). */
     onOpenAllInGrid: () -> Unit,
@@ -169,11 +174,23 @@ fun MapVideoListPanel(
                         if (video.hasThumbnail) onLoadThumbnail(video.id)
                     }
                     ContextMenuArea(items = {
-                        listOf(
-                            ContextMenuItem("Open in Grid") { onOpenInGrid(video) },
-                            ContextMenuItem("Open in List") { onOpenInList(video) },
-                            ContextMenuItem("Open in Detail") { onOpenInDetail(video) },
-                        )
+                        buildList {
+                            add(ContextMenuItem("Open in Grid") { onOpenInGrid(video) })
+                            add(ContextMenuItem("Open in List") { onOpenInList(video) })
+                            add(ContextMenuItem("Open in Detail") { onOpenInDetail(video) })
+                            // Every card here has a location by definition (it's on
+                            // the map), so offer Update + Remove — no "Add".
+                            if (onEditLocation != null && video.hasLocation) {
+                                add(ContextMenuItem("Update Location…") {
+                                    onEditLocation(listOf(video.id), video.gpsLatitude to video.gpsLongitude)
+                                })
+                                if (onClearLocation != null) {
+                                    add(ContextMenuItem("Remove Location") {
+                                        onClearLocation(listOf(video.id))
+                                    })
+                                }
+                            }
+                        }
                     }) {
                         VideoCard(
                             video = video,

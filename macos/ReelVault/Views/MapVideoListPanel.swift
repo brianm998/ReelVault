@@ -11,6 +11,10 @@ import SwiftUI
 /// map is the active top-level view.
 struct MapVideoListPanel: View {
     @ObservedObject var gridViewModel: GridViewModel
+    /// Right-click a card → open the location picker on it (framed on its spot).
+    /// Declared right after gridViewModel so the call-site argument order
+    /// (memberwise init) matches.
+    let onEditLocation: (_ videoIds: [String], _ initial: (Double, Double)?) -> Void
     let videos: [VideoSummary]
     /// Show a progress indicator in place of the empty placeholder: a pin was
     /// clicked but its videos are still being resolved (e.g. the filtered
@@ -137,6 +141,15 @@ struct MapVideoListPanel: View {
                                 Button("Open in Grid") { onOpenInGrid(video) }
                                 Button("Open in List") { onOpenInList(video) }
                                 Button("Open in Detail") { onOpenInDetail(video) }
+                                // Every card here has a location by definition
+                                // (it's on the map), so offer Update + Remove.
+                                Divider()
+                                Button("Update Location…") {
+                                    onEditLocation([video.id], (video.gpsLatitude, video.gpsLongitude))
+                                }
+                                Button("Remove Location") {
+                                    gridViewModel.clearVideoLocations(videoIds: [video.id])
+                                }
                             }
                         }
                     }

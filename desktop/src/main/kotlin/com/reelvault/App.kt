@@ -861,6 +861,20 @@ fun ReelVaultApp(
 
     val scope = rememberCoroutineScope()
     var connectionState by remember { mutableStateOf(ConnectionState.Connecting) }
+
+    // Open the location picker on a set of videos, framed on `initial` (the
+    // current location for an "update", or null to frame on all data for an
+    // "add"). Awaits the location loads first so the picker's bbox framing sees
+    // populated arrays (else it centres on Europe). Shared by the grid/list/map
+    // right-click "Add/Update Location…" items and the detail panel.
+    val openLocationPicker: (List<String>, Pair<Double, Double>?) -> Unit = { videoIds, initial ->
+        scope.launch {
+            gridViewModel.loadVideoLocationsAsync()
+            gridViewModel.loadNamedLocationsAsync()
+            videoIdsForLocationPicker = videoIds
+            initialLocationForPicker = initial
+        }
+    }
     var errorMessage by remember { mutableStateOf("") }
 
     /** Load library data after a successful catalog open. */
@@ -1649,6 +1663,8 @@ fun ReelVaultApp(
                                     },
                                     thumbnailMinWidth = thumbnailWidth,
                                     onLocationClick = onCardLocationClick,
+                                    onEditLocation = openLocationPicker,
+                                    onClearLocation = { gridViewModel.clearVideoLocations(it) },
                                     modifier = Modifier.weight(1f).fillMaxWidth()
                                 )
                                 ViewMode.LIST -> ListScreen(
@@ -1662,6 +1678,8 @@ fun ReelVaultApp(
                                     // counterpart in size.
                                     thumbnailHeight = thumbnailWidth,
                                     onLocationClick = onCardLocationClick,
+                                    onEditLocation = openLocationPicker,
+                                    onClearLocation = { gridViewModel.clearVideoLocations(it) },
                                     modifier = Modifier.weight(1f).fillMaxWidth()
                                 )
                                 ViewMode.DETAIL -> DetailViewScreen(
@@ -1753,6 +1771,8 @@ fun ReelVaultApp(
                                 onOpenInGrid = { openMapVideoInView(it, ViewMode.GRID) },
                                 onOpenInList = { openMapVideoInView(it, ViewMode.LIST) },
                                 onOpenInDetail = { openMapVideoInView(it, ViewMode.DETAIL) },
+                                onEditLocation = openLocationPicker,
+                                onClearLocation = { gridViewModel.clearVideoLocations(it) },
                                 onOpenAllInGrid = {
                                     gridViewModel.filterToVideosLocation(mapSelectedVideoIds)
                                     viewMode = ViewMode.GRID
@@ -1772,20 +1792,7 @@ fun ReelVaultApp(
                                 gridViewModel = gridViewModel,
                                 viewMode = viewMode,
                                 onCollapse = { setRightPanelExpanded(false) },
-                                onEditLocation = { videoIds, initial ->
-                                    // Await before showing the dialog so
-                                    // its bbox-framing logic captures
-                                    // populated arrays. Without this, the
-                                    // dialog opens before the gRPC
-                                    // location data arrives and the map
-                                    // centers on Europe.
-                                    scope.launch {
-                                        gridViewModel.loadVideoLocationsAsync()
-                                        gridViewModel.loadNamedLocationsAsync()
-                                        videoIdsForLocationPicker = videoIds
-                                        initialLocationForPicker = initial
-                                    }
-                                },
+                                onEditLocation = openLocationPicker,
                                 onEditCaptureDate = { videoIds, initialTs ->
                                     videoIdsForDatePicker = videoIds
                                     initialTimestampForPicker = initialTs
@@ -1916,6 +1923,7 @@ fun ReelVaultApp(
                         initialLocation = initialLocationForPicker,
                         existingLocations = knownLocations.value,
                         namedLocations = namedPlaces.value,
+                        accentScheme = accentScheme,
                         onDismiss = {
                             videoIdsForLocationPicker = null
                             initialLocationForPicker = null

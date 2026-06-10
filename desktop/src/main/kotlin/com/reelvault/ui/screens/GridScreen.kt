@@ -43,6 +43,12 @@ fun GridScreen(
      *  doubles are (latitude, longitude). Callers should open the global
      *  map focused on that coordinate. */
     onLocationClick: ((Double, Double) -> Unit)? = null,
+    /** Open the location picker on a set of videos, framed on the given initial
+     *  location (null → frame on all data). Wired to the right-click
+     *  "Add/Update Location…" items. */
+    onEditLocation: ((List<String>, Pair<Double, Double>?) -> Unit)? = null,
+    /** Clear the location on a set of videos (right-click "Remove Location"). */
+    onClearLocation: ((List<String>) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val videos = viewModel.videos.collectAsState()
@@ -338,6 +344,16 @@ fun GridScreen(
                                     if (video.id in multi && multi.size > 1)
                                         videos.value.filter { it.id in multi }.map { it.id to it.filename }
                                     else listOf(video.id to video.filename)
+                                // Current location of the targets (first located one) → "Update",
+                                // else "Add". The right-clicked card covers single-select; multi
+                                // pulls from the loaded page.
+                                val locationSummaries =
+                                    if (video.id in multi && multi.size > 1)
+                                        videos.value.filter { it.id in multi }
+                                    else listOf(video)
+                                val locationInitial = locationSummaries
+                                    .firstOrNull { it.hasLocation }
+                                    ?.let { it.gpsLatitude to it.gpsLongitude }
                                 buildVideoContextMenu(
                                     targetFiles = targets,
                                     // Stack actions are surfaced only when
@@ -378,6 +394,10 @@ fun GridScreen(
                                     onApplyInferredCaptureDates = { perVideo ->
                                         viewModel.setInferredCaptureDates(perVideo)
                                     },
+                                    locationTargetIds = ratingTargets,
+                                    locationInitial = locationInitial,
+                                    onEditLocation = onEditLocation,
+                                    onClearLocation = onClearLocation,
                                 )
                             }
                         ) {
@@ -589,6 +609,16 @@ internal fun buildVideoContextMenu(
     captureDateTargets: List<Pair<String, String>> = emptyList(),
     /** Apply the given (videoId, Unix-ms) capture dates inferred from filenames. */
     onApplyInferredCaptureDates: ((List<Pair<String, Long>>) -> Unit)? = null,
+    /** Video IDs the location actions apply to (same set as ratingTargetIds). */
+    locationTargetIds: List<String> = emptyList(),
+    /** Current location of the targets (the first one that has it), or null when
+     *  none do yet — drives "Update" vs "Add" and the picker's initial centre. */
+    locationInitial: Pair<Double, Double>? = null,
+    /** Open the location picker on [locationTargetIds], framed on the given
+     *  initial location (null → frame on all data). */
+    onEditLocation: ((List<String>, Pair<Double, Double>?) -> Unit)? = null,
+    /** Clear the location on [locationTargetIds] (writes lat/lon 0). */
+    onClearLocation: ((List<String>) -> Unit)? = null,
 ): List<androidx.compose.foundation.ContextMenuItem> {
     val items = mutableListOf<androidx.compose.foundation.ContextMenuItem>()
     val n = targetFiles.size
@@ -660,6 +690,26 @@ internal fun buildVideoContextMenu(
             }
             items += androidx.compose.foundation.ContextMenuItem(label) {
                 onApplyInferredCaptureDates(capMatches.map { it.first to it.second })
+            }
+        }
+    }
+
+    // Location. "Add Location…" when no target has one yet (picker frames on
+    // all data); "Update Location…" + "Remove Location" when at least one does
+    // (picker opens centred on it). The picker itself handles both add and update.
+    if (onEditLocation != null && locationTargetIds.isNotEmpty()) {
+        if (locationInitial != null) {
+            items += androidx.compose.foundation.ContextMenuItem("Update Location…") {
+                onEditLocation(locationTargetIds, locationInitial)
+            }
+            if (onClearLocation != null) {
+                items += androidx.compose.foundation.ContextMenuItem("Remove Location") {
+                    onClearLocation(locationTargetIds)
+                }
+            }
+        } else {
+            items += androidx.compose.foundation.ContextMenuItem("Add Location…") {
+                onEditLocation(locationTargetIds, null)
             }
         }
     }
