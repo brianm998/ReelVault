@@ -46,7 +46,16 @@ struct LocationPickerView: View {
     /// the picker looks identical. The candidate marker keeps its own accent.
     let pinColor: NSColor
 
+    /// Radius (m) within which an unnamed candidate counts other videos as
+    /// being "at the same spot" — tight, so it reflects the exact re-used spot.
+    /// A named match counts within the place's own radius instead.
+    private static let sameSpotRadiusMeters: Double = 60
+
     @State private var candidate: CLLocationCoordinate2D?
+    /// How many OTHER videos already sit at the candidate's spot. Surfaced in
+    /// the readout so re-using an existing (often unlabeled) pin makes the
+    /// co-location explicit. Seeded in init, updated on every map/pin click.
+    @State private var candidateExistingCount: Int = 0
     @State private var writeToFile: Bool = false
     /// Toggle for the "show every known location" overlay. Default-on when
     /// the catalog has any secondary pins. Named-place pins always show
@@ -91,6 +100,10 @@ struct LocationPickerView: View {
         self.onApply = onApply
         _candidate = State(initialValue: initialLocation)
         _showExistingLocations = State(initialValue: !secondary.isEmpty)
+        if let p = initialLocation {
+            _candidateExistingCount = State(initialValue:
+                Self.countAtSpot(p, secondary: secondary, named: namedLocations))
+        }
 
         // Initial map framing — see the previous revision for the full
         // rationale; in short, prefer the bbox of everything we know plus
@@ -159,13 +172,23 @@ struct LocationPickerView: View {
                 // they appear instead of being stuck at the global-view
                 // fallback.
                 autoFitPins: true,
-                onMapClick: { coord in setCandidate(coord) },
+                onMapClick: { coord in
+                    setCandidate(coord)
+                    candidateExistingCount = Self.countAtSpot(
+                        coord, secondary: existingLocations, named: namedLocations)
+                },
                 onPinClick: { pin in
                     // Tapping the candidate pin itself is a no-op; tapping
                     // any other pin (named place or existing video location)
                     // snaps the candidate to its coordinate.
                     if pin.id == "candidate" { return }
                     setCandidate(pin.coordinate)
+                    // A re-use pin carries its exact members; a named pin (no
+                    // members) falls back to a radius count.
+                    candidateExistingCount = pin.memberIds.isEmpty
+                        ? Self.countAtSpot(pin.coordinate,
+                                           secondary: existingLocations, named: namedLocations)
+                        : pin.memberIds.count
                 },
                 pinColor: pinColor
             )
@@ -252,6 +275,14 @@ struct LocationPickerView: View {
                                 c.latitude, c.longitude))
                         .font(.caption.monospaced())
                         .foregroundColor(.accentColor)
+                }
+
+                // Make co-location explicit: how many other videos already sit
+                // on this exact spot (shown for both named and unnamed picks).
+                if candidateExistingCount > 0 {
+                    Text("\(candidateExistingCount) other video\(candidateExistingCount == 1 ? "" : "s") already here")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
 
                 // Always present: the name text field. Pre-filled for
@@ -351,6 +382,27 @@ struct LocationPickerView: View {
     private func displayName(_ matched: NamedLocation?, fallback c: CLLocationCoordinate2D) -> String {
         if let m = matched { return m.name }
         return String(format: "%.4f, %.4f", c.latitude, c.longitude)
+    }
+
+    /// Number of OTHER videos at `coord`: within a matched named place's own
+    /// radius, else within a tight same-spot radius. `secondary` already
+    /// excludes the target videos. Static so `init` can seed the count before
+    /// `self` exists.
+    private static func countAtSpot(
+        _ coord: CLLocationCoordinate2D,
+        secondary: [VideoLocation],
+        named: [NamedLocation]
+    ) -> Int {
+        if let m = nearestNamedLocation(to: coord, in: named) {
+            return secondary.filter {
+                haversineMeters(lat1: m.latitude, lon1: m.longitude,
+                                lat2: $0.latitude, lon2: $0.longitude) <= m.radiusMeters
+            }.count
+        }
+        return secondary.filter {
+            haversineMeters(lat1: coord.latitude, lon1: coord.longitude,
+                            lat2: $0.latitude, lon2: $0.longitude) <= sameSpotRadiusMeters
+        }.count
     }
 
     /// Pick the named-location closest to `point` whose haversine distance

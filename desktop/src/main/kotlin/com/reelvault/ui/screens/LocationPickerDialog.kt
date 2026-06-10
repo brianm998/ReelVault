@@ -32,6 +32,12 @@ import kotlin.math.max
 import kotlin.math.sin
 import kotlin.math.sqrt
 
+/** Radius (m) within which an unnamed candidate counts other videos as being
+ *  "at the same spot". Tight, so the count reflects the exact spot the user
+ *  re-used rather than a vaguely nearby one. Named matches use the place's own
+ *  radius instead. */
+private const val SAME_SPOT_RADIUS_METERS = 60.0
+
 /**
  * Modal dialog that lets the user pin a location on a world map and apply
  * it to one or more videos. Used both for setting a location on a video
@@ -84,6 +90,30 @@ fun LocationPickerDialog(
         mutableStateOf(initialMatch?.name ?: "")
     }
     var showCoords by remember { mutableStateOf(false) }
+
+    // How many OTHER videos already sit at the candidate's spot. Surfaced in
+    // the readout so clicking an existing (often unlabeled) pin makes clear the
+    // user re-used that exact spot, not a nearby one. A named match counts
+    // within the place's own radius; an unnamed spot within a tight radius.
+    fun videosAtSpot(lat: Double, lon: Double): Int {
+        val m = nearestNamedLocation(lat, lon, namedLocations)
+        return if (m != null) {
+            secondaryLocations.count {
+                haversineMeters(m.latitude, m.longitude, it.latitude, it.longitude) <= m.radiusMeters
+            }
+        } else {
+            secondaryLocations.count {
+                haversineMeters(lat, lon, it.latitude, it.longitude) <= SAME_SPOT_RADIUS_METERS
+            }
+        }
+    }
+    // Seeded from the initial pin; updated on every map/pin click. A pin click
+    // uses the pin's own member count (exact for a clustered group); a bare map
+    // click (or a named pin, which carries no members) falls back to a radius
+    // count.
+    var candidateExistingCount by remember {
+        mutableStateOf(initialLocation?.let { videosAtSpot(it.first, it.second) } ?: 0)
+    }
 
     val (initLat, initLon, initZoom) = remember(
         initialLocation, secondaryLocations, namedLocations
@@ -210,6 +240,7 @@ fun LocationPickerDialog(
                         onMapClick = { lat, lon ->
                             pinLat = lat
                             pinLon = lon
+                            candidateExistingCount = videosAtSpot(lat, lon)
                             val newMatch = nearestNamedLocation(lat, lon, namedLocations)
                             candidateName = newMatch?.name ?: ""
                             showCoords = false
@@ -218,6 +249,13 @@ fun LocationPickerDialog(
                             if (pin.id == "candidate") return@MapView
                             pinLat = pin.latitude
                             pinLon = pin.longitude
+                            // A re-use pin carries its exact members; a named pin
+                            // (no members) falls back to a radius count.
+                            candidateExistingCount = if (pin.memberIds.isNotEmpty()) {
+                                pin.memberIds.size
+                            } else {
+                                videosAtSpot(pin.latitude, pin.longitude)
+                            }
                             val newMatch = nearestNamedLocation(
                                 pin.latitude, pin.longitude, namedLocations)
                             candidateName = newMatch?.name ?: ""
@@ -259,6 +297,7 @@ fun LocationPickerDialog(
                     pinLat = pinLat,
                     pinLon = pinLon,
                     matched = matched,
+                    existingCount = candidateExistingCount,
                     candidateName = candidateName,
                     onNameChange = { candidateName = it },
                     showCoords = showCoords,
@@ -323,6 +362,8 @@ private fun candidateReadout(
     pinLat: Double?,
     pinLon: Double?,
     matched: NamedLocation?,
+    /** Number of OTHER videos already at the candidate spot (0 = a fresh spot). */
+    existingCount: Int,
     candidateName: String,
     onNameChange: (String) -> Unit,
     showCoords: Boolean,
@@ -376,6 +417,17 @@ private fun candidateReadout(
                     text = "Selected: %.6f, %.6f".format(pinLat, pinLon),
                     style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                     color = MaterialTheme.colorScheme.primary,
+                )
+            }
+
+            // Make co-location explicit: how many other videos already sit on
+            // this exact spot (shown for both named and unnamed candidates).
+            if (existingCount > 0) {
+                Text(
+                    text = "$existingCount other video" +
+                        (if (existingCount == 1) "" else "s") + " already here",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
