@@ -43,6 +43,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.reelvault.LocalPathFieldFocused
+import com.reelvault.trackTextEntryFocus
 import com.reelvault.util.PathCompletion
 
 /**
@@ -156,6 +157,9 @@ fun PathCompletingTextField(
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 modifier = Modifier
                     .fillMaxWidth()
+                    // Also a keyboard responder: while focused, window single-key
+                    // shortcuts stand down so path text can contain g/l/m/etc.
+                    .trackTextEntryFocus()
                     .onFocusChanged { state ->
                         isFocused = state.isFocused
                         // Tell the Window-level key listener whether Tab

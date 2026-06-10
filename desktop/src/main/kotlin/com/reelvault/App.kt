@@ -16,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -84,6 +85,48 @@ val LocalAppWindow = compositionLocalOf<java.awt.Window?> { null }
  * Tab should drive bash-style path completion, not collapse the side panels.
  */
 val LocalPathFieldFocused = compositionLocalOf { mutableStateOf(false) }
+
+/**
+ * Number of editable text fields that currently hold keyboard focus (normally
+ * 0 or 1). [Window.onPreviewKeyEvent] reads it to stand down the window-level
+ * single-key shortcuts (view modes 'g'/'l'/'m'/'d', the 'i' overlay, space,
+ * and the rating / colour-label digits) while the user is typing — the "key
+ * responder" rule: a focused text field owns every keystroke until it releases
+ * focus. macOS gets this for free (its NSEvent monitor checks the first
+ * responder); the Compose client routes single keys through the window before
+ * the focused widget, so it needs this explicit signal.
+ *
+ * A counter, not a boolean, so a focus hand-off between two fields — where the
+ * gain can fire before the loss (or vice-versa) — can never leave it stuck.
+ */
+val LocalTextEntryActive = compositionLocalOf { mutableStateOf(0) }
+
+/**
+ * Mark a text field as a keyboard responder: while it holds focus it bumps the
+ * [LocalTextEntryActive] counter, so window-level single-key shortcuts stand
+ * down. Apply to every editable field (TextField / OutlinedTextField /
+ * BasicTextField). The [DisposableEffect] releases the count if the field is
+ * removed from composition while still focused (e.g. its dialog is dismissed),
+ * which would otherwise leave the counter stuck and disable shortcuts for good.
+ */
+fun Modifier.trackTextEntryFocus(): Modifier = composed {
+    val active = LocalTextEntryActive.current
+    val counted = remember { mutableStateOf(false) }
+    DisposableEffect(Unit) {
+        onDispose {
+            if (counted.value) {
+                active.value -= 1
+                counted.value = false
+            }
+        }
+    }
+    onFocusChanged { state ->
+        if (state.isFocused != counted.value) {
+            active.value += if (state.isFocused) 1 else -1
+            counted.value = state.isFocused
+        }
+    }
+}
 
 /** Top-level view mode for the central content area. */
 enum class ViewMode { GRID, LIST, DETAIL, MAP }
@@ -183,6 +226,9 @@ fun main() {
         // True while a PathCompletingTextField holds focus. Suppresses the
         // Tab → toggle-panels shortcut so Tab drives path completion instead.
         val pathFieldFocused = remember { mutableStateOf(false) }
+        // Count of editable text fields currently focused (see LocalTextEntryActive).
+        // Non-zero ⇒ the user is typing, so single-key shortcuts stand down.
+        val textEntryActive = remember { mutableStateOf(0) }
         // ReelVaultApp registers its "group selected" action here, so the Window-
         // level key listener can invoke it on Cmd/Ctrl+G regardless of focus.
         val groupSelectedAction = remember { mutableStateOf<() -> Unit>({}) }
@@ -273,12 +319,16 @@ fun main() {
                     rootFocus.requestFocusSafely()
                     return@Window true
                 }
-                // Single-letter shortcuts: only when no modifier is held AND the
-                // search field isn't focused (so the user can still type 'g', 'd',
-                // or 'i' in the search box).
+                // Single-letter shortcuts: only when no modifier is held AND no
+                // text field is receiving the keystroke. The search box reports
+                // via searchFocused; every other editable field bumps
+                // textEntryActive (see Modifier.trackTextEntryFocus). Together
+                // they enforce the key-responder rule: while the user types into
+                // any field, 'g'/'l'/'m'/'d'/'i', space and the rating/colour
+                // digits go to the field, not the view.
                 if (event.type == KeyEventType.KeyDown &&
                     !event.isMetaPressed && !event.isCtrlPressed && !event.isAltPressed &&
-                    !searchFocused.value
+                    !searchFocused.value && textEntryActive.value == 0
                 ) {
                     when (event.key) {
                         Key.G -> { setGridModeAction.value(); return@Window true }
@@ -361,7 +411,7 @@ fun main() {
                     // guard covers the single-line search box, which wouldn't
                     // consume Up/Down.
                     !event.isMetaPressed && !event.isCtrlPressed && !event.isAltPressed &&
-                        !searchFocused.value &&
+                        !searchFocused.value && textEntryActive.value == 0 &&
                         event.key in arrowKeys -> {
                         val extend = event.isShiftPressed
                         when (event.key) {
@@ -434,7 +484,10 @@ fun main() {
                     LocalAppWindow provides window,
                     // Let PathCompletingTextField signal its focus state so
                     // onPreviewKeyEvent can suppress Tab → panel-toggle.
-                    LocalPathFieldFocused provides pathFieldFocused
+                    LocalPathFieldFocused provides pathFieldFocused,
+                    // Let every editable text field signal focus so the window's
+                    // single-key shortcuts stand down while the user types.
+                    LocalTextEntryActive provides textEntryActive
                 ) {
                     ReelVaultApp(
                         onRegisterGroupAction = { groupSelectedAction.value = it },
@@ -1373,6 +1426,7 @@ fun ReelVaultApp(
                                                 onValueChange = { smartCollectionName = it },
                                                 placeholder = { Text("Collection name") },
                                                 singleLine = true,
+                                                modifier = Modifier.trackTextEntryFocus(),
                                                 colors = TextFieldDefaults.colors(
                                                     focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                                                     unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant

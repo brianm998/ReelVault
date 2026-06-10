@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.reelvault.data.models.CameraNameMapping
 import com.reelvault.data.repository.VideoRepository
+import com.reelvault.trackTextEntryFocus
 import kotlinx.coroutines.launch
 
 /**
@@ -157,7 +158,7 @@ fun CameraNamesDialog(
                         label = { Text("Internal name") },
                         placeholder = { Text("e.g. SONY ILCE-7RM3A") },
                         singleLine = true,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).trackTextEntryFocus(),
                         textStyle = MaterialTheme.typography.bodySmall.copy(
                             fontFamily = FontFamily.Monospace
                         )
@@ -175,7 +176,7 @@ fun CameraNamesDialog(
                         label = { Text("Marketing name") },
                         placeholder = { Text("e.g. Sony a7R IIIA") },
                         singleLine = true,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).trackTextEntryFocus(),
                     )
                 }
                 Spacer(modifier = Modifier.height(6.dp))

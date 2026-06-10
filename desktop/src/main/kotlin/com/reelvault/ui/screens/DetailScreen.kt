@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.reelvault.ViewMode
+import com.reelvault.trackTextEntryFocus
 import com.reelvault.data.models.FullResolutionStatus
 import com.reelvault.data.models.GridStatKey
 import com.reelvault.ui.theme.ReelVaultSpacing
@@ -407,7 +408,8 @@ fun DetailScreen(
                         onValueChange = { viewModel.updateNotes(it) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(80.dp),
+                            .height(80.dp)
+                            .trackTextEntryFocus(),
                         placeholder = { Text("Add notes...") },
                         colors = TextFieldDefaults.colors(
                             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -1084,7 +1086,7 @@ fun KeywordsSection(
                 onValueChange = { newKeyword = it },
                 placeholder = { Text("Add a keyword…", style = MaterialTheme.typography.bodySmall) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().trackTextEntryFocus(),
                 keyboardActions = androidx.compose.foundation.text.KeyboardActions(
                     onDone = {
                         if (newKeyword.isNotBlank()) {

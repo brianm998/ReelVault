@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.reelvault.data.models.Collection
 import com.reelvault.data.models.LibraryLocation
+import com.reelvault.trackTextEntryFocus
 import com.reelvault.ui.theme.ReelVaultSpacing
 
 /**
@@ -297,6 +298,7 @@ fun LibraryPanel(
                     onValueChange = { newCollectionName = it },
                     placeholder = { Text("Collection name") },
                     singleLine = true,
+                    modifier = Modifier.trackTextEntryFocus(),
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant

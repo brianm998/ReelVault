@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.reelvault.data.models.LensNameMapping
 import com.reelvault.data.repository.VideoRepository
+import com.reelvault.trackTextEntryFocus
 import kotlinx.coroutines.launch
 
 /**
@@ -158,7 +159,7 @@ fun LensNamesDialog(
                         label = { Text("Recorded name") },
                         placeholder = { Text("e.g. 14mm F1.8 DG HSM | Art 018") },
                         singleLine = true,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).trackTextEntryFocus(),
                         textStyle = MaterialTheme.typography.bodySmall.copy(
                             fontFamily = FontFamily.Monospace
                         )
@@ -176,7 +177,7 @@ fun LensNamesDialog(
                         label = { Text("Display name") },
                         placeholder = { Text("e.g. Sigma 14mm F1.8 Art") },
                         singleLine = true,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).trackTextEntryFocus(),
                     )
                 }
                 Spacer(modifier = Modifier.height(6.dp))

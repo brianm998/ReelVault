@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.reelvault.data.models.NamedLocation
 import com.reelvault.data.models.VideoLocation
+import com.reelvault.trackTextEntryFocus
 import com.reelvault.ui.components.MapPin
 import com.reelvault.ui.components.MapPinStyle
 import com.reelvault.ui.components.MapView
@@ -393,7 +394,7 @@ private fun candidateReadout(
                     Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                 },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().trackTextEntryFocus(),
             )
         }
     }
