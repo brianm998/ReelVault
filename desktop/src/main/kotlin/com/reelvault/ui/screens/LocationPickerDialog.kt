@@ -94,7 +94,12 @@ fun LocationPickerDialog(
         }
         when {
             points.isNotEmpty() -> bboxFraming(points)
-            else -> Triple(51.4769, 0.0, 3)
+            // No coordinates anywhere in the catalog yet (the first-ever
+            // location): open on a wide, navigable world view rather than
+            // zoomed all the way in on one arbitrary street. (JXMapViewer zoom
+            // counts up as it zooms out; 16 ≈ continents in view.) Mirrors the
+            // macOS picker's no-data default.
+            else -> Triple(25.0, 0.0, 16)
         }
     }
 

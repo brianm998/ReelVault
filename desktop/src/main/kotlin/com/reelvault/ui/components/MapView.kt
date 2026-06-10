@@ -294,8 +294,10 @@ fun MapView(
                     override fun componentResized(e: ComponentEvent) {
                         reapplySliderBounds()
                         // The viewer now has a real size — frame the pins if we
-                        // were waiting on layout.
+                        // were waiting on layout, or apply the fixed initial
+                        // center (location picker) that couldn't stick at 0×0.
                         mapHolder.maybeAutoFit()
+                        mapHolder.maybeApplyInitialCenter()
                     }
                 })
                 // Belt-and-suspenders: post a one-shot bounds update once
@@ -308,6 +310,7 @@ fun MapView(
                 javax.swing.SwingUtilities.invokeLater {
                     reapplySliderBounds()
                     mapHolder.maybeAutoFit()
+                    mapHolder.maybeApplyInitialCenter()
                 }
                 viewer
         }
@@ -322,6 +325,9 @@ fun MapView(
                 // (above). Re-frame when the pin set changes — unless the user
                 // took over the camera — and repaint to reflect updated pins.
                 mapHolder.maybeAutoFit()
+                // Re-center the fixed-center path if the request changed (e.g.
+                // picker data loaded after first layout).
+                mapHolder.maybeApplyInitialCenter()
                 mapHolder.viewer?.repaint()
             },
         )
@@ -348,6 +354,11 @@ private class MapHolder {
     /** Ids of the pin set the camera was last auto-fit to, so we only re-fit
      *  when the set actually changes. */
     var lastFitIds: Set<String>? = null
+    /** (center, zoom) last pushed onto the viewer by [maybeApplyInitialCenter],
+     *  so the non-auto-fit path only re-centers when the request actually
+     *  changes — never on every recomposition (e.g. a location-picker pin
+     *  click), which would yank the camera back. */
+    var lastAppliedInitial: Pair<Pair<Double, Double>, Int>? = null
     // Live inputs routed through the holder rather than captured by the factory
     // lambda. SwingPanel keys its component-creating DisposableEffect on the
     // `factory` reference, so a factory that closed over these (which change on
@@ -385,6 +396,31 @@ private fun MapHolder.maybeAutoFit() {
         // Fit all positions into ~70% of the viewport.
         v.zoomToBestFit(positions, 0.7)
     }
+}
+
+/** Apply [MapHolder.initialCenter]/[MapHolder.initialZoom] once the panel has a
+ *  real size — the counterpart to [maybeAutoFit] for the non-auto-fit path
+ *  (the location picker, and the map focused on a single coordinate).
+ *
+ *  JXMapViewer silently drops an `addressLocation` set while the component is
+ *  still 0×0 (not yet laid out) and shows its default top-left viewport, i.e.
+ *  the north pole — which is why the location picker opened "zoomed into the
+ *  arctic". The auto-fit path already re-applies after layout via
+ *  [maybeAutoFit]; this gives the fixed-center path the same post-layout
+ *  re-apply. Re-applies whenever the requested center/zoom changes (pins can
+ *  load asynchronously and re-frame), but never once the user has taken over
+ *  the camera. Mutually exclusive with auto-fit. */
+private fun MapHolder.maybeApplyInitialCenter() {
+    if (autoFitPins || userInteracted) return
+    val v = viewer ?: return
+    // Same guard as maybeAutoFit: addressLocation only sticks once laid out.
+    if (v.width <= 0 || v.height <= 0) return
+    val target = initialCenter to initialZoom
+    if (target == lastAppliedInitial) return
+    lastAppliedInitial = target
+    // Zoom first so addressLocation computes the center pixel at the right zoom.
+    v.zoom = initialZoom
+    v.addressLocation = GeoPosition(initialCenter.first, initialCenter.second)
 }
 
 private data class RenderedPin(
