@@ -2176,6 +2176,22 @@ class GridViewModel: ObservableObject {
         return true
     }
 
+    /// True while the DETAIL loupe is the active view. In detail mode the loupe
+    /// deliberately ignores the library filter — editing the shown video's
+    /// metadata so it no longer matches must NOT yank it off screen. Set via
+    /// `onViewModeChanged`; grid/list still drop a filtered-out selection on return.
+    private var detailModeActive = false
+
+    /// Called by the UI whenever the top-level view mode changes. While DETAIL
+    /// is active the current video is pinned (the filter is ignored for the
+    /// loupe); on returning to GRID/LIST/MAP we re-check and drop the selection
+    /// if the (possibly just-edited) video no longer matches the active filter,
+    /// so no stale details linger in the inspector.
+    func onViewModeChanged(isDetail: Bool) {
+        detailModeActive = isDetail
+        if !isDetail { forceClearSelectionIfFilteredOut() }
+    }
+
     /// Drop the primary selection when it no longer passes the active filters —
     /// e.g. the user sets "location: no" while a geotagged video is selected, so
     /// its card is about to leave the grid. The loupe keys off `selectedVideoId`
@@ -2183,7 +2199,18 @@ class GridViewModel: ObservableObject {
     /// their "select a video" placeholder instead of stranding the now-hidden
     /// video on screen. Call before the reload empties `videos` so the
     /// selection's summary is still resolvable.
+    ///
+    /// Suppressed while `detailModeActive` (the loupe pins its video); the
+    /// deferred check then runs on the return to grid/list via `onViewModeChanged`.
     private func clearSelectionIfFilteredOut() {
+        if detailModeActive { return }
+        forceClearSelectionIfFilteredOut()
+    }
+
+    /// Unconditional form of `clearSelectionIfFilteredOut` — ignores
+    /// `detailModeActive`. Used when leaving detail mode for grid/list, where a
+    /// now-filtered-out selection must be dropped even though it had been pinned.
+    private func forceClearSelectionIfFilteredOut() {
         guard let id = selectedVideoId else { return }
         guard let summary = videos.first(where: { $0.id == id }) ?? selectedVideo else { return }
         if !summaryMatchesLocalFilters(summary) {

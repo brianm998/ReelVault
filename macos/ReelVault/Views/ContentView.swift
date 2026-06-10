@@ -403,6 +403,10 @@ struct ContentView: View {
         // becomes the active view. Filter edits made while the map is up
         // already refresh videoLocations via the grid reload.
         .onChange(of: viewMode) { _, newMode in
+            // DETAIL pins the loupe's video even when a metadata edit filters it
+            // out; returning to GRID/LIST/MAP drops a now-hidden selection so the
+            // inspector doesn't strand it.
+            gridViewModel.onViewModeChanged(isDetail: newMode == .detail)
             if newMode == .map {
                 Task {
                     await gridViewModel.loadVideoLocationsFilteredAsync()

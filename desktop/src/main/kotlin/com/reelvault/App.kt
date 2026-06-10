@@ -848,6 +848,10 @@ fun ReelVaultApp(
     // the active view. Filter edits made while the map is up already refresh
     // videoLocations via the grid reload's debounced trigger.
     LaunchedEffect(viewMode) {
+        // DETAIL pins the loupe's video even when a metadata edit filters it out;
+        // returning to GRID/LIST/MAP drops a now-hidden selection so the inspector
+        // doesn't strand it. The GridViewModel doesn't otherwise know the view mode.
+        gridViewModel.onViewModeChanged(viewMode == ViewMode.DETAIL)
         if (viewMode == ViewMode.MAP) {
             gridViewModel.loadVideoLocationsFilteredAsync()
             // Named places drive the pin labels.
