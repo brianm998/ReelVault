@@ -185,8 +185,13 @@ private struct _OSMMapKitView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> MKMapView {
-        let mapView = MKMapView()
+        let mapView = RVMapView()
         mapView.delegate = context.coordinator
+        // Right-click context menu (name/rename a pin). Routed through a
+        // rightMouseDown override rather than a gesture recognizer — see RVMapView.
+        mapView.contextMenuProvider = { [weak coordinator = context.coordinator] point in
+            coordinator?.contextMenu(at: point)
+        }
 
         // Standard = OSM raster tiles (replacing Apple's vector basemap);
         // satellite = MapKit's native hybrid imagery. Re-applied on toggle.
@@ -228,14 +233,6 @@ private struct _OSMMapKitView: NSViewRepresentable {
             action: #selector(Coordinator.handlePinch(_:))
         )
         mapView.addGestureRecognizer(pinch)
-
-        // Right-click (secondary button) → name/rename the pin under the cursor.
-        let secondaryClick = NSClickGestureRecognizer(
-            target: context.coordinator,
-            action: #selector(Coordinator.handleSecondaryClick(_:))
-        )
-        secondaryClick.buttonMask = 0x2  // secondary (right) mouse button
-        mapView.addGestureRecognizer(secondaryClick)
 
         context.coordinator.mapView = mapView
 
@@ -568,13 +565,15 @@ private struct _OSMMapKitView: NSViewRepresentable {
 
         // MARK: Secondary (right) click → name/rename menu
 
-        @objc func handleSecondaryClick(_ recognizer: NSClickGestureRecognizer) {
-            guard let mapView = mapView, parent.onRenameLocationRequest != nil else { return }
-            let point = recognizer.location(in: mapView)
+        /// Build the right-click menu for a pin under `point` (in map-view
+        /// coordinates), or nil when the click misses every pin or naming isn't
+        /// wired. Called from [RVMapView.rightMouseDown].
+        func contextMenu(at point: NSPoint) -> NSMenu? {
+            guard let mapView = mapView, parent.onRenameLocationRequest != nil else { return nil }
             // Only over an existing pin (same tolerance as the left-click path);
-            // a right-click on blank map does nothing.
+            // a right-click on blank map shows nothing.
             guard let pin = nearestPin(to: point, in: mapView, tolerance: 40),
-                  pin.id != "candidate" else { return }
+                  pin.id != "candidate" else { return nil }
             let menu = NSMenu()
             let title = pin.label.isEmpty ? "Name this location…" : "Rename location…"
             let item = NSMenuItem(
@@ -585,7 +584,7 @@ private struct _OSMMapKitView: NSViewRepresentable {
             item.target = self
             item.representedObject = pin
             menu.addItem(item)
-            menu.popUp(positioning: nil, at: point, in: mapView)
+            return menu
         }
 
         @objc func renameMenuClicked(_ sender: NSMenuItem) {
@@ -868,6 +867,28 @@ struct OSMMapPin: Identifiable, Hashable {
 
     static func == (lhs: OSMMapPin, rhs: OSMMapPin) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+
+/// `MKMapView` that routes right-clicks to a context-menu provider.
+///
+/// An `NSClickGestureRecognizer` with the secondary-button mask proved
+/// unreliable on `MKMapView` — MapKit installs its own recognizers that claim
+/// the right-click before ours fires, so the name/rename menu never appeared on
+/// macOS. Overriding `rightMouseDown` directly is dependable: AppKit always
+/// delivers it to the view under the cursor.
+private final class RVMapView: MKMapView {
+    /// Builds the context menu for a right-click at the given view point, or
+    /// nil to fall back to the default handling.
+    var contextMenuProvider: ((NSPoint) -> NSMenu?)?
+
+    override func rightMouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        if let menu = contextMenuProvider?(point) {
+            menu.popUp(positioning: nil, at: point, in: self)
+        } else {
+            super.rightMouseDown(with: event)
+        }
+    }
 }
 
 /// MKAnnotation wrapper that retains the originating [OSMMapPin] so the
