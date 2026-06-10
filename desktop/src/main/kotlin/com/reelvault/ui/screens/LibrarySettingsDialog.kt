@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.reelvault.data.repository.VideoRepository
+import com.reelvault.ui.components.FilenameDateInferenceControls
+import com.reelvault.util.FilenameDateInference
 import kotlinx.coroutines.launch
 
 /**
@@ -58,6 +60,13 @@ fun LibrarySettingsDialog(
     // any value to render yet. Cached opens skip it entirely.
     var loading by remember { mutableStateOf(cached == null) }
     var saving by remember { mutableStateOf(false) }
+
+    // Default filename → capture-date inference. Stored locally (Java
+    // Preferences), not in the catalog config, so it's seeded directly rather
+    // than from `cached`. Saved alongside the catalog config on Save.
+    var inferEnabled by remember { mutableStateOf(FilenameDateInference.defaultEnabled()) }
+    var inferFormat by remember { mutableStateOf(FilenameDateInference.defaultFormat()) }
+    var inferPosition by remember { mutableStateOf(FilenameDateInference.defaultPosition()) }
 
     LaunchedEffect(Unit) {
         // Always refresh in the background so the cache is current —
@@ -139,6 +148,40 @@ fun LibrarySettingsDialog(
                         )
                     }
                 }
+
+                // ── Default capture-date inference from filenames ──────────
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Infer capture date from filename", fontWeight = FontWeight.Medium)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "When a video has no embedded capture date, read one from its " +
+                                "filename with this method — applied to new library scans, and " +
+                                "offered as the default in the Set Capture Date dialog.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Switch(
+                        checked = inferEnabled,
+                        onCheckedChange = { inferEnabled = it },
+                        enabled = !saving,
+                    )
+                }
+                if (inferEnabled) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    FilenameDateInferenceControls(
+                        format = inferFormat,
+                        position = inferPosition,
+                        onFormatChange = { inferFormat = it },
+                        onPositionChange = { inferPosition = it },
+                        enabled = !saving,
+                    )
+                }
             }
         },
         confirmButton = {
@@ -146,6 +189,8 @@ fun LibrarySettingsDialog(
                 onClick = {
                     scope.launch {
                         saving = true
+                        // Local pref — persist the default inference method.
+                        FilenameDateInference.saveDefault(inferEnabled, inferFormat, inferPosition)
                         repository.updateConfig(
                             autoTagTimelapses = autoTagTimelapses,
                         )

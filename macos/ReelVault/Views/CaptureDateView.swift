@@ -14,6 +14,10 @@ struct CaptureDateView: View {
     let targetVideoIds: [String]
     /// Existing capture timestamp (Unix ms, UTC), if any.
     let initialTimestampMs: Int64?
+    /// Filename of the single target video, when exactly one is selected — used
+    /// to offer filename-based date inference. Nil for multi-select (per-file
+    /// inference would differ) so the infer controls hide.
+    let primaryFilename: String?
     let onCancel: () -> Void
     let onApply: (_ timestampMs: Int64, _ writeToFile: Bool) -> Void
 
@@ -21,14 +25,22 @@ struct CaptureDateView: View {
     @State private var includeTime: Bool
     @State private var writeToFile: Bool = false
 
+    // Filename-based capture-date inference.
+    @State private var showInfer = false
+    @State private var inferFormat: String = FilenameDateInference.savedFormat()
+    @State private var inferPosition: String = FilenameDateInference.savedPosition()
+    @State private var setInferAsDefault = false
+
     init(
         targetVideoIds: [String],
         initialTimestampMs: Int64?,
+        primaryFilename: String? = nil,
         onCancel: @escaping () -> Void,
         onApply: @escaping (Int64, Bool) -> Void
     ) {
         self.targetVideoIds = targetVideoIds
         self.initialTimestampMs = initialTimestampMs
+        self.primaryFilename = primaryFilename
         self.onCancel = onCancel
         self.onApply = onApply
         let initial: Date
@@ -95,6 +107,48 @@ struct CaptureDateView: View {
                 }
             }
 
+            // Infer the capture date from the filename — single target only
+            // (per-file inference would differ for a multi-selection).
+            if let filename = primaryFilename {
+                Divider()
+                HStack(spacing: 8) {
+                    // Quick-apply the default method — only when a default is
+                    // configured AND it matches this filename.
+                    if let d = defaultInferred {
+                        Button("Set as \(Self.dateLabel(d))") { applyInferred(d) }
+                            .help("Apply \(Self.dateLabel(d)), read from the filename with your default method.")
+                    }
+                    Button(showInfer ? "Hide filename options" : "Infer from filename…") {
+                        showInfer.toggle()
+                    }
+                    Spacer()
+                }
+                if showInfer {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Filename: \(filename)")
+                            .font(.caption).foregroundColor(.secondary)
+                            .lineLimit(1).truncationMode(.middle)
+                        FilenameDateInferenceControls(format: $inferFormat, position: $inferPosition)
+                        if let p = previewInferred {
+                            Text("Detected: \(Self.dateLabel(p))").foregroundColor(.accentColor)
+                        } else {
+                            Text("No date matches this pattern in the filename.")
+                                .font(.caption).foregroundColor(.red)
+                        }
+                        Toggle("Remember this as my default capture-date method", isOn: $setInferAsDefault)
+                            .toggleStyle(.checkbox)
+                        Button("Use detected date") {
+                            if setInferAsDefault {
+                                FilenameDateInference.saveDefault(
+                                    enabled: true, format: inferFormat, position: inferPosition)
+                            }
+                            if let p = previewInferred { applyInferred(p) }
+                        }
+                        .disabled(previewInferred == nil)
+                    }
+                }
+            }
+
             HStack {
                 Spacer()
                 Button("Cancel") { onCancel() }
@@ -111,6 +165,31 @@ struct CaptureDateView: View {
         }
         .padding(20)
         .frame(width: 480)
+    }
+
+    /// The saved-default method's result for this filename — drives the quick
+    /// "Set as <date>" button (only when a default is configured and matches).
+    private var defaultInferred: Date? {
+        guard let f = primaryFilename, FilenameDateInference.defaultEnabled() else { return nil }
+        return FilenameDateInference.inferDate(
+            filename: f,
+            format: FilenameDateInference.savedFormat(),
+            position: FilenameDateInference.savedPosition())
+    }
+
+    /// The current picker's result — the live preview in the infer section.
+    private var previewInferred: Date? {
+        guard let f = primaryFilename else { return nil }
+        return FilenameDateInference.inferDate(filename: f, format: inferFormat, position: inferPosition)
+    }
+
+    /// Apply an inferred (noon-local) date and close.
+    private func applyInferred(_ date: Date) {
+        onApply(Int64(date.timeIntervalSince1970 * 1000.0), writeToFile)
+    }
+
+    private static func dateLabel(_ d: Date) -> String {
+        d.formatted(date: .abbreviated, time: .omitted)
     }
 
     /// The date the user will actually save. When `includeTime` is off, we

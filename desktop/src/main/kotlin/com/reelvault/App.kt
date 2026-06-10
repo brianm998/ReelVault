@@ -1954,9 +1954,18 @@ fun ReelVaultApp(
 
                 // Capture-date picker — set/replace creation time.
                 videoIdsForDatePicker?.let { ids ->
+                    // Filename of the single target (for filename-based date
+                    // inference); null for multi-select so the infer controls hide.
+                    val primaryDateFilename = if (ids.size == 1) {
+                        val id = ids.first()
+                        (gridViewModel.videos.value.firstOrNull { it.id == id }
+                            ?: gridViewModel.selectedVideo.value?.takeIf { it.id == id })
+                            ?.filename
+                    } else null
                     com.reelvault.ui.screens.CaptureDateDialog(
                         targetVideoIds = ids,
                         initialTimestampMs = initialTimestampForPicker,
+                        primaryFilename = primaryDateFilename,
                         onDismiss = {
                             videoIdsForDatePicker = null
                             initialTimestampForPicker = null

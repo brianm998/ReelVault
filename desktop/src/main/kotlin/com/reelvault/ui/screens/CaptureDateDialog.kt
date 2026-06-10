@@ -16,9 +16,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import com.reelvault.ui.components.FilenameDateInferenceControls
 import com.reelvault.ui.components.Tooltip
 import com.reelvault.ui.theme.ReelVaultSpacing
+import com.reelvault.util.FilenameDateInference
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -38,6 +41,10 @@ fun CaptureDateDialog(
     targetVideoIds: List<String>,
     /** Existing capture timestamp (Unix ms, UTC), if any. */
     initialTimestampMs: Long?,
+    /** Filename of the single target video, when exactly one is selected — used
+     *  to offer filename-based date inference. Null for multi-select (per-file
+     *  inference would differ) so the infer controls hide. */
+    primaryFilename: String? = null,
     onDismiss: () -> Unit,
     onApply: (timestampMs: Long, writeToFile: Boolean) -> Unit,
 ) {
@@ -67,6 +74,36 @@ fun CaptureDateDialog(
         is24Hour = false,
     )
     var writeToFile by remember { mutableStateOf(false) }
+
+    // --- Filename-based capture-date inference -------------------------------
+    var showInfer by remember { mutableStateOf(false) }
+    var inferFormat by remember { mutableStateOf(FilenameDateInference.defaultFormat()) }
+    var inferPosition by remember { mutableStateOf(FilenameDateInference.defaultPosition()) }
+    var setInferAsDefault by remember { mutableStateOf(false) }
+
+    // The saved-default method's result for this filename — drives the quick
+    // "Set as <date>" button, shown only when a default is configured and it
+    // actually parses a date from this filename.
+    val defaultInferred: LocalDate? = remember(primaryFilename) {
+        if (primaryFilename != null && FilenameDateInference.defaultEnabled()) {
+            FilenameDateInference.inferDate(
+                primaryFilename,
+                FilenameDateInference.defaultFormat(),
+                FilenameDateInference.defaultPosition(),
+            )
+        } else null
+    }
+    // The current picker's result — the live preview in the infer section.
+    val previewInferred: LocalDate? = remember(primaryFilename, inferFormat, inferPosition) {
+        primaryFilename?.let { FilenameDateInference.inferDate(it, inferFormat, inferPosition) }
+    }
+
+    // Apply a date-only inference at noon local (matching the date-only commit
+    // path below), then close.
+    fun applyInferredDate(date: LocalDate) {
+        val ms = date.atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        onApply(ms, writeToFile)
+    }
 
     // Compose the selected Unix-ms from the picker components on commit.
     val commit: () -> Unit = commit@{
@@ -177,6 +214,84 @@ fun CaptureDateDialog(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                    }
+                }
+
+                // ── Infer the capture date from the filename ───────────────
+                // Only for a single target (per-file inference would differ).
+                if (primaryFilename != null) {
+                    Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(ReelVaultSpacing.Small),
+                    ) {
+                        // Quick-apply the default method — only when a default
+                        // is configured AND it matches this filename.
+                        if (defaultInferred != null) {
+                            Tooltip(text = "Apply $defaultInferred, read from the filename with your default method.") {
+                                Button(onClick = { applyInferredDate(defaultInferred) }) {
+                                    Text("Set as $defaultInferred")
+                                }
+                            }
+                        }
+                        Tooltip(text = "Choose how to read a date out of the filename — and optionally make it your default.") {
+                            OutlinedButton(onClick = { showInfer = !showInfer }) {
+                                Text(if (showInfer) "Hide filename options" else "Infer from filename…")
+                            }
+                        }
+                    }
+
+                    if (showInfer) {
+                        Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
+                        Text(
+                            text = "Filename: $primaryFilename",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        FilenameDateInferenceControls(
+                            format = inferFormat,
+                            position = inferPosition,
+                            onFormatChange = { inferFormat = it },
+                            onPositionChange = { inferPosition = it },
+                        )
+                        Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
+                        if (previewInferred != null) {
+                            Text(
+                                text = "Detected: $previewInferred",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        } else {
+                            Text(
+                                text = "No date matches this pattern in the filename.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = setInferAsDefault,
+                                onCheckedChange = { setInferAsDefault = it },
+                            )
+                            Text(
+                                text = "Remember this as my default capture-date method",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                if (setInferAsDefault) {
+                                    FilenameDateInference.saveDefault(true, inferFormat, inferPosition)
+                                }
+                                previewInferred?.let { applyInferredDate(it) }
+                            },
+                            enabled = previewInferred != null,
+                        ) { Text("Use detected date") }
                     }
                 }
             }

@@ -29,6 +29,13 @@ struct LibrarySettingsDialog: View {
     @State private var loading: Bool
     @State private var saving = false
 
+    // Default filename → capture-date inference. Stored locally (UserDefaults),
+    // not in the catalog config — seeded directly and saved alongside the
+    // catalog config on Save.
+    @State private var inferEnabled: Bool
+    @State private var inferFormat: String
+    @State private var inferPosition: String
+
     init(isPresented: Binding<Bool>) {
         self._isPresented = isPresented
         // Seed from the repository's in-memory cache. If we've never
@@ -41,6 +48,9 @@ struct LibrarySettingsDialog: View {
         // Only show the "refreshing…" affordance when we genuinely
         // don't have any value to render yet. Cached opens skip it.
         self._loading = State(initialValue: cached == nil)
+        self._inferEnabled = State(initialValue: FilenameDateInference.defaultEnabled())
+        self._inferFormat = State(initialValue: FilenameDateInference.savedFormat())
+        self._inferPosition = State(initialValue: FilenameDateInference.savedPosition())
     }
 
     var body: some View {
@@ -62,6 +72,10 @@ struct LibrarySettingsDialog: View {
             Divider()
 
             timelapseSection
+
+            Divider()
+
+            inferenceSection
 
             // The "refreshing…" affordance only renders on a true cold
             // start (no cached config yet). After the first fetch it
@@ -90,8 +104,35 @@ struct LibrarySettingsDialog: View {
             }
         }
         .padding(20)
-        .frame(width: 540, height: 280)
+        .frame(width: 540, height: 460)
         .task { await refreshFromServer() }
+    }
+
+    private var inferenceSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Infer capture date from filename")
+                        .fontWeight(.medium)
+                    Text(
+                        "When a video has no embedded capture date, read one from its " +
+                        "filename with this method — applied to new library scans, and " +
+                        "offered as the default in the Set Capture Date dialog."
+                    )
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                }
+                Spacer()
+                Toggle("", isOn: $inferEnabled)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .disabled(saving)
+            }
+            if inferEnabled {
+                FilenameDateInferenceControls(
+                    format: $inferFormat, position: $inferPosition, disabled: saving)
+            }
+        }
     }
 
     private var timelapseSection: some View {
@@ -132,6 +173,9 @@ struct LibrarySettingsDialog: View {
 
     private func saveAndDismiss() async {
         saving = true
+        // Local pref — persist the default inference method.
+        FilenameDateInference.saveDefault(
+            enabled: inferEnabled, format: inferFormat, position: inferPosition)
         _ = await VideoRepository.shared.updateConfig(
             autoTagTimelapses: autoTagTimelapses
         )

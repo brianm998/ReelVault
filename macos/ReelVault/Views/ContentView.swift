@@ -325,6 +325,13 @@ struct ContentView: View {
             CaptureDateView(
                 targetVideoIds: targets.ids,
                 initialTimestampMs: datePickerInitial,
+                // Filename of the single target (for filename-based date
+                // inference); nil for multi-select so the infer controls hide.
+                primaryFilename: targets.ids.count == 1
+                    ? (gridViewModel.videos.first { $0.id == targets.ids[0] }?.filename
+                        ?? (gridViewModel.selectedVideo?.id == targets.ids[0]
+                            ? gridViewModel.selectedVideo?.filename : nil))
+                    : nil,
                 onCancel: {
                     datePickerTargets = nil
                     datePickerInitial = nil
