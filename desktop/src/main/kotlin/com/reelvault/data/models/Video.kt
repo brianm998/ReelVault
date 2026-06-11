@@ -82,6 +82,11 @@ data class VideoSummary(
      *  renamed, or on an unmounted drive. The grid dims such cards and shows an
      *  "offline" badge instead of only failing when the user hits play. */
     val isOnline: Boolean = true,
+    /** ffprobe's nb_frames for the video stream (proto `VideoSummary.frame_count`).
+     *  0 when the container didn't report one — [frameCountFormatted] then falls
+     *  back to estimating from duration × fps. Surfaced on the summary so the
+     *  grid's "Frame count" stat slot renders without a per-video round-trip. */
+    val frameCount: Long = 0,
 ) {
     val isInGroup: Boolean get() = groupId.isNotEmpty() && groupSize > 1
     val hasProxies: Boolean get() = proxyCount > 0
@@ -100,6 +105,18 @@ data class VideoSummary(
         } else {
             String.format("%ds", secs)
         }
+    }
+    /** Exact frame count ("12,345") when the container reported one, else an
+     *  estimate from duration × fps ("~12,345"), or null when neither is known.
+     *  Mirrors [VideoMetadata.frameCountFormatted] so the card and the detail
+     *  panel show the same value. */
+    val frameCountFormatted: String? get() {
+        if (frameCount > 0) return "%,d".format(frameCount)
+        if (fps > 0 && durationMs > 0) {
+            val est = Math.round(durationMs / 1000.0 * fps)
+            if (est > 0) return "~%,d".format(est)
+        }
+        return null
     }
     val sizeMB: Double get() = sizeBytes / (1024.0 * 1024.0)
 }
@@ -507,6 +524,7 @@ enum class GridStatKey(val raw: String, val displayName: String) {
     VideoCodec     ("video_codec",       "Video codec"),
     AudioCodec     ("audio_codec",       "Audio codec"),
     Fps            ("fps",               "FPS"),
+    FrameCount     ("frame_count",       "Frame count"),
     Bitrate        ("bitrate",           "Bitrate"),
     CameraModel    ("camera_model",      "Camera"),
     LensModel      ("lens_model",        "Lens"),
@@ -539,6 +557,7 @@ enum class GridStatKey(val raw: String, val displayName: String) {
         VideoCodec       -> video.codecVideo
         AudioCodec       -> video.codecAudio
         Fps              -> if (video.fps > 0) "%.0f fps".format(video.fps) else ""
+        FrameCount       -> video.frameCountFormatted ?: ""
         Bitrate          -> if (video.bitrateKbps <= 0) ""
             else if (video.bitrateKbps >= 1000) "%.1f Mbps".format(video.bitrateKbps / 1000.0)
             else "${video.bitrateKbps} kbps"

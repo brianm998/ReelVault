@@ -524,6 +524,16 @@ nonisolated struct Reelvault_VideoSummary: @unchecked Sendable {
     set {_uniqueStorage()._bitrate = newValue}
   }
 
+  /// ffprobe's nb_frames for the video stream, copied from the metadata row and
+  /// stored at index time. 0 when the container didn't report a frame count
+  /// (clients then estimate from duration × fps). Surfaced on the summary — like
+  /// bitrate/iso/etc. above — so the grid's configurable "Frame count" stat slot
+  /// renders without a per-video VideoMetadata round-trip.
+  var frameCount: Int64 {
+    get {_storage._frameCount}
+    set {_uniqueStorage()._frameCount = newValue}
+  }
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -2819,7 +2829,7 @@ nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftP
 
 nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".VideoSummary"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0\u{3}proxy_count\0\u{3}proxy_of\0\u{3}playable_natively\0\u{1}rating\0\u{3}color_label\0\u{3}camera_model\0\u{3}camera_display_name\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}lens_model\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}full_resolution\0\u{3}is_online\0\u{1}bitrate\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0\u{3}proxy_count\0\u{3}proxy_of\0\u{3}playable_natively\0\u{1}rating\0\u{3}color_label\0\u{3}camera_model\0\u{3}camera_display_name\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}lens_model\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}full_resolution\0\u{3}is_online\0\u{1}bitrate\0\u{3}frame_count\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -2857,6 +2867,7 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
     var _fullResolution: Reelvault_FullResolutionStatus = .unspecified
     var _isOnline: Bool = false
     var _bitrate: Int64 = 0
+    var _frameCount: Int64 = 0
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -2902,6 +2913,7 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
       _fullResolution = source._fullResolution
       _isOnline = source._isOnline
       _bitrate = source._bitrate
+      _frameCount = source._frameCount
     }
   }
 
@@ -2955,6 +2967,7 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
         case 33: try { try decoder.decodeSingularEnumField(value: &_storage._fullResolution) }()
         case 34: try { try decoder.decodeSingularBoolField(value: &_storage._isOnline) }()
         case 35: try { try decoder.decodeSingularInt64Field(value: &_storage._bitrate) }()
+        case 36: try { try decoder.decodeSingularInt64Field(value: &_storage._frameCount) }()
         default: break
         }
       }
@@ -3068,6 +3081,9 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
       if _storage._bitrate != 0 {
         try visitor.visitSingularInt64Field(value: _storage._bitrate, fieldNumber: 35)
       }
+      if _storage._frameCount != 0 {
+        try visitor.visitSingularInt64Field(value: _storage._frameCount, fieldNumber: 36)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -3112,6 +3128,7 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
         if _storage._fullResolution != rhs_storage._fullResolution {return false}
         if _storage._isOnline != rhs_storage._isOnline {return false}
         if _storage._bitrate != rhs_storage._bitrate {return false}
+        if _storage._frameCount != rhs_storage._frameCount {return false}
         return true
       }
       if !storagesAreEqual {return false}

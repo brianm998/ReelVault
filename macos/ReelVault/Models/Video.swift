@@ -96,6 +96,11 @@ struct VideoSummary: Identifiable, Hashable {
     /// renamed, or on an unmounted drive. The grid dims such cards and shows an
     /// "offline" badge instead of only failing when the user hits play.
     let isOnline: Bool
+    /// ffprobe's nb_frames for the video stream (proto `VideoSummary.frame_count`).
+    /// 0 when the container didn't report one — `frameCountFormatted` then falls
+    /// back to estimating from duration × fps. Surfaced on the summary so the
+    /// grid's "Frame count" stat slot renders without a per-video round-trip.
+    let frameCount: Int64
 
     var isInGroup: Bool { !groupId.isEmpty && groupSize > 1 }
     var hasProxies: Bool { proxyCount > 0 }
@@ -115,6 +120,19 @@ struct VideoSummary: Identifiable, Hashable {
             return String(format: "%d:%02d:%02d", hours, minutes, seconds)
         }
         return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    /// Exact frame count ("12,345") when the container reported one, else an
+    /// estimate from duration × fps ("~12,345"), or nil when neither is known.
+    /// Mirrors `VideoMetadata.frameCountFormatted` so the card and the detail
+    /// panel show the same value.
+    var frameCountFormatted: String? {
+        if frameCount > 0 { return frameCount.formatted() }
+        if fps > 0 && durationMs > 0 {
+            let est = Int64((Double(durationMs) / 1000.0 * fps).rounded())
+            if est > 0 { return "~" + est.formatted() }
+        }
+        return nil
     }
 
     var sizeFormatted: String {
@@ -146,7 +164,8 @@ struct VideoSummary: Identifiable, Hashable {
             lensModel: lensModel, iso: iso, aperture: aperture,
             exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm,
             fullResolution: fullResolution,
-            isOnline: isOnline
+            isOnline: isOnline,
+            frameCount: frameCount
         )
     }
 
@@ -169,7 +188,8 @@ struct VideoSummary: Identifiable, Hashable {
             lensModel: lensModel, iso: iso, aperture: aperture,
             exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm,
             fullResolution: fullResolution,
-            isOnline: isOnline
+            isOnline: isOnline,
+            frameCount: frameCount
         )
     }
 
@@ -192,7 +212,8 @@ struct VideoSummary: Identifiable, Hashable {
             lensModel: lensModel, iso: iso, aperture: aperture,
             exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm,
             fullResolution: fullResolution,
-            isOnline: isOnline
+            isOnline: isOnline,
+            frameCount: frameCount
         )
     }
 
@@ -215,7 +236,8 @@ struct VideoSummary: Identifiable, Hashable {
             lensModel: lensModel, iso: iso, aperture: aperture,
             exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm,
             fullResolution: fullResolution,
-            isOnline: isOnline
+            isOnline: isOnline,
+            frameCount: frameCount
         )
     }
 }
@@ -681,6 +703,7 @@ enum GridStatKey: String, CaseIterable, Identifiable, Hashable {
     case videoCodec     = "video_codec"
     case audioCodec     = "audio_codec"
     case fps
+    case frameCount     = "frame_count"
     case bitrate
     case cameraModel    = "camera_model"
     case lensModel      = "lens_model"
@@ -705,6 +728,7 @@ enum GridStatKey: String, CaseIterable, Identifiable, Hashable {
         case .videoCodec:       return "Video codec"
         case .audioCodec:       return "Audio codec"
         case .fps:              return "FPS"
+        case .frameCount:       return "Frame count"
         case .bitrate:          return "Bitrate"
         case .cameraModel:      return "Camera"
         case .lensModel:        return "Lens"
@@ -737,6 +761,7 @@ enum GridStatKey: String, CaseIterable, Identifiable, Hashable {
         case .videoCodec:       return video.codecVideo.isEmpty ? "" : video.codecVideo
         case .audioCodec:       return video.codecAudio.isEmpty ? "" : video.codecAudio
         case .fps:              return video.fps > 0 ? String(format: "%g fps", video.fps) : ""
+        case .frameCount:       return video.frameCountFormatted ?? ""
         case .bitrate:
             if video.bitrateKbps <= 0 { return "" }
             return video.bitrateKbps >= 1000

@@ -315,6 +315,12 @@ message VideoSummary {
   // "Bitrate" stat slot renders without a per-video VideoMetadata round-trip.
   // Same unit as VideoMetadata.bitrate; clients divide by 1000 for kbps.
   int64 bitrate = 35;
+  // ffprobe's nb_frames for the video stream, copied from the metadata row and
+  // stored at index time. 0 when the container didn't report a frame count
+  // (clients then estimate from duration × fps). Surfaced on the summary — like
+  // bitrate/iso/etc. above — so the grid's configurable "Frame count" stat slot
+  // renders without a per-video VideoMetadata round-trip.
+  int64 frame_count = 36;
 }
 
 enum FullResolutionStatus {

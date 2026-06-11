@@ -1216,7 +1216,8 @@ class VideoRepository: ObservableObject {
             exposureTimeS: p.exposureTimeS,
             focalLengthMm: p.focalLengthMm,
             fullResolution: FullResolutionStatus.from(wire: Int(p.fullResolution.rawValue)),
-            isOnline: p.isOnline
+            isOnline: p.isOnline,
+            frameCount: p.frameCount
         )
     }
 

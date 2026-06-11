@@ -484,7 +484,7 @@ impl ReelVaultService {
                 "SELECT duration_ms, width, height, fps, codec_video, codec_audio,
                         creation_date, camera_model, gps_latitude, gps_longitude,
                         lens_model, iso, aperture, exposure_time_s, focal_length_mm,
-                        bitrate
+                        bitrate, COALESCE(frame_count, 0)
                  FROM metadata WHERE video_id = ?",
                 [video_id],
                 |row| {
@@ -505,6 +505,7 @@ impl ReelVaultService {
                         row.get::<_, Option<f64>>(13)?,
                         row.get::<_, Option<f64>>(14)?,
                         row.get::<_, i64>(15)?,
+                        row.get::<_, i64>(16)?,
                     ))
                 },
             ).ok()
@@ -514,9 +515,9 @@ impl ReelVaultService {
 
         let (duration_ms, width, height, fps, codec_video, codec_audio, creation_date,
              camera_model, gps_lat, gps_lon, lens_model, iso, aperture,
-             exposure_time_s, focal_length_mm, bitrate) =
+             exposure_time_s, focal_length_mm, bitrate, frame_count) =
             meta.unwrap_or((0, 0, 0, 0.0, None, None, None, None, None, None,
-                            None, None, None, None, None, 0));
+                            None, None, None, None, None, 0, 0));
 
         // Resolve the marketing-friendly camera name the same way
         // build_video_metadata does — user overrides on top of the
@@ -635,6 +636,7 @@ impl ReelVaultService {
             full_resolution,
             is_online,
             bitrate,
+            frame_count,
         }
     }
 }

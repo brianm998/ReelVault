@@ -123,6 +123,7 @@ class VideoRepository(
             bitrateKbps = (proto.bitrate / 1000).toInt(),
             fullResolution = FullResolutionStatus.fromWire(proto.fullResolutionValue),
             isOnline = proto.isOnline,
+            frameCount = proto.frameCount,
         )
     }
 

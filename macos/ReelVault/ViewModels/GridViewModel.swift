@@ -1899,7 +1899,8 @@ class GridViewModel: ObservableObject {
                     lensModel: v.lensModel, iso: v.iso, aperture: v.aperture,
                     exposureTimeS: v.exposureTimeS, focalLengthMm: v.focalLengthMm,
                     fullResolution: v.fullResolution,
-                    isOnline: v.isOnline
+                    isOnline: v.isOnline,
+                    frameCount: v.frameCount
                 )
             }
             return v
