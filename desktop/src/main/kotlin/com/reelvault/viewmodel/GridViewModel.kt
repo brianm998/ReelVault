@@ -40,19 +40,18 @@ enum class NavDirection { Up, Down, Left, Right }
  *
  * `cols == 1` means a single-column layout (list mode, or a one-wide grid):
  * every direction collapses to previous/next, with Left/Up == previous and
- * Right/Down == next. For a wider grid, Left/Right step within the row (no
- * wrap) and Up/Down jump a whole row.
+ * Right/Down == next. For a wider grid, Left/Right walk the flat visual order
+ * (wrapping across row boundaries) and Up/Down jump a whole row.
  */
 fun navTargetIndex(current: Int, size: Int, cols: Int, dir: NavDirection): Int {
     if (current < 0 || current >= size) return -1
     val columns = cols.coerceAtLeast(1)
     return when (dir) {
-        NavDirection.Left ->
-            if (columns == 1) (if (current > 0) current - 1 else -1)
-            else if (current % columns != 0) current - 1 else -1
-        NavDirection.Right ->
-            if (columns == 1) (if (current < size - 1) current + 1 else -1)
-            else if (current % columns != columns - 1 && current + 1 < size) current + 1 else -1
+        // Left/Right walk the flat row-major order, so a row boundary wraps:
+        // Right on a row's last card lands on the next row's first card, and
+        // Left on a row's first card lands on the previous row's last card.
+        NavDirection.Left  -> if (current > 0) current - 1 else -1
+        NavDirection.Right -> if (current < size - 1) current + 1 else -1
         NavDirection.Up ->
             if (columns == 1) (if (current > 0) current - 1 else -1)
             else if (current - columns >= 0) current - columns else -1

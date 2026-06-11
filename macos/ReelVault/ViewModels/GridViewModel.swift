@@ -12,18 +12,19 @@ enum MoveDirection { case up, down, left, right }
 ///
 /// `cols == 1` means a single-column layout (list mode, or a one-wide grid):
 /// every direction collapses to previous/next, with Left/Up == previous and
-/// Right/Down == next. For a wider grid, Left/Right step within the row (no
-/// wrap) and Up/Down jump a whole row.
+/// Right/Down == next. For a wider grid, Left/Right walk the flat visual order
+/// (wrapping across row boundaries) and Up/Down jump a whole row.
 func navTargetIndex(current: Int, size: Int, cols: Int, dir: MoveDirection) -> Int {
     guard current >= 0, current < size else { return -1 }
     let columns = max(1, cols)
     switch dir {
+    // Left/Right walk the flat row-major order, so a row boundary wraps:
+    // Right on a row's last card lands on the next row's first card, and
+    // Left on a row's first card lands on the previous row's last card.
     case .left:
-        if columns == 1 { return current > 0 ? current - 1 : -1 }
-        return current % columns != 0 ? current - 1 : -1
+        return current > 0 ? current - 1 : -1
     case .right:
-        if columns == 1 { return current < size - 1 ? current + 1 : -1 }
-        return (current % columns != columns - 1 && current + 1 < size) ? current + 1 : -1
+        return current < size - 1 ? current + 1 : -1
     case .up:
         if columns == 1 { return current > 0 ? current - 1 : -1 }
         return current - columns >= 0 ? current - columns : -1
