@@ -2152,12 +2152,15 @@ fun HelpDialog(onDismiss: () -> Unit) {
                             "Extract and display codec, resolution, FPS, bitrate, duration, GPS, camera model, and more",
                             "Search instantly across filename, notes, and tags",
                             "Apply custom tags to any number of clips at once",
+                            "Gather clips into manual collections, or let smart collections fill themselves from a filter",
+                            "Rate clips 0–5 and flag them with color labels, then filter by either",
                             "Group related variants into stacks (e.g. 4K + proxy of the same shot)",
                             "Filter by camera, lens, codec, year, GPS radius, or library folder",
-                            "Detect or generate lower-resolution proxies for oversize footage",
+                            "Detect, generate, or hand-link lower-resolution proxies for oversize footage",
                             "Play clips inline using VLC (Linux/Windows) or native decoders (macOS)",
                             "Drag clips straight from the grid into DaVinci Resolve, Final Cut Pro, Premiere, and any app that accepts file drops",
                             "See geotagged clips on a world map; filter to a radius with one click",
+                            "Drop, move, or name GPS locations by hand — even for clips with no embedded coordinates",
                             "Watch library folders for new footage and update the catalog automatically",
                         ))
                     }
@@ -2208,6 +2211,12 @@ fun HelpDialog(onDismiss: () -> Unit) {
                             "M — Map" to "Geotagged clips on a world map. Click a pin to filter to that location.",
                         ))
                         HelpPara("Switch views with the segment control in the bottom bar, or press G, L, D, or M.")
+                        HelpPara(
+                            "Each grid card carries up to four info slots along its top edge — click a slot to " +
+                            "change what it shows (filename, resolution, FPS, camera, lens, capture date, location, " +
+                            "and more). In List view, toggle the matching metadata columns from the right panel. " +
+                            "Missing or offline files are flagged so you can spot them at a glance."
+                        )
                     }
 
                     HelpSection(icon = Icons.Default.TouchApp, title = "Selecting clips") {
@@ -2231,21 +2240,44 @@ fun HelpDialog(onDismiss: () -> Unit) {
                             "Click the N× badge on a stack card to expand or collapse it inline",
                             "Right-click → Remove from stack: pulls just that clip out; the rest stay grouped",
                             "Right-click → Unstack: disbands the entire group so every clip stands alone",
+                            "Right-click → Combine into stack: merge the whole selection — including any stacks already in it — into one",
+                            "Right-click a non-cover member → Set as Stack Master: make that clip the one the stack shows when collapsed",
                             "ReelVault auto-stacks matching variants during import (can be disabled per scan)",
                         ))
                     }
 
                     HelpSection(icon = Icons.Default.VideoSettings, title = "Proxies") {
                         HelpPara(
-                            "A proxy is a lower-resolution stand-in stored alongside the original and linked " +
-                            "automatically. Use them when source footage is too large to play inline."
+                            "A proxy is a lightweight, lower-resolution stand-in for a heavy clip — a small file " +
+                            "ReelVault can play and scrub smoothly while the original (8K, ProRes, RAW, …) stays " +
+                            "untouched on disk. Proxies exist purely for fast browsing; ReelVault never edits or " +
+                            "replaces your originals."
+                        )
+                        HelpPara("Proxies get linked to their master clip in a few ways:")
+                        HelpBullets(listOf(
+                            "Generate one — right-click → Create proxy… and pick a target height (540p–2160p). ReelVault encodes an H.264 copy beside the original and links it automatically. Offered on any clip that isn't already a proxy.",
+                            "Automatic detection — when you scan or rescan a folder, ReelVault matches proxies that already exist on disk to their sources, including ones an editor like Premiere or DaVinci Resolve exported into a Proxies subfolder. It weighs folder, frame count, thumbnail content, filename, and camera so unrelated clips aren't linked. Auto-linked proxies are marked “auto-detected” in the inspector.",
+                            "Link one by hand — when auto-detection misses a pair (a renamed file, a different folder, an unusual export). In Detail / Catalog view, select the master, then Ctrl-click the proxy so exactly two clips are selected, and click “Add selected video as proxy” in the inspector.",
+                            "Link in bulk — select two or more clips in the grid and right-click → Attach proxies. ReelVault keeps the highest-resolution clip as the master and links the rest to it.",
+                        ))
+                        HelpPara("Playing and managing proxies:")
+                        HelpBullets(listOf(
+                            "The P×N badge on a card shows how many proxies are linked to that clip.",
+                            "Clips above the inline-playback ceiling (set via the playback settings button) show a warning badge and only play inline once a proxy exists. Inline playback then uses the smallest proxy automatically, so oversize footage still scrubs smoothly.",
+                            "In Detail / Catalog view the inspector lists every linked proxy — click one to play it instead of the original, click again to revert.",
+                            "Linked the wrong file? Click the break-link button beside a proxy. Only the link is removed — the proxy file stays in your catalog.",
+                        ))
+                    }
+
+                    HelpSection(icon = Icons.Default.Star, title = "Ratings & color labels") {
+                        HelpPara(
+                            "Mark up your footage Lightroom-style. Ratings and color labels are stored in the " +
+                            "catalog only — your files are never touched — and you can filter by either."
                         )
                         HelpBullets(listOf(
-                            "Videos above the inline-playback ceiling (configurable via the playback settings button) show a warning badge",
-                            "Right-click → Create proxy… to generate one; choose a target height (720p, 1080p, …)",
-                            "Proxies are auto-detected when they appear in the same folder after a rescan",
-                            "The P×N badge on a card means N proxies are linked to that clip",
-                            "In Detail view you can manually select which proxy to play",
+                            "Press 0–5 to rate the selected clips (0 clears the rating), or right-click → Set Rating",
+                            "Press 6, 7, 8, 9 to flag the selection red, yellow, green, or blue; press ` to clear it. Right-click → Set Color Label also offers purple",
+                            "Filter the grid to a minimum rating or a specific color from the filter bar",
                         ))
                     }
 
@@ -2253,18 +2285,33 @@ fun HelpDialog(onDismiss: () -> Unit) {
                         HelpBullets(listOf(
                             "Search bar: live search across filename, notes, and tags",
                             "Filter dropdowns (Camera · Lens · Keyword · Codec · Year): stack multiple filters; click Clear to reset all",
+                            "Beyond the dropdowns: filter by minimum rating, color label, or GPS radius, and build a custom filter on any metadata field",
                             "Map view (globe icon in top bar): click a pin to filter to that GPS radius",
                             "Library panel (left): click a folder to limit the grid to that location",
                             "Right-click → Go to Folder in Library: jumps the left panel to the containing folder",
                         ))
                     }
 
-                    HelpSection(icon = Icons.Default.Label, title = "Tags") {
+                    HelpSection(icon = Icons.Default.Place, title = "Locations & the map") {
                         HelpPara(
-                            "Tags are catalog-only labels — they are not written into the video file. " +
-                            "Add or remove tags from the right panel while one or more clips are selected, " +
-                            "or filter the grid using the Keyword dropdown."
+                            "Clips that carry GPS metadata appear automatically on the Map view (press M). " +
+                            "You can also place, change, or name locations yourself."
                         )
+                        HelpBullets(listOf(
+                            "Right-click clips → Add Location… or Update Location… to drop or move them on a pick-a-spot map; Remove Location clears it",
+                            "Right-click a map pin to name it — “Backyard”, “Studio”, “Reykjavík” — and that name appears wherever the clip's location is shown",
+                            "Click a pin, or use the location filter, to narrow the grid to everything shot within a radius of that spot",
+                            "Add Location as one of a card's info slots to read each clip's place at a glance",
+                        ))
+                    }
+
+                    HelpSection(icon = Icons.Default.Label, title = "Tags & collections") {
+                        HelpPara("Tags and collections are catalog-only ways to organise clips — neither is ever written into the video file.")
+                        HelpBullets(listOf(
+                            "Tags are free-form labels. Add or remove them in the right panel while one or more clips are selected, then filter by the Keyword dropdown",
+                            "Collections are named sets of clips. Right-click → Add to Collection or Remove from Collection, and pick a collection in the left panel to browse just its members",
+                            "Smart collections fill themselves from a rule — every clip from one camera, codec, year, rating, or color — and keep up to date automatically as your catalog changes",
+                        ))
                     }
 
                     HelpSection(icon = Icons.Default.OpenInNew, title = "Hand off to an editor") {
@@ -2325,6 +2372,7 @@ fun HelpDialog(onDismiss: () -> Unit) {
                             "Hold Shift to select a range in the grid, then drag the whole selection into your editor",
                             "Using \$YEAR when adding a library (e.g. /footage/\$YEAR/) imports decade-scale archives in one click",
                             "Auto-stacking during import groups 4K + 1080p variants automatically — look for the N× badge",
+                            "Footage too big to preview? Create a proxy (right-click), or drop existing proxies into a Proxies subfolder and rescan — ReelVault links them for you",
                         ))
                     }
 

@@ -55,12 +55,15 @@ struct HelpView: View {
                             ("info.circle", "Extract and display codec, resolution, FPS, bitrate, duration, GPS, camera model, and more"),
                             ("magnifyingglass", "Search instantly across filename, notes, and tags"),
                             ("tag", "Apply custom tags to any number of clips at once"),
+                            ("rectangle.stack", "Gather clips into manual collections, or let smart collections fill themselves from a filter"),
+                            ("star", "Rate clips 0–5 and flag them with color labels, then filter by either"),
                             ("square.stack.3d.up", "Group related variants into stacks (e.g. 4K + proxy of the same shot)"),
                             ("line.3.horizontal.decrease.circle", "Filter by camera, lens, codec, year, GPS radius, or library folder"),
-                            ("arrow.down.doc", "Detect or generate lower-resolution proxies for oversize footage"),
+                            ("arrow.down.doc", "Detect, generate, or hand-link lower-resolution proxies for oversize footage"),
                             ("play.rectangle", "Play clips inline using VLC (Linux/Windows) or native decoders (macOS)"),
                             ("arrow.up.forward.app", "Drag clips straight from the grid into DaVinci Resolve, Final Cut Pro, Premiere, Finder, and any app that accepts file drops"),
                             ("mappin.and.ellipse", "See geotagged clips on a world map; filter to a radius with one click"),
+                            ("mappin", "Drop, move, or name GPS locations by hand — even for clips with no embedded coordinates"),
                             ("eye", "Watch library folders for new footage and update the catalog automatically"),
                         ])
                     }
@@ -106,6 +109,7 @@ struct HelpView: View {
                             ("M — Map",    "Geotagged clips on a world map. Click a pin to filter to that location."),
                         ])
                         HelpParagraph("Switch views with the segment control in the **bottom bar**, or press G, L, D, or M.")
+                        HelpParagraph("Each grid card carries up to four **info slots** along its top edge — click a slot to change what it shows (filename, resolution, FPS, camera, lens, capture date, location, and more). In **List** view, toggle the matching metadata columns from the right panel. Missing or offline files are flagged so you can spot them at a glance.")
                     }
 
                     HelpSection(icon: "cursorarrow.click.2", title: "Selecting clips") {
@@ -126,18 +130,41 @@ struct HelpView: View {
                             ("rectangle.expand.vertical", "Click the **N×** badge on a stack card to expand or collapse it inline"),
                             ("square.and.arrow.up", "Right-click → **Remove from stack**: pulls just that clip out; the rest stay grouped"),
                             ("rectangle.stack.badge.minus", "Right-click → **Unstack**: disbands the entire group so every clip stands alone"),
+                            ("rectangle.stack.badge.plus", "Right-click → **Combine into stack**: merge the whole selection — including any stacks already in it — into one"),
+                            ("crown", "Right-click a non-cover member → **Set as Stack Master**: make that clip the one the stack shows when collapsed"),
                             ("wand.and.stars", "ReelVault **auto-stacks** matching variants during import (can be disabled per scan)"),
                         ])
                     }
 
                     HelpSection(icon: "rectangle.on.rectangle.slash", title: "Proxies") {
-                        HelpParagraph("A proxy is a lower-resolution stand-in stored alongside the original and linked automatically. Use them when source footage is too large to play inline.")
+                        HelpParagraph("""
+                        A proxy is a lightweight, lower-resolution stand-in for a heavy clip — a small file \
+                        ReelVault can play and scrub smoothly while the original (8K, ProRes, RAW, …) stays \
+                        untouched on disk. Proxies exist purely for fast browsing; ReelVault never edits or \
+                        replaces your originals.
+                        """)
+                        HelpParagraph("Proxies get linked to their master clip in a few ways:")
                         HelpBullets([
-                            ("exclamationmark.triangle", "Videos above the **inline-playback ceiling** (configurable via the playback settings button) show a warning badge"),
-                            ("plus.rectangle.on.folder", "Right-click → **Create proxy…** to generate one; choose a target height (720p, 1080p, …)"),
-                            ("arrow.triangle.2.circlepath", "Proxies are auto-detected when they appear in the same folder after a rescan"),
-                            ("p.square", "The **P×N** badge on a card means N proxies are linked to that clip"),
-                            ("slider.horizontal.3", "In Detail/Catalog view you can manually select which proxy to play"),
+                            ("plus.rectangle.on.folder", "**Generate one** — right-click → **Create proxy…** and pick a target height (540p–2160p). ReelVault encodes an H.264 copy beside the original and links it automatically. Offered on any clip that isn't already a proxy."),
+                            ("wand.and.stars", "**Automatic detection** — when you scan or rescan a folder, ReelVault matches proxies that already exist on disk to their sources, including ones an editor like Premiere or DaVinci Resolve exported into a **Proxies** subfolder. It weighs folder, frame count, thumbnail content, filename, and camera so unrelated clips aren't linked. Auto-linked proxies are marked **auto-detected** in the inspector."),
+                            ("cursorarrow.click.2", "**Link one by hand** — when auto-detection misses a pair (a renamed file, a different folder, an unusual export). In **Detail / Catalog** view, select the master, then ⌘-click the proxy so exactly two clips are selected, and click **Add selected video as proxy** in the inspector."),
+                            ("plus.square.on.square", "**Link in bulk** — select two or more clips in the grid and right-click → **Attach proxies**. ReelVault keeps the highest-resolution clip as the master and links the rest to it."),
+                        ])
+                        HelpParagraph("Playing and managing proxies:")
+                        HelpBullets([
+                            ("p.square", "The **P×N** badge on a card shows how many proxies are linked to that clip."),
+                            ("exclamationmark.triangle", "Clips above the **inline-playback ceiling** (set via the playback-settings button) show a warning badge and only play inline once a proxy exists. Inline playback then uses the **smallest** proxy automatically, so oversize footage still scrubs smoothly."),
+                            ("slider.horizontal.3", "In **Detail / Catalog** view the inspector lists every linked proxy — click one to play it instead of the original, click again to revert."),
+                            ("link.badge.minus", "Linked the wrong file? Click the **break-link** button beside a proxy. Only the link is removed — the proxy file stays in your catalog."),
+                        ])
+                    }
+
+                    HelpSection(icon: "star.leadinghalf.filled", title: "Ratings & color labels") {
+                        HelpParagraph("Mark up your footage Lightroom-style. Ratings and color labels are stored in the catalog only — your files are never touched — and you can filter by either.")
+                        HelpBullets([
+                            ("star", "Press **0–5** to rate the selected clips (0 clears the rating), or right-click → **Set Rating**"),
+                            ("paintpalette", "Press **6, 7, 8, 9** to flag the selection red, yellow, green, or blue; press **`** to clear it. Right-click → **Set Color Label** also offers purple"),
+                            ("line.3.horizontal.decrease.circle", "Filter the grid to a minimum rating or a specific color from the filter bar"),
                         ])
                     }
 
@@ -145,14 +172,30 @@ struct HelpView: View {
                         HelpBullets([
                             ("text.cursor",         "**Search bar**: live search across filename, notes, and tags"),
                             ("chevron.down.circle", "**Filter dropdowns** (Camera · Lens · Keyword · Codec · Year): stack multiple filters; click **Clear** to reset all"),
+                            ("slider.horizontal.3", "**Beyond the dropdowns**: filter by minimum rating, color label, or GPS radius, and build a custom filter on any metadata field"),
                             ("map",                 "**Map view** (globe icon in top bar): click a pin to filter to that GPS radius"),
                             ("sidebar.left",        "**Library panel** (left): click a folder to limit the grid to that location"),
                             ("folder.badge.gearshape", "Right-click → **Go to Folder in Library**: jumps the left panel to the containing folder"),
                         ])
                     }
 
-                    HelpSection(icon: "tag", title: "Tags") {
-                        HelpParagraph("Tags are catalog-only labels — they are **not** written into the video file. Add or remove tags from the right panel while one or more clips are selected, or filter the grid using the Keyword dropdown.")
+                    HelpSection(icon: "mappin.and.ellipse", title: "Locations & the map") {
+                        HelpParagraph("Clips that carry GPS metadata appear automatically on the **Map** view (press **M**). You can also place, change, or name locations yourself.")
+                        HelpBullets([
+                            ("mappin", "Right-click clips → **Add Location…** or **Update Location…** to drop or move them on a pick-a-spot map; **Remove Location** clears it"),
+                            ("pencil", "Right-click a map pin to **name** it — “Backyard”, “Studio”, “Reykjavík” — and that name appears wherever the clip's location is shown"),
+                            ("line.3.horizontal.decrease.circle", "Click a pin, or use the location filter, to narrow the grid to everything shot within a radius of that spot"),
+                            ("info.circle", "Add **Location** as one of a card's info slots to read each clip's place at a glance"),
+                        ])
+                    }
+
+                    HelpSection(icon: "tag", title: "Tags & collections") {
+                        HelpParagraph("Tags and collections are catalog-only ways to organise clips — neither is **ever** written into the video file.")
+                        HelpBullets([
+                            ("tag", "**Tags** are free-form labels. Add or remove them in the right panel while one or more clips are selected, then filter by the **Keyword** dropdown"),
+                            ("folder", "**Collections** are named sets of clips. Right-click → **Add to Collection** or **Remove from Collection**, and pick a collection in the left panel to browse just its members"),
+                            ("gearshape.2", "**Smart collections** fill themselves from a rule — every clip from one camera, codec, year, rating, or color — and keep up to date automatically as your catalog changes"),
+                        ])
                     }
 
                     HelpSection(icon: "arrow.up.forward.app", title: "External editors") {
@@ -208,6 +251,7 @@ struct HelpView: View {
                             ("hand.draw",                          "Hold **Shift** to select a range in the grid, then drag the whole selection into your editor"),
                             ("calendar.badge.plus",                "Using **$YEAR** when adding a library (e.g. `/footage/$YEAR/`) imports decade-scale archives in one click"),
                             ("sparkles",                           "Auto-stacking during import groups 4K + 1080p variants automatically — look for the **N×** badge"),
+                            ("rectangle.on.rectangle.slash",       "Footage too big to preview? **Create a proxy** (right-click), or drop existing proxies into a **Proxies** subfolder and rescan — ReelVault links them for you"),
                         ])
                     }
 
