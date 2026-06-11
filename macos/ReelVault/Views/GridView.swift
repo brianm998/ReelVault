@@ -1111,13 +1111,13 @@ struct VideoCardView: View {
         let slots = padSlots(topSlots)
         VStack(spacing: 0) {
             // Top row of the band: slots 0 (TL) and 2 (TR).
-            HStack(alignment: .center, spacing: 6) {
+            AdaptiveStatRow(spacing: 6) {
                 statCell(slotIndex: 0, key: slots[0], alignTrailing: false)
                 statCell(slotIndex: 2, key: slots[2], alignTrailing: true)
             }
             .frame(maxWidth: .infinity)
             // Bottom row of the band: slots 1 (BL) and 3 (BR).
-            HStack(alignment: .center, spacing: 6) {
+            AdaptiveStatRow(spacing: 6) {
                 statCell(slotIndex: 1, key: slots[1], alignTrailing: false)
                 statCell(slotIndex: 3, key: slots[3], alignTrailing: true)
             }

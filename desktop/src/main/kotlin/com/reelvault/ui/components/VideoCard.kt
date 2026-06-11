@@ -45,10 +45,13 @@ import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.reelvault.LocalAppWindow
@@ -370,14 +373,16 @@ fun VideoCard(
                 .padding(horizontal = 6.dp, vertical = 2.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                StatCell(slotIndex = 0, key = paddedSlots[0], video = video, onPick = onPickStatSlot, alignEnd = false, weight = 1f, placeNameFor = placeNameFor)
-                StatCell(slotIndex = 2, key = paddedSlots[2], video = video, onPick = onPickStatSlot, alignEnd = true, weight = 1f, placeNameFor = placeNameFor)
-            }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                StatCell(slotIndex = 1, key = paddedSlots[1], video = video, onPick = onPickStatSlot, alignEnd = false, weight = 1f, placeNameFor = placeNameFor)
-                StatCell(slotIndex = 3, key = paddedSlots[3], video = video, onPick = onPickStatSlot, alignEnd = true, weight = 1f, placeNameFor = placeNameFor)
-            }
+            AdaptiveStatRow(
+                modifier = Modifier.fillMaxWidth(),
+                leading = { StatCell(slotIndex = 0, key = paddedSlots[0], video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor) },
+                trailing = { StatCell(slotIndex = 2, key = paddedSlots[2], video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor) },
+            )
+            AdaptiveStatRow(
+                modifier = Modifier.fillMaxWidth(),
+                leading = { StatCell(slotIndex = 1, key = paddedSlots[1], video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor) },
+                trailing = { StatCell(slotIndex = 3, key = paddedSlots[3], video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor) },
+            )
         }
 
         // 1 dp separator under the top band.
@@ -1010,13 +1015,12 @@ fun VideoCard(
  * catalog-wide (via [onPick] → `GridViewModel.updateGridTopSlot`).
  */
 @Composable
-private fun RowScope.StatCell(
+private fun StatCell(
     slotIndex: Int,
     key: String,
     video: VideoSummary,
     onPick: (Int, String) -> Unit,
     alignEnd: Boolean,
-    weight: Float,
     placeNameFor: ((Double, Double) -> String?)? = null,
 ) {
     val stat = com.reelvault.data.models.GridStatKey.fromRaw(key)
@@ -1032,18 +1036,15 @@ private fun RowScope.StatCell(
     val displayed: String =
         if (value.isEmpty()) "—" else value
     var expanded by remember { mutableStateOf(false) }
-    // Weight + heightIn + clickable on the same Box so the cell always
-    // claims its share of the row and the click target is the whole
-    // cell — not just the text glyphs. (The previous structure put the
-    // Tooltip wrapper between this Box and its RowScope parent, which
-    // dropped Modifier.weight on the floor and collapsed empty cells to
-    // zero-width.) The Tooltip wraps only the Text inside so its hover
-    // hint still reaches the user without affecting layout flow.
-    // `Modifier.clickable` consumes the press so the outer card-level
+    // The cell's width is assigned by the enclosing [AdaptiveStatRow], which
+    // gives a short value only as much room as it needs and lets its longer
+    // neighbour use the rest. heightIn + clickable sit on the Box so the whole
+    // assigned cell is the click target — not just the text glyphs. The
+    // Tooltip wraps only the Text inside so its hover hint doesn't affect
+    // layout. `Modifier.clickable` consumes the press so the outer card-level
     // `shiftAwareClickable` doesn't *also* re-select the card.
     Box(
         modifier = Modifier
-            .weight(weight)
             .heightIn(min = 14.dp)
             .clickable { expanded = true },
         contentAlignment = if (alignEnd) Alignment.CenterEnd else Alignment.CenterStart
@@ -1088,6 +1089,60 @@ private fun RowScope.StatCell(
                     }
                 )
             }
+        }
+    }
+}
+
+/**
+ * One row of the card's top stat band: a leading (start-aligned) cell and a
+ * trailing (end-aligned) cell. Unlike a plain 50/50 split, a short value only
+ * claims the width it needs and yields the rest to its neighbour, so a long
+ * value truncates only when the *pair* genuinely overflows — never just
+ * because it crossed the band's centre. When both fit (or both overflow) the
+ * row falls back to an even split, matching the previous behaviour.
+ */
+@Composable
+internal fun AdaptiveStatRow(
+    modifier: Modifier = Modifier,
+    gap: Dp = 6.dp,
+    leading: @Composable () -> Unit,
+    trailing: @Composable () -> Unit,
+) {
+    Layout(
+        modifier = modifier,
+        content = {
+            leading()
+            trailing()
+        },
+    ) { measurables, constraints ->
+        val gapPx = gap.roundToPx()
+        val maxW = if (constraints.hasBoundedWidth) constraints.maxWidth else 0
+        val usable = (maxW - gapPx).coerceAtLeast(0)
+        val half = usable / 2
+        // Single-line text width is independent of the height we probe with.
+        val probeH = if (constraints.hasBoundedHeight) constraints.maxHeight else 100
+        val lead = measurables.getOrNull(0)
+        val trail = measurables.getOrNull(1)
+        val lDesired = (lead?.maxIntrinsicWidth(probeH) ?: 0).coerceAtMost(usable)
+        val rDesired = (trail?.maxIntrinsicWidth(probeH) ?: 0).coerceAtMost(usable)
+        // Asymmetric overflow → the short cell keeps its width and the long one
+        // takes the rest. Both-fit or both-overflow → an even split.
+        val (lw, rw) = when {
+            lDesired <= half && rDesired <= half -> half to half
+            lDesired > half && rDesired > half -> half to half
+            lDesired > half -> (usable - rDesired).coerceAtLeast(0) to rDesired
+            else -> lDesired to (usable - lDesired).coerceAtLeast(0)
+        }
+        val lp = lead?.measure(
+            Constraints(minWidth = lw, maxWidth = lw, minHeight = 0, maxHeight = constraints.maxHeight)
+        )
+        val rp = trail?.measure(
+            Constraints(minWidth = rw, maxWidth = rw, minHeight = 0, maxHeight = constraints.maxHeight)
+        )
+        val rowH = maxOf(lp?.height ?: 0, rp?.height ?: 0)
+        layout(maxW, rowH) {
+            lp?.place(0, (rowH - lp.height) / 2)
+            rp?.place(maxW - rp.width, (rowH - rp.height) / 2)
         }
     }
 }

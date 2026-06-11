@@ -820,11 +820,11 @@ struct VideoListRowView: View {
     private var topStatBand: some View {
         let slots = padSlots(topSlots)
         return VStack(spacing: 2) {
-            HStack(spacing: 4) {
+            AdaptiveStatRow(spacing: 4) {
                 topBandStat(slotIndex: 0, key: slots[0], alignTrailing: false)
                 topBandStat(slotIndex: 2, key: slots[2], alignTrailing: true)
             }
-            HStack(spacing: 4) {
+            AdaptiveStatRow(spacing: 4) {
                 topBandStat(slotIndex: 1, key: slots[1], alignTrailing: false)
                 topBandStat(slotIndex: 3, key: slots[3], alignTrailing: true)
             }
@@ -1274,13 +1274,17 @@ struct VideoListHorizontalCardView: View {
                     .frame(width: 12, height: 12)
                     .help("Collapse this stack")
                 }
-                hStatCell(slotIndex: 0, key: slots[0], alignTrailing: false)
-                hStatCell(slotIndex: 2, key: slots[2], alignTrailing: true)
+                AdaptiveStatRow(spacing: 4) {
+                    hStatCell(slotIndex: 0, key: slots[0], alignTrailing: false)
+                    hStatCell(slotIndex: 2, key: slots[2], alignTrailing: true)
+                }
+                .frame(maxWidth: .infinity)
             }
-            HStack(spacing: 4) {
+            AdaptiveStatRow(spacing: 4) {
                 hStatCell(slotIndex: 1, key: slots[1], alignTrailing: false)
                 hStatCell(slotIndex: 3, key: slots[3], alignTrailing: true)
             }
+            .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, 4)
         .padding(.vertical, 2)
