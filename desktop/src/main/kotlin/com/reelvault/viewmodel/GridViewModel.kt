@@ -2666,6 +2666,14 @@ class GridViewModel(
                     _scanStatus.value = null
                     _isLoading.value = false
                     loadVideos()
+                    // Once the refreshed list is in, make the merged stack's
+                    // representative the active selection: the combine result is
+                    // what the user just acted on, so it should be selected (and
+                    // ready for a follow-up rename/rate) rather than leaving an
+                    // empty selection. join() waits for reloadFromTop's job.
+                    val repId = group.preferredVideoId.ifEmpty { preferred }
+                    listLoadJob?.join()
+                    _videos.value.firstOrNull { it.id == repId }?.let { selectVideo(it) }
                 } else {
                     _error.value = "Failed to create group"
                 }

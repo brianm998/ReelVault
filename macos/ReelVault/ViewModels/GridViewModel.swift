@@ -2044,6 +2044,20 @@ class GridViewModel: ObservableObject {
                 // un-rendered until a manual refresh.
                 isLoading = false
                 loadVideos()  // background refresh — no filter change, just structural update
+                // Once the refreshed list is in, make the merged stack's
+                // representative the active selection (and reveal it): the combine
+                // result is what the user just acted on, so it should be selected
+                // and ready for a follow-up rename/rate rather than leaving an
+                // empty selection. await listLoadTask waits for reloadFromTop.
+                let repId: String = {
+                    if let p = info?.preferredVideoId, !p.isEmpty { return p }
+                    return preferred
+                }()
+                await listLoadTask?.value
+                if let rep = videos.first(where: { $0.id == repId }) {
+                    selectVideo(rep)
+                    pendingScrollVideoId = rep.id
+                }
             } catch {
                 NSLog("combine: createGroup RPC failed: \(error.localizedDescription)")
                 self.error = "Group failed: \(error.localizedDescription)"
