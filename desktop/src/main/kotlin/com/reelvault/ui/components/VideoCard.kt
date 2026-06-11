@@ -16,14 +16,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Crop
-import androidx.compose.material.icons.filled.HighQuality
+import androidx.compose.material.icons.filled.FilterNone
 import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.PictureInPicture
+import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -737,7 +737,7 @@ fun VideoCard(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.PictureInPicture,
+                                    imageVector = Icons.Default.FilterNone,
                                     contentDescription = "${video.proxyCount} proxy/proxies",
                                     modifier = Modifier.size(10.dp),
                                     tint = Color.White
@@ -761,7 +761,7 @@ fun VideoCard(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.HighQuality,
+                                        imageVector = Icons.Default.Verified,
                                         contentDescription = "Full resolution",
                                         modifier = Modifier.size(10.dp),
                                         // Subtle green marks "full resolution" — distinct from
@@ -824,7 +824,7 @@ fun VideoCard(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.LocationOn,
+                                imageVector = Icons.Default.NearMe,
                                 contentDescription = "Show on map",
                                 modifier = Modifier.size(11.dp),
                                 tint = Color.White
