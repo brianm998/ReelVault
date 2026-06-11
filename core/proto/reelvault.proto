@@ -309,6 +309,12 @@ message VideoSummary {
   // is_online = 0 in the catalog). Clients dim such cards and badge them
   // "offline" rather than only failing when the user hits play.
   bool is_online = 34;
+  // Overall stream bitrate in bits per second (ffprobe's bit_rate), copied
+  // from the video's metadata row. 0 when unknown. Surfaced on the summary —
+  // like camera/lens/the EXIF subset above — so the grid's configurable
+  // "Bitrate" stat slot renders without a per-video VideoMetadata round-trip.
+  // Same unit as VideoMetadata.bitrate; clients divide by 1000 for kbps.
+  int64 bitrate = 35;
 }
 
 enum FullResolutionStatus {

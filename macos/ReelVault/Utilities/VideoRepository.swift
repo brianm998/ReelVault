@@ -1191,7 +1191,7 @@ class VideoRepository: ObservableObject {
             fps: p.fps,
             codecVideo: p.codecVideo,
             codecAudio: p.codecAudio,
-            bitrateKbps: 0,
+            bitrateKbps: Int(p.bitrate / 1000),
             sizeBytes: Int(p.sizeBytes),
             indexedAt: p.indexedAt,
             creationDate: p.creationDate,

@@ -686,6 +686,10 @@ enum GridStatKey: String, CaseIterable, Identifiable, Hashable {
     case lensModel      = "lens_model"
     case captureDate    = "capture_date"
     case captureYear    = "capture_year"
+    case iso
+    case aperture
+    case exposureTime   = "exposure_time"
+    case focalLength    = "focal_length"
     case location
 
     var id: String { rawValue }
@@ -706,6 +710,10 @@ enum GridStatKey: String, CaseIterable, Identifiable, Hashable {
         case .lensModel:        return "Lens"
         case .captureDate:      return "Capture date"
         case .captureYear:      return "Capture year"
+        case .iso:              return "ISO"
+        case .aperture:         return "Aperture"
+        case .exposureTime:     return "Exposure"
+        case .focalLength:      return "Focal length"
         case .location:         return "Location"
         }
     }
@@ -756,6 +764,14 @@ enum GridStatKey: String, CaseIterable, Identifiable, Hashable {
             let date = Date(timeIntervalSince1970: TimeInterval(video.creationDate / 1000))
             let cal = Calendar(identifier: .gregorian)
             return String(cal.component(.year, from: date))
+        case .iso:
+            return video.iso > 0 ? "ISO \(video.iso)" : ""
+        case .aperture:
+            return video.aperture > 0 ? String(format: "f/%.1f", video.aperture) : ""
+        case .exposureTime:
+            return Self.formatExposureTime(video.exposureTimeS)
+        case .focalLength:
+            return video.focalLengthMm > 0 ? String(format: "%.0f mm", video.focalLengthMm) : ""
         case .location:
             guard video.hasLocation else { return "" }
             // Prefer a registered place-name; fall back to raw "(lat, lon)".
@@ -781,6 +797,17 @@ enum GridStatKey: String, CaseIterable, Identifiable, Hashable {
         case 4320...:     return "8K"
         default:          return "\(height)p"
         }
+    }
+
+    /// Format an EXIF exposure time. Sub-second exposures render as "1/N"
+    /// with N the nearest integer reciprocal (how a photographer reads a
+    /// shutter speed); anything ≥ 1 s renders as "X.X s". Mirrors the
+    /// desktop client's `GridStatKey.formatExposureTime`.
+    static func formatExposureTime(_ seconds: Double) -> String {
+        if seconds <= 0 { return "" }
+        if seconds >= 1.0 { return String(format: "%.1f s", seconds) }
+        let denom = Int((1.0 / seconds).rounded())
+        return "1/\(denom)"
     }
 }
 

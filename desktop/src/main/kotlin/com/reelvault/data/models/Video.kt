@@ -69,6 +69,11 @@ data class VideoSummary(
     val exposureTimeS: Double = 0.0,
     /** Focal length in millimeters from embedded XMP. 0.0 when absent. */
     val focalLengthMm: Double = 0.0,
+    /** Overall stream bitrate in kbps (proto `VideoSummary.bitrate` / 1000).
+     *  0 when unknown. Surfaced on the summary — like [iso]/[aperture]/etc. —
+     *  so the grid's configurable "Bitrate" stat slot renders without a
+     *  per-video VideoMetadata round-trip. */
+    val bitrateKbps: Int = 0,
     /** Full-resolution badge state set by the daemon's classifier.
      *  [FullResolutionStatus.Unspecified] (the default) renders no badge;
      *  the other two render the "Full" / "Not full" chip on the card. */
@@ -534,7 +539,9 @@ enum class GridStatKey(val raw: String, val displayName: String) {
         VideoCodec       -> video.codecVideo
         AudioCodec       -> video.codecAudio
         Fps              -> if (video.fps > 0) "%.0f fps".format(video.fps) else ""
-        Bitrate          -> ""  // VideoSummary doesn't carry bitrate today
+        Bitrate          -> if (video.bitrateKbps <= 0) ""
+            else if (video.bitrateKbps >= 1000) "%.1f Mbps".format(video.bitrateKbps / 1000.0)
+            else "${video.bitrateKbps} kbps"
         CameraModel      -> video.cameraDisplayName.ifEmpty { video.cameraModel }
         LensModel        -> video.lensModel
         CaptureDate      -> if (video.creationDate > 0) {
