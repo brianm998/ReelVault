@@ -376,6 +376,26 @@ struct ListView: View {
             .help("Disband this entire stack so each member becomes a standalone video.")
         }
 
+        // Combine the whole multi-selection — including any stacks among it —
+        // into a single stack. Same gate as the grid's (2+ selected); shown
+        // regardless of whether the right-clicked card is itself stacked, and it
+        // operates on the selection, not just this card.
+        if multi.contains(video.id) && multi.count >= 2 {
+            Divider()
+            Button("Combine into stack") {
+                viewModel.groupSelectedVideos()
+            }
+            .help("Merge the \(multi.count) selected items — including any stacks among them — into one stack.")
+
+            // Proxy-world sibling of "Combine into stack": the daemon picks the
+            // highest-resolution selection as the master and links the rest as
+            // proxies of it (mops up the pairs auto-detection missed).
+            Button("Attach proxies") {
+                viewModel.attachProxiesToSelection()
+            }
+            .help("Link the \(multi.count - 1) lower-resolution selections as proxies of the highest-resolution one.")
+        }
+
         Divider()
         if !video.isProxy {
             Button("Create proxy…") {

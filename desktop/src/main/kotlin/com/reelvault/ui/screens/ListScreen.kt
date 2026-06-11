@@ -357,6 +357,13 @@ fun ListScreen(
                                             onUnstack = { gid ->
                                                 viewModel.unstackGroup(gid)
                                             },
+                                            // "Combine into stack" / "Attach proxies" act on the
+                                            // whole multi-selection, so they're only offered when the
+                                            // right-clicked card is part of a 2+ selection.
+                                            combineSelectionCount =
+                                                if (video.id in multi && multi.size > 1) multi.size else 0,
+                                            onCombineIntoStack = { viewModel.groupSelectedVideos() },
+                                            onAttachProxies = { viewModel.attachProxiesToSelection() },
                                             proxyableVideoId = video.id.takeIf { !video.isProxy },
                                             onCreateProxy = { vid -> viewModel.requestCreateProxy(vid) },
                                             videoPath = video.path,

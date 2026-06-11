@@ -51,6 +51,7 @@ service ReelVault {
   rpc SetProxyOf(SetProxyOfRequest) returns (Response);
   rpc RemoveProxyLink(RemoveProxyLinkRequest) returns (Response);
   rpc DetectProxies(DetectProxiesRequest) returns (DetectProxiesResponse);
+  rpc AttachProxies(AttachProxiesRequest) returns (AttachProxiesResponse);
 
   // Filter options (distinct values for the grid's dropdowns)
   rpc GetFilterOptions(GetFilterOptionsRequest) returns (FilterOptions);
@@ -657,6 +658,23 @@ message DetectProxiesRequest {}
 message DetectProxiesResponse {
   int32 pairs_compared = 1;
   int32 proxies_marked = 2;
+  string message = 3;
+}
+
+// Manually attach proxies — the proxy-world analogue of CreateGroup
+// ("combine into stack"). The client sends the full multi-selection; the
+// server picks the highest-resolution member as the master (ties broken by
+// larger file size) and links every *other* selected video as a manual
+// proxy of it (confidence 1.0, auto_detected = false). For mopping up the
+// pairs auto-detection missed. Each attached proxy is evicted from any stack
+// it belonged to (a video can't be both a stack member and a proxy).
+message AttachProxiesRequest {
+  repeated string video_ids = 1;
+}
+
+message AttachProxiesResponse {
+  string master_video_id = 1;  // the member chosen as master
+  int32 proxies_attached = 2;  // how many videos became proxies of it
   string message = 3;
 }
 

@@ -2050,6 +2050,37 @@ class GridViewModel: ObservableObject {
         }
     }
 
+    /// Manually attach the current multi-selection as proxies — the
+    /// proxy-world analogue of `groupSelectedVideos`. The daemon picks the
+    /// highest-resolution selection as the master and links every other
+    /// selection as a manual proxy of it; for mopping up the master/proxy
+    /// pairs auto-detection missed.
+    func attachProxiesToSelection() {
+        let ids = selectedVideoIds
+        if ids.count < 2 {
+            error = "Select at least 2 videos (Shift+click or Cmd+click) to attach proxies"
+            return
+        }
+        NSLog("attach: attachProxiesToSelection sending ids=\(ids)")
+        Task {
+            isLoading = true
+            do {
+                let result = try await repository.attachProxies(videoIds: ids)
+                NSLog("attach: attachProxies RPC returned master=\(result.masterVideoId) attached=\(result.proxiesAttached)")
+                clearSelection()
+                // Release the loading guard before refreshing, same as
+                // groupSelectedVideos — newly-hidden proxies won't fold under
+                // their master otherwise until a manual refresh.
+                isLoading = false
+                loadVideos()  // background refresh — structural update only
+            } catch {
+                NSLog("attach: attachProxies RPC failed: \(error.localizedDescription)")
+                self.error = "Attach proxies failed: \(error.localizedDescription)"
+            }
+            isLoading = false
+        }
+    }
+
     // MARK: - External app
 
     func openVideoInExternal(path: String) {

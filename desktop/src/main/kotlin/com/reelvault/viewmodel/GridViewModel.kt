@@ -2680,6 +2680,56 @@ class GridViewModel(
         }
     }
 
+    /**
+     * Manually attach the current multi-selection as proxies — the
+     * proxy-world analogue of [groupSelectedVideos]. The daemon picks the
+     * highest-resolution selection as the master and links every other
+     * selection as a manual proxy of it; for mopping up the master/proxy
+     * pairs auto-detection missed.
+     */
+    fun attachProxiesToSelection() {
+        val ids = _selectedVideoIds.value
+        if (ids.size < 2) {
+            _error.value = "Select at least 2 videos (shift+click or Cmd/Ctrl+click) to attach proxies"
+            return
+        }
+        logger.info("attach: attachProxiesToSelection sending ids={}", ids)
+        viewModelScope.launch {
+            _isLoading.value = true
+            _scanStatus.value = "Attaching proxies..."
+            try {
+                val result = repository.attachProxies(ids)
+                logger.info("attach: attachProxies RPC returned result={}", result)
+                if (result != null) {
+                    val n = result.proxiesAttached
+                    _scanResult.value = ScanResult(
+                        success = true,
+                        message = "Attached $n ${if (n == 1) "proxy" else "proxies"} " +
+                            "to the highest-resolution selection",
+                        videosFound = n,
+                        videosIndexed = n
+                    )
+                    clearSelection()
+                    // Release the loading guard before the background reload, same
+                    // as groupSelectedVideos — newly-hidden proxies won't fold
+                    // under their master otherwise until the next manual refresh.
+                    _scanStatus.value = null
+                    _isLoading.value = false
+                    loadVideos()
+                } else {
+                    _error.value = "Failed to attach proxies. The highest-resolution " +
+                        "selection may itself be a proxy — attach to its original instead."
+                }
+            } catch (e: Exception) {
+                _error.value = "Attach proxies failed: ${e.message}"
+                logger.error("Failed to attach proxies", e)
+            } finally {
+                _scanStatus.value = null
+                _isLoading.value = false
+            }
+        }
+    }
+
     /** Keep auto-group available for the initial import path (not exposed as a button). */
     fun autoGroupVideos(
         sameDirectoryOnly: Boolean = true,

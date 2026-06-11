@@ -313,6 +313,14 @@ struct GridView: View {
                 viewModel.groupSelectedVideos()
             }
             .help("Merge the \(multi.count) selected items — including any stacks among them — into one stack.")
+
+            // Proxy-world sibling of "Combine into stack": the daemon picks the
+            // highest-resolution selection as the master and links the rest as
+            // proxies of it (mops up the pairs auto-detection missed).
+            Button("Attach proxies") {
+                viewModel.attachProxiesToSelection()
+            }
+            .help("Link the \(multi.count - 1) lower-resolution selections as proxies of the highest-resolution one.")
         }
 
         // Proxy actions. "Create proxy" is offered on every video; for

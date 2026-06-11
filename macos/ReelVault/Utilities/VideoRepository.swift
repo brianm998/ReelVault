@@ -1146,6 +1146,21 @@ class VideoRepository: ObservableObject {
         )
     }
 
+    /// Manually attach proxies — the proxy-world analogue of `createGroup`.
+    /// The server picks the highest-resolution member of `videoIds` as the
+    /// master and links every other selection as a manual proxy of it.
+    func attachProxies(videoIds: [String]) async throws -> AttachProxiesResult {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        var request = Reelvault_AttachProxiesRequest()
+        request.videoIds = videoIds
+        let response = try await client.attachProxies(request)
+        return AttachProxiesResult(
+            masterVideoId: response.masterVideoID,
+            proxiesAttached: Int(response.proxiesAttached),
+            message: response.message
+        )
+    }
+
     func ungroupVideo(videoId: String) async throws -> Bool {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_UngroupVideoRequest()

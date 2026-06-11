@@ -2015,6 +2015,33 @@ impl ReelVaultTrait for ReelVaultService {
         }))
     }
 
+    async fn attach_proxies(
+        &self,
+        request: Request<AttachProxiesRequest>,
+    ) -> std::result::Result<Response<AttachProxiesResponse>, Status> {
+        let req = request.into_inner();
+        tracing::info!(video_ids = ?req.video_ids, "attach/AttachProxies: RPC received");
+        if req.video_ids.len() < 2 {
+            return Err(Status::invalid_argument(
+                "Select at least 2 videos to attach proxies",
+            ));
+        }
+        let (master_id, attached) = self
+            .db
+            .attach_proxies(&req.video_ids)
+            .map_err(Status::from)?;
+        tracing::info!(master = %master_id, attached, "attach/AttachProxies: RPC complete");
+        Ok(Response::new(AttachProxiesResponse {
+            master_video_id: master_id,
+            proxies_attached: attached as i32,
+            message: format!(
+                "Attached {} {} to the highest-resolution selection",
+                attached,
+                if attached == 1 { "proxy" } else { "proxies" },
+            ),
+        }))
+    }
+
     async fn get_filter_options(
         &self,
         _request: Request<GetFilterOptionsRequest>,

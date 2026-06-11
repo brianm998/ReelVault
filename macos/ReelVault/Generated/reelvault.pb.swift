@@ -1410,6 +1410,43 @@ nonisolated struct Reelvault_DetectProxiesResponse: Sendable {
   init() {}
 }
 
+/// Manually attach proxies — the proxy-world analogue of CreateGroup
+/// ("combine into stack"). The client sends the full multi-selection; the
+/// server picks the highest-resolution member as the master (ties broken by
+/// larger file size) and links every *other* selected video as a manual
+/// proxy of it (confidence 1.0, auto_detected = false). For mopping up the
+/// pairs auto-detection missed. Each attached proxy is evicted from any stack
+/// it belonged to (a video can't be both a stack member and a proxy).
+nonisolated struct Reelvault_AttachProxiesRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var videoIds: [String] = []
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Reelvault_AttachProxiesResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// the member chosen as master
+  var masterVideoID: String = String()
+
+  /// how many videos became proxies of it
+  var proxiesAttached: Int32 = 0
+
+  var message: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
 nonisolated struct Reelvault_GetStatusRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -4865,6 +4902,76 @@ nonisolated extension Reelvault_DetectProxiesResponse: SwiftProtobuf.Message, Sw
   static func ==(lhs: Reelvault_DetectProxiesResponse, rhs: Reelvault_DetectProxiesResponse) -> Bool {
     if lhs.pairsCompared != rhs.pairsCompared {return false}
     if lhs.proxiesMarked != rhs.proxiesMarked {return false}
+    if lhs.message != rhs.message {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_AttachProxiesRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".AttachProxiesRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_ids\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedStringField(value: &self.videoIds) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.videoIds.isEmpty {
+      try visitor.visitRepeatedStringField(value: self.videoIds, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Reelvault_AttachProxiesRequest, rhs: Reelvault_AttachProxiesRequest) -> Bool {
+    if lhs.videoIds != rhs.videoIds {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_AttachProxiesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".AttachProxiesResponse"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}master_video_id\0\u{3}proxies_attached\0\u{1}message\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.masterVideoID) }()
+      case 2: try { try decoder.decodeSingularInt32Field(value: &self.proxiesAttached) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self.message) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.masterVideoID.isEmpty {
+      try visitor.visitSingularStringField(value: self.masterVideoID, fieldNumber: 1)
+    }
+    if self.proxiesAttached != 0 {
+      try visitor.visitSingularInt32Field(value: self.proxiesAttached, fieldNumber: 2)
+    }
+    if !self.message.isEmpty {
+      try visitor.visitSingularStringField(value: self.message, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Reelvault_AttachProxiesResponse, rhs: Reelvault_AttachProxiesResponse) -> Bool {
+    if lhs.masterVideoID != rhs.masterVideoID {return false}
+    if lhs.proxiesAttached != rhs.proxiesAttached {return false}
     if lhs.message != rhs.message {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true

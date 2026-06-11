@@ -395,6 +395,18 @@ internal enum Reelvault_ReelVault {
                 method: "DetectProxies"
             )
         }
+        /// Namespace for "AttachProxies" metadata.
+        internal enum AttachProxies {
+            /// Request type for "AttachProxies".
+            internal typealias Input = Reelvault_AttachProxiesRequest
+            /// Response type for "AttachProxies".
+            internal typealias Output = Reelvault_AttachProxiesResponse
+            /// Descriptor for "AttachProxies".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "AttachProxies"
+            )
+        }
         /// Namespace for "GetFilterOptions" metadata.
         internal enum GetFilterOptions {
             /// Request type for "GetFilterOptions".
@@ -728,6 +740,7 @@ internal enum Reelvault_ReelVault {
             SetProxyOf.descriptor,
             RemoveProxyLink.descriptor,
             DetectProxies.descriptor,
+            AttachProxies.descriptor,
             GetFilterOptions.descriptor,
             GetMetadataFacets.descriptor,
             GetStatus.descriptor,
@@ -1243,6 +1256,20 @@ extension Reelvault_ReelVault {
             request: GRPCCore.StreamingServerRequest<Reelvault_DetectProxiesRequest>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_DetectProxiesResponse>
+
+        /// Handle the "AttachProxies" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Reelvault_AttachProxiesRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Reelvault_AttachProxiesResponse` messages.
+        func attachProxies(
+            request: GRPCCore.StreamingServerRequest<Reelvault_AttachProxiesRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_AttachProxiesResponse>
 
         /// Handle the "GetFilterOptions" method.
         ///
@@ -2164,6 +2191,20 @@ extension Reelvault_ReelVault {
             request: GRPCCore.ServerRequest<Reelvault_DetectProxiesRequest>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.ServerResponse<Reelvault_DetectProxiesResponse>
+
+        /// Handle the "AttachProxies" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_AttachProxiesRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Reelvault_AttachProxiesResponse` message.
+        func attachProxies(
+            request: GRPCCore.ServerRequest<Reelvault_AttachProxiesRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Reelvault_AttachProxiesResponse>
 
         /// Handle the "GetFilterOptions" method.
         ///
@@ -3087,6 +3128,20 @@ extension Reelvault_ReelVault {
             context: GRPCCore.ServerContext
         ) async throws -> Reelvault_DetectProxiesResponse
 
+        /// Handle the "AttachProxies" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Reelvault_AttachProxiesRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Reelvault_AttachProxiesResponse` to respond with.
+        func attachProxies(
+            request: Reelvault_AttachProxiesRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Reelvault_AttachProxiesResponse
+
         /// Handle the "GetFilterOptions" method.
         ///
         /// > Source IDL Documentation:
@@ -3882,6 +3937,17 @@ extension Reelvault_ReelVault.StreamingServiceProtocol {
             }
         )
         router.registerHandler(
+            forMethod: Reelvault_ReelVault.Method.AttachProxies.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_AttachProxiesRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_AttachProxiesResponse>(),
+            handler: { request, context in
+                try await self.attachProxies(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
             forMethod: Reelvault_ReelVault.Method.GetFilterOptions.descriptor,
             deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_GetFilterOptionsRequest>(),
             serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_FilterOptions>(),
@@ -4497,6 +4563,17 @@ extension Reelvault_ReelVault.ServiceProtocol {
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_DetectProxiesResponse> {
         let response = try await self.detectProxies(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func attachProxies(
+        request: GRPCCore.StreamingServerRequest<Reelvault_AttachProxiesRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_AttachProxiesResponse> {
+        let response = try await self.attachProxies(
             request: GRPCCore.ServerRequest(stream: request),
             context: context
         )
@@ -5190,6 +5267,19 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
     ) async throws -> GRPCCore.ServerResponse<Reelvault_DetectProxiesResponse> {
         return GRPCCore.ServerResponse<Reelvault_DetectProxiesResponse>(
             message: try await self.detectProxies(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func attachProxies(
+        request: GRPCCore.ServerRequest<Reelvault_AttachProxiesRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Reelvault_AttachProxiesResponse> {
+        return GRPCCore.ServerResponse<Reelvault_AttachProxiesResponse>(
+            message: try await self.attachProxies(
                 request: request.message,
                 context: context
             ),
@@ -6155,6 +6245,25 @@ extension Reelvault_ReelVault {
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_DetectProxiesResponse>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_DetectProxiesResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "AttachProxies" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_AttachProxiesRequest` message.
+        ///   - serializer: A serializer for `Reelvault_AttachProxiesRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_AttachProxiesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func attachProxies<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_AttachProxiesRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_AttachProxiesRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_AttachProxiesResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_AttachProxiesResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
         /// Call the "GetFilterOptions" method.
@@ -7694,6 +7803,36 @@ extension Reelvault_ReelVault {
             try await self.client.unary(
                 request: request,
                 descriptor: Reelvault_ReelVault.Method.DetectProxies.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "AttachProxies" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_AttachProxiesRequest` message.
+        ///   - serializer: A serializer for `Reelvault_AttachProxiesRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_AttachProxiesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func attachProxies<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_AttachProxiesRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_AttachProxiesRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_AttachProxiesResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_AttachProxiesResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Reelvault_ReelVault.Method.AttachProxies.descriptor,
                 serializer: serializer,
                 deserializer: deserializer,
                 options: options,
@@ -9347,6 +9486,31 @@ extension Reelvault_ReelVault.ClientProtocol {
         )
     }
 
+    /// Call the "AttachProxies" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Reelvault_AttachProxiesRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func attachProxies<Result>(
+        request: GRPCCore.ClientRequest<Reelvault_AttachProxiesRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_AttachProxiesResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.attachProxies(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_AttachProxiesRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_AttachProxiesResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
     /// Call the "GetFilterOptions" method.
     ///
     /// > Source IDL Documentation:
@@ -10985,6 +11149,35 @@ extension Reelvault_ReelVault.ClientProtocol {
             metadata: metadata
         )
         return try await self.detectProxies(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "AttachProxies" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func attachProxies<Result>(
+        _ message: Reelvault_AttachProxiesRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_AttachProxiesResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Reelvault_AttachProxiesRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.attachProxies(
             request: request,
             options: options,
             onResponse: handleResponse

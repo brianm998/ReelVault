@@ -375,6 +375,7 @@ fun GridScreen(
                                     combineSelectionCount =
                                         if (video.id in multi && multi.size > 1) multi.size else 0,
                                     onCombineIntoStack = { viewModel.groupSelectedVideos() },
+                                    onAttachProxies = { viewModel.attachProxiesToSelection() },
                                     // Don't offer "Create proxy" on cards
                                     // that are themselves proxies — chaining
                                     // proxy-of-a-proxy makes no sense.
@@ -579,6 +580,11 @@ internal fun buildVideoContextMenu(
      *  selection — including any stacks among it — into one stack. */
     combineSelectionCount: Int = 0,
     onCombineIntoStack: (() -> Unit)? = null,
+    /** Attach the whole multi-selection as proxies — same 2+ gate as
+     *  "Combine into stack". The daemon picks the highest-resolution member as
+     *  the master and links the rest as manual proxies of it (mops up the
+     *  pairs auto-detection missed). */
+    onAttachProxies: (() -> Unit)? = null,
     /** Video ID of the right-clicked card *if* "Create proxy" should be
      *  offered (i.e. the card isn't itself a proxy). Null suppresses the
      *  menu entry. */
@@ -665,6 +671,14 @@ internal fun buildVideoContextMenu(
     if (onCombineIntoStack != null && combineSelectionCount >= 2) {
         items += androidx.compose.foundation.ContextMenuItem("Combine into stack") {
             onCombineIntoStack()
+        }
+    }
+
+    // Attach the multi-selection as proxies — the proxy-world sibling of
+    // "Combine into stack". Same 2+ gate; the daemon picks the master.
+    if (onAttachProxies != null && combineSelectionCount >= 2) {
+        items += androidx.compose.foundation.ContextMenuItem("Attach proxies") {
+            onAttachProxies()
         }
     }
 

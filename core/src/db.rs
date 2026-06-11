@@ -2229,6 +2229,129 @@ impl Database {
         Ok(())
     }
 
+    /// Manually attach proxies — the proxy-world analogue of
+    /// [`Self::create_group`] ("combine into stack"). From `video_ids`,
+    /// choose the highest-resolution member as the master (ties broken by
+    /// larger file on disk, then by the caller's order) and link every other
+    /// id as a *manual* proxy of it (confidence 1.0, auto_detected = false).
+    /// Returns `(master_id, proxies_attached)`.
+    ///
+    /// This is the same master/proxy relationship the auto-detector
+    /// ([`crate::proxies`]) infers — "lower-resolution stand-in for the
+    /// higher-resolution original" — applied by hand to mop up the pairs it
+    /// missed. The master-picking rule mirrors the detector's bucket sort
+    /// (descending pixels, then descending file size; see
+    /// [`crate::proxies::is_master_of`]). Like [`Self::set_proxy_of`], each
+    /// attached proxy is evicted from any stack it belonged to (a video can't
+    /// be both a stack member and a proxy).
+    ///
+    /// Errors with [`ReelVaultError::InvalidRequest`] when fewer than two
+    /// distinct videos are supplied, when an id isn't in the catalog, or when
+    /// the chosen master is itself a proxy — attaching proxies *to* a proxy
+    /// would create a confusing proxy-of-a-proxy chain, so the user should
+    /// target the real original instead.
+    pub fn attach_proxies(&self, video_ids: &[String]) -> Result<(String, usize)> {
+        // De-dup while preserving the caller's order so the first-listed id
+        // wins any full pixel+size tie deterministically (mirrors
+        // create_group's "fall back to the first explicit input").
+        let mut seen = std::collections::HashSet::new();
+        let ids: Vec<&String> = video_ids
+            .iter()
+            .filter(|id| seen.insert((*id).clone()))
+            .collect();
+        if ids.len() < 2 {
+            return Err(ReelVaultError::InvalidRequest(
+                "Attaching proxies needs at least 2 videos".to_string(),
+            ));
+        }
+
+        // Resolution + size + proxy status for each selection. Scope the read
+        // connection so it's released before the set_proxy_of writes below.
+        struct AttachRow {
+            id: String,
+            pixels: i64,
+            file_size: i64,
+            is_proxy: bool,
+        }
+        let rows: Vec<AttachRow> = {
+            let conn = self.get_connection()?;
+            let mut rows = Vec::with_capacity(ids.len());
+            for id in &ids {
+                let row = conn
+                    .query_row(
+                        "SELECT COALESCE(m.width, 0), COALESCE(m.height, 0),
+                                COALESCE(v.file_size_bytes, 0), v.proxy_of
+                         FROM videos v
+                         LEFT JOIN metadata m ON v.id = m.video_id
+                         WHERE v.id = ?",
+                        params![id],
+                        |r| {
+                            let w: i64 = r.get(0)?;
+                            let h: i64 = r.get(1)?;
+                            Ok(AttachRow {
+                                id: (*id).clone(),
+                                pixels: w * h,
+                                file_size: r.get(2)?,
+                                is_proxy: r.get::<_, Option<String>>(3)?.is_some(),
+                            })
+                        },
+                    )
+                    .optional()
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+                match row {
+                    Some(r) => rows.push(r),
+                    None => {
+                        return Err(ReelVaultError::InvalidRequest(format!(
+                            "Video {id} not found"
+                        )))
+                    }
+                }
+            }
+            rows
+        };
+
+        // Master = most pixels, then largest file. Only replace on a strict
+        // win so the earliest-listed id keeps a full tie.
+        let mut master_idx = 0usize;
+        for i in 1..rows.len() {
+            if (rows[i].pixels, rows[i].file_size)
+                > (rows[master_idx].pixels, rows[master_idx].file_size)
+            {
+                master_idx = i;
+            }
+        }
+        if rows[master_idx].is_proxy {
+            return Err(ReelVaultError::InvalidRequest(
+                "The highest-resolution selected video is itself a proxy; \
+                 attach to its original instead"
+                    .to_string(),
+            ));
+        }
+        let master_id = rows[master_idx].id.clone();
+        tracing::info!(
+            count = rows.len(),
+            master = %master_id,
+            "attach/attach_proxies: chose master, linking remaining as proxies"
+        );
+
+        // Link every non-master selection under the master. set_proxy_of opens
+        // its own connection and handles stack-eviction per proxy.
+        let mut attached = 0usize;
+        for (i, r) in rows.iter().enumerate() {
+            if i == master_idx {
+                continue;
+            }
+            self.set_proxy_of(&r.id, &master_id, 1.0, false)?;
+            attached += 1;
+        }
+        tracing::info!(
+            master = %master_id,
+            attached,
+            "attach/attach_proxies: complete"
+        );
+        Ok((master_id, attached))
+    }
+
     /// Remove one specific master/proxy pair from the junction table.
     /// If no links remain for `proxy_id` afterwards, the denormalized
     /// `videos.proxy_of` columns are cleared as well so the row stops
@@ -3127,6 +3250,86 @@ mod tests {
         assert_eq!(kw.len(), 1);
         assert_eq!(kw[0].token, tag);
         assert_eq!(kw[0].display.as_deref(), Some("beach"));
+    }
+
+    /// Seed a video with a metadata row carrying width/height (for the
+    /// proxy-attach master-selection tests). Returns its id.
+    fn seed_res(db: &Database, path: &str, filename: &str, w: i64, h: i64, size: i64) -> String {
+        let id = db
+            .add_video(path, filename, None, None, Some(size))
+            .expect("add_video");
+        let conn = db.get_connection().expect("conn");
+        conn.execute(
+            "INSERT OR REPLACE INTO metadata (video_id, width, height) VALUES (?, ?, ?)",
+            rusqlite::params![id, w, h],
+        )
+        .expect("insert metadata");
+        id
+    }
+
+    #[test]
+    fn attach_proxies_picks_highest_res_master_and_links_rest() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let master = seed_res(&db, "/l/uhd.mov", "uhd.mov", 3840, 2160, 4000);
+        let p1 = seed_res(&db, "/l/hd1.mov", "hd1.mov", 1920, 1080, 800);
+        let p2 = seed_res(&db, "/l/hd2.mov", "hd2.mov", 1280, 720, 400);
+
+        // Order the master in the middle to prove selection isn't positional.
+        let (chosen, attached) = db
+            .attach_proxies(&[p1.clone(), master.clone(), p2.clone()])
+            .expect("attach");
+        assert_eq!(chosen, master, "highest-resolution video must be the master");
+        assert_eq!(attached, 2);
+
+        // Both lower-res videos now read as proxies of the master.
+        assert_eq!(db.get_proxy_target(&p1).unwrap().as_deref(), Some(master.as_str()));
+        assert_eq!(db.get_proxy_target(&p2).unwrap().as_deref(), Some(master.as_str()));
+        let proxies = db.list_proxies(&master).unwrap();
+        assert_eq!(proxies.len(), 2);
+        // Manual attach → confidence 1.0, not auto-detected.
+        assert!(proxies
+            .iter()
+            .all(|p| !p.auto_detected && (p.proxy_confidence - 1.0).abs() < 1e-9));
+    }
+
+    #[test]
+    fn attach_proxies_breaks_resolution_tie_by_file_size() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        // Same dimensions (codec-proxy shape): the larger file is the master.
+        let mq = seed_res(&db, "/l/mq.mov", "mq.mov", 3840, 2160, 800);
+        let uhq = seed_res(&db, "/l/uhq.mov", "uhq.mov", 3840, 2160, 4000);
+        let (chosen, attached) = db.attach_proxies(&[mq.clone(), uhq.clone()]).expect("attach");
+        assert_eq!(chosen, uhq, "on equal resolution the larger file is the master");
+        assert_eq!(attached, 1);
+        assert_eq!(db.get_proxy_target(&mq).unwrap().as_deref(), Some(uhq.as_str()));
+    }
+
+    #[test]
+    fn attach_proxies_rejects_when_master_is_itself_a_proxy() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let real_master = seed_res(&db, "/l/orig.mov", "orig.mov", 7680, 4320, 9000);
+        let mid = seed_res(&db, "/l/mid.mov", "mid.mov", 3840, 2160, 4000);
+        let small = seed_res(&db, "/l/small.mov", "small.mov", 1280, 720, 400);
+        // `mid` is already a proxy of the 8K original; among {mid, small} it's
+        // the highest-res, so the attach would try to make it the master.
+        db.set_proxy_of(&mid, &real_master, 1.0, false).unwrap();
+        let err = db.attach_proxies(&[mid.clone(), small.clone()]).unwrap_err();
+        assert!(matches!(err, ReelVaultError::InvalidRequest(_)));
+        // `small` must NOT have been linked behind the rejected master.
+        assert!(db.get_proxy_target(&small).unwrap().is_none());
+    }
+
+    #[test]
+    fn attach_proxies_requires_two_distinct_videos() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        let a = seed_res(&db, "/l/a.mov", "a.mov", 1920, 1080, 800);
+        // A repeated id collapses to one distinct video — not enough.
+        assert!(db.attach_proxies(&[a.clone(), a.clone()]).is_err());
+        assert!(db.attach_proxies(std::slice::from_ref(&a)).is_err());
     }
 
     #[test]

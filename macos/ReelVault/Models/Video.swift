@@ -514,6 +514,12 @@ struct GroupInfo {
     let preferredVideoId: String
 }
 
+struct AttachProxiesResult {
+    let masterVideoId: String
+    let proxiesAttached: Int
+    let message: String
+}
+
 // MARK: - Real-time catalog events
 
 /// Mirror of the proto `CatalogEvent.Kind` so view-model code can switch

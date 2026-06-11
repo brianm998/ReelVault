@@ -1089,6 +1089,32 @@ class VideoRepository(
         }
     }
 
+    data class AttachProxiesResult(val masterVideoId: String, val proxiesAttached: Int, val message: String)
+
+    /**
+     * Manually attach proxies — the proxy-world analogue of [createGroup].
+     * The server picks the highest-resolution member of [videoIds] as the
+     * master and links every other selection as a manual proxy of it. Returns
+     * null on RPC failure (e.g. the chosen master is itself a proxy).
+     */
+    suspend fun attachProxies(videoIds: List<String>): AttachProxiesResult? = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext null
+        try {
+            val request = Reelvault.AttachProxiesRequest.newBuilder()
+                .addAllVideoIds(videoIds)
+                .build()
+            val response = s.attachProxies(request)
+            AttachProxiesResult(
+                masterVideoId = response.masterVideoId,
+                proxiesAttached = response.proxiesAttached,
+                message = response.message
+            )
+        } catch (e: Exception) {
+            logger.error("Failed to attach proxies: ${e.message}", e)
+            null
+        }
+    }
+
     suspend fun listGroupMembers(groupId: String): Pair<List<VideoSummary>, String> = withContext(Dispatchers.IO) {
         val s = stub ?: return@withContext Pair(emptyList(), "")
         try {
