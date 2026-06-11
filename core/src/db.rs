@@ -5,6 +5,7 @@ use crate::error::{Result, ReelVaultError};
 use crate::metadata_keys::{self, SqlVal};
 use chrono::Utc;
 use rusqlite::{params, Connection, OptionalExtension};
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 use uuid::Uuid;
@@ -21,13 +22,19 @@ pub struct Database {
 
 /// Representative-row selection shared by the grid listing and the facet
 /// queries: proxies are always hidden, and grouped videos collapse to their
-/// group's preferred row (falling back to the lowest id when no preference is
-/// set). Kept as one const so the grid and its facets count identically.
+/// group's preferred row. The fallback to the lowest id fires not only when no
+/// preference is set, but also when the recorded `preferred_video_id` is no
+/// longer a live member of the group (e.g. it was moved into another stack) —
+/// otherwise that whole stack would match no clause and silently disappear
+/// from the grid. Kept as one const so the grid and its facets count
+/// identically.
 pub(crate) const REPRESENTATIVE_FILTER: &str = "v.proxy_of IS NULL \
      AND (v.group_id IS NULL \
      OR v.id = (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id) \
-     OR (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id) IS NULL \
-        AND v.id = (SELECT MIN(v2.id) FROM videos v2 WHERE v2.group_id = v.group_id))";
+     OR (NOT EXISTS (SELECT 1 FROM videos vp \
+                     WHERE vp.id = (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id) \
+                       AND vp.group_id = v.group_id) \
+        AND v.id = (SELECT MIN(v2.id) FROM videos v2 WHERE v2.group_id = v.group_id)))";
 
 /// Separator joining a metadata column's multiple selected facet tokens into a
 /// single `MetadataFilter.value` over the wire. ASCII Unit Separator (0x1F),
@@ -1339,13 +1346,23 @@ impl Database {
 
     // VIDEO GROUPS (Lightroom-style "stacks")
 
-    /// Create a new group, set members' group_id, and return the new group's ID.
+    /// Create a new group from `video_ids`, returning the new group's ID.
+    ///
+    /// This is also how two existing stacks are *combined*: when an input video
+    /// already belongs to a stack, the **entire** stack is absorbed into the new
+    /// group, not just the one id that was passed. (Combining two collapsed
+    /// stacks in the UI only sends their two representative ids; without this
+    /// expansion the other members would be left behind in half-emptied groups
+    /// whose `preferred_video_id` now dangles.) Each source stack that is fully
+    /// drained is deleted, so no orphaned `video_groups` rows accumulate. The
+    /// whole reshuffle runs in one transaction.
     ///
     /// Returns [`ReelVaultError::InvalidRequest`] if any of the supplied
     /// `video_ids` are proxy videos (i.e. have a non-null `proxy_of`). A proxy
     /// is a derived, lower-resolution stand-in for its master; including it in a
     /// stack would create a confusing double-identity where the same file shows
     /// up both as a stack member and as a proxy badge on its master's card.
+    /// (Proxies are never pulled in as absorbed stack members either.)
     pub fn create_group(
         &self,
         name: Option<&str>,
@@ -1356,9 +1373,15 @@ impl Database {
         if video_ids.is_empty() {
             return Err(ReelVaultError::InvalidRequest("Group must contain at least one video".to_string()));
         }
-        let conn = self.get_connection()?;
+        tracing::info!(
+            count = video_ids.len(),
+            ?video_ids,
+            ?preferred_video_id,
+            "combine/create_group: request received in db layer"
+        );
+        let mut conn = self.get_connection()?;
 
-        // Reject any video that is already a proxy of another video.
+        // Reject any explicitly-supplied video that is already a proxy.
         for vid in video_ids {
             let proxy_of: Option<String> = conn
                 .query_row(
@@ -1377,23 +1400,100 @@ impl Database {
             }
         }
 
-        let group_id = Uuid::new_v4().to_string();
-        let preferred = preferred_video_id.unwrap_or(&video_ids[0]);
+        let tx = conn
+            .transaction()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
-        conn.execute(
+        // Expand the selection to the full membership of any stacks the inputs
+        // already belong to, and record those source stacks so we can delete
+        // them once drained. Proxies are never absorbed.
+        let mut members: BTreeSet<String> = BTreeSet::new();
+        let mut source_groups: BTreeSet<String> = BTreeSet::new();
+        for vid in video_ids {
+            members.insert(vid.clone());
+            let existing_group: Option<String> = tx
+                .query_row(
+                    "SELECT group_id FROM videos WHERE id = ?",
+                    params![vid],
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
+                .flatten();
+            if let Some(gid) = existing_group {
+                source_groups.insert(gid.clone());
+                let mut stmt = tx
+                    .prepare("SELECT id FROM videos WHERE group_id = ? AND proxy_of IS NULL")
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+                let rows = stmt
+                    .query_map(params![gid], |row| row.get::<_, String>(0))
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+                for row in rows {
+                    members.insert(row.map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?);
+                }
+            }
+        }
+
+        tracing::info!(
+            inputs = video_ids.len(),
+            ?source_groups,
+            expanded_members = members.len(),
+            ?members,
+            "combine/create_group: expanded selection to full stack membership"
+        );
+
+        let group_id = Uuid::new_v4().to_string();
+
+        // Honour the requested preferred only if it ended up in the merged
+        // stack; otherwise fall back to the first explicit input.
+        let preferred = preferred_video_id
+            .filter(|p| members.contains(*p))
+            .unwrap_or(video_ids[0].as_str());
+        tracing::info!(new_group = %group_id, preferred, "combine/create_group: creating merged group");
+
+        tx.execute(
             "INSERT INTO video_groups (id, name, base_name, preferred_video_id) VALUES (?, ?, ?, ?)",
             params![group_id, name, base_name, preferred],
         )
         .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
-        // Assign group_id to each video, clearing any existing group membership
-        for vid in video_ids {
-            conn.execute(
-                "UPDATE videos SET group_id = ? WHERE id = ?",
-                params![group_id, vid],
-            )
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        // Move every member (explicit + absorbed) into the new group.
+        let mut moved = 0usize;
+        for vid in &members {
+            moved += tx
+                .execute(
+                    "UPDATE videos SET group_id = ? WHERE id = ?",
+                    params![group_id, vid],
+                )
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         }
+
+        // Delete each source stack that no longer has any members. The new
+        // group's id is freshly generated, so it can never be in this set.
+        let mut dissolved: Vec<&String> = Vec::new();
+        for gid in &source_groups {
+            let n = tx
+                .execute(
+                    "DELETE FROM video_groups WHERE id = ? \
+                     AND NOT EXISTS (SELECT 1 FROM videos WHERE group_id = ?)",
+                    params![gid, gid],
+                )
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            if n > 0 {
+                dissolved.push(gid);
+            }
+        }
+
+        tx.commit()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+
+        tracing::info!(
+            new_group = %group_id,
+            moved,
+            ?dissolved,
+            kept_sources = source_groups.len() - dissolved.len(),
+            "combine/create_group: committed merged stack"
+        );
 
         Ok(group_id)
     }
@@ -2018,26 +2118,15 @@ impl Database {
             prefix.push('/');
         }
         let pattern = format!("{}%", prefix);
-        // Mirror the representative_filter used by list_videos_grouped so the
-        // count reflects the same set of items the grid actually shows:
+        // Reuse the exact representative_filter used by list_videos_grouped so
+        // the count reflects the same set of items the grid actually shows:
         //   • Proxies are excluded — they surface only through the "P×N" badge.
         //   • Each stack counts as one video (the group representative).
+        let count_sql = format!(
+            "SELECT COUNT(*) FROM videos v WHERE v.path LIKE ? AND ({REPRESENTATIVE_FILTER})"
+        );
         let count: i64 = conn
-            .query_row(
-                "SELECT COUNT(*) FROM videos v
-                 WHERE v.path LIKE ?
-                   AND v.proxy_of IS NULL
-                   AND (
-                     v.group_id IS NULL
-                     OR v.id = (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id)
-                     OR (
-                       (SELECT preferred_video_id FROM video_groups WHERE id = v.group_id) IS NULL
-                       AND v.id = (SELECT MIN(v2.id) FROM videos v2 WHERE v2.group_id = v.group_id)
-                     )
-                   )",
-                params![pattern],
-                |row| row.get(0),
-            )
+            .query_row(&count_sql, params![pattern], |row| row.get(0))
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(count)
     }
@@ -3174,5 +3263,101 @@ mod tests {
             .len(),
             3
         );
+    }
+
+    /// Combining two collapsed stacks sends only their two representative ids.
+    /// The merge must absorb the *full* membership of both stacks, dissolve the
+    /// now-empty source stacks, and leave exactly one representative — with no
+    /// members stranded behind a dangling `preferred_video_id`.
+    #[test]
+    fn combining_two_stacks_absorbs_all_members_and_dissolves_sources() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+
+        let a1 = db.add_video("/l/a1.mov", "a1.mov", None, None, Some(1)).unwrap();
+        let a2 = db.add_video("/l/a2.mov", "a2.mov", None, None, Some(1)).unwrap();
+        let a3 = db.add_video("/l/a3.mov", "a3.mov", None, None, Some(1)).unwrap();
+        let b1 = db.add_video("/l/b1.mov", "b1.mov", None, None, Some(1)).unwrap();
+        let b2 = db.add_video("/l/b2.mov", "b2.mov", None, None, Some(1)).unwrap();
+
+        // Stack A = {a1,a2,a3} (preferred a1); Stack B = {b1,b2} (preferred b1).
+        let group_a = db
+            .create_group(None, None, &[a1.clone(), a2.clone(), a3.clone()], Some(a1.as_str()))
+            .unwrap();
+        let group_b = db
+            .create_group(None, None, &[b1.clone(), b2.clone()], Some(b1.as_str()))
+            .unwrap();
+
+        // Grid shows one representative per stack: two rows.
+        let (_, total) = db
+            .list_videos_grouped(50, 0, "name", true, &FilterSpec::default())
+            .unwrap();
+        assert_eq!(total, 2);
+
+        // Combine by passing only the two representatives (what the UI sends
+        // when two collapsed stacks are selected).
+        let merged = db
+            .create_group(None, None, &[a1.clone(), b1.clone()], Some(a1.as_str()))
+            .unwrap();
+
+        // Every member of both stacks now lives in the merged stack.
+        for id in [&a1, &a2, &a3, &b1, &b2] {
+            assert_eq!(
+                db.get_video_group_id(id).unwrap().as_deref(),
+                Some(merged.as_str()),
+                "video {id} should have moved into the merged stack",
+            );
+        }
+        assert_eq!(db.count_group_members(&merged).unwrap(), 5);
+
+        // Source stacks are dissolved, not left orphaned.
+        assert!(db.get_group(&group_a).unwrap().is_none(), "source stack A must be dissolved");
+        assert!(db.get_group(&group_b).unwrap().is_none(), "source stack B must be dissolved");
+
+        // Grid now shows exactly one representative — no members vanished.
+        let (reps, total) = db
+            .list_videos_grouped(50, 0, "name", true, &FilterSpec::default())
+            .unwrap();
+        assert_eq!(total, 1, "the two stacks collapsed into one");
+        assert_eq!(reps.len(), 1);
+        assert_eq!(reps[0].id, a1, "the requested preferred leads the merged stack");
+    }
+
+    /// A stack whose `preferred_video_id` points at a video that has left the
+    /// group (the corruption the old `create_group` produced) must still show a
+    /// representative — the lowest-id remaining member — instead of vanishing.
+    #[test]
+    fn representative_filter_falls_back_when_preferred_left_the_group() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+
+        let v1 = db.add_video("/l/v1.mov", "v1.mov", None, None, Some(1)).unwrap();
+        let v2 = db.add_video("/l/v2.mov", "v2.mov", None, None, Some(1)).unwrap();
+        let v3 = db.add_video("/l/v3.mov", "v3.mov", None, None, Some(1)).unwrap();
+        db.create_group(None, None, &[v1.clone(), v2.clone(), v3.clone()], Some(v1.as_str()))
+            .unwrap();
+
+        // Simulate the pre-fix corruption: the preferred member is pulled out
+        // of the group, but the group row still dangles at it.
+        {
+            let conn = db.get_connection().unwrap();
+            conn.execute("UPDATE videos SET group_id = NULL WHERE id = ?", [&v1]).unwrap();
+        }
+
+        let (reps, total) = db
+            .list_videos_grouped(50, 0, "name", true, &FilterSpec::default())
+            .unwrap();
+        let ids: Vec<&str> = reps.iter().map(|r| r.id.as_str()).collect();
+
+        // v1 is now ungrouped → listed on its own. The dangling group still
+        // contributes exactly one representative (its min-id member), so v2/v3
+        // are not stranded.
+        assert!(ids.contains(&v1.as_str()), "ungrouped v1 shows individually");
+        let group_reps = ids
+            .iter()
+            .filter(|id| **id == v2.as_str() || **id == v3.as_str())
+            .count();
+        assert_eq!(group_reps, 1, "dangling stack still shows one representative");
+        assert_eq!(total, 2, "v1 plus the stack's fallback representative");
     }
 }

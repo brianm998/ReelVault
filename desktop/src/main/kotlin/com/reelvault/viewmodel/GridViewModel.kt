@@ -2640,19 +2640,32 @@ class GridViewModel(
 
         val anchor = _anchorVideoId.value
         val preferred = if (anchor != null && anchor in ids) anchor else ids.first()
+        logger.info("combine: groupSelectedVideos sending ids={} preferred={}", ids, preferred)
         viewModelScope.launch {
             _isLoading.value = true
             _scanStatus.value = "Creating group..."
             try {
                 val group = repository.createGroup(ids, name = "", preferredVideoId = preferred)
+                logger.info("combine: createGroup RPC returned group={}", group)
                 if (group != null) {
+                    // Use the size the daemon reports: combining stacks absorbs
+                    // their full membership, so this can exceed `ids.size`.
+                    val stackSize = group.size
                     _scanResult.value = ScanResult(
                         success = true,
-                        message = "Grouped ${ids.size} videos into a new stack",
-                        videosFound = ids.size,
-                        videosIndexed = ids.size
+                        message = "Combined into a stack of $stackSize " +
+                            (if (stackSize == 1) "video" else "videos"),
+                        videosFound = stackSize,
+                        videosIndexed = stackSize
                     )
                     clearSelection()
+                    // Release the loading guard *before* refreshing. loadVideos()
+                    // runs a background (no-spinner) reload that bails out while
+                    // _isLoading is still true (see reloadFromTop), which would
+                    // leave the just-merged stack un-rendered until the next
+                    // manual refresh.
+                    _scanStatus.value = null
+                    _isLoading.value = false
                     loadVideos()
                 } else {
                     _error.value = "Failed to create group"

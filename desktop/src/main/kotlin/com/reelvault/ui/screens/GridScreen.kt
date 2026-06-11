@@ -369,6 +369,12 @@ fun GridScreen(
                                     onUnstack = { gid ->
                                         viewModel.unstackGroup(gid)
                                     },
+                                    // "Combine into stack" acts on the whole
+                                    // multi-selection, so it's only offered when
+                                    // the right-clicked card is part of a 2+ selection.
+                                    combineSelectionCount =
+                                        if (video.id in multi && multi.size > 1) multi.size else 0,
+                                    onCombineIntoStack = { viewModel.groupSelectedVideos() },
                                     // Don't offer "Create proxy" on cards
                                     // that are themselves proxies — chaining
                                     // proxy-of-a-proxy makes no sense.
@@ -568,6 +574,11 @@ internal fun buildVideoContextMenu(
     stackGroupId: String? = null,
     onRemoveFromStack: (videoId: String, groupId: String) -> Unit = { _, _ -> },
     onUnstack: (groupId: String) -> Unit = {},
+    /** Size of the active multi-selection when the right-clicked card is part
+     *  of it (0 otherwise). Drives "Combine into stack", which merges the whole
+     *  selection — including any stacks among it — into one stack. */
+    combineSelectionCount: Int = 0,
+    onCombineIntoStack: (() -> Unit)? = null,
     /** Video ID of the right-clicked card *if* "Create proxy" should be
      *  offered (i.e. the card isn't itself a proxy). Null suppresses the
      *  menu entry. */
@@ -645,6 +656,15 @@ internal fun buildVideoContextMenu(
         }
         items += androidx.compose.foundation.ContextMenuItem("Unstack") {
             onUnstack(stackGroupId)
+        }
+    }
+
+    // Combine the whole multi-selection — including any stacks among it — into
+    // a single stack. Same gate as the toolbar's group button (2+ selected);
+    // shown regardless of whether the right-clicked card is itself stacked.
+    if (onCombineIntoStack != null && combineSelectionCount >= 2) {
+        items += androidx.compose.foundation.ContextMenuItem("Combine into stack") {
+            onCombineIntoStack()
         }
     }
 

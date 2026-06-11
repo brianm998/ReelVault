@@ -303,6 +303,18 @@ struct GridView: View {
             .help("Disband this entire stack so each member becomes a standalone video.")
         }
 
+        // Combine the whole multi-selection — including any stacks among it —
+        // into a single stack. Same gate as the toolbar's group button (2+
+        // selected); shown regardless of whether the right-clicked card is
+        // itself stacked, and it operates on the selection, not just this card.
+        if multi.contains(video.id) && multi.count >= 2 {
+            Divider()
+            Button("Combine into stack") {
+                viewModel.groupSelectedVideos()
+            }
+            .help("Merge the \(multi.count) selected items — including any stacks among them — into one stack.")
+        }
+
         // Proxy actions. "Create proxy" is offered on every video; for
         // videos that wouldn't otherwise fit under the configured
         // native-playback ceiling we surface it more prominently in the

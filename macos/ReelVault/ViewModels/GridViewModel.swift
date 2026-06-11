@@ -2029,13 +2029,21 @@ class GridViewModel: ObservableObject {
         }
 
         let preferred = anchorVideoId.flatMap { id in ids.contains(id) ? id : nil } ?? ids.first!
+        NSLog("combine: groupSelectedVideos sending ids=\(ids) preferred=\(preferred)")
         Task {
             isLoading = true
             do {
-                _ = try await repository.createGroup(videoIds: ids, name: "", preferredVideoId: preferred)
+                let info = try await repository.createGroup(videoIds: ids, name: "", preferredVideoId: preferred)
+                NSLog("combine: createGroup RPC returned id=\(info?.id ?? "nil") size=\(info?.size ?? -1)")
                 clearSelection()
+                // Release the loading guard *before* refreshing: loadVideos() runs a
+                // background (no-spinner) reload that bails out while isLoading is
+                // still true (see reloadFromTop), leaving the just-merged stack
+                // un-rendered until a manual refresh.
+                isLoading = false
                 loadVideos()  // background refresh — no filter change, just structural update
             } catch {
+                NSLog("combine: createGroup RPC failed: \(error.localizedDescription)")
                 self.error = "Group failed: \(error.localizedDescription)"
             }
             isLoading = false

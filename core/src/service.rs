@@ -1748,6 +1748,12 @@ impl ReelVaultTrait for ReelVaultService {
         request: Request<CreateGroupRequest>,
     ) -> std::result::Result<Response<GroupResponse>, Status> {
         let req = request.into_inner();
+        tracing::info!(
+            video_ids = ?req.video_ids,
+            preferred = %req.preferred_video_id,
+            name = %req.name,
+            "combine/CreateGroup: RPC received"
+        );
         let preferred = if req.preferred_video_id.is_empty() {
             None
         } else {
@@ -1761,6 +1767,7 @@ impl ReelVaultTrait for ReelVaultService {
             .map_err(Status::from)?;
 
         let size = self.db.count_group_members(&group_id).unwrap_or(0) as i32;
+        tracing::info!(group_id = %group_id, size, "combine/CreateGroup: RPC complete");
         let preferred_id = self
             .db
             .get_group(&group_id)
