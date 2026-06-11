@@ -30,6 +30,10 @@ struct MapTopLevelView: View {
     /// Fired when the user right-clicks a pin and picks Name/Rename — the caller
     /// opens the naming sheet and persists via the named-locations RPC.
     var onRequestNameLocation: (CLLocationCoordinate2D) -> Void = { _ in }
+    /// True while the filtered location set is being recomputed (the filter just
+    /// changed). Surfaces a spinner over the map; the previously-plotted pins
+    /// stay put until the new set arrives so the map never blanks out.
+    var isLoadingVideoLocations: Bool = false
 
     /// Co-located videos grouped into one pin so a single marker shows the
     /// count and clicking it selects the whole group. Bucketed to ~1 m. The
@@ -111,6 +115,25 @@ struct MapTopLevelView: View {
                             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
                         Spacer()
                     }
+                }
+                .padding(12)
+            }
+
+            // Filter recomputation can take several seconds on a large or
+            // network-backed library. Surface a spinner so the user knows the
+            // map is catching up — the previously-plotted pins stay meanwhile.
+            if isLoadingVideoLocations {
+                VStack {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Updating map…")
+                            .font(.caption)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+                    Spacer()
                 }
                 .padding(12)
             }

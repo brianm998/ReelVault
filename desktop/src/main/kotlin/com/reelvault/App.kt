@@ -1694,6 +1694,8 @@ fun ReelVaultApp(
                                     // Subscribe to named locations so pin labels
                                     // appear as soon as they load.
                                     val namedLocs = gridViewModel.namedLocations.collectAsState().value
+                                    val mapLocationsLoading =
+                                        gridViewModel.isLoadingVideoLocations.collectAsState()
                                     com.reelvault.ui.screens.MapScreen(
                                         locations = mapLocations.value,
                                         selectedVideoIds = mapSelectedVideoIds,
@@ -1705,6 +1707,7 @@ fun ReelVaultApp(
                                         },
                                         focusedLocation = globalMapFocusLocation,
                                         onRenameLocationRequest = { renameLocationPin = it },
+                                        isLoadingVideoLocations = mapLocationsLoading.value,
                                         modifier = Modifier.weight(1f).fillMaxWidth()
                                     )
                                 }

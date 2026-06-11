@@ -1062,7 +1062,8 @@ struct ContentView: View {
                                 latitude: coord.latitude, longitude: coord.longitude)
                             renameLocationTarget = RenameLocationTarget(
                                 coordinate: coord, existing: existing)
-                        }
+                        },
+                        isLoadingVideoLocations: gridViewModel.isLoadingVideoLocations
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }

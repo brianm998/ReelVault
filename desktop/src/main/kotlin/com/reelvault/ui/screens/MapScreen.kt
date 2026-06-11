@@ -6,6 +6,7 @@ package com.reelvault.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -49,6 +50,10 @@ fun MapScreen(
     /** Fired when the user right-clicks a pin and chooses Name/Rename. The
      *  caller opens the naming dialog and persists via the named-locations RPC. */
     onRenameLocationRequest: ((com.reelvault.ui.components.MapPin) -> Unit)? = null,
+    /** True while the filtered location set is being recomputed (the filter
+     *  just changed). Surfaces a spinner over the map; the previously-plotted
+     *  pins stay put until the new set arrives so the map never blanks out. */
+    isLoadingVideoLocations: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     // Recomputed each recomposition (cheap) rather than remembered, so labels
@@ -143,6 +148,39 @@ fun MapScreen(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
+            }
+        }
+
+        // Filter recomputation can take several seconds on a large or
+        // network-backed library. Surface a spinner so the user knows the map
+        // is catching up — the previously-plotted pins stay on screen meanwhile.
+        if (isLoadingVideoLocations) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(ReelVaultSpacing.Medium),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                shape = MaterialTheme.shapes.small,
+            ) {
+                Row(
+                    modifier = Modifier.padding(
+                        horizontal = ReelVaultSpacing.Small,
+                        vertical = ReelVaultSpacing.XSmall,
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(ReelVaultSpacing.Small),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = "Updating map…",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
             }
         }
     }
