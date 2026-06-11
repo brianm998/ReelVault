@@ -292,7 +292,7 @@ fun ListScreen(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(ReelVaultSpacing.Small),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                    // No inter-row spacing — list rows sit flush vertically.
                 ) {
                     items(
                         count = displayRows.size,
@@ -487,11 +487,11 @@ fun ListScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .horizontalScroll(rememberScrollState())
+                                        // No top/bottom padding so expanded-stack
+                                        // rows sit flush with their neighbours too.
                                         .padding(
                                             start = ReelVaultSpacing.Small,
                                             end = ReelVaultSpacing.Small,
-                                            top = ReelVaultSpacing.XSmall,
-                                            bottom = ReelVaultSpacing.XSmall,
                                         ),
                                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                                     verticalAlignment = Alignment.Top
@@ -818,11 +818,11 @@ fun VideoListRow(
             }
         }
         .shiftAwareRowClickable(onClick = onClick, onDoubleClick = onDoubleClick)
+        // No top/bottom padding so consecutive list rows sit flush — no
+        // vertical gap between them (matches the dense grid).
         .padding(
             start = if (item.isStackChild) (ReelVaultSpacing.Medium + 16.dp) else ReelVaultSpacing.Small,
             end = ReelVaultSpacing.Small,
-            top = ReelVaultSpacing.XSmall,
-            bottom = ReelVaultSpacing.XSmall
         )
 
     Row(

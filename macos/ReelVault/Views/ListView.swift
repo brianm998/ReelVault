@@ -599,7 +599,8 @@ struct VideoListRowView: View {
             infoColumn
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 6)
+        // No vertical padding so consecutive list rows sit flush — no vertical
+        // gap between them (the LazyVStack spacing is already 0).
         .padding(.horizontal, 10)
         .contentShape(Rectangle())
         .onTapGesture(count: 2) { onDoubleClick() }
