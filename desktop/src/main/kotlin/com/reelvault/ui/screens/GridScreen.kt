@@ -81,6 +81,17 @@ fun GridScreen(
     val playingVideoPath = viewModel.playingVideoPath.collectAsState()
     val activeProxyCreations = viewModel.activeProxyCreations.collectAsState()
 
+    // Resolves a card's GPS to a registered place-name (or null → raw coords)
+    // for the "Location" stat slot. Keyed on namedLocations so cards relabel
+    // as soon as a place is named or renamed.
+    val namedLocationsForCards = viewModel.namedLocations.collectAsState().value
+    val placeNameForCards: (Double, Double) -> String? = remember(namedLocationsForCards) {
+        { lat, lon ->
+            if (namedLocationsForCards.isEmpty()) null
+            else viewModel.nameForLocation(lat, lon)?.name
+        }
+    }
+
     // Start playback whenever playingVideoId changes to a non-null value.
     // Use the proxy override path when set (oversize videos), otherwise
     // fall back to the video's own openPath.
@@ -490,6 +501,7 @@ fun GridScreen(
                                 topSlots = viewModel.topSlots.collectAsState().value,
                                 onSetRating = { rating -> viewModel.setRating(rating, listOf(video.id)) },
                                 onPickStatSlot = { slotIndex, key -> viewModel.updateGridTopSlot(slotIndex, key) },
+                                placeNameFor = placeNameForCards,
                                 proxyCreationState = activeProxyCreations.value[video.id],
                                 onLocationClick = onLocationClick,
                                 modifier = Modifier.fillMaxWidth()

@@ -52,6 +52,15 @@ fun MapVideoListPanel(
     thumbnails: Map<String, ByteArray>,
     scrubFrames: Map<String, List<ByteArray?>>,
     currentVideoId: String?,
+    /** Catalog-wide info-slot keys, so the panel's cards match what the grid /
+     *  list show (including a "Location" slot). */
+    topSlots: List<String> = com.reelvault.data.models.defaultGridTopSlots,
+    /** Fired when a slot's stat is changed from a card here (applies
+     *  catalog-wide, same as the grid). */
+    onPickStatSlot: (Int, String) -> Unit = { _, _ -> },
+    /** Resolves a (latitude, longitude) to a registered place-name (or null →
+     *  raw coords) for the "Location" stat slot. */
+    placeNameFor: ((Double, Double) -> String?)? = null,
     onLoadThumbnail: (String) -> Unit,
     onHoverEnter: (String) -> Unit,
     onCardClick: (VideoSummary) -> Unit,
@@ -207,6 +216,9 @@ fun MapVideoListPanel(
                             // No inline playback in the side panel — opening in
                             // Detail is the way to play.
                             playEnabled = false,
+                            topSlots = topSlots,
+                            onPickStatSlot = onPickStatSlot,
+                            placeNameFor = placeNameFor,
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }

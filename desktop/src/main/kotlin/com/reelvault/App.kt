@@ -1755,6 +1755,17 @@ fun ReelVaultApp(
                             val mapLocationName = mapPanelVideos.firstOrNull()?.let {
                                 gridViewModel.nameForLocation(it.gpsLatitude, it.gpsLongitude)?.name
                             }
+                            // Resolver for the panel cards' "Location" slot. Keyed
+                            // on namedLocations so cards relabel when a place is
+                            // named/renamed.
+                            val mapPanelNamedLocations = gridViewModel.namedLocations.collectAsState().value
+                            val mapPanelPlaceNameFor: (Double, Double) -> String? =
+                                remember(mapPanelNamedLocations) {
+                                    { lat, lon ->
+                                        if (mapPanelNamedLocations.isEmpty()) null
+                                        else gridViewModel.nameForLocation(lat, lon)?.name
+                                    }
+                                }
                             com.reelvault.ui.screens.MapVideoListPanel(
                                 videos = mapPanelVideos,
                                 // Spinner while a clicked location's videos are
@@ -1765,6 +1776,9 @@ fun ReelVaultApp(
                                 thumbnails = gridViewModel.thumbnails.collectAsState().value,
                                 scrubFrames = gridViewModel.scrubFrames.collectAsState().value,
                                 currentVideoId = gridViewModel.selectedVideoId.collectAsState().value,
+                                topSlots = gridViewModel.topSlots.collectAsState().value,
+                                onPickStatSlot = { i, k -> gridViewModel.updateGridTopSlot(i, k) },
+                                placeNameFor = mapPanelPlaceNameFor,
                                 onLoadThumbnail = { gridViewModel.loadThumbnail(it) },
                                 onHoverEnter = { gridViewModel.loadScrubFrames(it) },
                                 onCardClick = { openMapVideoInView(it, ViewMode.MAP) },

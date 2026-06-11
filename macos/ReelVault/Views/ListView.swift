@@ -19,6 +19,12 @@ struct ListView: View {
     var body: some View {
         ZStack {
             content
+                // Supply the "Location" card slot's place-name resolver to the
+                // row cells. Re-evaluated when namedLocations changes (the view
+                // observes viewModel), so rows relabel automatically.
+                .environment(\.placeNameResolver, { (lat: Double, lon: Double) -> String? in
+                    viewModel.nameForLocation(latitude: lat, longitude: lon)?.name
+                })
             // Error toast
             if let error = viewModel.error {
                 VStack {
@@ -495,6 +501,9 @@ struct ListView: View {
 // MARK: - VideoListRowView
 
 struct VideoListRowView: View {
+    /// Resolves a row's GPS to a registered place-name for the "Location"
+    /// slot; nil → raw coordinates. Injected by the owning view.
+    @Environment(\.placeNameResolver) private var placeNameResolver
     let item: GridItemRow
     let thumbnail: NSImage?
     var thumbnailHeight: CGFloat = 100
@@ -740,7 +749,7 @@ struct VideoListRowView: View {
         // add invisible internal padding that misaligns the values
         // with the card's edges.
         let stat = GridStatKey(rawValue: key) ?? .none
-        let value = stat.value(for: video)
+        let value = stat.value(for: video, placeName: placeNameResolver)
         let displayed: String = {
             if stat == .none { return "—" }
             return value
@@ -829,7 +838,7 @@ struct VideoListRowView: View {
     @ViewBuilder
     private func topBandStat(slotIndex: Int, key: String, alignTrailing: Bool) -> some View {
         let stat = GridStatKey(rawValue: key) ?? .none
-        Text(stat == .none ? "—" : stat.value(for: video))
+        Text(stat == .none ? "—" : stat.value(for: video, placeName: placeNameResolver))
             .font(.system(size: 10, weight: slotIndex == 0 ? .semibold : .regular))
             .foregroundColor(stat == .none ? Color.secondary : Color.primary)
             .lineLimit(1)
@@ -1155,6 +1164,7 @@ struct VideoListRowView: View {
 /// footprint, with the filename label below. No info column alongside —
 /// the strip itself communicates that these are stack members.
 struct VideoListHorizontalCardView: View {
+    @Environment(\.placeNameResolver) private var placeNameResolver
     let item: GridItemRow
     let thumbnail: NSImage?
     var thumbnailHeight: CGFloat = 100
@@ -1278,7 +1288,7 @@ struct VideoListHorizontalCardView: View {
     @ViewBuilder
     private func hStatCell(slotIndex: Int, key: String, alignTrailing: Bool) -> some View {
         let stat = GridStatKey(rawValue: key) ?? .none
-        let value = stat.value(for: video)
+        let value = stat.value(for: video, placeName: placeNameResolver)
         let displayed = value.isEmpty ? "—" : value
         Text(displayed)
             .font(.system(size: 10, weight: .regular))

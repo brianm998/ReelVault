@@ -686,6 +686,7 @@ enum GridStatKey: String, CaseIterable, Identifiable, Hashable {
     case lensModel      = "lens_model"
     case captureDate    = "capture_date"
     case captureYear    = "capture_year"
+    case location
 
     var id: String { rawValue }
 
@@ -705,13 +706,19 @@ enum GridStatKey: String, CaseIterable, Identifiable, Hashable {
         case .lensModel:        return "Lens"
         case .captureDate:      return "Capture date"
         case .captureYear:      return "Capture year"
+        case .location:         return "Location"
         }
     }
 
     /// Resolve this stat against a [VideoSummary]. Returns the display
     /// string for the card, or empty string if the underlying data is
     /// missing / inapplicable.
-    func value(for video: VideoSummary) -> String {
+    ///
+    /// `placeName` resolves a (latitude, longitude) to a registered
+    /// place-name, or nil when none is in range — only consulted for the
+    /// `.location` slot. When absent (or it returns nil) the raw coordinates
+    /// are shown as "(lat, lon)", matching the detail panel's order.
+    func value(for video: VideoSummary, placeName: ((Double, Double) -> String?)? = nil) -> String {
         switch self {
         case .none:             return ""
         case .filename:         return video.filename
@@ -749,6 +756,13 @@ enum GridStatKey: String, CaseIterable, Identifiable, Hashable {
             let date = Date(timeIntervalSince1970: TimeInterval(video.creationDate / 1000))
             let cal = Calendar(identifier: .gregorian)
             return String(cal.component(.year, from: date))
+        case .location:
+            guard video.hasLocation else { return "" }
+            // Prefer a registered place-name; fall back to raw "(lat, lon)".
+            if let name = placeName?(video.gpsLatitude, video.gpsLongitude) {
+                return name
+            }
+            return String(format: "(%.4f, %.4f)", video.gpsLatitude, video.gpsLongitude)
         }
     }
 
@@ -767,6 +781,26 @@ enum GridStatKey: String, CaseIterable, Identifiable, Hashable {
         case 4320...:     return "8K"
         default:          return "\(height)p"
         }
+    }
+}
+
+// MARK: - Place-name resolver (ambient, for the "Location" card slot)
+
+/// Resolves a (latitude, longitude) to a registered place-name, or nil when
+/// none is in range. Injected by the views that own the `GridViewModel` so the
+/// deeply-nested card cells can label the "Location" slot without each taking a
+/// `GridViewModel` reference. The SwiftUI analogue of the Compose client's
+/// `placeNameFor` parameter.
+private struct PlaceNameResolverKey: EnvironmentKey {
+    // The value is an immutable nil default; the closure type isn't Sendable,
+    // so opt this constant out of the concurrency check explicitly.
+    nonisolated(unsafe) static let defaultValue: ((Double, Double) -> String?)? = nil
+}
+
+extension EnvironmentValues {
+    var placeNameResolver: ((Double, Double) -> String?)? {
+        get { self[PlaceNameResolverKey.self] }
+        set { self[PlaceNameResolverKey.self] = newValue }
     }
 }
 

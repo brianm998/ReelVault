@@ -144,6 +144,9 @@ fun VideoCard(
     /** Fired when the user right-clicks a top stat slot and picks a new
      *  stat key. Receives (slotIndex 0..3, GridStatKey.raw). */
     onPickStatSlot: (Int, String) -> Unit = { _, _ -> },
+    /** Resolves a (latitude, longitude) to a registered place-name (or null)
+     *  for the "Location" stat slot; null shows raw coordinates. */
+    placeNameFor: ((Double, Double) -> String?)? = null,
     /** Non-null when a proxy is actively being generated for this video.
      *  Triggers a progress overlay in the lower-left of the thumbnail. */
     proxyCreationState: com.reelvault.viewmodel.GridViewModel.ProxyCreationState? = null,
@@ -368,12 +371,12 @@ fun VideoCard(
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                StatCell(slotIndex = 0, key = paddedSlots[0], video = video, onPick = onPickStatSlot, alignEnd = false, weight = 1f)
-                StatCell(slotIndex = 2, key = paddedSlots[2], video = video, onPick = onPickStatSlot, alignEnd = true, weight = 1f)
+                StatCell(slotIndex = 0, key = paddedSlots[0], video = video, onPick = onPickStatSlot, alignEnd = false, weight = 1f, placeNameFor = placeNameFor)
+                StatCell(slotIndex = 2, key = paddedSlots[2], video = video, onPick = onPickStatSlot, alignEnd = true, weight = 1f, placeNameFor = placeNameFor)
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                StatCell(slotIndex = 1, key = paddedSlots[1], video = video, onPick = onPickStatSlot, alignEnd = false, weight = 1f)
-                StatCell(slotIndex = 3, key = paddedSlots[3], video = video, onPick = onPickStatSlot, alignEnd = true, weight = 1f)
+                StatCell(slotIndex = 1, key = paddedSlots[1], video = video, onPick = onPickStatSlot, alignEnd = false, weight = 1f, placeNameFor = placeNameFor)
+                StatCell(slotIndex = 3, key = paddedSlots[3], video = video, onPick = onPickStatSlot, alignEnd = true, weight = 1f, placeNameFor = placeNameFor)
             }
         }
 
@@ -1014,9 +1017,10 @@ private fun RowScope.StatCell(
     onPick: (Int, String) -> Unit,
     alignEnd: Boolean,
     weight: Float,
+    placeNameFor: ((Double, Double) -> String?)? = null,
 ) {
     val stat = com.reelvault.data.models.GridStatKey.fromRaw(key)
-    val value = stat.valueFor(video)
+    val value = stat.valueFor(video, placeNameFor)
     // Two distinct empty states:
     //   • Slot is unset (`stat == None`) → show "—" so the user
     //     knows the cell is configurable.

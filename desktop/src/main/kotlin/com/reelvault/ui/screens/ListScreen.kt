@@ -86,6 +86,17 @@ fun ListScreen(
     val topSlots = viewModel.topSlots.collectAsState()
     val playingVideoId = viewModel.playingVideoId.collectAsState()
     val playingVideoPath = viewModel.playingVideoPath.collectAsState()
+
+    // Resolves a card's GPS to a registered place-name (or null → raw coords)
+    // for the "Location" stat slot. Keyed on namedLocations so rows relabel as
+    // soon as a place is named or renamed.
+    val namedLocationsForCards = viewModel.namedLocations.collectAsState().value
+    val placeNameForCards: (Double, Double) -> String? = remember(namedLocationsForCards) {
+        { lat, lon ->
+            if (namedLocationsForCards.isEmpty()) null
+            else viewModel.nameForLocation(lat, lon)?.name
+        }
+    }
     val vlcAvailable = remember { ComposeVideoPlayer.isLibVlcAvailable }
     // allowEmbedded = false: the inline card player must use the lightweight
     // callback surface — a heavyweight native surface inside the scrolling list
@@ -405,6 +416,7 @@ fun ListScreen(
                                         onPickStatSlot = { slotIndex, key ->
                                             viewModel.updateGridTopSlot(slotIndex, key)
                                         },
+                                        placeNameFor = placeNameForCards,
                                         stackMemberFilenames = if (video.isInGroup) {
                                             expandedMembers.value[video.groupId]
                                                 ?.filter { it.id != video.id }
@@ -573,6 +585,7 @@ fun ListScreen(
                                                 onPickStatSlot = { slotIndex, key ->
                                                     viewModel.updateGridTopSlot(slotIndex, key)
                                                 },
+                                                placeNameFor = placeNameForCards,
                                                 onHoverEnter = { viewModel.loadScrubFrames(video.id) },
                                                 onClick = { shiftFromEvent, toggleFromEvent ->
                                                     val shift = shiftFromEvent || shiftPressed
@@ -665,6 +678,9 @@ fun VideoListRow(
     /** Fired when the user picks a different stat for one of the four
      *  info-column slots. Receives (slotIndex 0..3, GridStatKey.raw). */
     onPickStatSlot: (Int, String) -> Unit = { _, _ -> },
+    /** Resolves a (latitude, longitude) to a registered place-name (or null →
+     *  raw coordinates) for the "Location" stat slot. */
+    placeNameFor: ((Double, Double) -> String?)? = null,
     /** Fired when the user clicks the location badge. The doubles are
      *  (latitude, longitude). Callers should open the global map focused
      *  on that coordinate. */
@@ -835,12 +851,12 @@ fun VideoListRow(
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    ListRowStatCell(slotIndex = 0, key = cardTopSlots[0], video = video, onPick = onPickStatSlot, alignEnd = false, weight = 1f)
-                    ListRowStatCell(slotIndex = 2, key = cardTopSlots[2], video = video, onPick = onPickStatSlot, alignEnd = true, weight = 1f)
+                    ListRowStatCell(slotIndex = 0, key = cardTopSlots[0], video = video, onPick = onPickStatSlot, alignEnd = false, weight = 1f, placeNameFor = placeNameFor)
+                    ListRowStatCell(slotIndex = 2, key = cardTopSlots[2], video = video, onPick = onPickStatSlot, alignEnd = true, weight = 1f, placeNameFor = placeNameFor)
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    ListRowStatCell(slotIndex = 1, key = cardTopSlots[1], video = video, onPick = onPickStatSlot, alignEnd = false, weight = 1f)
-                    ListRowStatCell(slotIndex = 3, key = cardTopSlots[3], video = video, onPick = onPickStatSlot, alignEnd = true, weight = 1f)
+                    ListRowStatCell(slotIndex = 1, key = cardTopSlots[1], video = video, onPick = onPickStatSlot, alignEnd = false, weight = 1f, placeNameFor = placeNameFor)
+                    ListRowStatCell(slotIndex = 3, key = cardTopSlots[3], video = video, onPick = onPickStatSlot, alignEnd = true, weight = 1f, placeNameFor = placeNameFor)
                 }
             }
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(bandDividerColor))
@@ -1253,6 +1269,7 @@ fun VideoListRow(
                     key = paddedSlots[slotIndex],
                     video = video,
                     onPick = onPickStatSlot,
+                    placeNameFor = placeNameFor,
                 )
             }
             // Collapsed stack: list the other members of the stack so the
@@ -1283,9 +1300,10 @@ private fun ListColumnStatLabel(
     key: String,
     video: VideoSummary,
     onPick: (Int, String) -> Unit,
+    placeNameFor: ((Double, Double) -> String?)? = null,
 ) {
     val stat = com.reelvault.data.models.GridStatKey.fromRaw(key)
-    val value = stat.valueFor(video)
+    val value = stat.valueFor(video, placeNameFor)
     val displayed: String = if (value.isEmpty()) "—" else value
     var expanded by remember { mutableStateOf(false) }
     Box(
@@ -1339,9 +1357,10 @@ private fun RowScope.ListRowStatCell(
     onPick: (Int, String) -> Unit,
     alignEnd: Boolean,
     weight: Float,
+    placeNameFor: ((Double, Double) -> String?)? = null,
 ) {
     val stat = com.reelvault.data.models.GridStatKey.fromRaw(key)
-    val value = stat.valueFor(video)
+    val value = stat.valueFor(video, placeNameFor)
     val displayed: String = if (value.isEmpty()) "—" else value
     var expanded by remember { mutableStateOf(false) }
     Box(
@@ -1472,6 +1491,7 @@ private fun VideoListHorizontalCard(
     isRepresentative: Boolean = false,
     onStackToggle: () -> Unit = {},
     onPickStatSlot: (Int, String) -> Unit = { _, _ -> },
+    placeNameFor: ((Double, Double) -> String?)? = null,
     onHoverEnter: () -> Unit = {},
     onClick: (shiftPressed: Boolean, togglePressed: Boolean) -> Unit = { _, _ -> },
     onDoubleClick: () -> Unit = {},
@@ -1585,12 +1605,12 @@ private fun VideoListHorizontalCard(
                         }
                         Spacer(Modifier.width(2.dp))
                     }
-                    ListRowStatCell(slotIndex = 0, key = paddedSlots.getOrElse(0) { "" }, video = video, onPick = onPickStatSlot, alignEnd = false, weight = 1f)
-                    ListRowStatCell(slotIndex = 2, key = paddedSlots.getOrElse(2) { "" }, video = video, onPick = onPickStatSlot, alignEnd = true, weight = 1f)
+                    ListRowStatCell(slotIndex = 0, key = paddedSlots.getOrElse(0) { "" }, video = video, onPick = onPickStatSlot, alignEnd = false, weight = 1f, placeNameFor = placeNameFor)
+                    ListRowStatCell(slotIndex = 2, key = paddedSlots.getOrElse(2) { "" }, video = video, onPick = onPickStatSlot, alignEnd = true, weight = 1f, placeNameFor = placeNameFor)
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    ListRowStatCell(slotIndex = 1, key = paddedSlots.getOrElse(1) { "" }, video = video, onPick = onPickStatSlot, alignEnd = false, weight = 1f)
-                    ListRowStatCell(slotIndex = 3, key = paddedSlots.getOrElse(3) { "" }, video = video, onPick = onPickStatSlot, alignEnd = true, weight = 1f)
+                    ListRowStatCell(slotIndex = 1, key = paddedSlots.getOrElse(1) { "" }, video = video, onPick = onPickStatSlot, alignEnd = false, weight = 1f, placeNameFor = placeNameFor)
+                    ListRowStatCell(slotIndex = 3, key = paddedSlots.getOrElse(3) { "" }, video = video, onPick = onPickStatSlot, alignEnd = true, weight = 1f, placeNameFor = placeNameFor)
                 }
             }
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(bandDividerColor))

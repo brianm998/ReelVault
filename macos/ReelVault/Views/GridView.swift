@@ -36,6 +36,12 @@ struct GridView: View {
     var body: some View {
         ZStack {
             content
+                // Supply the "Location" card slot's place-name resolver to the
+                // card cells. Re-evaluated when namedLocations changes (the
+                // view observes viewModel), so cards relabel automatically.
+                .environment(\.placeNameResolver, { (lat: Double, lon: Double) -> String? in
+                    viewModel.nameForLocation(latitude: lat, longitude: lon)?.name
+                })
             // Error toast
             if let error = viewModel.error {
                 VStack {
@@ -530,6 +536,9 @@ func buildRenderedList(
 // MARK: - VideoCardView
 
 struct VideoCardView: View {
+    /// Resolves a card's GPS to a registered place-name for the "Location"
+    /// slot; nil → raw coordinates. Injected by the owning view.
+    @Environment(\.placeNameResolver) private var placeNameResolver
     let item: GridItemRow
     let thumbnail: NSImage?
     /// Scrub frames (one image per evenly-spaced timeline position). When the
@@ -1145,7 +1154,7 @@ struct VideoCardView: View {
         // against the cell's frame, so the four values line up
         // exactly with the band's edges.
         let stat = GridStatKey(rawValue: key) ?? .none
-        let value = stat.value(for: video)
+        let value = stat.value(for: video, placeName: placeNameResolver)
         let displayed: String = {
             if value.isEmpty { return "—" }
             return value

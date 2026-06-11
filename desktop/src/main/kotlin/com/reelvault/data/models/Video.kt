@@ -510,10 +510,21 @@ enum class GridStatKey(val raw: String, val displayName: String) {
     Iso            ("iso",               "ISO"),
     Aperture       ("aperture",          "Aperture"),
     ExposureTime   ("exposure_time",     "Exposure"),
-    FocalLength    ("focal_length",      "Focal length");
+    FocalLength    ("focal_length",      "Focal length"),
+    Location       ("location",          "Location");
 
-    /** Resolve this stat against a [VideoSummary] into the display string. */
-    fun valueFor(video: VideoSummary): String = when (this) {
+    /**
+     * Resolve this stat against a [VideoSummary] into the display string.
+     *
+     * [placeNameFor] resolves a (latitude, longitude) to a registered
+     * place-name, or null when none is within range — only consulted for the
+     * [Location] slot. When absent (or it returns null) the raw coordinates
+     * are shown as "(lat, lon)", matching the detail panel's order.
+     */
+    fun valueFor(
+        video: VideoSummary,
+        placeNameFor: ((Double, Double) -> String?)? = null,
+    ): String = when (this) {
         None             -> ""
         Filename         -> video.filename
         FileSize         -> formatBytes(video.sizeBytes)
@@ -541,6 +552,11 @@ enum class GridStatKey(val raw: String, val displayName: String) {
         Aperture         -> if (video.aperture > 0) "f/%.1f".format(video.aperture) else ""
         ExposureTime     -> formatExposureTime(video.exposureTimeS)
         FocalLength      -> if (video.focalLengthMm > 0) "%.0f mm".format(video.focalLengthMm) else ""
+        Location         -> if (video.hasLocation) {
+            // Prefer a registered place-name; fall back to raw "(lat, lon)".
+            placeNameFor?.invoke(video.gpsLatitude, video.gpsLongitude)
+                ?: "(%.4f, %.4f)".format(video.gpsLatitude, video.gpsLongitude)
+        } else ""
     }
 
     companion object {

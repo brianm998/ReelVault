@@ -134,6 +134,11 @@ struct MapVideoListPanel: View {
                                 onPickStatSlot: { _, _ in },
                                 dragPaths: video.openPath.isEmpty ? [] : [video.openPath]
                             )
+                            // Resolve the "Location" card slot's place-name here
+                            // too, so the map side-panel cards match grid / list.
+                            .environment(\.placeNameResolver, { (lat: Double, lon: Double) -> String? in
+                                gridViewModel.nameForLocation(latitude: lat, longitude: lon)?.name
+                            })
                             .onAppear {
                                 if video.hasThumbnail { gridViewModel.loadThumbnail(videoId: video.id) }
                             }
