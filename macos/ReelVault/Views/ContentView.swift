@@ -702,7 +702,8 @@ struct ContentView: View {
         VStack(spacing: 0) {
             Divider()
             HStack(spacing: 0) {
-                // Left cluster — view-mode toggle (Catalog/Detail, Grid, List).
+                // Left cluster — view-mode toggle. Order matches the Compose
+                // desktop client: Grid, List, Detail, Map (left to right).
                 // Custom binding so a click animates the layout reflow.
                 Picker("", selection: Binding(
                     get: { viewMode },
@@ -713,15 +714,15 @@ struct ContentView: View {
                         withAnimation(.easeInOut(duration: 0.2)) { viewMode = newMode }
                     }
                 )) {
-                    Image(systemName: "play.rectangle").tag(ViewMode.detail)
                     Image(systemName: "square.grid.2x2").tag(ViewMode.grid)
                     Image(systemName: "list.bullet").tag(ViewMode.list)
+                    Image(systemName: "play.rectangle").tag(ViewMode.detail)
                     Image(systemName: "map").tag(ViewMode.map)
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 180)
                 .labelsHidden()
-                .help("Switch between Catalog/Detail (D), Grid (G), List (L), and Map (M) views.")
+                .help("Switch between Grid (G), List (L), Catalog/Detail (D), and Map (M) views.")
 
                 Spacer()
 
