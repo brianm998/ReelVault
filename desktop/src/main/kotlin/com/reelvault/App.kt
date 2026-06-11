@@ -743,6 +743,13 @@ fun ReelVaultApp(
     // Space bar in detail mode: each increment triggers a play/pause inside
     // DetailViewScreen without exposing its internal player state upward.
     var detailPlayToggle by remember { mutableStateOf(0) }
+    // ← / → in detail mode: each increment steps the playhead one frame back /
+    // forward inside DetailViewScreen — but only while the clip is paused (the
+    // screen enforces that gate: not in the scrub-preview, not while playing).
+    // Separate tokens from detailPlayToggle so a frame-step is never mistaken
+    // for a play/pause.
+    var detailStepBackToggle by remember { mutableStateOf(0) }
+    var detailStepForwardToggle by remember { mutableStateOf(0) }
 
     // OpenCatalog dialog state. Shown automatically when the daemon has no
     // catalog open, or when the user picks File → Open.
@@ -793,19 +800,29 @@ fun ReelVaultApp(
             gridViewModel.setColorLabelOnSelection(label)
         }
         onRegisterMoveSelection { dir, extend ->
-            // Arrow keys only navigate the grid / list, never the loupe.
-            // Shift extends a range from the anchor; otherwise move the
-            // single selection.
-            if (viewMode == ViewMode.GRID || viewMode == ViewMode.LIST) {
-                val moved = if (extend) {
-                    gridViewModel.extendSelection(dir)
-                } else {
-                    gridViewModel.moveSelection(dir)
+            when (viewMode) {
+                // Grid / list: move (or, with Shift, extend) the single
+                // selection, syncing the inspector to the new pick.
+                ViewMode.GRID, ViewMode.LIST -> {
+                    val moved = if (extend) {
+                        gridViewModel.extendSelection(dir)
+                    } else {
+                        gridViewModel.moveSelection(dir)
+                    }
+                    moved?.let {
+                        detailViewModel.setCurrentVideo(it)
+                        detailViewModel.loadMetadata(it.id)
+                    }
                 }
-                moved?.let {
-                    detailViewModel.setCurrentVideo(it)
-                    detailViewModel.loadMetadata(it.id)
+                // Detail loupe: ← / → step the playhead one frame back /
+                // forward while the clip is paused (DetailViewScreen owns the
+                // player and enforces the paused-only gate); ↑ / ↓ do nothing.
+                ViewMode.DETAIL -> when (dir) {
+                    NavDirection.Left -> detailStepBackToggle++
+                    NavDirection.Right -> detailStepForwardToggle++
+                    else -> {}
                 }
+                ViewMode.MAP -> {}
             }
         }
     }
@@ -1687,6 +1704,8 @@ fun ReelVaultApp(
                                     detailViewModel = detailViewModel,
                                     infoOverlay = infoOverlay,
                                     playToggle = detailPlayToggle,
+                                    stepBackToggle = detailStepBackToggle,
+                                    stepForwardToggle = detailStepForwardToggle,
                                     modifier = Modifier.weight(1f).fillMaxWidth()
                                 )
                                 ViewMode.MAP -> {
@@ -2210,7 +2229,7 @@ fun HelpDialog(onDismiss: () -> Unit) {
                         HelpTable(listOf(
                             "G — Grid" to "Adaptive thumbnail grid. Drag the slider in the bottom bar to resize cards.",
                             "L — List" to "Horizontal rows: thumbnail left, metadata columns right.",
-                            "D — Detail" to "Full-window video player and inspector. Step through your library with ← / →.",
+                            "D — Detail" to "Full-window video player and inspector. While a clip is paused, ← / → step one frame back / forward.",
                             "M — Map" to "Geotagged clips on a world map. Click a pin to filter to that location.",
                         ))
                         HelpPara("Switch views with the segment control in the bottom bar, or press G, L, D, or M.")
@@ -2363,6 +2382,7 @@ fun HelpDialog(onDismiss: () -> Unit) {
                             "Ctrl+Shift+W" to "Close Catalog",
                             "F1" to "Show this help",
                             "← ↑ → ↓" to "Navigate the grid",
+                            "← →" to "Detail view, while a clip is paused — step one frame back / forward",
                             "Escape" to "Clear search field focus",
                         ))
                     }

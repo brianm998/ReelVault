@@ -57,6 +57,15 @@ fun DetailViewScreen(
      * no action taken on initial render.
      */
     playToggle: Int = 0,
+    /**
+     * Monotonically-incrementing tokens from App.kt: each increment of
+     * [stepBackToggle] / [stepForwardToggle] is a ← / → press in detail mode,
+     * stepping the playhead one frame back / forward. The handlers below act
+     * only while the clip is paused (not in the initial scrub-preview and not
+     * playing). 0 on first composition → no action taken on initial render.
+     */
+    stepBackToggle: Int = 0,
+    stepForwardToggle: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val selectedVideoId by gridViewModel.selectedVideoId.collectAsState()
@@ -120,7 +129,7 @@ fun DetailViewScreen(
 
     // Player lifecycle: one player per selected video. Releasing on key change
     // ensures we don't leak libvlc handles when the user pages through videos.
-    val player = remember(video.id) { ComposeVideoPlayer() }
+    val player = remember(video.id) { ComposeVideoPlayer(preciseSeek = true) }
     DisposableEffect(video.id) {
         onDispose {
             player.release()
@@ -191,6 +200,26 @@ fun DetailViewScreen(
             player.load(effectivePath, playImmediately = true)
             playbackStarted = true
         }
+    }
+
+    // ← / → frame stepping (App.kt forwards each press as a token bump). These
+    // act ONLY in the "paused" state — playback has been started (so we're past
+    // the initial scrub-thumbnail preview) but the clip isn't currently playing
+    // because the user paused it or it reached its end. No-op in the preview and
+    // while playing. Each press does exactly what the on-screen single-frame
+    // step buttons do (← = skipFrames(-1); → = the native nextFrame), leaving the
+    // clip paused on the new frame. The `playbackStarted && !isPlaying` gate also
+    // makes a stale token harmless on a fresh composition (the new player hasn't
+    // started). Skip the initial composition (token 0) so mounting never seeks.
+    val frameStepFps = video.fps.takeIf { it > 0.0 } ?: 30.0
+    val canFrameStep = { playbackStarted && player.available && !player.isPlaying.value }
+    LaunchedEffect(stepBackToggle) {
+        if (stepBackToggle == 0) return@LaunchedEffect
+        if (canFrameStep()) player.skipFrames(-1, frameStepFps)
+    }
+    LaunchedEffect(stepForwardToggle) {
+        if (stepForwardToggle == 0) return@LaunchedEffect
+        if (canFrameStep()) player.stepForwardOneFrame()
     }
 
     Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {

@@ -79,6 +79,12 @@ struct ContentView: View {
     /// Monotonically-incrementing token passed to DetailLoupeView. Each
     /// increment triggers a play/pause toggle inside the loupe.
     @State private var detailPlayToggle: Int = 0
+    /// Monotonically-incrementing tokens passed to DetailLoupeView for the
+    /// ← / → keys in detail mode. Each increment steps the playhead one frame
+    /// back / forward — but only while the clip is paused; the loupe enforces
+    /// that gate (it owns the player state).
+    @State private var detailStepBackToggle: Int = 0
+    @State private var detailStepForwardToggle: Int = 0
     /// Non-nil when a newer GitHub release has been detected.
     /// Dismissed by the user; rechecked every 24 h.
     @State private var pendingUpdate: ReleaseInfo? = nil
@@ -177,16 +183,27 @@ struct ContentView: View {
                 gridViewModel.setColorLabelOnSelection(label)
             },
             onArrow: { direction, extend in
-                // Arrow keys navigate only the grid / list, never the loupe.
-                // Shift extends a range from the anchor; otherwise move the
-                // single selection.
-                guard viewMode == .grid || viewMode == .list else { return }
-                let moved = extend
-                    ? gridViewModel.extendSelection(direction)
-                    : gridViewModel.moveSelection(direction)
-                if let moved {
-                    detailViewModel.setCurrentVideo(moved)
-                    detailViewModel.loadMetadata(videoId: moved.id)
+                switch viewMode {
+                case .grid, .list:
+                    // Move (or, with Shift, extend) the single selection.
+                    let moved = extend
+                        ? gridViewModel.extendSelection(direction)
+                        : gridViewModel.moveSelection(direction)
+                    if let moved {
+                        detailViewModel.setCurrentVideo(moved)
+                        detailViewModel.loadMetadata(videoId: moved.id)
+                    }
+                case .detail:
+                    // ← / → step the playhead one frame back / forward while
+                    // the clip is paused (the loupe enforces the paused-only
+                    // gate); ↑ / ↓ do nothing here.
+                    switch direction {
+                    case .left: detailStepBackToggle += 1
+                    case .right: detailStepForwardToggle += 1
+                    case .up, .down: break
+                    }
+                case .map:
+                    break
                 }
             }
         ))
@@ -1043,7 +1060,9 @@ struct ContentView: View {
                         gridViewModel: gridViewModel,
                         detailViewModel: detailViewModel,
                         infoOverlay: infoOverlay,
-                        playToggle: detailPlayToggle
+                        playToggle: detailPlayToggle,
+                        stepBackToggle: detailStepBackToggle,
+                        stepForwardToggle: detailStepForwardToggle
                     )
                     .frame(maxWidth: .infinity)
                 case .map:

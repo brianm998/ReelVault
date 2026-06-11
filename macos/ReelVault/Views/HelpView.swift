@@ -105,7 +105,7 @@ struct HelpView: View {
                         HelpTable(rows: [
                             ("G — Grid",   "Adaptive thumbnail grid. Drag the slider in the bottom bar to resize cards."),
                             ("L — List",   "Horizontal rows: thumbnail left, metadata columns right. Toggle columns in the right panel."),
-                            ("D — Detail", "Full-window video player and inspector. Step through your library with ← / →."),
+                            ("D — Detail", "Full-window video player and inspector. While a clip is paused, ← / → step one frame back / forward."),
                             ("M — Map",    "Geotagged clips on a world map. Click a pin to filter to that location."),
                         ])
                         HelpParagraph("Switch views with the segment control in the **bottom bar**, or press G, L, D, or M.")
@@ -239,6 +239,7 @@ struct HelpView: View {
                             ("⌘⇧W",     "Close current catalog"),
                             ("⌘?",      "Show this help"),
                             ("← ↑ → ↓", "Navigate the grid"),
+                            ("← →",      "Detail view, while a clip is paused — step one frame back / forward"),
                             ("Escape",  "Clear search field focus"),
                         ])
                     }

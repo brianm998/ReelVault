@@ -87,6 +87,16 @@ class ComposeVideoPlayer(
      *  inside a scrolling LazyGrid clips and z-orders badly, and card-sized
      *  playback doesn't skip frames anyway. Detail playback leaves it true. */
     private val allowEmbedded: Boolean = true,
+    /** Request accurate (non-keyframe) seeking for this player's media. libvlc
+     *  defaults to "fast seek", which snaps `setTime`/`setPosition` to the
+     *  nearest keyframe — so a back-one-frame seek lands a whole GOP (20–60
+     *  frames) early and successive small back-seeks stay pinned to that
+     *  keyframe. The detail player passes true so the ← key (and the on-screen
+     *  step / scrub controls) land on the exact requested frame. vlcj 4.8.2 has
+     *  no per-call precise-seek overload, so we set it once per media via the
+     *  `:no-input-fast-seek` input option in [load]. The inline grid/list
+     *  players leave it false — they don't frame-step, and fast seek is cheaper. */
+    private val preciseSeek: Boolean = false,
 ) {
     private val logger = LoggerFactory.getLogger(ComposeVideoPlayer::class.java)
     /** Separate logger so libvlc's own diagnostics are easy to filter. */
@@ -425,15 +435,22 @@ class ComposeVideoPlayer(
         logger.info("load(path={}, playImmediately={}): exists={} readable={} size={}",
             path, playImmediately, exists, file.canRead(),
             if (exists) file.length() else -1)
+        // Per-media input options. With preciseSeek, disable libvlc's default
+        // fast (keyframe) seeking so setTime/setPosition land on the exact
+        // requested frame rather than snapping to the nearest keyframe — this
+        // is what makes back-one-frame stepping work (see the constructor doc).
+        val mediaOptions: Array<String> =
+            if (preciseSeek) arrayOf(":no-input-fast-seek") else emptyArray()
         SwingUtilities.invokeLater {
             try {
                 val ok = if (playImmediately) {
-                    mp.media().play(path)
+                    mp.media().play(path, *mediaOptions)
                 } else {
-                    mp.media().startPaused(path)
+                    mp.media().startPaused(path, *mediaOptions)
                 }
-                logger.info("media().{} returned {}",
-                    if (playImmediately) "play" else "startPaused", ok)
+                logger.info("media().{} returned {} (options={})",
+                    if (playImmediately) "play" else "startPaused", ok,
+                    mediaOptions.joinToString(" "))
                 if (!ok) {
                     logger.warn("libvlc rejected the media — usually means the path " +
                         "doesn't exist, the codec isn't supported, or libvlc plugins " +
@@ -490,18 +507,35 @@ class ComposeVideoPlayer(
     }
 
     /**
-     * Move by [frames] frames (positive or negative) at the given fps. libvlc
-     * doesn't have a "previous frame" call, so we use time-based seeking.
+     * Move by [frames] frames (positive = forward, negative = back) from the
+     * current position. libvlc has no native "previous frame" call, so we map
+     * the current time to a frame index, offset it by [frames], and seek to the
+     * CENTRE of the target frame.
+     *
+     * Centring is what makes single-frame stepping exact. Seeking to a frame's
+     * leading edge (current − frameDuration) is fragile: the frame duration in
+     * whole milliseconds is truncated (33 ms for a 33.33 ms frame), and libvlc
+     * snaps the reported time to the decoded frame's PTS, so the rounded target
+     * can fall just inside an adjacent frame and skip one. Aiming at the middle
+     * of the target frame leaves a half-frame (~16 ms @30) margin on both sides,
+     * so the rounding can't cross a frame boundary.
+     *
+     * Requires accurate seeking — the detail player's preciseSeek
+     * (`:no-input-fast-seek`). With libvlc's default fast seek this still snaps
+     * to the nearest keyframe regardless of the target.
      */
     fun skipFrames(frames: Int, fps: Double) {
         if (fps <= 0.0 || frames == 0) return
         val mp = activeMediaPlayer() ?: return
         SwingUtilities.invokeLater {
-            val deltaMs = ((frames.toDouble() / fps) * 1000.0).toLong()
-            val current = mp.status().time()
+            val frameMs = 1000.0 / fps
+            val currentFrame = Math.round(mp.status().time() / frameMs)
+            val targetFrame = (currentFrame + frames).coerceAtLeast(0L)
             val total = mp.status().length().takeIf { it > 0 } ?: 0L
-            val target = (current + deltaMs).coerceIn(0L, if (total > 0) total else Long.MAX_VALUE)
-            mp.controls().setTime(target)
+            // Middle of the target frame, not its leading edge (see above).
+            var targetMs = ((targetFrame + 0.5) * frameMs).toLong()
+            if (total > 0L) targetMs = targetMs.coerceIn(0L, total)
+            mp.controls().setTime(targetMs)
         }
     }
 

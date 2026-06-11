@@ -27,6 +27,12 @@ struct DetailLoupeView: View {
     /// increment into a play/pause toggle so we don't need to expose
     /// internal player state upward.
     var playToggle: Int = 0
+    /// Incremented by ContentView on each ← / → press while in detail mode.
+    /// Each increment steps the playhead one frame back / forward — but only
+    /// while the clip is paused (not in the initial scrub-preview, not playing).
+    /// The `.onChange` handlers below translate the increments into frame steps.
+    var stepBackToggle: Int = 0
+    var stepForwardToggle: Int = 0
 
     /// Configurable step size for the ±N-frame buttons. Default 20.
     @State private var stepFrames: Int = 20
@@ -100,6 +106,14 @@ struct DetailLoupeView: View {
             if let v = video {
                 onPlayPause(for: v)
             }
+        }
+        .onChange(of: stepBackToggle) { _, _ in
+            // ← from ContentView: step back one frame — only while paused.
+            if let v = video, canFrameStep(v) { stepFrames(by: -1, for: v) }
+        }
+        .onChange(of: stepForwardToggle) { _, _ in
+            // → from ContentView: step forward one frame — only while paused.
+            if let v = video, canFrameStep(v) { stepFrames(by: 1, for: v) }
         }
         .onDisappear {
             if let id = video?.id { gridViewModel.cancelHiResDetail(videoId: id) }
@@ -278,6 +292,17 @@ struct DetailLoupeView: View {
         let target = (currentTimeSec + deltaSec).clamped(to: 0...(durationSec > 0 ? durationSec : .infinity))
         let time = CMTime(seconds: target, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
         p.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
+    }
+
+    /// True only in the "paused" detail state: playback has been started for
+    /// this video (so we're past the initial scrub-preview) and isn't currently
+    /// playing — the user paused it, or it reached its end. The ← / → keys
+    /// frame-step only here; never in the scrub-preview or during playback.
+    /// (`timeControlStatus`, not the `isPlaying` mirror, so a clip that paused
+    /// itself at the end still counts as paused.)
+    private func canFrameStep(_ video: VideoSummary) -> Bool {
+        guard playerVideoId == video.id, let p = player else { return false }
+        return p.timeControlStatus != .playing
     }
 
     private func seek(to seconds: Double) {
