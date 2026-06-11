@@ -431,6 +431,41 @@ struct LibraryLocation: Identifiable, Hashable {
     let enabled: Bool
     let videoCount: Int64
     let lastScanned: Int64
+    /// True when this (recursive) location has at least one subdirectory
+    /// containing videos — i.e. the library panel should offer to expand it.
+    var hasSubdirectories: Bool = false
+}
+
+/// One immediate child directory of a library location (or another
+/// subdirectory), reported by the daemon's `ListSubdirectories` RPC. The tree
+/// is derived from indexed video paths, so a subdirectory appears only when it
+/// (recursively) contains videos.
+struct Subdirectory: Identifiable, Hashable {
+    var id: String { path }
+    let path: String
+    let videoCount: Int64
+    /// Whether this directory has child directories containing videos of its
+    /// own — i.e. it is itself expandable.
+    let hasSubdirectories: Bool
+}
+
+/// A single visible row of the library panel's location tree: a library
+/// location or one of its (transitive) subdirectories, flattened in display
+/// order with its nesting `depth`.
+struct LibraryRow: Identifiable, Hashable {
+    /// Composite of depth + path so a directory that is also a registered
+    /// location (a nested library root) can appear at two depths without an
+    /// id clash.
+    var id: String { "\(depth) \(path)" }
+    let path: String
+    let depth: Int
+    let videoCount: Int64
+    /// Show a disclosure chevron (the dir has expandable children).
+    let isExpandable: Bool
+    let isExpanded: Bool
+    /// False for subdirectory rows — only top-level library locations carry
+    /// rescan / remove affordances and the full-path sublabel.
+    let isTopLevel: Bool
 }
 
 /// Distinct values that can populate the top-bar filter dropdowns.

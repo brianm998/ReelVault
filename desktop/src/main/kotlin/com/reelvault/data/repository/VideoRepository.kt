@@ -552,11 +552,37 @@ class VideoRepository(
                     recursive = it.recursive,
                     enabled = it.enabled,
                     videoCount = it.videoCount,
-                    lastScanned = it.lastScanned
+                    lastScanned = it.lastScanned,
+                    hasSubdirectories = it.hasSubdirectories
                 )
             }
         } catch (e: Exception) {
             logger.error("Failed to list library locations: ${e.message}", e)
+            emptyList()
+        }
+    }
+
+    /**
+     * List the immediate child directories of [path] that contain videos
+     * (recursively), for the library panel's expandable tree. Returns an empty
+     * list when not connected or on error.
+     */
+    suspend fun listSubdirectories(path: String): List<Subdirectory> = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext emptyList()
+        try {
+            val request = Reelvault.ListSubdirectoriesRequest.newBuilder()
+                .setPath(path)
+                .build()
+            val response = s.listSubdirectories(request)
+            response.subdirectoriesList.map {
+                Subdirectory(
+                    path = it.path,
+                    videoCount = it.videoCount,
+                    hasSubdirectories = it.hasSubdirectories
+                )
+            }
+        } catch (e: Exception) {
+            logger.error("Failed to list subdirectories of $path: ${e.message}", e)
             emptyList()
         }
     }

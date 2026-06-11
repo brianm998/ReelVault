@@ -17,6 +17,11 @@ service ReelVault {
   rpc AddLibraryLocation(AddLocationRequest) returns (LocationResponse);
   rpc RemoveLibraryLocation(RemoveLocationRequest) returns (LocationResponse);
   rpc ListLibraryLocations(ListLocationsRequest) returns (ListLocationsResponse);
+  // Enumerate the immediate child directories of a directory that contain
+  // (recursively) at least one grid-visible video. Powers the library panel's
+  // expandable subdirectory tree. The directory tree is derived from indexed
+  // video paths in SQLite — no filesystem walk.
+  rpc ListSubdirectories(ListSubdirectoriesRequest) returns (ListSubdirectoriesResponse);
   rpc ScanLibrary(ScanLibraryRequest) returns (stream ScanProgress);
   rpc GetScanStatus(GetScanStatusRequest) returns (ScanStatusResponse);
 
@@ -475,10 +480,36 @@ message LibraryLocation {
   bool enabled = 3;
   int64 video_count = 4;
   int64 last_scanned = 5;
+  // True when this location is recursive AND has at least one subdirectory
+  // containing a grid-visible video — i.e. the library panel should show a
+  // disclosure chevron to expand it.
+  bool has_subdirectories = 6;
 }
 
 message ListLocationsResponse {
   repeated LibraryLocation locations = 1;
+}
+
+// Lists the immediate child directories of `path` (an absolute directory;
+// the server tilde-expands it) that contain grid-visible videos.
+message ListSubdirectoriesRequest {
+  string path = 1;
+}
+
+message Subdirectory {
+  // Full absolute path of the child directory.
+  string path = 1;
+  // Recursive count of grid-visible videos under this directory (same
+  // representative filter the grid uses, so it matches what selecting the
+  // directory will show).
+  int64 video_count = 2;
+  // True when this directory itself has child directories containing
+  // grid-visible videos — i.e. it should show its own disclosure chevron.
+  bool has_subdirectories = 3;
+}
+
+message ListSubdirectoriesResponse {
+  repeated Subdirectory subdirectories = 1;
 }
 
 message ScanLibraryRequest {

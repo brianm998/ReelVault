@@ -887,6 +887,7 @@ struct ContentView: View {
                     .frame(width: leftPanelWidth)
                 } else {
                 LibraryPanel(
+                    rows: gridViewModel.visibleLibraryRows,
                     locations: gridViewModel.libraryLocations,
                     selectedPaths: gridViewModel.selectedLocationPaths,
                     totalVideos: gridViewModel.libraryLocations.reduce(0) { $0 + $1.videoCount },
@@ -904,6 +905,7 @@ struct ContentView: View {
                             gridViewModel.setLocationFilter(path)
                         }
                     },
+                    onToggleExpand: { gridViewModel.toggleExpand($0) },
                     onAddLibrary: { showAddLibrarySheet = true },
                     onRemoveLocation: { locationToRemove = $0 },
                     onRescan: { loc in gridViewModel.rescanLibrary(path: loc.path) },

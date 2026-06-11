@@ -296,7 +296,43 @@ data class LibraryLocation(
     val recursive: Boolean = true,
     val enabled: Boolean = true,
     val videoCount: Long = 0,
-    val lastScanned: Long = 0
+    val lastScanned: Long = 0,
+    /** True when this (recursive) location has at least one subdirectory
+     *  containing videos — i.e. the library panel should offer to expand it. */
+    val hasSubdirectories: Boolean = false
+)
+
+/**
+ * One immediate child directory of a library location (or another
+ * subdirectory), as reported by the daemon's `ListSubdirectories` RPC. The
+ * tree is derived from indexed video paths, so a subdirectory appears only
+ * when it (recursively) contains videos.
+ */
+data class Subdirectory(
+    val path: String,
+    val videoCount: Long,
+    /** Whether this directory has child directories containing videos of its
+     *  own — i.e. it is itself expandable. */
+    val hasSubdirectories: Boolean
+)
+
+/**
+ * A single visible row of the library panel's location tree: a library
+ * location or one of its (transitive) subdirectories, flattened in display
+ * order with its nesting [depth]. The panel renders this list directly so the
+ * tree stays compatible with the virtualized list and the existing
+ * range/multi-select machinery.
+ */
+data class LibraryRow(
+    val path: String,
+    val depth: Int,
+    val videoCount: Long,
+    /** Show a disclosure chevron (the dir has expandable children). */
+    val isExpandable: Boolean,
+    val isExpanded: Boolean,
+    /** False for subdirectory rows — only top-level library locations carry
+     *  rescan / remove affordances and the full-path sublabel. */
+    val isTopLevel: Boolean
 )
 
 /** Distinct values that can populate the top-bar filter dropdowns. */

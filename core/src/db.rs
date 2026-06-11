@@ -2131,6 +2131,88 @@ impl Database {
         Ok(count)
     }
 
+    /// Whether `path` contains at least one grid-visible video nested inside a
+    /// subdirectory (deeper than its immediate level). Drives the library
+    /// panel's disclosure chevron. DB-only — derived from indexed paths, no
+    /// filesystem access (the library may live on a slow NAS).
+    pub fn location_has_subdirectories(&self, path: &str) -> Result<bool> {
+        let conn = self.get_connection()?;
+        let mut prefix = path.to_string();
+        if !prefix.ends_with('/') {
+            prefix.push('/');
+        }
+        let (lower, upper) = path_prefix_range(&prefix);
+        let prefix_len = prefix.len() as i64;
+        // A video lives in a subdirectory when the path remainder after the
+        // prefix still contains a '/'. The half-open [lower, upper) range lets
+        // SQLite seek the idx_videos_path index instead of scanning.
+        let sql = format!(
+            "SELECT EXISTS(\
+               SELECT 1 FROM videos v \
+               WHERE v.path >= ? AND v.path < ? \
+                 AND instr(substr(v.path, ? + 1), '/') > 0 \
+                 AND ({REPRESENTATIVE_FILTER}))"
+        );
+        let exists: i64 = conn
+            .query_row(&sql, params![lower, upper, prefix_len], |row| row.get(0))
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(exists != 0)
+    }
+
+    /// List the immediate child directories of `path` that contain grid-visible
+    /// videos (recursively), each with a recursive video count and a flag for
+    /// whether it is itself expandable. Derived from indexed video paths — no
+    /// filesystem access. Returned sorted by path.
+    ///
+    /// Counts/visibility use [`REPRESENTATIVE_FILTER`] so the tree matches the
+    /// grid exactly: a child appears here iff selecting it would show at least
+    /// one video, and its badge equals that video count.
+    pub fn list_subdirectories(&self, path: &str) -> Result<Vec<SubdirRecord>> {
+        let conn = self.get_connection()?;
+        let mut prefix = path.to_string();
+        if !prefix.ends_with('/') {
+            prefix.push('/');
+        }
+        let (lower, upper) = path_prefix_range(&prefix);
+        let prefix_len = prefix.len() as i64;
+        // For each grid-visible video under `prefix`, `rel` is the path with the
+        // prefix stripped. Videos with a '/' in `rel` live in a subdirectory;
+        // the segment before that first '/' is the immediate child, and the
+        // video is deeper still when the part after the first '/' also contains
+        // a '/'. Group by child for a recursive count + "is expandable" flag.
+        let sql = format!(
+            "SELECT child, COUNT(*) AS video_count, MAX(deeper) AS has_subdirs FROM (\
+               SELECT \
+                 substr(rel, 1, instr(rel, '/') - 1) AS child, \
+                 CASE WHEN instr(substr(rel, instr(rel, '/') + 1), '/') > 0 THEN 1 ELSE 0 END AS deeper \
+               FROM (\
+                 SELECT substr(v.path, ? + 1) AS rel \
+                 FROM videos v \
+                 WHERE v.path >= ? AND v.path < ? AND ({REPRESENTATIVE_FILTER})\
+               ) \
+               WHERE instr(rel, '/') > 0\
+             ) GROUP BY child ORDER BY child"
+        );
+        let mut stmt = conn
+            .prepare(&sql)
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let rows = stmt
+            .query_map(params![prefix_len, lower, upper], |row| {
+                let child: String = row.get(0)?;
+                let video_count: i64 = row.get(1)?;
+                let has_subdirs: i64 = row.get(2)?;
+                Ok(SubdirRecord {
+                    path: format!("{prefix}{child}"),
+                    video_count,
+                    has_subdirectories: has_subdirs != 0,
+                })
+            })
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(rows)
+    }
+
     /// Get the group_id for a video (None if ungrouped).
     pub fn get_video_group_id(&self, video_id: &str) -> Result<Option<String>> {
         let conn = self.get_connection()?;
@@ -3027,6 +3109,20 @@ pub struct LibraryLocationRecord {
     pub last_scanned: Option<i64>,
 }
 
+/// One immediate child directory of a parent directory, as derived from
+/// indexed video paths (not a filesystem listing). Powers the library
+/// panel's expandable subdirectory tree.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SubdirRecord {
+    /// Full absolute path of the child directory.
+    pub path: String,
+    /// Recursive count of grid-visible (representative) videos under it.
+    pub video_count: i64,
+    /// Whether this child has child directories of its own containing
+    /// grid-visible videos (i.e. it is itself expandable).
+    pub has_subdirectories: bool,
+}
+
 /// A user-defined named place (e.g. "Home", "Yosemite Valley Visitor
 /// Center"). Clients resolve a video's GPS into one of these by picking
 /// the nearest entry within `radius_m`. The timestamps are Unix
@@ -3168,6 +3264,60 @@ mod tests {
             after.file_size_bytes,
             Some(2048),
             "re-index must converge videos.file_size_bytes to the on-disk size"
+        );
+    }
+
+    /// The library panel's subdirectory tree is derived from indexed video
+    /// paths: a child directory appears only when it (recursively) contains a
+    /// video, carries the recursive video count, and is flagged expandable only
+    /// when videos exist deeper still.
+    #[test]
+    fn list_subdirectories_derives_tree_from_video_paths() {
+        let tmp = tempfile::tempdir().expect("tmpdir");
+        let db = Database::new_empty();
+        db.set_path(&tmp.path().join("catalog.db"))
+            .expect("init schema");
+
+        // /lib/a/x.mov, /lib/a/b/y.mov (deeper), /lib/c.mov (directly in /lib).
+        db.add_video("/lib/a/x.mov", "x.mov", None, None, None)
+            .expect("add x");
+        db.add_video("/lib/a/b/y.mov", "y.mov", None, None, None)
+            .expect("add y");
+        db.add_video("/lib/c.mov", "c.mov", None, None, None)
+            .expect("add c");
+
+        // Under /lib: only "a" is a subdirectory (c.mov sits directly in /lib,
+        // so it creates no child). Its recursive count is 2 (x + y) and it is
+        // expandable because y.mov lives deeper.
+        let lib = db.list_subdirectories("/lib").expect("list /lib");
+        assert_eq!(
+            lib,
+            vec![SubdirRecord {
+                path: "/lib/a".to_string(),
+                video_count: 2,
+                has_subdirectories: true,
+            }],
+            "only video-bearing subdirs appear, with recursive counts"
+        );
+
+        // Under /lib/a: child "b" holds one video, with nothing deeper.
+        let a = db.list_subdirectories("/lib/a").expect("list /lib/a");
+        assert_eq!(
+            a,
+            vec![SubdirRecord {
+                path: "/lib/a/b".to_string(),
+                video_count: 1,
+                has_subdirectories: false,
+            }],
+            "a leaf directory is not flagged expandable"
+        );
+
+        // /lib/a/b is a leaf (y.mov is directly inside it).
+        assert!(db.location_has_subdirectories("/lib").expect("has /lib"));
+        assert!(
+            !db.location_has_subdirectories("/lib/a/b")
+                .expect("has /lib/a/b"),
+            "a directory whose only video sits directly inside has no subdirs"
         );
     }
 

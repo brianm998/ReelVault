@@ -107,6 +107,18 @@ internal enum Reelvault_ReelVault {
                 method: "ListLibraryLocations"
             )
         }
+        /// Namespace for "ListSubdirectories" metadata.
+        internal enum ListSubdirectories {
+            /// Request type for "ListSubdirectories".
+            internal typealias Input = Reelvault_ListSubdirectoriesRequest
+            /// Response type for "ListSubdirectories".
+            internal typealias Output = Reelvault_ListSubdirectoriesResponse
+            /// Descriptor for "ListSubdirectories".
+            internal static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "ListSubdirectories"
+            )
+        }
         /// Namespace for "ScanLibrary" metadata.
         internal enum ScanLibrary {
             /// Request type for "ScanLibrary".
@@ -716,6 +728,7 @@ internal enum Reelvault_ReelVault {
             AddLibraryLocation.descriptor,
             RemoveLibraryLocation.descriptor,
             ListLibraryLocations.descriptor,
+            ListSubdirectories.descriptor,
             ScanLibrary.descriptor,
             GetScanStatus.descriptor,
             CreateTag.descriptor,
@@ -900,6 +913,27 @@ extension Reelvault_ReelVault {
             request: GRPCCore.StreamingServerRequest<Reelvault_ListLocationsRequest>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ListLocationsResponse>
+
+        /// Handle the "ListSubdirectories" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Enumerate the immediate child directories of a directory that contain
+        /// > (recursively) at least one grid-visible video. Powers the library panel's
+        /// > expandable subdirectory tree. The directory tree is derived from indexed
+        /// > video paths in SQLite — no filesystem walk.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Reelvault_ListSubdirectoriesRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Reelvault_ListSubdirectoriesResponse` messages.
+        func listSubdirectories(
+            request: GRPCCore.StreamingServerRequest<Reelvault_ListSubdirectoriesRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ListSubdirectoriesResponse>
 
         /// Handle the "ScanLibrary" method.
         ///
@@ -1836,6 +1870,27 @@ extension Reelvault_ReelVault {
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.ServerResponse<Reelvault_ListLocationsResponse>
 
+        /// Handle the "ListSubdirectories" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Enumerate the immediate child directories of a directory that contain
+        /// > (recursively) at least one grid-visible video. Powers the library panel's
+        /// > expandable subdirectory tree. The directory tree is derived from indexed
+        /// > video paths in SQLite — no filesystem walk.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_ListSubdirectoriesRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Reelvault_ListSubdirectoriesResponse` message.
+        func listSubdirectories(
+            request: GRPCCore.ServerRequest<Reelvault_ListSubdirectoriesRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Reelvault_ListSubdirectoriesResponse>
+
         /// Handle the "ScanLibrary" method.
         ///
         /// - Parameters:
@@ -2770,6 +2825,27 @@ extension Reelvault_ReelVault {
             context: GRPCCore.ServerContext
         ) async throws -> Reelvault_ListLocationsResponse
 
+        /// Handle the "ListSubdirectories" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Enumerate the immediate child directories of a directory that contain
+        /// > (recursively) at least one grid-visible video. Powers the library panel's
+        /// > expandable subdirectory tree. The directory tree is derived from indexed
+        /// > video paths in SQLite — no filesystem walk.
+        ///
+        /// - Parameters:
+        ///   - request: A `Reelvault_ListSubdirectoriesRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Reelvault_ListSubdirectoriesResponse` to respond with.
+        func listSubdirectories(
+            request: Reelvault_ListSubdirectoriesRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Reelvault_ListSubdirectoriesResponse
+
         /// Handle the "ScanLibrary" method.
         ///
         /// - Parameters:
@@ -3673,6 +3749,17 @@ extension Reelvault_ReelVault.StreamingServiceProtocol {
             }
         )
         router.registerHandler(
+            forMethod: Reelvault_ReelVault.Method.ListSubdirectories.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_ListSubdirectoriesRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_ListSubdirectoriesResponse>(),
+            handler: { request, context in
+                try await self.listSubdirectories(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
             forMethod: Reelvault_ReelVault.Method.ScanLibrary.descriptor,
             deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_ScanLibraryRequest>(),
             serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_ScanProgress>(),
@@ -4299,6 +4386,17 @@ extension Reelvault_ReelVault.ServiceProtocol {
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ListLocationsResponse> {
         let response = try await self.listLibraryLocations(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    internal func listSubdirectories(
+        request: GRPCCore.StreamingServerRequest<Reelvault_ListSubdirectoriesRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ListSubdirectoriesResponse> {
+        let response = try await self.listSubdirectories(
             request: GRPCCore.ServerRequest(stream: request),
             context: context
         )
@@ -4947,6 +5045,19 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
     ) async throws -> GRPCCore.ServerResponse<Reelvault_ListLocationsResponse> {
         return GRPCCore.ServerResponse<Reelvault_ListLocationsResponse>(
             message: try await self.listLibraryLocations(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    internal func listSubdirectories(
+        request: GRPCCore.ServerRequest<Reelvault_ListSubdirectoriesRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Reelvault_ListSubdirectoriesResponse> {
+        return GRPCCore.ServerResponse<Reelvault_ListSubdirectoriesResponse>(
+            message: try await self.listSubdirectories(
                 request: request.message,
                 context: context
             ),
@@ -5769,6 +5880,32 @@ extension Reelvault_ReelVault {
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_ListLocationsResponse>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListLocationsResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "ListSubdirectories" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Enumerate the immediate child directories of a directory that contain
+        /// > (recursively) at least one grid-visible video. Powers the library panel's
+        /// > expandable subdirectory tree. The directory tree is derived from indexed
+        /// > video paths in SQLite — no filesystem walk.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_ListSubdirectoriesRequest` message.
+        ///   - serializer: A serializer for `Reelvault_ListSubdirectoriesRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_ListSubdirectoriesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func listSubdirectories<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_ListSubdirectoriesRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_ListSubdirectoriesRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_ListSubdirectoriesResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListSubdirectoriesResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
         /// Call the "ScanLibrary" method.
@@ -7067,6 +7204,43 @@ extension Reelvault_ReelVault {
             try await self.client.unary(
                 request: request,
                 descriptor: Reelvault_ReelVault.Method.ListLibraryLocations.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "ListSubdirectories" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Enumerate the immediate child directories of a directory that contain
+        /// > (recursively) at least one grid-visible video. Powers the library panel's
+        /// > expandable subdirectory tree. The directory tree is derived from indexed
+        /// > video paths in SQLite — no filesystem walk.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_ListSubdirectoriesRequest` message.
+        ///   - serializer: A serializer for `Reelvault_ListSubdirectoriesRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_ListSubdirectoriesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        internal func listSubdirectories<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_ListSubdirectoriesRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_ListSubdirectoriesRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_ListSubdirectoriesResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListSubdirectoriesResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Reelvault_ReelVault.Method.ListSubdirectories.descriptor,
                 serializer: serializer,
                 deserializer: deserializer,
                 options: options,
@@ -8870,6 +9044,38 @@ extension Reelvault_ReelVault.ClientProtocol {
         )
     }
 
+    /// Call the "ListSubdirectories" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Enumerate the immediate child directories of a directory that contain
+    /// > (recursively) at least one grid-visible video. Powers the library panel's
+    /// > expandable subdirectory tree. The directory tree is derived from indexed
+    /// > video paths in SQLite — no filesystem walk.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Reelvault_ListSubdirectoriesRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func listSubdirectories<Result>(
+        request: GRPCCore.ClientRequest<Reelvault_ListSubdirectoriesRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListSubdirectoriesResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.listSubdirectories(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_ListSubdirectoriesRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_ListSubdirectoriesResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
     /// Call the "ScanLibrary" method.
     ///
     /// - Parameters:
@@ -10437,6 +10643,42 @@ extension Reelvault_ReelVault.ClientProtocol {
             metadata: metadata
         )
         return try await self.listLibraryLocations(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ListSubdirectories" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Enumerate the immediate child directories of a directory that contain
+    /// > (recursively) at least one grid-visible video. Powers the library panel's
+    /// > expandable subdirectory tree. The directory tree is derived from indexed
+    /// > video paths in SQLite — no filesystem walk.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    internal func listSubdirectories<Result>(
+        _ message: Reelvault_ListSubdirectoriesRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListSubdirectoriesResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Reelvault_ListSubdirectoriesRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.listSubdirectories(
             request: request,
             options: options,
             onResponse: handleResponse

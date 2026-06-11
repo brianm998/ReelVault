@@ -166,6 +166,19 @@ class GridViewModel(
     // Pivot for shift-click range selection over the library list.
     private var locationAnchorPath: String? = null
 
+    // ── Library subdirectory tree ───────────────────────────────────────────
+    // Directories the user has expanded (absolute paths). Children are fetched
+    // lazily into `subdirCache` the first time a directory is expanded.
+    private val _expandedDirs = MutableStateFlow<Set<String>>(emptySet())
+    // Cache of fetched children keyed by parent path; cleared on library reload
+    // because the tree is derived from (mutable) indexed video paths.
+    private val subdirCache = mutableMapOf<String, List<com.reelvault.data.models.Subdirectory>>()
+    // The flattened, display-ordered rows the library panel renders: each
+    // location followed by its expanded subdirectories. Rebuilt by
+    // `rebuildLibraryRows()` whenever the tree changes.
+    private val _libraryRows = MutableStateFlow<List<com.reelvault.data.models.LibraryRow>>(emptyList())
+    val libraryRows: StateFlow<List<com.reelvault.data.models.LibraryRow>> = _libraryRows.asStateFlow()
+
     // Keywords (tags). `tags` is the full list of known tags with usage counts;
     // `filterTagId` narrows the grid to a single tag (drives the `filterTags`
     // list passed to listVideos).
@@ -1068,11 +1081,119 @@ class GridViewModel(
             try {
                 val locations = repository.listLibraryLocations()
                 _libraryLocations.value = locations
+                // The subdirectory tree is derived from indexed video paths;
+                // after a (re)scan or removal those may have changed. Drop the
+                // cache and re-fetch the currently-expanded directories so the
+                // tree's counts and shape stay fresh, dropping any directory
+                // that no longer has children.
+                subdirCache.clear()
+                val stillExpanded = mutableSetOf<String>()
+                for (dir in _expandedDirs.value) {
+                    val children = repository.listSubdirectories(dir)
+                    if (children.isNotEmpty()) {
+                        subdirCache[dir] = children
+                        stillExpanded += dir
+                    }
+                }
+                _expandedDirs.value = stillExpanded
+                rebuildLibraryRows()
                 logger.info("Loaded ${locations.size} library locations")
             } catch (e: Exception) {
                 logger.warn("Failed to load library locations", e)
             }
         }
+    }
+
+    /**
+     * Recompute [libraryRows] — the flattened, display-ordered list of library
+     * locations and their expanded subdirectories — from the current
+     * locations, expanded set, and fetched children. Cheap; called after any
+     * change to the tree.
+     */
+    private fun rebuildLibraryRows() {
+        val expanded = _expandedDirs.value
+        val rows = mutableListOf<com.reelvault.data.models.LibraryRow>()
+
+        fun addNode(path: String, depth: Int, videoCount: Long, expandable: Boolean, topLevel: Boolean) {
+            val isExpanded = expandable && path in expanded
+            rows += com.reelvault.data.models.LibraryRow(
+                path = path,
+                depth = depth,
+                videoCount = videoCount,
+                isExpandable = expandable,
+                isExpanded = isExpanded,
+                isTopLevel = topLevel,
+            )
+            if (isExpanded) {
+                subdirCache[path]?.forEach { child ->
+                    addNode(
+                        path = child.path,
+                        depth = depth + 1,
+                        videoCount = child.videoCount,
+                        expandable = child.hasSubdirectories,
+                        topLevel = false,
+                    )
+                }
+            }
+        }
+
+        _libraryLocations.value.forEach { loc ->
+            addNode(
+                path = loc.path,
+                depth = 0,
+                videoCount = loc.videoCount,
+                // Only recursive locations with children can expand.
+                expandable = loc.recursive && loc.hasSubdirectories,
+                topLevel = true,
+            )
+        }
+        _libraryRows.value = rows
+    }
+
+    /** Expand a collapsed directory or collapse an expanded one. */
+    fun toggleExpand(path: String) {
+        if (path in _expandedDirs.value) {
+            collapseDir(path)
+            return
+        }
+        // Optimistic: rotate the chevron and show the row as expanded now; the
+        // children splice in when the fetch returns (or are already cached).
+        _expandedDirs.value = _expandedDirs.value + path
+        if (subdirCache.containsKey(path)) {
+            rebuildLibraryRows()
+        } else {
+            rebuildLibraryRows()
+            viewModelScope.launch {
+                val children = repository.listSubdirectories(path)
+                subdirCache[path] = children
+                // The user may have collapsed it again while we fetched.
+                if (path in _expandedDirs.value) rebuildLibraryRows()
+            }
+        }
+    }
+
+    /**
+     * Collapse [path], folding away its whole subtree. Any expanded descendant
+     * is pruned too. If the current selection points at a now-hidden
+     * subdirectory, it is promoted to [path] — the nearest still-visible
+     * ancestor — so the grid widens to the collapsed folder rather than
+     * silently filtering by an invisible directory.
+     */
+    fun collapseDir(path: String) {
+        val prefix = "$path/"
+        _expandedDirs.value =
+            _expandedDirs.value.filterNot { it == path || it.startsWith(prefix) }.toSet()
+
+        val current = _selectedLocationPaths.value
+        if (current.any { it.startsWith(prefix) }) {
+            // Roll hidden selections up to `path`, de-duplicating while keeping
+            // display order.
+            val promoted = LinkedHashSet<String>()
+            current.forEach { sel -> promoted += if (sel.startsWith(prefix)) path else sel }
+            val anchor = locationAnchorPath?.let { if (it.startsWith(prefix)) path else it }
+            applyLocationSelection(promoted.toList(), anchor = anchor)
+        }
+        rebuildLibraryRows()
     }
 
     /**
@@ -1131,7 +1252,9 @@ class GridViewModel(
      */
     fun selectLocationRange(path: String) {
         if (path.isEmpty()) { setLocationFilter(""); return }
-        val order = _libraryLocations.value.map { it.path }
+        // Range over the flattened *visible* tree (locations + expanded
+        // subdirs), so Shift-click spans whatever is on screen.
+        val order = _libraryRows.value.map { it.path }
         val anchor = locationAnchorPath ?: _selectedLocationPaths.value.firstOrNull() ?: path
         val ai = order.indexOf(anchor)
         val ti = order.indexOf(path)
@@ -3164,6 +3287,9 @@ class GridViewModel(
         _selectedLocationPaths.value = emptyList()
         locationPathFilter = ""
         locationAnchorPath = null
+        _expandedDirs.value = emptySet()
+        subdirCache.clear()
+        _libraryRows.value = emptyList()
         _tags.value = emptyList()
         _filterTagId.value = ""
         _metadataColumns.value = com.reelvault.data.models.defaultMetadataColumns

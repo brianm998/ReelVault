@@ -1420,6 +1420,7 @@ fun ReelVaultApp(
                             .weight(1f)
                     ) {
                         val libraryLocations = gridViewModel.libraryLocations.collectAsState()
+                        val libraryRows = gridViewModel.libraryRows.collectAsState()
                         val selectedLocations = gridViewModel.selectedLocationPaths.collectAsState()
 
                         // Left panel — in detail mode the slot shows the
@@ -1435,6 +1436,7 @@ fun ReelVaultApp(
                             )
                         } else if (leftPanelExpanded) {
                             com.reelvault.ui.components.LibraryPanel(
+                                rows = libraryRows.value,
                                 locations = libraryLocations.value,
                                 selectedPaths = selectedLocations.value,
                                 totalVideosAcrossLibrary = libraryLocations.value
@@ -1446,6 +1448,7 @@ fun ReelVaultApp(
                                         else -> gridViewModel.setLocationFilter(path)
                                     }
                                 },
+                                onToggleExpand = { path -> gridViewModel.toggleExpand(path) },
                                 onAddLocation = { showAddLibraryDialog = true },
                                 onRemoveLocation = { loc -> pendingRemoveLocation = loc },
                                 onRescan = { loc -> gridViewModel.rescanLibrary(loc.path) },

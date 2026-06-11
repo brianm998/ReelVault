@@ -1139,12 +1139,40 @@ impl ReelVaultTrait for ReelVaultService {
                 enabled: l.enabled,
                 video_count: self.db.count_videos_in_path(&l.path).unwrap_or(0),
                 last_scanned: l.last_scanned.unwrap_or(0),
+                // Only recursive locations can show a disclosure chevron;
+                // gate here so non-recursive ones never advertise children.
+                has_subdirectories: l.recursive
+                    && self.db.location_has_subdirectories(&l.path).unwrap_or(false),
             })
             .collect();
 
         Ok(Response::new(ListLocationsResponse {
             locations: location_responses,
         }))
+    }
+
+    async fn list_subdirectories(
+        &self,
+        request: Request<ListSubdirectoriesRequest>,
+    ) -> std::result::Result<Response<ListSubdirectoriesResponse>, Status> {
+        let req = request.into_inner();
+        // Expand tilde like the location filter does (see `list_videos`), so a
+        // client may pass either an absolute path or a "~/..." one.
+        let path = expand_tilde(&req.path);
+
+        let subdirectories = self
+            .db
+            .list_subdirectories(&path)
+            .map_err(Status::from)?
+            .into_iter()
+            .map(|s| Subdirectory {
+                path: s.path,
+                video_count: s.video_count,
+                has_subdirectories: s.has_subdirectories,
+            })
+            .collect();
+
+        Ok(Response::new(ListSubdirectoriesResponse { subdirectories }))
     }
 
     async fn scan_library(

@@ -709,7 +709,26 @@ class VideoRepository: ObservableObject {
                 recursive: l.recursive,
                 enabled: l.enabled,
                 videoCount: l.videoCount,
-                lastScanned: l.lastScanned
+                lastScanned: l.lastScanned,
+                // protoc sanitizes the `has_subdirectories` bool to avoid the
+                // generated `hasX` presence-accessor collision.
+                hasSubdirectories: l.hasSubdirectories_p
+            )
+        }
+    }
+
+    /// List the immediate child directories of `path` that contain videos
+    /// (recursively), for the library panel's expandable tree.
+    func listSubdirectories(_ path: String) async throws -> [Subdirectory] {
+        guard let client = serviceClient else { throw RepositoryError.notConnected }
+        var request = Reelvault_ListSubdirectoriesRequest()
+        request.path = path
+        let response = try await client.listSubdirectories(request)
+        return response.subdirectories.map { s in
+            Subdirectory(
+                path: s.path,
+                videoCount: s.videoCount,
+                hasSubdirectories: s.hasSubdirectories_p
             )
         }
     }

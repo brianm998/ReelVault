@@ -943,6 +943,11 @@ nonisolated struct Reelvault_LibraryLocation: Sendable {
 
   var lastScanned: Int64 = 0
 
+  /// True when this location is recursive AND has at least one subdirectory
+  /// containing a grid-visible video — i.e. the library panel should show a
+  /// disclosure chevron to expand it.
+  var hasSubdirectories_p: Bool = false
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -954,6 +959,54 @@ nonisolated struct Reelvault_ListLocationsResponse: Sendable {
   // methods supported on all messages.
 
   var locations: [Reelvault_LibraryLocation] = []
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+/// Lists the immediate child directories of `path` (an absolute directory;
+/// the server tilde-expands it) that contain grid-visible videos.
+nonisolated struct Reelvault_ListSubdirectoriesRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var path: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Reelvault_Subdirectory: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// Full absolute path of the child directory.
+  var path: String = String()
+
+  /// Recursive count of grid-visible videos under this directory (same
+  /// representative filter the grid uses, so it matches what selecting the
+  /// directory will show).
+  var videoCount: Int64 = 0
+
+  /// True when this directory itself has child directories containing
+  /// grid-visible videos — i.e. it should show its own disclosure chevron.
+  var hasSubdirectories_p: Bool = false
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Reelvault_ListSubdirectoriesResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var subdirectories: [Reelvault_Subdirectory] = []
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -3818,7 +3871,7 @@ nonisolated extension Reelvault_ListLocationsRequest: SwiftProtobuf.Message, Swi
 
 nonisolated extension Reelvault_LibraryLocation: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".LibraryLocation"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{1}recursive\0\u{1}enabled\0\u{3}video_count\0\u{3}last_scanned\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{1}recursive\0\u{1}enabled\0\u{3}video_count\0\u{3}last_scanned\0\u{3}has_subdirectories\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3831,6 +3884,7 @@ nonisolated extension Reelvault_LibraryLocation: SwiftProtobuf.Message, SwiftPro
       case 3: try { try decoder.decodeSingularBoolField(value: &self.enabled) }()
       case 4: try { try decoder.decodeSingularInt64Field(value: &self.videoCount) }()
       case 5: try { try decoder.decodeSingularInt64Field(value: &self.lastScanned) }()
+      case 6: try { try decoder.decodeSingularBoolField(value: &self.hasSubdirectories_p) }()
       default: break
       }
     }
@@ -3852,6 +3906,9 @@ nonisolated extension Reelvault_LibraryLocation: SwiftProtobuf.Message, SwiftPro
     if self.lastScanned != 0 {
       try visitor.visitSingularInt64Field(value: self.lastScanned, fieldNumber: 5)
     }
+    if self.hasSubdirectories_p != false {
+      try visitor.visitSingularBoolField(value: self.hasSubdirectories_p, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3861,6 +3918,7 @@ nonisolated extension Reelvault_LibraryLocation: SwiftProtobuf.Message, SwiftPro
     if lhs.enabled != rhs.enabled {return false}
     if lhs.videoCount != rhs.videoCount {return false}
     if lhs.lastScanned != rhs.lastScanned {return false}
+    if lhs.hasSubdirectories_p != rhs.hasSubdirectories_p {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -3891,6 +3949,106 @@ nonisolated extension Reelvault_ListLocationsResponse: SwiftProtobuf.Message, Sw
 
   static func ==(lhs: Reelvault_ListLocationsResponse, rhs: Reelvault_ListLocationsResponse) -> Bool {
     if lhs.locations != rhs.locations {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_ListSubdirectoriesRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".ListSubdirectoriesRequest"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.path) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.path.isEmpty {
+      try visitor.visitSingularStringField(value: self.path, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Reelvault_ListSubdirectoriesRequest, rhs: Reelvault_ListSubdirectoriesRequest) -> Bool {
+    if lhs.path != rhs.path {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_Subdirectory: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".Subdirectory"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{3}video_count\0\u{3}has_subdirectories\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.path) }()
+      case 2: try { try decoder.decodeSingularInt64Field(value: &self.videoCount) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.hasSubdirectories_p) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.path.isEmpty {
+      try visitor.visitSingularStringField(value: self.path, fieldNumber: 1)
+    }
+    if self.videoCount != 0 {
+      try visitor.visitSingularInt64Field(value: self.videoCount, fieldNumber: 2)
+    }
+    if self.hasSubdirectories_p != false {
+      try visitor.visitSingularBoolField(value: self.hasSubdirectories_p, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Reelvault_Subdirectory, rhs: Reelvault_Subdirectory) -> Bool {
+    if lhs.path != rhs.path {return false}
+    if lhs.videoCount != rhs.videoCount {return false}
+    if lhs.hasSubdirectories_p != rhs.hasSubdirectories_p {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_ListSubdirectoriesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".ListSubdirectoriesResponse"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}subdirectories\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.subdirectories) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.subdirectories.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.subdirectories, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Reelvault_ListSubdirectoriesResponse, rhs: Reelvault_ListSubdirectoriesResponse) -> Bool {
+    if lhs.subdirectories != rhs.subdirectories {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

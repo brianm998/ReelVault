@@ -7,6 +7,10 @@ import SwiftUI
 /// Clicking a location row filters the grid to that path; clicking a
 /// collection row scopes the grid to that collection; "All Videos" clears both.
 struct LibraryPanel: View {
+    /// The flattened, display-ordered location tree: top-level locations and
+    /// their currently-expanded subdirectories, each carrying its nesting depth.
+    let rows: [LibraryRow]
+    /// Per-location data for the top-level rows (rescan / remove / sublabel).
     let locations: [LibraryLocation]
     /// The selected library directories. Empty = "All Videos". Clicks come
     /// back through [onSelect]; the caller reads the keyboard modifiers
@@ -14,6 +18,8 @@ struct LibraryPanel: View {
     let selectedPaths: [String]
     let totalVideos: Int64
     let onSelect: (String) -> Void
+    /// Toggle a directory's expanded/collapsed state (disclosure chevron).
+    var onToggleExpand: (String) -> Void = { _ in }
     let onAddLibrary: () -> Void
     /// Called when the user chooses "Remove from library" for a location.
     /// The caller is responsible for showing a confirmation alert.
@@ -33,6 +39,12 @@ struct LibraryPanel: View {
 
     @State private var showNewCollectionAlert = false
     @State private var newCollectionName = ""
+
+    /// Top-level rows look up their `LibraryLocation` here for the rescan /
+    /// remove affordances and the full-path sublabel.
+    private var locationByPath: [String: LibraryLocation] {
+        Dictionary(locations.map { ($0.path, $0) }, uniquingKeysWith: { first, _ in first })
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -77,41 +89,69 @@ struct LibraryPanel: View {
                 )
                 .listRowInsets(EdgeInsets())
 
-                if !locations.isEmpty {
+                if !rows.isEmpty {
                     Divider()
                         .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
                         .listRowSeparator(.hidden)
                 }
 
-                ForEach(locations) { loc in
-                    LocationRow(
-                        systemImage: selectedPaths.contains(loc.path) ? "folder.fill" : "folder",
-                        label: Self.displayName(loc.path),
-                        sublabel: loc.path,
-                        count: loc.videoCount,
-                        isSelected: selectedPaths.contains(loc.path),
-                        tooltip: "Show only videos from \(loc.path) (\(loc.videoCount) videos).\nShift-click for a range, ⌘-click to add or remove.\nRight-click or swipe left to remove.",
-                        onClick: {
-                            onSelect(loc.path)
-                            onSelectCollection?(nil)
-                        },
-                        onRescan: onRescan != nil ? { onRescan!(loc) } : nil,
-                        isRescanning: rescanningPaths.contains(loc.path)
-                    )
-                    .listRowInsets(EdgeInsets())
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        if let remove = onRemoveLocation {
-                            Button(role: .destructive) { remove(loc) } label: {
-                                Label("Remove", systemImage: "trash")
+                // The flattened location tree: top-level locations and their
+                // expanded subdirectories. Top-level rows keep the rescan /
+                // remove affordances and the full-path sublabel; subdirectory
+                // rows are select + expand/collapse only.
+                ForEach(rows) { row in
+                    if row.isTopLevel, let loc = locationByPath[row.path] {
+                        LocationRow(
+                            systemImage: selectedPaths.contains(row.path) ? "folder.fill" : "folder",
+                            label: Self.displayName(row.path),
+                            sublabel: row.path,
+                            count: row.videoCount,
+                            isSelected: selectedPaths.contains(row.path),
+                            tooltip: "Show only videos from \(row.path) (\(row.videoCount) videos), including subfolders.\nShift-click for a range, ⌘-click to add or remove.\nRight-click or swipe left to remove.",
+                            depth: row.depth,
+                            isExpandable: row.isExpandable,
+                            isExpanded: row.isExpanded,
+                            onToggleExpand: { onToggleExpand(row.path) },
+                            onClick: {
+                                onSelect(row.path)
+                                onSelectCollection?(nil)
+                            },
+                            onRescan: onRescan != nil ? { onRescan!(loc) } : nil,
+                            isRescanning: rescanningPaths.contains(row.path)
+                        )
+                        .listRowInsets(EdgeInsets())
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            if let remove = onRemoveLocation {
+                                Button(role: .destructive) { remove(loc) } label: {
+                                    Label("Remove", systemImage: "trash")
+                                }
                             }
                         }
-                    }
-                    .contextMenu {
-                        if let remove = onRemoveLocation {
-                            Button(role: .destructive) { remove(loc) } label: {
-                                Label("Remove from Library…", systemImage: "trash")
+                        .contextMenu {
+                            if let remove = onRemoveLocation {
+                                Button(role: .destructive) { remove(loc) } label: {
+                                    Label("Remove from Library…", systemImage: "trash")
+                                }
                             }
                         }
+                    } else {
+                        LocationRow(
+                            systemImage: selectedPaths.contains(row.path) ? "folder.fill" : "folder",
+                            label: Self.displayName(row.path),
+                            sublabel: nil,
+                            count: row.videoCount,
+                            isSelected: selectedPaths.contains(row.path),
+                            tooltip: "Show only videos in \(row.path) and its subfolders (\(row.videoCount) videos).\nShift-click for a range, ⌘-click to add or remove.",
+                            depth: row.depth,
+                            isExpandable: row.isExpandable,
+                            isExpanded: row.isExpanded,
+                            onToggleExpand: { onToggleExpand(row.path) },
+                            onClick: {
+                                onSelect(row.path)
+                                onSelectCollection?(nil)
+                            }
+                        )
+                        .listRowInsets(EdgeInsets())
                     }
                 }
 
@@ -220,6 +260,13 @@ private struct LocationRow: View {
     let count: Int64
     let isSelected: Bool
     var tooltip: String = ""
+    /// Nesting depth in the location tree (0 = top level); indents the row.
+    var depth: Int = 0
+    /// Show a disclosure chevron at the left of the row.
+    var isExpandable: Bool = false
+    var isExpanded: Bool = false
+    /// Invoked when the disclosure chevron is clicked (not the row body).
+    var onToggleExpand: (() -> Void)? = nil
     let onClick: () -> Void
     var onRescan: (() -> Void)? = nil
     var isRescanning: Bool = false
@@ -229,6 +276,29 @@ private struct LocationRow: View {
     var body: some View {
         Button(action: onClick) {
             HStack(spacing: 8) {
+                // Indent nested subdirectories beneath their parent.
+                if depth > 0 {
+                    Color.clear.frame(width: CGFloat(depth) * 14, height: 1)
+                }
+                // Disclosure-chevron slot — always reserved (12pt) so folder
+                // icons stay aligned whether or not a row is expandable. The
+                // chevron points right when collapsed and rotates 90° clockwise
+                // to point down when expanded.
+                if isExpandable {
+                    Button { onToggleExpand?() } label: {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(isSelected ? .accentColor : .secondary)
+                            .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                            .animation(.easeInOut(duration: 0.15), value: isExpanded)
+                            .frame(width: 12, height: 18)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help(isExpanded ? "Collapse subfolders" : "Expand subfolders")
+                } else {
+                    Color.clear.frame(width: 12, height: 18)
+                }
                 Image(systemName: systemImage)
                     .font(.system(size: 14))
                     .foregroundColor(isSelected ? .accentColor : .primary)

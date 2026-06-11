@@ -93,6 +93,18 @@ class GridViewModel: ObservableObject {
     private var locationFilterValue: String { selectedLocationPaths.joined(separator: "\n") }
     @Published var rescanningPaths: Set<String> = []
 
+    // ── Library subdirectory tree ───────────────────────────────────────────
+    /// Directories the user has expanded (absolute paths). Children are fetched
+    /// lazily into `subdirCache` the first time a directory is expanded.
+    private var expandedDirs: Set<String> = []
+    /// Cache of fetched children keyed by parent path; cleared on library reload
+    /// because the tree is derived from (mutable) indexed video paths.
+    private var subdirCache: [String: [Subdirectory]] = [:]
+    /// The flattened, display-ordered rows the library panel renders: each
+    /// location followed by its expanded subdirectories. Rebuilt by
+    /// `rebuildLibraryRows()` whenever the tree changes.
+    @Published var visibleLibraryRows: [LibraryRow] = []
+
     // Keywords / tag filter
     @Published var tags: [Tag] = []
     @Published var filterTagId: String = ""  // "" = no filter
@@ -679,7 +691,9 @@ class GridViewModel: ObservableObject {
     /// (inclusive) in the library's display order.
     func selectLocationRange(_ path: String) {
         guard !path.isEmpty else { setLocationFilter(""); return }
-        let order = libraryLocations.map { $0.path }
+        // Range over the flattened *visible* tree (locations + expanded
+        // subdirs), so Shift-click spans whatever is on screen.
+        let order = visibleLibraryRows.map { $0.path }
         let anchor = locationAnchorPath ?? selectedLocationPaths.first ?? path
         guard let ai = order.firstIndex(of: anchor), let ti = order.firstIndex(of: path) else {
             setLocationFilter(path); return
@@ -1232,10 +1246,118 @@ class GridViewModel: ObservableObject {
         Task {
             do {
                 libraryLocations = try await repository.listLibraryLocations()
+                // The subdirectory tree is derived from indexed video paths;
+                // after a (re)scan or removal those may have changed. Drop the
+                // cache and re-fetch the currently-expanded directories so the
+                // tree's counts and shape stay fresh, dropping any directory
+                // that no longer has children.
+                subdirCache.removeAll()
+                var stillExpanded: Set<String> = []
+                for dir in expandedDirs {
+                    let children = try await repository.listSubdirectories(dir)
+                    if !children.isEmpty {
+                        subdirCache[dir] = children
+                        stillExpanded.insert(dir)
+                    }
+                }
+                expandedDirs = stillExpanded
+                rebuildLibraryRows()
             } catch {
                 NSLog("Failed to load library locations: \(error)")
             }
         }
+    }
+
+    /// Recompute `visibleLibraryRows` — the flattened, display-ordered list of
+    /// library locations and their expanded subdirectories — from the current
+    /// locations, expanded set, and fetched children. Cheap; called after any
+    /// change to the tree.
+    private func rebuildLibraryRows() {
+        var rows: [LibraryRow] = []
+
+        func addNode(path: String, depth: Int, videoCount: Int64, expandable: Bool, topLevel: Bool) {
+            let isExpanded = expandable && expandedDirs.contains(path)
+            rows.append(LibraryRow(
+                path: path,
+                depth: depth,
+                videoCount: videoCount,
+                isExpandable: expandable,
+                isExpanded: isExpanded,
+                isTopLevel: topLevel
+            ))
+            if isExpanded, let children = subdirCache[path] {
+                for child in children {
+                    addNode(
+                        path: child.path,
+                        depth: depth + 1,
+                        videoCount: child.videoCount,
+                        expandable: child.hasSubdirectories,
+                        topLevel: false
+                    )
+                }
+            }
+        }
+
+        for loc in libraryLocations {
+            addNode(
+                path: loc.path,
+                depth: 0,
+                videoCount: loc.videoCount,
+                // Only recursive locations with children can expand.
+                expandable: loc.recursive && loc.hasSubdirectories,
+                topLevel: true
+            )
+        }
+        visibleLibraryRows = rows
+    }
+
+    /// Expand a collapsed directory or collapse an expanded one.
+    func toggleExpand(_ path: String) {
+        if expandedDirs.contains(path) {
+            collapseDir(path)
+            return
+        }
+        // Optimistic: rotate the chevron and show the row as expanded now; the
+        // children splice in when the fetch returns (or are already cached).
+        expandedDirs.insert(path)
+        if subdirCache[path] != nil {
+            rebuildLibraryRows()
+        } else {
+            rebuildLibraryRows()
+            Task {
+                do {
+                    let children = try await repository.listSubdirectories(path)
+                    subdirCache[path] = children
+                    // The user may have collapsed it again while we fetched.
+                    if expandedDirs.contains(path) { rebuildLibraryRows() }
+                } catch {
+                    NSLog("Failed to list subdirectories of \(path): \(error)")
+                }
+            }
+        }
+    }
+
+    /// Collapse `path`, folding away its whole subtree. Any expanded descendant
+    /// is pruned too. If the current selection points at a now-hidden
+    /// subdirectory, it is promoted to `path` — the nearest still-visible
+    /// ancestor — so the grid widens to the collapsed folder rather than
+    /// silently filtering by an invisible directory.
+    func collapseDir(_ path: String) {
+        let prefix = path + "/"
+        expandedDirs = expandedDirs.filter { $0 != path && !$0.hasPrefix(prefix) }
+
+        if selectedLocationPaths.contains(where: { $0.hasPrefix(prefix) }) {
+            // Roll hidden selections up to `path`, de-duplicating while keeping
+            // display order.
+            var promoted: [String] = []
+            for sel in selectedLocationPaths {
+                let next = sel.hasPrefix(prefix) ? path : sel
+                if !promoted.contains(next) { promoted.append(next) }
+            }
+            let anchor = locationAnchorPath.map { $0.hasPrefix(prefix) ? path : $0 }
+            applyLocationSelection(promoted, anchor: anchor)
+        }
+        rebuildLibraryRows()
     }
 
     /// Remove a library location and all its indexed videos from the catalog.
@@ -2151,6 +2273,9 @@ class GridViewModel: ObservableObject {
         selectedLocationPath = ""
         selectedLocationPaths = []
         locationAnchorPath = nil
+        expandedDirs = []
+        subdirCache = [:]
+        visibleLibraryRows = []
         tags = []
         filterTagId = ""
         metadataColumns = defaultMetadataColumns

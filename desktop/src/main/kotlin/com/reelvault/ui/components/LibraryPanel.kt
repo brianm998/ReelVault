@@ -3,6 +3,7 @@
 
 package com.reelvault.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -31,10 +32,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.reelvault.data.models.Collection
 import com.reelvault.data.models.LibraryLocation
+import com.reelvault.data.models.LibraryRow
 import com.reelvault.trackTextEntryFocus
 import com.reelvault.ui.theme.ReelVaultSpacing
 
@@ -43,15 +46,24 @@ import com.reelvault.ui.theme.ReelVaultSpacing
  * and lets the user filter the grid to a single location. An "All Videos" entry
  * at the top clears any filter. A Collections section below lets the user browse
  * and manage named (and smart) collections.
+ *
+ * Recursive locations that contain videos in subfolders are expandable into a
+ * disclosure tree: [rows] is the flattened, display-ordered list of locations
+ * and their currently-expanded subdirectories (each carrying its nesting
+ * depth). [locations] still supplies the per-location data (rescan / remove /
+ * full-path sublabel) for the top-level rows.
  */
 @Composable
 fun LibraryPanel(
+    rows: List<LibraryRow>,
     locations: List<LibraryLocation>,
     selectedPaths: List<String>,
     totalVideosAcrossLibrary: Long,
     /** Called when a location row is clicked. [additive] = Cmd/Ctrl-click
      *  (toggle), [range] = Shift-click (range select). */
     onSelect: (path: String, additive: Boolean, range: Boolean) -> Unit,
+    /** Toggle a directory's expanded/collapsed state (clicked disclosure chevron). */
+    onToggleExpand: (path: String) -> Unit = {},
     onAddLocation: () -> Unit = {},
     /** Called when the user confirms removal of a library location. */
     onRemoveLocation: ((LibraryLocation) -> Unit)? = null,
@@ -70,6 +82,10 @@ fun LibraryPanel(
 ) {
     var showNewCollectionDialog by remember { mutableStateOf(false) }
     var newCollectionName by remember { mutableStateOf("") }
+
+    // Top-level rows look up their LibraryLocation here for the rescan/remove
+    // affordances and the full-path sublabel. Subdirectory rows don't need it.
+    val locationByPath = remember(locations) { locations.associateBy { it.path } }
 
     Column(
         modifier = modifier
@@ -137,7 +153,7 @@ fun LibraryPanel(
                 )
             }
 
-            if (locations.isNotEmpty()) {
+            if (rows.isNotEmpty()) {
                 item {
                     HorizontalDivider(
                         modifier = Modifier.padding(
@@ -149,36 +165,69 @@ fun LibraryPanel(
                 }
             }
 
-            items(locations, key = { it.path }) { loc ->
-                ContextMenuArea(
-                    items = {
-                        buildList {
-                            if (onRescan != null) {
-                                add(ContextMenuItem("Rescan folder…") { onRescan(loc) })
-                            }
-                            if (onRemoveLocation != null) {
-                                add(ContextMenuItem("Remove from library…") {
-                                    onRemoveLocation(loc)
-                                })
+            // The flattened location tree: top-level locations and their
+            // expanded subdirectories. Key by depth+path so a directory that is
+            // also a registered location (e.g. a nested library root) can appear
+            // at two depths without a duplicate-key clash.
+            items(rows, key = { "${it.depth} ${it.path}" }) { row ->
+                val isSelected = row.path in selectedPaths
+                val icon = if (isSelected) Icons.Default.FolderOpen else Icons.Default.Folder
+                val onRowClick: (Boolean, Boolean) -> Unit = { additive, range ->
+                    onSelect(row.path, additive, range)
+                    onSelectCollection?.invoke(null)
+                }
+                val loc = if (row.isTopLevel) locationByPath[row.path] else null
+
+                if (loc != null) {
+                    // Top-level library location: rescan / remove + full-path sublabel.
+                    ContextMenuArea(
+                        items = {
+                            buildList {
+                                if (onRescan != null) {
+                                    add(ContextMenuItem("Rescan folder…") { onRescan(loc) })
+                                }
+                                if (onRemoveLocation != null) {
+                                    add(ContextMenuItem("Remove from library…") {
+                                        onRemoveLocation(loc)
+                                    })
+                                }
                             }
                         }
+                    ) {
+                        LocationRow(
+                            icon = icon,
+                            label = displayName(row.path),
+                            sublabel = row.path,
+                            count = row.videoCount,
+                            isSelected = isSelected,
+                            tooltip = "Show only videos from ${row.path} (${row.videoCount} videos), " +
+                                "including subfolders. Shift-click for a range, Cmd/Ctrl-click to add or remove. " +
+                                "Right-click to remove from library.",
+                            depth = row.depth,
+                            isExpandable = row.isExpandable,
+                            isExpanded = row.isExpanded,
+                            onToggleExpand = { onToggleExpand(row.path) },
+                            onClick = onRowClick,
+                            onRescan = onRescan?.let { cb -> { cb(loc) } },
+                            isRescanning = row.path in rescanningPaths
+                        )
                     }
-                ) {
+                } else {
+                    // Subdirectory row: select + expand/collapse only.
                     LocationRow(
-                        icon = if (loc.path in selectedPaths) Icons.Default.FolderOpen else Icons.Default.Folder,
-                        label = displayName(loc.path),
-                        sublabel = loc.path,
-                        count = loc.videoCount,
-                        isSelected = loc.path in selectedPaths,
-                        tooltip = "Show only videos from ${loc.path} (${loc.videoCount} videos). " +
-                            "Shift-click for a range, Cmd/Ctrl-click to add or remove. " +
-                            "Right-click to remove from library.",
-                        onClick = { additive, range ->
-                            onSelect(loc.path, additive, range)
-                            onSelectCollection?.invoke(null)
-                        },
-                        onRescan = onRescan?.let { cb -> { cb(loc) } },
-                        isRescanning = loc.path in rescanningPaths
+                        icon = icon,
+                        label = displayName(row.path),
+                        sublabel = null,
+                        count = row.videoCount,
+                        isSelected = isSelected,
+                        tooltip = "Show only videos in ${row.path} and its subfolders " +
+                            "(${row.videoCount} videos). Shift-click for a range, " +
+                            "Cmd/Ctrl-click to add or remove.",
+                        depth = row.depth,
+                        isExpandable = row.isExpandable,
+                        isExpanded = row.isExpanded,
+                        onToggleExpand = { onToggleExpand(row.path) },
+                        onClick = onRowClick
                     )
                 }
             }
@@ -331,6 +380,13 @@ private fun LocationRow(
     count: Long,
     isSelected: Boolean,
     tooltip: String = "",
+    /** Nesting depth in the location tree (0 = top level); indents the row. */
+    depth: Int = 0,
+    /** Show a disclosure chevron at the left of the row. */
+    isExpandable: Boolean = false,
+    isExpanded: Boolean = false,
+    /** Invoked when the disclosure chevron is clicked (not the row body). */
+    onToggleExpand: (() -> Unit)? = null,
     onClick: (additive: Boolean, range: Boolean) -> Unit,
     onRescan: (() -> Unit)? = null,
     isRescanning: Boolean = false
@@ -357,6 +413,44 @@ private fun LocationRow(
             .padding(horizontal = ReelVaultSpacing.Medium, vertical = ReelVaultSpacing.Small),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Indent by depth so nested subdirectories sit under their parent.
+        if (depth > 0) {
+            Spacer(modifier = Modifier.width((depth * 14).dp))
+        }
+        // Disclosure-chevron slot — always reserved (18dp) so folder icons stay
+        // aligned whether or not a row is expandable. The chevron points right
+        // when collapsed and rotates 90° clockwise to point down when expanded.
+        val rotation by animateFloatAsState(
+            targetValue = if (isExpanded) 90f else 0f,
+            label = "disclosureRotation"
+        )
+        val chevronInteraction = remember { MutableInteractionSource() }
+        Box(
+            modifier = Modifier
+                .size(18.dp)
+                .then(
+                    if (isExpandable && onToggleExpand != null) {
+                        Modifier.clickable(
+                            interactionSource = chevronInteraction,
+                            indication = null,
+                            onClick = onToggleExpand
+                        )
+                    } else {
+                        Modifier
+                    }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isExpandable) {
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = if (isExpanded) "Collapse subfolders" else "Expand subfolders",
+                    modifier = Modifier.size(16.dp).rotate(rotation),
+                    tint = contentColor
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(2.dp))
         Icon(
             imageVector = icon,
             contentDescription = null,
