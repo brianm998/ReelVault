@@ -2200,9 +2200,9 @@ class GridViewModel: ObservableObject {
     /// (core/src/db.rs) for exactly those filters, so a filter change can tell
     /// when the current selection has just been filtered out of the grid
     /// without waiting for the reload to come back. Search / metadata /
-    /// location / tag / collection filters need the server and aren't checked
-    /// here, so `true` means only "not filtered out by anything we can see
-    /// locally".
+    /// location-path / tag / collection filters need the server; the geo/area
+    /// box IS checked here (it's computable client-side). `true` means "not
+    /// filtered out by anything we can see locally".
     private func summaryMatchesLocalFilters(_ s: VideoSummary) -> Bool {
         switch filterHasLocation {
         case .yes: if !s.hasLocation { return false }
@@ -2230,6 +2230,19 @@ class GridViewModel: ObservableObject {
         }
         if filterMinRating > 0 && Int32(s.rating) < filterMinRating { return false }
         if !filterColorLabel.isEmpty && s.colorLabel != filterColorLabel { return false }
+        // Geo/area filter: mirror the daemon's bounding-box test (see
+        // build_filter_clauses in core/src/db.rs) so an optimistic relocate
+        // drops a card out of an active Location filter the instant it leaves
+        // the box — matching what the reload returns, instead of letting it
+        // linger then vanish. 1° lat ≈ 111 km; 1° lon ≈ 111·cos(lat) km.
+        if let geo = filterLocation {
+            guard s.hasLocation else { return false }
+            let latDelta = abs(geo.radiusKm / 111.0)
+            let cosLat = max(0.01, abs(cos(geo.latitude * .pi / 180.0)))
+            let lonDelta = abs(geo.radiusKm / (111.0 * cosLat))
+            if s.gpsLatitude < geo.latitude - latDelta || s.gpsLatitude > geo.latitude + latDelta { return false }
+            if s.gpsLongitude < geo.longitude - lonDelta || s.gpsLongitude > geo.longitude + lonDelta { return false }
+        }
         return true
     }
 

@@ -650,9 +650,10 @@ class GridViewModel(
      * evaluate client-side? Mirrors the daemon's `build_filter_clauses`
      * (core/src/db.rs) for exactly those filters, so a filter change can tell
      * when the current selection has just been filtered out of the grid
-     * without waiting for the reload. Search / metadata / location / tag /
-     * collection filters need the server and aren't checked here, so `true`
-     * means only "not filtered out by anything we can see locally".
+     * without waiting for the reload. Search / metadata / location-path / tag /
+     * collection filters need the server and aren't checked here; the geo/area
+     * box IS checked (it's computable client-side). `true` means "not filtered
+     * out by anything we can see locally".
      */
     private fun summaryMatchesLocalFilters(s: VideoSummary): Boolean {
         when (_filterHasLocation.value) {
@@ -683,6 +684,21 @@ class GridViewModel(
         }
         if (_filterMinRating.value > 0 && s.rating < _filterMinRating.value) return false
         if (_filterColorLabel.value.isNotEmpty() && s.colorLabel != _filterColorLabel.value) return false
+        // Geo/area filter — mirror the daemon's bounding-box test (db.rs
+        // build_filter_clauses) so an optimistic relocate drops a card out of an
+        // active Location filter the instant it leaves the box, matching the
+        // reload instead of letting it linger then vanish. 1° lat ≈ 111 km;
+        // 1° lon ≈ 111·cos(lat) km, with cos clamped near the poles.
+        val geo = _filterLocation.value
+        if (geo != null) {
+            val (lat, lon, radiusKm) = geo
+            if (!s.hasLocation) return false
+            val latDelta = kotlin.math.abs(radiusKm / 111.0)
+            val cosLat = kotlin.math.max(0.01, kotlin.math.abs(kotlin.math.cos(Math.toRadians(lat))))
+            val lonDelta = kotlin.math.abs(radiusKm / (111.0 * cosLat))
+            if (s.gpsLatitude < lat - latDelta || s.gpsLatitude > lat + latDelta) return false
+            if (s.gpsLongitude < lon - lonDelta || s.gpsLongitude > lon + lonDelta) return false
+        }
         return true
     }
 
