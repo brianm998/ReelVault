@@ -473,172 +473,385 @@ impl ReelVaultService {
             .map_err(Status::from)
     }
 
-    fn build_video_summary(&self, video_id: &str, filename: &str, path: &str,
-                           size_bytes: i64, indexed_at: i64) -> VideoSummary {
-        // Try to get metadata for the video. Camera model is included so
-        // the grid's configurable "Camera" top-of-card stat slot can
-        // render without a per-video VideoMetadata roundtrip.
-        let conn = self.db.get_connection().ok();
-        let meta = conn.and_then(|c| {
-            c.query_row(
-                "SELECT duration_ms, width, height, fps, codec_video, codec_audio,
-                        creation_date, camera_model, gps_latitude, gps_longitude,
-                        lens_model, iso, aperture, exposure_time_s, focal_length_mm,
-                        bitrate, COALESCE(frame_count, 0)
-                 FROM metadata WHERE video_id = ?",
-                [video_id],
-                |row| {
-                    Ok((
-                        row.get::<_, i64>(0)?,
-                        row.get::<_, i32>(1)?,
-                        row.get::<_, i32>(2)?,
-                        row.get::<_, f64>(3)?,
-                        row.get::<_, Option<String>>(4)?,
-                        row.get::<_, Option<String>>(5)?,
-                        row.get::<_, Option<i64>>(6)?,
-                        row.get::<_, Option<String>>(7)?,
-                        row.get::<_, Option<f64>>(8)?,
-                        row.get::<_, Option<f64>>(9)?,
-                        row.get::<_, Option<String>>(10)?,
-                        row.get::<_, Option<i64>>(11)?,
-                        row.get::<_, Option<f64>>(12)?,
-                        row.get::<_, Option<f64>>(13)?,
-                        row.get::<_, Option<f64>>(14)?,
-                        row.get::<_, i64>(15)?,
-                        row.get::<_, i64>(16)?,
-                    ))
-                },
-            ).ok()
-        });
+    /// Build the `VideoSummary` rows for a whole page of videos.
+    ///
+    /// The per-row predecessor of this method issued ~10 individual lookups
+    /// per video (metadata, tags, marks, proxy/group linkage, camera-name
+    /// overrides, …), which multiplied out to hundreds of queries per
+    /// `ListVideos` page. This version fetches each aspect for the entire
+    /// batch in one query (chunked to stay clear of SQLite's bind-variable
+    /// limit), shares a single connection, loads the camera-name overrides
+    /// once, and memoizes full-resolution classification per distinct
+    /// `(camera, width, height)`.
+    ///
+    /// Missing rows keep the per-row defaults: no metadata → zeros, no marks
+    /// → (0, ""), unknown id → online, no group → singleton.
+    fn build_video_summaries(&self, seeds: Vec<SummarySeed>) -> Vec<VideoSummary> {
+        use std::collections::HashMap;
 
-        let tags = self.db.get_video_tags(video_id).unwrap_or_default();
-
-        let (duration_ms, width, height, fps, codec_video, codec_audio, creation_date,
-             camera_model, gps_lat, gps_lon, lens_model, iso, aperture,
-             exposure_time_s, focal_length_mm, bitrate, frame_count) =
-            meta.unwrap_or((0, 0, 0, 0.0, None, None, None, None, None, None,
-                            None, None, None, None, None, 0, 0));
-
-        // Resolve the marketing-friendly camera name the same way
-        // build_video_metadata does — user overrides on top of the
-        // built-in mapping table, falling back to the raw EXIF string
-        // when no mapping is known. Clients detect "no mapping" by
-        // comparing the two and may hide the affordance that flips
-        // between them.
-        let camera_model_str = camera_model.unwrap_or_default();
-        let camera_display_name = if camera_model_str.is_empty() {
-            String::new()
-        } else {
-            let custom_overrides = self.load_custom_camera_names();
-            crate::camera_names::marketing_name_for_with_custom(
-                &camera_model_str,
-                &custom_overrides,
-            )
-            .unwrap_or_else(|| camera_model_str.clone())
-        };
-
-        // Check if thumbnail exists
-        let thumb_path = self.config.thumbnail_cache_path.join(format!("{}_medium.jpg", video_id));
-        let has_thumbnail = thumb_path.exists();
-
-        // Proxy info. `proxy_of` lets the grid hide proxies under their
-        // source; `proxy_count` powers the "this video has proxies"
-        // badge on the source's card. Both are cheap (single indexed
-        // SQL each), so we surface them on every summary.
-        let proxy_of = self.db.get_proxy_target(video_id).unwrap_or(None).unwrap_or_default();
-        let proxy_count = self.db.list_proxies(video_id).map(|v| v.len() as i32).unwrap_or(0);
-
-        // Group info
-        let group_id_opt = self.db.get_video_group_id(video_id).unwrap_or(None);
-        let (group_id, group_size, group_preferred_id, group_preferred_path) = match &group_id_opt {
-            Some(gid) => {
-                let size = self.db.count_group_members(gid).unwrap_or(1) as i32;
-                let preferred_id = self
-                    .db
-                    .get_group(gid)
-                    .ok()
-                    .flatten()
-                    .and_then(|g| g.preferred_video_id)
-                    .unwrap_or_else(|| video_id.to_string());
-                // Look up the path of the preferred video
-                let preferred_path = self
-                    .db
-                    .get_video(&preferred_id)
-                    .ok()
-                    .flatten()
-                    .map(|v| v.path)
-                    .unwrap_or_default();
-                (gid.clone(), size, preferred_id, preferred_path)
-            }
-            None => (String::new(), 1, String::new(), String::new()),
-        };
-
-        // Lightroom-style user marks (rating + color label). Defaults to
-        // (0, "") when no row exists for this video.
-        let (rating, color_label) = self
-            .db
-            .get_video_user_marks(video_id)
-            .unwrap_or((0, String::new()));
-
-        let full_resolution = classify_full_resolution(
-            &self.db,
-            &camera_model_str,
-            width,
-            height,
-        );
-
-        // Online status — false when the file was missing at the most recent
-        // scan (moved/renamed, or its drive isn't mounted). Surfaced on the
-        // summary so the grid can flag offline clips up front instead of only
-        // failing when the user presses play.
-        let is_online = self
-            .db
-            .get_video(video_id)
-            .ok()
-            .flatten()
-            .map(|v| v.is_online != 0)
-            .unwrap_or(true);
-
-        VideoSummary {
-            id: video_id.to_string(),
-            filename: filename.to_string(),
-            path: path.to_string(),
-            duration_ms,
-            width,
-            height,
-            codec_video: codec_video.unwrap_or_default(),
-            codec_audio: codec_audio.unwrap_or_default(),
-            fps,
-            size_bytes,
-            indexed_at,
-            creation_date: creation_date.unwrap_or(0),
-            tags,
-            has_thumbnail,
-            group_id,
-            group_size,
-            group_preferred_id,
-            group_preferred_path,
-            proxy_count,
-            proxy_of,
-            playable_natively: self.config.max_native_playback_height == 0
-                || height <= self.config.max_native_playback_height,
-            rating,
-            color_label,
-            camera_model: camera_model_str,
-            camera_display_name,
-            gps_latitude: gps_lat.unwrap_or(0.0),
-            gps_longitude: gps_lon.unwrap_or(0.0),
-            lens_model: lens_model.unwrap_or_default(),
-            iso: iso.unwrap_or(0) as i32,
-            aperture: aperture.unwrap_or(0.0),
-            exposure_time_s: exposure_time_s.unwrap_or(0.0),
-            focal_length_mm: focal_length_mm.unwrap_or(0.0),
-            full_resolution,
-            is_online,
-            bitrate,
-            frame_count,
+        if seeds.is_empty() {
+            return Vec::new();
         }
+        let conn = self.db.get_connection().ok();
+        let ids: Vec<&str> = seeds.iter().map(|s| s.id.as_str()).collect();
+
+        // (is_online, group_id, proxy_of) straight off the videos row.
+        let mut flags: HashMap<String, (bool, Option<String>, Option<String>)> = HashMap::new();
+        let mut meta: HashMap<String, MetaFields> = HashMap::new();
+        let mut tags: HashMap<String, Vec<String>> = HashMap::new();
+        let mut marks: HashMap<String, (i32, String)> = HashMap::new();
+        let mut proxy_counts: HashMap<String, i32> = HashMap::new();
+
+        if let Some(conn) = conn.as_ref() {
+            for chunk in ids.chunks(SQL_IN_CHUNK) {
+                let ph = sql_placeholders(chunk.len());
+
+                if let Ok(mut stmt) = conn.prepare(&format!(
+                    "SELECT id, is_online, group_id, proxy_of FROM videos WHERE id IN ({ph})"
+                )) {
+                    if let Ok(rows) = stmt.query_map(
+                        rusqlite::params_from_iter(chunk.iter()),
+                        |row| {
+                            Ok((
+                                row.get::<_, String>(0)?,
+                                row.get::<_, i32>(1)?,
+                                row.get::<_, Option<String>>(2)?,
+                                row.get::<_, Option<String>>(3)?,
+                            ))
+                        },
+                    ) {
+                        for (id, online, group_id, proxy_of) in rows.flatten() {
+                            flags.insert(id, (online != 0, group_id, proxy_of));
+                        }
+                    }
+                }
+
+                // A row whose extraction fails (e.g. NULL duration on a
+                // half-indexed video) is skipped entirely so the summary
+                // falls back to all-default metadata — same behavior as the
+                // old per-row `.ok()`.
+                if let Ok(mut stmt) = conn.prepare(&format!(
+                    "SELECT video_id, duration_ms, width, height, fps, codec_video, codec_audio,
+                            creation_date, camera_model, gps_latitude, gps_longitude,
+                            lens_model, iso, aperture, exposure_time_s, focal_length_mm,
+                            bitrate, COALESCE(frame_count, 0)
+                     FROM metadata WHERE video_id IN ({ph})"
+                )) {
+                    if let Ok(rows) = stmt.query_map(
+                        rusqlite::params_from_iter(chunk.iter()),
+                        |row| {
+                            Ok((
+                                row.get::<_, String>(0)?,
+                                MetaFields {
+                                    duration_ms: row.get::<_, i64>(1)?,
+                                    width: row.get::<_, i32>(2)?,
+                                    height: row.get::<_, i32>(3)?,
+                                    fps: row.get::<_, f64>(4)?,
+                                    codec_video: row.get::<_, Option<String>>(5)?,
+                                    codec_audio: row.get::<_, Option<String>>(6)?,
+                                    creation_date: row.get::<_, Option<i64>>(7)?,
+                                    camera_model: row.get::<_, Option<String>>(8)?,
+                                    gps_lat: row.get::<_, Option<f64>>(9)?,
+                                    gps_lon: row.get::<_, Option<f64>>(10)?,
+                                    lens_model: row.get::<_, Option<String>>(11)?,
+                                    iso: row.get::<_, Option<i64>>(12)?,
+                                    aperture: row.get::<_, Option<f64>>(13)?,
+                                    exposure_time_s: row.get::<_, Option<f64>>(14)?,
+                                    focal_length_mm: row.get::<_, Option<f64>>(15)?,
+                                    bitrate: row.get::<_, i64>(16)?,
+                                    frame_count: row.get::<_, i64>(17)?,
+                                },
+                            ))
+                        },
+                    ) {
+                        for (id, fields) in rows.flatten() {
+                            meta.insert(id, fields);
+                        }
+                    }
+                }
+
+                // ORDER BY keeps each video's tag list name-sorted, matching
+                // the old get_video_tags.
+                if let Ok(mut stmt) = conn.prepare(&format!(
+                    "SELECT vt.video_id, t.name FROM video_tags vt
+                     JOIN tags t ON t.id = vt.tag_id
+                     WHERE vt.video_id IN ({ph})
+                     ORDER BY t.name"
+                )) {
+                    if let Ok(rows) = stmt.query_map(
+                        rusqlite::params_from_iter(chunk.iter()),
+                        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+                    ) {
+                        for (id, name) in rows.flatten() {
+                            tags.entry(id).or_default().push(name);
+                        }
+                    }
+                }
+
+                if let Ok(mut stmt) = conn.prepare(&format!(
+                    "SELECT video_id, rating, color_label FROM video_user_marks
+                     WHERE video_id IN ({ph})"
+                )) {
+                    if let Ok(rows) = stmt.query_map(
+                        rusqlite::params_from_iter(chunk.iter()),
+                        |row| {
+                            Ok((
+                                row.get::<_, String>(0)?,
+                                row.get::<_, i32>(1)?,
+                                row.get::<_, String>(2)?,
+                            ))
+                        },
+                    ) {
+                        for (id, rating, label) in rows.flatten() {
+                            marks.insert(id, (rating, label));
+                        }
+                    }
+                }
+
+                // Join through videos so dangling proxy_links rows (possible
+                // in catalogs written before foreign keys were enforced)
+                // don't inflate the badge — same set list_proxies counted.
+                if let Ok(mut stmt) = conn.prepare(&format!(
+                    "SELECT pl.master_id, COUNT(*) FROM proxy_links pl
+                     JOIN videos v ON pl.proxy_id = v.id
+                     WHERE pl.master_id IN ({ph})
+                     GROUP BY pl.master_id"
+                )) {
+                    if let Ok(rows) = stmt.query_map(
+                        rusqlite::params_from_iter(chunk.iter()),
+                        |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+                    ) {
+                        for (id, count) in rows.flatten() {
+                            proxy_counts.insert(id, count as i32);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Stack info for every distinct group on the page: member count,
+        // preferred id, and the preferred video's path.
+        let group_ids: Vec<String> = {
+            let mut set = std::collections::BTreeSet::new();
+            for (_, gid, _) in flags.values() {
+                if let Some(g) = gid {
+                    set.insert(g.clone());
+                }
+            }
+            set.into_iter().collect()
+        };
+        let mut group_sizes: HashMap<String, i32> = HashMap::new();
+        let mut group_preferred: HashMap<String, Option<String>> = HashMap::new();
+        let mut preferred_paths: HashMap<String, String> = HashMap::new();
+        if let Some(conn) = conn.as_ref() {
+            for chunk in group_ids.chunks(SQL_IN_CHUNK) {
+                let ph = sql_placeholders(chunk.len());
+
+                if let Ok(mut stmt) = conn.prepare(&format!(
+                    "SELECT group_id, COUNT(*) FROM videos WHERE group_id IN ({ph}) GROUP BY group_id"
+                )) {
+                    if let Ok(rows) = stmt.query_map(
+                        rusqlite::params_from_iter(chunk.iter()),
+                        |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+                    ) {
+                        for (gid, count) in rows.flatten() {
+                            group_sizes.insert(gid, count as i32);
+                        }
+                    }
+                }
+
+                if let Ok(mut stmt) = conn.prepare(&format!(
+                    "SELECT id, preferred_video_id FROM video_groups WHERE id IN ({ph})"
+                )) {
+                    if let Ok(rows) = stmt.query_map(
+                        rusqlite::params_from_iter(chunk.iter()),
+                        |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?)),
+                    ) {
+                        for (gid, preferred) in rows.flatten() {
+                            group_preferred.insert(gid, preferred);
+                        }
+                    }
+                }
+            }
+
+            let preferred_ids: Vec<&str> = group_preferred
+                .values()
+                .filter_map(|p| p.as_deref())
+                .collect();
+            for chunk in preferred_ids.chunks(SQL_IN_CHUNK) {
+                let ph = sql_placeholders(chunk.len());
+                if let Ok(mut stmt) = conn.prepare(&format!(
+                    "SELECT id, path FROM videos WHERE id IN ({ph})"
+                )) {
+                    if let Ok(rows) = stmt.query_map(
+                        rusqlite::params_from_iter(chunk.iter()),
+                        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+                    ) {
+                        for (id, path) in rows.flatten() {
+                            preferred_paths.insert(id, path);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Loaded once per page (the old path re-read and re-parsed the
+        // overrides JSON for every row that carried a camera model).
+        let custom_overrides = self.load_custom_camera_names();
+        let mut fullres_memo: HashMap<(String, i32, i32), i32> = HashMap::new();
+
+        seeds
+            .into_iter()
+            .map(|seed| {
+                let m = meta.remove(&seed.id).unwrap_or_default();
+                let (is_online, group_id_opt, proxy_of_opt) =
+                    flags.remove(&seed.id).unwrap_or((true, None, None));
+                let video_tags = tags.remove(&seed.id).unwrap_or_default();
+                let (rating, color_label) =
+                    marks.remove(&seed.id).unwrap_or((0, String::new()));
+                let proxy_count = proxy_counts.get(seed.id.as_str()).copied().unwrap_or(0);
+
+                // Resolve the marketing-friendly camera name the same way
+                // build_video_metadata does — user overrides on top of the
+                // built-in mapping table, falling back to the raw EXIF string
+                // when no mapping is known. Clients detect "no mapping" by
+                // comparing the two and may hide the affordance that flips
+                // between them.
+                let camera_model_str = m.camera_model.unwrap_or_default();
+                let camera_display_name = if camera_model_str.is_empty() {
+                    String::new()
+                } else {
+                    crate::camera_names::marketing_name_for_with_custom(
+                        &camera_model_str,
+                        &custom_overrides,
+                    )
+                    .unwrap_or_else(|| camera_model_str.clone())
+                };
+
+                let thumb_path = self
+                    .config
+                    .thumbnail_cache_path
+                    .join(format!("{}_medium.jpg", seed.id));
+                let has_thumbnail = thumb_path.exists();
+
+                let (group_id, group_size, group_preferred_id, group_preferred_path) =
+                    match group_id_opt {
+                        Some(gid) => {
+                            let size = group_sizes.get(&gid).copied().unwrap_or(1);
+                            let preferred_id = group_preferred
+                                .get(&gid)
+                                .cloned()
+                                .flatten()
+                                .unwrap_or_else(|| seed.id.clone());
+                            let preferred_path = if preferred_id == seed.id {
+                                seed.path.clone()
+                            } else {
+                                preferred_paths
+                                    .get(&preferred_id)
+                                    .cloned()
+                                    .unwrap_or_default()
+                            };
+                            (gid, size, preferred_id, preferred_path)
+                        }
+                        None => (String::new(), 1, String::new(), String::new()),
+                    };
+
+                let full_resolution = *fullres_memo
+                    .entry((camera_model_str.clone(), m.width, m.height))
+                    .or_insert_with(|| {
+                        classification_code(
+                            conn.as_deref(),
+                            &camera_model_str,
+                            m.width,
+                            m.height,
+                        )
+                    });
+
+                VideoSummary {
+                    id: seed.id,
+                    filename: seed.filename,
+                    path: seed.path,
+                    duration_ms: m.duration_ms,
+                    width: m.width,
+                    height: m.height,
+                    codec_video: m.codec_video.unwrap_or_default(),
+                    codec_audio: m.codec_audio.unwrap_or_default(),
+                    fps: m.fps,
+                    size_bytes: seed.size_bytes,
+                    indexed_at: seed.indexed_at,
+                    creation_date: m.creation_date.unwrap_or(0),
+                    tags: video_tags,
+                    has_thumbnail,
+                    group_id,
+                    group_size,
+                    group_preferred_id,
+                    group_preferred_path,
+                    proxy_count,
+                    proxy_of: proxy_of_opt.unwrap_or_default(),
+                    playable_natively: self.config.max_native_playback_height == 0
+                        || m.height <= self.config.max_native_playback_height,
+                    rating,
+                    color_label,
+                    camera_model: camera_model_str,
+                    camera_display_name,
+                    gps_latitude: m.gps_lat.unwrap_or(0.0),
+                    gps_longitude: m.gps_lon.unwrap_or(0.0),
+                    lens_model: m.lens_model.unwrap_or_default(),
+                    iso: m.iso.unwrap_or(0) as i32,
+                    aperture: m.aperture.unwrap_or(0.0),
+                    exposure_time_s: m.exposure_time_s.unwrap_or(0.0),
+                    focal_length_mm: m.focal_length_mm.unwrap_or(0.0),
+                    full_resolution,
+                    is_online,
+                    bitrate: m.bitrate,
+                    frame_count: m.frame_count,
+                }
+            })
+            .collect()
     }
+}
+
+/// The identifying columns a summary caller already has in hand for each row;
+/// everything else is batch-fetched by
+/// [`ReelVaultService::build_video_summaries`].
+struct SummarySeed {
+    id: String,
+    filename: String,
+    path: String,
+    size_bytes: i64,
+    indexed_at: i64,
+}
+
+/// One video's `metadata` row, shaped for `VideoSummary`. `Default` mirrors
+/// the old per-row fallback tuple: zeros and `None`s.
+#[derive(Default)]
+struct MetaFields {
+    duration_ms: i64,
+    width: i32,
+    height: i32,
+    fps: f64,
+    codec_video: Option<String>,
+    codec_audio: Option<String>,
+    creation_date: Option<i64>,
+    camera_model: Option<String>,
+    gps_lat: Option<f64>,
+    gps_lon: Option<f64>,
+    lens_model: Option<String>,
+    iso: Option<i64>,
+    aperture: Option<f64>,
+    exposure_time_s: Option<f64>,
+    focal_length_mm: Option<f64>,
+    bitrate: i64,
+    frame_count: i64,
+}
+
+/// Chunk size for `IN (?,…)` lists — comfortably below SQLite's bind-variable
+/// limit while keeping the query count at one per ~page.
+const SQL_IN_CHUNK: usize = 500;
+
+/// `n` comma-separated `?` placeholders for an `IN` list.
+fn sql_placeholders(n: usize) -> String {
+    std::iter::repeat_n("?", n).collect::<Vec<_>>().join(", ")
 }
 
 /// Classify a video's full-resolution status to its `i32` proto code.
@@ -656,12 +869,25 @@ fn classify_full_resolution(
     width: i32,
     height: i32,
 ) -> i32 {
+    classification_code(db.get_connection().ok().as_deref(), camera_model, width, height)
+}
+
+/// Same classification on an already-open connection, so batch callers can
+/// reuse one connection (and memoize) instead of opening one per video.
+/// `None` falls back to the pure built-in classifier — degraded mode rather
+/// than an error, matching [`classify_full_resolution`].
+fn classification_code(
+    conn: Option<&rusqlite::Connection>,
+    camera_model: &str,
+    width: i32,
+    height: i32,
+) -> i32 {
     use crate::full_resolution::Classification;
     let w = width.max(0) as u32;
     let h = height.max(0) as u32;
-    let classification = match db.get_connection() {
-        Ok(conn) => crate::sensor_cache::classify_with_cache(&conn, camera_model, w, h),
-        Err(_) => crate::full_resolution::classify(camera_model, w, h),
+    let classification = match conn {
+        Some(c) => crate::sensor_cache::classify_with_cache(c, camera_model, w, h),
+        None => crate::full_resolution::classify(camera_model, w, h),
     };
     let proto_enum = match classification {
         Classification::Unknown => FullResolutionStatus::Unspecified,
@@ -845,18 +1071,17 @@ impl ReelVaultTrait for ReelVaultService {
             .list_videos_grouped(limit, offset, &req.sort_by, req.sort_ascending, &spec)
             .map_err(Status::from)?;
 
-        let video_summaries: Vec<VideoSummary> = videos
+        let seeds: Vec<SummarySeed> = videos
             .iter()
-            .map(|v| {
-                self.build_video_summary(
-                    &v.id,
-                    &v.filename,
-                    &v.path,
-                    v.file_size_bytes.unwrap_or(0),
-                    v.indexed_at,
-                )
+            .map(|v| SummarySeed {
+                id: v.id.clone(),
+                filename: v.filename.clone(),
+                path: v.path.clone(),
+                size_bytes: v.file_size_bytes.unwrap_or(0),
+                indexed_at: v.indexed_at,
             })
             .collect();
+        let video_summaries = self.build_video_summaries(seeds);
 
         Ok(Response::new(ListVideosResponse {
             videos: video_summaries,
@@ -882,10 +1107,17 @@ impl ReelVaultTrait for ReelVaultService {
         )
         .map_err(Status::from)?;
 
-        let video_summaries: Vec<VideoSummary> = results
+        let seeds: Vec<SummarySeed> = results
             .iter()
-            .map(|r| self.build_video_summary(&r.video_id, &r.filename, &r.path, 0, 0))
+            .map(|r| SummarySeed {
+                id: r.video_id.clone(),
+                filename: r.filename.clone(),
+                path: r.path.clone(),
+                size_bytes: 0,
+                indexed_at: 0,
+            })
             .collect();
+        let video_summaries = self.build_video_summaries(seeds);
 
         Ok(Response::new(SearchResponse {
             videos: video_summaries,
@@ -1750,18 +1982,19 @@ impl ReelVaultTrait for ReelVaultService {
         let req = request.into_inner();
         let member_ids = self.db.list_group_member_ids(&req.group_id).map_err(Status::from)?;
 
-        let mut members = Vec::with_capacity(member_ids.len());
+        let mut seeds = Vec::with_capacity(member_ids.len());
         for vid in &member_ids {
             if let Ok(Some(video)) = self.db.get_video(vid) {
-                members.push(self.build_video_summary(
-                    &video.id,
-                    &video.filename,
-                    &video.path,
-                    video.file_size_bytes.unwrap_or(0),
-                    video.indexed_at,
-                ));
+                seeds.push(SummarySeed {
+                    id: video.id,
+                    filename: video.filename,
+                    path: video.path,
+                    size_bytes: video.file_size_bytes.unwrap_or(0),
+                    indexed_at: video.indexed_at,
+                });
             }
         }
+        let members = self.build_video_summaries(seeds);
 
         let preferred = self
             .db
