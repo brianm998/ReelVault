@@ -15,12 +15,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.reelvault.LocalAppWindow
+import com.reelvault.util.FileDragSource
 import com.reelvault.data.models.VideoMetadata
 import com.reelvault.data.models.VideoSummary
 import com.reelvault.ui.components.ComposeVideoPlayer
@@ -222,6 +228,15 @@ fun DetailViewScreen(
         if (canFrameStep()) player.stepForwardOneFrame()
     }
 
+    // Drag-out support: drag the master clip from the detail view into an
+    // external editor / file manager. Mirrors the grid card's gesture (detect
+    // motion in Compose, hand off to AWT via FileDragSource). Note: while a
+    // video is playing the render surface is a heavyweight AWT component, so
+    // the gesture fires over the scrub-preview / letterbox margins; the macOS
+    // client (layer-backed AVPlayer) can drag from anywhere on the frame.
+    val awtWindow = LocalAppWindow.current
+    val fileDragSource = remember { FileDragSource() }
+
     Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Box(
             modifier = Modifier
@@ -229,7 +244,34 @@ fun DetailViewScreen(
                 .weight(1f)
                 // Measure the player render area so effectivePath can default to
                 // the proxy whose resolution best matches it.
-                .onSizeChanged { areaSize = it },
+                .onSizeChanged { areaSize = it }
+                .pointerInput(video.openPath) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        val startPos = down.position
+                        fileDragSource.setPendingFiles(listOf(video.openPath))
+                        var handled = false
+                        while (!handled) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val change = event.changes.firstOrNull() ?: break
+                            if (!change.pressed) {
+                                fileDragSource.clearPending()
+                                handled = true
+                            } else {
+                                val delta = change.position - startPos
+                                val dist = kotlin.math.sqrt(
+                                    (delta.x * delta.x + delta.y * delta.y).toDouble()
+                                ).toFloat()
+                                if (dist >= 8f && awtWindow != null) {
+                                    val screenX = (awtWindow.x + change.position.x).toInt()
+                                    val screenY = (awtWindow.y + change.position.y).toInt()
+                                    fileDragSource.startDragIfPending(awtWindow, screenX, screenY)
+                                    handled = true
+                                }
+                            }
+                        }
+                    }
+                },
             contentAlignment = Alignment.Center
         ) {
             if (playbackStarted && player.available) {

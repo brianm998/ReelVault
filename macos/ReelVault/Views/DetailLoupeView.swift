@@ -228,6 +228,10 @@ struct DetailLoupeView: View {
             detailViewModel.updateProxyBanner(for: video, areaHeightPx: Int(playerAreaHeight))
         }
         .onDisappear { detailViewModel.clearProxyBanner() }
+        // Drag the master clip out to an external editor / file manager.
+        // Attached to the player frame only (not the control bar) so dragging
+        // the scrub bar still scrubs.
+        .onDrag { DragExport.provider(for: video.openPath) }
 
         ControlBar(
             video: video,
