@@ -748,22 +748,24 @@ fun VideoListRow(
     // grid cards share visual language. The middle row picks up the
     // colour-label tint when unselected; the bands stay neutral.
     val colorLabelEnum = com.reelvault.data.models.ColorLabel.from(video.colorLabel)
+    // Background neutrals — kept identical to the grid VideoCard so list and
+    // grid rows share the same look.
     val rowMiddleBackground = when {
-        isSelected -> Color(0xFFB0B0B0)
+        isSelected -> Color(0xFFC4C4C4)
         isInMultiSelection -> Color(0xFF818181)
         isInExpandedStack -> Color(0xFF535660)
         colorLabelEnum != com.reelvault.data.models.ColorLabel.None -> colorLabelEnum.dimmed
-        else -> Color(0xFF505050)
+        else -> Color(0xFF646464)
     }
     val bottomBandColor = when {
-        isSelected -> Color(0xFFB0B0B0)
+        isSelected -> Color(0xFFC4C4C4)
         isInMultiSelection -> Color(0xFF818181)
-        else -> Color(0xFF5C5C5C)
+        else -> Color(0xFF6A6A6A)
     }
     val topBandColor = when {
-        isSelected -> Color(0xFFB0B0B0)
+        isSelected -> Color(0xFFC4C4C4)
         isInMultiSelection -> Color(0xFF818181)
-        else -> Color(0xFF6B6B6B)
+        else -> Color(0xFF6E6E6E)
     }
     val bandDividerColor = when {
         isAnchor || isSelected || isInMultiSelection -> Color.Black.copy(alpha = 0.10f)
@@ -836,7 +838,12 @@ fun VideoListRow(
         Column(
             modifier = Modifier
                 .width(cardWidth)
-                .border(1.dp, cardBorderColor)
+                // Selection border twice as wide (matches the grid card's
+                // 2 dp selection edge); 1 dp otherwise.
+                .border(
+                    if (isSelected || isInMultiSelection) 2.dp else 1.dp,
+                    cardBorderColor
+                )
         ) {
             // Top stat band — the same four catalog-wide slots the grid card
             // shows on top (slot 0 = TL, 1 = BL, 2 = TR, 3 = BR). These mirror
@@ -853,13 +860,13 @@ fun VideoListRow(
             ) {
                 AdaptiveStatRow(
                     modifier = Modifier.fillMaxWidth(),
-                    leading = { ListRowStatCell(slotIndex = 0, key = cardTopSlots[0], video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor) },
-                    trailing = { ListRowStatCell(slotIndex = 2, key = cardTopSlots[2], video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor) },
+                    leading = { ListRowStatCell(slotIndex = 0, key = cardTopSlots[0], video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor, selected = isSelected) },
+                    trailing = { ListRowStatCell(slotIndex = 2, key = cardTopSlots[2], video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor, selected = isSelected) },
                 )
                 AdaptiveStatRow(
                     modifier = Modifier.fillMaxWidth(),
-                    leading = { ListRowStatCell(slotIndex = 1, key = cardTopSlots[1], video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor) },
-                    trailing = { ListRowStatCell(slotIndex = 3, key = cardTopSlots[3], video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor) },
+                    leading = { ListRowStatCell(slotIndex = 1, key = cardTopSlots[1], video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor, selected = isSelected) },
+                    trailing = { ListRowStatCell(slotIndex = 3, key = cardTopSlots[3], video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor, selected = isSelected) },
                 )
             }
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(bandDividerColor))
@@ -1008,12 +1015,27 @@ fun VideoListRow(
                 // toggles the stack's expansion; the pointer-input consume
                 // pattern stops the same click from also selecting the row.
                 if (video.isInGroup) {
+                    // Centre the stack badge in the top letterbox gap above the
+                    // video — and use the same 6 dp side inset as the bottom
+                    // badges — so its position matches the grid card.
+                    val badgeAspect = if (video.width > 0 && video.height > 0)
+                        video.width.toFloat() / video.height.toFloat() else 1f
+                    val badgeInner = (minOf(cardWidth, thumbnailHeight) - 16.dp).coerceAtLeast(0.dp)
+                    val badgeVideoH = if (badgeAspect >= 1f) badgeInner / badgeAspect else badgeInner
+                    val badgeTopBand = ((badgeInner - badgeVideoH) / 2)
+                        .coerceAtLeast(ReelVaultSpacing.Large)
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .height(badgeTopBand)
+                            .padding(start = 6.dp),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
                     Tooltip(
                         text = if (item.isExpandedRepresentative)
                             "Collapse this stack of ${video.groupSize} videos"
                         else
                             "Expand this stack to see all ${video.groupSize} variants",
-                        modifier = Modifier.align(Alignment.TopStart).padding(ReelVaultSpacing.Small),
                     ) {
                         Surface(
                             modifier = Modifier
@@ -1057,6 +1079,7 @@ fun VideoListRow(
                             }
                         }
                     }
+                    } // letterbox-centring Box
                 }
                 // Bottom-left location badge — shown when the video has GPS
                 // coordinates embedded. Tapping fires [onLocationClick] so
@@ -1088,7 +1111,7 @@ fun VideoListRow(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.LocationOn,
+                                imageVector = Icons.Default.NearMe,
                                 contentDescription = "Show on map",
                                 modifier = Modifier.size(11.dp),
                                 tint = Color.White
@@ -1135,7 +1158,7 @@ fun VideoListRow(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.PictureInPicture,
+                                    imageVector = Icons.Default.FilterNone,
                                     contentDescription = "${video.proxyCount} proxy/proxies",
                                     modifier = Modifier.size(10.dp),
                                     tint = Color.White
@@ -1157,7 +1180,7 @@ fun VideoListRow(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.HighQuality,
+                                        imageVector = Icons.Default.Verified,
                                         contentDescription = "Full resolution",
                                         modifier = Modifier.size(10.dp),
                                         // Subtle green marks "full resolution" (matches the grid card).
@@ -1188,6 +1211,22 @@ fun VideoListRow(
                         FullResolutionStatus.Unspecified -> {}
                     }
                 }
+
+                // 1 dp black border tight around the video frame itself
+                // (matches the grid card). Last child of the thumbnail box so
+                // it sits on top of the letterboxed image; no pointer handler,
+                // so it doesn't block hover-scrub or the play button.
+                val frameAspect = if (video.width > 0 && video.height > 0)
+                    video.width.toFloat() / video.height.toFloat() else 1f
+                val frameInner = (minOf(cardWidth, thumbnailHeight) - 16.dp).coerceAtLeast(0.dp)
+                val frameW = if (frameAspect >= 1f) frameInner else frameInner * frameAspect
+                val frameH = if (frameAspect >= 1f) frameInner / frameAspect else frameInner
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(frameW, frameH)
+                        .border(1.dp, Color.Black)
+                )
             }
             Box(
                 modifier = Modifier
@@ -1216,17 +1255,27 @@ fun VideoListRow(
                         contentAlignment = Alignment.Center
                     ) {
                         if (position <= video.rating) {
-                            Icon(
-                                imageVector = Icons.Filled.Star,
-                                contentDescription = "Rating $position",
-                                tint = Color.White,
-                                modifier = Modifier.size(11.dp)
-                            )
+                            // White star with a thin #1F1F1F outline (dark star
+                            // behind), matching the grid card's filled stars.
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Filled.Star,
+                                    contentDescription = null,
+                                    tint = Color(0xFF1F1F1F),
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Icon(
+                                    imageVector = Icons.Filled.Star,
+                                    contentDescription = "Rating $position",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(11.dp)
+                                )
+                            }
                         } else {
                             Box(
                                 modifier = Modifier
                                     .size(8.dp)
-                                    .border(2.dp, Color.Black, androidx.compose.foundation.shape.CircleShape)
+                                    .border(1.dp, Color(0xFF1F1F1F), androidx.compose.foundation.shape.CircleShape)
                                     .background(
                                         Color(0xFFB8B8B8),
                                         shape = androidx.compose.foundation.shape.CircleShape
@@ -1360,6 +1409,8 @@ private fun ListRowStatCell(
     onPick: (Int, String) -> Unit,
     alignEnd: Boolean,
     placeNameFor: ((Double, Double) -> String?)? = null,
+    /** Selected cards flip the top-band text to black on their bright band. */
+    selected: Boolean = false,
 ) {
     val stat = com.reelvault.data.models.GridStatKey.fromRaw(key)
     val value = stat.valueFor(video, placeNameFor)
@@ -1378,11 +1429,13 @@ private fun ListRowStatCell(
             text = displayed,
             style = if (slotIndex == 0) MaterialTheme.typography.labelMedium
                     else MaterialTheme.typography.labelSmall,
-            // Light text — brighter than the (now dark) top band.
-            color = if (stat == com.reelvault.data.models.GridStatKey.None)
-                Color.White.copy(alpha = 0.5f)
-            else
-                Color.White.copy(alpha = 0.92f),
+            // Selected cards: black text on the bright band. Unselected: white.
+            color = when {
+                stat == com.reelvault.data.models.GridStatKey.None ->
+                    if (selected) Color.Black.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.5f)
+                selected -> Color.Black
+                else -> Color.White.copy(alpha = 0.92f)
+            },
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = if (alignEnd) androidx.compose.ui.text.style.TextAlign.End
@@ -1506,21 +1559,22 @@ private fun VideoListHorizontalCard(
     val cardWidth: Dp = thumbnailHeight
 
     val colorLabelEnum = com.reelvault.data.models.ColorLabel.from(video.colorLabel)
+    // Background neutrals — identical to the grid VideoCard / VideoListRow.
     val topBandColor = when {
-        isSelected -> Color(0xFFB0B0B0)
+        isSelected -> Color(0xFFC4C4C4)
         isInMultiSelection -> Color(0xFF818181)
-        else -> Color(0xFF6B6B6B)
+        else -> Color(0xFF6E6E6E)
     }
     val thumbnailBackground = when {
-        isSelected -> Color(0xFFB0B0B0)
+        isSelected -> Color(0xFFC4C4C4)
         isInMultiSelection -> Color(0xFF818181)
         colorLabelEnum != com.reelvault.data.models.ColorLabel.None -> colorLabelEnum.dimmed
-        else -> Color(0xFF505050)
+        else -> Color(0xFF646464)
     }
     val bottomBandColor = when {
-        isSelected -> Color(0xFFB0B0B0)
+        isSelected -> Color(0xFFC4C4C4)
         isInMultiSelection -> Color(0xFF818181)
-        else -> Color(0xFF5C5C5C)
+        else -> Color(0xFF6A6A6A)
     }
     val bandDividerColor = when {
         isAnchor || isSelected || isInMultiSelection -> Color.Black.copy(alpha = 0.10f)
@@ -1574,7 +1628,10 @@ private fun VideoListHorizontalCard(
         Column(
             modifier = Modifier
                 .width(cardWidth)
-                .border(1.dp, cardBorderColor)
+                .border(
+                    if (isSelected || isInMultiSelection) 2.dp else 1.dp,
+                    cardBorderColor
+                )
         ) {
             // Top stat band — the same four catalog-wide slots (2×2) the grid
             // and unexpanded list cards show, so expanded stack cards match
@@ -1611,14 +1668,14 @@ private fun VideoListHorizontalCard(
                     }
                     AdaptiveStatRow(
                         modifier = Modifier.weight(1f),
-                        leading = { ListRowStatCell(slotIndex = 0, key = paddedSlots.getOrElse(0) { "" }, video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor) },
-                        trailing = { ListRowStatCell(slotIndex = 2, key = paddedSlots.getOrElse(2) { "" }, video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor) },
+                        leading = { ListRowStatCell(slotIndex = 0, key = paddedSlots.getOrElse(0) { "" }, video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor, selected = isSelected) },
+                        trailing = { ListRowStatCell(slotIndex = 2, key = paddedSlots.getOrElse(2) { "" }, video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor, selected = isSelected) },
                     )
                 }
                 AdaptiveStatRow(
                     modifier = Modifier.fillMaxWidth(),
-                    leading = { ListRowStatCell(slotIndex = 1, key = paddedSlots.getOrElse(1) { "" }, video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor) },
-                    trailing = { ListRowStatCell(slotIndex = 3, key = paddedSlots.getOrElse(3) { "" }, video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor) },
+                    leading = { ListRowStatCell(slotIndex = 1, key = paddedSlots.getOrElse(1) { "" }, video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor, selected = isSelected) },
+                    trailing = { ListRowStatCell(slotIndex = 3, key = paddedSlots.getOrElse(3) { "" }, video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor, selected = isSelected) },
                 )
             }
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(bandDividerColor))
@@ -1654,6 +1711,21 @@ private fun VideoListHorizontalCard(
                         tint = MaterialTheme.colorScheme.outline
                     )
                 }
+                // 1 dp black border tight around the video frame itself
+                // (matches the grid card). The thumbnail fills the box here
+                // (no photoPadding inset), so the frame tracks the letterboxed
+                // bounds within the full box.
+                val frameAspect = if (video.width > 0 && video.height > 0)
+                    video.width.toFloat() / video.height.toFloat() else 1f
+                val frameInner = minOf(cardWidth, thumbnailHeight)
+                val frameW = if (frameAspect >= 1f) frameInner else frameInner * frameAspect
+                val frameH = if (frameAspect >= 1f) frameInner / frameAspect else frameInner
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(frameW, frameH)
+                        .border(1.dp, Color.Black)
+                )
             }
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(bandDividerColor))
             // Rating band
@@ -1676,17 +1748,25 @@ private fun VideoListHorizontalCard(
                         contentAlignment = Alignment.Center
                     ) {
                         if (position <= video.rating) {
-                            Icon(
-                                imageVector = Icons.Filled.Star,
-                                contentDescription = "Rating $position",
-                                tint = Color.White,
-                                modifier = Modifier.size(9.dp)
-                            )
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Filled.Star,
+                                    contentDescription = null,
+                                    tint = Color(0xFF1F1F1F),
+                                    modifier = Modifier.size(11.dp)
+                                )
+                                Icon(
+                                    imageVector = Icons.Filled.Star,
+                                    contentDescription = "Rating $position",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(9.dp)
+                                )
+                            }
                         } else {
                             Box(
                                 Modifier
                                     .size(8.dp)
-                                    .border(2.dp, Color.Black, androidx.compose.foundation.shape.CircleShape)
+                                    .border(1.dp, Color(0xFF1F1F1F), androidx.compose.foundation.shape.CircleShape)
                                     .background(
                                         Color(0xFFB8B8B8),
                                         shape = androidx.compose.foundation.shape.CircleShape

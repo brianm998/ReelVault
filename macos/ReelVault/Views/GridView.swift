@@ -776,6 +776,24 @@ struct VideoCardView: View {
                         .allowsHitTesting(false)
                     }
                 }
+                // Always-on 1 pt black frame tight around the video itself.
+                .overlay {
+                    GeometryReader { geo in
+                        let aspect: CGFloat = (video.width > 0 && video.height > 0)
+                            ? CGFloat(video.width) / CGFloat(video.height)
+                            : 1
+                        let photoSize = min(geo.size.width, geo.size.height)
+                        let available = max(0, photoSize - 2 * photoPadding)
+                        let videoSize: CGSize = aspect >= 1
+                            ? CGSize(width: available, height: available / aspect)
+                            : CGSize(width: available * aspect, height: available)
+                        Rectangle()
+                            .strokeBorder(Color.black, lineWidth: 1)
+                            .frame(width: videoSize.width, height: videoSize.height)
+                            .position(x: geo.size.width / 2, y: geo.size.height / 2)
+                    }
+                    .allowsHitTesting(false)
+                }
                 .overlay {
                     if !video.playableNatively && !video.hasProxies && proxyCreationState == nil {
                         GeometryReader { geo in
@@ -897,6 +915,13 @@ struct VideoCardView: View {
         .overlay(alignment: .bottom)   { edgeLine(selectionEdgeBottom, horizontal: true) }
         .overlay(alignment: .leading)  { edgeLine(selectionEdgeLeft, horizontal: false) }
         .overlay(alignment: .trailing) { edgeLine(selectionEdgeRight, horizontal: false) }
+        // Selection highlight (2 pt, inset, on top) — drawn after the grid
+        // lines so a selected card's border is never overwritten by a
+        // neighbour's edge.
+        .overlay(alignment: .top)      { selectionEdgeLine(selectionEdgeTop, edge: .top) }
+        .overlay(alignment: .bottom)   { selectionEdgeLine(selectionEdgeBottom, edge: .bottom) }
+        .overlay(alignment: .leading)  { selectionEdgeLine(selectionEdgeLeft, edge: .leading) }
+        .overlay(alignment: .trailing) { selectionEdgeLine(selectionEdgeRight, edge: .trailing) }
         // Card-level motion tracking. Fires for moves anywhere on the
         // card — over the thumbnail (where we map x → scrub frame) and
         // over the info area below (which only contributes to the
@@ -1020,12 +1045,12 @@ struct VideoCardView: View {
     /// ~40% darker than the original Lightroom-style light greys.
     private var topBandColor: Color {
         if isPrimarySelected {
-            return Color(white: 0.69)
+            return Color(white: 0.77)
         }
         if isInMultiSelection {
             return Color(white: 0.50)
         }
-        return Color(white: 0.42)
+        return Color(white: 0.43)
     }
 
     /// Photo area. Takes the colour-label tint when unselected; goes to
@@ -1033,7 +1058,7 @@ struct VideoCardView: View {
     private var photoAreaBackground: Color {
         let label = ColorLabel(video.colorLabel)
         if isPrimarySelected {
-            return Color(white: 0.69)
+            return Color(white: 0.77)
         }
         if isInMultiSelection {
             return Color(white: 0.50)
@@ -1042,19 +1067,19 @@ struct VideoCardView: View {
             return Color(red: 0.31, green: 0.33, blue: 0.37)
         }
         if label != .none { return label.dimmed }
-        return Color(white: 0.31)
+        return Color(white: 0.39)
     }
 
     /// Bottom rating band. Slightly darker than the top band when
     /// unselected; same bright neutral as the rest when selected.
     private var bottomBandColor: Color {
         if isPrimarySelected {
-            return Color(white: 0.69)
+            return Color(white: 0.77)
         }
         if isInMultiSelection {
             return Color(white: 0.50)
         }
-        return Color(white: 0.36)
+        return Color(white: 0.42)
     }
 
     /// Thin 1 pt separator between a band and the photo area. Provides
@@ -1085,14 +1110,31 @@ struct VideoCardView: View {
     /// side is on the group's outer boundary; otherwise the faint grid line.
     @ViewBuilder
     private func edgeLine(_ outer: Bool, horizontal: Bool) -> some View {
-        let color = (isInMultiSelection && outer)
-            ? Color.white.opacity(0.6)
-            : Color.black.opacity(0.4)
+        // Faint grid line every card draws so the zero-gutter grid stays
+        // legible. The selection highlight is a separate, wider overlay drawn
+        // on top — see `selectionEdgeLine`.
         Rectangle()
-            .fill(color)
+            .fill(Color.black.opacity(0.4))
             .frame(height: horizontal ? 1 : nil)
             .frame(width: horizontal ? nil : 1)
             .allowsHitTesting(false)
+    }
+
+    /// Selection highlight for one outer edge: twice as wide as the grid line
+    /// (2 pt) and inset 1 pt so a neighbouring card's grid line in the
+    /// zero-gutter grid can't overdraw it. Drawn in overlays added *after* the
+    /// grid-line overlays, so it sits on top of everything else on the card.
+    @ViewBuilder
+    private func selectionEdgeLine(_ outer: Bool, edge: Edge) -> some View {
+        if (isPrimarySelected || isInMultiSelection) && outer {
+            let horizontal = (edge == .top || edge == .bottom)
+            Rectangle()
+                .fill(Color.white.opacity(0.6))
+                .frame(height: horizontal ? 2 : nil)
+                .frame(width: horizontal ? nil : 2)
+                .padding(Edge.Set(edge), 1)
+                .allowsHitTesting(false)
+        }
     }
 
     // Backwards-compatibility shim — kept so any legacy reference still
@@ -1161,8 +1203,12 @@ struct VideoCardView: View {
         }()
         Text(displayed)
             .font(.system(size: 10, weight: slotIndex == 0 ? .semibold : .regular))
-            // Light text — brighter than the (now dark) top band.
-            .foregroundColor(stat == .none ? Color.white.opacity(0.5) : Color.white.opacity(0.92))
+            // Selected cards: black text on the bright band. Unselected: white.
+            .foregroundColor(
+                isPrimarySelected
+                    ? (stat == .none ? Color.black.opacity(0.5) : Color.black)
+                    : (stat == .none ? Color.white.opacity(0.5) : Color.white.opacity(0.92))
+            )
             .lineLimit(1)
             .truncationMode(.middle)
             .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
@@ -1248,18 +1294,25 @@ struct VideoCardView: View {
             ForEach(1...5, id: \.self) { position in
                 ZStack {
                     if position <= video.rating {
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 11))
-                            // Light star — brighter than the (now dark) band.
-                            .foregroundColor(.white)
+                        // White star with a thin #1F1F1F outline (a slightly
+                        // larger dark star behind it) so the filled stars carry
+                        // the same dark rim as the empty dots.
+                        ZStack {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 13))
+                                .foregroundColor(Color(white: 0.122))
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 11))
+                                .foregroundColor(.white)
+                        }
                     } else {
-                        // Light placeholder dot with a 2 pt black ring so the
+                        // Light placeholder dot with a 1 pt #1F1F1F ring so the
                         // empty rating slots stay legible even on a bright
                         // selected card (where a plain light dot would wash out).
                         Circle()
                             .fill(Color(white: 0.72))
                             .frame(width: 8, height: 8)
-                            .overlay(Circle().stroke(Color.black, lineWidth: 2))
+                            .overlay(Circle().stroke(Color(white: 0.122), lineWidth: 1))
                     }
                 }
                 .frame(width: 20, height: 20)
@@ -1438,7 +1491,10 @@ struct VideoCardView: View {
                 // bottom cancels the surrounding `photoPadding` inset so the
                 // badge isn't left floating high above the bottom band (matches
                 // the Compose card's BottomStart placement).
-                .padding(EdgeInsets(top: 6, leading: 6, bottom: 6 - photoPadding, trailing: 6))
+                // Same 6 pt inset on the side and the bottom (was cancelling
+                // photoPadding to sit at the photo-area edge) so the bottom
+                // badges line up against the same margin as the stack badge.
+                .padding(6)
             }
 
             // Bottom-right icon row — Lightroom-style. The old proxy / resolution /

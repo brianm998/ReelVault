@@ -593,7 +593,11 @@ struct VideoListRowView: View {
                 .frame(width: cardWidth)
                 .overlay(
                     Rectangle()
-                        .stroke(cardBorderColor, lineWidth: 1)
+                        // Selection border twice as wide (matches the grid card).
+                        .stroke(
+                            cardBorderColor,
+                            lineWidth: (isPrimarySelected || isInMultiSelection) ? 2 : 1
+                        )
                         .allowsHitTesting(false)
                 )
             infoColumn
@@ -841,7 +845,13 @@ struct VideoListRowView: View {
         let stat = GridStatKey(rawValue: key) ?? .none
         Text(stat == .none ? "—" : stat.value(for: video, placeName: placeNameResolver))
             .font(.system(size: 10, weight: slotIndex == 0 ? .semibold : .regular))
-            .foregroundColor(stat == .none ? Color.secondary : Color.primary)
+            // Selected cards: black text on the bright band. Unselected: the
+            // adaptive primary/secondary used on the dark band.
+            .foregroundColor(
+                isPrimarySelected
+                    ? (stat == .none ? Color.black.opacity(0.5) : Color.black)
+                    : (stat == .none ? Color.secondary : Color.primary)
+            )
             .lineLimit(1)
             .truncationMode(.middle)
             .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
@@ -871,14 +881,19 @@ struct VideoListRowView: View {
             ForEach(1...5, id: \.self) { position in
                 ZStack {
                     if position <= video.rating {
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 11))
-                            .foregroundColor(.white)
+                        ZStack {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 13))
+                                .foregroundColor(Color(white: 0.122))
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 11))
+                                .foregroundColor(.white)
+                        }
                     } else {
                         Circle()
                             .fill(Color(white: 0.72))
                             .frame(width: 8, height: 8)
-                            .overlay(Circle().stroke(Color.black, lineWidth: 2))
+                            .overlay(Circle().stroke(Color(white: 0.122), lineWidth: 1))
                     }
                 }
                 .frame(width: 20, height: 20)
@@ -908,12 +923,12 @@ struct VideoListRowView: View {
     /// when the row is selected.
     private var topBandColor: Color {
         if isPrimarySelected {
-            return Color(white: 0.69)
+            return Color(white: 0.77)
         }
         if isInMultiSelection {
             return Color(white: 0.50)
         }
-        return Color(white: 0.42)
+        return Color(white: 0.43)
     }
 
     /// Middle row background: takes the colour-label tint when unselected,
@@ -921,7 +936,7 @@ struct VideoListRowView: View {
     private var rowMiddleBackground: Color {
         let label = ColorLabel(video.colorLabel)
         if isPrimarySelected {
-            return Color(white: 0.69)
+            return Color(white: 0.77)
         }
         if isInMultiSelection {
             return Color(white: 0.50)
@@ -930,17 +945,17 @@ struct VideoListRowView: View {
             return Color(red: 0.31, green: 0.33, blue: 0.37)
         }
         if label != .none { return label.dimmed }
-        return Color(white: 0.31)
+        return Color(white: 0.39)
     }
 
     private var bottomBandColor: Color {
         if isPrimarySelected {
-            return Color(white: 0.69)
+            return Color(white: 0.77)
         }
         if isInMultiSelection {
             return Color(white: 0.50)
         }
-        return Color(white: 0.36)
+        return Color(white: 0.42)
     }
 
     private var bandDividerColor: Color {
@@ -1002,6 +1017,23 @@ struct VideoListRowView: View {
                     .help("Play this video inline")
                 }
             }
+            // Always-on 1 pt black frame tight around the video itself
+            // (matches the grid card).
+            .overlay {
+                GeometryReader { geo in
+                    let aspect: CGFloat = (video.width > 0 && video.height > 0)
+                        ? CGFloat(video.width) / CGFloat(video.height) : 1
+                    let available = max(0, min(geo.size.width, geo.size.height) - 16)
+                    let videoSize: CGSize = aspect >= 1
+                        ? CGSize(width: available, height: available / aspect)
+                        : CGSize(width: available * aspect, height: available)
+                    Rectangle()
+                        .strokeBorder(Color.black, lineWidth: 1)
+                        .frame(width: videoSize.width, height: videoSize.height)
+                        .position(x: geo.size.width / 2, y: geo.size.height / 2)
+                }
+                .allowsHitTesting(false)
+            }
             // Stop button — top-trailing corner while playing.
             .overlay(alignment: .topTrailing) {
                 if isPlaying {
@@ -1037,25 +1069,35 @@ struct VideoListRowView: View {
                 }
             }
 
-            // Stack badge
+            // Stack badge — centred in the top letterbox gap above the video
+            // (and inset 6 pt from the leading edge) so its position matches
+            // the grid card instead of hugging the very corner.
             if video.isInGroup {
-                HStack(spacing: 3) {
-                    Image(systemName: "square.stack.3d.up.fill")
-                        .font(.system(size: 9))
-                    Text(stackPositionText)
-                        .font(.system(size: 9, weight: .medium))
+                GeometryReader { geo in
+                    let available = max(0, min(geo.size.width, geo.size.height) - 16)
+                    let aspect: CGFloat = (video.width > 0 && video.height > 0)
+                        ? CGFloat(video.width) / CGFloat(video.height) : 1
+                    let videoH = aspect >= 1 ? available / aspect : available
+                    let topBand = max(8 + (available - videoH) / 2, 20)
+                    HStack(spacing: 3) {
+                        Image(systemName: "square.stack.3d.up.fill")
+                            .font(.system(size: 9))
+                        Text(stackPositionText)
+                            .font(.system(size: 9, weight: .medium))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+                    .background(stackBadgeColor)
+                    .cornerRadius(3)
+                    .contentShape(Rectangle())
+                    .onTapGesture { onStackBadgeClick() }
+                    .help(item.isExpandedRepresentative
+                          ? "Collapse this stack of \(video.groupSize) videos back to one row."
+                          : "Expand this stack to see all \(video.groupSize) variants inline.")
+                    .padding(.leading, 6)
+                    .frame(width: geo.size.width, height: topBand, alignment: .leading)
                 }
-                .foregroundColor(.white)
-                .padding(.horizontal, 4)
-                .padding(.vertical, 2)
-                .background(stackBadgeColor)
-                .cornerRadius(3)
-                .padding(4)
-                .contentShape(Rectangle())
-                .onTapGesture { onStackBadgeClick() }
-                .help(item.isExpandedRepresentative
-                      ? "Collapse this stack of \(video.groupSize) videos back to one row."
-                      : "Expand this stack to see all \(video.groupSize) variants inline.")
             }
 
             // Bottom-left location badge — shown when the video has GPS
@@ -1205,7 +1247,11 @@ struct VideoListHorizontalCardView: View {
                 .frame(width: cardWidth)
                 .overlay(
                     Rectangle()
-                        .stroke(cardBorderColor, lineWidth: 1)
+                        // Selection border twice as wide (matches the grid card).
+                        .stroke(
+                            cardBorderColor,
+                            lineWidth: (isPrimarySelected || isInMultiSelection) ? 2 : 1
+                        )
                         .allowsHitTesting(false)
                 )
             // Stack-member names are usually long enough that the truncated
@@ -1297,7 +1343,12 @@ struct VideoListHorizontalCardView: View {
         let displayed = value.isEmpty ? "—" : value
         Text(displayed)
             .font(.system(size: 10, weight: .regular))
-            .foregroundColor(stat == .none ? Color.white.opacity(0.5) : Color.white.opacity(0.92))
+            // Selected cards: black text on the bright band. Unselected: white.
+            .foregroundColor(
+                isPrimarySelected
+                    ? (stat == .none ? Color.black.opacity(0.5) : Color.black)
+                    : (stat == .none ? Color.white.opacity(0.5) : Color.white.opacity(0.92))
+            )
             .lineLimit(1)
             .truncationMode(.middle)
             .frame(maxWidth: .infinity, alignment: alignTrailing ? .trailing : .leading)
@@ -1365,6 +1416,23 @@ struct VideoListHorizontalCardView: View {
                 }
             }
             .frame(width: cardWidth, height: thumbnailHeight)
+            // Always-on 1 pt black frame tight around the video itself
+            // (matches the grid card).
+            .overlay {
+                GeometryReader { geo in
+                    let aspect: CGFloat = (video.width > 0 && video.height > 0)
+                        ? CGFloat(video.width) / CGFloat(video.height) : 1
+                    let available = max(0, min(geo.size.width, geo.size.height) - 16)
+                    let videoSize: CGSize = aspect >= 1
+                        ? CGSize(width: available, height: available / aspect)
+                        : CGSize(width: available * aspect, height: available)
+                    Rectangle()
+                        .strokeBorder(Color.black, lineWidth: 1)
+                        .frame(width: videoSize.width, height: videoSize.height)
+                        .position(x: geo.size.width / 2, y: geo.size.height / 2)
+                }
+                .allowsHitTesting(false)
+            }
 
             if video.hasLocation, let handler = onLocationClick {
                 VStack {
@@ -1405,14 +1473,19 @@ struct VideoListHorizontalCardView: View {
             ForEach(1...5, id: \.self) { position in
                 ZStack {
                     if position <= video.rating {
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 9))
-                            .foregroundColor(.white)
+                        ZStack {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(white: 0.122))
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 9))
+                                .foregroundColor(.white)
+                        }
                     } else {
                         Circle()
                             .fill(Color(white: 0.72))
                             .frame(width: 8, height: 8)
-                            .overlay(Circle().stroke(Color.black, lineWidth: 2))
+                            .overlay(Circle().stroke(Color(white: 0.122), lineWidth: 1))
                     }
                 }
                 .frame(width: 16, height: 16)
@@ -1435,21 +1508,21 @@ struct VideoListHorizontalCardView: View {
     // MARK: Band colors (mirrors VideoListRowView)
 
     private var topBandColor: Color {
-        if isPrimarySelected { return Color(white: 0.69) }
+        if isPrimarySelected { return Color(white: 0.77) }
         if isInMultiSelection { return Color(white: 0.50) }
-        return Color(white: 0.42)
+        return Color(white: 0.43)
     }
     private var thumbnailBackground: Color {
         let label = ColorLabel(video.colorLabel)
-        if isPrimarySelected { return Color(white: 0.69) }
+        if isPrimarySelected { return Color(white: 0.77) }
         if isInMultiSelection { return Color(white: 0.50) }
         if label != .none { return label.dimmed }
-        return Color(white: 0.31)
+        return Color(white: 0.39)
     }
     private var bottomBandColor: Color {
-        if isPrimarySelected { return Color(white: 0.69) }
+        if isPrimarySelected { return Color(white: 0.77) }
         if isInMultiSelection { return Color(white: 0.50) }
-        return Color(white: 0.36)
+        return Color(white: 0.42)
     }
     private var bandDividerColor: Color {
         if isAnchor || isPrimarySelected || isInMultiSelection { return Color.black.opacity(0.10) }

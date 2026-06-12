@@ -231,22 +231,26 @@ fun VideoCard(
     // brightens all three regions to the same neutral and the label is
     // preserved as a thin frame wrapping the thumbnail.
     val colorLabelEnum = com.reelvault.data.models.ColorLabel.from(video.colorLabel)
+    // Background neutrals matched to the user's target screenshot. The
+    // three default bands keep a subtle top→photo→bottom tone but sit much
+    // closer together than before (the photo area is no longer a dark frame
+    // around the thumbnail), and the selected state brightens further.
     val topBandColor = when {
-        isSelected -> Color(0xFFB0B0B0)
+        isSelected -> Color(0xFFC4C4C4)
         isInMultiSelection -> Color(0xFF818181)
-        else -> Color(0xFF6B6B6B)
+        else -> Color(0xFF6E6E6E)
     }
     val photoAreaBackground = when {
-        isSelected -> Color(0xFFB0B0B0)
+        isSelected -> Color(0xFFC4C4C4)
         isInMultiSelection -> Color(0xFF818181)
         isInExpandedStack -> Color(0xFF535660)
         colorLabelEnum != com.reelvault.data.models.ColorLabel.None -> colorLabelEnum.dimmed
-        else -> Color(0xFF505050)
+        else -> Color(0xFF646464)
     }
     val bottomBandColor = when {
-        isSelected -> Color(0xFFB0B0B0)
+        isSelected -> Color(0xFFC4C4C4)
         isInMultiSelection -> Color(0xFF818181)
-        else -> Color(0xFF5C5C5C)
+        else -> Color(0xFF6A6A6A)
     }
     val bandDividerColor = when {
         isAnchor || isSelected || isInMultiSelection -> Color.Black.copy(alpha = 0.10f)
@@ -296,12 +300,31 @@ fun VideoCard(
                 val o = sw / 2f
                 val w = size.width
                 val h = size.height
-                fun edge(outer: Boolean) =
-                    if (isInMultiSelection && outer) selectionBorderColor else gridLineColor
-                drawLine(edge(selectionEdgeTop), Offset(0f, o), Offset(w, o), sw)
-                drawLine(edge(selectionEdgeBottom), Offset(0f, h - o), Offset(w, h - o), sw)
-                drawLine(edge(selectionEdgeLeft), Offset(o, 0f), Offset(o, h), sw)
-                drawLine(edge(selectionEdgeRight), Offset(w - o, 0f), Offset(w - o, h), sw)
+                // Faint 1 dp grid line on every side so the zero-gutter grid
+                // stays legible.
+                drawLine(gridLineColor, Offset(0f, o), Offset(w, o), sw)
+                drawLine(gridLineColor, Offset(0f, h - o), Offset(w, h - o), sw)
+                drawLine(gridLineColor, Offset(o, 0f), Offset(o, h), sw)
+                drawLine(gridLineColor, Offset(w - o, 0f), Offset(w - o, h), sw)
+                // Selection border: twice as wide (2 dp) and drawn LAST so it
+                // sits on top of everything, and inset by 1 dp so a
+                // neighbouring card's grid line in the zero-gutter grid can't
+                // overdraw it (the old 1 dp edge was getting eaten by the
+                // neighbour painted after it). Only the selection block's outer
+                // edges are drawn so a run of selected cards still reads as one
+                // group.
+                if (isSelected || isInMultiSelection) {
+                    val ssw = 2.dp.toPx()
+                    val so = sw + ssw / 2f
+                    if (selectionEdgeTop)
+                        drawLine(selectionBorderColor, Offset(0f, so), Offset(w, so), ssw)
+                    if (selectionEdgeBottom)
+                        drawLine(selectionBorderColor, Offset(0f, h - so), Offset(w, h - so), ssw)
+                    if (selectionEdgeLeft)
+                        drawLine(selectionBorderColor, Offset(so, 0f), Offset(so, h), ssw)
+                    if (selectionEdgeRight)
+                        drawLine(selectionBorderColor, Offset(w - so, 0f), Offset(w - so, h), ssw)
+                }
             }
             // Drag-out support: detect drag motion in Compose then hand off
             // to AWT via FileDragSource.startDragIfPending().
@@ -375,13 +398,13 @@ fun VideoCard(
         ) {
             AdaptiveStatRow(
                 modifier = Modifier.fillMaxWidth(),
-                leading = { StatCell(slotIndex = 0, key = paddedSlots[0], video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor) },
-                trailing = { StatCell(slotIndex = 2, key = paddedSlots[2], video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor) },
+                leading = { StatCell(slotIndex = 0, key = paddedSlots[0], video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor, selected = isSelected) },
+                trailing = { StatCell(slotIndex = 2, key = paddedSlots[2], video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor, selected = isSelected) },
             )
             AdaptiveStatRow(
                 modifier = Modifier.fillMaxWidth(),
-                leading = { StatCell(slotIndex = 1, key = paddedSlots[1], video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor) },
-                trailing = { StatCell(slotIndex = 3, key = paddedSlots[3], video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor) },
+                leading = { StatCell(slotIndex = 1, key = paddedSlots[1], video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor, selected = isSelected) },
+                trailing = { StatCell(slotIndex = 3, key = paddedSlots[3], video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor, selected = isSelected) },
             )
         }
 
@@ -416,6 +439,17 @@ fun VideoCard(
                     .aspectRatio(1f)
                     .background(photoAreaBackground)
             ) {
+                // The video's letterboxed bounds inside the (square,
+                // photoPadding-inset) thumbnail area. Used both by the
+                // colour-label frame and by the always-on 1 dp black frame
+                // that outlines the video itself.
+                val videoAspect = if (video.width > 0 && video.height > 0)
+                    video.width.toFloat() / video.height.toFloat()
+                else 1f
+                val photoSize = minOf(maxWidth, maxHeight)
+                val videoAvailable = (photoSize - photoPadding * 2).coerceAtLeast(0.dp)
+                val videoFrameW = if (videoAspect >= 1f) videoAvailable else videoAvailable * videoAspect
+                val videoFrameH = if (videoAspect >= 1f) videoAvailable / videoAspect else videoAvailable
                 // Colour-label frame, only when selected + labelled. The
                 // frame wraps the *video* itself — sized to the video's
                 // aspect ratio, with its inner edge flush against the
@@ -423,18 +457,11 @@ fun VideoCard(
                 // photo area, the frame is a 16:9 rectangle, NOT a
                 // square inset.
                 if (thumbnailFrameColor != null) {
-                    val aspect = if (video.width > 0 && video.height > 0)
-                        video.width.toFloat() / video.height.toFloat()
-                    else 1f
-                    val photoSize = minOf(maxWidth, maxHeight)
-                    val available = (photoSize - photoPadding * 2).coerceAtLeast(0.dp)
-                    val videoW = if (aspect >= 1f) available else available * aspect
-                    val videoH = if (aspect >= 1f) available / aspect else available
                     val frameLine = 3.dp
                     Box(
                         modifier = Modifier
                             .align(Alignment.Center)
-                            .size(videoW + frameLine * 2, videoH + frameLine * 2)
+                            .size(videoFrameW + frameLine * 2, videoFrameH + frameLine * 2)
                             .border(frameLine, thumbnailFrameColor)
                     )
                 }
@@ -648,7 +675,10 @@ fun VideoCard(
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .height(badgeTopBand)
-                            .padding(start = ReelVaultSpacing.Small),
+                            // Same 6 dp side inset the bottom-corner badges use,
+                            // so the stack indicator and the bottom badges line
+                            // up against the same margin.
+                            .padding(start = 6.dp),
                         contentAlignment = Alignment.CenterStart,
                     ) {
                     com.reelvault.ui.components.Tooltip(text = stackTip) {
@@ -894,6 +924,17 @@ fun VideoCard(
                         }
                     }
                 }
+
+                // 1 dp black border drawn tight around the video frame itself.
+                // Last child of the photo-area box so it sits on top of the
+                // letterboxed thumbnail; it carries no pointer handler so it
+                // never blocks scrub-hover or the play button underneath.
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(videoFrameW, videoFrameH)
+                        .border(1.dp, Color.Black)
+                )
             } // outer photo-area Box (background + corner badge)
         } // end of square-thumbnail run { }
 
@@ -941,21 +982,32 @@ fun VideoCard(
                     contentAlignment = Alignment.Center
                 ) {
                     if (filled) {
-                        // Light stars — brighter than the (now dark) band.
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = "$position star",
-                            modifier = Modifier.size(14.dp),
-                            tint = Color.White
-                        )
+                        // Light star with a thin #1F1F1F outline (a slightly
+                        // larger dark star drawn behind the white one) so the
+                        // filled stars carry the same dark rim as the empty
+                        // dots and stay legible on a bright selected card.
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = Color(0xFF1F1F1F)
+                            )
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = "$position star",
+                                modifier = Modifier.size(14.dp),
+                                tint = Color.White
+                            )
+                        }
                     } else {
-                        // Light grey dots with a 2 px black ring so the empty
+                        // Light grey dots with a 1 px #1F1F1F ring so the empty
                         // rating slots stay legible even on a bright selected
                         // card (where a plain light dot would wash out).
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
-                                .border(2.dp, Color.Black, RoundedCornerShape(50))
+                                .border(1.dp, Color(0xFF1F1F1F), RoundedCornerShape(50))
                                 .background(Color(0xFFB8B8B8), RoundedCornerShape(50))
                         )
                     }
@@ -1022,6 +1074,9 @@ private fun StatCell(
     onPick: (Int, String) -> Unit,
     alignEnd: Boolean,
     placeNameFor: ((Double, Double) -> String?)? = null,
+    /** Selected cards have a bright background, so their top-band text flips
+     *  to black; unselected cards keep white text. */
+    selected: Boolean = false,
 ) {
     val stat = com.reelvault.data.models.GridStatKey.fromRaw(key)
     val value = stat.valueFor(video, placeNameFor)
@@ -1057,11 +1112,14 @@ private fun StatCell(
                 } else {
                     MaterialTheme.typography.labelSmall
                 },
-                // Light text — brighter than the (now dark) top band.
-                color = if (stat == com.reelvault.data.models.GridStatKey.None)
-                    Color.White.copy(alpha = 0.5f)
-                else
-                    Color.White.copy(alpha = 0.92f),
+                // Selected cards: black text on the bright band. Unselected:
+                // white text on the dark band. Unset slots stay at half alpha.
+                color = when {
+                    stat == com.reelvault.data.models.GridStatKey.None ->
+                        if (selected) Color.Black.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.5f)
+                    selected -> Color.Black
+                    else -> Color.White.copy(alpha = 0.92f)
+                },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = if (alignEnd) {
