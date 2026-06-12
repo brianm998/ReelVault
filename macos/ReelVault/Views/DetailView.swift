@@ -4,6 +4,32 @@
 import SwiftUI
 import AppKit
 
+/// A details-panel section with a clickable title row that collapses/expands
+/// its content. Collapsed shows only the title (+ chevron); expanded shows the
+/// whole field.
+private struct CollapsibleSection<Content: View>: View {
+    let title: String
+    @Binding var expanded: Bool
+    @ViewBuilder var content: () -> Content
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button { expanded.toggle() } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: expanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 10))
+                    Text(title)
+                        .font(.caption)
+                    Spacer()
+                }
+                .foregroundColor(.secondary)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if expanded { content() }
+        }
+    }
+}
+
 struct DetailView: View {
     @ObservedObject var viewModel: DetailViewModel
     @ObservedObject var gridViewModel: GridViewModel
@@ -22,6 +48,14 @@ struct DetailView: View {
     /// Switches to map mode focused on (lat, lon), highlighting this video and
     /// any others captured at the same spot.
     var onShowOnMap: (_ latitude: Double, _ longitude: Double) -> Void = { _, _ in }
+
+    // Per-section collapse state for the panel (persists for the session).
+    @State private var detailsExpanded = true
+    @State private var exifExpanded = true
+    @State private var notesExpanded = true
+    @State private var keywordsExpanded = true
+    @State private var stackExpanded = true
+    @State private var proxiesExpanded = true
 
     var body: some View {
         VStack(spacing: 0) {
@@ -106,6 +140,7 @@ struct DetailView: View {
             Divider()
 
             // Technical metadata
+            CollapsibleSection(title: "Video Details", expanded: $detailsExpanded) {
             VStack(alignment: .leading, spacing: 12) {
                 MetadataItemView(label: "Resolution", value: metadata.resolution)
                 MetadataItemView(label: "Duration", value: metadata.durationFormatted)
@@ -135,6 +170,7 @@ struct DetailView: View {
                     EmptyView()  // no row when unknown
                 }
             }
+            }
 
             // EXIF section
             let hasGps = metadata.gpsLat != 0 || metadata.gpsLon != 0
@@ -152,9 +188,7 @@ struct DetailView: View {
                 || hasShotEXIF
             if hasExif {
                 Divider()
-                Text("EXIF")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                CollapsibleSection(title: "EXIF", expanded: $exifExpanded) {
                 VStack(alignment: .leading, spacing: 12) {
                     if !metadata.cameraModel.isEmpty {
                         CameraMetadataRow(
@@ -216,6 +250,7 @@ struct DetailView: View {
                             )
                         }
                     }
+                }
                 }
             }
 
@@ -303,10 +338,7 @@ struct DetailView: View {
             Divider()
 
             // Notes
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Notes")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+            CollapsibleSection(title: "Notes", expanded: $notesExpanded) {
                 TextEditor(text: Binding(
                     get: { viewModel.notes },
                     set: { viewModel.updateNotes($0) }
@@ -321,6 +353,7 @@ struct DetailView: View {
             Divider()
 
             // Keywords
+            CollapsibleSection(title: "Keywords", expanded: $keywordsExpanded) {
             KeywordsSection(
                 primaryVideoTags: metadata.tags,
                 allTags: gridViewModel.tags,
@@ -346,6 +379,7 @@ struct DetailView: View {
                 },
                 onFilterByTag: { gridViewModel.setTagFilter($0) }
             )
+            }
 
             Divider()
 
@@ -372,9 +406,17 @@ struct DetailView: View {
             if viewModel.groupMembers.count > 1 {
                 Divider()
                 HStack {
-                    Text("Stack (\(viewModel.groupMembers.count))")
-                        .font(.caption)
+                    Button { stackExpanded.toggle() } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: stackExpanded ? "chevron.down" : "chevron.right")
+                                .font(.system(size: 10))
+                            Text("Stack (\(viewModel.groupMembers.count))")
+                                .font(.caption)
+                        }
                         .foregroundColor(.secondary)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                     Spacer()
                     Button("Ungroup this") {
                         viewModel.ungroupCurrent { groupId in
@@ -391,6 +433,7 @@ struct DetailView: View {
                     .controlSize(.small)
                     .help("Remove this video from the stack. The other members stay grouped.")
                 }
+                if stackExpanded {
                 Text("Double-click in the grid opens the preferred variant. Click ⭐ to change preferred.")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
@@ -437,6 +480,7 @@ struct DetailView: View {
                 .background(Color(.windowBackgroundColor).opacity(0.5))
                 .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color(.separatorColor)))
                 .cornerRadius(4)
+                }
             }
 
             // Proxies section — shown whenever the catalog has any
@@ -453,12 +497,19 @@ struct DetailView: View {
             }()
             if !viewModel.proxies.isEmpty || activeProxyCreation != nil {
                 Divider()
-                HStack {
-                    Text(viewModel.proxies.isEmpty ? "Proxies" : "Proxies (\(viewModel.proxies.count))")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Spacer()
+                Button { proxiesExpanded.toggle() } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: proxiesExpanded ? "chevron.down" : "chevron.right")
+                            .font(.system(size: 10))
+                        Text(viewModel.proxies.isEmpty ? "Proxies" : "Proxies (\(viewModel.proxies.count))")
+                            .font(.caption)
+                        Spacer()
+                    }
+                    .foregroundColor(.secondary)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                if proxiesExpanded {
                 if let state = activeProxyCreation {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
@@ -601,6 +652,7 @@ struct DetailView: View {
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .help("Manually link the second selected video to this master as a proxy. Use this when auto-detection missed a valid proxy.")
+                }
                 }
             }
 
