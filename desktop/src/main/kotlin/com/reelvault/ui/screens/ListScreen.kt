@@ -607,7 +607,39 @@ fun ListScreen(
                                                 },
                                                 onSetRating = { rating ->
                                                     viewModel.setRating(rating, listOf(video.id))
-                                                }
+                                                },
+                                                onLocationClick = onLocationClick,
+                                            )
+                                        }
+                                    }
+
+                                    // Representative's info column — the same
+                                    // metadata that sits to the right of a
+                                    // collapsed row, kept here at the end of the
+                                    // expanded strip (further right, reached by
+                                    // the row's horizontal scroll).
+                                    val repVideo = row.representative.video
+                                    val repSlots = (topSlots.value + List(4) { "" }).take(4)
+                                    Column(
+                                        modifier = Modifier
+                                            .width(220.dp)
+                                            .padding(start = ReelVaultSpacing.Small, top = 2.dp),
+                                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                                    ) {
+                                        Text(
+                                            text = repVideo.filename,
+                                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                        for (slotIndex in 0..3) {
+                                            ListColumnStatLabel(
+                                                slotIndex = slotIndex,
+                                                key = repSlots[slotIndex],
+                                                video = repVideo,
+                                                onPick = { si, k -> viewModel.updateGridTopSlot(si, k) },
+                                                placeNameFor = placeNameForCards,
                                             )
                                         }
                                     }
@@ -1553,6 +1585,7 @@ private fun VideoListHorizontalCard(
     onClick: (shiftPressed: Boolean, togglePressed: Boolean) -> Unit = { _, _ -> },
     onDoubleClick: () -> Unit = {},
     onSetRating: (Int) -> Unit = {},
+    onLocationClick: ((Double, Double) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val video = item.video
@@ -1726,6 +1759,67 @@ private fun VideoListHorizontalCard(
                         .size(frameW, frameH)
                         .border(1.dp, Color.Black)
                 )
+
+                // Status badges — mirror the grid / collapsed-row cards so an
+                // expanded stack's member cards aren't bare. Bottom-left
+                // location, bottom-right keyword / proxy / full-resolution.
+                if (video.hasLocation && onLocationClick != null) {
+                    Tooltip(
+                        text = "Recorded at %.4f, %.4f — click to show on map".format(
+                            video.gpsLatitude, video.gpsLongitude
+                        ),
+                        modifier = Modifier.align(Alignment.BottomStart).padding(6.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50))
+                                .pointerInput(video.gpsLatitude, video.gpsLongitude) {
+                                    awaitEachGesture {
+                                        val down = awaitFirstDown(requireUnconsumed = false)
+                                        down.consume()
+                                        val up = waitForUpOrCancellation()
+                                        if (up != null) { up.consume(); onLocationClick(video.gpsLatitude, video.gpsLongitude) }
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.NearMe, "Show on map", Modifier.size(11.dp), tint = Color.White)
+                        }
+                    }
+                }
+                Row(
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    if (video.tags.isNotEmpty()) {
+                        Tooltip(text = "${video.tags.size} keyword${if (video.tags.size == 1) "" else "s"}: ${video.tags.joinToString(", ")}") {
+                            Box(Modifier.size(18.dp).background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)), contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Sell, "${video.tags.size} keyword(s)", Modifier.size(10.dp), tint = Color.White)
+                            }
+                        }
+                    }
+                    if (video.hasProxies) {
+                        Tooltip(text = "${video.proxyCount} proxy/proxies available for inline playback") {
+                            Box(Modifier.size(18.dp).background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)), contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.FilterNone, "${video.proxyCount} proxy/proxies", Modifier.size(10.dp), tint = Color.White)
+                            }
+                        }
+                    }
+                    when (video.fullResolution) {
+                        FullResolutionStatus.Full -> Tooltip(text = "Full resolution — matches a known native sensor mode for ${video.cameraDisplayName.ifEmpty { "this camera" }}") {
+                            Box(Modifier.size(18.dp).background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)), contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Verified, "Full resolution", Modifier.size(10.dp), tint = Color(0xFF81C784))
+                            }
+                        }
+                        FullResolutionStatus.NotFull -> Tooltip(text = "Not full resolution — recorded dimensions don't match any native sensor mode for ${video.cameraDisplayName.ifEmpty { "this camera" }}") {
+                            Box(Modifier.size(18.dp).background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)), contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Crop, "Not full resolution", Modifier.size(10.dp), tint = Color.White)
+                            }
+                        }
+                        FullResolutionStatus.Unspecified -> {}
+                    }
+                }
             }
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(bandDividerColor))
             // Rating band

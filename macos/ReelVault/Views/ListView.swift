@@ -200,6 +200,30 @@ struct ListView: View {
                                         videoContextMenu(for: stackItem.video)
                                     }
                                 }
+
+                                // Representative's info — the same metadata that
+                                // sits to the right of a collapsed row, kept here
+                                // at the end of the expanded strip (further
+                                // right, reached by the horizontal scroll).
+                                let repVideo = representative.video
+                                let repSlots: [String] = {
+                                    var s = viewModel.topSlots
+                                    while s.count < 4 { s.append("") }
+                                    return Array(s.prefix(4))
+                                }()
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(repVideo.filename)
+                                        .font(.body).fontWeight(.medium).lineLimit(1)
+                                    ForEach(0..<4, id: \.self) { i in
+                                        let stat = GridStatKey(rawValue: repSlots[i]) ?? GridStatKey.none
+                                        Text(stat == .none ? "—" : stat.value(for: repVideo))
+                                            .font(.system(size: 10, weight: i == 0 ? .semibold : .regular))
+                                            .foregroundColor(stat == .none ? .secondary : .primary)
+                                            .lineLimit(1)
+                                    }
+                                }
+                                .frame(width: 220, alignment: .leading)
+                                .padding(.top, 2)
                             }
                             .padding(.horizontal, 10)
                             .padding(.vertical, 4)
@@ -1453,6 +1477,43 @@ struct VideoListHorizontalCardView: View {
                 }
                 .padding(4)
             }
+
+            // Bottom-right status icons — keyword / proxy / full-resolution.
+            // Mirrors the grid and collapsed-row cards so an expanded stack's
+            // member cards aren't bare.
+            VStack {
+                Spacer()
+                HStack(spacing: 4) {
+                    Spacer()
+                    if !video.tags.isEmpty {
+                        Image(systemName: "tag.fill")
+                            .font(.system(size: 9)).foregroundColor(.white)
+                            .padding(3).background(Color.black.opacity(0.55)).clipShape(Circle())
+                            .help("\(video.tags.count) keyword\(video.tags.count == 1 ? "" : "s")")
+                    }
+                    if video.hasProxies {
+                        Image(systemName: "rectangle.on.rectangle.angled")
+                            .font(.system(size: 9)).foregroundColor(.white)
+                            .padding(3).background(Color.black.opacity(0.55)).clipShape(Circle())
+                            .help("\(video.proxyCount) proxy/proxies available for inline playback.")
+                    }
+                    switch video.fullResolution {
+                    case .full:
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 9)).foregroundColor(Color(red: 0.51, green: 0.78, blue: 0.52))
+                            .padding(3).background(Color.black.opacity(0.55)).clipShape(Circle())
+                            .help("Full resolution.")
+                    case .notFull:
+                        Image(systemName: "crop")
+                            .font(.system(size: 9)).foregroundColor(.white)
+                            .padding(3).background(Color.black.opacity(0.55)).clipShape(Circle())
+                            .help("Not full resolution.")
+                    case .unspecified:
+                        EmptyView()
+                    }
+                }
+            }
+            .padding(4)
         }
         .onContinuousHover { phase in
             switch phase {
