@@ -541,7 +541,19 @@ class ComposeVideoPlayer(
 
     fun seek(timeMs: Long) {
         val mp = activeMediaPlayer() ?: return
-        SwingUtilities.invokeLater { mp.controls().setTime(timeMs) }
+        SwingUtilities.invokeLater {
+            mp.controls().setTime(timeMs)
+            // While paused, libvlc performs the seek but never pushes the
+            // target frame to the (callback) video surface, so the loupe would
+            // keep showing the pre-seek frame — exactly the "bar moves but the
+            // frame doesn't change" report. nextFrame() forces a decode+display
+            // of the seeked frame (≈1 frame past the request, imperceptible
+            // while scrubbing), firing the render callback so the displayed
+            // frame tracks the scrubber — matching the macOS client.
+            if (!mp.status().isPlaying) {
+                mp.controls().nextFrame()
+            }
+        }
     }
 
     fun release() {
