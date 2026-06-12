@@ -1151,6 +1151,16 @@ struct ContentView: View {
                     onEditCaptureDate: { videoIds, initialTs in
                         datePickerTargets = videoIds
                         datePickerInitial = initialTs
+                    },
+                    onShowOnMap: { lat, lon in
+                        Task {
+                            await gridViewModel.loadVideoLocationsFilteredAsync()
+                            mapSelectedVideoIds = gridViewModel.videoLocations
+                                .filter { abs($0.latitude - lat) < 1e-9 && abs($0.longitude - lon) < 1e-9 }
+                                .map { $0.id }
+                            globalMapFocusCoord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+                            withAnimation(.easeInOut(duration: 0.2)) { viewMode = .map }
+                        }
                     }
                 )
                 .frame(width: rightPanelWidth)

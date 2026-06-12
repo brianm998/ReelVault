@@ -32,6 +32,9 @@ fun DetailScreen(
     /** Opens the CaptureDateDialog for the given video IDs. `initialTs` is
      *  the existing Unix-ms capture timestamp when one is set, else null. */
     onEditCaptureDate: (videoIds: List<String>, initialTs: Long?) -> Unit = { _, _ -> },
+    /** Switches to map mode focused on (lat, lon), highlighting this video and
+     *  any others captured at the same spot. */
+    onShowOnMap: (latitude: Double, longitude: Double) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val metadata = viewModel.metadata
@@ -346,6 +349,35 @@ fun DetailScreen(
                                 "Remove location",
                                 style = MaterialTheme.typography.labelMedium
                             )
+                        }
+                    }
+                }
+
+                // "Show on Map" — only when this video has a GPS coordinate.
+                // Switches to map mode focused on the spot, with the right-side
+                // list highlighting this video plus any others captured there.
+                if (hasGps) {
+                    Spacer(modifier = Modifier.height(ReelVaultSpacing.XSmall))
+                    com.reelvault.ui.components.Tooltip(
+                        text = "Switch to the map, zoomed in on where this video was " +
+                            "recorded, with any videos captured there listed alongside."
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                onShowOnMap(
+                                    metadata.value!!.gpsLatitude,
+                                    metadata.value!!.gpsLongitude,
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Map,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(ReelVaultSpacing.Small))
+                            Text("Show on Map", style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }

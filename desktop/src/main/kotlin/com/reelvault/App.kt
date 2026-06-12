@@ -1836,6 +1836,7 @@ fun ReelVaultApp(
                                     videoIdsForDatePicker = videoIds
                                     initialTimestampForPicker = initialTs
                                 },
+                                onShowOnMap = onCardLocationClick,
                                 modifier = Modifier
                                     .width(rightPanelWidth.dp)
                                     .fillMaxHeight()

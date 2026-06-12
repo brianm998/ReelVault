@@ -75,7 +75,10 @@ fun MapScreen(
     // there's nothing to plot.
     val (initLat, initLon, initZoom) = remember(locations, focusedLocation) {
         when {
-            focusedLocation != null -> Triple(focusedLocation.first, focusedLocation.second, 12)
+            // Zoom 4 ≈ a few streets across (JXMapViewer zoom counts UP as it
+            // zooms out), so "Show on Map" / a location-badge click lands nearly
+            // fully zoomed in on the spot rather than at a regional level.
+            focusedLocation != null -> Triple(focusedLocation.first, focusedLocation.second, 4)
             locations.isEmpty() -> Triple(0.0, 0.0, 2)
             else -> bboxFraming(locations.map { it.latitude to it.longitude })
         }

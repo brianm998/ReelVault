@@ -19,6 +19,9 @@ struct DetailView: View {
     /// Opens the CaptureDate sheet for the given video IDs. `initialTs` is
     /// the existing Unix-ms capture timestamp when one is set, or nil.
     var onEditCaptureDate: (_ videoIds: [String], _ initialTs: Int64?) -> Void = { _, _ in }
+    /// Switches to map mode focused on (lat, lon), highlighting this video and
+    /// any others captured at the same spot.
+    var onShowOnMap: (_ latitude: Double, _ longitude: Double) -> Void = { _, _ in }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -248,6 +251,23 @@ struct DetailView: View {
                 }
                 .buttonStyle(.bordered)
                 .help("Clear the GPS coordinate from this video. Applies to every video currently selected.")
+            }
+
+            // "Show on Map" — only when this video has a GPS coordinate.
+            // Switches to map mode focused on the spot, with the right-side list
+            // highlighting this video plus any others captured there.
+            if hasGps {
+                Button {
+                    onShowOnMap(metadata.gpsLat, metadata.gpsLon)
+                } label: {
+                    HStack {
+                        Image(systemName: "map")
+                        Text("Show on Map")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .help("Switch to the map, zoomed in on where this video was recorded, with any videos captured there listed alongside.")
             }
 
             // "Set / Change capture date" button — works on the

@@ -74,9 +74,10 @@ struct MapTopLevelView: View {
                 OSMMapView(
                     pins: videoPins,
                     initialCenter: center,
-                    // Tight zoom when focused on a video (≈ 5 km across);
-                    // moderate bbox-fitting otherwise.
-                    initialZoomMeters: focusedCoordinate != nil ? 5_000 : 4_000_000,
+                    // Nearly fully zoomed in when focused on a video (≈ 1 km
+                    // across) so "Show on Map" / a location-badge click lands on
+                    // the spot, not at a city-wide level; bbox-fit otherwise.
+                    initialZoomMeters: focusedCoordinate != nil ? 1_000 : 4_000_000,
                     // Auto-fit to all pins unless the caller asked to centre on
                     // a specific coordinate.
                     autoFitPins: focusedCoordinate == nil,
