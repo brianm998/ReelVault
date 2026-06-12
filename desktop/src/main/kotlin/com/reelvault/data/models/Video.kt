@@ -249,7 +249,10 @@ data class SmartCollectionFilters(
     val captureYear: Int = 0,
     val minRating: Int = 0,
     val colorLabel: String = "",
-    val tagIds: List<String> = emptyList()
+    val tagIds: List<String> = emptyList(),
+    /** Full-text search box ("keyword") query. Previously dropped, which made a
+     *  smart collection saved from a search come back empty. */
+    val searchQuery: String = "",
 ) {
     fun toJson(): String = buildString {
         append("{")
@@ -259,6 +262,7 @@ data class SmartCollectionFilters(
         append(",\"captureYear\":$captureYear")
         append(",\"minRating\":$minRating")
         append(",\"colorLabel\":${colorLabel.jsonStr()}")
+        append(",\"searchQuery\":${searchQuery.jsonStr()}")
         append(",\"tagIds\":[${tagIds.joinToString(",") { it.jsonStr() }}]")
         append("}")
     }
@@ -283,6 +287,7 @@ data class SmartCollectionFilters(
                 captureYear = int("captureYear"),
                 minRating = int("minRating"),
                 colorLabel = str("colorLabel"),
+                searchQuery = str("searchQuery"),
                 tagIds = tagIds
             )
         }

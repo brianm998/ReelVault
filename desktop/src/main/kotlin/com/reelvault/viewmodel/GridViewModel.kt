@@ -2216,20 +2216,47 @@ class GridViewModel(
      *  remember it to undo those writes when the user navigates away. */
     private var activeSmartCollectionId: String? = null
 
-    /** Undo the filter fields a smart collection expanded into the bar, so they
-     *  don't strand the user on an empty grid after they leave it (e.g. after
-     *  deleting a smart collection that matched nothing — the bug this fixes).
+    /** Snapshot of the live filter bar taken just before a smart collection
+     *  overwrote it, so leaving the smart collection restores the user's
+     *  previous filter rather than clearing everything. */
+    private data class FilterSnapshot(
+        val columns: List<com.reelvault.data.models.MetadataColumn>,
+        val minRating: Int,
+        val colorLabel: String,
+        val tags: List<String>,
+        val tagId: String,
+        val searchQuery: String,
+    )
+    private var preSmartFilterSnapshot: FilterSnapshot? = null
+
+    /** Undo the filter fields a smart collection expanded into the bar. Restores
+     *  the snapshot captured when the smart collection was entered, so the user
+     *  returns to exactly the filter they had before (the spec's "return to the
+     *  state it was in"). Falls back to clearing when there's no snapshot.
      *  No-op when no smart collection is currently applied. */
     private fun clearActiveSmartCollectionFilters() {
         if (activeSmartCollectionId == null) return
         activeSmartCollectionId = null
-        _filterMinRating.value = 0
-        _filterColorLabel.value = ""
-        filterTags = emptyList()
-        _filterTagId.value = ""
-        if (_metadataColumns.value.any { it.values.isNotEmpty() }) {
-            _metadataColumns.value = _metadataColumns.value.map { it.copy(values = emptySet(), anchor = "") }
+        val snap = preSmartFilterSnapshot
+        preSmartFilterSnapshot = null
+        if (snap != null) {
+            _filterMinRating.value = snap.minRating
+            _filterColorLabel.value = snap.colorLabel
+            filterTags = snap.tags
+            _filterTagId.value = snap.tagId
+            _searchQuery.value = snap.searchQuery
+            _metadataColumns.value = snap.columns
             LibraryFilterPrefs.saveColumns(_metadataColumns.value)
+        } else {
+            _filterMinRating.value = 0
+            _filterColorLabel.value = ""
+            filterTags = emptyList()
+            _filterTagId.value = ""
+            _searchQuery.value = ""
+            if (_metadataColumns.value.any { it.values.isNotEmpty() }) {
+                _metadataColumns.value = _metadataColumns.value.map { it.copy(values = emptySet(), anchor = "") }
+                LibraryFilterPrefs.saveColumns(_metadataColumns.value)
+            }
         }
     }
 
@@ -2245,6 +2272,17 @@ class GridViewModel(
         _selectedCollectionId.value = id
         val col = _collections.value.firstOrNull { it.id == id }
         if (col != null && col.isSmart && col.filterJson.isNotBlank()) {
+            // Snapshot the current (pre-smart-collection) filter so leaving the
+            // smart collection restores it. clearActiveSmartCollectionFilters
+            // ran above, so the live state here is the user's own filter.
+            preSmartFilterSnapshot = FilterSnapshot(
+                columns = _metadataColumns.value,
+                minRating = _filterMinRating.value,
+                colorLabel = _filterColorLabel.value,
+                tags = filterTags,
+                tagId = _filterTagId.value,
+                searchQuery = _searchQuery.value,
+            )
             // Smart collection: apply its saved filters to the individual filter
             // fields. The grid is driven by the filters, not by collection_id.
             val f = com.reelvault.data.models.SmartCollectionFilters.fromJson(col.filterJson)
@@ -2253,6 +2291,7 @@ class GridViewModel(
             LibraryFilterPrefs.saveColumns(_metadataColumns.value)
             _filterMinRating.value = f.minRating
             _filterColorLabel.value = f.colorLabel
+            _searchQuery.value = f.searchQuery
             filterTags = f.tagIds
             _filterTagId.value = f.tagIds.firstOrNull() ?: ""
             activeSmartCollectionId = id
@@ -2396,7 +2435,11 @@ class GridViewModel(
             captureYear = colValue("year").toIntOrNull() ?: 0,
             minRating = _filterMinRating.value,
             colorLabel = _filterColorLabel.value,
-            tagIds = if (tagId.isEmpty()) emptyList() else listOf(tagId)
+            searchQuery = _searchQuery.value,
+            // Capture the full active tag set (the multi-tag filter writes
+            // `filterTags`, not just `_filterTagId`) so keyword-based smart
+            // collections actually reproduce their results.
+            tagIds = filterTags.ifEmpty { if (tagId.isEmpty()) emptyList() else listOf(tagId) }
         ).toJson()
     }
 

@@ -743,12 +743,35 @@ class GridViewModel: ObservableObject {
     /// don't strand the user on an empty grid after they leave it (e.g. after
     /// deleting a smart collection that matched nothing — the bug this fixes).
     /// No-op when no smart collection is currently applied.
+    /// Snapshot of the live filter bar taken just before a smart collection
+    /// overwrote it, so leaving the smart collection restores the user's
+    /// previous filter rather than clearing everything.
+    private struct FilterSnapshot {
+        var columns: [MetadataColumn]
+        var minRating: Int32
+        var colorLabel: String
+        var tagId: String
+        var searchQuery: String
+    }
+    private var preSmartFilterSnapshot: FilterSnapshot?
+
     private func clearActiveSmartCollectionFilters() {
         guard activeSmartCollectionId != nil else { return }
         activeSmartCollectionId = nil
+        if let snap = preSmartFilterSnapshot {
+            preSmartFilterSnapshot = nil
+            filterMinRating = snap.minRating
+            filterColorLabel = snap.colorLabel
+            filterTagId = snap.tagId
+            searchQuery = snap.searchQuery
+            metadataColumns = snap.columns
+            LibraryFilterPrefs.saveColumns(metadataColumns)
+            return
+        }
         filterMinRating = 0
         filterColorLabel = ""
         filterTagId = ""
+        searchQuery = ""
         for i in metadataColumns.indices where !metadataColumns[i].values.isEmpty {
             metadataColumns[i].values = []
             metadataColumns[i].anchor = ""
@@ -773,6 +796,16 @@ class GridViewModel: ObservableObject {
         }
         if col.isSmart, !col.filterJson.isEmpty,
            let f = SmartCollectionFilters.from(json: col.filterJson) {
+            // Snapshot the current (pre-smart-collection) filter so leaving the
+            // smart collection restores it. clearActiveSmartCollectionFilters
+            // ran above, so the live state here is the user's own filter.
+            preSmartFilterSnapshot = FilterSnapshot(
+                columns: metadataColumns,
+                minRating: filterMinRating,
+                colorLabel: filterColorLabel,
+                tagId: filterTagId,
+                searchQuery: searchQuery
+            )
             // Smart collection: apply its saved filters. Camera/lens/codec/year
             // map onto metadata columns; the rest stay as dedicated fields.
             collectionIdFilter = nil
@@ -781,6 +814,7 @@ class GridViewModel: ObservableObject {
             filterMinRating = f.minRating
             filterColorLabel = f.colorLabel
             filterTagId = f.tagIds.first ?? ""
+            searchQuery = f.searchQuery
             activeSmartCollectionId = id
         } else {
             collectionIdFilter = id
@@ -847,7 +881,8 @@ class GridViewModel: ObservableObject {
             captureYear: Int32(colValue("year")) ?? 0,
             minRating: filterMinRating,
             colorLabel: filterColorLabel,
-            tagIds: filterTagId.isEmpty ? [] : [filterTagId]
+            tagIds: filterTagId.isEmpty ? [] : [filterTagId],
+            searchQuery: searchQuery
         )
         return f.toJson()
     }

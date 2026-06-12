@@ -368,11 +368,14 @@ struct SmartCollectionFilters {
     var minRating: Int32 = 0
     var colorLabel: String = ""
     var tagIds: [String] = []
+    /// Full-text search box ("keyword") query. Previously dropped, which made a
+    /// smart collection saved from a search come back empty.
+    var searchQuery: String = ""
 
     func toJson() -> String {
         func esc(_ s: String) -> String { "\"\(s.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\""))\"" }
         let tagsJson = tagIds.map { esc($0) }.joined(separator: ",")
-        return #"{"camera":\#(esc(camera)),"lens":\#(esc(lens)),"codec":\#(esc(codec)),"captureYear":\#(captureYear),"minRating":\#(minRating),"colorLabel":\#(esc(colorLabel)),"tagIds":[\#(tagsJson)]}"#
+        return #"{"camera":\#(esc(camera)),"lens":\#(esc(lens)),"codec":\#(esc(codec)),"captureYear":\#(captureYear),"minRating":\#(minRating),"colorLabel":\#(esc(colorLabel)),"searchQuery":\#(esc(searchQuery)),"tagIds":[\#(tagsJson)]}"#
     }
 
     static func from(json: String) -> SmartCollectionFilters? {
@@ -420,7 +423,7 @@ struct SmartCollectionFilters {
         return SmartCollectionFilters(camera: strVal("camera"), lens: strVal("lens"),
                                       codec: strVal("codec"), captureYear: intVal("captureYear"),
                                       minRating: intVal("minRating"), colorLabel: strVal("colorLabel"),
-                                      tagIds: tagIds)
+                                      tagIds: tagIds, searchQuery: strVal("searchQuery"))
     }
 }
 
