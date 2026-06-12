@@ -2266,7 +2266,7 @@ fun HelpDialog(onDismiss: () -> Unit) {
                             "Right-click → Remove from stack: pulls just that clip out; the rest stay grouped",
                             "Right-click → Unstack: disbands the entire group so every clip stands alone",
                             "Right-click → Combine into stack: merge the whole selection — including any stacks already in it — into one",
-                            "Right-click a non-cover member → Set as Stack Master: make that clip the one the stack shows when collapsed",
+                            "Right-click a non-cover member → Promote to leader: make that clip the one the stack shows when collapsed",
                             "ReelVault auto-stacks matching variants during import (can be disabled per scan)",
                         ))
                     }

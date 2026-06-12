@@ -2572,7 +2572,7 @@ class GridViewModel(
 
     /** Promote a video within an existing stack to become the
      *  representative shown when the stack is collapsed. Wired from the
-     *  right-click "Set as Stack Master" menu item. */
+     *  right-click "Promote to leader" menu item. */
     fun setStackMaster(videoId: String, groupId: String) {
         if (videoId.isEmpty() || groupId.isEmpty()) return
         // Optimistic local update so the badge / order changes before

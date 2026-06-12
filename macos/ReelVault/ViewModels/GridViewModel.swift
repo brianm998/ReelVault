@@ -2053,7 +2053,7 @@ class GridViewModel: ObservableObject {
 
     /// Promote a video within an existing stack to become the
     /// representative shown when the stack is collapsed. Wired from the
-    /// right-click "Set as Stack Master" menu item that appears only when
+    /// right-click "Promote to leader" menu item that appears only when
     /// the right-clicked card is a non-representative member.
     func setStackMaster(videoId: String, groupId: String) {
         guard !videoId.isEmpty, !groupId.isEmpty else { return }

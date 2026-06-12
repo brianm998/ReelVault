@@ -404,6 +404,12 @@ struct ListView: View {
                 viewModel.unstackGroup(groupId: video.groupId)
             }
             .help("Disband this entire stack so each member becomes a standalone video.")
+            if video.id != video.groupPreferredId {
+                Button("Promote to leader") {
+                    viewModel.setStackMaster(videoId: video.id, groupId: video.groupId)
+                }
+                .help("Make this video the representative shown when the stack is collapsed.")
+            }
         }
 
         // Combine the whole multi-selection — including any stacks among it —

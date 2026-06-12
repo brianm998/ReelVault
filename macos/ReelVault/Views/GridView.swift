@@ -435,7 +435,7 @@ struct GridView: View {
         // variant to be the representative shown in the collapsed view.
         if video.isInGroup && video.id != video.groupPreferredId {
             Divider()
-            Button("Set as Stack Master") {
+            Button("Promote to leader") {
                 viewModel.setStackMaster(videoId: video.id, groupId: video.groupId)
             }
             .help("Make this video the representative shown when the stack is collapsed in the grid.")

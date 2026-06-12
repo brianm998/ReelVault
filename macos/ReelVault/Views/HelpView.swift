@@ -131,7 +131,7 @@ struct HelpView: View {
                             ("square.and.arrow.up", "Right-click → **Remove from stack**: pulls just that clip out; the rest stay grouped"),
                             ("rectangle.stack.badge.minus", "Right-click → **Unstack**: disbands the entire group so every clip stands alone"),
                             ("rectangle.stack.badge.plus", "Right-click → **Combine into stack**: merge the whole selection — including any stacks already in it — into one"),
-                            ("crown", "Right-click a non-cover member → **Set as Stack Master**: make that clip the one the stack shows when collapsed"),
+                            ("crown", "Right-click a non-cover member → **Promote to leader**: make that clip the one the stack shows when collapsed"),
                             ("wand.and.stars", "ReelVault **auto-stacks** matching variants during import (can be disabled per scan)"),
                         ])
                     }

@@ -622,7 +622,7 @@ internal fun buildVideoContextMenu(
     onSetColorLabel: ((String, List<String>) -> Unit)? = null,
     /** Video ID + group ID for the right-clicked card *if* it sits in a
      *  stack AND is NOT already the representative. Used to surface
-     *  "Set as Stack Master". */
+     *  "Promote to leader". */
     stackMasterCandidate: Pair<String, String>? = null,
     onSetStackMaster: ((String, String) -> Unit)? = null,
     /** All known collections, for the "Add to Collection" submenu. */
@@ -789,7 +789,7 @@ internal fun buildVideoContextMenu(
     // non-representative member of its stack.
     if (stackMasterCandidate != null && onSetStackMaster != null) {
         val (vid, gid) = stackMasterCandidate
-        items += androidx.compose.foundation.ContextMenuItem("Set as Stack Master") {
+        items += androidx.compose.foundation.ContextMenuItem("Promote to leader") {
             onSetStackMaster(vid, gid)
         }
     }
