@@ -76,6 +76,16 @@ impl ThumbnailGenerator {
         };
 
         let color_info = probe_color_info(video_path);
+
+        // ProRes RAW on macOS: ffmpeg can't develop it, so source the frame from
+        // QuickLook (the OS decoder) at a size big enough for the largest cached
+        // thumbnail. The resize steps downstream are unchanged.
+        if use_quicklook(&color_info)
+            && quicklook_poster(video_path, &temp_path, Self::LARGE_WIDTH).is_ok()
+        {
+            return Ok(temp_path);
+        }
+
         let vf = build_thumbnail_vf(&color_info, "scale=min(400\\,iw):-1");
 
         let _permit = acquire_ffmpeg_permit();
@@ -197,6 +207,25 @@ impl ThumbnailGenerator {
 
         // Probe color info once — applied to every scrub frame from this video.
         let color_info = probe_color_info(video_path);
+
+        // ProRes RAW on macOS: QuickLook yields one (correctly-developed) poster
+        // frame, not arbitrary timestamps, so reuse it for every scrub position.
+        // A correct still beats ffmpeg's dark/flat per-timestamp frames.
+        if use_quicklook(&color_info) {
+            let poster = cache_dir.join(format!("{}_qlscrub.jpg", video_id));
+            if quicklook_poster(video_path, &poster, Self::SCRUB_WIDTH).is_ok() {
+                for i in 0..Self::SCRUB_FRAME_COUNT {
+                    let out = cache_dir.join(format!("{}_scrub_{}.jpg", video_id, i));
+                    if !out.exists() {
+                        let _ = std::fs::copy(&poster, &out);
+                    }
+                }
+                let _ = std::fs::remove_file(&poster);
+                return Ok(());
+            }
+            // QuickLook failed — fall through to the ffmpeg path below.
+        }
+
         let scrub_scale = format!("scale=min({}\\,iw):-1", Self::SCRUB_WIDTH);
         let vf = build_thumbnail_vf(&color_info, &scrub_scale);
 
@@ -328,6 +357,15 @@ impl ThumbnailGenerator {
         }
         let seek_pos = Self::frame_seek_pos(size, duration_secs);
         let color_info = probe_color_info(video_path);
+
+        // ProRes RAW on macOS: QuickLook poster at the requested width (one
+        // frame for every size, including scrub_N — see generate_scrub_thumbnails).
+        if use_quicklook(&color_info)
+            && quicklook_poster(video_path, &output, max_width).is_ok()
+        {
+            return Ok(());
+        }
+
         let scale = format!("scale=min({}\\,iw):-1", max_width);
         let vf = build_thumbnail_vf(&color_info, &scale);
 
@@ -491,6 +529,69 @@ fn tonemap_prefix(ci: &ColorInfo) -> Option<String> {
     }
 
     None
+}
+
+/// True when we should bypass ffmpeg and use the macOS QuickLook decoder for
+/// this clip's thumbnails. ffmpeg's experimental ProRes RAW decoder doesn't
+/// develop S-Log3 / S-Gamut3.Cine footage — it comes out dark, flat and in the
+/// wrong gamut, and no `-vf` curve fixes the gamut. QuickLook uses the same
+/// system decoder AVPlayer does, so the thumbnail matches playback. macOS only;
+/// every other platform keeps the ffmpeg path.
+fn use_quicklook(ci: &ColorInfo) -> bool {
+    cfg!(target_os = "macos") && ci.codec_name == "prores_raw"
+}
+
+/// Render a QuickLook poster for `video_path` into `out_path` (JPEG), scaled so
+/// its longest side is at most `max_px`. Runs `qlmanage -t` (the OS QuickLook
+/// generators) into a unique scratch dir, then transcodes the resulting PNG to
+/// `out_path` via ffmpeg. QuickLook only yields a single poster frame, so for a
+/// ProRes RAW clip every thumbnail/scrub size is this one frame — correct
+/// colour beats true scrubbing, which ffmpeg can't develop here anyway.
+fn quicklook_poster(video_path: &Path, out_path: &Path, max_px: i32) -> Result<()> {
+    let parent = out_path.parent().ok_or_else(|| {
+        ReelVaultError::ThumbnailGenerationFailed("thumbnail output path has no parent".into())
+    })?;
+    // Unique scratch dir keyed by the output stem, so concurrent sizes of the
+    // same clip don't race on qlmanage's `<filename>.png` output name.
+    let stem = out_path.file_stem().and_then(|s| s.to_str()).unwrap_or("ql");
+    let tmp_dir = parent.join(format!(".qltmp_{}", stem));
+    let _ = std::fs::create_dir_all(&tmp_dir);
+    let in_name = video_path.file_name().and_then(|s| s.to_str()).unwrap_or("input");
+    let produced = tmp_dir.join(format!("{}.png", in_name));
+
+    let _permit = acquire_ffmpeg_permit();
+    let ql = std::process::Command::new("qlmanage")
+        .args(["-t", "-s", &max_px.to_string(), "-o"])
+        .arg(&tmp_dir)
+        .arg(video_path)
+        .output();
+    let ql_failure = match ql {
+        Ok(_) if produced.exists() => None,
+        Ok(o) => Some(String::from_utf8_lossy(&o.stderr).to_string()),
+        Err(e) => Some(e.to_string()),
+    };
+    if let Some(err) = ql_failure {
+        let _ = std::fs::remove_dir_all(&tmp_dir);
+        return Err(ReelVaultError::ThumbnailGenerationFailed(format!(
+            "qlmanage produced no thumbnail: {err}"
+        )));
+    }
+
+    // Transcode the QuickLook PNG to the requested JPEG output.
+    let conv = crate::ffmpeg::ffmpeg_command()
+        .args(["-v", "error", "-i"])
+        .arg(&produced)
+        .args(["-q:v", "4", "-y"])
+        .arg(out_path)
+        .output();
+    let _ = std::fs::remove_dir_all(&tmp_dir);
+    match conv {
+        Ok(o) if o.status.success() => Ok(()),
+        Ok(o) => Err(ReelVaultError::ThumbnailGenerationFailed(
+            String::from_utf8_lossy(&o.stderr).to_string(),
+        )),
+        Err(e) => Err(ReelVaultError::FfmpegError(e.to_string())),
+    }
 }
 
 pub struct ProxyGenerator;
