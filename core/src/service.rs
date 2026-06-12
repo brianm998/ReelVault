@@ -28,6 +28,9 @@ use reelvault::*;
 
 pub use reelvault::reel_vault_server;
 
+/// Cloning is cheap — every field is an `Arc` or a handle — and lets RPC
+/// handlers move a copy of the service into `spawn_blocking` closures.
+#[derive(Clone)]
 pub struct ReelVaultService {
     db: Arc<Database>,
     config: Arc<Config>,
@@ -129,6 +132,25 @@ impl ReelVaultService {
 
     pub fn into_server(self) -> ReelVaultServer<Self> {
         ReelVaultServer::new(self)
+    }
+
+    /// Run blocking DB/filesystem work on tokio's blocking pool with a cheap
+    /// clone of the service, keeping the async workers free to serve other
+    /// RPCs. Handlers whose cost scales with the catalog or page size (list,
+    /// search, facets, …) go through this; one-row indexed lookups stay
+    /// inline.
+    // result_large_err: the Err type is tonic's Status (large by design);
+    // the closures exist to carry RPC results, so the lint is moot here.
+    #[allow(clippy::result_large_err)]
+    async fn run_blocking<T, F>(&self, f: F) -> std::result::Result<T, Status>
+    where
+        T: Send + 'static,
+        F: FnOnce(ReelVaultService) -> std::result::Result<T, Status> + Send + 'static,
+    {
+        let svc = self.clone();
+        tokio::task::spawn_blocking(move || f(svc))
+            .await
+            .map_err(|e| Status::internal(format!("blocking task panicked: {e}")))?
     }
 
     /// Load the user's custom camera-name overrides from the catalog
@@ -443,9 +465,13 @@ impl ReelVaultService {
         max_width: i32,
     ) -> std::result::Result<Option<Vec<u8>>, Status> {
         let cache = self.config.thumbnail_cache_path.clone();
-        if let Some(data) =
-            ThumbnailGenerator::get_thumbnail_at_width(&cache, video_id, size, max_width)
-                .map_err(Status::from)?
+        if let Some(data) = read_cached_thumbnail(
+            cache.clone(),
+            video_id.to_string(),
+            size.to_string(),
+            max_width,
+        )
+        .await?
         {
             return Ok(Some(data));
         }
@@ -469,8 +495,7 @@ impl ReelVaultService {
                 .await;
             }
         }
-        ThumbnailGenerator::get_thumbnail_at_width(&cache, video_id, size, max_width)
-            .map_err(Status::from)
+        read_cached_thumbnail(cache, video_id.to_string(), size.to_string(), max_width).await
     }
 
     /// Build the `VideoSummary` rows for a whole page of videos.
@@ -854,6 +879,27 @@ fn sql_placeholders(n: usize) -> String {
     std::iter::repeat_n("?", n).collect::<Vec<_>>().join(", ")
 }
 
+/// Read a cached thumbnail file on the blocking pool — file IO can stall on a
+/// cold or busy disk, and GetThumbnail arrives in bursts of dozens when a
+/// grid page mounts. `max_width > 0` selects the width-specific variant.
+async fn read_cached_thumbnail(
+    cache: std::path::PathBuf,
+    video_id: String,
+    size: String,
+    max_width: i32,
+) -> std::result::Result<Option<Vec<u8>>, Status> {
+    tokio::task::spawn_blocking(move || {
+        if max_width > 0 {
+            ThumbnailGenerator::get_thumbnail_at_width(&cache, &video_id, &size, max_width)
+        } else {
+            ThumbnailGenerator::get_thumbnail(&cache, &video_id, &size)
+        }
+    })
+    .await
+    .map_err(|e| Status::internal(format!("blocking task panicked: {e}")))?
+    .map_err(Status::from)
+}
+
 /// Classify a video's full-resolution status to its `i32` proto code.
 ///
 /// Reads the catalog's `camera_sensor_cache` table when the camera
@@ -965,6 +1011,10 @@ fn full_resolution_full_tuples(db: &crate::db::Database) -> Vec<(String, i64, i6
         .collect()
 }
 
+// result_large_err: every handler (and every run_blocking closure inside
+// one) returns tonic's Status by value — that's the shape tonic's API
+// dictates, so the "boxing the Err" suggestion doesn't apply.
+#[allow(clippy::result_large_err)]
 #[tonic::async_trait]
 impl ReelVaultTrait for ReelVaultService {
     type ScanLibraryStream = Pin<Box<dyn Stream<Item = std::result::Result<ScanProgress, Status>> + Send>>;
@@ -976,118 +1026,122 @@ impl ReelVaultTrait for ReelVaultService {
         request: Request<ListVideosRequest>,
     ) -> std::result::Result<Response<ListVideosResponse>, Status> {
         let req = request.into_inner();
-        let limit = if req.limit <= 0 { 50 } else { req.limit as i64 };
-        let offset = req.offset.max(0) as i64;
+        // Page-scale DB work — off the async runtime.
+        self.run_blocking(move |svc| {
+            let limit = if req.limit <= 0 { 50 } else { req.limit as i64 };
+            let offset = req.offset.max(0) as i64;
 
-        // Expand tilde in the location filter if provided. The library panel
-        // supports multi-select, so `location_path` may carry several
-        // directories joined by '\n'; expand each and re-join. The DB layer
-        // splits on '\n' and matches a video under ANY of them. A single
-        // directory contains no '\n' and behaves exactly as before.
-        let location_filter = if req.location_path.is_empty() {
-            String::new()
-        } else {
-            req.location_path
-                .split('\n')
-                .filter(|p| !p.is_empty())
-                .map(expand_tilde)
-                .collect::<Vec<_>>()
-                .join("\n")
-        };
-
-        // Resolve filter_tags — callers may pass either tag IDs (UUIDs) or
-        // human-readable tag names. We accept both: if the string is found as
-        // an existing tag name, we use that tag's ID; otherwise we pass the
-        // string through and let it match by ID directly.
-        let tag_ids: Vec<String> = req
-            .filter_tags
-            .iter()
-            .filter_map(|s| {
-                if s.is_empty() {
-                    return None;
-                }
-                if let Ok(Some(tag)) = self.db.get_tag_by_name(s) {
-                    Some(tag.id)
-                } else {
-                    Some(s.clone())
-                }
-            })
-            .collect();
-
-        // Optional geographic proximity filter — set when the user tapped a
-        // pin on the global map. Empty / zero values mean "no filter".
-        let geo_filter = if req.filter_by_location {
-            // Clamp radius to >= 0.01 km to keep the bounding box meaningful.
-            let r = req.filter_radius_km.max(0.01);
-            Some((req.filter_latitude, req.filter_longitude, r))
-        } else {
-            None
-        };
-
-        // Fold the legacy scalar dropdown filters into the generic metadata
-        // filters (back-compat: old clients still send camera/lens/codec/year
-        // as scalars; new clients send `metadata_filters`). Then build the
-        // shared FilterSpec.
-        let mut metadata_filters: Vec<(String, String)> = req
-            .metadata_filters
-            .iter()
-            .map(|mf| (mf.key.clone(), mf.value.clone()))
-            .collect();
-        if !req.filter_camera.is_empty() {
-            metadata_filters.push(("camera".to_string(), req.filter_camera.clone()));
-        }
-        if !req.filter_lens.is_empty() {
-            metadata_filters.push(("lens".to_string(), req.filter_lens.clone()));
-        }
-        if !req.filter_codec.is_empty() {
-            metadata_filters.push(("codec".to_string(), req.filter_codec.clone()));
-        }
-        if req.filter_capture_year > 0 {
-            metadata_filters.push(("year".to_string(), req.filter_capture_year.to_string()));
-        }
-
-        let spec = FilterSpec {
-            location_filter,
-            tag_ids,
-            geo: geo_filter,
-            min_rating: req.filter_min_rating,
-            color_label: req.filter_color_label.clone(),
-            collection_id: if req.collection_id.is_empty() {
-                None
+            // Expand tilde in the location filter if provided. The library panel
+            // supports multi-select, so `location_path` may carry several
+            // directories joined by '\n'; expand each and re-join. The DB layer
+            // splits on '\n' and matches a video under ANY of them. A single
+            // directory contains no '\n' and behaves exactly as before.
+            let location_filter = if req.location_path.is_empty() {
+                String::new()
             } else {
-                Some(req.collection_id.clone())
-            },
-            search_query: req.search_query.clone(),
-            metadata_filters,
-            has_location: attribute_filter_opt(req.filter_has_location()),
-            has_keywords: attribute_filter_opt(req.filter_has_keywords()),
-            has_proxies: attribute_filter_opt(req.filter_has_proxies()),
-            full_resolution: full_resolution_filter(&self.db, req.filter_full_resolution()),
-        };
+                req.location_path
+                    .split('\n')
+                    .filter(|p| !p.is_empty())
+                    .map(expand_tilde)
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            };
 
-        // Use grouped listing — returns one representative per group + ungrouped videos
-        let (videos, total_count) = self
-            .db
-            .list_videos_grouped(limit, offset, &req.sort_by, req.sort_ascending, &spec)
-            .map_err(Status::from)?;
+            // Resolve filter_tags — callers may pass either tag IDs (UUIDs) or
+            // human-readable tag names. We accept both: if the string is found as
+            // an existing tag name, we use that tag's ID; otherwise we pass the
+            // string through and let it match by ID directly.
+            let tag_ids: Vec<String> = req
+                .filter_tags
+                .iter()
+                .filter_map(|s| {
+                    if s.is_empty() {
+                        return None;
+                    }
+                    if let Ok(Some(tag)) = svc.db.get_tag_by_name(s) {
+                        Some(tag.id)
+                    } else {
+                        Some(s.clone())
+                    }
+                })
+                .collect();
 
-        let seeds: Vec<SummarySeed> = videos
-            .iter()
-            .map(|v| SummarySeed {
-                id: v.id.clone(),
-                filename: v.filename.clone(),
-                path: v.path.clone(),
-                size_bytes: v.file_size_bytes.unwrap_or(0),
-                indexed_at: v.indexed_at,
-            })
-            .collect();
-        let video_summaries = self.build_video_summaries(seeds);
+            // Optional geographic proximity filter — set when the user tapped a
+            // pin on the global map. Empty / zero values mean "no filter".
+            let geo_filter = if req.filter_by_location {
+                // Clamp radius to >= 0.01 km to keep the bounding box meaningful.
+                let r = req.filter_radius_km.max(0.01);
+                Some((req.filter_latitude, req.filter_longitude, r))
+            } else {
+                None
+            };
 
-        Ok(Response::new(ListVideosResponse {
-            videos: video_summaries,
-            total_count,
-            has_more: (offset + limit) < total_count,
-        }))
+            // Fold the legacy scalar dropdown filters into the generic metadata
+            // filters (back-compat: old clients still send camera/lens/codec/year
+            // as scalars; new clients send `metadata_filters`). Then build the
+            // shared FilterSpec.
+            let mut metadata_filters: Vec<(String, String)> = req
+                .metadata_filters
+                .iter()
+                .map(|mf| (mf.key.clone(), mf.value.clone()))
+                .collect();
+            if !req.filter_camera.is_empty() {
+                metadata_filters.push(("camera".to_string(), req.filter_camera.clone()));
+            }
+            if !req.filter_lens.is_empty() {
+                metadata_filters.push(("lens".to_string(), req.filter_lens.clone()));
+            }
+            if !req.filter_codec.is_empty() {
+                metadata_filters.push(("codec".to_string(), req.filter_codec.clone()));
+            }
+            if req.filter_capture_year > 0 {
+                metadata_filters.push(("year".to_string(), req.filter_capture_year.to_string()));
+            }
+
+            let spec = FilterSpec {
+                location_filter,
+                tag_ids,
+                geo: geo_filter,
+                min_rating: req.filter_min_rating,
+                color_label: req.filter_color_label.clone(),
+                collection_id: if req.collection_id.is_empty() {
+                    None
+                } else {
+                    Some(req.collection_id.clone())
+                },
+                search_query: req.search_query.clone(),
+                metadata_filters,
+                has_location: attribute_filter_opt(req.filter_has_location()),
+                has_keywords: attribute_filter_opt(req.filter_has_keywords()),
+                has_proxies: attribute_filter_opt(req.filter_has_proxies()),
+                full_resolution: full_resolution_filter(&svc.db, req.filter_full_resolution()),
+            };
+
+            // Use grouped listing — returns one representative per group + ungrouped videos
+            let (videos, total_count) = svc
+                .db
+                .list_videos_grouped(limit, offset, &req.sort_by, req.sort_ascending, &spec)
+                .map_err(Status::from)?;
+
+            let seeds: Vec<SummarySeed> = videos
+                .iter()
+                .map(|v| SummarySeed {
+                    id: v.id.clone(),
+                    filename: v.filename.clone(),
+                    path: v.path.clone(),
+                    size_bytes: v.file_size_bytes.unwrap_or(0),
+                    indexed_at: v.indexed_at,
+                })
+                .collect();
+            let video_summaries = svc.build_video_summaries(seeds);
+
+            Ok(Response::new(ListVideosResponse {
+                videos: video_summaries,
+                total_count,
+                has_more: (offset + limit) < total_count,
+            }))
+        })
+        .await
     }
 
     async fn search_videos(
@@ -1095,34 +1149,37 @@ impl ReelVaultTrait for ReelVaultService {
         request: Request<SearchRequest>,
     ) -> std::result::Result<Response<SearchResponse>, Status> {
         let req = request.into_inner();
-        let limit = if req.limit <= 0 { 50 } else { req.limit as i64 };
-        let offset = req.offset.max(0) as i64;
+        self.run_blocking(move |svc| {
+            let limit = if req.limit <= 0 { 50 } else { req.limit as i64 };
+            let offset = req.offset.max(0) as i64;
 
-        let (results, total_count) = SearchEngine::search(
-            self.db.as_ref(),
-            &req.query,
-            limit,
-            offset,
-            &req.filter_tags,
-        )
-        .map_err(Status::from)?;
+            let (results, total_count) = SearchEngine::search(
+                svc.db.as_ref(),
+                &req.query,
+                limit,
+                offset,
+                &req.filter_tags,
+            )
+            .map_err(Status::from)?;
 
-        let seeds: Vec<SummarySeed> = results
-            .iter()
-            .map(|r| SummarySeed {
-                id: r.video_id.clone(),
-                filename: r.filename.clone(),
-                path: r.path.clone(),
-                size_bytes: 0,
-                indexed_at: 0,
-            })
-            .collect();
-        let video_summaries = self.build_video_summaries(seeds);
+            let seeds: Vec<SummarySeed> = results
+                .iter()
+                .map(|r| SummarySeed {
+                    id: r.video_id.clone(),
+                    filename: r.filename.clone(),
+                    path: r.path.clone(),
+                    size_bytes: 0,
+                    indexed_at: 0,
+                })
+                .collect();
+            let video_summaries = svc.build_video_summaries(seeds);
 
-        Ok(Response::new(SearchResponse {
-            videos: video_summaries,
-            total_count,
-        }))
+            Ok(Response::new(SearchResponse {
+                videos: video_summaries,
+                total_count,
+            }))
+        })
+        .await
     }
 
     async fn get_metadata(
@@ -1130,11 +1187,13 @@ impl ReelVaultTrait for ReelVaultService {
         request: Request<GetMetadataRequest>,
     ) -> std::result::Result<Response<VideoMetadata>, Status> {
         let req = request.into_inner();
-        let metadata = self
-            .get_video_metadata_sync(&req.video_id)
-            .map_err(Status::from)?;
-
-        Ok(Response::new(metadata))
+        self.run_blocking(move |svc| {
+            let metadata = svc
+                .get_video_metadata_sync(&req.video_id)
+                .map_err(Status::from)?;
+            Ok(Response::new(metadata))
+        })
+        .await
     }
 
     async fn get_thumbnail(
@@ -1149,12 +1208,13 @@ impl ReelVaultTrait for ReelVaultService {
         let mut thumbnail_data = if req.max_width > 0 {
             self.load_or_generate_hires(&req.video_id, &req.size, req.max_width).await?
         } else {
-            ThumbnailGenerator::get_thumbnail(
-                &self.config.thumbnail_cache_path,
-                &req.video_id,
-                &req.size,
+            read_cached_thumbnail(
+                self.config.thumbnail_cache_path.clone(),
+                req.video_id.clone(),
+                req.size.clone(),
+                0,
             )
-            .map_err(Status::from)?
+            .await?
         };
 
         // On-demand scrub frame generation. If a "scrub_N" frame is requested
@@ -1170,12 +1230,13 @@ impl ReelVaultTrait for ReelVaultService {
 
             // Double-check: another waiter may have finished generation while
             // we were queued on the mutex.
-            thumbnail_data = ThumbnailGenerator::get_thumbnail(
-                &self.config.thumbnail_cache_path,
-                &req.video_id,
-                &req.size,
+            thumbnail_data = read_cached_thumbnail(
+                self.config.thumbnail_cache_path.clone(),
+                req.video_id.clone(),
+                req.size.clone(),
+                0,
             )
-            .map_err(Status::from)?;
+            .await?;
 
             if thumbnail_data.is_none() {
                 if let Ok(Some(video)) = self.db.get_video(&req.video_id) {
@@ -1210,12 +1271,13 @@ impl ReelVaultTrait for ReelVaultService {
                         })
                         .await;
 
-                        thumbnail_data = ThumbnailGenerator::get_thumbnail(
-                            &self.config.thumbnail_cache_path,
-                            &req.video_id,
-                            &req.size,
+                        thumbnail_data = read_cached_thumbnail(
+                            self.config.thumbnail_cache_path.clone(),
+                            req.video_id.clone(),
+                            req.size.clone(),
+                            0,
                         )
-                        .map_err(Status::from)?;
+                        .await?;
                     }
                 }
             }
@@ -1392,19 +1454,22 @@ impl ReelVaultTrait for ReelVaultService {
         // client may pass either an absolute path or a "~/..." one.
         let path = expand_tilde(&req.path);
 
-        let subdirectories = self
-            .db
-            .list_subdirectories(&path)
-            .map_err(Status::from)?
-            .into_iter()
-            .map(|s| Subdirectory {
-                path: s.path,
-                video_count: s.video_count,
-                has_subdirectories: s.has_subdirectories,
-            })
-            .collect();
+        self.run_blocking(move |svc| {
+            let subdirectories = svc
+                .db
+                .list_subdirectories(&path)
+                .map_err(Status::from)?
+                .into_iter()
+                .map(|s| Subdirectory {
+                    path: s.path,
+                    video_count: s.video_count,
+                    has_subdirectories: s.has_subdirectories,
+                })
+                .collect();
 
-        Ok(Response::new(ListSubdirectoriesResponse { subdirectories }))
+            Ok(Response::new(ListSubdirectoriesResponse { subdirectories }))
+        })
+        .await
     }
 
     async fn scan_library(
@@ -2312,32 +2377,35 @@ impl ReelVaultTrait for ReelVaultService {
         &self,
         _request: Request<GetFilterOptionsRequest>,
     ) -> std::result::Result<Response<FilterOptions>, Status> {
-        let cameras = self.db.list_distinct_cameras().unwrap_or_default();
-        let lenses = self.db.list_distinct_lenses().unwrap_or_default();
-        let codecs = self.db.list_distinct_codecs().unwrap_or_default();
-        let years = self.db.list_distinct_capture_years().unwrap_or_default();
-        // Parallel list of marketing-friendly camera names — same length
-        // and order as `cameras`. Falls back to the internal name when
-        // no mapping (built-in or custom) exists so the two lists stay
-        // in lockstep.
-        let custom_overrides = self.load_custom_camera_names();
-        let camera_display_names: Vec<String> = cameras
-            .iter()
-            .map(|internal| {
-                crate::camera_names::marketing_name_for_with_custom(
-                    internal,
-                    &custom_overrides,
-                )
-                .unwrap_or_else(|| internal.clone())
-            })
-            .collect();
-        Ok(Response::new(FilterOptions {
-            cameras,
-            lenses,
-            codecs,
-            capture_years: years,
-            camera_display_names,
-        }))
+        self.run_blocking(move |svc| {
+            let cameras = svc.db.list_distinct_cameras().unwrap_or_default();
+            let lenses = svc.db.list_distinct_lenses().unwrap_or_default();
+            let codecs = svc.db.list_distinct_codecs().unwrap_or_default();
+            let years = svc.db.list_distinct_capture_years().unwrap_or_default();
+            // Parallel list of marketing-friendly camera names — same length
+            // and order as `cameras`. Falls back to the internal name when
+            // no mapping (built-in or custom) exists so the two lists stay
+            // in lockstep.
+            let custom_overrides = svc.load_custom_camera_names();
+            let camera_display_names: Vec<String> = cameras
+                .iter()
+                .map(|internal| {
+                    crate::camera_names::marketing_name_for_with_custom(
+                        internal,
+                        &custom_overrides,
+                    )
+                    .unwrap_or_else(|| internal.clone())
+                })
+                .collect();
+            Ok(Response::new(FilterOptions {
+                cameras,
+                lenses,
+                codecs,
+                capture_years: years,
+                camera_display_names,
+            }))
+        })
+        .await
     }
 
     async fn get_metadata_facets(
@@ -2346,160 +2414,165 @@ impl ReelVaultTrait for ReelVaultService {
     ) -> std::result::Result<Response<MetadataFacetsResponse>, Status> {
         let req = request.into_inner();
 
-        let location_filter = if req.location_path.is_empty() {
-            String::new()
-        } else {
-            expand_tilde(&req.location_path)
-        };
-        // Resolve tags by name or id, same as list_videos.
-        let tag_ids: Vec<String> = req
-            .filter_tags
-            .iter()
-            .filter_map(|s| {
-                if s.is_empty() {
-                    return None;
-                }
-                if let Ok(Some(tag)) = self.db.get_tag_by_name(s) {
-                    Some(tag.id)
-                } else {
-                    Some(s.clone())
-                }
-            })
-            .collect();
-        let geo = if req.filter_by_location {
-            Some((
-                req.filter_latitude,
-                req.filter_longitude,
-                req.filter_radius_km.max(0.01),
-            ))
-        } else {
-            None
-        };
-        let collection_id = if req.collection_id.is_empty() {
-            None
-        } else {
-            Some(req.collection_id.clone())
-        };
-
-        // The attribute presence filters scope the facet set just like the
-        // grid. Resolved once (the full-resolution tuple scan is not free) and
-        // shared across every per-column spec below.
-        let has_location = attribute_filter_opt(req.filter_has_location());
-        let has_keywords = attribute_filter_opt(req.filter_has_keywords());
-        let has_proxies = attribute_filter_opt(req.filter_has_proxies());
-        let full_resolution = full_resolution_filter(&self.db, req.filter_full_resolution());
-
-        // Base FilterSpec for the upstream filters; `extra` carries the
-        // metadata columns to the left of whichever column we're computing.
-        let base_spec = |extra: Vec<(String, String)>| FilterSpec {
-            location_filter: location_filter.clone(),
-            tag_ids: tag_ids.clone(),
-            geo,
-            min_rating: req.filter_min_rating,
-            color_label: req.filter_color_label.clone(),
-            collection_id: collection_id.clone(),
-            search_query: req.search_query.clone(),
-            metadata_filters: extra,
-            has_location,
-            has_keywords,
-            has_proxies,
-            full_resolution: full_resolution.clone(),
-        };
-
-        // Available keys = registry keys with data under the upstream filters
-        // (no metadata columns applied), for each column's "change key" picker.
-        let upstream = base_spec(Vec::new());
-        let available_keys: Vec<MetadataKeyInfo> = self
-            .db
-            .metadata_keys_with_data(&upstream)
-            .unwrap_or_default()
-            .iter()
-            .filter_map(|tok| metadata_keys::lookup(tok))
-            .map(|mk| MetadataKeyInfo {
-                key: mk.token.to_string(),
-                display_name: mk.display_name.to_string(),
-                is_numeric: mk.is_numeric,
-            })
-            .collect();
-
-        let custom_overrides = self.load_custom_camera_names();
-        let lens_overrides = self.load_custom_lens_names();
-        let mut columns_out = Vec::with_capacity(req.columns.len());
-        for (i, col) in req.columns.iter().enumerate() {
-            // Placeholder column (no key chosen yet) — keep its position so the
-            // response stays index-aligned, but return no values.
-            if col.key.is_empty() {
-                columns_out.push(MetadataFacetColumn {
-                    key: String::new(),
-                    display_name: String::new(),
-                    is_numeric: false,
-                    values: Vec::new(),
-                });
-                continue;
-            }
-
-            // Cascade: column i is constrained by every column to its LEFT that
-            // has a value selected.
-            let left: Vec<(String, String)> = req.columns[..i]
+        // The facet cascade runs one query per visible column plus the
+        // available-keys scan — page-scale work, so off the async runtime.
+        self.run_blocking(move |svc| {
+            let location_filter = if req.location_path.is_empty() {
+                String::new()
+            } else {
+                expand_tilde(&req.location_path)
+            };
+            // Resolve tags by name or id, same as list_videos.
+            let tag_ids: Vec<String> = req
+                .filter_tags
                 .iter()
-                .filter(|c| !c.key.is_empty() && !c.value.is_empty())
-                .map(|c| (c.key.clone(), c.value.clone()))
-                .collect();
-            let spec = base_spec(left);
-            let counts = self
-                .db
-                .distinct_facet_values(&col.key, &spec)
-                .unwrap_or_default();
-
-            let mk = metadata_keys::lookup(&col.key);
-            let is_numeric = mk.map(|m| m.is_numeric).unwrap_or(false);
-            let display_name = mk
-                .map(|m| m.display_name.to_string())
-                .unwrap_or_else(|| col.key.clone());
-
-            let values = counts
-                .into_iter()
-                .map(|fc| {
-                    // Keyword carries its own display (tag name); camera resolves
-                    // to a marketing name; lens resolves to a custom alias if the
-                    // user set one; the rest format from the token.
-                    let display = fc.display.unwrap_or_else(|| {
-                        if col.key == "camera" {
-                            crate::camera_names::marketing_name_for_with_custom(
-                                &fc.token,
-                                &custom_overrides,
-                            )
-                            .unwrap_or_else(|| fc.token.clone())
-                        } else if col.key == "lens" {
-                            lens_overrides
-                                .get(&crate::camera_names::normalise(&fc.token))
-                                .cloned()
-                                .unwrap_or_else(|| fc.token.clone())
-                        } else {
-                            mk.map(|m| m.format_value(&fc.token))
-                                .unwrap_or_else(|| fc.token.clone())
-                        }
-                    });
-                    FacetValue {
-                        token: fc.token,
-                        display,
-                        count: fc.count,
+                .filter_map(|s| {
+                    if s.is_empty() {
+                        return None;
+                    }
+                    if let Ok(Some(tag)) = svc.db.get_tag_by_name(s) {
+                        Some(tag.id)
+                    } else {
+                        Some(s.clone())
                     }
                 })
                 .collect();
+            let geo = if req.filter_by_location {
+                Some((
+                    req.filter_latitude,
+                    req.filter_longitude,
+                    req.filter_radius_km.max(0.01),
+                ))
+            } else {
+                None
+            };
+            let collection_id = if req.collection_id.is_empty() {
+                None
+            } else {
+                Some(req.collection_id.clone())
+            };
 
-            columns_out.push(MetadataFacetColumn {
-                key: col.key.clone(),
-                display_name,
-                is_numeric,
-                values,
-            });
-        }
+            // The attribute presence filters scope the facet set just like the
+            // grid. Resolved once (the full-resolution tuple scan is not free) and
+            // shared across every per-column spec below.
+            let has_location = attribute_filter_opt(req.filter_has_location());
+            let has_keywords = attribute_filter_opt(req.filter_has_keywords());
+            let has_proxies = attribute_filter_opt(req.filter_has_proxies());
+            let full_resolution = full_resolution_filter(&svc.db, req.filter_full_resolution());
 
-        Ok(Response::new(MetadataFacetsResponse {
-            columns: columns_out,
-            available_keys,
-        }))
+            // Base FilterSpec for the upstream filters; `extra` carries the
+            // metadata columns to the left of whichever column we're computing.
+            let base_spec = |extra: Vec<(String, String)>| FilterSpec {
+                location_filter: location_filter.clone(),
+                tag_ids: tag_ids.clone(),
+                geo,
+                min_rating: req.filter_min_rating,
+                color_label: req.filter_color_label.clone(),
+                collection_id: collection_id.clone(),
+                search_query: req.search_query.clone(),
+                metadata_filters: extra,
+                has_location,
+                has_keywords,
+                has_proxies,
+                full_resolution: full_resolution.clone(),
+            };
+
+            // Available keys = registry keys with data under the upstream filters
+            // (no metadata columns applied), for each column's "change key" picker.
+            let upstream = base_spec(Vec::new());
+            let available_keys: Vec<MetadataKeyInfo> = svc
+                .db
+                .metadata_keys_with_data(&upstream)
+                .unwrap_or_default()
+                .iter()
+                .filter_map(|tok| metadata_keys::lookup(tok))
+                .map(|mk| MetadataKeyInfo {
+                    key: mk.token.to_string(),
+                    display_name: mk.display_name.to_string(),
+                    is_numeric: mk.is_numeric,
+                })
+                .collect();
+
+            let custom_overrides = svc.load_custom_camera_names();
+            let lens_overrides = svc.load_custom_lens_names();
+            let mut columns_out = Vec::with_capacity(req.columns.len());
+            for (i, col) in req.columns.iter().enumerate() {
+                // Placeholder column (no key chosen yet) — keep its position so the
+                // response stays index-aligned, but return no values.
+                if col.key.is_empty() {
+                    columns_out.push(MetadataFacetColumn {
+                        key: String::new(),
+                        display_name: String::new(),
+                        is_numeric: false,
+                        values: Vec::new(),
+                    });
+                    continue;
+                }
+
+                // Cascade: column i is constrained by every column to its LEFT that
+                // has a value selected.
+                let left: Vec<(String, String)> = req.columns[..i]
+                    .iter()
+                    .filter(|c| !c.key.is_empty() && !c.value.is_empty())
+                    .map(|c| (c.key.clone(), c.value.clone()))
+                    .collect();
+                let spec = base_spec(left);
+                let counts = svc
+                    .db
+                    .distinct_facet_values(&col.key, &spec)
+                    .unwrap_or_default();
+
+                let mk = metadata_keys::lookup(&col.key);
+                let is_numeric = mk.map(|m| m.is_numeric).unwrap_or(false);
+                let display_name = mk
+                    .map(|m| m.display_name.to_string())
+                    .unwrap_or_else(|| col.key.clone());
+
+                let values = counts
+                    .into_iter()
+                    .map(|fc| {
+                        // Keyword carries its own display (tag name); camera resolves
+                        // to a marketing name; lens resolves to a custom alias if the
+                        // user set one; the rest format from the token.
+                        let display = fc.display.unwrap_or_else(|| {
+                            if col.key == "camera" {
+                                crate::camera_names::marketing_name_for_with_custom(
+                                    &fc.token,
+                                    &custom_overrides,
+                                )
+                                .unwrap_or_else(|| fc.token.clone())
+                            } else if col.key == "lens" {
+                                lens_overrides
+                                    .get(&crate::camera_names::normalise(&fc.token))
+                                    .cloned()
+                                    .unwrap_or_else(|| fc.token.clone())
+                            } else {
+                                mk.map(|m| m.format_value(&fc.token))
+                                    .unwrap_or_else(|| fc.token.clone())
+                            }
+                        });
+                        FacetValue {
+                            token: fc.token,
+                            display,
+                            count: fc.count,
+                        }
+                    })
+                    .collect();
+
+                columns_out.push(MetadataFacetColumn {
+                    key: col.key.clone(),
+                    display_name,
+                    is_numeric,
+                    values,
+                });
+            }
+
+            Ok(Response::new(MetadataFacetsResponse {
+                columns: columns_out,
+                available_keys,
+            }))
+        })
+        .await
     }
 
     async fn get_status(
@@ -2688,20 +2761,23 @@ impl ReelVaultTrait for ReelVaultService {
         &self,
         _request: Request<ListVideosWithLocationsRequest>,
     ) -> std::result::Result<Response<VideoLocationsResponse>, Status> {
-        let rows = self.db.list_videos_with_locations().map_err(Status::from)?;
-        let locations = rows
-            .into_iter()
-            .map(|r| VideoLocation {
-                id: r.id,
-                filename: r.filename,
-                path: r.path,
-                latitude: r.latitude,
-                longitude: r.longitude,
-                altitude: r.altitude,
-                has_thumbnail: r.has_thumbnail,
-            })
-            .collect();
-        Ok(Response::new(VideoLocationsResponse { locations }))
+        self.run_blocking(move |svc| {
+            let rows = svc.db.list_videos_with_locations().map_err(Status::from)?;
+            let locations = rows
+                .into_iter()
+                .map(|r| VideoLocation {
+                    id: r.id,
+                    filename: r.filename,
+                    path: r.path,
+                    latitude: r.latitude,
+                    longitude: r.longitude,
+                    altitude: r.altitude,
+                    has_thumbnail: r.has_thumbnail,
+                })
+                .collect();
+            Ok(Response::new(VideoLocationsResponse { locations }))
+        })
+        .await
     }
 
     async fn update_video_capture_date(
