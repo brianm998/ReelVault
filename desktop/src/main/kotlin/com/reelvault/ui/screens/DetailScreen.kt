@@ -11,8 +11,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.reelvault.LocalAppWindow
+import com.reelvault.util.FileDragSource
 import com.reelvault.ViewMode
 import com.reelvault.trackTextEntryFocus
 import com.reelvault.data.models.FullResolutionStatus
@@ -41,6 +47,11 @@ fun DetailScreen(
     val isLoading = viewModel.isLoading.collectAsState()
     val error = viewModel.error.collectAsState()
     val notes = viewModel.notes.collectAsState()
+    // Drag-out support: drag the inspected master (or a proxy row) into an
+    // external editor / file manager. Stateless between gestures, so safe to
+    // remember across recompositions.
+    val awtWindow = LocalAppWindow.current
+    val fileDragSource = remember { FileDragSource() }
     val groupMembers = viewModel.groupMembers.collectAsState()
     val groupPreferredId = viewModel.groupPreferredId.collectAsState()
     // Primary grid/list selection. The detail view-model keeps the last
@@ -153,19 +164,40 @@ fun DetailScreen(
                     }
                 }
 
-                // Filename
-                Text(
-                    text = metadata.value!!.filename,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
+                // Filename — drag it out to an external editor / file manager,
+                // with an arrow to open it in the system's default player.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = metadata.value!!.filename,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .weight(1f)
+                            .dragOutFile(metadata.value!!.path, awtWindow, fileDragSource)
+                    )
+                    com.reelvault.ui.components.Tooltip(
+                        text = "Open this video in your system's default video player"
+                    ) {
+                        IconButton(
+                            onClick = { gridViewModel.openVideoInExternal(metadata.value!!.path) },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.OpenInNew,
+                                contentDescription = "Open in default player",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
 
-                // (Right-click any video card in the grid to open it with the
-                // default player or a configured external editor.)
+                // (Drag the filename above — or any video card — into an external
+                // editor; the arrow opens it in the default player.)
 
                 Spacer(modifier = Modifier.height(ReelVaultSpacing.Medium))
 
@@ -765,7 +797,9 @@ fun DetailScreen(
                                     .padding(ReelVaultSpacing.Small)
                             }
                             Row(
-                                modifier = rowModifier,
+                                // Drag a proxy row out to an external editor /
+                                // file manager, dropping that proxy's file.
+                                modifier = rowModifier.dragOutFile(proxy.path, awtWindow, fileDragSource),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
@@ -800,6 +834,22 @@ fun DetailScreen(
                                             } else {
                                                 MaterialTheme.colorScheme.outline
                                             },
+                                        )
+                                    }
+                                }
+                                // Open this proxy in the system's default player.
+                                com.reelvault.ui.components.Tooltip(
+                                    text = "Open this proxy in your system's default video player"
+                                ) {
+                                    IconButton(
+                                        onClick = { gridViewModel.openVideoInExternal(proxy.path) },
+                                        modifier = Modifier.size(24.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.OpenInNew,
+                                            contentDescription = "Open proxy in default player",
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.outline,
                                         )
                                     }
                                 }
@@ -938,6 +988,40 @@ fun formatBytes(bytes: Long): String {
         bytes >= 1024L * 1024L * 1024L -> "%.1f GB".format(bytes / (1024.0 * 1024.0 * 1024.0))
         bytes >= 1024L * 1024L -> "%.0f MB".format(bytes / (1024.0 * 1024.0))
         else -> "%.0f KB".format(bytes / 1024.0)
+    }
+}
+
+/** Drag-out gesture: detect motion in Compose then hand [path] off to AWT via
+ *  [dragSource] so the file can be dropped into an external editor / file
+ *  manager. Mirrors the grid card's gesture; uses the Initial pass and never
+ *  consumes the tap, so click handlers on the same element still fire. */
+private fun Modifier.dragOutFile(
+    path: String,
+    awtWindow: java.awt.Window?,
+    dragSource: FileDragSource,
+): Modifier = this.pointerInput(path) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false)
+        val start = down.position
+        dragSource.setPendingFiles(listOf(path))
+        var handled = false
+        while (!handled) {
+            val event = awaitPointerEvent(PointerEventPass.Initial)
+            val change = event.changes.firstOrNull() ?: break
+            if (!change.pressed) {
+                dragSource.clearPending()
+                handled = true
+            } else {
+                val delta = change.position - start
+                val dist = kotlin.math.sqrt((delta.x * delta.x + delta.y * delta.y).toDouble()).toFloat()
+                if (dist >= 8f && awtWindow != null) {
+                    val screenX = (awtWindow.x + change.position.x).toInt()
+                    val screenY = (awtWindow.y + change.position.y).toInt()
+                    dragSource.startDragIfPending(awtWindow, screenX, screenY)
+                    handled = true
+                }
+            }
+        }
     }
 }
 

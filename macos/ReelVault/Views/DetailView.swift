@@ -86,13 +86,22 @@ struct DetailView: View {
                 .cornerRadius(4)
             }
 
-            // Filename
-            Text(metadata.filename)
-                .font(.headline)
-                .lineLimit(2)
-
-            // (Right-click any video in the grid to open it in the default
-            // player or a configured external editor.)
+            // Filename — drag it out to an external editor / file manager,
+            // with an arrow to open it in the system's default player.
+            HStack(alignment: .top, spacing: 6) {
+                Text(metadata.filename)
+                    .font(.headline)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .onDrag { DragExport.provider(for: metadata.path) }
+                Button {
+                    gridViewModel.openVideoInExternal(path: metadata.path)
+                } label: {
+                    Image(systemName: "arrow.up.forward.app")
+                }
+                .buttonStyle(.borderless)
+                .help("Open this video in your system's default video player")
+            }
 
             Divider()
 
@@ -525,6 +534,15 @@ struct DetailView: View {
                                       ? "Currently playing this proxy. Click to revert to the original."
                                       : "Play this proxy in the detail view instead of the original.")
                             }
+                            // Open this proxy in the system's default player.
+                            Button {
+                                gridViewModel.openVideoInExternal(path: proxy.path)
+                            } label: {
+                                Image(systemName: "arrow.up.forward.app")
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Open this proxy in your system's default video player")
                             // Break-link button — always visible so
                             // the user can correct false auto-detections
                             // regardless of view mode.
@@ -548,6 +566,9 @@ struct DetailView: View {
                             guard isLoupeMode else { return }
                             viewModel.setSelectedProxy(isSelected ? nil : proxy.id)
                         }
+                        // Drag a proxy row out to an external editor / file
+                        // manager, dropping that proxy's file.
+                        .onDrag { DragExport.provider(for: proxy.path) }
                     }
                 }
                 .background(Color(.windowBackgroundColor).opacity(0.5))
