@@ -240,6 +240,12 @@ struct DetailLoupeView: View {
             durationSec: durationSec > 0 ? durationSec : Double(video.durationMs) / 1000.0,
             playbackStarted: playerVideoId == video.id,
             stepFrames: $stepFrames,
+            volume: gridViewModel.playbackVolume,
+            hasAudio: !video.codecAudio.isEmpty,
+            onVolumeChange: { v in
+                gridViewModel.playbackVolume = v
+                player?.volume = Float(v) / 100.0
+            },
             onPlayPause: { onPlayPause(for: video) },
             onStepBackOne: { stepFrames(by: -1, for: video) },
             onStepForwardOne: { stepFrames(by: 1, for: video) },
@@ -259,6 +265,7 @@ struct DetailLoupeView: View {
             teardownPlayer()
             let url = URL(fileURLWithPath: effectivePath(for: video))
             let p = AVPlayer(url: url)
+            p.volume = Float(gridViewModel.playbackVolume) / 100.0
             attachObservers(to: p)
             player = p
             playerVideoId = video.id
@@ -284,6 +291,7 @@ struct DetailLoupeView: View {
             teardownPlayer()
             let url = URL(fileURLWithPath: effectivePath(for: video))
             let p = AVPlayer(url: url)
+            p.volume = Float(gridViewModel.playbackVolume) / 100.0
             attachObservers(to: p)
             player = p
             playerVideoId = video.id
@@ -473,6 +481,9 @@ private struct ControlBar: View {
     let durationSec: Double
     let playbackStarted: Bool
     @Binding var stepFrames: Int
+    let volume: Int
+    let hasAudio: Bool
+    let onVolumeChange: (Int) -> Void
     let onPlayPause: () -> Void
     let onStepBackOne: () -> Void
     let onStepForwardOne: () -> Void
@@ -539,6 +550,26 @@ private struct ControlBar: View {
                 .help("Step forward \(stepFrames) frames")
 
                 Spacer()
+
+                // Volume — shown only for clips with an audio track, sitting
+                // just left of the step-size control.
+                if hasAudio {
+                    HStack(spacing: 4) {
+                        Image(systemName: volume == 0 ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                        Slider(
+                            value: Binding(
+                                get: { Double(volume) },
+                                set: { onVolumeChange(Int($0)) }
+                            ),
+                            in: 0...100
+                        )
+                        .frame(width: 90)
+                    }
+                    .help("Playback volume")
+                    Spacer().frame(width: 12)
+                }
 
                 // Configurable step size.
                 HStack(spacing: 4) {

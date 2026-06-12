@@ -147,6 +147,13 @@ class GridViewModel(
     // the value survives switching the visible editor (COMBINE semantics).
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    // Playback output volume (0–100), shared across the detail loupe and the
+    // inline card players so the level the user picks sticks for the session.
+    private val _playbackVolume = MutableStateFlow(100)
+    val playbackVolume: StateFlow<Int> = _playbackVolume.asStateFlow()
+    fun setPlaybackVolume(percent: Int) { _playbackVolume.value = percent.coerceIn(0, 100) }
+
     /** Currently selected library location to filter by. Empty string = all. */
     private var locationPathFilter: String = ""
 

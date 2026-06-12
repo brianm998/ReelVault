@@ -539,6 +539,16 @@ class ComposeVideoPlayer(
         }
     }
 
+    /** Set output volume, 0–100. libvlc resets a new media's volume to 100, so
+     *  callers re-apply the user's level after each load. */
+    fun setVolume(percent: Int) {
+        val mp = activeMediaPlayer() ?: return
+        val v = percent.coerceIn(0, 100)
+        SwingUtilities.invokeLater {
+            try { mp.audio().setVolume(v) } catch (_: Throwable) {}
+        }
+    }
+
     fun seek(timeMs: Long) {
         val mp = activeMediaPlayer() ?: return
         SwingUtilities.invokeLater {

@@ -364,7 +364,12 @@ fun DetailViewScreen(
                 player.stop()
                 playbackStarted = false
             },
-            onStepFramesChange = { stepFrames = it.coerceIn(1, 600) }
+            onStepFramesChange = { stepFrames = it.coerceIn(1, 600) },
+            volume = gridViewModel.playbackVolume.collectAsState().value,
+            onVolumeChange = { v ->
+                gridViewModel.setPlaybackVolume(v)
+                player.setVolume(v)
+            },
         )
     }
 }
@@ -444,12 +449,21 @@ private fun ControlBar(
     stepFrames: Int,
     onStartPlayback: () -> Unit,
     onStopPlayback: () -> Unit,
-    onStepFramesChange: (Int) -> Unit
+    onStepFramesChange: (Int) -> Unit,
+    volume: Int = 100,
+    onVolumeChange: (Int) -> Unit = {},
 ) {
     val currentMs by player.currentTimeMs
     val lengthMs by player.lengthMs
     val isPlaying by player.isPlaying
     val fps = video.fps.takeIf { it > 0.0 } ?: 30.0
+    // Show the volume control only for clips that actually carry an audio track.
+    val hasAudio = video.codecAudio.isNotEmpty()
+    // libvlc resets a new media's volume to 100 on load, so (re)apply the
+    // user's chosen level once playback starts.
+    LaunchedEffect(playbackStarted, video.id) {
+        if (playbackStarted) player.setVolume(volume)
+    }
 
     // Scrub state. While the user drags the slider we show their finger
     // position (dragMs); after they release we hold that position
@@ -579,6 +593,28 @@ private fun ControlBar(
             }
 
             Spacer(modifier = Modifier.width(ReelVaultSpacing.Large))
+
+            // Volume — shown only for clips with an audio track, sitting just
+            // left of the step-size control.
+            if (hasAudio) {
+                com.reelvault.ui.components.Tooltip(text = "Playback volume") {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = if (volume == 0) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+                            contentDescription = "Volume",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Slider(
+                            value = volume.toFloat(),
+                            onValueChange = { onVolumeChange(it.toInt()) },
+                            valueRange = 0f..100f,
+                            modifier = Modifier.width(96.dp),
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(ReelVaultSpacing.Large))
+            }
 
             // Configurable step size (default 20).
             com.reelvault.ui.components.Tooltip(

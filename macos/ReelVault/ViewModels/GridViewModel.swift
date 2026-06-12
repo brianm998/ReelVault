@@ -74,6 +74,10 @@ class GridViewModel: ObservableObject {
     @Published var hasMore = false
     @Published var searchQuery = ""
 
+    // Playback output volume (0–100), shared across the detail loupe and the
+    // inline card players so the level the user picks sticks for the session.
+    @Published var playbackVolume: Int = 100
+
     // Sort — loaded from UserDefaults so the user's last choice survives a
     // relaunch (written back in `setSort`). Defaults match a fresh install
     // (newest-indexed first).
