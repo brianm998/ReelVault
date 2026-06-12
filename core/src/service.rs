@@ -1862,7 +1862,10 @@ impl ReelVaultTrait for ReelVaultService {
                 id: c.id.clone(),
                 name: c.name.clone(),
                 is_smart: c.is_smart,
-                video_count: 0,
+                // Manual collections report their real member count (was always
+                // 0). Smart collections have no members; their count is derived
+                // from the saved filter by the client.
+                video_count: c.video_count,
                 filter_json: c.filter_json.clone().unwrap_or_default(),
             })
             .collect();

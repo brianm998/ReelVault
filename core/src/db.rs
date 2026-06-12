@@ -988,8 +988,16 @@ impl Database {
     pub fn list_collections(&self) -> Result<Vec<CollectionRecord>> {
         let conn = self.get_connection()?;
 
+        // LEFT JOIN + COUNT so manual collections report their real member
+        // count in one query (was hardcoded to 0 in the service layer).
         let mut stmt = conn
-            .prepare("SELECT id, name, is_smart, filter_json FROM collections ORDER BY name")
+            .prepare(
+                "SELECT c.id, c.name, c.is_smart, c.filter_json, COUNT(cm.video_id) \
+                 FROM collections c \
+                 LEFT JOIN collection_members cm ON cm.collection_id = c.id \
+                 GROUP BY c.id \
+                 ORDER BY c.name",
+            )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         let collections = stmt
@@ -999,6 +1007,7 @@ impl Database {
                     name: row.get(1)?,
                     is_smart: row.get::<_, i32>(2)? != 0,
                     filter_json: row.get(3)?,
+                    video_count: row.get(4)?,
                 })
             })
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
@@ -3210,6 +3219,10 @@ pub struct CollectionRecord {
     pub name: String,
     pub is_smart: bool,
     pub filter_json: Option<String>,
+    /// Number of videos in the collection. For manual collections this is the
+    /// `collection_members` row count; for smart collections it's left at 0
+    /// here (members don't apply) and filled in from the saved filter elsewhere.
+    pub video_count: i64,
 }
 
 #[derive(Debug, Clone)]
