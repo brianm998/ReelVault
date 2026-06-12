@@ -236,21 +236,21 @@ fun VideoCard(
     // closer together than before (the photo area is no longer a dark frame
     // around the thumbnail), and the selected state brightens further.
     val topBandColor = when {
-        isSelected -> Color(0xFFC4C4C4)
-        isInMultiSelection -> Color(0xFF818181)
-        else -> Color(0xFF6E6E6E)
+        isSelected -> Color(0xFFDFDFDF)
+        isInMultiSelection -> Color(0xFFB3B3B3)
+        else -> Color(0xFF6B6B6B)
     }
     val photoAreaBackground = when {
-        isSelected -> Color(0xFFC4C4C4)
-        isInMultiSelection -> Color(0xFF818181)
+        isSelected -> Color(0xFF999999)
+        isInMultiSelection -> Color(0xFF707070)
         isInExpandedStack -> Color(0xFF535660)
         colorLabelEnum != com.reelvault.data.models.ColorLabel.None -> colorLabelEnum.dimmed
-        else -> Color(0xFF646464)
+        else -> Color(0xFF474747)
     }
     val bottomBandColor = when {
-        isSelected -> Color(0xFFC4C4C4)
-        isInMultiSelection -> Color(0xFF818181)
-        else -> Color(0xFF6A6A6A)
+        isSelected -> Color(0xFFCFCFCF)
+        isInMultiSelection -> Color(0xFF9E9E9E)
+        else -> Color(0xFF5C5C5C)
     }
     val bandDividerColor = when {
         isAnchor || isSelected || isInMultiSelection -> Color.Black.copy(alpha = 0.10f)
@@ -262,8 +262,9 @@ fun VideoCard(
             colorLabelEnum.swatch
         } else null
     // White when the side is the selection group's outer edge; otherwise the
-    // faint grey grid line every card draws in the zero-gutter grid.
-    val selectionBorderColor = Color.White.copy(alpha = 0.6f)
+    // faint grey grid line every card draws in the zero-gutter grid. Fully
+    // opaque so the selection border reads as a solid white stroke.
+    val selectionBorderColor = Color.White
     val gridLineColor = Color.Black.copy(alpha = 0.4f)
     // Backwards-compat aliases — old call sites use these names.
     @Suppress("UnusedVariable") val bandBackground = topBandColor
@@ -306,24 +307,31 @@ fun VideoCard(
                 drawLine(gridLineColor, Offset(0f, h - o), Offset(w, h - o), sw)
                 drawLine(gridLineColor, Offset(o, 0f), Offset(o, h), sw)
                 drawLine(gridLineColor, Offset(w - o, 0f), Offset(w - o, h), sw)
-                // Selection border: twice as wide (2 dp) and drawn LAST so it
-                // sits on top of everything, and inset by 1 dp so a
-                // neighbouring card's grid line in the zero-gutter grid can't
-                // overdraw it (the old 1 dp edge was getting eaten by the
-                // neighbour painted after it). Only the selection block's outer
-                // edges are drawn so a run of selected cards still reads as one
-                // group.
+                // Selection border: a solid 2 dp white stroke, drawn LAST so it
+                // sits on top of everything and inset 1 dp past the grid line so
+                // a neighbour can't overdraw it. Only the selection block's
+                // outer edges are drawn (so a run of selected cards reads as one
+                // group); each edge's ends extend by half the stroke width at a
+                // real (outer) corner so the two strokes meet flush — a sharp
+                // right angle with no overhang — and run to the full card edge
+                // at an inner boundary so they join the selected neighbour's
+                // stroke seamlessly.
                 if (isSelected || isInMultiSelection) {
                     val ssw = 2.dp.toPx()
-                    val so = sw + ssw / 2f
+                    val so = sw + ssw / 2f      // stroke centreline, 2 dp in
+                    val ext = ssw / 2f          // corner fill = 1 dp
+                    val hStart = if (selectionEdgeLeft) so - ext else 0f
+                    val hEnd = if (selectionEdgeRight) w - so + ext else w
+                    val vStart = if (selectionEdgeTop) so - ext else 0f
+                    val vEnd = if (selectionEdgeBottom) h - so + ext else h
                     if (selectionEdgeTop)
-                        drawLine(selectionBorderColor, Offset(0f, so), Offset(w, so), ssw)
+                        drawLine(selectionBorderColor, Offset(hStart, so), Offset(hEnd, so), ssw)
                     if (selectionEdgeBottom)
-                        drawLine(selectionBorderColor, Offset(0f, h - so), Offset(w, h - so), ssw)
+                        drawLine(selectionBorderColor, Offset(hStart, h - so), Offset(hEnd, h - so), ssw)
                     if (selectionEdgeLeft)
-                        drawLine(selectionBorderColor, Offset(so, 0f), Offset(so, h), ssw)
+                        drawLine(selectionBorderColor, Offset(so, vStart), Offset(so, vEnd), ssw)
                     if (selectionEdgeRight)
-                        drawLine(selectionBorderColor, Offset(w - so, 0f), Offset(w - so, h), ssw)
+                        drawLine(selectionBorderColor, Offset(w - so, vStart), Offset(w - so, vEnd), ssw)
                 }
             }
             // Drag-out support: detect drag motion in Compose then hand off
@@ -398,13 +406,13 @@ fun VideoCard(
         ) {
             AdaptiveStatRow(
                 modifier = Modifier.fillMaxWidth(),
-                leading = { StatCell(slotIndex = 0, key = paddedSlots[0], video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor, selected = isSelected) },
-                trailing = { StatCell(slotIndex = 2, key = paddedSlots[2], video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor, selected = isSelected) },
+                leading = { StatCell(slotIndex = 0, key = paddedSlots[0], video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor, selected = isSelected || isInMultiSelection) },
+                trailing = { StatCell(slotIndex = 2, key = paddedSlots[2], video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor, selected = isSelected || isInMultiSelection) },
             )
             AdaptiveStatRow(
                 modifier = Modifier.fillMaxWidth(),
-                leading = { StatCell(slotIndex = 1, key = paddedSlots[1], video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor, selected = isSelected) },
-                trailing = { StatCell(slotIndex = 3, key = paddedSlots[3], video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor, selected = isSelected) },
+                leading = { StatCell(slotIndex = 1, key = paddedSlots[1], video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor, selected = isSelected || isInMultiSelection) },
+                trailing = { StatCell(slotIndex = 3, key = paddedSlots[3], video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor, selected = isSelected || isInMultiSelection) },
             )
         }
 

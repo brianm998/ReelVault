@@ -751,28 +751,28 @@ fun VideoListRow(
     // Background neutrals — kept identical to the grid VideoCard so list and
     // grid rows share the same look.
     val rowMiddleBackground = when {
-        isSelected -> Color(0xFFC4C4C4)
-        isInMultiSelection -> Color(0xFF818181)
+        isSelected -> Color(0xFF999999)
+        isInMultiSelection -> Color(0xFF707070)
         isInExpandedStack -> Color(0xFF535660)
         colorLabelEnum != com.reelvault.data.models.ColorLabel.None -> colorLabelEnum.dimmed
-        else -> Color(0xFF646464)
+        else -> Color(0xFF474747)
     }
     val bottomBandColor = when {
-        isSelected -> Color(0xFFC4C4C4)
-        isInMultiSelection -> Color(0xFF818181)
-        else -> Color(0xFF6A6A6A)
+        isSelected -> Color(0xFFCFCFCF)
+        isInMultiSelection -> Color(0xFF9E9E9E)
+        else -> Color(0xFF5C5C5C)
     }
     val topBandColor = when {
-        isSelected -> Color(0xFFC4C4C4)
-        isInMultiSelection -> Color(0xFF818181)
-        else -> Color(0xFF6E6E6E)
+        isSelected -> Color(0xFFDFDFDF)
+        isInMultiSelection -> Color(0xFFB3B3B3)
+        else -> Color(0xFF6B6B6B)
     }
     val bandDividerColor = when {
         isAnchor || isSelected || isInMultiSelection -> Color.Black.copy(alpha = 0.10f)
         else -> Color.Black.copy(alpha = 0.35f)
     }
     val cardBorderColor = when {
-        isAnchor || isSelected || isInMultiSelection -> Color.White.copy(alpha = 0.6f)
+        isAnchor || isSelected || isInMultiSelection -> Color.White
         else -> Color.Black.copy(alpha = 0.4f)
     }
 
@@ -860,13 +860,13 @@ fun VideoListRow(
             ) {
                 AdaptiveStatRow(
                     modifier = Modifier.fillMaxWidth(),
-                    leading = { ListRowStatCell(slotIndex = 0, key = cardTopSlots[0], video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor, selected = isSelected) },
-                    trailing = { ListRowStatCell(slotIndex = 2, key = cardTopSlots[2], video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor, selected = isSelected) },
+                    leading = { ListRowStatCell(slotIndex = 0, key = cardTopSlots[0], video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor, selected = isSelected || isInMultiSelection) },
+                    trailing = { ListRowStatCell(slotIndex = 2, key = cardTopSlots[2], video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor, selected = isSelected || isInMultiSelection) },
                 )
                 AdaptiveStatRow(
                     modifier = Modifier.fillMaxWidth(),
-                    leading = { ListRowStatCell(slotIndex = 1, key = cardTopSlots[1], video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor, selected = isSelected) },
-                    trailing = { ListRowStatCell(slotIndex = 3, key = cardTopSlots[3], video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor, selected = isSelected) },
+                    leading = { ListRowStatCell(slotIndex = 1, key = cardTopSlots[1], video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor, selected = isSelected || isInMultiSelection) },
+                    trailing = { ListRowStatCell(slotIndex = 3, key = cardTopSlots[3], video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor, selected = isSelected || isInMultiSelection) },
                 )
             }
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(bandDividerColor))
@@ -1561,27 +1561,27 @@ private fun VideoListHorizontalCard(
     val colorLabelEnum = com.reelvault.data.models.ColorLabel.from(video.colorLabel)
     // Background neutrals — identical to the grid VideoCard / VideoListRow.
     val topBandColor = when {
-        isSelected -> Color(0xFFC4C4C4)
-        isInMultiSelection -> Color(0xFF818181)
-        else -> Color(0xFF6E6E6E)
+        isSelected -> Color(0xFFDFDFDF)
+        isInMultiSelection -> Color(0xFFB3B3B3)
+        else -> Color(0xFF6B6B6B)
     }
     val thumbnailBackground = when {
-        isSelected -> Color(0xFFC4C4C4)
-        isInMultiSelection -> Color(0xFF818181)
+        isSelected -> Color(0xFF999999)
+        isInMultiSelection -> Color(0xFF707070)
         colorLabelEnum != com.reelvault.data.models.ColorLabel.None -> colorLabelEnum.dimmed
-        else -> Color(0xFF646464)
+        else -> Color(0xFF474747)
     }
     val bottomBandColor = when {
-        isSelected -> Color(0xFFC4C4C4)
-        isInMultiSelection -> Color(0xFF818181)
-        else -> Color(0xFF6A6A6A)
+        isSelected -> Color(0xFFCFCFCF)
+        isInMultiSelection -> Color(0xFF9E9E9E)
+        else -> Color(0xFF5C5C5C)
     }
     val bandDividerColor = when {
         isAnchor || isSelected || isInMultiSelection -> Color.Black.copy(alpha = 0.10f)
         else -> Color.Black.copy(alpha = 0.35f)
     }
     val cardBorderColor = when {
-        isAnchor || isSelected || isInMultiSelection -> Color.White.copy(alpha = 0.6f)
+        isAnchor || isSelected || isInMultiSelection -> Color.White
         else -> Color.Black.copy(alpha = 0.4f)
     }
 
@@ -1668,14 +1668,14 @@ private fun VideoListHorizontalCard(
                     }
                     AdaptiveStatRow(
                         modifier = Modifier.weight(1f),
-                        leading = { ListRowStatCell(slotIndex = 0, key = paddedSlots.getOrElse(0) { "" }, video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor, selected = isSelected) },
-                        trailing = { ListRowStatCell(slotIndex = 2, key = paddedSlots.getOrElse(2) { "" }, video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor, selected = isSelected) },
+                        leading = { ListRowStatCell(slotIndex = 0, key = paddedSlots.getOrElse(0) { "" }, video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor, selected = isSelected || isInMultiSelection) },
+                        trailing = { ListRowStatCell(slotIndex = 2, key = paddedSlots.getOrElse(2) { "" }, video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor, selected = isSelected || isInMultiSelection) },
                     )
                 }
                 AdaptiveStatRow(
                     modifier = Modifier.fillMaxWidth(),
-                    leading = { ListRowStatCell(slotIndex = 1, key = paddedSlots.getOrElse(1) { "" }, video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor, selected = isSelected) },
-                    trailing = { ListRowStatCell(slotIndex = 3, key = paddedSlots.getOrElse(3) { "" }, video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor, selected = isSelected) },
+                    leading = { ListRowStatCell(slotIndex = 1, key = paddedSlots.getOrElse(1) { "" }, video = video, onPick = onPickStatSlot, alignEnd = false, placeNameFor = placeNameFor, selected = isSelected || isInMultiSelection) },
+                    trailing = { ListRowStatCell(slotIndex = 3, key = paddedSlots.getOrElse(3) { "" }, video = video, onPick = onPickStatSlot, alignEnd = true, placeNameFor = placeNameFor, selected = isSelected || isInMultiSelection) },
                 )
             }
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(bandDividerColor))

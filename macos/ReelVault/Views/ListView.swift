@@ -848,7 +848,7 @@ struct VideoListRowView: View {
             // Selected cards: black text on the bright band. Unselected: the
             // adaptive primary/secondary used on the dark band.
             .foregroundColor(
-                isPrimarySelected
+                (isPrimarySelected || isInMultiSelection)
                     ? (stat == .none ? Color.black.opacity(0.5) : Color.black)
                     : (stat == .none ? Color.secondary : Color.primary)
             )
@@ -923,12 +923,12 @@ struct VideoListRowView: View {
     /// when the row is selected.
     private var topBandColor: Color {
         if isPrimarySelected {
-            return Color(white: 0.77)
+            return Color(white: 223.0 / 255.0)  // #dfdfdf
         }
         if isInMultiSelection {
-            return Color(white: 0.50)
+            return Color(white: 179.0 / 255.0)  // #b3b3b3
         }
-        return Color(white: 0.43)
+        return Color(white: 107.0 / 255.0)      // #6b6b6b
     }
 
     /// Middle row background: takes the colour-label tint when unselected,
@@ -936,26 +936,26 @@ struct VideoListRowView: View {
     private var rowMiddleBackground: Color {
         let label = ColorLabel(video.colorLabel)
         if isPrimarySelected {
-            return Color(white: 0.77)
+            return Color(white: 153.0 / 255.0)  // #999999
         }
         if isInMultiSelection {
-            return Color(white: 0.50)
+            return Color(white: 112.0 / 255.0)  // #707070
         }
         if isInExpandedStack {
             return Color(red: 0.31, green: 0.33, blue: 0.37)
         }
         if label != .none { return label.dimmed }
-        return Color(white: 0.39)
+        return Color(white: 71.0 / 255.0)       // #474747
     }
 
     private var bottomBandColor: Color {
         if isPrimarySelected {
-            return Color(white: 0.77)
+            return Color(white: 207.0 / 255.0)  // #cfcfcf
         }
         if isInMultiSelection {
-            return Color(white: 0.50)
+            return Color(white: 158.0 / 255.0)  // #9e9e9e
         }
-        return Color(white: 0.42)
+        return Color(white: 92.0 / 255.0)       // #5c5c5c
     }
 
     private var bandDividerColor: Color {
@@ -967,7 +967,7 @@ struct VideoListRowView: View {
 
     private var cardBorderColor: Color {
         if isAnchor || isPrimarySelected || isInMultiSelection {
-            return Color.white.opacity(0.6)
+            return Color.white
         }
         return Color.black.opacity(0.5)
     }
@@ -1345,7 +1345,7 @@ struct VideoListHorizontalCardView: View {
             .font(.system(size: 10, weight: .regular))
             // Selected cards: black text on the bright band. Unselected: white.
             .foregroundColor(
-                isPrimarySelected
+                (isPrimarySelected || isInMultiSelection)
                     ? (stat == .none ? Color.black.opacity(0.5) : Color.black)
                     : (stat == .none ? Color.white.opacity(0.5) : Color.white.opacity(0.92))
             )
@@ -1508,28 +1508,28 @@ struct VideoListHorizontalCardView: View {
     // MARK: Band colors (mirrors VideoListRowView)
 
     private var topBandColor: Color {
-        if isPrimarySelected { return Color(white: 0.77) }
-        if isInMultiSelection { return Color(white: 0.50) }
-        return Color(white: 0.43)
+        if isPrimarySelected { return Color(white: 223.0 / 255.0) }   // #dfdfdf
+        if isInMultiSelection { return Color(white: 179.0 / 255.0) }  // #b3b3b3
+        return Color(white: 107.0 / 255.0)                            // #6b6b6b
     }
     private var thumbnailBackground: Color {
         let label = ColorLabel(video.colorLabel)
-        if isPrimarySelected { return Color(white: 0.77) }
-        if isInMultiSelection { return Color(white: 0.50) }
+        if isPrimarySelected { return Color(white: 153.0 / 255.0) }   // #999999
+        if isInMultiSelection { return Color(white: 112.0 / 255.0) }  // #707070
         if label != .none { return label.dimmed }
-        return Color(white: 0.39)
+        return Color(white: 71.0 / 255.0)                             // #474747
     }
     private var bottomBandColor: Color {
-        if isPrimarySelected { return Color(white: 0.77) }
-        if isInMultiSelection { return Color(white: 0.50) }
-        return Color(white: 0.42)
+        if isPrimarySelected { return Color(white: 207.0 / 255.0) }   // #cfcfcf
+        if isInMultiSelection { return Color(white: 158.0 / 255.0) }  // #9e9e9e
+        return Color(white: 92.0 / 255.0)                             // #5c5c5c
     }
     private var bandDividerColor: Color {
         if isAnchor || isPrimarySelected || isInMultiSelection { return Color.black.opacity(0.10) }
         return Color.black.opacity(0.35)
     }
     private var cardBorderColor: Color {
-        if isAnchor || isPrimarySelected || isInMultiSelection { return Color.white.opacity(0.6) }
+        if isAnchor || isPrimarySelected || isInMultiSelection { return Color.white }
         return Color.black.opacity(0.5)
     }
 }

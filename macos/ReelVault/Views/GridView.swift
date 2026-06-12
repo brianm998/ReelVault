@@ -915,13 +915,22 @@ struct VideoCardView: View {
         .overlay(alignment: .bottom)   { edgeLine(selectionEdgeBottom, horizontal: true) }
         .overlay(alignment: .leading)  { edgeLine(selectionEdgeLeft, horizontal: false) }
         .overlay(alignment: .trailing) { edgeLine(selectionEdgeRight, horizontal: false) }
-        // Selection highlight (2 pt, inset, on top) — drawn after the grid
-        // lines so a selected card's border is never overwritten by a
-        // neighbour's edge.
-        .overlay(alignment: .top)      { selectionEdgeLine(selectionEdgeTop, edge: .top) }
-        .overlay(alignment: .bottom)   { selectionEdgeLine(selectionEdgeBottom, edge: .bottom) }
-        .overlay(alignment: .leading)  { selectionEdgeLine(selectionEdgeLeft, edge: .leading) }
-        .overlay(alignment: .trailing) { selectionEdgeLine(selectionEdgeRight, edge: .trailing) }
+        // Selection highlight: a solid, opaque white stroke drawn on top of the
+        // grid lines. A single Shape — a closed rectangle when the card is the
+        // whole selection (the common case), separate corner-aware edges for a
+        // block — so it renders as one continuous stroke with sharp right-angle
+        // corners and no overhang, never the four overlapping lines it was.
+        .overlay {
+            if isPrimarySelected || isInMultiSelection {
+                SelectionBorderShape(
+                    top: selectionEdgeTop, bottom: selectionEdgeBottom,
+                    leading: selectionEdgeLeft, trailing: selectionEdgeRight,
+                    inset: 2, ext: 1
+                )
+                .stroke(Color.white, lineWidth: 2)
+                .allowsHitTesting(false)
+            }
+        }
         // Card-level motion tracking. Fires for moves anywhere on the
         // card — over the thumbnail (where we map x → scrub frame) and
         // over the info area below (which only contributes to the
@@ -1045,12 +1054,12 @@ struct VideoCardView: View {
     /// ~40% darker than the original Lightroom-style light greys.
     private var topBandColor: Color {
         if isPrimarySelected {
-            return Color(white: 0.77)
+            return Color(white: 223.0 / 255.0)  // #dfdfdf
         }
         if isInMultiSelection {
-            return Color(white: 0.50)
+            return Color(white: 179.0 / 255.0)  // #b3b3b3
         }
-        return Color(white: 0.43)
+        return Color(white: 107.0 / 255.0)      // #6b6b6b
     }
 
     /// Photo area. Takes the colour-label tint when unselected; goes to
@@ -1058,28 +1067,28 @@ struct VideoCardView: View {
     private var photoAreaBackground: Color {
         let label = ColorLabel(video.colorLabel)
         if isPrimarySelected {
-            return Color(white: 0.77)
+            return Color(white: 153.0 / 255.0)  // #999999
         }
         if isInMultiSelection {
-            return Color(white: 0.50)
+            return Color(white: 112.0 / 255.0)  // #707070
         }
         if isInExpandedStack {
             return Color(red: 0.31, green: 0.33, blue: 0.37)
         }
         if label != .none { return label.dimmed }
-        return Color(white: 0.39)
+        return Color(white: 71.0 / 255.0)       // #474747
     }
 
     /// Bottom rating band. Slightly darker than the top band when
     /// unselected; same bright neutral as the rest when selected.
     private var bottomBandColor: Color {
         if isPrimarySelected {
-            return Color(white: 0.77)
+            return Color(white: 207.0 / 255.0)  // #cfcfcf
         }
         if isInMultiSelection {
-            return Color(white: 0.50)
+            return Color(white: 158.0 / 255.0)  // #9e9e9e
         }
-        return Color(white: 0.42)
+        return Color(white: 92.0 / 255.0)       // #5c5c5c
     }
 
     /// Thin 1 pt separator between a band and the photo area. Provides
@@ -1112,7 +1121,7 @@ struct VideoCardView: View {
     private func edgeLine(_ outer: Bool, horizontal: Bool) -> some View {
         // Faint grid line every card draws so the zero-gutter grid stays
         // legible. The selection highlight is a separate, wider overlay drawn
-        // on top — see `selectionEdgeLine`.
+        // on top — see `SelectionBorderShape`.
         Rectangle()
             .fill(Color.black.opacity(0.4))
             .frame(height: horizontal ? 1 : nil)
@@ -1120,20 +1129,38 @@ struct VideoCardView: View {
             .allowsHitTesting(false)
     }
 
-    /// Selection highlight for one outer edge: twice as wide as the grid line
-    /// (2 pt) and inset 1 pt so a neighbouring card's grid line in the
-    /// zero-gutter grid can't overdraw it. Drawn in overlays added *after* the
-    /// grid-line overlays, so it sits on top of everything else on the card.
-    @ViewBuilder
-    private func selectionEdgeLine(_ outer: Bool, edge: Edge) -> some View {
-        if (isPrimarySelected || isInMultiSelection) && outer {
-            let horizontal = (edge == .top || edge == .bottom)
-            Rectangle()
-                .fill(Color.white.opacity(0.6))
-                .frame(height: horizontal ? 2 : nil)
-                .frame(width: horizontal ? nil : 2)
-                .padding(Edge.Set(edge), 1)
-                .allowsHitTesting(false)
+    /// Selection-highlight border. Strokes only the selection block's outer
+    /// edges; each edge's ends extend half the stroke width at a real (outer)
+    /// corner so adjacent strokes meet flush (sharp right angle, no overhang),
+    /// and run to the full card edge at an inner boundary so they join a
+    /// selected neighbour's stroke seamlessly. A closed rectangle when all four
+    /// edges are outer so the common single-card case is one mitred stroke.
+    private struct SelectionBorderShape: Shape {
+        let top: Bool
+        let bottom: Bool
+        let leading: Bool
+        let trailing: Bool
+        let inset: CGFloat   // stroke centreline distance from the card edge
+        let ext: CGFloat     // corner fill (half the stroke width)
+        func path(in rect: CGRect) -> Path {
+            var p = Path()
+            let l = rect.minX + inset
+            let r = rect.maxX - inset
+            let t = rect.minY + inset
+            let b = rect.maxY - inset
+            if top && bottom && leading && trailing {
+                p.addRect(CGRect(x: l, y: t, width: r - l, height: b - t))
+                return p
+            }
+            let hStart = leading ? (l - ext) : rect.minX
+            let hEnd = trailing ? (r + ext) : rect.maxX
+            let vStart = top ? (t - ext) : rect.minY
+            let vEnd = bottom ? (b + ext) : rect.maxY
+            if top { p.move(to: CGPoint(x: hStart, y: t)); p.addLine(to: CGPoint(x: hEnd, y: t)) }
+            if bottom { p.move(to: CGPoint(x: hStart, y: b)); p.addLine(to: CGPoint(x: hEnd, y: b)) }
+            if leading { p.move(to: CGPoint(x: l, y: vStart)); p.addLine(to: CGPoint(x: l, y: vEnd)) }
+            if trailing { p.move(to: CGPoint(x: r, y: vStart)); p.addLine(to: CGPoint(x: r, y: vEnd)) }
+            return p
         }
     }
 
@@ -1203,9 +1230,10 @@ struct VideoCardView: View {
         }()
         Text(displayed)
             .font(.system(size: 10, weight: slotIndex == 0 ? .semibold : .regular))
-            // Selected cards: black text on the bright band. Unselected: white.
+            // Selected/multi-selected cards: black text on the bright band.
+            // Unselected: white.
             .foregroundColor(
-                isPrimarySelected
+                (isPrimarySelected || isInMultiSelection)
                     ? (stat == .none ? Color.black.opacity(0.5) : Color.black)
                     : (stat == .none ? Color.white.opacity(0.5) : Color.white.opacity(0.92))
             )
