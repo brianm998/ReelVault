@@ -476,7 +476,10 @@ struct DetailView: View {
                 VStack(spacing: 0) {
                     ForEach(Array(viewModel.proxies.enumerated()), id: \.element.id) { idx, proxy in
                         if idx > 0 { Divider() }
-                        let isSelected = proxy.id == viewModel.selectedProxyId
+                        // Highlight the proxy that's actually playing (the
+                        // auto-chosen one by default), falling back to the
+                        // user's explicit pick when nothing is playing yet.
+                        let isSelected = proxy.id == (viewModel.playingProxyId ?? viewModel.selectedProxyId)
                         HStack(spacing: 6) {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(proxy.filename)

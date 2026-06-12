@@ -44,6 +44,12 @@ class DetailViewModel: ObservableObject {
     /// and clears it when the loupe is left.
     @Published var proxyBanner: ProxyBanner?
 
+    /// The proxy the loupe is actually playing right now (auto-chosen or the
+    /// user's pick), so the right-panel list can highlight which one is playing
+    /// by default — without pinning `selectedProxyId` (which stays the user's
+    /// explicit choice so they can still revert to the master).
+    @Published var playingProxyId: String?
+
     /// The summary backing the currently-selected card. Exposed so the
     /// right panel's proxy section can decide whether to render itself
     /// (keys off `hasProxies` and `playableNatively`, neither of which
@@ -104,14 +110,17 @@ class DetailViewModel: ObservableObject {
                 selected: selectedProxyId != nil,
                 detail: active.map { "\($0.filename) • \($0.height)p" }
             )
+            playingProxyId = active?.id
         } else {
             proxyBanner = nil
+            playingProxyId = nil
         }
     }
 
     /// Hide the top-bar proxy indicator (loupe left, or selection cleared).
     func clearProxyBanner() {
         proxyBanner = nil
+        playingProxyId = nil
     }
 
     /// Break the link between the currently-displayed master and one

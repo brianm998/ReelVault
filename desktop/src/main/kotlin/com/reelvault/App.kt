@@ -2736,8 +2736,10 @@ fun ReelVaultTopBar(
                                         modifier = Modifier.size(12.dp)
                                     )
                                     Text(
-                                        text = if (banner.selected) "Playing selected proxy"
-                                            else "Playing proxy",
+                                        // "selected" is redundant — a proxy is
+                                        // always the one selected (by the user
+                                        // or auto), so just say "Playing proxy".
+                                        text = "Playing proxy",
                                         fontSize = 11.sp,
                                         lineHeight = 11.sp,
                                         fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,

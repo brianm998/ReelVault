@@ -588,7 +588,9 @@ struct ContentView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "film")
                         .font(.system(size: 10, weight: .semibold))
-                    Text(banner.selected ? "Playing selected proxy" : "Playing proxy")
+                    // "selected" is redundant — a proxy is always the one
+                    // selected (by the user or auto), so just say "Playing proxy".
+                    Text("Playing proxy")
                         .font(.system(size: 11, weight: .medium))
                 }
                 .foregroundColor(.white)

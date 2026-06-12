@@ -147,7 +147,10 @@ fun DetailViewScreen(
     // Hide the top-bar proxy indicator when the loupe leaves the screen
     // (switching to grid/list, or clearing the selection).
     DisposableEffect(Unit) {
-        onDispose { detailViewModel.setProxyBanner(null) }
+        onDispose {
+            detailViewModel.setProxyBanner(null)
+            detailViewModel.setPlayingProxyId(null)
+        }
     }
 
     // Mode flag: "play" hasn't been pressed yet → show scrub thumbnail preview.
@@ -315,14 +318,21 @@ fun DetailViewScreen(
             // we just publish its content. The right panel remains where the
             // user picks a different proxy or reverts to the master.
             LaunchedEffect(effectivePath, video.id, video.path, selectedProxyId, proxies) {
+                val activeProxy = proxies.firstOrNull { it.path == effectivePath }
                 detailViewModel.setProxyBanner(
                     if (effectivePath != video.path) {
-                        val activeProxy = proxies.firstOrNull { it.path == effectivePath }
                         DetailViewModel.ProxyBanner(
                             selected = selectedProxyId != null,
                             detail = activeProxy?.let { "${it.filename} • ${it.height}p" },
                         )
                     } else null
+                )
+                // Publish which proxy is actually playing so the right-panel
+                // list highlights it by default — including the auto-chosen one
+                // for an oversize master — without pinning the user's explicit
+                // selection (which must stay free so they can revert to master).
+                detailViewModel.setPlayingProxyId(
+                    if (effectivePath != video.path) activeProxy?.id else null
                 )
             }
 

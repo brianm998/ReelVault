@@ -60,6 +60,14 @@ class DetailViewModel(
     private val _selectedProxyId = MutableStateFlow<String?>(null)
     val selectedProxyId: StateFlow<String?> = _selectedProxyId.asStateFlow()
 
+    // The proxy the loupe is actually playing right now (auto-chosen or the
+    // user's pick), so the right-panel list can highlight which one is playing
+    // by default — without pinning [_selectedProxyId] (which must stay the
+    // user's explicit choice so they can still revert to the master).
+    private val _playingProxyId = MutableStateFlow<String?>(null)
+    val playingProxyId: StateFlow<String?> = _playingProxyId.asStateFlow()
+    fun setPlayingProxyId(id: String?) { _playingProxyId.value = id }
+
     /** Content for the top-bar proxy-playback indicator. */
     data class ProxyBanner(
         /** True when the user explicitly picked this proxy in the right

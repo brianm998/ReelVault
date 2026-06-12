@@ -592,6 +592,7 @@ fun DetailScreen(
                 // automatically (per the product spec).
                 val proxies = viewModel.proxies.collectAsState()
                 val selectedProxyId = viewModel.selectedProxyId.collectAsState()
+                val playingProxyId = viewModel.playingProxyId.collectAsState()
                 val currentSummary = viewModel.currentSummary.collectAsState()
                 val activeProxyCreations = gridViewModel.activeProxyCreations.collectAsState()
                 val currentVideoId = currentSummary.value?.id
@@ -704,7 +705,10 @@ fun DetailScreen(
                                     color = MaterialTheme.colorScheme.outlineVariant,
                                 )
                             }
-                            val isSelected = proxy.id == selectedProxyId.value
+                            // Highlight the proxy that's actually playing (the
+                            // auto-chosen one by default), falling back to the
+                            // user's explicit pick when nothing is playing yet.
+                            val isSelected = proxy.id == (playingProxyId.value ?: selectedProxyId.value)
                             val rowModifier = if (viewMode == ViewMode.DETAIL) {
                                 Modifier
                                     .fillMaxWidth()
