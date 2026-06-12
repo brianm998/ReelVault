@@ -6,18 +6,108 @@ use crate::metadata_keys::{self, SqlVal};
 use chrono::Utc;
 use rusqlite::{params, Connection, OptionalExtension};
 use std::collections::BTreeSet;
+use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
-use std::sync::RwLock;
+use std::sync::{Arc, Mutex, RwLock};
+use std::time::Duration;
 use uuid::Uuid;
 
-/// SQLite catalog the daemon currently serves. The path is interior-mutable
+/// SQLite catalog the daemon currently serves. The pool is interior-mutable
 /// so the gRPC `OpenCatalog` / `CloseCatalog` RPCs can swap which file backs
 /// the server without restarting the process. `None` means "no catalog open"
 /// — every method that touches SQL returns
 /// [`ReelVaultError::DatabaseError`] in that state, and the service layer
 /// turns those into `FailedPrecondition` for the client.
 pub struct Database {
-    path: RwLock<Option<PathBuf>>,
+    pool: RwLock<Option<Arc<ConnPool>>>,
+}
+
+/// Most idle connections kept around per catalog. Excess connections returned
+/// by [`PooledConnection::drop`] are simply closed. Concurrency above this
+/// limit still works — `get` opens extra connections on demand — the cap only
+/// bounds how many stay warm.
+const MAX_IDLE_CONNECTIONS: usize = 8;
+
+/// Idle-connection pool for one catalog file. Swapped wholesale when the
+/// catalog path changes; guards created against the old pool return their
+/// connection to it harmlessly (the old pool drops with its last guard).
+struct ConnPool {
+    path: PathBuf,
+    idle: Mutex<Vec<Connection>>,
+}
+
+impl ConnPool {
+    fn new(path: PathBuf) -> Self {
+        ConnPool {
+            path,
+            idle: Mutex::new(Vec::new()),
+        }
+    }
+
+    fn get(self: &Arc<Self>) -> Result<PooledConnection> {
+        let reused = self
+            .idle
+            .lock()
+            .map_err(|_| ReelVaultError::DatabaseError("Connection pool poisoned".to_string()))?
+            .pop();
+        let conn = match reused {
+            Some(c) => c,
+            None => open_configured(&self.path)?,
+        };
+        Ok(PooledConnection {
+            conn: Some(conn),
+            pool: Arc::clone(self),
+        })
+    }
+}
+
+/// Open a connection with the per-connection behavior pragmas every catalog
+/// connection must carry. `journal_mode` is persistent in the file but cheap
+/// to assert; `foreign_keys` and the busy timeout are connection-local and
+/// silently absent without this (FK cascades wouldn't fire, and concurrent
+/// writers would fail immediately with `SQLITE_BUSY` instead of waiting).
+fn open_configured(path: &Path) -> Result<Connection> {
+    let conn = Connection::open(path)
+        .map_err(|e| ReelVaultError::DatabaseError(format!("Failed to open database: {}", e)))?;
+    let _ = conn.busy_timeout(Duration::from_secs(5));
+    let _ = conn.pragma_update(None, "journal_mode", "WAL");
+    let _ = conn.pragma_update(None, "synchronous", "NORMAL");
+    let _ = conn.pragma_update(None, "foreign_keys", "ON");
+    Ok(conn)
+}
+
+/// An open catalog connection on loan from the pool. Derefs to
+/// [`rusqlite::Connection`], so call sites use it exactly like an owned
+/// connection; dropping it returns the connection to the pool (or closes it
+/// when the pool already holds [`MAX_IDLE_CONNECTIONS`]).
+pub struct PooledConnection {
+    conn: Option<Connection>,
+    pool: Arc<ConnPool>,
+}
+
+impl Deref for PooledConnection {
+    type Target = Connection;
+    fn deref(&self) -> &Connection {
+        self.conn.as_ref().expect("connection taken before drop")
+    }
+}
+
+impl DerefMut for PooledConnection {
+    fn deref_mut(&mut self) -> &mut Connection {
+        self.conn.as_mut().expect("connection taken before drop")
+    }
+}
+
+impl Drop for PooledConnection {
+    fn drop(&mut self) {
+        if let Some(conn) = self.conn.take() {
+            if let Ok(mut idle) = self.pool.idle.lock() {
+                if idle.len() < MAX_IDLE_CONNECTIONS {
+                    idle.push(conn);
+                }
+            }
+        }
+    }
 }
 
 /// Representative-row selection shared by the grid listing and the facet
@@ -142,7 +232,7 @@ impl Database {
     /// is created.
     pub fn new(path: &Path) -> Result<Self> {
         Ok(Database {
-            path: RwLock::new(Some(path.to_path_buf())),
+            pool: RwLock::new(Some(Arc::new(ConnPool::new(path.to_path_buf())))),
         })
     }
 
@@ -150,13 +240,14 @@ impl Database {
     /// [`Database::set_path`] will pick one and initialize its schema.
     pub fn new_empty() -> Self {
         Database {
-            path: RwLock::new(None),
+            pool: RwLock::new(None),
         }
     }
 
     /// Switch to a different SQLite file. The new file is created if it
     /// doesn't exist and the schema/migrations run synchronously. On success
-    /// the internal path is updated atomically.
+    /// the internal pool is swapped atomically; connections still on loan
+    /// against the old catalog drain back into the old pool and close with it.
     pub fn set_path(&self, new_path: &Path) -> Result<()> {
         // Ensure parent directory exists.
         if let Some(parent) = new_path.parent() {
@@ -166,16 +257,14 @@ impl Database {
         }
         // Open + initialize before we swap so a bad path doesn't leave the
         // daemon in a half-broken state.
-        let conn = Connection::open(new_path).map_err(|e| {
-            ReelVaultError::DatabaseError(format!("Failed to open database: {}", e))
-        })?;
+        let conn = open_configured(new_path)?;
         Self::initialize_conn(&conn)?;
         drop(conn);
 
-        let mut guard = self.path.write().map_err(|_| {
-            ReelVaultError::DatabaseError("Database path lock poisoned".to_string())
+        let mut guard = self.pool.write().map_err(|_| {
+            ReelVaultError::DatabaseError("Database pool lock poisoned".to_string())
         })?;
-        *guard = Some(new_path.to_path_buf());
+        *guard = Some(Arc::new(ConnPool::new(new_path.to_path_buf())));
         tracing::info!("Catalog opened: {}", new_path.display());
         Ok(())
     }
@@ -183,16 +272,19 @@ impl Database {
     /// Drop the current catalog so future SQL calls fail until a new
     /// `set_path` succeeds.
     pub fn clear_path(&self) {
-        if let Ok(mut guard) = self.path.write() {
+        if let Ok(mut guard) = self.pool.write() {
             if let Some(p) = guard.take() {
-                tracing::info!("Catalog closed: {}", p.display());
+                tracing::info!("Catalog closed: {}", p.path.display());
             }
         }
     }
 
     /// The path currently backing this database, if any.
     pub fn current_path(&self) -> Option<PathBuf> {
-        self.path.read().ok().and_then(|g| g.clone())
+        self.pool
+            .read()
+            .ok()
+            .and_then(|g| g.as_ref().map(|p| p.path.clone()))
     }
 
     /// Initialize the schema (and run migrations) for the currently selected
@@ -338,17 +430,16 @@ impl Database {
         Ok(())
     }
 
-    pub fn get_connection(&self) -> Result<Connection> {
-        let path = self
-            .path
+    pub fn get_connection(&self) -> Result<PooledConnection> {
+        let pool = self
+            .pool
             .read()
-            .map_err(|_| ReelVaultError::DatabaseError("Database path lock poisoned".to_string()))?
+            .map_err(|_| ReelVaultError::DatabaseError("Database pool lock poisoned".to_string()))?
             .clone()
             .ok_or_else(|| {
                 ReelVaultError::DatabaseError("No catalog is currently open".to_string())
             })?;
-        Connection::open(&path)
-            .map_err(|e| ReelVaultError::DatabaseError(format!("Failed to open database: {}", e)))
+        pool.get()
     }
 
     // VIDEO OPERATIONS
