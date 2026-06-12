@@ -1297,12 +1297,22 @@ impl ReelVaultTrait for ReelVaultService {
             }
         }
 
-        let (tx, rx) = tokio::sync::mpsc::channel(4);
+        // A definitive miss is NOT_FOUND, not an empty stream. Clients can
+        // stop asking for a thumbnail that will never appear, while transient
+        // failures (fd exhaustion, a slow disk) surface from the cache reads
+        // above as errors worth a quick retry. The old empty-stream answer
+        // made the two indistinguishable.
+        let data = thumbnail_data.ok_or_else(|| {
+            Status::not_found(format!(
+                "no '{}' thumbnail cached for video {}",
+                req.size, req.video_id
+            ))
+        })?;
+
+        let (tx, rx) = tokio::sync::mpsc::channel(1);
 
         tokio::spawn(async move {
-            if let Some(data) = thumbnail_data {
-                let _ = tx.send(Ok(ThumbnailChunk { data })).await;
-            }
+            let _ = tx.send(Ok(ThumbnailChunk { data })).await;
         });
 
         let stream = ReceiverStream::new(rx);

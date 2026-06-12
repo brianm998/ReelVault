@@ -1865,25 +1865,36 @@ class GridViewModel: ObservableObject {
         thumbnailLoading.insert(videoId)
         Task {
             defer { thumbnailLoading.remove(videoId) }
-            // Fast initial retries handle the cards-mount-storm failure mode:
-            // an empty gRPC stream when many cards request thumbnails at once.
-            // Slow tail retries cover the case where the storm exhausts the
-            // fast budget — without them the card stayed permanently
-            // thumbnail-less until a re-mount (e.g. via a mode switch)
-            // re-triggered the load.
-            let delaysNs: [UInt64] = [0, 500_000_000, 1_000_000_000,
-                                      10_000_000_000, 30_000_000_000, 60_000_000_000]
+            // The daemon distinguishes a definitive miss (NOT_FOUND → nil:
+            // stop asking) from a transient failure (throws). Only the
+            // transient case is retried, with short jittered delays — a
+            // cards-mount-storm hiccup clears in milliseconds, where the old
+            // 0.5/1/10/30/60 s ladder quantized every hiccup into a
+            // multi-second blank card.
+            let delaysNs: [UInt64] = [0, 250_000_000, 750_000_000, 2_000_000_000]
             for delay in delaysNs {
                 if thumbnails[videoId] != nil { return }
                 if delay > 0 {
-                    try? await Task.sleep(nanoseconds: delay)
+                    let jitter = UInt64.random(in: 0..<100_000_000)
+                    try? await Task.sleep(nanoseconds: delay + jitter)
                 }
                 await thumbnailSemaphore.acquire()
-                let image = try? await repository.getThumbnail(videoId: videoId, size: "medium")
-                await thumbnailSemaphore.release()
-                if let image {
-                    thumbnails[videoId] = image
+                do {
+                    let image = try await repository.getThumbnail(videoId: videoId, size: "medium")
+                    await thumbnailSemaphore.release()
+                    if let image {
+                        thumbnails[videoId] = image
+                    }
+                    // Success stored above; nil is a definitive miss. Either
+                    // way, stop.
                     return
+                } catch {
+                    await thumbnailSemaphore.release()
+                    NSLog(
+                        "[GridViewModel] thumbnail fetch for %@ failed (will retry): %@",
+                        videoId,
+                        String(describing: error)
+                    )
                 }
             }
         }

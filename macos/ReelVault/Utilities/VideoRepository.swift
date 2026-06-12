@@ -657,9 +657,16 @@ class VideoRepository: ObservableObject {
         return images
     }
 
+    /// Returns nil only when the daemon reports NOT_FOUND — a definitive miss
+    /// the caller should not retry. Transient failures (daemon busy,
+    /// connection hiccup) rethrow, so callers that care can retry quickly.
     func getThumbnail(videoId: String, size: String = "medium") async throws -> NSImage? {
-        let data = try await getThumbnailData(videoId: videoId, size: size)
-        return NSImage(data: data)
+        do {
+            let data = try await getThumbnailData(videoId: videoId, size: size)
+            return NSImage(data: data)
+        } catch let error as RPCError where error.code == .notFound {
+            return nil
+        }
     }
 
     /// Fetch a single thumbnail at a higher resolution (`maxWidth` px, never

@@ -494,33 +494,51 @@ class VideoRepository(
     suspend fun getScrubFrames(videoId: String, count: Int = 10): List<ByteArray?> =
         coroutineScope {
             val deferred = (0 until count).map { i ->
-                async(Dispatchers.IO) { getThumbnail(videoId, "scrub_$i") }
+                async(Dispatchers.IO) { getThumbnailOrNull(videoId, "scrub_$i") }
             }
             deferred.map { it.await() }
         }
 
     /** Fetch a single thumbnail. [maxWidth] > 0 requests a higher-resolution
      *  variant sized to the caller's render area (never upscaled past the
-     *  source); 0 serves the cached default for [size]. */
+     *  source); 0 serves the cached default for [size].
+     *
+     *  Returns null only when the daemon reports NOT_FOUND — a definitive
+     *  miss the caller should not retry. Transient failures (daemon busy,
+     *  connection hiccup) throw, so callers that care can retry quickly. */
     suspend fun getThumbnail(videoId: String, size: String = "medium", maxWidth: Int = 0): ByteArray? = withContext(Dispatchers.IO) {
-        val s = stub ?: return@withContext null
-        try {
-            val request = Reelvault.GetThumbnailRequest.newBuilder()
-                .setVideoId(videoId)
-                .setSize(size)
-                .setMaxWidth(maxWidth)
-                .build()
+        // No stub = not connected (yet) — transient, so throw rather than
+        // return null: null means "the daemon says this doesn't exist".
+        val s = stub ?: throw IllegalStateException("Not connected to backend")
+        val request = Reelvault.GetThumbnailRequest.newBuilder()
+            .setVideoId(videoId)
+            .setSize(size)
+            .setMaxWidth(maxWidth)
+            .build()
 
-            val chunks = mutableListOf<Byte>()
+        try {
+            val bytes = java.io.ByteArrayOutputStream()
             s.getThumbnail(request).collect { chunk ->
-                chunks.addAll(chunk.data.toByteArray().toList())
+                chunk.data.writeTo(bytes)
             }
-            if (chunks.isEmpty()) null else chunks.toByteArray()
-        } catch (e: Exception) {
-            logger.error("Failed to get thumbnail for $videoId: ${e.message}", e)
-            null
+            if (bytes.size() == 0) null else bytes.toByteArray()
+        } catch (e: io.grpc.StatusException) {
+            if (e.status.code == io.grpc.Status.Code.NOT_FOUND) null else throw e
         }
     }
+
+    /** Like [getThumbnail] but maps every failure to null. For callers that
+     *  treat a missing frame as skippable (scrub strips, hi-res upgrades,
+     *  detail posters) rather than worth retrying. */
+    suspend fun getThumbnailOrNull(videoId: String, size: String = "medium", maxWidth: Int = 0): ByteArray? =
+        try {
+            getThumbnail(videoId, size, maxWidth)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.warn("Failed to get thumbnail for $videoId ($size): ${e.message}")
+            null
+        }
 
     suspend fun addLibraryLocation(path: String, recursive: Boolean = true): Boolean = withContext(Dispatchers.IO) {
         addLibraryLocationWithMessage(path, recursive).first

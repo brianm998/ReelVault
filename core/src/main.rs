@@ -90,6 +90,8 @@ async fn main() -> Result<()> {
 
     tracing::info!("ReelVault Core v{}", env!("CARGO_PKG_VERSION"));
 
+    raise_fd_limit();
+
     // Write a PID file in system-daemon mode.
     let pid_path: Option<PathBuf> = if args.system_daemon {
         let path = args.pid_file.clone().unwrap_or_else(get_pid_file_path);
@@ -188,6 +190,38 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
+
+/// Raise the soft fd limit toward the hard limit (capped at 8192). The macOS
+/// default for terminal-launched processes is 256, which a busy daemon —
+/// concurrent thumbnail reads, SQLite connections, ffmpeg children with their
+/// pipes, gRPC sockets from multiple clients — can brush against under a
+/// grid-mount storm. Hitting it turns into spurious "file not found"-shaped
+/// failures, so claim the headroom up front. Best-effort: a failure is logged
+/// and ignored.
+#[cfg(unix)]
+fn raise_fd_limit() {
+    use nix::sys::resource::{getrlimit, setrlimit, Resource};
+    match getrlimit(Resource::RLIMIT_NOFILE) {
+        Ok((soft, hard)) => {
+            let target = hard.min(8192);
+            if soft < target {
+                match setrlimit(Resource::RLIMIT_NOFILE, target, hard) {
+                    Ok(()) => tracing::info!("Raised fd soft limit {} -> {}", soft, target),
+                    Err(e) => tracing::warn!(
+                        "Could not raise fd soft limit {} -> {}: {}",
+                        soft,
+                        target,
+                        e
+                    ),
+                }
+            }
+        }
+        Err(e) => tracing::warn!("Could not read fd limit: {}", e),
+    }
+}
+
+#[cfg(not(unix))]
+fn raise_fd_limit() {}
 
 // ---------------------------------------------------------------------------
 // Logging initialisation

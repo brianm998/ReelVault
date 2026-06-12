@@ -78,7 +78,7 @@ regex = "1.10"
 
 # Platform-specific
 [target.'cfg(unix)'.dependencies]
-nix = { version = "0.27", features = ["process"] }
+nix = { version = "0.27", features = ["process", "resource"] }
 
 [target.'cfg(windows)'.dependencies]
 winapi = "0.3"

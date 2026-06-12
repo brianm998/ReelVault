@@ -152,14 +152,7 @@ impl ThumbnailGenerator {
         size: &str,
     ) -> Result<Option<Vec<u8>>> {
         let path = cache_dir.join(format!("{}_{}.jpg", video_id, size));
-
-        if path.exists() {
-            let data = std::fs::read(&path)
-                .map_err(ReelVaultError::IoError)?;
-            Ok(Some(data))
-        } else {
-            Ok(None)
-        }
+        read_cache_file(&path)
     }
 
     pub fn cleanup_thumbnails(cache_dir: &Path, video_id: &str) -> Result<()> {
@@ -286,11 +279,7 @@ impl ThumbnailGenerator {
         max_width: i32,
     ) -> Result<Option<Vec<u8>>> {
         let path = cache_dir.join(Self::thumbnail_filename(video_id, size, max_width));
-        if path.exists() {
-            Ok(Some(std::fs::read(&path).map_err(ReelVaultError::IoError)?))
-        } else {
-            Ok(None)
-        }
+        read_cache_file(&path)
     }
 
     /// Seek position (seconds) for the frame a `size` token names: `scrub_N`
@@ -368,6 +357,20 @@ impl ThumbnailGenerator {
             )),
             Err(e) => Err(ReelVaultError::FfmpegError(e.to_string())),
         }
+    }
+}
+
+/// Read a cache file: `Ok(None)` only when the file genuinely doesn't exist;
+/// every other IO failure (fd exhaustion, permissions, a transient mount
+/// error…) is an `Err`. The previous `exists()`-then-read pattern collapsed
+/// those failures into "no thumbnail" — `Path::exists()` returns `false` on
+/// *any* stat error — leaving clients unable to tell a real miss from a
+/// transient one.
+fn read_cache_file(path: &Path) -> Result<Option<Vec<u8>>> {
+    match std::fs::read(path) {
+        Ok(data) => Ok(Some(data)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(ReelVaultError::IoError(e)),
     }
 }
 

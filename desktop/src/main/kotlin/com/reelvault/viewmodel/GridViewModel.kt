@@ -2635,23 +2635,32 @@ class GridViewModel(
         thumbnailLoading.add(videoId)
         viewModelScope.launch {
             try {
-                // Fast initial retries handle the cards-mount-storm failure
-                // mode: an empty gRPC stream when many cards request thumbnails
-                // at once. Slow tail retries cover the case where the storm
-                // exhausts the fast budget — without them the card stayed
-                // permanently thumbnail-less until a re-mount (e.g. via a
-                // mode switch) re-triggered the load.
-                val delaysMs = longArrayOf(0L, 500L, 1_000L, 10_000L, 30_000L, 60_000L)
+                // The daemon distinguishes a definitive miss (NOT_FOUND →
+                // null: stop asking) from a transient failure (throws). Only
+                // the transient case is retried, with short jittered delays —
+                // a cards-mount-storm hiccup clears in milliseconds, where
+                // the old 0.5/1/10/30/60 s ladder quantized every hiccup
+                // into a multi-second blank card.
+                val delaysMs = longArrayOf(0L, 250L, 750L, 2_000L)
                 for (delayMs in delaysMs) {
                     if (_thumbnails.value.containsKey(videoId)) break
-                    if (delayMs > 0) delay(delayMs)
-                    val data = thumbnailSemaphore.withPermit {
-                        repository.getThumbnail(videoId, "medium")
+                    if (delayMs > 0) delay(delayMs + (0L..100L).random())
+                    val data = try {
+                        thumbnailSemaphore.withPermit {
+                            repository.getThumbnail(videoId, "medium")
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        logger.warn("Thumbnail fetch for {} failed (will retry): {}", videoId, e.message)
+                        continue
                     }
                     if (data != null) {
                         _thumbnails.update { it + (videoId to data) }
-                        break
                     }
+                    // Success stored above; null is a definitive miss. Either
+                    // way, stop.
+                    break
                 }
             } finally {
                 thumbnailLoading.remove(videoId)
@@ -2700,7 +2709,7 @@ class GridViewModel(
             try {
                 // 1) The static (non-hover) frame the user is currently seeing.
                 if (_hiResPoster.value[videoId] == null) {
-                    repository.getThumbnail(videoId, "large", maxWidth = targetWidth)?.let {
+                    repository.getThumbnailOrNull(videoId, "large", maxWidth = targetWidth)?.let {
                         _hiResPoster.value = _hiResPoster.value + (videoId to it)
                     }
                 }
@@ -2710,7 +2719,7 @@ class GridViewModel(
                     ?: MutableList<ByteArray?>(count) { null }
                 for (i in 0 until count) {
                     if (acc.getOrNull(i) != null) continue
-                    val bytes = repository.getThumbnail(videoId, "scrub_$i", maxWidth = targetWidth)
+                    val bytes = repository.getThumbnailOrNull(videoId, "scrub_$i", maxWidth = targetWidth)
                     if (bytes != null) {
                         acc[i] = bytes
                         _hiResScrubFrames.value = _hiResScrubFrames.value + (videoId to acc.toList())
