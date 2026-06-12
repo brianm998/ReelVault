@@ -543,6 +543,19 @@ fn poll_paths(
     db: &Arc<Database>,
     failed_files: &FailedFiles,
 ) {
+    // One catalog snapshot per poll cycle. The walk below used to do a
+    // per-file DB lookup — on a multi-thousand-file library that was
+    // thousands of queries every cycle, racing the interactive RPCs. On a
+    // failed snapshot, skip the cycle (the next one retries) rather than
+    // treating every file on disk as new and mass-queueing rescans.
+    let known_sizes = match db.list_video_path_sizes() {
+        Ok(m) => m,
+        Err(e) => {
+            tracing::warn!("Poll fallback: could not snapshot catalog sizes: {}", e);
+            return;
+        }
+    };
+
     for (root, recursive) in watched_paths {
         if !root.exists() {
             continue;
@@ -567,10 +580,9 @@ fn poll_paths(
             // Only enqueue if either we haven't seen this file (new on
             // disk → not in catalog) OR its size differs from the catalog's
             // record (file was overwritten / appended off-FSEvents path).
-            let existing = db.get_video_by_path(p.to_str().unwrap_or("")).ok().flatten();
-            let interesting = match &existing {
+            let interesting = match known_sizes.get(p.to_str().unwrap_or("")) {
                 None => true, // new file
-                Some(v) => v.file_size_bytes.unwrap_or(-1) as u64 != size_now,
+                Some(stored) => stored.unwrap_or(-1) as u64 != size_now,
             };
             if !interesting {
                 continue;

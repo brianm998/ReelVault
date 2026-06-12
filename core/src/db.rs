@@ -607,6 +607,27 @@ impl Database {
         .unwrap_or(0)
     }
 
+    /// Snapshot of every video's `path → stored file size`. Used by the
+    /// watcher's poll fallback so each cycle costs one query instead of a
+    /// per-file lookup across the whole library walk. `None` = the row has
+    /// no recorded size.
+    pub fn list_video_path_sizes(
+        &self,
+    ) -> Result<std::collections::HashMap<String, Option<i64>>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn
+            .prepare("SELECT path, file_size_bytes FROM videos")
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let map = stmt
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, Option<i64>>(1)?))
+            })
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
+            .collect::<std::result::Result<std::collections::HashMap<_, _>, _>>()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(map)
+    }
+
     pub fn get_video_by_path(&self, path: &str) -> Result<Option<VideoRecord>> {
         let conn = self.get_connection()?;
 
