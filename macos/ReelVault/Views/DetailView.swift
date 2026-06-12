@@ -554,6 +554,35 @@ struct DetailView: View {
                 }
             }
 
+            // No proxy yet — offer to create one. Loupe (detail) mode only per
+            // spec, and never for clips that are themselves proxies. Opens the
+            // existing resolution picker, which asks for the target size before
+            // encoding and adds the result to the catalog.
+            if isLoupeMode,
+               viewModel.proxies.isEmpty,
+               activeProxyCreation == nil,
+               let summary = viewModel.currentSummary,
+               !summary.isProxy {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Proxies (0)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button {
+                        gridViewModel.requestCreateProxy(videoId: summary.id)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "film.stack")
+                            Text("Create proxy…")
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help("Generate a lower-resolution proxy for this video and add it to the catalog. You'll choose the size next.")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
         }
     }
 

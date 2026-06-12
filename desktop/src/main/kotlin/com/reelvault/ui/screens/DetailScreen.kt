@@ -832,6 +832,46 @@ fun DetailScreen(
                     }
                 }
 
+                // No proxy yet — offer to create one. Detail mode only (per
+                // spec), and never for clips that are themselves proxies. The
+                // button opens the existing resolution picker, which asks for
+                // the target size before encoding and adds the result to the
+                // catalog.
+                val createProxySummary = currentSummary.value
+                if (viewMode == ViewMode.DETAIL &&
+                    proxies.value.isEmpty() &&
+                    activeProxyCreation == null &&
+                    createProxySummary != null &&
+                    !createProxySummary.isProxy
+                ) {
+                    Spacer(modifier = Modifier.height(ReelVaultSpacing.Large))
+                    Text(
+                        text = "Proxies (0)",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
+                    com.reelvault.ui.components.Tooltip(
+                        text = "Generate a lower-resolution proxy for this video and add it to the catalog. You'll choose the size next."
+                    ) {
+                        OutlinedButton(
+                            onClick = { gridViewModel.requestCreateProxy(createProxySummary.id) },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MovieCreation,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(modifier = Modifier.width(ReelVaultSpacing.Small))
+                            Text(
+                                text = "Create proxy…",
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                        }
+                    }
+                }
+
             }
         } else {
             // Loading
