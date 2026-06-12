@@ -2271,6 +2271,9 @@ class GridViewModel: ObservableObject {
                 // their master otherwise until a manual refresh.
                 isLoading = false
                 loadVideos()  // background refresh — structural update only
+                // Refresh the left panel too: an attached proxy stops counting
+                // as a standalone video, so its folder's count must drop.
+                loadLibraryLocations()
             } catch {
                 NSLog("attach: attachProxies RPC failed: \(error.localizedDescription)")
                 self.error = "Attach proxies failed: \(error.localizedDescription)"

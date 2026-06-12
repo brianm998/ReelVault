@@ -506,7 +506,10 @@ struct DetailView: View {
                             // the user can correct false auto-detections
                             // regardless of view mode.
                             Button {
-                                viewModel.breakProxyLink(proxyId: proxy.id)
+                                viewModel.breakProxyLink(proxyId: proxy.id, onChanged: {
+                                    gridViewModel.loadVideos()
+                                    gridViewModel.loadLibraryLocations()
+                                })
                             } label: {
                                 Image(systemName: "link.badge.minus")
                                     .foregroundColor(.secondary)
@@ -540,7 +543,10 @@ struct DetailView: View {
                 if gridViewModel.selectedVideoIds.count == 2,
                    let candidateId = secondarySelections.first {
                     Button {
-                        viewModel.forceProxyLink(proxyId: candidateId)
+                        viewModel.forceProxyLink(proxyId: candidateId, onChanged: {
+                            gridViewModel.loadVideos()
+                            gridViewModel.loadLibraryLocations()
+                        })
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "link.badge.plus")

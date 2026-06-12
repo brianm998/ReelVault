@@ -2932,6 +2932,10 @@ class GridViewModel(
                     _scanStatus.value = null
                     _isLoading.value = false
                     loadVideos()
+                    // Refresh the left panel too — a newly-attached proxy stops
+                    // counting as a standalone video, so its folder's count must
+                    // drop. loadVideos() alone left the panel numbers stale.
+                    loadLibraryLocations()
                 } else {
                     _error.value = "Failed to attach proxies. The highest-resolution " +
                         "selection may itself be a proxy — attach to its original instead."

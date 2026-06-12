@@ -116,7 +116,7 @@ class DetailViewModel: ObservableObject {
 
     /// Break the link between the currently-displayed master and one
     /// of its proxies. Refreshes the proxy list on success.
-    func breakProxyLink(proxyId: String) {
+    func breakProxyLink(proxyId: String, onChanged: @escaping () -> Void = {}) {
         guard let masterId = currentSummary?.id else { return }
         Task {
             let ok = await repository.removeProxyLink(masterId: masterId, proxyId: proxyId)
@@ -127,6 +127,9 @@ class DetailViewModel: ObservableObject {
                     NSLog("Reload proxies after break failed: \(error)")
                 }
                 if selectedProxyId == proxyId { selectedProxyId = nil }
+                // A detached proxy becomes a standalone video again — let the
+                // grid + left-panel counts catch up.
+                onChanged()
             } else {
                 error = "Failed to remove proxy link"
             }
@@ -136,7 +139,7 @@ class DetailViewModel: ObservableObject {
     /// Mark `proxyId` as a manual proxy of the currently-displayed
     /// master. Surfaces via the inspector's "Add selected video as
     /// proxy" affordance.
-    func forceProxyLink(proxyId: String) {
+    func forceProxyLink(proxyId: String, onChanged: @escaping () -> Void = {}) {
         guard let masterId = currentSummary?.id else { return }
         guard masterId != proxyId else {
             error = "A video can't be a proxy of itself"
@@ -150,6 +153,9 @@ class DetailViewModel: ObservableObject {
                 } catch {
                     NSLog("Reload proxies after force failed: \(error)")
                 }
+                // A newly-attached proxy stops counting as a standalone video —
+                // refresh the grid + left-panel counts.
+                onChanged()
             } else {
                 error = "Failed to add proxy link"
             }

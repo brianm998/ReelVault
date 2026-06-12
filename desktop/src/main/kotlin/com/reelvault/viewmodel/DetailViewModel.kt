@@ -131,7 +131,7 @@ class DetailViewModel(
     /** Break the link between the currently-displayed master and one
      *  of its proxies. Auto-refreshes the inspector list on success;
      *  surfaces failures via [error]. */
-    fun breakProxyLink(proxyId: String) {
+    fun breakProxyLink(proxyId: String, onChanged: () -> Unit = {}) {
         val masterId = currentVideoSummary?.id ?: return
         viewModelScope.launch {
             try {
@@ -143,6 +143,9 @@ class DetailViewModel(
                     if (_selectedProxyId.value == proxyId) {
                         _selectedProxyId.value = null
                     }
+                    // A detached proxy becomes a standalone video again — let
+                    // the grid + left-panel counts catch up.
+                    onChanged()
                     logger.info("Removed proxy link $masterId → $proxyId")
                 } else {
                     _error.value = "Failed to remove proxy link"
@@ -157,7 +160,7 @@ class DetailViewModel(
      *  master. Used by the inspector's "Add selected as proxy"
      *  button. Confidence is 1.0 and auto_detected=false so the
      *  link is presented as user-authored. */
-    fun forceProxyLink(proxyId: String) {
+    fun forceProxyLink(proxyId: String, onChanged: () -> Unit = {}) {
         val masterId = currentVideoSummary?.id ?: return
         if (masterId == proxyId) {
             _error.value = "A video can't be a proxy of itself"
@@ -167,6 +170,9 @@ class DetailViewModel(
             try {
                 if (repository.setProxyOf(proxyId, masterId)) {
                     _proxies.value = repository.listProxies(masterId)
+                    // A newly-attached proxy stops counting as a standalone
+                    // video — refresh the grid + left-panel counts.
+                    onChanged()
                     logger.info("Added manual proxy link $masterId → $proxyId")
                 } else {
                     _error.value = "Failed to add proxy link"

@@ -779,7 +779,12 @@ fun DetailScreen(
                                     text = "Break this proxy link. The proxy file itself stays in the catalog; only the relationship with this master is removed."
                                 ) {
                                     IconButton(
-                                        onClick = { viewModel.breakProxyLink(proxy.id) },
+                                        onClick = {
+                                            viewModel.breakProxyLink(proxy.id, onChanged = {
+                                                gridViewModel.loadVideos()
+                                                gridViewModel.loadLibraryLocations()
+                                            })
+                                        },
                                         modifier = Modifier.size(24.dp),
                                     ) {
                                         Icon(
@@ -814,7 +819,12 @@ fun DetailScreen(
                             text = "Manually link the second selected video to this master as a proxy. Use this when auto-detection missed a valid proxy."
                         ) {
                             OutlinedButton(
-                                onClick = { viewModel.forceProxyLink(candidateId) },
+                                onClick = {
+                                    viewModel.forceProxyLink(candidateId, onChanged = {
+                                        gridViewModel.loadVideos()
+                                        gridViewModel.loadLibraryLocations()
+                                    })
+                                },
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Icon(
