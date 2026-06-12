@@ -650,6 +650,16 @@ class GridViewModel: ObservableObject {
             hasMore = Int64(videos.count) < total
             isLoading = false
 
+            // An empty result means nothing is selectable. Drop any lingering
+            // selection — even one pinned by detail mode, which
+            // clearSelectionIfFilteredOut deliberately skips — so the inspector
+            // and loupe don't keep showing the previously selected video after,
+            // e.g., clicking an empty smart collection ("no videos match" in
+            // the middle, stale details on the right).
+            if replace && videos.isEmpty && selectedVideoId != nil {
+                clearSelection()
+            }
+
             // Keep map locations in sync with the active grid filters.
             // Debounced (see scheduleVideoLocationsRefresh) so a burst of
             // filter/selection changes doesn't kick off a full-library

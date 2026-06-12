@@ -820,6 +820,17 @@ class GridViewModel(
                 _hasMore.value = videosList.size < totalCount
                 _isLoading.value = false
 
+                // An empty result means nothing is selectable. Drop any
+                // lingering selection — even one pinned by detail mode, which
+                // `clearSelectionIfFilteredOut` deliberately skips — so the
+                // inspector and loupe don't keep showing the previously
+                // selected video after, e.g., clicking an empty smart
+                // collection ("no videos match" in the middle, stale details
+                // on the right).
+                if (videosList.isEmpty() && _selectedVideoId.value != null) {
+                    clearSelection()
+                }
+
                 logger.info("Loaded ${videosList.size} videos, total: $totalCount" +
                     if (locationPathFilter.isNotEmpty()) " (filtered to $locationPathFilter)" else "")
 
