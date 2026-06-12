@@ -52,6 +52,13 @@ fun DetailScreen(
     // remember across recompositions.
     val awtWindow = LocalAppWindow.current
     val fileDragSource = remember { FileDragSource() }
+    // Per-section collapse state for the panel (persists for the session).
+    val detailsExpanded = remember { mutableStateOf(true) }
+    val exifExpanded = remember { mutableStateOf(true) }
+    val keywordsExpanded = remember { mutableStateOf(true) }
+    val notesExpanded = remember { mutableStateOf(true) }
+    val stackExpanded = remember { mutableStateOf(true) }
+    val proxiesExpanded = remember { mutableStateOf(true) }
     val groupMembers = viewModel.groupMembers.collectAsState()
     val groupPreferredId = viewModel.groupPreferredId.collectAsState()
     // Primary grid/list selection. The detail view-model keeps the last
@@ -202,31 +209,37 @@ fun DetailScreen(
                 Spacer(modifier = Modifier.height(ReelVaultSpacing.Medium))
 
                 // Technical metadata
-                MetadataItem("Resolution", metadata.value!!.resolution)
-                MetadataItem("Duration", metadata.value!!.durationFormatted)
-                MetadataItem("FPS", "%.2f".format(metadata.value!!.fps))
-                metadata.value!!.frameCountFormatted?.let { MetadataItem("Frames", it) }
-                MetadataItem("Video Codec", metadata.value!!.codecVideo.ifEmpty { "—" })
-                if (metadata.value!!.codecAudio.isNotEmpty()) {
-                    MetadataItem("Audio Codec", metadata.value!!.codecAudio)
-                }
-                MetadataItem("Bitrate", metadata.value!!.bitrateFormatted)
-                MetadataItem("Size", metadata.value!!.sizeFormatted)
+                CollapsibleSection(
+                    title = "Video Details",
+                    expanded = detailsExpanded.value,
+                    onToggle = { detailsExpanded.value = !detailsExpanded.value },
+                ) {
+                    MetadataItem("Resolution", metadata.value!!.resolution)
+                    MetadataItem("Duration", metadata.value!!.durationFormatted)
+                    MetadataItem("FPS", "%.2f".format(metadata.value!!.fps))
+                    metadata.value!!.frameCountFormatted?.let { MetadataItem("Frames", it) }
+                    MetadataItem("Video Codec", metadata.value!!.codecVideo.ifEmpty { "—" })
+                    if (metadata.value!!.codecAudio.isNotEmpty()) {
+                        MetadataItem("Audio Codec", metadata.value!!.codecAudio)
+                    }
+                    MetadataItem("Bitrate", metadata.value!!.bitrateFormatted)
+                    MetadataItem("Size", metadata.value!!.sizeFormatted)
 
-                if (metadata.value!!.colorSpace.isNotEmpty()) {
-                    MetadataItem("Color Space", metadata.value!!.colorSpace)
-                }
+                    if (metadata.value!!.colorSpace.isNotEmpty()) {
+                        MetadataItem("Color Space", metadata.value!!.colorSpace)
+                    }
 
-                if (metadata.value!!.hdr) {
-                    MetadataItem("HDR", "Yes")
-                }
+                    if (metadata.value!!.hdr) {
+                        MetadataItem("HDR", "Yes")
+                    }
 
-                when (metadata.value!!.fullResolution) {
-                    FullResolutionStatus.Full ->
-                        MetadataItem("Resolution Status", "Full resolution")
-                    FullResolutionStatus.NotFull ->
-                        MetadataItem("Resolution Status", "Not full resolution")
-                    FullResolutionStatus.Unspecified -> {} // no row when unknown
+                    when (metadata.value!!.fullResolution) {
+                        FullResolutionStatus.Full ->
+                            MetadataItem("Resolution Status", "Full resolution")
+                        FullResolutionStatus.NotFull ->
+                            MetadataItem("Resolution Status", "Not full resolution")
+                        FullResolutionStatus.Unspecified -> {} // no row when unknown
+                    }
                 }
 
                 // EXIF / Camera section
@@ -245,11 +258,11 @@ fun DetailScreen(
                               hasShotEXIF
                 if (hasExif) {
                     Spacer(modifier = Modifier.height(ReelVaultSpacing.Medium))
-                    Text(
-                        text = "EXIF",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    CollapsibleSection(
+                        title = "EXIF",
+                        expanded = exifExpanded.value,
+                        onToggle = { exifExpanded.value = !exifExpanded.value },
+                    ) {
                     if (metadata.value!!.cameraModel.isNotEmpty()) {
                         CameraMetadataRow(
                             internalName = metadata.value!!.cameraModel,
@@ -306,6 +319,7 @@ fun DetailScreen(
                             )
                         }
                     }
+                    } // CollapsibleSection EXIF
                 }
 
                 // "Set / Edit location" button. Surfaced even when no EXIF
@@ -458,11 +472,11 @@ fun DetailScreen(
                 Spacer(modifier = Modifier.height(ReelVaultSpacing.Large))
 
                 // Notes section
-                Text(
-                    text = "Notes",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                CollapsibleSection(
+                    title = "Notes",
+                    expanded = notesExpanded.value,
+                    onToggle = { notesExpanded.value = !notesExpanded.value },
+                ) {
                 com.reelvault.ui.components.Tooltip(
                     text = "Free-form notes about this video. Saved automatically and " +
                         "searchable from the top-bar search field."
@@ -480,10 +494,16 @@ fun DetailScreen(
                         )
                     )
                 }
+                } // CollapsibleSection Notes
 
                 Spacer(modifier = Modifier.height(ReelVaultSpacing.Large))
 
                 // Keywords / Tags section
+                CollapsibleSection(
+                    title = "Keywords",
+                    expanded = keywordsExpanded.value,
+                    onToggle = { keywordsExpanded.value = !keywordsExpanded.value },
+                ) {
                 KeywordsSection(
                     primaryVideoTags = metadata.value!!.tags,
                     allTags = gridViewModel.tags.collectAsState().value,
@@ -505,6 +525,7 @@ fun DetailScreen(
                     },
                     onFilterByTag = { gridViewModel.setTagFilter(it) }
                 )
+                } // CollapsibleSection Keywords
 
                 Spacer(modifier = Modifier.height(ReelVaultSpacing.Large))
 
@@ -532,11 +553,23 @@ fun DetailScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Stack (${groupMembers.value.size})",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Row(
+                            modifier = Modifier.clickable { stackExpanded.value = !stackExpanded.value },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = if (stackExpanded.value) Icons.Default.ExpandMore else Icons.Default.ChevronRight,
+                                contentDescription = if (stackExpanded.value) "Collapse Stack" else "Expand Stack",
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(modifier = Modifier.width(ReelVaultSpacing.XSmall))
+                            Text(
+                                text = "Stack (${groupMembers.value.size})",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         com.reelvault.ui.components.Tooltip(
                             text = "Remove this video from the stack. The other members stay grouped."
                         ) {
@@ -556,6 +589,7 @@ fun DetailScreen(
                             }
                         }
                     }
+                    if (stackExpanded.value) {
                     Text(
                         text = "Double-click opens the preferred variant. Click ⭐ to change preferred.",
                         style = MaterialTheme.typography.labelSmall,
@@ -642,6 +676,7 @@ fun DetailScreen(
                             }
                         }
                     }
+                    } // if (stackExpanded)
                 }
 
                 // Proxies section — shown whenever the catalog has any
@@ -666,9 +701,18 @@ fun DetailScreen(
                     Spacer(modifier = Modifier.height(ReelVaultSpacing.Large))
 
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { proxiesExpanded.value = !proxiesExpanded.value },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        Icon(
+                            imageVector = if (proxiesExpanded.value) Icons.Default.ExpandMore else Icons.Default.ChevronRight,
+                            contentDescription = if (proxiesExpanded.value) "Collapse Proxies" else "Expand Proxies",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.width(ReelVaultSpacing.XSmall))
                         Text(
                             text = if (activeProxyCreation != null && proxies.value.isEmpty())
                                 "Proxies" else "Proxies (${proxies.value.size})",
@@ -677,6 +721,7 @@ fun DetailScreen(
                             modifier = Modifier.weight(1f),
                         )
                     }
+                    if (proxiesExpanded.value) {
 
                     // In-progress proxy creation indicator — shown while
                     // ffmpeg is encoding so the user knows it's working.
@@ -926,6 +971,7 @@ fun DetailScreen(
                             }
                         }
                     }
+                    } // if (proxiesExpanded)
                 }
 
                 // No proxy yet — offer to create one. Detail mode only (per
@@ -988,6 +1034,44 @@ fun formatBytes(bytes: Long): String {
         bytes >= 1024L * 1024L * 1024L -> "%.1f GB".format(bytes / (1024.0 * 1024.0 * 1024.0))
         bytes >= 1024L * 1024L -> "%.0f MB".format(bytes / (1024.0 * 1024.0))
         else -> "%.0f KB".format(bytes / 1024.0)
+    }
+}
+
+/** A details-panel section with a clickable title row that collapses/expands
+ *  its [content]. Collapsed shows only the title (+ chevron); expanded shows
+ *  the whole field. The expand state is remembered per [title] across the
+ *  session via the caller's `rememberSaveable`. */
+@Composable
+private fun CollapsibleSection(
+    title: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onToggle() }
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = if (expanded) Icons.Default.ExpandMore else Icons.Default.ChevronRight,
+                contentDescription = if (expanded) "Collapse $title" else "Expand $title",
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.width(ReelVaultSpacing.XSmall))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (expanded) {
+            content()
+        }
     }
 }
 
