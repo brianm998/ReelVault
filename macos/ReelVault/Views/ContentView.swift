@@ -1005,26 +1005,42 @@ struct ContentView: View {
             // the side panels and track their resize / collapse automatically.
             VStack(spacing: 0) {
                 if viewMode != .detail {
-                    LibraryFilterBar(vm: gridViewModel, hideLocationOption: viewMode == .map)
-                    // "You edited this smart collection's filter" banner. Offers
-                    // to save the change back to the collection or revert;
-                    // switching away reverts automatically anyway.
-                    if let name = gridViewModel.divergedSmartCollection {
+                    // Banner shown the whole time a smart collection is the active
+                    // view. It explains the view, offers Update / Reset once the
+                    // user edits the live filter, and a ✕ to clear back to all.
+                    if let smart = gridViewModel.collections.first(where: {
+                        $0.id == gridViewModel.selectedCollectionId && $0.isSmart
+                    }) {
+                        let diverged = gridViewModel.divergedSmartCollection != nil
                         HStack(spacing: 8) {
                             Image(systemName: "sparkles")
                                 .font(.system(size: 11))
-                            Text("You changed the filter for smart collection “\(name)”. Update it to match, or revert.")
+                            Text(diverged
+                                 ? "You changed the filter for smart collection “\(smart.name)”. Update it to match these criteria, or reset to its saved rules."
+                                 : "Viewing smart collection “\(smart.name)”.")
                                 .font(.caption)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            Button("Revert") { gridViewModel.revertActiveSmartCollection() }
-                            Button("Update collection") { gridViewModel.updateActiveSmartCollection() }
-                                .buttonStyle(.borderedProminent)
+                            if diverged {
+                                Button("Reset to default") { gridViewModel.revertActiveSmartCollection() }
+                                Button("Update collection") { gridViewModel.updateActiveSmartCollection() }
+                                    .buttonStyle(.borderedProminent)
+                            }
+                            Button {
+                                gridViewModel.clearSmartCollectionShowAll()
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Clear the filter and show all videos")
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .frame(maxWidth: .infinity)
                         .background(Color.accentColor.opacity(0.15))
                     }
+                    LibraryFilterBar(vm: gridViewModel, hideLocationOption: viewMode == .map)
                 }
                 switch viewMode {
                 case .grid:

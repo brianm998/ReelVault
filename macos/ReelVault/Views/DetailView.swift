@@ -83,6 +83,8 @@ struct DetailView: View {
     @State private var proxiesExpanded = true
     /// Id of the stack member currently being dragged to reorder, or nil.
     @State private var draggingMemberId: String?
+    /// Smart-collection rule pending a delete confirmation.
+    @State private var pendingCriterionRow: SmartCriterionRow?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -783,15 +785,33 @@ struct DetailView: View {
                         .foregroundColor(.secondary)
                         .padding(.top, 4)
                 } else {
-                    ForEach(criteria.indices, id: \.self) { i in
+                    ForEach(criteria) { row in
                         HStack(alignment: .top, spacing: 8) {
-                            Text(criteria[i].label)
+                            Text(row.label)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .frame(width: 72, alignment: .leading)
-                            Text(criteria[i].value)
-                                .font(.callout)
+                            if row.criterion == .colorLabel {
+                                // Lead the colour rule with its swatch, then the name.
+                                HStack(spacing: 5) {
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(ColorLabel(row.value.lowercased()).swatch)
+                                        .frame(width: 11, height: 11)
+                                    Text(row.value).font(.callout)
+                                }
+                            } else {
+                                Text(row.value)
+                                    .font(.callout)
+                            }
                             Spacer()
+                            Button {
+                                pendingCriterionRow = row
+                            } label: {
+                                Image(systemName: "xmark.circle")
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Remove this rule from the smart collection")
                         }
                     }
                     .padding(.top, 2)
@@ -800,6 +820,18 @@ struct DetailView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
+        }
+        .alert("Remove rule?", isPresented: Binding(
+            get: { pendingCriterionRow != nil },
+            set: { if !$0 { pendingCriterionRow = nil } }
+        ), presenting: pendingCriterionRow) { row in
+            Button("Remove", role: .destructive) {
+                gridViewModel.removeSmartCollectionCriterion(col, row.criterion)
+                pendingCriterionRow = nil
+            }
+            Button("Cancel", role: .cancel) { pendingCriterionRow = nil }
+        } message: { row in
+            Text("Remove “\(row.label): \(row.value)” from smart collection “\(col.name)”? This changes what the collection gathers.")
         }
     }
 

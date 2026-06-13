@@ -9,6 +9,7 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -142,7 +143,13 @@ fun DetailScreen(
             gridViewModel.tags.collectAsState().value // re-render once tag names load
             val smartCol = cols.firstOrNull { it.id == selColId && it.isSmart }
             if (smartCol != null) {
-                SmartCollectionCriteria(smartCol.name, gridViewModel.smartCollectionCriteria(smartCol))
+                SmartCollectionCriteria(
+                    name = smartCol.name,
+                    criteria = gridViewModel.smartCollectionCriteria(smartCol),
+                    onDeleteCriterion = { criterion ->
+                        gridViewModel.removeSmartCollectionCriterion(smartCol, criterion)
+                    },
+                )
             } else {
                 Column(
                     modifier = Modifier
@@ -1698,7 +1705,12 @@ fun CollectionsSection(
 /** Shown in the details panel when a smart collection is selected but no card
  *  is — explains the rules that decide what the collection gathers. */
 @Composable
-private fun SmartCollectionCriteria(name: String, criteria: List<Pair<String, String>>) {
+private fun SmartCollectionCriteria(
+    name: String,
+    criteria: List<com.reelvault.viewmodel.SmartCriterionRow>,
+    onDeleteCriterion: (com.reelvault.viewmodel.SmartCriterion) -> Unit,
+) {
+    var pending by remember { mutableStateOf<com.reelvault.viewmodel.SmartCriterionRow?>(null) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1724,26 +1736,82 @@ private fun SmartCollectionCriteria(name: String, criteria: List<Pair<String, St
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
-            criteria.forEach { (label, value) ->
+            criteria.forEach { row ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = label,
+                        text = row.label,
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.width(76.dp),
                     )
-                    Text(
-                        text = value,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f),
-                    )
+                    if (row.criterion == com.reelvault.viewmodel.SmartCriterion.ColorLabel) {
+                        // Lead the colour rule with its swatch, then the name.
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .background(
+                                        com.reelvault.data.models.ColorLabel.from(row.value.lowercase()).swatch,
+                                        RoundedCornerShape(2.dp),
+                                    ),
+                            )
+                            Text(
+                                text = row.value,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = row.value,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    IconButton(
+                        onClick = { pending = row },
+                        modifier = Modifier.size(28.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Remove this rule",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
                 }
             }
         }
+    }
+    pending?.let { row ->
+        AlertDialog(
+            onDismissRequest = { pending = null },
+            title = { Text("Remove rule?") },
+            text = {
+                Text(
+                    "Remove “${row.label}: ${row.value}” from smart collection “$name”? " +
+                        "This changes what the collection gathers."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDeleteCriterion(row.criterion)
+                    pending = null
+                }) { Text("Remove") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pending = null }) { Text("Cancel") }
+            },
+        )
     }
 }

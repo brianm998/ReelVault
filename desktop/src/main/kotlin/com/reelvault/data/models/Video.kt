@@ -249,6 +249,21 @@ data class Collection(
  *  column the user had narrowed. */
 data class SmartCollectionColumn(val key: String, val values: List<String>)
 
+/** Stable lowercase tokens for the tri-state attribute filters in smart-
+ *  collection JSON. Kept identical across clients so a collection saved on one
+ *  client parses on the other (macOS uses the same "any"/"yes"/"no" strings). */
+private fun AttributeFilterState.toToken(): String = when (this) {
+    AttributeFilterState.Any -> "any"
+    AttributeFilterState.Yes -> "yes"
+    AttributeFilterState.No -> "no"
+}
+
+private fun attrFromToken(s: String): AttributeFilterState = when (s) {
+    "yes" -> AttributeFilterState.Yes
+    "no" -> AttributeFilterState.No
+    else -> AttributeFilterState.Any
+}
+
 data class SmartCollectionFilters(
     /** Arbitrary metadata-column constraints (replaces the old fixed
      *  camera/lens/codec/year scalars). The "location" virtual key is never
@@ -267,6 +282,15 @@ data class SmartCollectionFilters(
     val geoLat: Double = 0.0,
     val geoLon: Double = 0.0,
     val geoRadiusKm: Double = 0.0,
+    /** Library-folder selection (left panel). Empty = all folders. A smart
+     *  collection can pin itself to one or more library locations. */
+    val locationPaths: List<String> = emptyList(),
+    /** Tri-state attribute filters mirrored from the Library Filter's
+     *  "attribute" mode. [AttributeFilterState.Any] = unconstrained. */
+    val hasLocation: AttributeFilterState = AttributeFilterState.Any,
+    val hasKeywords: AttributeFilterState = AttributeFilterState.Any,
+    val hasProxies: AttributeFilterState = AttributeFilterState.Any,
+    val fullResolution: AttributeFilterState = AttributeFilterState.Any,
 ) {
     /** True when a map-proximity constraint is active. */
     val hasGeo: Boolean get() = geoRadiusKm > 0.0
@@ -290,6 +314,11 @@ data class SmartCollectionFilters(
         append(",\"geoLat\":$geoLat")
         append(",\"geoLon\":$geoLon")
         append(",\"geoRadiusKm\":$geoRadiusKm")
+        append(",\"locationPaths\":[${locationPaths.joinToString(",") { it.jsonStr() }}]")
+        append(",\"hasLocation\":${hasLocation.toToken().jsonStr()}")
+        append(",\"hasKeywords\":${hasKeywords.toToken().jsonStr()}")
+        append(",\"hasProxies\":${hasProxies.toToken().jsonStr()}")
+        append(",\"fullResolution\":${fullResolution.toToken().jsonStr()}")
         append("}")
     }
 
@@ -334,6 +363,11 @@ data class SmartCollectionFilters(
                 geoLat = dbl("geoLat"),
                 geoLon = dbl("geoLon"),
                 geoRadiusKm = dbl("geoRadiusKm"),
+                locationPaths = strArray("locationPaths"),
+                hasLocation = attrFromToken(str("hasLocation")),
+                hasKeywords = attrFromToken(str("hasKeywords")),
+                hasProxies = attrFromToken(str("hasProxies")),
+                fullResolution = attrFromToken(str("fullResolution")),
             )
         }
 

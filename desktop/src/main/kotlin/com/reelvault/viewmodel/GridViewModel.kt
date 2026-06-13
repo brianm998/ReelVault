@@ -82,6 +82,28 @@ fun nextSelectedIndex(
     return -1
 }
 
+/** Identifies one removable rule within a smart collection's saved filter, so
+ *  the details panel can offer a per-rule ✕ that deletes just that constraint. */
+sealed interface SmartCriterion {
+    /** A metadata column (incl. the tag-backed "keyword"). */
+    data class Column(val key: String) : SmartCriterion
+    data object MinRating : SmartCriterion
+    data object ColorLabel : SmartCriterion
+    /** The dedicated tagIds filter. */
+    data object Keywords : SmartCriterion
+    data object Geo : SmartCriterion
+    /** Library-folder selection (locationPaths). */
+    data object Folder : SmartCriterion
+    data object HasLocation : SmartCriterion
+    data object HasKeywords : SmartCriterion
+    data object HasProxies : SmartCriterion
+    data object FullResolution : SmartCriterion
+}
+
+/** One human-readable rule of a smart collection, plus the [SmartCriterion] it
+ *  maps to so it can be deleted individually. */
+data class SmartCriterionRow(val label: String, val value: String, val criterion: SmartCriterion)
+
 class GridViewModel(
     private val repository: VideoRepository
 ) {
@@ -2306,6 +2328,11 @@ class GridViewModel(
         val searchQuery: String,
         /** Map-proximity filter (lat, lon, radiusKm), or null when none. */
         val geo: Triple<Double, Double, Double>?,
+        val locationPaths: List<String>,
+        val hasLocation: com.reelvault.data.models.AttributeFilterState,
+        val hasKeywords: com.reelvault.data.models.AttributeFilterState,
+        val hasProxies: com.reelvault.data.models.AttributeFilterState,
+        val fullResolution: com.reelvault.data.models.AttributeFilterState,
     )
     private var preSmartFilterSnapshot: FilterSnapshot? = null
 
@@ -2327,6 +2354,13 @@ class GridViewModel(
             _searchQuery.value = snap.searchQuery
             _metadataColumns.value = snap.columns
             _filterLocation.value = snap.geo
+            locationPathFilter = snap.locationPaths.joinToString("\n")
+            _selectedLocationPaths.value = snap.locationPaths
+            _selectedLocationPath.value = snap.locationPaths.firstOrNull() ?: ""
+            _filterHasLocation.value = snap.hasLocation
+            _filterHasKeywords.value = snap.hasKeywords
+            _filterHasProxies.value = snap.hasProxies
+            _filterFullResolution.value = snap.fullResolution
             LibraryFilterPrefs.saveColumns(_metadataColumns.value)
         } else {
             _filterMinRating.value = 0
@@ -2335,6 +2369,14 @@ class GridViewModel(
             _filterTagId.value = ""
             _searchQuery.value = ""
             _filterLocation.value = null
+            val anyAttr = com.reelvault.data.models.AttributeFilterState.Any
+            locationPathFilter = ""
+            _selectedLocationPaths.value = emptyList()
+            _selectedLocationPath.value = ""
+            _filterHasLocation.value = anyAttr
+            _filterHasKeywords.value = anyAttr
+            _filterHasProxies.value = anyAttr
+            _filterFullResolution.value = anyAttr
             if (_metadataColumns.value.any { it.values.isNotEmpty() }) {
                 _metadataColumns.value = _metadataColumns.value.map { it.copy(values = emptySet(), anchor = "") }
                 LibraryFilterPrefs.saveColumns(_metadataColumns.value)
@@ -2365,20 +2407,17 @@ class GridViewModel(
                 tagId = _filterTagId.value,
                 searchQuery = _searchQuery.value,
                 geo = _filterLocation.value,
+                locationPaths = _selectedLocationPaths.value,
+                hasLocation = _filterHasLocation.value,
+                hasKeywords = _filterHasKeywords.value,
+                hasProxies = _filterHasProxies.value,
+                fullResolution = _filterFullResolution.value,
             )
             // Smart collection: apply its saved filters to the individual filter
             // fields. The grid is driven by the filters, not by collection_id.
             val f = com.reelvault.data.models.SmartCollectionFilters.fromJson(col.filterJson)
             collectionId = null
-            _metadataColumns.value = metadataColumnsFromSmartFilters(f)
-            LibraryFilterPrefs.saveColumns(_metadataColumns.value)
-            _filterMinRating.value = f.minRating
-            _filterColorLabel.value = f.colorLabel
-            _searchQuery.value = f.searchQuery
-            filterTags = f.tagIds
-            _filterTagId.value = f.tagIds.firstOrNull() ?: ""
-            // Apply (or clear) the map-proximity filter the collection saved.
-            _filterLocation.value = if (f.hasGeo) Triple(f.geoLat, f.geoLon, f.geoRadiusKm) else null
+            applySmartFiltersToBar(f)
             activeSmartCollectionId = id
         } else {
             collectionId = id
@@ -2392,7 +2431,7 @@ class GridViewModel(
      *  selected, so the user can see why a smart collection gathers what it does. */
     fun smartCollectionCriteria(
         collection: com.reelvault.data.models.Collection
-    ): List<Pair<String, String>> {
+    ): List<SmartCriterionRow> {
         val f = com.reelvault.data.models.SmartCollectionFilters.fromJson(collection.filterJson)
         // Friendly label for a metadata key; falls back to a capitalised key
         // for registry keys we don't special-case.
@@ -2402,28 +2441,44 @@ class GridViewModel(
             "resolution" -> "Resolution"; "colorspace" -> "Color space"
             else -> key.replaceFirstChar { it.uppercase() }
         }
-        val out = mutableListOf<Pair<String, String>>()
+        val out = mutableListOf<SmartCriterionRow>()
         f.columns.forEach { c ->
             if (c.values.isNotEmpty()) {
                 // A "keyword" column holds tag ids; resolve them to names so the
                 // panel reads "Keywords: astro", not the raw tag uuid.
                 if (c.key == "keyword") {
                     val names = c.values.map { id -> _tags.value.firstOrNull { it.id == id }?.name ?: id }
-                    out += "Keywords" to names.joinToString(", ")
+                    out += SmartCriterionRow("Keywords", names.joinToString(", "), SmartCriterion.Column("keyword"))
                 } else {
-                    out += label(c.key) to c.values.joinToString(", ")
+                    out += SmartCriterionRow(label(c.key), c.values.joinToString(", "), SmartCriterion.Column(c.key))
                 }
             }
         }
-        if (f.minRating > 0) out += "Rating" to "${f.minRating}+ stars"
-        if (f.colorLabel.isNotEmpty()) out += "Color" to f.colorLabel.replaceFirstChar { it.uppercase() }
+        if (f.minRating > 0) out += SmartCriterionRow("Rating", "${f.minRating}+ stars", SmartCriterion.MinRating)
+        if (f.colorLabel.isNotEmpty()) {
+            out += SmartCriterionRow("Color", f.colorLabel.replaceFirstChar { it.uppercase() }, SmartCriterion.ColorLabel)
+        }
         if (f.tagIds.isNotEmpty()) {
             val names = f.tagIds.map { id -> _tags.value.firstOrNull { it.id == id }?.name ?: id }
-            out += "Keywords" to names.joinToString(", ")
+            out += SmartCriterionRow("Keywords", names.joinToString(", "), SmartCriterion.Keywords)
         }
         if (f.hasGeo) {
-            out += "Location" to "within %.1f km of %.4f, %.4f".format(f.geoRadiusKm, f.geoLat, f.geoLon)
+            out += SmartCriterionRow("Location", "within %.1f km of %.4f, %.4f".format(f.geoRadiusKm, f.geoLat, f.geoLon), SmartCriterion.Geo)
         }
+        if (f.locationPaths.isNotEmpty()) {
+            val names = f.locationPaths.map { it.trimEnd('/').substringAfterLast('/') }
+            out += SmartCriterionRow("Folder", names.joinToString(", "), SmartCriterion.Folder)
+        }
+        // Tri-state attribute filters — shown only when constrained (Yes / No).
+        fun attrValue(s: com.reelvault.data.models.AttributeFilterState): String? = when (s) {
+            com.reelvault.data.models.AttributeFilterState.Yes -> "Yes"
+            com.reelvault.data.models.AttributeFilterState.No -> "No"
+            com.reelvault.data.models.AttributeFilterState.Any -> null
+        }
+        attrValue(f.hasLocation)?.let { out += SmartCriterionRow("Has location", it, SmartCriterion.HasLocation) }
+        attrValue(f.hasKeywords)?.let { out += SmartCriterionRow("Has keywords", it, SmartCriterion.HasKeywords) }
+        attrValue(f.hasProxies)?.let { out += SmartCriterionRow("Has proxies", it, SmartCriterion.HasProxies) }
+        attrValue(f.fullResolution)?.let { out += SmartCriterionRow("Full resolution", it, SmartCriterion.FullResolution) }
         return out
     }
 
@@ -2498,6 +2553,7 @@ class GridViewModel(
                     val (_, total) = repository.listVideos(
                         limit = 1,
                         offset = 0,
+                        locationPath = f.locationPaths.joinToString("\n"),
                         filterTags = f.tagIds,
                         geoFilter = if (f.hasGeo) Triple(f.geoLat, f.geoLon, f.geoRadiusKm) else null,
                         filterMinRating = f.minRating,
@@ -2511,6 +2567,10 @@ class GridViewModel(
                                 )
                             },
                         searchQuery = f.searchQuery,
+                        hasLocation = f.hasLocation,
+                        hasKeywords = f.hasKeywords,
+                        hasProxies = f.hasProxies,
+                        fullResolution = f.fullResolution,
                     )
                     counts[c.id] = total
                     _smartCollectionCounts.value = counts.toMap()
@@ -2595,6 +2655,13 @@ class GridViewModel(
             geoLat = geo?.first ?: 0.0,
             geoLon = geo?.second ?: 0.0,
             geoRadiusKm = geo?.third ?: 0.0,
+            // Library-folder selection and the tri-state attribute filters are
+            // part of the collection too.
+            locationPaths = _selectedLocationPaths.value,
+            hasLocation = _filterHasLocation.value,
+            hasKeywords = _filterHasKeywords.value,
+            hasProxies = _filterHasProxies.value,
+            fullResolution = _filterFullResolution.value,
         )
     }
 
@@ -2616,7 +2683,8 @@ class GridViewModel(
             .sortedBy { it.first }
             .toString()
         return "$cols|${f.minRating}|${f.colorLabel}|${f.searchQuery}|" +
-            "${f.tagIds.sorted()}|${f.geoLat}|${f.geoLon}|${f.geoRadiusKm}"
+            "${f.tagIds.sorted()}|${f.geoLat}|${f.geoLon}|${f.geoRadiusKm}|" +
+            "${f.locationPaths.sorted()}|${f.hasLocation}|${f.hasKeywords}|${f.hasProxies}|${f.fullResolution}"
     }
 
     /** Recompute whether the live filter has diverged from the active smart
@@ -2661,6 +2729,14 @@ class GridViewModel(
         val id = activeSmartCollectionId ?: return
         val col = _collections.value.firstOrNull { it.id == id } ?: return
         val f = com.reelvault.data.models.SmartCollectionFilters.fromJson(col.filterJson)
+        applySmartFiltersToBar(f)
+        reloadForFilterChange()
+    }
+
+    /** Write a saved filter set into the live Library Filter bar (metadata
+     *  columns + dedicated rating/color/search/tag/geo fields). Shared by
+     *  entering a smart collection, reverting edits, and deleting a criterion. */
+    private fun applySmartFiltersToBar(f: com.reelvault.data.models.SmartCollectionFilters) {
         _metadataColumns.value = metadataColumnsFromSmartFilters(f)
         LibraryFilterPrefs.saveColumns(_metadataColumns.value)
         _filterMinRating.value = f.minRating
@@ -2669,7 +2745,111 @@ class GridViewModel(
         filterTags = f.tagIds
         _filterTagId.value = f.tagIds.firstOrNull() ?: ""
         _filterLocation.value = if (f.hasGeo) Triple(f.geoLat, f.geoLon, f.geoRadiusKm) else null
+        // Library-folder selection and the tri-state attribute filters are part
+        // of the collection too, so a smart collection fully restores the bar.
+        locationPathFilter = f.locationPaths.joinToString("\n")
+        _selectedLocationPaths.value = f.locationPaths
+        _selectedLocationPath.value = f.locationPaths.firstOrNull() ?: ""
+        _filterHasLocation.value = f.hasLocation
+        _filterHasKeywords.value = f.hasKeywords
+        _filterHasProxies.value = f.hasProxies
+        _filterFullResolution.value = f.fullResolution
+        // Reveal whichever editor holds the collection's filters so the bar isn't
+        // stuck on "Clear" (which hides everything).
+        _libraryFilterMode.value = smartFilterMode(f)
+    }
+
+    /** Pick the Library Filter bar mode that surfaces a smart collection's
+     *  filters: metadata columns, then attributes, then text, else Clear. */
+    private fun smartFilterMode(
+        f: com.reelvault.data.models.SmartCollectionFilters
+    ): com.reelvault.data.models.LibraryFilterMode {
+        val anyAttr = com.reelvault.data.models.AttributeFilterState.Any
+        return when {
+            f.columns.isNotEmpty() -> com.reelvault.data.models.LibraryFilterMode.Metadata
+            f.hasLocation != anyAttr || f.hasKeywords != anyAttr ||
+                f.hasProxies != anyAttr || f.fullResolution != anyAttr ->
+                com.reelvault.data.models.LibraryFilterMode.Attribute
+            f.searchQuery.isNotEmpty() -> com.reelvault.data.models.LibraryFilterMode.Text
+            else -> com.reelvault.data.models.LibraryFilterMode.Clear
+        }
+    }
+
+    /** Leave the active smart collection and clear every filter so the grid
+     *  shows the whole catalog. Backs the smart-collection banner's ✕ button.
+     *  Unlike navigating away (which restores the pre-collection filter), this
+     *  is an explicit "show everything" reset, so it drops the snapshot too. */
+    fun clearSmartCollectionShowAll() {
+        preSmartFilterSnapshot = null
+        activeSmartCollectionId = null
+        _divergedSmartCollection.value = null
+        _selectedCollectionId.value = null
+        collectionId = null
+        _searchQuery.value = ""
+        _filterMinRating.value = 0
+        _filterColorLabel.value = ""
+        _filterLocation.value = null
+        val anyAttr = com.reelvault.data.models.AttributeFilterState.Any
+        _filterHasLocation.value = anyAttr
+        _filterHasKeywords.value = anyAttr
+        _filterHasProxies.value = anyAttr
+        _filterFullResolution.value = anyAttr
+        filterTags = emptyList()
+        _filterTagId.value = ""
+        locationPathFilter = ""
+        _selectedLocationPaths.value = emptyList()
+        _selectedLocationPath.value = ""
+        _metadataColumns.value = _metadataColumns.value.map { it.copy(values = emptySet(), anchor = "") }
+        LibraryFilterPrefs.saveColumns(_metadataColumns.value)
+        _libraryFilterMode.value = com.reelvault.data.models.LibraryFilterMode.Clear
         reloadForFilterChange()
+    }
+
+    /** Remove a single rule from a smart collection's *saved* definition (after
+     *  the user confirms), re-create it without that rule, and — if it's the one
+     *  being viewed — re-apply the broadened filter to the live bar. The core has
+     *  no UpdateCollection RPC, so this re-creates and re-points ids, like
+     *  [updateActiveSmartCollection]. */
+    fun removeSmartCollectionCriterion(
+        col: com.reelvault.data.models.Collection,
+        criterion: SmartCriterion,
+    ) {
+        val parsed = com.reelvault.data.models.SmartCollectionFilters.fromJson(col.filterJson)
+        val anyAttr = com.reelvault.data.models.AttributeFilterState.Any
+        val f = when (criterion) {
+            is SmartCriterion.Column -> parsed.copy(columns = parsed.columns.filterNot { it.key == criterion.key })
+            SmartCriterion.MinRating -> parsed.copy(minRating = 0)
+            SmartCriterion.ColorLabel -> parsed.copy(colorLabel = "")
+            SmartCriterion.Keywords -> parsed.copy(tagIds = emptyList())
+            SmartCriterion.Geo -> parsed.copy(geoLat = 0.0, geoLon = 0.0, geoRadiusKm = 0.0)
+            SmartCriterion.Folder -> parsed.copy(locationPaths = emptyList())
+            SmartCriterion.HasLocation -> parsed.copy(hasLocation = anyAttr)
+            SmartCriterion.HasKeywords -> parsed.copy(hasKeywords = anyAttr)
+            SmartCriterion.HasProxies -> parsed.copy(hasProxies = anyAttr)
+            SmartCriterion.FullResolution -> parsed.copy(fullResolution = anyAttr)
+        }
+        val name = col.name
+        val oldId = col.id
+        val json = f.toJson()
+        viewModelScope.launch {
+            try {
+                repository.deleteCollection(oldId)
+                val created = repository.createCollection(name, isSmart = true, filterJson = json)
+                _collections.value = repository.listCollections().sortedBy { it.name.lowercase() }
+                val newId = created?.id
+                    ?: _collections.value.firstOrNull { it.name == name && it.isSmart }?.id
+                if (_selectedCollectionId.value == oldId || activeSmartCollectionId == oldId) {
+                    activeSmartCollectionId = newId
+                    _selectedCollectionId.value = newId
+                    applySmartFiltersToBar(f)
+                    reloadForFilterChange()
+                }
+                refreshSmartCollectionCounts()
+                _divergedSmartCollection.value = null
+            } catch (e: Exception) {
+                _error.value = "Failed to remove smart collection rule: ${e.message}"
+            }
+        }
     }
 
     /** Build metadata columns from a smart collection's saved column filters.

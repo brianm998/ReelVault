@@ -57,6 +57,30 @@ func nextSelectedIndex(_ order: [VideoSummary], from: Int, selected: Set<String>
     return -1
 }
 
+/// Identifies one removable rule within a smart collection's saved filter, so
+/// the details panel can offer a per-rule ✕ that deletes just that constraint.
+enum SmartCriterion: Equatable {
+    case column(String)   // a metadata column (incl. the tag-backed "keyword")
+    case minRating
+    case colorLabel
+    case keywords         // the dedicated tagIds filter
+    case geo
+    case folder           // library-folder selection (locationPaths)
+    case hasLocation      // tri-state attribute filters
+    case hasKeywords
+    case hasProxies
+    case fullResolution
+}
+
+/// One human-readable rule of a smart collection, plus the [SmartCriterion] it
+/// maps to so it can be deleted individually.
+struct SmartCriterionRow: Identifiable {
+    let id = UUID()
+    let label: String
+    let value: String
+    let criterion: SmartCriterion
+}
+
 @MainActor
 class GridViewModel: ObservableObject {
     // Grid state
@@ -610,8 +634,12 @@ class GridViewModel: ObservableObject {
             isLoading = true
         }
         error = nil
+        // A spinner reload is user-initiated (filter / sort / collection change),
+        // so re-center the selection once the new page lands; a silent background
+        // refresh must leave the scroll position alone.
+        let scrollToSelection = showSpinner
         listLoadTask = Task { [weak self] in
-            await self?.loadCurrentPage(replace: true)
+            await self?.loadCurrentPage(replace: true, scrollToSelection: scrollToSelection)
         }
     }
 
@@ -621,11 +649,11 @@ class GridViewModel: ObservableObject {
         isLoading = true
         error = nil
         listLoadTask = Task { [weak self] in
-            await self?.loadCurrentPage(replace: false)
+            await self?.loadCurrentPage(replace: false, scrollToSelection: false)
         }
     }
 
-    private func loadCurrentPage(replace: Bool) async {
+    private func loadCurrentPage(replace: Bool, scrollToSelection: Bool = false) async {
         do {
             let filterTagIds = filterTagId.isEmpty ? [] : [filterTagId]
             let geo: (latitude: Double, longitude: Double, radiusKm: Double)? = filterLocation.map {
@@ -670,6 +698,13 @@ class GridViewModel: ObservableObject {
             // the middle, stale details on the right).
             if replace && videos.isEmpty && selectedVideoId != nil {
                 clearSelection()
+            }
+
+            // A user filter/collection reload that kept a selection: ask the grid
+            // to re-center it, since its row usually moved under the new filter.
+            if replace, scrollToSelection, let id = selectedVideoId,
+               videos.contains(where: { $0.id == id }) {
+                scrollToSelectionTick += 1
             }
 
             // Keep map locations in sync with the active grid filters.
@@ -821,13 +856,18 @@ class GridViewModel: ObservableObject {
                         limit: 1,
                         offset: 0,
                         searchQuery: f.searchQuery,
+                        locationPath: f.locationPaths.joined(separator: "\n"),
                         filterTagIds: f.tagIds,
                         geoFilter: f.hasGeo ? (latitude: f.geoLat, longitude: f.geoLon, radiusKm: f.geoRadiusKm) : nil,
                         filterMinRating: f.minRating,
                         filterColorLabel: f.colorLabel,
                         metadataFilters: f.columns
                             .filter { !$0.values.isEmpty }
-                            .map { (key: $0.key, value: $0.values.joined(separator: metadataValueSeparator)) }
+                            .map { (key: $0.key, value: $0.values.joined(separator: metadataValueSeparator)) },
+                        hasLocation: f.hasLocation,
+                        hasKeywords: f.hasKeywords,
+                        hasProxies: f.hasProxies,
+                        fullResolution: f.fullResolution
                     )
                     counts[c.id] = result.totalCount
                     smartCollectionCounts = counts
@@ -860,6 +900,11 @@ class GridViewModel: ObservableObject {
         var searchQuery: String
         /// Map-proximity filter, or nil when none.
         var geo: GeoFilter?
+        var locationPaths: [String]
+        var hasLocation: AttributeFilterState
+        var hasKeywords: AttributeFilterState
+        var hasProxies: AttributeFilterState
+        var fullResolution: AttributeFilterState
     }
     private var preSmartFilterSnapshot: FilterSnapshot?
 
@@ -874,6 +919,12 @@ class GridViewModel: ObservableObject {
             searchQuery = snap.searchQuery
             metadataColumns = snap.columns
             filterLocation = snap.geo
+            selectedLocationPaths = snap.locationPaths
+            selectedLocationPath = snap.locationPaths.first ?? ""
+            filterHasLocation = snap.hasLocation
+            filterHasKeywords = snap.hasKeywords
+            filterHasProxies = snap.hasProxies
+            filterFullResolution = snap.fullResolution
             LibraryFilterPrefs.saveColumns(metadataColumns)
             return
         }
@@ -882,6 +933,12 @@ class GridViewModel: ObservableObject {
         filterTagId = ""
         searchQuery = ""
         filterLocation = nil
+        selectedLocationPaths = []
+        selectedLocationPath = ""
+        filterHasLocation = .any
+        filterHasKeywords = .any
+        filterHasProxies = .any
+        filterFullResolution = .any
         for i in metadataColumns.indices where !metadataColumns[i].values.isEmpty {
             metadataColumns[i].values = []
             metadataColumns[i].anchor = ""
@@ -915,19 +972,17 @@ class GridViewModel: ObservableObject {
                 colorLabel: filterColorLabel,
                 tagId: filterTagId,
                 searchQuery: searchQuery,
-                geo: filterLocation
+                geo: filterLocation,
+                locationPaths: selectedLocationPaths,
+                hasLocation: filterHasLocation,
+                hasKeywords: filterHasKeywords,
+                hasProxies: filterHasProxies,
+                fullResolution: filterFullResolution
             )
             // Smart collection: apply its saved filters. Metadata columns map
             // onto the bar's columns; the rest stay as dedicated fields.
             collectionIdFilter = nil
-            metadataColumns = Self.metadataColumns(from: f)
-            LibraryFilterPrefs.saveColumns(metadataColumns)
-            filterMinRating = f.minRating
-            filterColorLabel = f.colorLabel
-            filterTagId = f.tagIds.first ?? ""
-            searchQuery = f.searchQuery
-            // Apply (or clear) the map-proximity filter the collection saved.
-            filterLocation = f.hasGeo ? GeoFilter(latitude: f.geoLat, longitude: f.geoLon, radiusKm: f.geoRadiusKm) : nil
+            applySmartFiltersToBar(f)
             activeSmartCollectionId = id
         } else {
             collectionIdFilter = id
@@ -997,7 +1052,12 @@ class GridViewModel: ObservableObject {
             searchQuery: searchQuery,
             geoLat: filterLocation?.latitude ?? 0.0,
             geoLon: filterLocation?.longitude ?? 0.0,
-            geoRadiusKm: filterLocation?.radiusKm ?? 0.0
+            geoRadiusKm: filterLocation?.radiusKm ?? 0.0,
+            locationPaths: selectedLocationPaths,
+            hasLocation: filterHasLocation,
+            hasKeywords: filterHasKeywords,
+            hasProxies: filterHasProxies,
+            fullResolution: filterFullResolution
         )
     }
 
@@ -1017,7 +1077,7 @@ class GridViewModel: ObservableObject {
             .map { "\($0.key)=\($0.values.sorted().joined(separator: ","))" }
             .sorted()
             .joined(separator: ";")
-        return "\(cols)|\(f.minRating)|\(f.colorLabel)|\(f.searchQuery)|\(f.tagIds.sorted())|\(f.geoLat)|\(f.geoLon)|\(f.geoRadiusKm)"
+        return "\(cols)|\(f.minRating)|\(f.colorLabel)|\(f.searchQuery)|\(f.tagIds.sorted())|\(f.geoLat)|\(f.geoLon)|\(f.geoRadiusKm)|\(f.locationPaths.sorted())|\(f.hasLocation.rawValue)|\(f.hasKeywords.rawValue)|\(f.hasProxies.rawValue)|\(f.fullResolution.rawValue)"
     }
 
     /// Recompute whether the live filter has diverged from the active smart
@@ -1061,6 +1121,14 @@ class GridViewModel: ObservableObject {
         guard let id = activeSmartCollectionId,
               let col = collections.first(where: { $0.id == id }),
               let f = SmartCollectionFilters.from(json: col.filterJson) else { return }
+        applySmartFiltersToBar(f)
+        reloadForFilterChange()
+    }
+
+    /// Write a saved filter set into the live Library Filter bar (metadata
+    /// columns + dedicated rating/color/search/tag/geo fields). Shared by
+    /// entering a smart collection, reverting edits, and deleting a criterion.
+    private func applySmartFiltersToBar(_ f: SmartCollectionFilters) {
         metadataColumns = Self.metadataColumns(from: f)
         LibraryFilterPrefs.saveColumns(metadataColumns)
         filterMinRating = f.minRating
@@ -1068,7 +1136,100 @@ class GridViewModel: ObservableObject {
         searchQuery = f.searchQuery
         filterTagId = f.tagIds.first ?? ""
         filterLocation = f.hasGeo ? GeoFilter(latitude: f.geoLat, longitude: f.geoLon, radiusKm: f.geoRadiusKm) : nil
+        // Library-folder selection and the tri-state attribute filters are part
+        // of the collection too, so a smart collection fully restores the bar.
+        selectedLocationPaths = f.locationPaths
+        selectedLocationPath = f.locationPaths.first ?? ""
+        filterHasLocation = f.hasLocation
+        filterHasKeywords = f.hasKeywords
+        filterHasProxies = f.hasProxies
+        filterFullResolution = f.fullResolution
+        // Reveal whichever editor holds the collection's filters so the bar isn't
+        // stuck on "Clear" (which hides everything).
+        libraryFilterMode = Self.smartFilterMode(f)
+    }
+
+    /// Pick the Library Filter bar mode that surfaces a smart collection's
+    /// filters: metadata columns, then attributes, then text, else Clear.
+    private static func smartFilterMode(_ f: SmartCollectionFilters) -> LibraryFilterMode {
+        if !f.columns.isEmpty { return .metadata }
+        if f.hasLocation != .any || f.hasKeywords != .any || f.hasProxies != .any || f.fullResolution != .any {
+            return .attribute
+        }
+        if !f.searchQuery.isEmpty { return .text }
+        return .clear
+    }
+
+    /// Leave the active smart collection and clear every filter so the grid
+    /// shows the whole catalog. Backs the smart-collection banner's ✕ button.
+    /// Unlike navigating away (which restores the pre-collection filter), this
+    /// is an explicit "show everything" reset, so it drops the snapshot too.
+    func clearSmartCollectionShowAll() {
+        preSmartFilterSnapshot = nil
+        activeSmartCollectionId = nil
+        divergedSmartCollection = nil
+        selectedCollectionId = nil
+        collectionIdFilter = nil
+        searchQuery = ""
+        filterMinRating = 0
+        filterColorLabel = ""
+        filterLocation = nil
+        filterHasLocation = .any
+        filterHasKeywords = .any
+        filterHasProxies = .any
+        filterFullResolution = .any
+        filterTagId = ""
+        selectedLocationPaths = []
+        selectedLocationPath = ""
+        for i in metadataColumns.indices where !metadataColumns[i].values.isEmpty {
+            metadataColumns[i].values = []
+            metadataColumns[i].anchor = ""
+        }
+        LibraryFilterPrefs.saveColumns(metadataColumns)
+        libraryFilterMode = .clear
         reloadForFilterChange()
+    }
+
+    /// Remove a single rule from a smart collection's *saved* definition (after
+    /// the user confirms), re-create it without that rule, and — if it's the one
+    /// being viewed — re-apply the broadened filter to the live bar. The core has
+    /// no UpdateCollection RPC, so this re-creates and re-points ids, like
+    /// `updateActiveSmartCollection`.
+    func removeSmartCollectionCriterion(_ col: Collection, _ criterion: SmartCriterion) {
+        guard var f = SmartCollectionFilters.from(json: col.filterJson) else { return }
+        switch criterion {
+        case .column(let key): f.columns.removeAll { $0.key == key }
+        case .minRating: f.minRating = 0
+        case .colorLabel: f.colorLabel = ""
+        case .keywords: f.tagIds = []
+        case .geo: f.geoLat = 0; f.geoLon = 0; f.geoRadiusKm = 0
+        case .folder: f.locationPaths = []
+        case .hasLocation: f.hasLocation = .any
+        case .hasKeywords: f.hasKeywords = .any
+        case .hasProxies: f.hasProxies = .any
+        case .fullResolution: f.fullResolution = .any
+        }
+        let name = col.name
+        let oldId = col.id
+        let json = f.toJson()
+        Task {
+            do {
+                _ = try await repository.deleteCollection(id: oldId)
+                let created = try await repository.createCollection(name: name, isSmart: true, filterJson: json)
+                collections = try await repository.listCollections().sorted { $0.name.lowercased() < $1.name.lowercased() }
+                let newId = created?.id ?? collections.first(where: { $0.name == name && $0.isSmart })?.id
+                if selectedCollectionId == oldId || activeSmartCollectionId == oldId {
+                    activeSmartCollectionId = newId
+                    selectedCollectionId = newId
+                    applySmartFiltersToBar(f)
+                    reloadForFilterChange()
+                }
+                refreshSmartCollectionCounts()
+                divergedSmartCollection = nil
+            } catch {
+                NSLog("Failed to remove smart collection criterion: \(error)")
+            }
+        }
     }
 
     /// Build metadata columns from a smart collection's saved column filters.
@@ -1082,7 +1243,7 @@ class GridViewModel: ObservableObject {
     /// tag IDs to names. An empty array means the collection constrains nothing
     /// (it would match every video). Shown in the details panel when no card is
     /// selected, so the user can see why a smart collection gathers what it does.
-    func smartCollectionCriteria(_ collection: Collection) -> [(label: String, value: String)] {
+    func smartCollectionCriteria(_ collection: Collection) -> [SmartCriterionRow] {
         guard let f = SmartCollectionFilters.from(json: collection.filterJson) else { return [] }
         // Friendly label for a metadata key; falls back to a capitalised key
         // for registry keys we don't special-case.
@@ -1094,27 +1255,40 @@ class GridViewModel: ObservableObject {
             default: return key.prefix(1).uppercased() + key.dropFirst()
             }
         }
-        var out: [(label: String, value: String)] = []
+        var out: [SmartCriterionRow] = []
         for c in f.columns where !c.values.isEmpty {
             // A "keyword" column holds tag ids; resolve them to names so the
             // panel reads "Keywords: astro", not the raw tag uuid.
             if c.key == "keyword" {
                 let names = c.values.map { id in tags.first(where: { $0.id == id })?.name ?? id }
-                out.append((label: "Keywords", value: names.joined(separator: ", ")))
+                out.append(SmartCriterionRow(label: "Keywords", value: names.joined(separator: ", "), criterion: .column("keyword")))
             } else {
-                out.append((label: label(c.key), value: c.values.joined(separator: ", ")))
+                out.append(SmartCriterionRow(label: label(c.key), value: c.values.joined(separator: ", "), criterion: .column(c.key)))
             }
         }
-        if f.minRating > 0 { out.append((label: "Rating", value: "\(f.minRating)+ stars")) }
-        if !f.colorLabel.isEmpty { out.append((label: "Color", value: f.colorLabel.capitalized)) }
+        if f.minRating > 0 { out.append(SmartCriterionRow(label: "Rating", value: "\(f.minRating)+ stars", criterion: .minRating)) }
+        if !f.colorLabel.isEmpty { out.append(SmartCriterionRow(label: "Color", value: f.colorLabel.capitalized, criterion: .colorLabel)) }
         if !f.tagIds.isEmpty {
             let names = f.tagIds.map { id in tags.first(where: { $0.id == id })?.name ?? id }
-            out.append((label: "Keywords", value: names.joined(separator: ", ")))
+            out.append(SmartCriterionRow(label: "Keywords", value: names.joined(separator: ", "), criterion: .keywords))
         }
         if f.hasGeo {
-            out.append((label: "Location",
-                        value: String(format: "within %.1f km of %.4f, %.4f", f.geoRadiusKm, f.geoLat, f.geoLon)))
+            out.append(SmartCriterionRow(label: "Location",
+                        value: String(format: "within %.1f km of %.4f, %.4f", f.geoRadiusKm, f.geoLat, f.geoLon),
+                        criterion: .geo))
         }
+        if !f.locationPaths.isEmpty {
+            let names = f.locationPaths.map { ($0 as NSString).lastPathComponent }
+            out.append(SmartCriterionRow(label: "Folder", value: names.joined(separator: ", "), criterion: .folder))
+        }
+        // Tri-state attribute filters — shown only when constrained (Yes / No).
+        func attrValue(_ s: AttributeFilterState) -> String? {
+            switch s { case .yes: return "Yes"; case .no: return "No"; case .any: return nil }
+        }
+        if let v = attrValue(f.hasLocation) { out.append(SmartCriterionRow(label: "Has location", value: v, criterion: .hasLocation)) }
+        if let v = attrValue(f.hasKeywords) { out.append(SmartCriterionRow(label: "Has keywords", value: v, criterion: .hasKeywords)) }
+        if let v = attrValue(f.hasProxies) { out.append(SmartCriterionRow(label: "Has proxies", value: v, criterion: .hasProxies)) }
+        if let v = attrValue(f.fullResolution) { out.append(SmartCriterionRow(label: "Full resolution", value: v, criterion: .fullResolution)) }
         return out
     }
 
@@ -2009,6 +2183,11 @@ class GridViewModel: ObservableObject {
     /// Set when arrow navigation moves the active card, so the scrolling view
     /// can bring it on screen without re-centering on every mouse click.
     @Published var pendingScrollVideoId: String?
+    /// Bumped after a user filter/collection reload finishes loading, so the
+    /// grid re-centers the (surviving) selection — its row usually moves under
+    /// the new filter, and it shouldn't be left off-screen. Not bumped by
+    /// background refreshes or pagination, which must not yank the scroll.
+    @Published var scrollToSelectionTick: Int = 0
 
     /// Whichever of grid / list is on screen reports its layout here.
     func setNavContext(_ orderedVideos: [VideoSummary], columns: Int) {

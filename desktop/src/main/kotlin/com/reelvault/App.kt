@@ -1662,29 +1662,19 @@ fun ReelVaultApp(
                         // the two panel dividers, the bar automatically stops at
                         // the side panels and tracks their resize/collapse.
                         Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                            // Slide the filter bar in/out as the loupe is
-                            // entered or left, rather than snapping.
-                            androidx.compose.animation.AnimatedVisibility(
-                                visible = viewMode != ViewMode.DETAIL
-                            ) {
-                                com.reelvault.ui.components.LibraryFilterBar(
-                                    viewModel = gridViewModel,
-                                    onSearchFocusChanged = onSearchFocusChanged,
-                                    // Map mode plots only located videos, so the
-                                    // location presence filter is hidden (and
-                                    // forced on) — every other filter still applies.
-                                    hideLocationOption = viewMode == ViewMode.MAP,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
-                            // "You edited this smart collection's filter" banner.
-                            // Offers to save the change back to the collection or
-                            // revert; switching away reverts automatically anyway.
+                            // Banner shown the whole time a smart collection is the
+                            // active view: explains it, offers Update / Reset once
+                            // the live filter is edited, and a ✕ to clear to all.
+                            val selectedColId =
+                                gridViewModel.selectedCollectionId.collectAsState().value
+                            val allCols = gridViewModel.collections.collectAsState().value
                             val divergedName =
                                 gridViewModel.divergedSmartCollection.collectAsState().value
+                            val smartCol = allCols.firstOrNull { it.id == selectedColId && it.isSmart }
                             androidx.compose.animation.AnimatedVisibility(
-                                visible = viewMode != ViewMode.DETAIL && divergedName != null
+                                visible = viewMode != ViewMode.DETAIL && smartCol != null
                             ) {
+                                val diverged = divergedName != null
                                 Surface(
                                     color = MaterialTheme.colorScheme.tertiaryContainer,
                                     modifier = Modifier.fillMaxWidth(),
@@ -1703,20 +1693,48 @@ fun ReelVaultApp(
                                             modifier = Modifier.size(16.dp),
                                         )
                                         Text(
-                                            text = "You changed the filter for smart collection " +
-                                                "“${divergedName ?: ""}”. Update it to match, or revert.",
+                                            text = if (diverged)
+                                                "You changed the filter for smart collection " +
+                                                    "“${smartCol?.name ?: ""}”. Update it to match these " +
+                                                    "criteria, or reset to its saved rules."
+                                            else
+                                                "Viewing smart collection “${smartCol?.name ?: ""}”.",
                                             style = MaterialTheme.typography.labelMedium,
                                             color = MaterialTheme.colorScheme.onTertiaryContainer,
                                             modifier = Modifier.weight(1f),
                                         )
-                                        TextButton(onClick = { gridViewModel.revertActiveSmartCollection() }) {
-                                            Text("Revert")
+                                        if (diverged) {
+                                            TextButton(onClick = { gridViewModel.revertActiveSmartCollection() }) {
+                                                Text("Reset to default")
+                                            }
+                                            Button(onClick = { gridViewModel.updateActiveSmartCollection() }) {
+                                                Text("Update collection")
+                                            }
                                         }
-                                        Button(onClick = { gridViewModel.updateActiveSmartCollection() }) {
-                                            Text("Update collection")
+                                        IconButton(onClick = { gridViewModel.clearSmartCollectionShowAll() }) {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = "Clear filter and show all videos",
+                                                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                            )
                                         }
                                     }
                                 }
+                            }
+                            // Slide the filter bar in/out as the loupe is
+                            // entered or left, rather than snapping.
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = viewMode != ViewMode.DETAIL
+                            ) {
+                                com.reelvault.ui.components.LibraryFilterBar(
+                                    viewModel = gridViewModel,
+                                    onSearchFocusChanged = onSearchFocusChanged,
+                                    // Map mode plots only located videos, so the
+                                    // location presence filter is hidden (and
+                                    // forced on) — every other filter still applies.
+                                    hideLocationOption = viewMode == ViewMode.MAP,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
                             }
                             when (viewMode) {
                                 ViewMode.GRID -> GridScreen(

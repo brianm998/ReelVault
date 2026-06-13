@@ -200,6 +200,14 @@ struct GridView: View {
             .onChange(of: viewModel.pendingScrollVideoId) { _, id in
                 if let id { proxy.scrollTo(id, anchor: .center) }
             }
+            // After switching smart collections (or any filter change), bring the
+            // still-selected card back on screen — its row moves under the new
+            // filter, so it would otherwise be left off-screen.
+            .onChange(of: viewModel.scrollToSelectionTick) { _, _ in
+                if let id = viewModel.selectedVideoId {
+                    proxy.scrollTo(id, anchor: .center)
+                }
+            }
             // Intentionally no .padding(...) here — the Lightroom-style grid
             // fills the viewport flush to the edge.
             } // ScrollViewReader

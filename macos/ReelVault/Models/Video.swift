@@ -387,6 +387,15 @@ struct SmartCollectionFilters {
     var geoLat: Double = 0.0
     var geoLon: Double = 0.0
     var geoRadiusKm: Double = 0.0
+    /// Library-folder selection (the left panel). Empty = all folders. A smart
+    /// collection can pin itself to one or more library locations.
+    var locationPaths: [String] = []
+    /// Tri-state attribute filters mirrored from the Library Filter's
+    /// "attribute" mode. `.any` means the dimension is unconstrained.
+    var hasLocation: AttributeFilterState = .any
+    var hasKeywords: AttributeFilterState = .any
+    var hasProxies: AttributeFilterState = .any
+    var fullResolution: AttributeFilterState = .any
 
     /// True when a map-proximity constraint is active.
     var hasGeo: Bool { geoRadiusKm > 0.0 }
@@ -398,7 +407,9 @@ struct SmartCollectionFilters {
         // JSON parser. '=' never appears in a metadata key.
         let colsJson = columns.map { esc($0.key + "=" + $0.values.joined(separator: metadataValueSeparator)) }.joined(separator: ",")
         let tagsJson = tagIds.map { esc($0) }.joined(separator: ",")
-        return #"{"columns":[\#(colsJson)],"minRating":\#(minRating),"colorLabel":\#(esc(colorLabel)),"searchQuery":\#(esc(searchQuery)),"tagIds":[\#(tagsJson)],"geoLat":\#(geoLat),"geoLon":\#(geoLon),"geoRadiusKm":\#(geoRadiusKm)}"#
+        let locJson = locationPaths.map { esc($0) }.joined(separator: ",")
+        let attrs = #","locationPaths":[\#(locJson)],"hasLocation":\#(esc(hasLocation.rawValue)),"hasKeywords":\#(esc(hasKeywords.rawValue)),"hasProxies":\#(esc(hasProxies.rawValue)),"fullResolution":\#(esc(fullResolution.rawValue))"#
+        return #"{"columns":[\#(colsJson)],"minRating":\#(minRating),"colorLabel":\#(esc(colorLabel)),"searchQuery":\#(esc(searchQuery)),"tagIds":[\#(tagsJson)],"geoLat":\#(geoLat),"geoLon":\#(geoLon),"geoRadiusKm":\#(geoRadiusKm)\#(attrs)}"#
     }
 
     static func from(json: String) -> SmartCollectionFilters? {
@@ -479,6 +490,9 @@ struct SmartCollectionFilters {
             let codec = strVal("codec"); if !codec.isEmpty { columns.append(SmartCollectionColumn(key: "codec", values: legacyVals(codec))) }
             let year = intVal("captureYear"); if year != 0 { columns.append(SmartCollectionColumn(key: "year", values: [String(year)])) }
         }
+        func attr(_ key: String) -> AttributeFilterState {
+            AttributeFilterState(rawValue: strVal(key)) ?? .any
+        }
         return SmartCollectionFilters(
             columns: columns,
             minRating: intVal("minRating"),
@@ -487,7 +501,12 @@ struct SmartCollectionFilters {
             searchQuery: strVal("searchQuery"),
             geoLat: dblVal("geoLat"),
             geoLon: dblVal("geoLon"),
-            geoRadiusKm: dblVal("geoRadiusKm")
+            geoRadiusKm: dblVal("geoRadiusKm"),
+            locationPaths: strArray("locationPaths"),
+            hasLocation: attr("hasLocation"),
+            hasKeywords: attr("hasKeywords"),
+            hasProxies: attr("hasProxies"),
+            fullResolution: attr("fullResolution")
         )
     }
 }

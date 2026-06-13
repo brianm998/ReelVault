@@ -137,16 +137,22 @@ fun GridScreen(
     }
 
     val gridState = rememberLazyGridState()
+    // Index of the active card in the rendered list. Keying the scroll effect on
+    // this (not just the id) re-centres the selection whenever its *position*
+    // moves — including when switching smart collections leaves the same video
+    // selected at a different row under the new filter.
+    val selectedIdx = remember(rendered, selectedVideoId.value) {
+        rendered.indexOfFirst { it.video.id == selectedVideoId.value }
+    }
     // Keep the active card on screen: scroll to the selection when this view is
-    // first composed (e.g. switching from list mode) and whenever the selection
-    // moves (arrow-key navigation). A click on an already-visible card doesn't
+    // first composed (e.g. switching from list mode), whenever the selection
+    // moves (arrow-key navigation), and when a filter/collection change shifts
+    // the selected card's row. A click on an already-visible card doesn't
     // scroll, since it's already in the visible range.
-    LaunchedEffect(selectedVideoId.value) {
-        val selectedId = selectedVideoId.value ?: return@LaunchedEffect
-        val idx = rendered.indexOfFirst { it.video.id == selectedId }
-        if (idx < 0) return@LaunchedEffect
+    LaunchedEffect(selectedVideoId.value, selectedIdx) {
+        if (selectedIdx < 0) return@LaunchedEffect
         val info = gridState.layoutInfo
-        val visible = info.visibleItemsInfo.firstOrNull { it.index == idx }
+        val visible = info.visibleItemsInfo.firstOrNull { it.index == selectedIdx }
         // Only scroll when the card isn't already fully on screen — so an
         // already-visible click (or arrow-key step) doesn't jump the grid, but
         // a partially-clipped or off-screen card (e.g. "Open in Grid" from the
@@ -155,8 +161,8 @@ fun GridScreen(
             visible.offset.y >= info.viewportStartOffset &&
             visible.offset.y + visible.size.height <= info.viewportEndOffset
         if (!fullyVisible) {
-            gridState.scrollToItem(idx)
-            gridState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == idx }?.let { item ->
+            gridState.scrollToItem(selectedIdx)
+            gridState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == selectedIdx }?.let { item ->
                 val target = (gridState.layoutInfo.viewportSize.height - item.size.height) / 2
                 if (target > 0) gridState.scrollBy((item.offset.y - target).toFloat())
             }
