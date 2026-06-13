@@ -27,6 +27,19 @@ impl ThumbnailGenerator {
         cache_dir: &Path,
         duration_secs: f64,
     ) -> Result<()> {
+        Self::generate_default_sizes(video_path, video_id, cache_dir, duration_secs)
+    }
+
+    /// Generate the standard still thumbnails (small/medium/large) for a video.
+    /// Split out from [`generate`] (which only forwarded here — its `_db` arg is
+    /// unused) so the service can regenerate a missing still on demand without a
+    /// `Database` handle, mirroring the on-demand scrub-frame path.
+    pub fn generate_default_sizes(
+        video_path: &Path,
+        video_id: &str,
+        cache_dir: &Path,
+        duration_secs: f64,
+    ) -> Result<()> {
         if !Self::ffmpeg_available() {
             return Err(ReelVaultError::FfmpegError(
                 "ffmpeg not found in PATH. Please install FFmpeg.".to_string(),

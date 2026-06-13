@@ -1217,6 +1217,79 @@ impl ReelVaultTrait for ReelVaultService {
             .await?
         };
 
+        // On-demand regeneration of a missing STILL thumbnail (small/medium/
+        // large). Mirrors the scrub path below: when the file was removed (e.g.
+        // the cache was cleared to force a rebuild) but the catalog still
+        // references the video, regenerate the standard sizes now and return
+        // the requested one. Without this the card shows the film-icon
+        // placeholder forever — GetThumbnail returns NOT_FOUND, which tells the
+        // client to stop asking — even though only scrub frames self-healed.
+        if req.max_width == 0 && thumbnail_data.is_none() && !req.size.starts_with("scrub_") {
+            let lock = self.scrub_lock_for(&req.video_id).await;
+            let _gen_guard = lock.lock().await;
+
+            // Double-check: another waiter may have generated it meanwhile.
+            thumbnail_data = read_cached_thumbnail(
+                self.config.thumbnail_cache_path.clone(),
+                req.video_id.clone(),
+                req.size.clone(),
+                0,
+            )
+            .await?;
+
+            if thumbnail_data.is_none() {
+                if let Ok(Some(video)) = self.db.get_video(&req.video_id) {
+                    let duration_secs = self
+                        .db
+                        .get_connection()
+                        .ok()
+                        .and_then(|c| {
+                            c.query_row(
+                                "SELECT duration_ms FROM metadata WHERE video_id = ?",
+                                [&req.video_id],
+                                |row| row.get::<_, i64>(0),
+                            )
+                            .ok()
+                        })
+                        .map(|ms| ms as f64 / 1000.0)
+                        .unwrap_or(0.0);
+
+                    if duration_secs > 0.0 {
+                        let cache = self.config.thumbnail_cache_path.clone();
+                        let path = video.path.clone();
+                        let video_id = req.video_id.clone();
+                        let _ = tokio::task::spawn_blocking(move || {
+                            ThumbnailGenerator::generate_default_sizes(
+                                std::path::Path::new(&path),
+                                &video_id,
+                                &cache,
+                                duration_secs,
+                            )
+                        })
+                        .await;
+
+                        thumbnail_data = read_cached_thumbnail(
+                            self.config.thumbnail_cache_path.clone(),
+                            req.video_id.clone(),
+                            req.size.clone(),
+                            0,
+                        )
+                        .await?;
+                    }
+                }
+            }
+
+            drop(_gen_guard);
+            if Arc::strong_count(&lock) == 2 {
+                let mut map = self.scrub_locks.lock().await;
+                if let Some(existing) = map.get(&req.video_id) {
+                    if Arc::strong_count(existing) <= 2 {
+                        map.remove(&req.video_id);
+                    }
+                }
+            }
+        }
+
         // On-demand scrub frame generation. If a "scrub_N" frame is requested
         // but doesn't exist yet (e.g. for libraries scanned before this feature
         // existed), generate it now and return it. The work is deduplicated via
