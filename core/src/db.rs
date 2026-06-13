@@ -1591,7 +1591,7 @@ impl Database {
                 // somehow omitted so every row still gets a stable position.
                 let mut ordered: Vec<&String> = Vec::new();
                 for vid in video_ids {
-                    if members.contains(vid) && !ordered.iter().any(|v| *v == vid) {
+                    if members.contains(vid) && !ordered.contains(&vid) {
                         ordered.push(vid);
                     }
                 }
@@ -1652,7 +1652,7 @@ impl Database {
         // order the user can then drag to refine.
         let mut ordered: Vec<&String> = Vec::new();
         for vid in video_ids {
-            if members.contains(vid) && !ordered.iter().any(|v| *v == vid) {
+            if members.contains(vid) && !ordered.contains(&vid) {
                 ordered.push(vid);
             }
         }
