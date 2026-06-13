@@ -1040,6 +1040,7 @@ class VideoRepository(
                 id = response.id,
                 name = response.name,
                 isSmart = response.isSmart,
+                filterJson = response.filterJson,
                 videoCount = response.videoCount
             )
         } catch (e: Exception) {
@@ -1058,6 +1059,7 @@ class VideoRepository(
                     id = it.id,
                     name = it.name,
                     isSmart = it.isSmart,
+                    filterJson = it.filterJson,
                     videoCount = it.videoCount
                 )
             }
