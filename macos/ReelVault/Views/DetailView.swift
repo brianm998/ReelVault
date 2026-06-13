@@ -89,8 +89,15 @@ struct DetailView: View {
                 placeholderContent
             } else if let metadata = viewModel.metadata {
                 ScrollView {
-                    metadataContent(metadata)
-                        .padding(16)
+                    ScrollViewReader { svProxy in
+                        metadataContent(metadata)
+                            .padding(16)
+                            // Top-bar "Playing proxy" click scrolls here (#13b).
+                            .onChange(of: viewModel.scrollToProxiesToken) { _, _ in
+                                proxiesExpanded = true
+                                withAnimation { svProxy.scrollTo("proxies-section", anchor: .top) }
+                            }
+                    }
                 }
             } else if viewModel.isLoading {
                 Spacer()
@@ -509,6 +516,7 @@ struct DetailView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .id("proxies-section")
                 if proxiesExpanded {
                 if let state = activeProxyCreation {
                     VStack(alignment: .leading, spacing: 4) {

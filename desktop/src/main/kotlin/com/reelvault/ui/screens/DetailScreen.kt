@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 ReelVault Contributors
 
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package com.reelvault.ui.screens
 
 import androidx.compose.foundation.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -59,6 +63,16 @@ fun DetailScreen(
     val notesExpanded = remember { mutableStateOf(true) }
     val stackExpanded = remember { mutableStateOf(true) }
     val proxiesExpanded = remember { mutableStateOf(true) }
+    // Lets the top-bar "Playing proxy" indicator (#13b) scroll this panel to
+    // the proxy list. Attached to the Proxies header below; the collector
+    // expands the section first so the highlighted playing proxy is revealed.
+    val proxiesBringIntoView = remember { BringIntoViewRequester() }
+    LaunchedEffect(viewModel) {
+        viewModel.scrollToProxiesRequest.collect {
+            proxiesExpanded.value = true
+            proxiesBringIntoView.bringIntoView()
+        }
+    }
     val groupMembers = viewModel.groupMembers.collectAsState()
     val groupPreferredId = viewModel.groupPreferredId.collectAsState()
     // Primary grid/list selection. The detail view-model keeps the last
@@ -703,6 +717,7 @@ fun DetailScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .bringIntoViewRequester(proxiesBringIntoView)
                             .clickable { proxiesExpanded.value = !proxiesExpanded.value },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {

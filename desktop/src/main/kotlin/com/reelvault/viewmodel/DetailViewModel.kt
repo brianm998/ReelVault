@@ -8,8 +8,11 @@ import androidx.compose.runtime.mutableStateOf
 import com.reelvault.data.models.VideoMetadata
 import com.reelvault.data.repository.VideoRepository
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.slf4j.LoggerFactory
 
@@ -67,6 +70,15 @@ class DetailViewModel(
     private val _playingProxyId = MutableStateFlow<String?>(null)
     val playingProxyId: StateFlow<String?> = _playingProxyId.asStateFlow()
     fun setPlayingProxyId(id: String?) { _playingProxyId.value = id }
+
+    // One-shot request to scroll the right detail panel to the proxy list.
+    // Emitted when the user clicks the top-bar "Playing proxy" indicator
+    // (#13b); DetailScreen collects it and brings the proxy section into view,
+    // expanding it first. extraBufferCapacity=1 so a click while nothing is
+    // collecting (panel off-screen) doesn't suspend or get dropped silently.
+    private val _scrollToProxiesRequest = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val scrollToProxiesRequest: SharedFlow<Unit> = _scrollToProxiesRequest.asSharedFlow()
+    fun requestScrollToProxies() { _scrollToProxiesRequest.tryEmit(Unit) }
 
     /** Content for the top-bar proxy-playback indicator. */
     data class ProxyBanner(

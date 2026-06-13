@@ -50,6 +50,12 @@ class DetailViewModel: ObservableObject {
     /// explicit choice so they can still revert to the master).
     @Published var playingProxyId: String?
 
+    /// Incremented when the user clicks the top-bar "Playing proxy" indicator
+    /// (#13b). `DetailView` observes it and scrolls the right panel to the
+    /// proxy list, expanding the section first.
+    @Published var scrollToProxiesToken: Int = 0
+    func requestScrollToProxies() { scrollToProxiesToken += 1 }
+
     /// The summary backing the currently-selected card. Exposed so the
     /// right panel's proxy section can decide whether to render itself
     /// (keys off `hasProxies` and `playableNatively`, neither of which

@@ -585,24 +585,30 @@ struct ContentView: View {
             // video itself so it never covers the frame. Visible only while the
             // detail player is showing a proxy.
             if let banner = detailViewModel.proxyBanner {
-                HStack(spacing: 4) {
-                    Image(systemName: "film")
-                        .font(.system(size: 10, weight: .semibold))
-                    // "selected" is redundant — a proxy is always the one
-                    // selected (by the user or auto), so just say "Playing proxy".
-                    Text("Playing proxy")
-                        .font(.system(size: 11, weight: .medium))
+                Button {
+                    detailViewModel.requestScrollToProxies()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "film")
+                            .font(.system(size: 10, weight: .semibold))
+                        // "selected" is redundant — a proxy is always the one
+                        // selected (by the user or auto), so just say "Playing proxy".
+                        Text("Playing proxy")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color(red: 0.16, green: 0.53, blue: 0.53).opacity(0.85))
+                    )
+                    .contentShape(Rectangle())
                 }
-                .foregroundColor(.white)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color(red: 0.16, green: 0.53, blue: 0.53).opacity(0.85))
-                )
+                .buttonStyle(.plain)
                 .help(banner.detail.map {
-                    "Showing proxy: \($0). The detail player is showing a proxy, not the master file. Pick a different proxy or revert to the master in the details panel."
-                } ?? "The detail player is showing a proxy, not the master file. Pick a different proxy or revert to the master in the details panel.")
+                    "Showing proxy: \($0). The detail player is showing a proxy, not the master file. Click to jump to it in the details panel, or pick a different proxy / revert to the master there."
+                } ?? "The detail player is showing a proxy, not the master file. Click to jump to it in the details panel, or pick a different proxy / revert to the master there.")
             }
 
             // Live-updates pill — shows whether the server's file watcher

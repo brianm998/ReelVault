@@ -1077,6 +1077,7 @@ fun ReelVaultApp(
                         onShowHelp = { showHelpDialog = true },
                         accentScheme = accentScheme,
                         proxyBanner = detailViewModel.proxyBanner.collectAsState().value,
+                        onProxyBannerClick = { detailViewModel.requestScrollToProxies() },
                     )
 
                     // Horizontal border separating the top bar from the content
@@ -2587,6 +2588,9 @@ fun ReelVaultTopBar(
     /** When non-null, the detail player is showing a proxy — render the
      *  proxy-playback indicator. null hides it. */
     proxyBanner: com.reelvault.viewmodel.DetailViewModel.ProxyBanner? = null,
+    /** Clicking the proxy-playback indicator scrolls the right detail panel
+     *  to the proxy list so the user can see which proxy is playing (#13b). */
+    onProxyBannerClick: () -> Unit = {},
 ) {
     var showFileMenu by remember { mutableStateOf(false) }
 
@@ -2717,13 +2721,15 @@ fun ReelVaultTopBar(
                         com.reelvault.ui.components.Tooltip(
                             text = (banner.detail?.let { "Showing proxy: $it. " } ?: "") +
                                 "The detail player is showing a proxy, not the master " +
-                                "file. Pick a different proxy or revert to the master " +
-                                "in the details panel."
+                                "file. Click to jump to it in the details panel, or pick " +
+                                "a different proxy / revert to the master there."
                         ) {
                             Surface(
                                 shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
                                 color = Color(0xFF408888).copy(alpha = 0.85f),
-                                modifier = Modifier.height(24.dp)
+                                modifier = Modifier
+                                    .height(24.dp)
+                                    .clickable { onProxyBannerClick() }
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
