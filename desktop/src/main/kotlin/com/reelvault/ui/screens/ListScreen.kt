@@ -104,12 +104,19 @@ fun ListScreen(
     // would clip and z-order badly, and card-sized playback doesn't skip frames.
     val inlinePlayer = remember { ComposeVideoPlayer(allowEmbedded = false) }
     DisposableEffect(Unit) { onDispose { inlinePlayer.release() } }
+    // Inline-playback volume, shared with the detail loupe (see GridScreen).
+    val playbackVolume by viewModel.playbackVolume.collectAsState()
     LaunchedEffect(playingVideoId.value) {
         val id = playingVideoId.value ?: run { inlinePlayer.stop(); return@LaunchedEffect }
         val path = playingVideoPath.value
             ?: videos.value.find { it.id == id }?.openPath
             ?: return@LaunchedEffect
         inlinePlayer.load(path, playImmediately = true)
+    }
+    // libvlc forces each new media's volume to 100; reapply the user's level
+    // once the inline player is playing and whenever they adjust the slider.
+    LaunchedEffect(inlinePlayer.isPlaying.value, playbackVolume) {
+        if (inlinePlayer.isPlaying.value) inlinePlayer.setVolume(playbackVolume)
     }
     var showVlcErrorDialog by remember { mutableStateOf(false) }
 
@@ -466,6 +473,11 @@ fun ListScreen(
                                             }
                                         },
                                         onStopPlayback = { viewModel.stopPlayback() },
+                                        inlineVolume = playbackVolume,
+                                        onInlineVolumeChange = { v ->
+                                            viewModel.setPlaybackVolume(v)
+                                            inlinePlayer.setVolume(v)
+                                        },
                                         onLocationClick = onLocationClick,
                                     )
                                 }
@@ -728,6 +740,9 @@ fun VideoListRow(
     playEnabled: Boolean = true,
     onPlayClick: () -> Unit = {},
     onStopPlayback: () -> Unit = {},
+    /** Current inline-playback volume (0..100); see [VideoCard.inlineVolume]. */
+    inlineVolume: Int = 100,
+    onInlineVolumeChange: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val video = item.video
@@ -830,9 +845,16 @@ fun VideoListRow(
 
                 var handled = false
                 while (!handled) {
-                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    // Main pass (not Initial) so a child gesture that consumes
+                    // the drag wins — the inline volume slider on a playing row
+                    // must scrub volume, not start a file drag-out. Desktop
+                    // scrolling is wheel-based, so this doesn't fight a scroll.
+                    val event = awaitPointerEvent(PointerEventPass.Main)
                     val change = event.changes.firstOrNull() ?: break
-                    if (!change.pressed) {
+                    if (change.isConsumed) {
+                        fileDragSource.clearPending()
+                        handled = true
+                    } else if (!change.pressed) {
                         fileDragSource.clearPending()
                         handled = true
                     } else {
@@ -1368,6 +1390,19 @@ fun VideoListRow(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+        }
+
+        // Inline volume — trailing the info column (the 80 dp thumbnail is too
+        // small to host it). Shown only while this row is playing a clip that
+        // carries audio.
+        if (isPlayingInline && video.codecAudio.isNotEmpty()) {
+            com.reelvault.ui.components.InlineVolumeControl(
+                volume = inlineVolume,
+                onVolumeChange = onInlineVolumeChange,
+                modifier = Modifier
+                    .align(Alignment.CenterVertically)
+                    .padding(start = ReelVaultSpacing.Small),
+            )
         }
     }
 }

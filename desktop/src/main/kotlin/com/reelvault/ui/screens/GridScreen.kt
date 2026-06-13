@@ -80,6 +80,10 @@ fun GridScreen(
 
     val playingVideoPath = viewModel.playingVideoPath.collectAsState()
     val activeProxyCreations = viewModel.activeProxyCreations.collectAsState()
+    // Inline-playback volume, shared with the detail loupe. libvlc resets each
+    // new media's volume to 100, so reapply the user's level once the inline
+    // player starts and whenever they adjust it (see the LaunchedEffect below).
+    val playbackVolume by viewModel.playbackVolume.collectAsState()
 
     // Resolves a card's GPS to a registered place-name (or null → raw coords)
     // for the "Location" stat slot. Keyed on namedLocations so cards relabel
@@ -109,6 +113,13 @@ fun GridScreen(
             }
         gridScreenLogger.info("Grid playback: loading {} into shared player", path)
         inlinePlayer.load(path, playImmediately = true)
+    }
+
+    // Reapply the chosen volume once the inline player is actually playing
+    // (libvlc forces 100 on each new media) and whenever the user drags the
+    // slider. Keyed on isPlaying so it re-runs after each media swap.
+    LaunchedEffect(inlinePlayer.isPlaying.value, playbackVolume) {
+        if (inlinePlayer.isPlaying.value) inlinePlayer.setVolume(playbackVolume)
     }
 
     // Build the rendered list by splicing expanded stack members in after each
@@ -464,6 +475,11 @@ fun GridScreen(
                                     }
                                 },
                                 onStopPlayback = { viewModel.stopPlayback() },
+                                inlineVolume = playbackVolume,
+                                onInlineVolumeChange = { v ->
+                                    viewModel.setPlaybackVolume(v)
+                                    inlinePlayer.setVolume(v)
+                                },
                                 onClick = { shiftFromEvent, toggleFromEvent ->
                                     // Modifier-key state can come from either the pointer event
                                     // (preferred) or the Window-level fallback.

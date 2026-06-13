@@ -135,7 +135,9 @@ struct ListView: View {
                             onStopPlayback: {
                                 viewModel.stopPlayback()
                             },
-                            onLocationClick: onLocationClick
+                            onLocationClick: onLocationClick,
+                            inlineVolume: viewModel.playbackVolume,
+                            onInlineVolumeChange: { v in viewModel.playbackVolume = v }
                         )
                         .id(displayRow.key)
                         .contextMenu {
@@ -568,6 +570,9 @@ struct VideoListRowView: View {
     var onStopPlayback: () -> Void = {}
     /// Fired when the user clicks the location badge. Receives (latitude, longitude).
     var onLocationClick: ((Double, Double) -> Void)? = nil
+    /// Current inline-playback volume (0..100); see `VideoCardView.inlineVolume`.
+    var inlineVolume: Int = 100
+    var onInlineVolumeChange: (Int) -> Void = { _ in }
 
     @State private var isHovered = false
     @State private var hoverX: CGFloat? = nil
@@ -632,6 +637,14 @@ struct VideoListRowView: View {
                 )
             infoColumn
             Spacer(minLength: 0)
+            // Inline volume — trailing the row (the small thumbnail is too
+            // cramped). Shown only while this row plays a clip that has audio.
+            if isPlaying && !video.codecAudio.isEmpty {
+                InlineVolumeControl(
+                    volume: inlineVolume,
+                    onVolumeChange: onInlineVolumeChange
+                )
+            }
         }
         // No vertical padding so consecutive list rows sit flush — no vertical
         // gap between them (the LazyVStack spacing is already 0).
@@ -680,6 +693,7 @@ struct VideoListRowView: View {
                 let url = URL(fileURLWithPath: playPath ?? video.openPath)
                 let player = AVPlayer(url: url)
                 player.automaticallyWaitsToMinimizeStalling = false
+                player.volume = Float(inlineVolume) / 100.0
                 player.play()
                 avPlayer = player
             } else {
@@ -687,11 +701,15 @@ struct VideoListRowView: View {
                 avPlayer = nil
             }
         }
+        .onChange(of: inlineVolume) { _, v in
+            avPlayer?.volume = Float(v) / 100.0
+        }
         .onAppear {
             if isPlaying && avPlayer == nil {
                 let url = URL(fileURLWithPath: playPath ?? video.openPath)
                 let player = AVPlayer(url: url)
                 player.automaticallyWaitsToMinimizeStalling = false
+                player.volume = Float(inlineVolume) / 100.0
                 player.play()
                 avPlayer = player
             }

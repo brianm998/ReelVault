@@ -163,7 +163,9 @@ struct GridView: View {
                         },
                         dragPaths: cardDragPaths,
                         proxyCreationState: viewModel.activeProxyCreations[item.video.id],
-                        onLocationClick: onLocationClick
+                        onLocationClick: onLocationClick,
+                        inlineVolume: viewModel.playbackVolume,
+                        onInlineVolumeChange: { v in viewModel.playbackVolume = v }
                     )
                     .id(item.video.id)
                     .contextMenu {
@@ -588,6 +590,11 @@ struct VideoCardView: View {
     /// coordinates. Receives (latitude, longitude). Callers should open the
     /// global map focused on that coordinate.
     var onLocationClick: ((Double, Double) -> Void)? = nil
+    /// Current inline-playback volume (0..100), shared with the detail loupe.
+    /// Surfaced as a compact slider only while this card plays a clip with audio.
+    var inlineVolume: Int = 100
+    /// Fired as the user drags the inline volume slider.
+    var onInlineVolumeChange: (Int) -> Void = { _ in }
 
     /// AVPlayer kept alive for the lifetime of this view instance. Created
     /// on first play, released when `isPlaying` goes false.
@@ -984,12 +991,17 @@ struct VideoCardView: View {
                 let player = AVPlayer(url: url)
                 // Disable stalling guard so short-form clips start instantly.
                 player.automaticallyWaitsToMinimizeStalling = false
+                player.volume = Float(inlineVolume) / 100.0
                 player.play()
                 avPlayer = player
             } else {
                 avPlayer?.pause()
                 avPlayer = nil
             }
+        }
+        // Keep the live player in sync as the user drags the inline slider.
+        .onChange(of: inlineVolume) { _, v in
+            avPlayer?.volume = Float(v) / 100.0
         }
         // Eagerly create the player when the card first appears in
         // a playing state (e.g. after a grid re-render while another
@@ -1000,6 +1012,7 @@ struct VideoCardView: View {
                 let url = URL(fileURLWithPath: playPath ?? video.openPath)
                 let player = AVPlayer(url: url)
                 player.automaticallyWaitsToMinimizeStalling = false
+                player.volume = Float(inlineVolume) / 100.0
                 player.play()
                 avPlayer = player
             }
@@ -1472,6 +1485,16 @@ struct VideoCardView: View {
                         .buttonStyle(.plain)
                         .padding(4)
                         .help("Stop inline playback")
+                    }
+                }
+                // Inline volume — bottom-centre while playing a clip with audio.
+                .overlay(alignment: .bottom) {
+                    if isPlaying && !video.codecAudio.isEmpty {
+                        InlineVolumeControl(
+                            volume: inlineVolume,
+                            onVolumeChange: onInlineVolumeChange
+                        )
+                        .padding(.bottom, 6)
                     }
                 }
                 .background(

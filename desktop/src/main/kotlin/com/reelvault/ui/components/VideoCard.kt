@@ -153,6 +153,13 @@ fun VideoCard(
     /** Non-null when a proxy is actively being generated for this video.
      *  Triggers a progress overlay in the lower-left of the thumbnail. */
     proxyCreationState: com.reelvault.viewmodel.GridViewModel.ProxyCreationState? = null,
+    /** Current inline-playback volume (0..100), shared with the detail loupe.
+     *  Only surfaced (as a compact slider) while this card is playing a clip
+     *  that has an audio track. */
+    inlineVolume: Int = 100,
+    /** Fired as the user drags the inline volume slider. Callers persist the
+     *  level and apply it to the shared inline player. */
+    onInlineVolumeChange: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -348,10 +355,21 @@ fun VideoCard(
 
                     var handled = false
                     while (!handled) {
-                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        // Watch the Main pass (not Initial) so a child gesture
+                        // that consumes the drag wins: the inline volume slider
+                        // overlaid on a playing card must scrub volume rather
+                        // than starting a file drag-out. Desktop list/grid
+                        // scrolling is wheel-based, so this never competes with
+                        // a scroll. The down was already armed above.
+                        val event = awaitPointerEvent(PointerEventPass.Main)
                         val change = event.changes.firstOrNull() ?: break
 
-                        if (!change.pressed) {
+                        if (change.isConsumed) {
+                            // A descendant (e.g. the volume slider) took this
+                            // drag — disarm so we don't drag the file out.
+                            fileDragSource.clearPending()
+                            handled = true
+                        } else if (!change.pressed) {
                             // Normal click — disarm.
                             fileDragSource.clearPending()
                             handled = true
@@ -651,6 +669,18 @@ fun VideoCard(
                             )
                         }
                     }
+                }
+
+                // Inline volume — only while playing a clip that has audio.
+                // Sits at the bottom-centre, clear of the corner badges.
+                if (isPlayingInline && video.codecAudio.isNotEmpty()) {
+                    com.reelvault.ui.components.InlineVolumeControl(
+                        volume = inlineVolume,
+                        onVolumeChange = onInlineVolumeChange,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 6.dp),
+                    )
                 }
 
                 // (Resolution / duration / proxy-count chips that used to
