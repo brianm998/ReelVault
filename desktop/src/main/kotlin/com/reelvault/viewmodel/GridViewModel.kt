@@ -2233,6 +2233,8 @@ class GridViewModel(
         val tags: List<String>,
         val tagId: String,
         val searchQuery: String,
+        /** Map-proximity filter (lat, lon, radiusKm), or null when none. */
+        val geo: Triple<Double, Double, Double>?,
     )
     private var preSmartFilterSnapshot: FilterSnapshot? = null
 
@@ -2253,6 +2255,7 @@ class GridViewModel(
             _filterTagId.value = snap.tagId
             _searchQuery.value = snap.searchQuery
             _metadataColumns.value = snap.columns
+            _filterLocation.value = snap.geo
             LibraryFilterPrefs.saveColumns(_metadataColumns.value)
         } else {
             _filterMinRating.value = 0
@@ -2260,6 +2263,7 @@ class GridViewModel(
             filterTags = emptyList()
             _filterTagId.value = ""
             _searchQuery.value = ""
+            _filterLocation.value = null
             if (_metadataColumns.value.any { it.values.isNotEmpty() }) {
                 _metadataColumns.value = _metadataColumns.value.map { it.copy(values = emptySet(), anchor = "") }
                 LibraryFilterPrefs.saveColumns(_metadataColumns.value)
@@ -2289,6 +2293,7 @@ class GridViewModel(
                 tags = filterTags,
                 tagId = _filterTagId.value,
                 searchQuery = _searchQuery.value,
+                geo = _filterLocation.value,
             )
             // Smart collection: apply its saved filters to the individual filter
             // fields. The grid is driven by the filters, not by collection_id.
@@ -2301,6 +2306,8 @@ class GridViewModel(
             _searchQuery.value = f.searchQuery
             filterTags = f.tagIds
             _filterTagId.value = f.tagIds.firstOrNull() ?: ""
+            // Apply (or clear) the map-proximity filter the collection saved.
+            _filterLocation.value = if (f.hasGeo) Triple(f.geoLat, f.geoLon, f.geoRadiusKm) else null
             activeSmartCollectionId = id
         } else {
             collectionId = id
@@ -2316,18 +2323,26 @@ class GridViewModel(
         collection: com.reelvault.data.models.Collection
     ): List<Pair<String, String>> {
         val f = com.reelvault.data.models.SmartCollectionFilters.fromJson(collection.filterJson)
-        val sep = com.reelvault.data.models.METADATA_VALUE_SEPARATOR
-        fun multi(s: String) = s.split(sep).filter { it.isNotEmpty() }.joinToString(", ")
+        // Friendly label for a metadata key; falls back to a capitalised key
+        // for registry keys we don't special-case.
+        fun label(key: String): String = when (key) {
+            "camera" -> "Camera"; "lens" -> "Lens"; "codec" -> "Codec"; "year" -> "Year"
+            "iso" -> "ISO"; "exposure" -> "Exposure"; "fps" -> "FPS"
+            "resolution" -> "Resolution"; "colorspace" -> "Color space"
+            else -> key.replaceFirstChar { it.uppercase() }
+        }
         val out = mutableListOf<Pair<String, String>>()
-        if (f.camera.isNotEmpty()) out += "Camera" to multi(f.camera)
-        if (f.lens.isNotEmpty()) out += "Lens" to multi(f.lens)
-        if (f.codec.isNotEmpty()) out += "Codec" to multi(f.codec)
-        if (f.captureYear != 0) out += "Year" to f.captureYear.toString()
+        f.columns.forEach { c ->
+            if (c.values.isNotEmpty()) out += label(c.key) to c.values.joinToString(", ")
+        }
         if (f.minRating > 0) out += "Rating" to "${f.minRating}+ stars"
         if (f.colorLabel.isNotEmpty()) out += "Color" to f.colorLabel.replaceFirstChar { it.uppercase() }
         if (f.tagIds.isNotEmpty()) {
             val names = f.tagIds.map { id -> _tags.value.firstOrNull { it.id == id }?.name ?: id }
             out += "Keywords" to names.joinToString(", ")
+        }
+        if (f.hasGeo) {
+            out += "Location" to "within %.1f km of %.4f, %.4f".format(f.geoRadiusKm, f.geoLat, f.geoLon)
         }
         return out
     }
@@ -2429,40 +2444,40 @@ class GridViewModel(
 
     fun buildSmartCollectionFilterJson(): String {
         val tagId = _filterTagId.value
-        val cols = _metadataColumns.value
-        // A column's multiple selected values are persisted joined by the wire
-        // separator; the daemon (and metadataColumnsFromSmartFilters) split it.
-        fun colValue(key: String): String =
-            cols.firstOrNull { it.key == key && it.values.isNotEmpty() }
-                ?.values?.joinToString(com.reelvault.data.models.METADATA_VALUE_SEPARATOR) ?: ""
+        // Capture every narrowed metadata column (camera, lens, codec, year,
+        // iso, exposure, … — not just the four the old format knew). The
+        // "location" virtual key is captured as geo below, not as a column.
+        val columns = _metadataColumns.value
+            .filter {
+                it.key.isNotEmpty() &&
+                    it.key != com.reelvault.data.models.LOCATION_METADATA_KEY &&
+                    it.values.isNotEmpty()
+            }
+            .map { com.reelvault.data.models.SmartCollectionColumn(it.key, it.values.toList()) }
+        val geo = _filterLocation.value
         return com.reelvault.data.models.SmartCollectionFilters(
-            camera = colValue("camera"),
-            lens = colValue("lens"),
-            codec = colValue("codec"),
-            captureYear = colValue("year").toIntOrNull() ?: 0,
+            columns = columns,
             minRating = _filterMinRating.value,
             colorLabel = _filterColorLabel.value,
             searchQuery = _searchQuery.value,
             // Capture the full active tag set (the multi-tag filter writes
             // `filterTags`, not just `_filterTagId`) so keyword-based smart
             // collections actually reproduce their results.
-            tagIds = filterTags.ifEmpty { if (tagId.isEmpty()) emptyList() else listOf(tagId) }
+            tagIds = filterTags.ifEmpty { if (tagId.isEmpty()) emptyList() else listOf(tagId) },
+            // Map-proximity (geo) filter — (lat, lon, radiusKm).
+            geoLat = geo?.first ?: 0.0,
+            geoLon = geo?.second ?: 0.0,
+            geoRadiusKm = geo?.third ?: 0.0,
         ).toJson()
     }
 
-    /** Build metadata columns from a smart collection's saved scalar filters.
+    /** Build metadata columns from a smart collection's saved column filters.
      *  Falls back to the defaults when the saved filter set is empty. */
     private fun metadataColumnsFromSmartFilters(
         f: com.reelvault.data.models.SmartCollectionFilters
     ): List<com.reelvault.data.models.MetadataColumn> {
-        val cols = mutableListOf<com.reelvault.data.models.MetadataColumn>()
-        val sep = com.reelvault.data.models.METADATA_VALUE_SEPARATOR
-        fun parse(s: String): Set<String> = s.split(sep).filter { it.isNotEmpty() }.toSet()
-        if (f.camera.isNotEmpty()) cols.add(com.reelvault.data.models.MetadataColumn("camera", parse(f.camera)))
-        if (f.lens.isNotEmpty()) cols.add(com.reelvault.data.models.MetadataColumn("lens", parse(f.lens)))
-        if (f.codec.isNotEmpty()) cols.add(com.reelvault.data.models.MetadataColumn("codec", parse(f.codec)))
-        if (f.captureYear != 0) {
-            cols.add(com.reelvault.data.models.MetadataColumn("year", setOf(f.captureYear.toString())))
+        val cols = f.columns.map {
+            com.reelvault.data.models.MetadataColumn(it.key, it.values.toSet())
         }
         return cols.ifEmpty { com.reelvault.data.models.defaultMetadataColumns }
     }

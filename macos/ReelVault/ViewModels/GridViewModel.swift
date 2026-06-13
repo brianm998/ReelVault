@@ -756,6 +756,8 @@ class GridViewModel: ObservableObject {
         var colorLabel: String
         var tagId: String
         var searchQuery: String
+        /// Map-proximity filter, or nil when none.
+        var geo: GeoFilter?
     }
     private var preSmartFilterSnapshot: FilterSnapshot?
 
@@ -769,6 +771,7 @@ class GridViewModel: ObservableObject {
             filterTagId = snap.tagId
             searchQuery = snap.searchQuery
             metadataColumns = snap.columns
+            filterLocation = snap.geo
             LibraryFilterPrefs.saveColumns(metadataColumns)
             return
         }
@@ -776,6 +779,7 @@ class GridViewModel: ObservableObject {
         filterColorLabel = ""
         filterTagId = ""
         searchQuery = ""
+        filterLocation = nil
         for i in metadataColumns.indices where !metadataColumns[i].values.isEmpty {
             metadataColumns[i].values = []
             metadataColumns[i].anchor = ""
@@ -808,10 +812,11 @@ class GridViewModel: ObservableObject {
                 minRating: filterMinRating,
                 colorLabel: filterColorLabel,
                 tagId: filterTagId,
-                searchQuery: searchQuery
+                searchQuery: searchQuery,
+                geo: filterLocation
             )
-            // Smart collection: apply its saved filters. Camera/lens/codec/year
-            // map onto metadata columns; the rest stay as dedicated fields.
+            // Smart collection: apply its saved filters. Metadata columns map
+            // onto the bar's columns; the rest stay as dedicated fields.
             collectionIdFilter = nil
             metadataColumns = Self.metadataColumns(from: f)
             LibraryFilterPrefs.saveColumns(metadataColumns)
@@ -819,6 +824,8 @@ class GridViewModel: ObservableObject {
             filterColorLabel = f.colorLabel
             filterTagId = f.tagIds.first ?? ""
             searchQuery = f.searchQuery
+            // Apply (or clear) the map-proximity filter the collection saved.
+            filterLocation = f.hasGeo ? GeoFilter(latitude: f.geoLat, longitude: f.geoLon, radiusKm: f.geoRadiusKm) : nil
             activeSmartCollectionId = id
         } else {
             collectionIdFilter = id
@@ -872,36 +879,29 @@ class GridViewModel: ObservableObject {
     }
 
     func buildSmartCollectionFilterJson() -> String {
-        // A column's multiple selected values are persisted joined by the wire
-        // separator; the daemon (and metadataColumns(from:)) split it.
-        func colValue(_ key: String) -> String {
-            metadataColumns.first { $0.key == key && !$0.values.isEmpty }?
-                .values.sorted().joined(separator: metadataValueSeparator) ?? ""
-        }
+        // Capture every narrowed metadata column (camera, lens, codec, year,
+        // iso, exposure, … — not just the four the old format knew). The
+        // "location" virtual key is captured as geo below, not as a column.
+        let columns: [SmartCollectionColumn] = metadataColumns
+            .filter { !$0.key.isEmpty && $0.key != locationMetadataKey && !$0.values.isEmpty }
+            .map { SmartCollectionColumn(key: $0.key, values: $0.values.sorted()) }
         let f = SmartCollectionFilters(
-            camera: colValue("camera"),
-            lens: colValue("lens"),
-            codec: colValue("codec"),
-            captureYear: Int32(colValue("year")) ?? 0,
+            columns: columns,
             minRating: filterMinRating,
             colorLabel: filterColorLabel,
             tagIds: filterTagId.isEmpty ? [] : [filterTagId],
-            searchQuery: searchQuery
+            searchQuery: searchQuery,
+            geoLat: filterLocation?.latitude ?? 0.0,
+            geoLon: filterLocation?.longitude ?? 0.0,
+            geoRadiusKm: filterLocation?.radiusKm ?? 0.0
         )
         return f.toJson()
     }
 
-    /// Build metadata columns from a smart collection's saved scalar filters.
+    /// Build metadata columns from a smart collection's saved column filters.
     /// Falls back to the defaults when the saved filter set is empty.
     private static func metadataColumns(from f: SmartCollectionFilters) -> [MetadataColumn] {
-        func parse(_ s: String) -> Set<String> {
-            Set(s.components(separatedBy: metadataValueSeparator).filter { !$0.isEmpty })
-        }
-        var cols: [MetadataColumn] = []
-        if !f.camera.isEmpty { cols.append(MetadataColumn(key: "camera", values: parse(f.camera))) }
-        if !f.lens.isEmpty { cols.append(MetadataColumn(key: "lens", values: parse(f.lens))) }
-        if !f.codec.isEmpty { cols.append(MetadataColumn(key: "codec", values: parse(f.codec))) }
-        if f.captureYear != 0 { cols.append(MetadataColumn(key: "year", values: [String(f.captureYear)])) }
+        let cols = f.columns.map { MetadataColumn(key: $0.key, values: Set($0.values)) }
         return cols.isEmpty ? defaultMetadataColumns : cols
     }
 
@@ -911,19 +911,29 @@ class GridViewModel: ObservableObject {
     /// selected, so the user can see why a smart collection gathers what it does.
     func smartCollectionCriteria(_ collection: Collection) -> [(label: String, value: String)] {
         guard let f = SmartCollectionFilters.from(json: collection.filterJson) else { return [] }
-        func multi(_ s: String) -> String {
-            s.components(separatedBy: metadataValueSeparator).filter { !$0.isEmpty }.joined(separator: ", ")
+        // Friendly label for a metadata key; falls back to a capitalised key
+        // for registry keys we don't special-case.
+        func label(_ key: String) -> String {
+            switch key {
+            case "camera": return "Camera"; case "lens": return "Lens"; case "codec": return "Codec"
+            case "year": return "Year"; case "iso": return "ISO"; case "exposure": return "Exposure"
+            case "fps": return "FPS"; case "resolution": return "Resolution"; case "colorspace": return "Color space"
+            default: return key.prefix(1).uppercased() + key.dropFirst()
+            }
         }
         var out: [(label: String, value: String)] = []
-        if !f.camera.isEmpty { out.append((label: "Camera", value: multi(f.camera))) }
-        if !f.lens.isEmpty { out.append((label: "Lens", value: multi(f.lens))) }
-        if !f.codec.isEmpty { out.append((label: "Codec", value: multi(f.codec))) }
-        if f.captureYear != 0 { out.append((label: "Year", value: String(f.captureYear))) }
+        for c in f.columns where !c.values.isEmpty {
+            out.append((label: label(c.key), value: c.values.joined(separator: ", ")))
+        }
         if f.minRating > 0 { out.append((label: "Rating", value: "\(f.minRating)+ stars")) }
         if !f.colorLabel.isEmpty { out.append((label: "Color", value: f.colorLabel.capitalized)) }
         if !f.tagIds.isEmpty {
             let names = f.tagIds.map { id in tags.first(where: { $0.id == id })?.name ?? id }
             out.append((label: "Keywords", value: names.joined(separator: ", ")))
+        }
+        if f.hasGeo {
+            out.append((label: "Location",
+                        value: String(format: "within %.1f km of %.4f, %.4f", f.geoRadiusKm, f.geoLat, f.geoLon)))
         }
         return out
     }

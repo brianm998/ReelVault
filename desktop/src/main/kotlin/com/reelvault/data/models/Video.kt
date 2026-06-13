@@ -242,53 +242,98 @@ data class Collection(
 )
 
 /** Saved filter criteria for a smart collection. */
+/** One metadata-column constraint captured in a smart collection: a metadata
+ *  [key] (camera, lens, codec, year, iso, exposure, … — any registry key) and
+ *  its selected facet [values] (OR-ed). Generalises the old fixed
+ *  camera/lens/codec/year fields so a smart collection reproduces ANY metadata
+ *  column the user had narrowed. */
+data class SmartCollectionColumn(val key: String, val values: List<String>)
+
 data class SmartCollectionFilters(
-    val camera: String = "",
-    val lens: String = "",
-    val codec: String = "",
-    val captureYear: Int = 0,
+    /** Arbitrary metadata-column constraints (replaces the old fixed
+     *  camera/lens/codec/year scalars). The "location" virtual key is never
+     *  stored here — geo lives in [geoLat]/[geoLon]/[geoRadiusKm]. */
+    val columns: List<SmartCollectionColumn> = emptyList(),
     val minRating: Int = 0,
     val colorLabel: String = "",
     val tagIds: List<String> = emptyList(),
     /** Full-text search box ("keyword") query. Previously dropped, which made a
      *  smart collection saved from a search come back empty. */
     val searchQuery: String = "",
+    /** Map proximity filter: keep videos within [geoRadiusKm] of (geoLat,
+     *  geoLon). A radius of 0 means "no geo constraint" (lat/lon 0,0 is a
+     *  legitimate coordinate, so radius — never 0 for a real filter — is the
+     *  presence flag). */
+    val geoLat: Double = 0.0,
+    val geoLon: Double = 0.0,
+    val geoRadiusKm: Double = 0.0,
 ) {
+    /** True when a map-proximity constraint is active. */
+    val hasGeo: Boolean get() = geoRadiusKm > 0.0
+
     fun toJson(): String = buildString {
         append("{")
-        append("\"camera\":${camera.jsonStr()}")
-        append(",\"lens\":${lens.jsonStr()}")
-        append(",\"codec\":${codec.jsonStr()}")
-        append(",\"captureYear\":$captureYear")
+        // Each column is encoded as "key=v1v2" — a flat string so the
+        // existing string-array parser round-trips it without a nested-array
+        // JSON parser. '=' never appears in a metadata key; values keep their
+        // own separator.
+        append("\"columns\":[")
+        columns.forEachIndexed { i, c ->
+            if (i > 0) append(",")
+            append((c.key + "=" + c.values.joinToString(METADATA_VALUE_SEPARATOR)).jsonStr())
+        }
+        append("]")
         append(",\"minRating\":$minRating")
         append(",\"colorLabel\":${colorLabel.jsonStr()}")
         append(",\"searchQuery\":${searchQuery.jsonStr()}")
         append(",\"tagIds\":[${tagIds.joinToString(",") { it.jsonStr() }}]")
+        append(",\"geoLat\":$geoLat")
+        append(",\"geoLon\":$geoLon")
+        append(",\"geoRadiusKm\":$geoRadiusKm")
         append("}")
     }
 
     companion object {
         fun fromJson(json: String): SmartCollectionFilters {
+            fun unescape(s: String) = s.replace("\\\"", "\"").replace("\\\\", "\\")
             fun str(key: String): String {
                 val m = Regex(""""$key"\s*:\s*"((?:[^"\\]|\\.)*)"""").find(json)
-                return m?.groupValues?.get(1)?.replace("\\\"", "\"")?.replace("\\\\", "\\") ?: ""
+                return m?.groupValues?.get(1)?.let { unescape(it) } ?: ""
             }
-            fun int(key: String): Int {
-                return Regex(""""$key"\s*:\s*(\d+)""").find(json)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+            fun int(key: String): Int =
+                Regex(""""$key"\s*:\s*(\d+)""").find(json)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+            fun dbl(key: String): Double =
+                Regex(""""$key"\s*:\s*(-?\d+(?:\.\d+)?)""").find(json)
+                    ?.groupValues?.get(1)?.toDoubleOrNull() ?: 0.0
+            fun strArray(key: String): List<String> =
+                Regex(""""$key"\s*:\s*\[([^\]]*)]""").find(json)?.groupValues?.get(1)
+                    ?.let { Regex(""""((?:[^"\\]|\\.)*)"""").findAll(it).map { m -> unescape(m.groupValues[1]) }.toList() }
+                    ?: emptyList()
+
+            val columns = strArray("columns").mapNotNull { s ->
+                val eq = s.indexOf('=')
+                if (eq <= 0) return@mapNotNull null
+                val vals = s.substring(eq + 1).split(METADATA_VALUE_SEPARATOR).filter { it.isNotEmpty() }
+                SmartCollectionColumn(s.substring(0, eq), vals)
             }
-            val tagIds = Regex(""""tagIds"\s*:\s*\[([^\]]*)]""").find(json)
-                ?.groupValues?.get(1)
-                ?.let { Regex(""""((?:[^"\\]|\\.)*)"""").findAll(it).map { m -> m.groupValues[1] }.toList() }
-                ?: emptyList()
+            // Backward-compat: smart collections saved before the generic-column
+            // format stored camera/lens/codec/captureYear scalars.
+            val legacy: List<SmartCollectionColumn> = if (columns.isNotEmpty()) emptyList() else buildList {
+                fun legacyVals(s: String) = s.split(METADATA_VALUE_SEPARATOR).filter { it.isNotEmpty() }
+                str("camera").takeIf { it.isNotEmpty() }?.let { add(SmartCollectionColumn("camera", legacyVals(it))) }
+                str("lens").takeIf { it.isNotEmpty() }?.let { add(SmartCollectionColumn("lens", legacyVals(it))) }
+                str("codec").takeIf { it.isNotEmpty() }?.let { add(SmartCollectionColumn("codec", legacyVals(it))) }
+                int("captureYear").takeIf { it != 0 }?.let { add(SmartCollectionColumn("year", listOf(it.toString()))) }
+            }
             return SmartCollectionFilters(
-                camera = str("camera"),
-                lens = str("lens"),
-                codec = str("codec"),
-                captureYear = int("captureYear"),
+                columns = columns.ifEmpty { legacy },
                 minRating = int("minRating"),
                 colorLabel = str("colorLabel"),
                 searchQuery = str("searchQuery"),
-                tagIds = tagIds
+                tagIds = strArray("tagIds"),
+                geoLat = dbl("geoLat"),
+                geoLon = dbl("geoLon"),
+                geoRadiusKm = dbl("geoRadiusKm"),
             )
         }
 

@@ -360,22 +360,45 @@ struct Collection: Identifiable, Hashable {
     let videoCount: Int64
 }
 
+/// One metadata-column constraint captured in a smart collection: a metadata
+/// `key` (camera, lens, codec, year, iso, exposure, … — any registry key) and
+/// its selected facet `values` (OR-ed). Generalises the old fixed
+/// camera/lens/codec/year fields so a smart collection reproduces ANY metadata
+/// column the user had narrowed.
+struct SmartCollectionColumn {
+    var key: String
+    var values: [String]
+}
+
 struct SmartCollectionFilters {
-    var camera: String = ""
-    var lens: String = ""
-    var codec: String = ""
-    var captureYear: Int32 = 0
+    /// Arbitrary metadata-column constraints (replaces the old fixed
+    /// camera/lens/codec/year scalars). The "location" virtual key is never
+    /// stored here — geo lives in geoLat/geoLon/geoRadiusKm.
+    var columns: [SmartCollectionColumn] = []
     var minRating: Int32 = 0
     var colorLabel: String = ""
     var tagIds: [String] = []
     /// Full-text search box ("keyword") query. Previously dropped, which made a
     /// smart collection saved from a search come back empty.
     var searchQuery: String = ""
+    /// Map proximity filter: keep videos within geoRadiusKm of (geoLat, geoLon).
+    /// A radius of 0 means "no geo constraint" (0,0 is a legitimate coordinate,
+    /// so radius — never 0 for a real filter — is the presence flag).
+    var geoLat: Double = 0.0
+    var geoLon: Double = 0.0
+    var geoRadiusKm: Double = 0.0
+
+    /// True when a map-proximity constraint is active.
+    var hasGeo: Bool { geoRadiusKm > 0.0 }
 
     func toJson() -> String {
         func esc(_ s: String) -> String { "\"\(s.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\""))\"" }
+        // Each column is encoded as "key=v1v2" — a flat string so the
+        // existing string-array parser round-trips it without a nested-array
+        // JSON parser. '=' never appears in a metadata key.
+        let colsJson = columns.map { esc($0.key + "=" + $0.values.joined(separator: metadataValueSeparator)) }.joined(separator: ",")
         let tagsJson = tagIds.map { esc($0) }.joined(separator: ",")
-        return #"{"camera":\#(esc(camera)),"lens":\#(esc(lens)),"codec":\#(esc(codec)),"captureYear":\#(captureYear),"minRating":\#(minRating),"colorLabel":\#(esc(colorLabel)),"searchQuery":\#(esc(searchQuery)),"tagIds":[\#(tagsJson)]}"#
+        return #"{"columns":[\#(colsJson)],"minRating":\#(minRating),"colorLabel":\#(esc(colorLabel)),"searchQuery":\#(esc(searchQuery)),"tagIds":[\#(tagsJson)],"geoLat":\#(geoLat),"geoLon":\#(geoLon),"geoRadiusKm":\#(geoRadiusKm)}"#
     }
 
     static func from(json: String) -> SmartCollectionFilters? {
@@ -384,7 +407,6 @@ struct SmartCollectionFilters {
             guard let r = json.range(of: "\"\(key)\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"",
                                      options: .regularExpression) else { return "" }
             let matched = String(json[r])
-            // Extract the value between the second pair of quotes.
             let parts = matched.components(separatedBy: "\"")
             guard parts.count >= 4 else { return "" }
             return parts[3]
@@ -398,11 +420,19 @@ struct SmartCollectionFilters {
             let digits = matched.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
             return Int32(digits) ?? 0
         }
-        var tagIds: [String] = []
-        if let ar = json.range(of: "\"tagIds\"\\s*:\\s*\\[([^\\]]*)\\]", options: .regularExpression) {
-            let arrStr = String(json[ar])
-            // Extract quoted strings inside the array.
-            var scanning = arrStr
+        func dblVal(_ key: String) -> Double {
+            guard let r = json.range(of: "\"\(key)\"\\s*:\\s*(-?[0-9]+(?:\\.[0-9]+)?)",
+                                     options: .regularExpression) else { return 0.0 }
+            let matched = String(json[r])
+            // Trim everything up to the colon, then parse the trailing number.
+            guard let colon = matched.range(of: ":") else { return 0.0 }
+            return Double(matched[colon.upperBound...].trimmingCharacters(in: .whitespaces)) ?? 0.0
+        }
+        // Parse a JSON array of strings (handles escaped quotes).
+        func strArray(_ key: String) -> [String] {
+            guard let ar = json.range(of: "\"\(key)\"\\s*:\\s*\\[([^\\]]*)\\]", options: .regularExpression) else { return [] }
+            var out: [String] = []
+            var scanning = String(json[ar])
             while let qStart = scanning.range(of: "\"") {
                 scanning = String(scanning[qStart.upperBound...])
                 var val = ""
@@ -414,16 +444,43 @@ struct SmartCollectionFilters {
                     else if ch == "\"" { done = true; break }
                     else { val.append(ch) }
                 }
-                if done { tagIds.append(val) }
+                if done { out.append(val) }
                 if let next = scanning.range(of: "\"") {
                     scanning = String(scanning[next.upperBound...])
                 } else { break }
             }
+            return out
         }
-        return SmartCollectionFilters(camera: strVal("camera"), lens: strVal("lens"),
-                                      codec: strVal("codec"), captureYear: intVal("captureYear"),
-                                      minRating: intVal("minRating"), colorLabel: strVal("colorLabel"),
-                                      tagIds: tagIds, searchQuery: strVal("searchQuery"))
+
+        var columns: [SmartCollectionColumn] = strArray("columns").compactMap { s in
+            guard let eq = s.firstIndex(of: "=") else { return nil }
+            let key = String(s[s.startIndex..<eq])
+            guard !key.isEmpty else { return nil }
+            let vals = String(s[s.index(after: eq)...])
+                .components(separatedBy: metadataValueSeparator).filter { !$0.isEmpty }
+            return SmartCollectionColumn(key: key, values: vals)
+        }
+        // Backward-compat: smart collections saved before the generic-column
+        // format stored camera/lens/codec/captureYear scalars.
+        if columns.isEmpty {
+            func legacyVals(_ s: String) -> [String] {
+                s.components(separatedBy: metadataValueSeparator).filter { !$0.isEmpty }
+            }
+            let camera = strVal("camera"); if !camera.isEmpty { columns.append(SmartCollectionColumn(key: "camera", values: legacyVals(camera))) }
+            let lens = strVal("lens"); if !lens.isEmpty { columns.append(SmartCollectionColumn(key: "lens", values: legacyVals(lens))) }
+            let codec = strVal("codec"); if !codec.isEmpty { columns.append(SmartCollectionColumn(key: "codec", values: legacyVals(codec))) }
+            let year = intVal("captureYear"); if year != 0 { columns.append(SmartCollectionColumn(key: "year", values: [String(year)])) }
+        }
+        return SmartCollectionFilters(
+            columns: columns,
+            minRating: intVal("minRating"),
+            colorLabel: strVal("colorLabel"),
+            tagIds: strArray("tagIds"),
+            searchQuery: strVal("searchQuery"),
+            geoLat: dblVal("geoLat"),
+            geoLon: dblVal("geoLon"),
+            geoRadiusKm: dblVal("geoRadiusKm")
+        )
     }
 }
 
