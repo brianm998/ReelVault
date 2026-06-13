@@ -5,6 +5,7 @@ use crate::concurrency::acquire_ffmpeg_permit;
 use crate::db::Database;
 use crate::error::{Result, ReelVaultError};
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 pub struct ThumbnailGenerator;
 
@@ -208,13 +209,43 @@ impl ThumbnailGenerator {
         // Probe color info once — applied to every scrub frame from this video.
         let color_info = probe_color_info(video_path);
 
-        // ProRes RAW on macOS: QuickLook yields one (correctly-developed) poster
-        // frame, not arbitrary timestamps, so reuse it for every scrub position.
-        // A correct still beats ffmpeg's dark/flat per-timestamp frames.
+        // ProRes RAW on macOS: ffmpeg can't develop it. Prefer real per-position
+        // frames via the embedded AVFoundation helper (the OS decoder seeks to a
+        // timestamp); only if that's unavailable do we fall back to a single
+        // QuickLook poster reused for every position (`qlmanage` is poster-only,
+        // so every frame would be identical — the bug this avoids). A correct
+        // still still beats ffmpeg's dark/flat ProRes RAW frames.
         if use_quicklook(&color_info) {
+            let count = Self::SCRUB_FRAME_COUNT;
+            // Try real frames first (only when the helper is actually embedded).
+            let mut all_ok = frameshot_path().is_some();
+            if all_ok {
+                for i in 0..count {
+                    let out = cache_dir.join(format!("{}_scrub_{}.jpg", video_id, i));
+                    if out.exists() {
+                        continue;
+                    }
+                    let pct = if count > 1 {
+                        0.05 + (i as f64 / (count - 1) as f64) * 0.9
+                    } else {
+                        0.5
+                    };
+                    if frameshot_extract(video_path, &out, duration_secs * pct, Self::SCRUB_WIDTH)
+                        .is_err()
+                    {
+                        all_ok = false;
+                        break;
+                    }
+                }
+            }
+            if all_ok {
+                return Ok(());
+            }
+            // Helper missing or failed — reuse one poster for the remaining
+            // positions (won't overwrite any real frames already written).
             let poster = cache_dir.join(format!("{}_qlscrub.jpg", video_id));
             if quicklook_poster(video_path, &poster, Self::SCRUB_WIDTH).is_ok() {
-                for i in 0..Self::SCRUB_FRAME_COUNT {
+                for i in 0..count {
                     let out = cache_dir.join(format!("{}_scrub_{}.jpg", video_id, i));
                     if !out.exists() {
                         let _ = std::fs::copy(&poster, &out);
@@ -223,7 +254,7 @@ impl ThumbnailGenerator {
                 let _ = std::fs::remove_file(&poster);
                 return Ok(());
             }
-            // QuickLook failed — fall through to the ffmpeg path below.
+            // QuickLook failed too — fall through to the ffmpeg path below.
         }
 
         let scrub_scale = format!("scale=min({}\\,iw):-1", Self::SCRUB_WIDTH);
@@ -358,12 +389,16 @@ impl ThumbnailGenerator {
         let seek_pos = Self::frame_seek_pos(size, duration_secs);
         let color_info = probe_color_info(video_path);
 
-        // ProRes RAW on macOS: QuickLook poster at the requested width (one
-        // frame for every size, including scrub_N — see generate_scrub_thumbnails).
-        if use_quicklook(&color_info)
-            && quicklook_poster(video_path, &output, max_width).is_ok()
-        {
-            return Ok(());
+        // ProRes RAW on macOS: a real frame at the requested position via the
+        // AVFoundation helper (so hi-res scrub_N frames differ), falling back to
+        // the QuickLook poster when the helper isn't available.
+        if use_quicklook(&color_info) {
+            if frameshot_extract(video_path, &output, seek_pos, max_width).is_ok() {
+                return Ok(());
+            }
+            if quicklook_poster(video_path, &output, max_width).is_ok() {
+                return Ok(());
+            }
         }
 
         let scale = format!("scale=min({}\\,iw):-1", max_width);
@@ -539,6 +574,70 @@ fn tonemap_prefix(ci: &ColorInfo) -> Option<String> {
 /// every other platform keeps the ffmpeg path.
 fn use_quicklook(ci: &ColorInfo) -> bool {
     cfg!(target_os = "macos") && ci.codec_name == "prores_raw"
+}
+
+// The embedded `rv-frameshot` helper bytes (Some on macOS when swiftc was
+// available at build time, else None) — see build.rs::emit_frameshot.
+mod frameshot {
+    include!(concat!(env!("OUT_DIR"), "/frameshot.rs"));
+}
+
+/// Path to the extracted `rv-frameshot` helper, or None when it wasn't embedded
+/// (non-macOS, or `swiftc` absent at build time). The embedded bytes are written
+/// once to a temp path (reused across calls) and marked executable.
+fn frameshot_path() -> Option<&'static Path> {
+    static PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
+    PATH.get_or_init(|| {
+        let bytes = frameshot::FRAMESHOT_BIN?;
+        let dest = std::env::temp_dir().join("reelvault-rv-frameshot");
+        // Rewrite unless an identical-length copy is already present (cheap
+        // staleness check across daemon restarts / version bumps).
+        let needs_write = std::fs::metadata(&dest)
+            .map(|m| m.len() != bytes.len() as u64)
+            .unwrap_or(true);
+        if needs_write && std::fs::write(&dest, bytes).is_err() {
+            return None;
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = std::fs::set_permissions(&dest, std::fs::Permissions::from_mode(0o755));
+        }
+        Some(dest)
+    })
+    .as_deref()
+}
+
+/// Extract the frame at `time_secs` from `video_path` into `out_path` (JPEG),
+/// longest side ≤ `max_px`, via the embedded AVFoundation helper. The OS decoder
+/// is the only thing that both reads ProRes RAW correctly *and* seeks to a
+/// timestamp (`qlmanage` is poster-only; ffmpeg can't develop it). Errors when
+/// the helper is unavailable or extraction fails, so callers fall back to the
+/// single QuickLook poster.
+fn frameshot_extract(
+    video_path: &Path,
+    out_path: &Path,
+    time_secs: f64,
+    max_px: i32,
+) -> Result<()> {
+    let helper = frameshot_path().ok_or_else(|| {
+        ReelVaultError::ThumbnailGenerationFailed("rv-frameshot helper unavailable".into())
+    })?;
+    let _permit = acquire_ffmpeg_permit();
+    let out = std::process::Command::new(helper)
+        .arg(video_path)
+        .arg(out_path)
+        .arg(format!("{:.3}", time_secs.max(0.0)))
+        .arg(max_px.to_string())
+        .output();
+    match out {
+        Ok(o) if o.status.success() && out_path.exists() => Ok(()),
+        Ok(o) => Err(ReelVaultError::ThumbnailGenerationFailed(format!(
+            "rv-frameshot failed: {}",
+            String::from_utf8_lossy(&o.stderr)
+        ))),
+        Err(e) => Err(ReelVaultError::ThumbnailGenerationFailed(e.to_string())),
+    }
 }
 
 /// Render a QuickLook poster for `video_path` into `out_path` (JPEG), scaled so

@@ -6,6 +6,62 @@ use std::path::Path;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     tonic_build::compile_protos("proto/reelvault.proto")?;
     emit_sensor_table()?;
+    emit_frameshot()?;
+    Ok(())
+}
+
+/// Compile the `rv-frameshot` AVFoundation helper (macOS only) and emit
+/// `$OUT_DIR/frameshot.rs` exposing its bytes as
+/// `pub static FRAMESHOT_BIN: Option<&[u8]>`. The daemon embeds those bytes and
+/// extracts them on first use to seek ProRes RAW to arbitrary timestamps —
+/// something `qlmanage` (poster only) and ffmpeg (can't develop ProRes RAW)
+/// can't do. Off macOS, or when `swiftc` isn't installed, this emits `None` and
+/// the daemon keeps its single-QuickLook-poster fallback; Linux/Windows core
+/// builds are unaffected.
+fn emit_frameshot() -> Result<(), Box<dyn std::error::Error>> {
+    let out_dir = env::var("OUT_DIR")?;
+    let gen_path = Path::new(&out_dir).join("frameshot.rs");
+    let src = Path::new("macos/rv-frameshot.swift");
+    println!("cargo:rerun-if-changed={}", src.display());
+
+    let mut embedded = false;
+    let target_macos = env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos");
+    if target_macos {
+        let has_swiftc = std::process::Command::new("swiftc")
+            .arg("--version")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
+        if has_swiftc {
+            let bin_path = Path::new(&out_dir).join("rv-frameshot");
+            let status = std::process::Command::new("swiftc")
+                .args(["-O", "-o"])
+                .arg(&bin_path)
+                .arg(src)
+                .status();
+            match status {
+                Ok(s) if s.success() && bin_path.exists() => embedded = true,
+                _ => println!(
+                    "cargo:warning=rv-frameshot.swift failed to compile; ProRes RAW \
+                     scrub frames will fall back to a single QuickLook poster"
+                ),
+            }
+        } else {
+            println!(
+                "cargo:warning=swiftc not found; ProRes RAW scrub frames will fall back \
+                 to a single QuickLook poster"
+            );
+        }
+    }
+
+    // The generated file lives in OUT_DIR alongside the compiled binary, so the
+    // relative include_bytes! resolves correctly.
+    let body = if embedded {
+        "pub static FRAMESHOT_BIN: Option<&[u8]> = Some(include_bytes!(\"rv-frameshot\"));\n"
+    } else {
+        "pub static FRAMESHOT_BIN: Option<&[u8]> = None;\n"
+    };
+    fs::write(&gen_path, body)?;
     Ok(())
 }
 
