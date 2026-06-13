@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.FilterNone
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.Icon
@@ -119,6 +120,16 @@ fun CardStatusBadges(
             )
         }
         FullResolutionStatus.Unspecified -> {} // intentionally no badge
+    }
+    if (video.hasAudio) {
+        badges += {
+            StatusBadge(
+                icon = Icons.Default.GraphicEq,
+                tint = Color.White,
+                tooltip = "Has an audio track",
+                iconSize = iconSize, badge = badge, rotate = portrait,
+            )
+        }
     }
     if (badges.isEmpty()) return
 

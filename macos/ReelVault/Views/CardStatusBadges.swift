@@ -100,6 +100,14 @@ struct CardStatusBadges: View {
         case .unspecified:
             EmptyView()
         }
+        if video.hasAudio {
+            CardStatusBadge(
+                systemName: "waveform",
+                tint: .white,
+                help: "Has an audio track",
+                iconSize: iconSize, rotate: portrait
+            )
+        }
     }
 
     var body: some View {
