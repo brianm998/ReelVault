@@ -1476,10 +1476,10 @@ class GridViewModel(
                     it.values.isNotEmpty()
             }
             .map {
-                com.reelvault.data.models.MetadataFilter(
-                    it.key,
-                    it.values.joinToString(com.reelvault.data.models.METADATA_VALUE_SEPARATOR),
-                )
+                val value = it.values.joinToString(com.reelvault.data.models.METADATA_VALUE_SEPARATOR)
+                // "is not" columns prefix the value so the daemon inverts the match.
+                val wire = if (it.negate) com.reelvault.data.models.METADATA_NEGATE_PREFIX + value else value
+                com.reelvault.data.models.MetadataFilter(it.key, wire)
             }
 
     /** Handle a click on facet [token] in metadata column [index]. [token] ==
@@ -1537,6 +1537,18 @@ class GridViewModel(
         // Grid only changes if this column was actively filtering; otherwise
         // just re-fetch facets so the new key's values appear.
         if (hadActiveValue) reloadForFilterChange() else scheduleFacetRefresh()
+    }
+
+    /** Flip a metadata column between "is" (match the selected values) and "is
+     *  not" (exclude them). Only re-queries when the column actually has values
+     *  selected — an empty column doesn't filter either way. */
+    fun setMetadataColumnNegate(index: Int, negate: Boolean) {
+        val cur = _metadataColumns.value
+        val col = cur.getOrNull(index) ?: return
+        if (col.negate == negate) return
+        _metadataColumns.value = cur.toMutableList().also { it[index] = col.copy(negate = negate) }
+        LibraryFilterPrefs.saveColumns(_metadataColumns.value)
+        if (col.values.isNotEmpty()) reloadForFilterChange()
     }
 
     /** Insert a new (empty) metadata column at the front or the end. */
@@ -2444,13 +2456,15 @@ class GridViewModel(
         val out = mutableListOf<SmartCriterionRow>()
         f.columns.forEach { c ->
             if (c.values.isNotEmpty()) {
+                // "is not" columns read "not <values>" so the inversion is visible.
+                val prefix = if (c.negate) "not " else ""
                 // A "keyword" column holds tag ids; resolve them to names so the
                 // panel reads "Keywords: astro", not the raw tag uuid.
                 if (c.key == "keyword") {
                     val names = c.values.map { id -> _tags.value.firstOrNull { it.id == id }?.name ?: id }
-                    out += SmartCriterionRow("Keywords", names.joinToString(", "), SmartCriterion.Column("keyword"))
+                    out += SmartCriterionRow("Keywords", prefix + names.joinToString(", "), SmartCriterion.Column("keyword"))
                 } else {
-                    out += SmartCriterionRow(label(c.key), c.values.joinToString(", "), SmartCriterion.Column(c.key))
+                    out += SmartCriterionRow(label(c.key), prefix + c.values.joinToString(", "), SmartCriterion.Column(c.key))
                 }
             }
         }
@@ -2640,7 +2654,7 @@ class GridViewModel(
                     it.key != com.reelvault.data.models.LOCATION_METADATA_KEY &&
                     it.values.isNotEmpty()
             }
-            .map { com.reelvault.data.models.SmartCollectionColumn(it.key, it.values.toList()) }
+            .map { com.reelvault.data.models.SmartCollectionColumn(it.key, it.values.toList(), it.negate) }
         val geo = _filterLocation.value
         return com.reelvault.data.models.SmartCollectionFilters(
             columns = columns,
@@ -2858,7 +2872,7 @@ class GridViewModel(
         f: com.reelvault.data.models.SmartCollectionFilters
     ): List<com.reelvault.data.models.MetadataColumn> {
         val cols = f.columns.map {
-            com.reelvault.data.models.MetadataColumn(it.key, it.values.toSet())
+            com.reelvault.data.models.MetadataColumn(it.key, it.values.toSet(), negate = it.negate)
         }
         return cols.ifEmpty { com.reelvault.data.models.defaultMetadataColumns }
     }

@@ -132,6 +132,13 @@ pub(crate) const REPRESENTATIVE_FILTER: &str = "v.proxy_of IS NULL \
 /// splits on it and OR-matches the parts. The clients must use the same byte.
 pub(crate) const METADATA_VALUE_SEPARATOR: char = '\u{1f}';
 
+/// Leading marker on a metadata filter's `value` that flips it from "is" to
+/// "is not": keep videos that do NOT match any of the selected tokens (absent /
+/// NULL counts as "not present"). ASCII Record Separator (0x1E) — never appears
+/// in real metadata values, so it's an unambiguous prefix. Clients add it; the
+/// proto stays unchanged (no Swift regen needed for a per-column negate flag).
+pub(crate) const METADATA_NEGATE_PREFIX: char = '\u{1e}';
+
 /// Everything that scopes a video listing or a facet query. Built by the
 /// service layer and consumed by [`Database::list_videos_grouped`],
 /// [`Database::distinct_facet_values`], and
@@ -1984,16 +1991,23 @@ impl Database {
         // multi-select. Tokens within one filter are OR-ed; distinct keys stay
         // AND-ed. A plain single value (no separator) splits to a one-element
         // list, so the legacy single-select path is unchanged.
-        for (key, value) in &spec.metadata_filters {
+        for (key, raw_value) in &spec.metadata_filters {
+            // A leading negate marker flips "is" → "is not" for this column.
+            let (negate, value) = match raw_value.strip_prefix(METADATA_NEGATE_PREFIX) {
+                Some(stripped) => (true, stripped),
+                None => (false, raw_value.as_str()),
+            };
             let values: Vec<&str> = value.split(METADATA_VALUE_SEPARATOR).filter(|s| !s.is_empty()).collect();
             if values.is_empty() {
                 continue;
             }
             if key == "keyword" {
-                // Match a video carrying ANY of the selected keyword tags.
+                // Match (or, when negated, exclude) videos carrying ANY of the
+                // selected keyword tags. NOT IN naturally keeps untagged videos.
                 let placeholders = std::iter::repeat_n("?", values.len()).collect::<Vec<_>>().join(", ");
+                let op = if negate { "NOT IN" } else { "IN" };
                 sql.push_str(&format!(
-                    " AND v.id IN (SELECT video_id FROM video_tags WHERE tag_id IN ({placeholders}))"
+                    " AND v.id {op} (SELECT video_id FROM video_tags WHERE tag_id IN ({placeholders}))"
                 ));
                 for v in &values {
                     bind.push(Box::new(v.to_string()));
@@ -2013,9 +2027,16 @@ impl Database {
                         }
                     }
                     if !terms.is_empty() {
-                        sql.push_str(" AND (");
-                        sql.push_str(&terms.join(" OR "));
-                        sql.push(')');
+                        let inner = terms.join(" OR ");
+                        if negate {
+                            // "is not": keep rows that match none of the values.
+                            // COALESCE folds NULL (absent metadata) to false so a
+                            // NOT wraps it to true — videos lacking the field count
+                            // as "not present", which is what the user expects.
+                            sql.push_str(&format!(" AND NOT COALESCE(({inner}), 0)"));
+                        } else {
+                            sql.push_str(&format!(" AND ({inner})"));
+                        }
                         for parsed in vals {
                             match parsed {
                                 SqlVal::Text(s) => bind.push(Box::new(s)),
@@ -3707,6 +3728,38 @@ mod tests {
         assert_eq!(total, 1);
         assert_eq!(vids.len(), 1);
         assert_eq!(vids[0].filename, "beach_sony.mov");
+    }
+
+    #[test]
+    fn metadata_filter_negate_excludes_matches_and_keeps_absent() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        seed_meta(&db, "/l/sony.mov", "sony.mov", Some("Sony A7"), None, None);
+        seed_meta(&db, "/l/canon.mov", "canon.mov", Some("Canon R5"), None, None);
+        seed_meta(&db, "/l/nocam.mov", "nocam.mov", None, None, None); // NULL camera
+
+        let names = |value: &str| -> Vec<String> {
+            let spec = FilterSpec {
+                metadata_filters: vec![("camera".into(), value.to_string())],
+                ..Default::default()
+            };
+            let mut n: Vec<String> = db
+                .list_videos_grouped(50, 0, "name", true, &spec)
+                .unwrap()
+                .0
+                .into_iter()
+                .map(|v| v.filename)
+                .collect();
+            n.sort();
+            n
+        };
+
+        // Plain "is": only the matching camera.
+        assert_eq!(names("Sony A7"), vec!["sony.mov"]);
+        // "is not" (negate prefix): every other video, INCLUDING the one with no
+        // camera at all — an absent/NULL field counts as "not Sony A7".
+        let negated = format!("{METADATA_NEGATE_PREFIX}Sony A7");
+        assert_eq!(names(&negated), vec!["canon.mov", "nocam.mov"]);
     }
 
     #[test]

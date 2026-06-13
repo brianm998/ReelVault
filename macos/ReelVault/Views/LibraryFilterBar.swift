@@ -390,7 +390,11 @@ private struct LibraryFilterMetadataEditor: View {
                             facet: isLocation ? locationFacet : vm.facetColumn(at: index),
                             availableKeys: availableKeys,
                             canRemove: vm.metadataColumns.count > 1,
+                            // "Location" is a geo filter, not a value match, so it
+                            // can't be inverted; every other column offers is/is not.
+                            negatable: !isLocation,
                             onPickKey: { vm.setMetadataColumnKey(at: index, key: $0) },
+                            onSetNegate: { vm.setMetadataColumnNegate(at: index, negate: $0) },
                             onValueClick: { token, shift, toggle in
                                 if isLocation {
                                     if token.isEmpty {
@@ -435,7 +439,9 @@ private struct MetadataColumnView: View {
     let facet: MetadataFacetColumn?
     let availableKeys: [MetadataKeyInfo]
     let canRemove: Bool
+    let negatable: Bool
     let onPickKey: (String) -> Void
+    let onSetNegate: (Bool) -> Void
     let onValueClick: (_ token: String, _ shift: Bool, _ toggle: Bool) -> Void
     let onRemove: () -> Void
 
@@ -459,6 +465,23 @@ private struct MetadataColumnView: View {
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
+                // "is" / "is not" — inverts this column's match. Hidden for the
+                // non-invertible Location (geo) field and before a field is picked.
+                if negatable && !column.key.isEmpty {
+                    Menu {
+                        Button("is") { onSetNegate(false) }
+                        Button("is not") { onSetNegate(true) }
+                    } label: {
+                        HStack(spacing: 2) {
+                            Text(column.negate ? "is not" : "is")
+                                .font(.system(size: 11))
+                                .foregroundColor(column.negate ? .accentColor : .secondary)
+                            Image(systemName: "chevron.down").font(.system(size: 8))
+                        }
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                }
                 Spacer()
                 if canRemove {
                     Button { onRemove() } label: { Image(systemName: "xmark").font(.system(size: 9)) }

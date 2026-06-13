@@ -630,7 +630,11 @@ private fun LibraryMetadataEditor(viewModel: GridViewModel, height: Dp) {
                 facet = if (isLocation) locationFacet else facets.getOrNull(i),
                 availableKeys = availableKeys,
                 canRemove = columns.size > 1,
+                // "Location" is a geo filter, not a value match, so it can't be
+                // inverted; every other column offers "is" / "is not".
+                negatable = !isLocation,
                 onPickKey = { key -> viewModel.setMetadataColumnKey(i, key) },
+                onSetNegate = { viewModel.setMetadataColumnNegate(i, it) },
                 onValueClick = onValueClick,
                 onRemove = { viewModel.removeMetadataColumn(i) },
             )
@@ -659,7 +663,9 @@ private fun MetadataColumnView(
     facet: FacetColumn?,
     availableKeys: List<MetadataKeyInfo>,
     canRemove: Boolean,
+    negatable: Boolean,
     onPickKey: (String) -> Unit,
+    onSetNegate: (Boolean) -> Unit,
     onValueClick: (token: String, shift: Boolean, toggle: Boolean) -> Unit,
     onRemove: () -> Unit,
 ) {
@@ -711,6 +717,46 @@ private fun MetadataColumnView(
                                 onPickKey(info.key)
                                 menuOpen = false
                             },
+                        )
+                    }
+                }
+            }
+            // "is" / "is not" — inverts this column's match. Hidden for the
+            // non-invertible Location (geo) field and before a field is picked.
+            if (negatable && column.key.isNotEmpty()) {
+                var negMenuOpen by remember { mutableStateOf(false) }
+                Box {
+                    TextButton(
+                        onClick = { negMenuOpen = true },
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                            horizontal = ReelVaultSpacing.XSmall,
+                            vertical = 2.dp,
+                        ),
+                    ) {
+                        Text(
+                            text = if (column.negate) "is not" else "is",
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1,
+                            color = if (column.negate) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                        Icon(
+                            Icons.Default.ArrowDropDown,
+                            contentDescription = "is or is not",
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
+                    DropdownMenu(expanded = negMenuOpen, onDismissRequest = { negMenuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text("is") },
+                            onClick = { onSetNegate(false); negMenuOpen = false },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("is not") },
+                            onClick = { onSetNegate(true); negMenuOpen = false },
                         )
                     }
                 }

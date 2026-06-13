@@ -247,7 +247,12 @@ data class Collection(
  *  its selected facet [values] (OR-ed). Generalises the old fixed
  *  camera/lens/codec/year fields so a smart collection reproduces ANY metadata
  *  column the user had narrowed. */
-data class SmartCollectionColumn(val key: String, val values: List<String>)
+data class SmartCollectionColumn(
+    val key: String,
+    val values: List<String>,
+    /** "is not" column — matches videos lacking any of [values]. */
+    val negate: Boolean = false,
+)
 
 /** Stable lowercase tokens for the tri-state attribute filters in smart-
  *  collection JSON. Kept identical across clients so a collection saved on one
@@ -304,7 +309,9 @@ data class SmartCollectionFilters(
         append("\"columns\":[")
         columns.forEachIndexed { i, c ->
             if (i > 0) append(",")
-            append((c.key + "=" + c.values.joinToString(METADATA_VALUE_SEPARATOR)).jsonStr())
+            // A leading "!" on the key marks an "is not" column.
+            val prefix = if (c.negate) "!" else ""
+            append((prefix + c.key + "=" + c.values.joinToString(METADATA_VALUE_SEPARATOR)).jsonStr())
         }
         append("]")
         append(",\"minRating\":$minRating")
@@ -342,8 +349,12 @@ data class SmartCollectionFilters(
             val columns = strArray("columns").mapNotNull { s ->
                 val eq = s.indexOf('=')
                 if (eq <= 0) return@mapNotNull null
+                val rawKey = s.substring(0, eq)
+                val negate = rawKey.startsWith("!")
+                val key = if (negate) rawKey.substring(1) else rawKey
+                if (key.isEmpty()) return@mapNotNull null
                 val vals = s.substring(eq + 1).split(METADATA_VALUE_SEPARATOR).filter { it.isNotEmpty() }
-                SmartCollectionColumn(s.substring(0, eq), vals)
+                SmartCollectionColumn(key, vals, negate)
             }
             // Backward-compat: smart collections saved before the generic-column
             // format stored camera/lens/codec/captureYear scalars.
@@ -832,6 +843,9 @@ data class MetadataColumn(
     val key: String = "",
     val values: Set<String> = emptySet(),
     val anchor: String = "",
+    /** When true the column matches videos that do NOT have any of [values]
+     *  ("is not"); the default false is the plain "is" match. */
+    val negate: Boolean = false,
 )
 
 /** One selectable value within a metadata facet column. */
@@ -866,6 +880,11 @@ data class MetadataFilter(val key: String, val value: String)
  *  which never appears in real metadata values. Must match the core's
  *  `METADATA_VALUE_SEPARATOR`. */
 const val METADATA_VALUE_SEPARATOR = "\u001F"
+
+/** Leading marker on a [MetadataFilter.value] that flips the column from "is" to
+ *  "is not". ASCII Record Separator (0x1E); must match the core's
+ *  `METADATA_NEGATE_PREFIX`. */
+val METADATA_NEGATE_PREFIX: String = 30.toChar().toString()
 
 /** Result of a GetMetadataFacets call: per-column values + the key picker set. */
 data class MetadataFacetsResult(

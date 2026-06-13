@@ -1043,7 +1043,7 @@ class GridViewModel: ObservableObject {
         // "location" virtual key is captured as geo below, not as a column.
         let columns: [SmartCollectionColumn] = metadataColumns
             .filter { !$0.key.isEmpty && $0.key != locationMetadataKey && !$0.values.isEmpty }
-            .map { SmartCollectionColumn(key: $0.key, values: $0.values.sorted()) }
+            .map { SmartCollectionColumn(key: $0.key, values: $0.values.sorted(), negate: $0.negate) }
         return SmartCollectionFilters(
             columns: columns,
             minRating: filterMinRating,
@@ -1235,7 +1235,7 @@ class GridViewModel: ObservableObject {
     /// Build metadata columns from a smart collection's saved column filters.
     /// Falls back to the defaults when the saved filter set is empty.
     private static func metadataColumns(from f: SmartCollectionFilters) -> [MetadataColumn] {
-        let cols = f.columns.map { MetadataColumn(key: $0.key, values: Set($0.values)) }
+        let cols = f.columns.map { MetadataColumn(key: $0.key, values: Set($0.values), negate: $0.negate) }
         return cols.isEmpty ? defaultMetadataColumns : cols
     }
 
@@ -1257,13 +1257,15 @@ class GridViewModel: ObservableObject {
         }
         var out: [SmartCriterionRow] = []
         for c in f.columns where !c.values.isEmpty {
+            // "is not" columns read "not <values>" so the inversion is visible.
+            let prefix = c.negate ? "not " : ""
             // A "keyword" column holds tag ids; resolve them to names so the
             // panel reads "Keywords: astro", not the raw tag uuid.
             if c.key == "keyword" {
                 let names = c.values.map { id in tags.first(where: { $0.id == id })?.name ?? id }
-                out.append(SmartCriterionRow(label: "Keywords", value: names.joined(separator: ", "), criterion: .column("keyword")))
+                out.append(SmartCriterionRow(label: "Keywords", value: prefix + names.joined(separator: ", "), criterion: .column("keyword")))
             } else {
-                out.append(SmartCriterionRow(label: label(c.key), value: c.values.joined(separator: ", "), criterion: .column(c.key)))
+                out.append(SmartCriterionRow(label: label(c.key), value: prefix + c.values.joined(separator: ", "), criterion: .column(c.key)))
             }
         }
         if f.minRating > 0 { out.append(SmartCriterionRow(label: "Rating", value: "\(f.minRating)+ stars", criterion: .minRating)) }
@@ -1406,7 +1408,11 @@ class GridViewModel: ObservableObject {
             // "location" is a client-side virtual key applied via the geo
             // filter, not a MetadataFilter; never send it over the wire.
             .filter { !$0.key.isEmpty && $0.key != locationMetadataKey && !$0.values.isEmpty }
-            .map { (key: $0.key, value: $0.values.sorted().joined(separator: metadataValueSeparator)) }
+            .map { col -> (key: String, value: String) in
+                let joined = col.values.sorted().joined(separator: metadataValueSeparator)
+                // "is not" columns prefix the value so the daemon inverts the match.
+                return (key: col.key, value: col.negate ? metadataNegatePrefix + joined : joined)
+            }
     }
 
     /// Facet column matched to `metadataColumns[index]` by position (nil while
@@ -1467,6 +1473,17 @@ class GridViewModel: ObservableObject {
         metadataColumns[index] = MetadataColumn(key: key)
         LibraryFilterPrefs.saveColumns(metadataColumns)
         if hadActiveValue { reloadForFilterChange() } else { scheduleFacetRefresh() }
+    }
+
+    /// Flip column `index` between "is" (match the selected values) and "is not"
+    /// (exclude them). Only re-queries when the column actually has values
+    /// selected — an empty column doesn't filter either way.
+    func setMetadataColumnNegate(at index: Int, negate: Bool) {
+        guard metadataColumns.indices.contains(index),
+              metadataColumns[index].negate != negate else { return }
+        metadataColumns[index].negate = negate
+        LibraryFilterPrefs.saveColumns(metadataColumns)
+        if !metadataColumns[index].values.isEmpty { reloadForFilterChange() }
     }
 
     enum ColumnInsertPosition { case front, end }

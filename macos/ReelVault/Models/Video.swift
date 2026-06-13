@@ -368,6 +368,8 @@ struct Collection: Identifiable, Hashable {
 struct SmartCollectionColumn {
     var key: String
     var values: [String]
+    /// "is not" column — matches videos lacking any of `values`.
+    var negate: Bool = false
 }
 
 struct SmartCollectionFilters {
@@ -405,7 +407,8 @@ struct SmartCollectionFilters {
         // Each column is encoded as "key=v1v2" — a flat string so the
         // existing string-array parser round-trips it without a nested-array
         // JSON parser. '=' never appears in a metadata key.
-        let colsJson = columns.map { esc($0.key + "=" + $0.values.joined(separator: metadataValueSeparator)) }.joined(separator: ",")
+        // A leading "!" on the key marks an "is not" column.
+        let colsJson = columns.map { esc(($0.negate ? "!" : "") + $0.key + "=" + $0.values.joined(separator: metadataValueSeparator)) }.joined(separator: ",")
         let tagsJson = tagIds.map { esc($0) }.joined(separator: ",")
         let locJson = locationPaths.map { esc($0) }.joined(separator: ",")
         let attrs = #","locationPaths":[\#(locJson)],"hasLocation":\#(esc(hasLocation.rawValue)),"hasKeywords":\#(esc(hasKeywords.rawValue)),"hasProxies":\#(esc(hasProxies.rawValue)),"fullResolution":\#(esc(fullResolution.rawValue))"#
@@ -473,11 +476,14 @@ struct SmartCollectionFilters {
 
         var columns: [SmartCollectionColumn] = strArray("columns").compactMap { s in
             guard let eq = s.firstIndex(of: "=") else { return nil }
-            let key = String(s[s.startIndex..<eq])
+            var key = String(s[s.startIndex..<eq])
+            // A leading "!" on the key marks an "is not" column.
+            let negate = key.hasPrefix("!")
+            if negate { key.removeFirst() }
             guard !key.isEmpty else { return nil }
             let vals = String(s[s.index(after: eq)...])
                 .components(separatedBy: metadataValueSeparator).filter { !$0.isEmpty }
-            return SmartCollectionColumn(key: key, values: vals)
+            return SmartCollectionColumn(key: key, values: vals, negate: negate)
         }
         // Backward-compat: smart collections saved before the generic-column
         // format stored camera/lens/codec/captureYear scalars.
@@ -1050,6 +1056,9 @@ struct MetadataColumn: Identifiable, Equatable {
     var key: String = ""
     var values: Set<String> = []
     var anchor: String = ""
+    /// When true the column matches videos that do NOT have any of `values`
+    /// ("is not"); false (the default) is the plain "is" match.
+    var negate: Bool = false
 }
 
 /// Separator joining a metadata column's multiple selected facet tokens into a
@@ -1057,6 +1066,11 @@ struct MetadataColumn: Identifiable, Equatable {
 /// which never appears in real metadata values; the daemon splits on it and
 /// OR-matches the parts. Must match the core's `METADATA_VALUE_SEPARATOR`.
 let metadataValueSeparator = "\u{1F}"
+
+/// Leading marker on a MetadataFilter value that flips the column from "is" to
+/// "is not". ASCII Record Separator (0x1E); must match the core's
+/// `METADATA_NEGATE_PREFIX`. Built from the scalar to avoid an escaped literal.
+let metadataNegatePrefix = String(Character(UnicodeScalar(UInt8(0x1E))))
 
 /// One selectable value within a metadata facet column.
 struct FacetValue: Equatable, Hashable {
