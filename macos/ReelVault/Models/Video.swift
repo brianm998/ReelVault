@@ -432,7 +432,15 @@ struct SmartCollectionFilters {
         func strArray(_ key: String) -> [String] {
             guard let ar = json.range(of: "\"\(key)\"\\s*:\\s*\\[([^\\]]*)\\]", options: .regularExpression) else { return [] }
             var out: [String] = []
+            // `ar` spans the whole match, including the `"key":[` prefix. Start
+            // scanning *after* the opening bracket, otherwise the first quoted
+            // token found is the key name itself (e.g. "tagIds"), which would be
+            // injected as a phantom array element — for tagIds that phantom is a
+            // tag id no video carries, so the smart collection matched nothing.
             var scanning = String(json[ar])
+            if let open = scanning.range(of: "[") {
+                scanning = String(scanning[open.upperBound...])
+            }
             while let qStart = scanning.range(of: "\"") {
                 scanning = String(scanning[qStart.upperBound...])
                 var val = ""

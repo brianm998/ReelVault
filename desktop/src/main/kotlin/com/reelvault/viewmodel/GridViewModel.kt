@@ -2404,7 +2404,16 @@ class GridViewModel(
         }
         val out = mutableListOf<Pair<String, String>>()
         f.columns.forEach { c ->
-            if (c.values.isNotEmpty()) out += label(c.key) to c.values.joinToString(", ")
+            if (c.values.isNotEmpty()) {
+                // A "keyword" column holds tag ids; resolve them to names so the
+                // panel reads "Keywords: astro", not the raw tag uuid.
+                if (c.key == "keyword") {
+                    val names = c.values.map { id -> _tags.value.firstOrNull { it.id == id }?.name ?: id }
+                    out += "Keywords" to names.joinToString(", ")
+                } else {
+                    out += label(c.key) to c.values.joinToString(", ")
+                }
+            }
         }
         if (f.minRating > 0) out += "Rating" to "${f.minRating}+ stars"
         if (f.colorLabel.isNotEmpty()) out += "Color" to f.colorLabel.replaceFirstChar { it.uppercase() }

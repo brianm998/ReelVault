@@ -1096,7 +1096,14 @@ class GridViewModel: ObservableObject {
         }
         var out: [(label: String, value: String)] = []
         for c in f.columns where !c.values.isEmpty {
-            out.append((label: label(c.key), value: c.values.joined(separator: ", ")))
+            // A "keyword" column holds tag ids; resolve them to names so the
+            // panel reads "Keywords: astro", not the raw tag uuid.
+            if c.key == "keyword" {
+                let names = c.values.map { id in tags.first(where: { $0.id == id })?.name ?? id }
+                out.append((label: "Keywords", value: names.joined(separator: ", ")))
+            } else {
+                out.append((label: label(c.key), value: c.values.joined(separator: ", ")))
+            }
         }
         if f.minRating > 0 { out.append((label: "Rating", value: "\(f.minRating)+ stars")) }
         if !f.colorLabel.isEmpty { out.append((label: "Color", value: f.colorLabel.capitalized)) }
