@@ -3,6 +3,7 @@
 
 import SwiftUI
 import Combine
+import AVFoundation
 
 /// Arrow-key navigation direction in the grid / list.
 enum MoveDirection { case up, down, left, right }
@@ -2074,6 +2075,45 @@ class GridViewModel: ObservableObject {
 
     /// Lazy-load all scrub frames for a video on first hover. No-ops if already
     /// loaded or in-flight.
+    /// Find a loaded summary by id, across the grid rows and any expanded
+    /// stack's members — enough to detect codec/path/duration for local scrub.
+    private func summaryForScrub(_ videoId: String) -> VideoSummary? {
+        if let v = videos.first(where: { $0.id == videoId }) { return v }
+        for members in expandedGroupMembers.values {
+            if let v = members.first(where: { $0.id == videoId }) { return v }
+        }
+        return nil
+    }
+
+    /// Extract real scrub frames for ProRes RAW via AVFoundation — the same OS
+    /// decoder AVPlayer uses (and the one that renders these clips correctly).
+    /// ffmpeg can't decode Atomos S-Log3 ProRes RAW, so the daemon falls back to
+    /// a single QuickLook poster for every scrub position; this gives the macOS
+    /// client a true per-position strip instead. A little seek tolerance keeps
+    /// it responsive over the NAS — exact frames aren't needed for a hover strip.
+    private func proResRawScrubFrames(path: String, count: Int, durationMs: Int) async -> [NSImage?] {
+        let asset = AVURLAsset(url: URL(fileURLWithPath: path))
+        let gen = AVAssetImageGenerator(asset: asset)
+        gen.appliesPreferredTrackTransform = true
+        gen.requestedTimeToleranceBefore = CMTime(seconds: 0.5, preferredTimescale: 600)
+        gen.requestedTimeToleranceAfter = CMTime(seconds: 0.5, preferredTimescale: 600)
+        gen.maximumSize = CGSize(width: 480, height: 0)
+        let durSec = max(0.1, Double(durationMs) / 1000.0)
+        var out: [NSImage?] = []
+        out.reserveCapacity(count)
+        for i in 0..<count {
+            let frac = (Double(i) + 0.5) / Double(count)
+            let t = CMTime(seconds: durSec * frac, preferredTimescale: 600)
+            do {
+                let result = try await gen.image(at: t)
+                out.append(NSImage(cgImage: result.image, size: .zero))
+            } catch {
+                out.append(nil)
+            }
+        }
+        return out
+    }
+
     func loadScrubFrames(videoId: String) {
         if scrubFrames[videoId] != nil { return }
         if scrubLoading.contains(videoId) { return }
@@ -2083,6 +2123,17 @@ class GridViewModel: ObservableObject {
             defer { scrubLoading.remove(videoId) }
             let rawCount = UserDefaults.standard.integer(forKey: "scrubFrameCount")
             let count = rawCount > 0 ? rawCount : 10
+            // ProRes RAW: generate frames locally with AVFoundation (the daemon
+            // can only return one repeated QuickLook poster). Fall back to the
+            // daemon strip if local generation yields nothing.
+            if let s = summaryForScrub(videoId), s.codecVideo == "prores_raw" {
+                let local = await proResRawScrubFrames(path: s.path, count: count, durationMs: s.durationMs)
+                if local.contains(where: { $0 != nil }) {
+                    scrubFrames[videoId] = local
+                    NSLog("[GridViewModel] loadScrubFrames video=%@ used local AVFoundation frames", videoId)
+                    return
+                }
+            }
             let frames = await repository.getScrubFrames(videoId: videoId, count: count)
             let nonNil = frames.filter { $0 != nil }.count
             NSLog(
