@@ -401,6 +401,10 @@ private fun LibraryAttributeEditor(viewModel: GridViewModel, hideLocation: Boole
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            // Scroll horizontally when the selectors outgrow the available width
+            // (e.g. on a narrow window) rather than compacting or clipping them;
+            // centred while everything fits, matching the metadata editor below.
+            .horizontalScroll(rememberScrollState())
             .padding(horizontal = ReelVaultSpacing.Small, vertical = ReelVaultSpacing.Small),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(ReelVaultSpacing.Medium, Alignment.CenterHorizontally),

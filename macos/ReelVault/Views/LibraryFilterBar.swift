@@ -225,40 +225,52 @@ private struct LibraryFilterTextEditor: View {
 private struct LibraryFilterAttributeEditor: View {
     @ObservedObject var vm: GridViewModel
     var hideLocationOption: Bool = false
+    /// Available width, read via a background GeometryReader, so the row stays
+    /// centred while everything fits and scrolls once the selectors overflow —
+    /// rather than compacting or clipping them. Mirrors the metadata editor.
+    @State private var availableWidth: CGFloat = 0
     var body: some View {
-        HStack(spacing: 16) {
-            if !hideLocationOption {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 16) {
+                if !hideLocationOption {
+                    AttributeTriState(
+                        label: "Location",
+                        help: "Filter by whether a video has a known GPS location",
+                        state: Binding(get: { vm.filterHasLocation }, set: { vm.setHasLocationFilter($0) })
+                    )
+                }
                 AttributeTriState(
-                    label: "Location",
-                    help: "Filter by whether a video has a known GPS location",
-                    state: Binding(get: { vm.filterHasLocation }, set: { vm.setHasLocationFilter($0) })
+                    label: "Keywords",
+                    help: "Filter by whether a video has any keywords",
+                    state: Binding(get: { vm.filterHasKeywords }, set: { vm.setHasKeywordsFilter($0) })
                 )
+                AttributeTriState(
+                    label: "Proxies",
+                    help: "Filter by whether a video has any proxies",
+                    state: Binding(get: { vm.filterHasProxies }, set: { vm.setHasProxiesFilter($0) })
+                )
+                AttributeTriState(
+                    label: "Full Res",
+                    help: "Filter by whether a video is full resolution",
+                    state: Binding(get: { vm.filterFullResolution }, set: { vm.setFullResolutionFilter($0) })
+                )
+                HStack(spacing: 6) {
+                    Text("Rating").font(.system(size: 11)).foregroundColor(.secondary)
+                    RatingPickerRow(minRating: vm.filterMinRating) { vm.setMinRatingFilter($0) }
+                }
+                HStack(spacing: 6) {
+                    Text("Color").font(.system(size: 11)).foregroundColor(.secondary)
+                    ColorSwatchRow(selected: ColorLabel(vm.filterColorLabel)) { vm.setColorLabelFilter($0.rawValue) }
+                }
             }
-            AttributeTriState(
-                label: "Keywords",
-                help: "Filter by whether a video has any keywords",
-                state: Binding(get: { vm.filterHasKeywords }, set: { vm.setHasKeywordsFilter($0) })
-            )
-            AttributeTriState(
-                label: "Proxies",
-                help: "Filter by whether a video has any proxies",
-                state: Binding(get: { vm.filterHasProxies }, set: { vm.setHasProxiesFilter($0) })
-            )
-            AttributeTriState(
-                label: "Full Res",
-                help: "Filter by whether a video is full resolution",
-                state: Binding(get: { vm.filterFullResolution }, set: { vm.setFullResolutionFilter($0) })
-            )
-            HStack(spacing: 6) {
-                Text("Rating").font(.system(size: 11)).foregroundColor(.secondary)
-                RatingPickerRow(minRating: vm.filterMinRating) { vm.setMinRatingFilter($0) }
-            }
-            HStack(spacing: 6) {
-                Text("Color").font(.system(size: 11)).foregroundColor(.secondary)
-                ColorSwatchRow(selected: ColorLabel(vm.filterColorLabel)) { vm.setColorLabelFilter($0.rawValue) }
-            }
+            .padding(.vertical, 8)
+            .frame(minWidth: availableWidth, alignment: .center)
         }
-        .padding(.vertical, 8)
+        .background(GeometryReader { geo in
+            Color.clear
+                .onAppear { availableWidth = geo.size.width }
+                .onChange(of: geo.size.width) { _, w in availableWidth = w }
+        })
     }
 }
 
