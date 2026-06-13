@@ -1537,7 +1537,8 @@ struct VideoCardView: View {
                         } label: {
                             Image(systemName: "location.fill")
                                 .font(.system(size: 10))
-                                .foregroundColor(.white)
+                                // Light green (matching the full-resolution badge).
+                                .foregroundColor(Color(red: 0.51, green: 0.78, blue: 0.52))
                                 .padding(3)
                                 .background(Color.black.opacity(0.55))
                                 .clipShape(Circle())
@@ -1571,7 +1572,8 @@ struct VideoCardView: View {
                         if !video.tags.isEmpty {
                             Image(systemName: "tag.fill")
                                 .font(.system(size: 10))
-                                .foregroundColor(.white)
+                                // Light blue marks "has keywords" at a glance.
+                                .foregroundColor(Color(red: 0.39, green: 0.71, blue: 0.96))
                                 .padding(3)
                                 .background(Color.black.opacity(0.55))
                                 .clipShape(Circle())

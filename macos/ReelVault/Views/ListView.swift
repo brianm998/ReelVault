@@ -1160,7 +1160,8 @@ struct VideoListRowView: View {
                         } label: {
                             Image(systemName: "location.fill")
                                 .font(.system(size: 9))
-                                .foregroundColor(.white)
+                                // Light green (matching the full-resolution badge).
+                                .foregroundColor(Color(red: 0.51, green: 0.78, blue: 0.52))
                                 .padding(3)
                                 .background(Color.black.opacity(0.55))
                                 .clipShape(Circle())
@@ -1183,7 +1184,8 @@ struct VideoListRowView: View {
                         if !video.tags.isEmpty {
                             Image(systemName: "tag.fill")
                                 .font(.system(size: 10))
-                                .foregroundColor(.white)
+                                // Light blue marks "has keywords" at a glance.
+                                .foregroundColor(Color(red: 0.39, green: 0.71, blue: 0.96))
                                 .padding(3)
                                 .background(Color.black.opacity(0.55))
                                 .clipShape(Circle())
@@ -1490,7 +1492,8 @@ struct VideoListHorizontalCardView: View {
                         Button { handler(video.gpsLatitude, video.gpsLongitude) } label: {
                             Image(systemName: "location.fill")
                                 .font(.system(size: 9))
-                                .foregroundColor(.white)
+                                // Light green (matching the full-resolution badge).
+                                .foregroundColor(Color(red: 0.51, green: 0.78, blue: 0.52))
                                 .padding(3)
                                 .background(Color.black.opacity(0.55))
                                 .clipShape(Circle())
@@ -1512,7 +1515,7 @@ struct VideoListHorizontalCardView: View {
                     Spacer()
                     if !video.tags.isEmpty {
                         Image(systemName: "tag.fill")
-                            .font(.system(size: 9)).foregroundColor(.white)
+                            .font(.system(size: 9)).foregroundColor(Color(red: 0.39, green: 0.71, blue: 0.96))
                             .padding(3).background(Color.black.opacity(0.55)).clipShape(Circle())
                             .help("\(video.tags.count) keyword\(video.tags.count == 1 ? "" : "s")")
                     }

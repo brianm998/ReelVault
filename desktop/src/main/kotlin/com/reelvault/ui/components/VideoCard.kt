@@ -794,7 +794,8 @@ fun VideoCard(
                                     imageVector = Icons.Default.Sell,
                                     contentDescription = "${video.tags.size} keyword(s)",
                                     modifier = Modifier.size(10.dp),
-                                    tint = Color.White
+                                    // Light blue marks "has keywords" at a glance.
+                                    tint = Color(0xFF64B5F6)
                                 )
                             }
                         }
@@ -900,7 +901,8 @@ fun VideoCard(
                                 imageVector = Icons.Default.NearMe,
                                 contentDescription = "Show on map",
                                 modifier = Modifier.size(11.dp),
-                                tint = Color.White
+                                // Light green (matching the full-resolution badge).
+                                tint = Color(0xFF81C784)
                             )
                         }
                     }
