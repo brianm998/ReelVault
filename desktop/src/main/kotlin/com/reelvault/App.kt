@@ -1450,6 +1450,7 @@ fun ReelVaultApp(
                                     }
                                 },
                                 onToggleExpand = { path -> gridViewModel.toggleExpand(path) },
+                                scrollToPath = gridViewModel.pendingLibraryScroll.collectAsState().value,
                                 onAddLocation = { showAddLibraryDialog = true },
                                 onRemoveLocation = { loc -> pendingRemoveLocation = loc },
                                 onRescan = { loc -> gridViewModel.rescanLibrary(loc.path) },

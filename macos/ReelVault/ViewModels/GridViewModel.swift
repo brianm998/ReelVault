@@ -110,6 +110,10 @@ class GridViewModel: ObservableObject {
     /// `rebuildLibraryRows()` whenever the tree changes.
     @Published var visibleLibraryRows: [LibraryRow] = []
 
+    /// Path of a directory the left panel should scroll into view — set by
+    /// "Go to Folder in Library" after it reveals a deep subdirectory.
+    @Published var pendingLibraryScroll: String?
+
     // Keywords / tag filter
     @Published var tags: [Tag] = []
     @Published var filterTagId: String = ""  // "" = no filter
@@ -695,6 +699,61 @@ class GridViewModel: ObservableObject {
     func setLocationFilter(_ path: String) {
         let paths = path.isEmpty ? [] : [path]
         applyLocationSelection(paths, anchor: path.isEmpty ? nil : path)
+    }
+
+    /// "Go to Folder in Library" for a specific video: select the *deepest*
+    /// directory that contains it — its own parent folder, the lowest node in
+    /// the tree — rather than just the top-level library location. Every
+    /// ancestor is expanded in the left panel so that row is revealed (fetching
+    /// children as needed), and the panel is asked to scroll to it. Falls back
+    /// to a plain filter when the video isn't under a known library location.
+    func goToFolderForVideo(_ videoPath: String) {
+        guard let slash = videoPath.lastIndex(of: "/") else { return }
+        let dir = String(videoPath[..<slash])
+        guard !dir.isEmpty else { return }
+        // Containing top-level location = longest path that `dir` sits under.
+        let loc = libraryLocations
+            .filter { dir == $0.path || dir.hasPrefix($0.path.hasSuffix("/") ? $0.path : $0.path + "/") }
+            .max(by: { $0.path.count < $1.path.count })
+        guard let loc = loc else {
+            setLocationFilter(dir)
+            pendingLibraryScroll = dir
+            return
+        }
+        Task {
+            // Expand every node from the location down to `dir`'s parent so the
+            // `dir` row is revealed (expanding a node shows its children).
+            let chain = directoryChain(loc.path, dir)
+            for ancestor in chain.dropLast() {
+                expandedDirs.insert(ancestor)
+                if subdirCache[ancestor] == nil {
+                    do {
+                        subdirCache[ancestor] = try await repository.listSubdirectories(ancestor)
+                    } catch {
+                        NSLog("Failed to list subdirectories of \(ancestor): \(error)")
+                    }
+                }
+            }
+            rebuildLibraryRows()
+            setLocationFilter(dir)
+            pendingLibraryScroll = dir
+        }
+    }
+
+    /// Paths from `locPath` down to `dir` inclusive — `[loc, loc/a, loc/a/b, …,
+    /// dir]`. `dir` must equal `locPath` or sit beneath it.
+    private func directoryChain(_ locPath: String, _ dir: String) -> [String] {
+        let base = locPath.hasSuffix("/") ? String(locPath.dropLast()) : locPath
+        if dir == base || dir == locPath { return [locPath] }
+        var rel = String(dir.dropFirst(base.count))
+        while rel.hasPrefix("/") { rel.removeFirst() }
+        var chain = [locPath]
+        var cur = base
+        for seg in rel.split(separator: "/") where !seg.isEmpty {
+            cur += "/" + seg
+            chain.append(cur)
+        }
+        return chain
     }
 
     /// Cmd-click: toggle this directory's membership in the selection.

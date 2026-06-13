@@ -346,18 +346,19 @@ struct GridView: View {
                 : "This video is above the inline-playback ceiling. Create a lower-resolution proxy so ReelVault can play it inline.")
         }
 
-        // "Go to Folder in Library" — identify the library location whose
-        // path is the longest prefix of this video's path, then ask the
-        // ViewModel to filter the grid to that location.
+        // "Go to Folder in Library" — reveal the *deepest* directory containing
+        // this video in the left panel (drilling down through subdirectories,
+        // not just the top-level location). Gated on the video sitting under a
+        // known library location; the ViewModel does the drill-down + expansion.
         let containingLocation = viewModel.libraryLocations
             .filter { video.path.hasPrefix($0.path) }
             .max(by: { $0.path.count < $1.path.count })
-        if let loc = containingLocation {
+        if containingLocation != nil {
             Divider()
             Button("Go to Folder in Library") {
-                viewModel.setLocationFilter(loc.path)
+                viewModel.goToFolderForVideo(video.path)
             }
-            .help("Filter the library panel to show only videos from \(loc.path)")
+            .help("Reveal the folder containing this video in the library panel")
         }
 
         // Default filename → capture-date method. Offered only when the user

@@ -20,6 +20,9 @@ struct LibraryPanel: View {
     let onSelect: (String) -> Void
     /// Toggle a directory's expanded/collapsed state (disclosure chevron).
     var onToggleExpand: (String) -> Void = { _ in }
+    /// When set, scroll this directory's row into view (it was just revealed by
+    /// "Go to Folder in Library").
+    var scrollToPath: String? = nil
     let onAddLibrary: () -> Void
     /// Called when the user chooses "Remove from library" for a location.
     /// The caller is responsible for showing a confirmation alert.
@@ -77,6 +80,7 @@ struct LibraryPanel: View {
             .padding(.top, 12)
             .padding(.bottom, 8)
 
+            ScrollViewReader { proxy in
             List {
                 // "All Videos" — clears both location and collection filters.
                 LocationRow(
@@ -247,6 +251,12 @@ struct LibraryPanel: View {
                 }
                 Button("Cancel", role: .cancel) {}
             }
+            .onChange(of: scrollToPath) { _, newValue in
+                guard let target = newValue,
+                      let row = rows.first(where: { $0.path == target }) else { return }
+                withAnimation { proxy.scrollTo(row.id, anchor: .center) }
+            }
+            } // ScrollViewReader
         }
         .frame(maxHeight: .infinity)
         .background(Color(.controlBackgroundColor))

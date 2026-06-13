@@ -186,6 +186,13 @@ class GridViewModel(
     private val _libraryRows = MutableStateFlow<List<com.reelvault.data.models.LibraryRow>>(emptyList())
     val libraryRows: StateFlow<List<com.reelvault.data.models.LibraryRow>> = _libraryRows.asStateFlow()
 
+    // Path of a directory the left panel should scroll into view — set by
+    // "Go to Folder in Library" after it reveals a deep subdirectory. The panel
+    // observes this and animates to the row; it lingers (no reset) so a repeat
+    // of normal navigation doesn't re-scroll.
+    private val _pendingLibraryScroll = MutableStateFlow<String?>(null)
+    val pendingLibraryScroll: StateFlow<String?> = _pendingLibraryScroll.asStateFlow()
+
     // Keywords (tags). `tags` is the full list of known tags with usage counts;
     // `filterTagId` narrows the grid to a single tag (drives the `filterTags`
     // list passed to listVideos).
@@ -1256,6 +1263,67 @@ class GridViewModel(
         // clear it for the "All Videos" entry, path == "").
         val paths = if (path.isEmpty()) emptyList() else listOf(path)
         applyLocationSelection(paths, anchor = path.ifEmpty { null })
+    }
+
+    /**
+     * "Go to Folder in Library" for a specific video: select the *deepest*
+     * directory that contains it — its own parent folder, the lowest node in
+     * the tree — rather than just the top-level library location. Every ancestor
+     * is expanded in the left panel so that row is revealed (fetching children
+     * as needed), and the panel is asked to scroll to it.
+     *
+     * Falls back to a plain filter when the video isn't under a known library
+     * location (e.g. a stale path).
+     */
+    fun goToFolderForVideo(videoPath: String) {
+        val dir = videoPath.substringBeforeLast('/', missingDelimiterValue = "")
+        if (dir.isEmpty()) return
+        // Containing top-level location = longest path that `dir` sits under.
+        val loc = _libraryLocations.value
+            .filter { dir == it.path || dir.startsWith(it.path.trimEnd('/') + "/") }
+            .maxByOrNull { it.path.length }
+        if (loc == null) {
+            setLocationFilter(dir)
+            _pendingLibraryScroll.value = dir
+            return
+        }
+        viewModelScope.launch {
+            // Expand every node from the location down to `dir`'s parent so the
+            // `dir` row is revealed (expanding a node shows its children).
+            val chain = directoryChain(loc.path, dir)
+            for (ancestor in chain.dropLast(1)) {
+                if (ancestor !in _expandedDirs.value) {
+                    _expandedDirs.value = _expandedDirs.value + ancestor
+                }
+                if (!subdirCache.containsKey(ancestor)) {
+                    try {
+                        subdirCache[ancestor] = repository.listSubdirectories(ancestor)
+                    } catch (e: Exception) {
+                        logger.warn("Failed to list subdirectories of $ancestor", e)
+                    }
+                }
+            }
+            rebuildLibraryRows()
+            // Select the deepest folder (filters the grid + highlights the row),
+            // then ask the panel to scroll the now-visible row into view.
+            setLocationFilter(dir)
+            _pendingLibraryScroll.value = dir
+        }
+    }
+
+    /** Paths from [locPath] down to [dir] inclusive — `[loc, loc/a, loc/a/b, …,
+     *  dir]`. [dir] must equal [locPath] or sit beneath it. */
+    private fun directoryChain(locPath: String, dir: String): List<String> {
+        val base = locPath.trimEnd('/')
+        if (dir == base || dir == locPath) return listOf(locPath)
+        val rel = dir.removePrefix(base).trimStart('/')
+        val chain = mutableListOf(locPath)
+        var cur = base
+        for (seg in rel.split('/').filter { it.isNotEmpty() }) {
+            cur = "$cur/$seg"
+            chain += cur
+        }
+        return chain
     }
 
     /** Cmd/Ctrl-click: toggle this directory's membership in the selection. */

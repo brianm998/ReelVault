@@ -405,7 +405,7 @@ fun GridScreen(
                                     onCreateProxy = { vid -> viewModel.requestCreateProxy(vid) },
                                     videoPath = video.path,
                                     libraryLocations = viewModel.libraryLocations.value,
-                                    onGoToFolder = { path -> viewModel.setLocationFilter(path) },
+                                    onGoToFolder = { vp -> viewModel.goToFolderForVideo(vp) },
                                     ratingTargetIds = ratingTargets,
                                     onSetRating = { rating, ids -> viewModel.setRating(rating, ids) },
                                     onSetColorLabel = { label, ids -> viewModel.setColorLabel(label, ids) },
@@ -624,8 +624,9 @@ internal fun buildVideoContextMenu(
     videoPath: String? = null,
     /** All known library locations, for longest-prefix matching. */
     libraryLocations: List<LibraryLocation> = emptyList(),
-    /** Called with the matched location path when "Go to Folder in Library"
-     *  is selected. */
+    /** Called with the right-clicked video's path when "Go to Folder in
+     *  Library" is selected; the view model drills down to the deepest
+     *  directory containing it and reveals that row in the left panel. */
     onGoToFolder: ((String) -> Unit)? = null,
     /** Video IDs the rating / colour-label / stack-master actions should
      *  apply to. Usually the multi-selection (or just `[video.id]`). */
@@ -719,17 +720,17 @@ internal fun buildVideoContextMenu(
         }
     }
 
-    // "Go to Folder in Library" — find the library location whose path is
-    // the longest prefix of this video's path, then scroll the left panel
-    // to that location. Only shown when the caller supplies both the video
-    // path and a non-empty locations list.
+    // "Go to Folder in Library" — reveal the *deepest* directory containing
+    // this video in the left panel (drilling down through subdirectories, not
+    // just the top-level location). Gated on the video sitting under a known
+    // library location; the view model does the drill-down + expansion.
     if (videoPath != null && onGoToFolder != null && libraryLocations.isNotEmpty()) {
         val containing = libraryLocations
             .filter { videoPath.startsWith(it.path) }
             .maxByOrNull { it.path.length }
         if (containing != null) {
             items += androidx.compose.foundation.ContextMenuItem("Go to Folder in Library") {
-                onGoToFolder(containing.path)
+                onGoToFolder(videoPath)
             }
         }
     }

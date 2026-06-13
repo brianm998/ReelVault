@@ -17,6 +17,7 @@ import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -64,6 +65,9 @@ fun LibraryPanel(
     onSelect: (path: String, additive: Boolean, range: Boolean) -> Unit,
     /** Toggle a directory's expanded/collapsed state (clicked disclosure chevron). */
     onToggleExpand: (path: String) -> Unit = {},
+    /** When set, scroll this directory's row into view (it was just revealed by
+     *  "Go to Folder in Library"). */
+    scrollToPath: String? = null,
     onAddLocation: () -> Unit = {},
     /** Called when the user confirms removal of a library location. */
     onRemoveLocation: ((LibraryLocation) -> Unit)? = null,
@@ -90,6 +94,19 @@ fun LibraryPanel(
     // Top-level rows look up their LibraryLocation here for the rescan/remove
     // affordances and the full-path sublabel. Subdirectory rows don't need it.
     val locationByPath = remember(locations) { locations.associateBy { it.path } }
+
+    // Scroll the location tree to a row revealed by "Go to Folder in Library".
+    val libraryListState = rememberLazyListState()
+    LaunchedEffect(scrollToPath) {
+        val target = scrollToPath ?: return@LaunchedEffect
+        val idx = rows.indexOfFirst { it.path == target }
+        if (idx >= 0) {
+            // Leading items in the LazyColumn before the rows block: the
+            // "All Videos" entry, plus a divider when there are any rows.
+            val leading = 1 + if (rows.isNotEmpty()) 1 else 0
+            libraryListState.animateScrollToItem((leading + idx).coerceAtLeast(0))
+        }
+    }
 
     Column(
         modifier = modifier
@@ -141,7 +158,7 @@ fun LibraryPanel(
             }
         }
 
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(state = libraryListState, modifier = Modifier.fillMaxSize()) {
             // "All videos" entry — clears both location and collection filters
             item {
                 LocationRow(

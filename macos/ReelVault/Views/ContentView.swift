@@ -914,6 +914,7 @@ struct ContentView: View {
                         }
                     },
                     onToggleExpand: { gridViewModel.toggleExpand($0) },
+                    scrollToPath: gridViewModel.pendingLibraryScroll,
                     onAddLibrary: { showAddLibrarySheet = true },
                     onRemoveLocation: { locationToRemove = $0 },
                     onRescan: { loc in gridViewModel.rescanLibrary(path: loc.path) },
