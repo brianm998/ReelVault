@@ -2014,6 +2014,33 @@ impl Database {
                 }
                 continue;
             }
+            if key == "has_audio" {
+                // Presence of an audio track, derived from codec_audio. The
+                // client encodes the choice in the value ("yes" / "no"); the
+                // negate marker, if ever set, flips it. A LEFT-joined NULL (no
+                // metadata row) counts as "no audio".
+                let want_audio = (value != "no") ^ negate;
+                if want_audio {
+                    sql.push_str(" AND m.codec_audio IS NOT NULL AND m.codec_audio != ''");
+                } else {
+                    sql.push_str(" AND (m.codec_audio IS NULL OR m.codec_audio = '')");
+                }
+                continue;
+            }
+            if key == "orientation" {
+                // Portrait = taller than wide; landscape = at least as wide as
+                // tall (square counts as landscape). Videos with no real
+                // dimensions are excluded from both buckets.
+                let want_portrait = (value == "portrait") ^ negate;
+                if want_portrait {
+                    sql.push_str(" AND COALESCE(m.height, 0) > COALESCE(m.width, 0)");
+                } else {
+                    sql.push_str(
+                        " AND COALESCE(m.width, 0) > 0 AND COALESCE(m.width, 0) >= COALESCE(m.height, 0)",
+                    );
+                }
+                continue;
+            }
             if let Some(mk) = metadata_keys::lookup(key) {
                 if let Some(pred) = mk.predicate_sql() {
                     // Build (pred OR pred OR …) over the values that parse for

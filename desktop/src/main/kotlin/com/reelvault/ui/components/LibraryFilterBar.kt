@@ -78,6 +78,7 @@ import com.reelvault.data.models.FacetColumn
 import com.reelvault.data.models.LibraryFilterMode
 import com.reelvault.data.models.MetadataColumn
 import com.reelvault.data.models.MetadataKeyInfo
+import com.reelvault.data.models.OrientationFilterState
 import com.reelvault.ui.theme.ReelVaultSpacing
 import com.reelvault.viewmodel.GridViewModel
 import java.awt.Cursor
@@ -398,6 +399,8 @@ private fun LibraryAttributeEditor(viewModel: GridViewModel, hideLocation: Boole
     val hasKeywords by viewModel.filterHasKeywords.collectAsState()
     val hasProxies by viewModel.filterHasProxies.collectAsState()
     val fullResolution by viewModel.filterFullResolution.collectAsState()
+    val hasAudio by viewModel.filterHasAudio.collectAsState()
+    val orientation by viewModel.filterOrientation.collectAsState()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -423,6 +426,10 @@ private fun LibraryAttributeEditor(viewModel: GridViewModel, hideLocation: Boole
         AttributeDropdown("Full Res", fullResolution, "Filter by whether a video is full resolution") {
             viewModel.setFullResolutionFilter(it)
         }
+        AttributeDropdown("Audio", hasAudio, "Filter by whether a video has an audio track") {
+            viewModel.setHasAudioFilter(it)
+        }
+        OrientationDropdown(orientation) { viewModel.setOrientationFilter(it) }
         Text("Rating", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         MinRatingStarPicker(minRating) { viewModel.setMinRatingFilter(it) }
         Text("Color", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -470,6 +477,57 @@ private fun AttributeDropdown(
                 }
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     AttributeFilterState.values().forEach { value ->
+                        DropdownMenuItem(
+                            text = { Text(value.name) },
+                            onClick = {
+                                onChange(value)
+                                expanded = false
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Orientation selector — Any / Portrait / Landscape. Mirrors [AttributeDropdown]
+ *  but over [OrientationFilterState] (which isn't a yes/no presence toggle). */
+@Composable
+private fun OrientationDropdown(
+    state: OrientationFilterState,
+    onChange: (OrientationFilterState) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(ReelVaultSpacing.XSmall),
+    ) {
+        Text("Orientation", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Tooltip(text = "Filter by video orientation — portrait, landscape, or any") {
+            Box {
+                Surface(shape = RoundedCornerShape(6.dp), color = MaterialTheme.colorScheme.surface) {
+                    Row(
+                        modifier = Modifier
+                            .clickable { expanded = true }
+                            .padding(start = ReelVaultSpacing.Small, top = 2.dp, end = 2.dp, bottom = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = state.name,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    OrientationFilterState.values().forEach { value ->
                         DropdownMenuItem(
                             text = { Text(value.name) },
                             onClick = {

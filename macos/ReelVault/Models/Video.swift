@@ -106,6 +106,13 @@ struct VideoSummary: Identifiable, Hashable {
     var hasProxies: Bool { proxyCount > 0 }
     var isProxy: Bool { !proxyOf.isEmpty }
     var hasLocation: Bool { abs(gpsLatitude) > 1e-6 || abs(gpsLongitude) > 1e-6 }
+    /// True when the file carries an audio track. Drives the card's audio badge
+    /// and the "has audio" attribute filter.
+    var hasAudio: Bool { !codecAudio.isEmpty }
+    /// Orientation buckets for the orientation attribute filter. Square
+    /// (width == height) counts as landscape; unknown dimensions are neither.
+    var isPortrait: Bool { height > width }
+    var isLandscape: Bool { width > 0 && width >= height }
     /// Path to open on double-click — preferred member if in a group, else this video.
     var openPath: String { groupPreferredPath.isEmpty ? path : groupPreferredPath }
 
@@ -398,6 +405,8 @@ struct SmartCollectionFilters {
     var hasKeywords: AttributeFilterState = .any
     var hasProxies: AttributeFilterState = .any
     var fullResolution: AttributeFilterState = .any
+    var hasAudio: AttributeFilterState = .any
+    var orientation: OrientationFilterState = .any
 
     /// True when a map-proximity constraint is active.
     var hasGeo: Bool { geoRadiusKm > 0.0 }
@@ -411,7 +420,7 @@ struct SmartCollectionFilters {
         let colsJson = columns.map { esc(($0.negate ? "!" : "") + $0.key + "=" + $0.values.joined(separator: metadataValueSeparator)) }.joined(separator: ",")
         let tagsJson = tagIds.map { esc($0) }.joined(separator: ",")
         let locJson = locationPaths.map { esc($0) }.joined(separator: ",")
-        let attrs = #","locationPaths":[\#(locJson)],"hasLocation":\#(esc(hasLocation.rawValue)),"hasKeywords":\#(esc(hasKeywords.rawValue)),"hasProxies":\#(esc(hasProxies.rawValue)),"fullResolution":\#(esc(fullResolution.rawValue))"#
+        let attrs = #","locationPaths":[\#(locJson)],"hasLocation":\#(esc(hasLocation.rawValue)),"hasKeywords":\#(esc(hasKeywords.rawValue)),"hasProxies":\#(esc(hasProxies.rawValue)),"fullResolution":\#(esc(fullResolution.rawValue)),"hasAudio":\#(esc(hasAudio.rawValue)),"orientation":\#(esc(orientation.rawValue))"#
         return #"{"columns":[\#(colsJson)],"minRating":\#(minRating),"colorLabel":\#(esc(colorLabel)),"searchQuery":\#(esc(searchQuery)),"tagIds":[\#(tagsJson)],"geoLat":\#(geoLat),"geoLon":\#(geoLon),"geoRadiusKm":\#(geoRadiusKm)\#(attrs)}"#
     }
 
@@ -499,6 +508,9 @@ struct SmartCollectionFilters {
         func attr(_ key: String) -> AttributeFilterState {
             AttributeFilterState(rawValue: strVal(key)) ?? .any
         }
+        func orient(_ key: String) -> OrientationFilterState {
+            OrientationFilterState(rawValue: strVal(key)) ?? .any
+        }
         return SmartCollectionFilters(
             columns: columns,
             minRating: intVal("minRating"),
@@ -512,7 +524,9 @@ struct SmartCollectionFilters {
             hasLocation: attr("hasLocation"),
             hasKeywords: attr("hasKeywords"),
             hasProxies: attr("hasProxies"),
-            fullResolution: attr("fullResolution")
+            fullResolution: attr("fullResolution"),
+            hasAudio: attr("hasAudio"),
+            orientation: orient("orientation")
         )
     }
 }
@@ -1043,6 +1057,23 @@ enum AttributeFilterState: String, CaseIterable, Identifiable, Hashable {
         case .any: return "Any"
         case .yes: return "Yes"
         case .no:  return "No"
+        }
+    }
+}
+
+/// Tri-state video-orientation filter for the Library Filter's "attribute"
+/// mode. `any` applies no constraint; `portrait` keeps videos taller than wide;
+/// `landscape` keeps those at least as wide as tall (square counts as
+/// landscape). Sent to the daemon as an "orientation" metadata filter (value
+/// "portrait" / "landscape"), so it needs no dedicated proto field.
+enum OrientationFilterState: String, CaseIterable, Identifiable, Hashable {
+    case any, portrait, landscape
+    var id: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .any:       return "Any"
+        case .portrait:  return "Portrait"
+        case .landscape: return "Landscape"
         }
     }
 }

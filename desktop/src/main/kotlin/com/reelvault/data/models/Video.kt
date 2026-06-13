@@ -92,6 +92,13 @@ data class VideoSummary(
     val hasProxies: Boolean get() = proxyCount > 0
     val isProxy: Boolean get() = proxyOf.isNotEmpty()
     val hasLocation: Boolean get() = gpsLatitude != 0.0 || gpsLongitude != 0.0
+    /** True when the file carries an audio track. Drives the card's audio
+     *  badge and the "has audio" attribute filter. */
+    val hasAudio: Boolean get() = codecAudio.isNotEmpty()
+    /** Orientation buckets for the orientation attribute filter. Square
+     *  (width == height) counts as landscape; unknown dimensions are neither. */
+    val isPortrait: Boolean get() = height > width
+    val isLandscape: Boolean get() = width > 0 && width >= height
     /// Path that should be opened when user double-clicks; falls back to own path
     val openPath: String get() = if (groupPreferredPath.isNotEmpty()) groupPreferredPath else path
 
@@ -269,6 +276,20 @@ private fun attrFromToken(s: String): AttributeFilterState = when (s) {
     else -> AttributeFilterState.Any
 }
 
+/** Stable lowercase tokens for the orientation filter in smart-collection JSON,
+ *  kept identical across clients (macOS uses the same strings). */
+private fun OrientationFilterState.toToken(): String = when (this) {
+    OrientationFilterState.Any -> "any"
+    OrientationFilterState.Portrait -> "portrait"
+    OrientationFilterState.Landscape -> "landscape"
+}
+
+private fun orientationFromToken(s: String): OrientationFilterState = when (s) {
+    "portrait" -> OrientationFilterState.Portrait
+    "landscape" -> OrientationFilterState.Landscape
+    else -> OrientationFilterState.Any
+}
+
 data class SmartCollectionFilters(
     /** Arbitrary metadata-column constraints (replaces the old fixed
      *  camera/lens/codec/year scalars). The "location" virtual key is never
@@ -296,6 +317,8 @@ data class SmartCollectionFilters(
     val hasKeywords: AttributeFilterState = AttributeFilterState.Any,
     val hasProxies: AttributeFilterState = AttributeFilterState.Any,
     val fullResolution: AttributeFilterState = AttributeFilterState.Any,
+    val hasAudio: AttributeFilterState = AttributeFilterState.Any,
+    val orientation: OrientationFilterState = OrientationFilterState.Any,
 ) {
     /** True when a map-proximity constraint is active. */
     val hasGeo: Boolean get() = geoRadiusKm > 0.0
@@ -326,6 +349,8 @@ data class SmartCollectionFilters(
         append(",\"hasKeywords\":${hasKeywords.toToken().jsonStr()}")
         append(",\"hasProxies\":${hasProxies.toToken().jsonStr()}")
         append(",\"fullResolution\":${fullResolution.toToken().jsonStr()}")
+        append(",\"hasAudio\":${hasAudio.toToken().jsonStr()}")
+        append(",\"orientation\":${orientation.toToken().jsonStr()}")
         append("}")
     }
 
@@ -379,6 +404,8 @@ data class SmartCollectionFilters(
                 hasKeywords = attrFromToken(str("hasKeywords")),
                 hasProxies = attrFromToken(str("hasProxies")),
                 fullResolution = attrFromToken(str("fullResolution")),
+                hasAudio = attrFromToken(str("hasAudio")),
+                orientation = orientationFromToken(str("orientation")),
             )
         }
 
@@ -832,6 +859,15 @@ enum class AttributeFilterState { Any, Yes, No;
 }
 
 /**
+ * Tri-state video-orientation filter for the Library Filter's "attribute" mode.
+ * [Any] applies no constraint; [Portrait] keeps videos taller than wide;
+ * [Landscape] keeps those at least as wide as tall (square counts as
+ * landscape). Sent to the daemon as an "orientation" metadata filter (value
+ * "portrait" / "landscape"), so it needs no dedicated proto field.
+ */
+enum class OrientationFilterState { Any, Portrait, Landscape }
+
+/**
  * One column in the Library Filter's "metadata" mode. [key] is a canonical
  * metadata token (see the core's metadata_keys registry); "" means "not chosen
  * yet" (a placeholder that prompts the key picker). [values] are the selected
@@ -874,6 +910,30 @@ const val LOCATION_METADATA_KEY = "location"
  *  several selected tokens joined by [METADATA_VALUE_SEPARATOR]; the core splits
  *  on it and OR-matches the parts. */
 data class MetadataFilter(val key: String, val value: String)
+
+/** The wire metadata filters that encode the has-audio and orientation attribute
+ *  choices. Unlike the four older attribute filters (location / keywords /
+ *  proxies / full-res) these have no dedicated proto field — they ride in
+ *  [MetadataFilter]s under the special keys "has_audio" and "orientation", which
+ *  the daemon's `build_filter_clauses` recognises (matching codec_audio and
+ *  width/height respectively). Appended to the column-derived filters in every
+ *  ListVideos request path so both the grid and smart-collection counts honour
+ *  them. */
+fun derivedAttributeMetadataFilters(
+    hasAudio: AttributeFilterState,
+    orientation: OrientationFilterState,
+): List<MetadataFilter> = buildList {
+    when (hasAudio) {
+        AttributeFilterState.Yes -> add(MetadataFilter("has_audio", "yes"))
+        AttributeFilterState.No -> add(MetadataFilter("has_audio", "no"))
+        AttributeFilterState.Any -> {}
+    }
+    when (orientation) {
+        OrientationFilterState.Portrait -> add(MetadataFilter("orientation", "portrait"))
+        OrientationFilterState.Landscape -> add(MetadataFilter("orientation", "landscape"))
+        OrientationFilterState.Any -> {}
+    }
+}
 
 /** Separator joining a metadata column's multiple selected facet tokens into a
  *  single [MetadataFilter.value] over the wire. ASCII Unit Separator (0x1F),

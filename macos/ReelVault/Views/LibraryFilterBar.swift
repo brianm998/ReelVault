@@ -254,6 +254,14 @@ private struct LibraryFilterAttributeEditor: View {
                     help: "Filter by whether a video is full resolution",
                     state: Binding(get: { vm.filterFullResolution }, set: { vm.setFullResolutionFilter($0) })
                 )
+                AttributeTriState(
+                    label: "Audio",
+                    help: "Filter by whether a video has an audio track",
+                    state: Binding(get: { vm.filterHasAudio }, set: { vm.setHasAudioFilter($0) })
+                )
+                OrientationTriState(
+                    state: Binding(get: { vm.filterOrientation }, set: { vm.setOrientationFilter($0) })
+                )
                 HStack(spacing: 6) {
                     Text("Rating").font(.system(size: 11)).foregroundColor(.secondary)
                     RatingPickerRow(minRating: vm.filterMinRating) { vm.setMinRatingFilter($0) }
@@ -292,6 +300,26 @@ private struct AttributeTriState: View {
             .labelsHidden()
             .fixedSize()
             .help(help)
+        }
+    }
+}
+
+/// Orientation selector — Any / Portrait / Landscape. Mirrors `AttributeTriState`
+/// but over `OrientationFilterState` (which isn't a yes/no presence toggle).
+private struct OrientationTriState: View {
+    @Binding var state: OrientationFilterState
+    var body: some View {
+        HStack(spacing: 6) {
+            Text("Orientation").font(.system(size: 11)).foregroundColor(.secondary)
+            Picker("", selection: $state) {
+                ForEach(OrientationFilterState.allCases) { s in
+                    Text(s.displayName).tag(s)
+                }
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+            .fixedSize()
+            .help("Filter by video orientation — portrait, landscape, or any")
         }
     }
 }

@@ -98,6 +98,8 @@ sealed interface SmartCriterion {
     data object HasKeywords : SmartCriterion
     data object HasProxies : SmartCriterion
     data object FullResolution : SmartCriterion
+    data object HasAudio : SmartCriterion
+    data object Orientation : SmartCriterion
 }
 
 /** One human-readable rule of a smart collection, plus the [SmartCriterion] it
@@ -269,6 +271,10 @@ class GridViewModel(
     val filterHasProxies: StateFlow<com.reelvault.data.models.AttributeFilterState> = _filterHasProxies.asStateFlow()
     private val _filterFullResolution = MutableStateFlow(com.reelvault.data.models.AttributeFilterState.Any)
     val filterFullResolution: StateFlow<com.reelvault.data.models.AttributeFilterState> = _filterFullResolution.asStateFlow()
+    private val _filterHasAudio = MutableStateFlow(com.reelvault.data.models.AttributeFilterState.Any)
+    val filterHasAudio: StateFlow<com.reelvault.data.models.AttributeFilterState> = _filterHasAudio.asStateFlow()
+    private val _filterOrientation = MutableStateFlow(com.reelvault.data.models.OrientationFilterState.Any)
+    val filterOrientation: StateFlow<com.reelvault.data.models.OrientationFilterState> = _filterOrientation.asStateFlow()
 
     // Lightroom-style top-of-card slot configuration. Four entries, each a
     // GridStatKey.raw value. Defaults until `loadGridSettings` answers.
@@ -733,6 +739,18 @@ class GridViewModel(
             com.reelvault.data.models.AttributeFilterState.No ->
                 if (s.fullResolution == com.reelvault.data.models.FullResolutionStatus.Full) return false
             com.reelvault.data.models.AttributeFilterState.Any -> {}
+        }
+        when (_filterHasAudio.value) {
+            com.reelvault.data.models.AttributeFilterState.Yes -> if (!s.hasAudio) return false
+            com.reelvault.data.models.AttributeFilterState.No -> if (s.hasAudio) return false
+            com.reelvault.data.models.AttributeFilterState.Any -> {}
+        }
+        // Mirror the daemon's orientation SQL (db.rs build_filter_clauses):
+        // portrait ⇔ height > width; landscape ⇔ has real dims and width ≥ height.
+        when (_filterOrientation.value) {
+            com.reelvault.data.models.OrientationFilterState.Portrait -> if (!s.isPortrait) return false
+            com.reelvault.data.models.OrientationFilterState.Landscape -> if (!s.isLandscape) return false
+            com.reelvault.data.models.OrientationFilterState.Any -> {}
         }
         if (_filterMinRating.value > 0 && s.rating < _filterMinRating.value) return false
         if (_filterColorLabel.value.isNotEmpty() && s.colorLabel != _filterColorLabel.value) return false
@@ -1448,6 +1466,18 @@ class GridViewModel(
         reloadForFilterChange()
     }
 
+    fun setHasAudioFilter(state: com.reelvault.data.models.AttributeFilterState) {
+        if (_filterHasAudio.value == state) return
+        _filterHasAudio.value = state
+        reloadForFilterChange()
+    }
+
+    fun setOrientationFilter(state: com.reelvault.data.models.OrientationFilterState) {
+        if (_filterOrientation.value == state) return
+        _filterOrientation.value = state
+        reloadForFilterChange()
+    }
+
     // --- Library Filter: mode + metadata columns ---
 
     /** Switch which Library Filter editor is visible. Clear is a momentary
@@ -1480,7 +1510,12 @@ class GridViewModel(
                 // "is not" columns prefix the value so the daemon inverts the match.
                 val wire = if (it.negate) com.reelvault.data.models.METADATA_NEGATE_PREFIX + value else value
                 com.reelvault.data.models.MetadataFilter(it.key, wire)
-            }
+            } +
+            // The has-audio / orientation attribute filters have no proto field;
+            // they ride here as "has_audio" / "orientation" metadata filters.
+            com.reelvault.data.models.derivedAttributeMetadataFilters(
+                _filterHasAudio.value, _filterOrientation.value,
+            )
 
     /** Handle a click on facet [token] in metadata column [index]. [token] ==
      *  "" is the "All" row (clears the column). [shift] / [toggle] carry the
@@ -1586,6 +1621,9 @@ class GridViewModel(
         if (_filterHasKeywords.value != anyAttr) { _filterHasKeywords.value = anyAttr; changed = true }
         if (_filterHasProxies.value != anyAttr) { _filterHasProxies.value = anyAttr; changed = true }
         if (_filterFullResolution.value != anyAttr) { _filterFullResolution.value = anyAttr; changed = true }
+        if (_filterHasAudio.value != anyAttr) { _filterHasAudio.value = anyAttr; changed = true }
+        val anyOrientation = com.reelvault.data.models.OrientationFilterState.Any
+        if (_filterOrientation.value != anyOrientation) { _filterOrientation.value = anyOrientation; changed = true }
         if (_metadataColumns.value.any { it.values.isNotEmpty() }) {
             _metadataColumns.value = _metadataColumns.value.map { it.copy(values = emptySet(), anchor = "") }
             changed = true
@@ -2345,6 +2383,8 @@ class GridViewModel(
         val hasKeywords: com.reelvault.data.models.AttributeFilterState,
         val hasProxies: com.reelvault.data.models.AttributeFilterState,
         val fullResolution: com.reelvault.data.models.AttributeFilterState,
+        val hasAudio: com.reelvault.data.models.AttributeFilterState,
+        val orientation: com.reelvault.data.models.OrientationFilterState,
     )
     private var preSmartFilterSnapshot: FilterSnapshot? = null
 
@@ -2373,6 +2413,8 @@ class GridViewModel(
             _filterHasKeywords.value = snap.hasKeywords
             _filterHasProxies.value = snap.hasProxies
             _filterFullResolution.value = snap.fullResolution
+            _filterHasAudio.value = snap.hasAudio
+            _filterOrientation.value = snap.orientation
             LibraryFilterPrefs.saveColumns(_metadataColumns.value)
         } else {
             _filterMinRating.value = 0
@@ -2389,6 +2431,8 @@ class GridViewModel(
             _filterHasKeywords.value = anyAttr
             _filterHasProxies.value = anyAttr
             _filterFullResolution.value = anyAttr
+            _filterHasAudio.value = anyAttr
+            _filterOrientation.value = com.reelvault.data.models.OrientationFilterState.Any
             if (_metadataColumns.value.any { it.values.isNotEmpty() }) {
                 _metadataColumns.value = _metadataColumns.value.map { it.copy(values = emptySet(), anchor = "") }
                 LibraryFilterPrefs.saveColumns(_metadataColumns.value)
@@ -2424,6 +2468,8 @@ class GridViewModel(
                 hasKeywords = _filterHasKeywords.value,
                 hasProxies = _filterHasProxies.value,
                 fullResolution = _filterFullResolution.value,
+                hasAudio = _filterHasAudio.value,
+                orientation = _filterOrientation.value,
             )
             // Smart collection: apply its saved filters to the individual filter
             // fields. The grid is driven by the filters, not by collection_id.
@@ -2493,6 +2539,14 @@ class GridViewModel(
         attrValue(f.hasKeywords)?.let { out += SmartCriterionRow("Has keywords", it, SmartCriterion.HasKeywords) }
         attrValue(f.hasProxies)?.let { out += SmartCriterionRow("Has proxies", it, SmartCriterion.HasProxies) }
         attrValue(f.fullResolution)?.let { out += SmartCriterionRow("Full resolution", it, SmartCriterion.FullResolution) }
+        attrValue(f.hasAudio)?.let { out += SmartCriterionRow("Has audio", it, SmartCriterion.HasAudio) }
+        when (f.orientation) {
+            com.reelvault.data.models.OrientationFilterState.Portrait ->
+                out += SmartCriterionRow("Orientation", "Portrait", SmartCriterion.Orientation)
+            com.reelvault.data.models.OrientationFilterState.Landscape ->
+                out += SmartCriterionRow("Orientation", "Landscape", SmartCriterion.Orientation)
+            com.reelvault.data.models.OrientationFilterState.Any -> {}
+        }
         return out
     }
 
@@ -2531,6 +2585,8 @@ class GridViewModel(
             _filterHasKeywords.value != anyAttr ||
             _filterHasProxies.value != anyAttr ||
             _filterFullResolution.value != anyAttr ||
+            _filterHasAudio.value != anyAttr ||
+            _filterOrientation.value != com.reelvault.data.models.OrientationFilterState.Any ||
             _filterTagId.value.isNotEmpty() ||
             _filterLocation.value != null ||
             _metadataColumns.value.any { it.values.isNotEmpty() }
@@ -2579,7 +2635,10 @@ class GridViewModel(
                                     it.key,
                                     it.values.joinToString(com.reelvault.data.models.METADATA_VALUE_SEPARATOR),
                                 )
-                            },
+                            } +
+                            // has-audio / orientation ride in the metadata filters,
+                            // same as the live grid (no dedicated proto field).
+                            com.reelvault.data.models.derivedAttributeMetadataFilters(f.hasAudio, f.orientation),
                         searchQuery = f.searchQuery,
                         hasLocation = f.hasLocation,
                         hasKeywords = f.hasKeywords,
@@ -2676,6 +2735,8 @@ class GridViewModel(
             hasKeywords = _filterHasKeywords.value,
             hasProxies = _filterHasProxies.value,
             fullResolution = _filterFullResolution.value,
+            hasAudio = _filterHasAudio.value,
+            orientation = _filterOrientation.value,
         )
     }
 
@@ -2698,7 +2759,8 @@ class GridViewModel(
             .toString()
         return "$cols|${f.minRating}|${f.colorLabel}|${f.searchQuery}|" +
             "${f.tagIds.sorted()}|${f.geoLat}|${f.geoLon}|${f.geoRadiusKm}|" +
-            "${f.locationPaths.sorted()}|${f.hasLocation}|${f.hasKeywords}|${f.hasProxies}|${f.fullResolution}"
+            "${f.locationPaths.sorted()}|${f.hasLocation}|${f.hasKeywords}|${f.hasProxies}|${f.fullResolution}|" +
+            "${f.hasAudio}|${f.orientation}"
     }
 
     /** Recompute whether the live filter has diverged from the active smart
@@ -2768,6 +2830,8 @@ class GridViewModel(
         _filterHasKeywords.value = f.hasKeywords
         _filterHasProxies.value = f.hasProxies
         _filterFullResolution.value = f.fullResolution
+        _filterHasAudio.value = f.hasAudio
+        _filterOrientation.value = f.orientation
         // Reveal whichever editor holds the collection's filters so the bar isn't
         // stuck on "Clear" (which hides everything).
         _libraryFilterMode.value = smartFilterMode(f)
@@ -2782,7 +2846,9 @@ class GridViewModel(
         return when {
             f.columns.isNotEmpty() -> com.reelvault.data.models.LibraryFilterMode.Metadata
             f.hasLocation != anyAttr || f.hasKeywords != anyAttr ||
-                f.hasProxies != anyAttr || f.fullResolution != anyAttr ->
+                f.hasProxies != anyAttr || f.fullResolution != anyAttr ||
+                f.hasAudio != anyAttr ||
+                f.orientation != com.reelvault.data.models.OrientationFilterState.Any ->
                 com.reelvault.data.models.LibraryFilterMode.Attribute
             f.searchQuery.isNotEmpty() -> com.reelvault.data.models.LibraryFilterMode.Text
             else -> com.reelvault.data.models.LibraryFilterMode.Clear
@@ -2808,6 +2874,8 @@ class GridViewModel(
         _filterHasKeywords.value = anyAttr
         _filterHasProxies.value = anyAttr
         _filterFullResolution.value = anyAttr
+        _filterHasAudio.value = anyAttr
+        _filterOrientation.value = com.reelvault.data.models.OrientationFilterState.Any
         filterTags = emptyList()
         _filterTagId.value = ""
         locationPathFilter = ""
@@ -2841,6 +2909,8 @@ class GridViewModel(
             SmartCriterion.HasKeywords -> parsed.copy(hasKeywords = anyAttr)
             SmartCriterion.HasProxies -> parsed.copy(hasProxies = anyAttr)
             SmartCriterion.FullResolution -> parsed.copy(fullResolution = anyAttr)
+            SmartCriterion.HasAudio -> parsed.copy(hasAudio = anyAttr)
+            SmartCriterion.Orientation -> parsed.copy(orientation = com.reelvault.data.models.OrientationFilterState.Any)
         }
         val name = col.name
         val oldId = col.id

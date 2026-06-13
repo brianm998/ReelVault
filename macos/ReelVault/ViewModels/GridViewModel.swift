@@ -70,6 +70,8 @@ enum SmartCriterion: Equatable {
     case hasKeywords
     case hasProxies
     case fullResolution
+    case hasAudio
+    case orientation
 }
 
 /// One human-readable rule of a smart collection, plus the [SmartCriterion] it
@@ -170,6 +172,8 @@ class GridViewModel: ObservableObject {
     @Published var filterHasKeywords: AttributeFilterState = .any
     @Published var filterHasProxies: AttributeFilterState = .any
     @Published var filterFullResolution: AttributeFilterState = .any
+    @Published var filterHasAudio: AttributeFilterState = .any
+    @Published var filterOrientation: OrientationFilterState = .any
 
     // Lightroom-style top-of-card stat slots. Exactly four entries — empty
     // string means "blank slot". Defaults to a sensible set on first launch;
@@ -863,7 +867,8 @@ class GridViewModel: ObservableObject {
                         filterColorLabel: f.colorLabel,
                         metadataFilters: f.columns
                             .filter { !$0.values.isEmpty }
-                            .map { (key: $0.key, value: $0.values.joined(separator: metadataValueSeparator)) },
+                            .map { (key: $0.key, value: $0.values.joined(separator: metadataValueSeparator)) }
+                            + derivedAttributeMetadataFilters(hasAudio: f.hasAudio, orientation: f.orientation),
                         hasLocation: f.hasLocation,
                         hasKeywords: f.hasKeywords,
                         hasProxies: f.hasProxies,
@@ -905,6 +910,8 @@ class GridViewModel: ObservableObject {
         var hasKeywords: AttributeFilterState
         var hasProxies: AttributeFilterState
         var fullResolution: AttributeFilterState
+        var hasAudio: AttributeFilterState
+        var orientation: OrientationFilterState
     }
     private var preSmartFilterSnapshot: FilterSnapshot?
 
@@ -925,6 +932,8 @@ class GridViewModel: ObservableObject {
             filterHasKeywords = snap.hasKeywords
             filterHasProxies = snap.hasProxies
             filterFullResolution = snap.fullResolution
+            filterHasAudio = snap.hasAudio
+            filterOrientation = snap.orientation
             LibraryFilterPrefs.saveColumns(metadataColumns)
             return
         }
@@ -939,6 +948,8 @@ class GridViewModel: ObservableObject {
         filterHasKeywords = .any
         filterHasProxies = .any
         filterFullResolution = .any
+        filterHasAudio = .any
+        filterOrientation = .any
         for i in metadataColumns.indices where !metadataColumns[i].values.isEmpty {
             metadataColumns[i].values = []
             metadataColumns[i].anchor = ""
@@ -977,7 +988,9 @@ class GridViewModel: ObservableObject {
                 hasLocation: filterHasLocation,
                 hasKeywords: filterHasKeywords,
                 hasProxies: filterHasProxies,
-                fullResolution: filterFullResolution
+                fullResolution: filterFullResolution,
+                hasAudio: filterHasAudio,
+                orientation: filterOrientation
             )
             // Smart collection: apply its saved filters. Metadata columns map
             // onto the bar's columns; the rest stay as dedicated fields.
@@ -1057,7 +1070,9 @@ class GridViewModel: ObservableObject {
             hasLocation: filterHasLocation,
             hasKeywords: filterHasKeywords,
             hasProxies: filterHasProxies,
-            fullResolution: filterFullResolution
+            fullResolution: filterFullResolution,
+            hasAudio: filterHasAudio,
+            orientation: filterOrientation
         )
     }
 
@@ -1077,7 +1092,7 @@ class GridViewModel: ObservableObject {
             .map { "\($0.key)=\($0.values.sorted().joined(separator: ","))" }
             .sorted()
             .joined(separator: ";")
-        return "\(cols)|\(f.minRating)|\(f.colorLabel)|\(f.searchQuery)|\(f.tagIds.sorted())|\(f.geoLat)|\(f.geoLon)|\(f.geoRadiusKm)|\(f.locationPaths.sorted())|\(f.hasLocation.rawValue)|\(f.hasKeywords.rawValue)|\(f.hasProxies.rawValue)|\(f.fullResolution.rawValue)"
+        return "\(cols)|\(f.minRating)|\(f.colorLabel)|\(f.searchQuery)|\(f.tagIds.sorted())|\(f.geoLat)|\(f.geoLon)|\(f.geoRadiusKm)|\(f.locationPaths.sorted())|\(f.hasLocation.rawValue)|\(f.hasKeywords.rawValue)|\(f.hasProxies.rawValue)|\(f.fullResolution.rawValue)|\(f.hasAudio.rawValue)|\(f.orientation.rawValue)"
     }
 
     /// Recompute whether the live filter has diverged from the active smart
@@ -1144,6 +1159,8 @@ class GridViewModel: ObservableObject {
         filterHasKeywords = f.hasKeywords
         filterHasProxies = f.hasProxies
         filterFullResolution = f.fullResolution
+        filterHasAudio = f.hasAudio
+        filterOrientation = f.orientation
         // Reveal whichever editor holds the collection's filters so the bar isn't
         // stuck on "Clear" (which hides everything).
         libraryFilterMode = Self.smartFilterMode(f)
@@ -1153,7 +1170,8 @@ class GridViewModel: ObservableObject {
     /// filters: metadata columns, then attributes, then text, else Clear.
     private static func smartFilterMode(_ f: SmartCollectionFilters) -> LibraryFilterMode {
         if !f.columns.isEmpty { return .metadata }
-        if f.hasLocation != .any || f.hasKeywords != .any || f.hasProxies != .any || f.fullResolution != .any {
+        if f.hasLocation != .any || f.hasKeywords != .any || f.hasProxies != .any || f.fullResolution != .any
+            || f.hasAudio != .any || f.orientation != .any {
             return .attribute
         }
         if !f.searchQuery.isEmpty { return .text }
@@ -1178,6 +1196,8 @@ class GridViewModel: ObservableObject {
         filterHasKeywords = .any
         filterHasProxies = .any
         filterFullResolution = .any
+        filterHasAudio = .any
+        filterOrientation = .any
         filterTagId = ""
         selectedLocationPaths = []
         selectedLocationPath = ""
@@ -1208,6 +1228,8 @@ class GridViewModel: ObservableObject {
         case .hasKeywords: f.hasKeywords = .any
         case .hasProxies: f.hasProxies = .any
         case .fullResolution: f.fullResolution = .any
+        case .hasAudio: f.hasAudio = .any
+        case .orientation: f.orientation = .any
         }
         let name = col.name
         let oldId = col.id
@@ -1291,6 +1313,10 @@ class GridViewModel: ObservableObject {
         if let v = attrValue(f.hasKeywords) { out.append(SmartCriterionRow(label: "Has keywords", value: v, criterion: .hasKeywords)) }
         if let v = attrValue(f.hasProxies) { out.append(SmartCriterionRow(label: "Has proxies", value: v, criterion: .hasProxies)) }
         if let v = attrValue(f.fullResolution) { out.append(SmartCriterionRow(label: "Full resolution", value: v, criterion: .fullResolution)) }
+        if let v = attrValue(f.hasAudio) { out.append(SmartCriterionRow(label: "Has audio", value: v, criterion: .hasAudio)) }
+        if f.orientation != .any {
+            out.append(SmartCriterionRow(label: "Orientation", value: f.orientation.displayName, criterion: .orientation))
+        }
         return out
     }
 
@@ -1328,6 +1354,8 @@ class GridViewModel: ObservableObject {
             filterHasKeywords != .any ||
             filterHasProxies != .any ||
             filterFullResolution != .any ||
+            filterHasAudio != .any ||
+            filterOrientation != .any ||
             !filterTagId.isEmpty ||
             filterLocation != nil ||
             metadataColumns.contains { !$0.values.isEmpty }
@@ -1389,6 +1417,18 @@ class GridViewModel: ObservableObject {
         reloadForFilterChange()
     }
 
+    func setHasAudioFilter(_ state: AttributeFilterState) {
+        guard filterHasAudio != state else { return }
+        filterHasAudio = state
+        reloadForFilterChange()
+    }
+
+    func setOrientationFilter(_ state: OrientationFilterState) {
+        guard filterOrientation != state else { return }
+        filterOrientation = state
+        reloadForFilterChange()
+    }
+
     // MARK: - Library Filter: mode + metadata columns
 
     /// Switch which Library Filter editor is visible. The Clear button calls
@@ -1413,6 +1453,30 @@ class GridViewModel: ObservableObject {
                 // "is not" columns prefix the value so the daemon inverts the match.
                 return (key: col.key, value: col.negate ? metadataNegatePrefix + joined : joined)
             }
+            // has-audio / orientation have no proto field; they ride here as
+            // "has_audio" / "orientation" metadata filters (see the daemon's
+            // build_filter_clauses).
+            + derivedAttributeMetadataFilters(hasAudio: filterHasAudio, orientation: filterOrientation)
+    }
+
+    /// The wire metadata filters that encode the has-audio and orientation
+    /// attribute choices. Appended to the column-derived filters in every
+    /// ListVideos request path so the grid and smart-collection counts agree.
+    private func derivedAttributeMetadataFilters(
+        hasAudio: AttributeFilterState, orientation: OrientationFilterState
+    ) -> [(key: String, value: String)] {
+        var out: [(key: String, value: String)] = []
+        switch hasAudio {
+        case .yes: out.append((key: "has_audio", value: "yes"))
+        case .no:  out.append((key: "has_audio", value: "no"))
+        case .any: break
+        }
+        switch orientation {
+        case .portrait:  out.append((key: "orientation", value: "portrait"))
+        case .landscape: out.append((key: "orientation", value: "landscape"))
+        case .any: break
+        }
+        return out
     }
 
     /// Facet column matched to `metadataColumns[index]` by position (nil while
@@ -1520,6 +1584,8 @@ class GridViewModel: ObservableObject {
         if filterHasKeywords != .any { filterHasKeywords = .any; changed = true }
         if filterHasProxies != .any { filterHasProxies = .any; changed = true }
         if filterFullResolution != .any { filterFullResolution = .any; changed = true }
+        if filterHasAudio != .any { filterHasAudio = .any; changed = true }
+        if filterOrientation != .any { filterOrientation = .any; changed = true }
         for i in metadataColumns.indices where !metadataColumns[i].values.isEmpty {
             metadataColumns[i].values = []
             metadataColumns[i].anchor = ""
@@ -2850,6 +2916,18 @@ class GridViewModel: ObservableObject {
         switch filterFullResolution {
         case .yes: if s.fullResolution != .full { return false }
         case .no:  if s.fullResolution == .full { return false }
+        case .any: break
+        }
+        switch filterHasAudio {
+        case .yes: if !s.hasAudio { return false }
+        case .no:  if s.hasAudio  { return false }
+        case .any: break
+        }
+        // Mirror the daemon's orientation SQL (build_filter_clauses): portrait ⇔
+        // height > width; landscape ⇔ has real dims and width ≥ height.
+        switch filterOrientation {
+        case .portrait:  if !s.isPortrait  { return false }
+        case .landscape: if !s.isLandscape { return false }
         case .any: break
         }
         if filterMinRating > 0 && Int32(s.rating) < filterMinRating { return false }
