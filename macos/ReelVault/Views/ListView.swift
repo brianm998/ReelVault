@@ -599,6 +599,22 @@ struct VideoListRowView: View {
     /// itself is the same width — never wider than a grid card.
     private var cardWidth: CGFloat { thumbnailHeight }
 
+    /// Aspect ratio of the clip (w/h); 1 when dimensions are unknown.
+    private var listVideoAspect: CGFloat {
+        (video.width > 0 && video.height > 0)
+            ? CGFloat(video.width) / CGFloat(video.height) : 1
+    }
+    private var listIsPortrait: Bool { listVideoAspect < 1 }
+    /// Bottom inset for the bottom badges, measured from the thumbnail box's
+    /// bottom edge (the photo-area edge here — the video letterboxes inside an
+    /// 8 pt inset within the box, so the gap is that letterbox plus 8).
+    private var listBottomBadgeInset: CGFloat {
+        let available = max(0, min(cardWidth, thumbnailHeight) - 16)
+        let videoH = listVideoAspect >= 1 ? available / listVideoAspect : available
+        let gap = 8 + (available - videoH) / 2
+        return cardBottomBadgeInset(gap: gap, portrait: listIsPortrait)
+    }
+
     /// The image to display: a scrub frame when hovering + have scrub data,
     /// otherwise the static thumbnail. Mirrors `VideoCardView.displayedImage`.
     private var displayedImage: NSImage? {
@@ -1149,8 +1165,8 @@ struct VideoListRowView: View {
                 }
             }
 
-            // Bottom-left location badge — shown when the video has GPS
-            // coordinates. Tapping opens the global map focused on this video.
+            // Bottom-left location badge — one badge-width in from the box's
+            // left edge; bottom inset transitions with the thumbnail zoom.
             if video.hasLocation, let handler = onLocationClick {
                 VStack {
                     Spacer()
@@ -1162,7 +1178,7 @@ struct VideoListRowView: View {
                                 .font(.system(size: 9))
                                 // Light green (matching the full-resolution badge).
                                 .foregroundColor(Color(red: 0.51, green: 0.78, blue: 0.52))
-                                .padding(3)
+                                .frame(width: cardBadgeSize, height: cardBadgeSize)
                                 .background(Color.black.opacity(0.55))
                                 .clipShape(Circle())
                         }
@@ -1171,62 +1187,21 @@ struct VideoListRowView: View {
                         Spacer()
                     }
                 }
-                .padding(4)
+                .padding(.leading, cardBadgeSize)
+                .padding(.bottom, listBottomBadgeInset)
             }
 
-            // Bottom-right status badges — keyword / proxy / full-resolution,
-            // mirroring the grid card so list and grid cards read identically.
+            // Bottom-right status badges — a row in landscape; a 90°-CW-rotated
+            // column up the right side in portrait.
             VStack {
                 Spacer()
                 HStack {
                     Spacer()
-                    HStack(spacing: 4) {
-                        if !video.tags.isEmpty {
-                            Image(systemName: "tag.fill")
-                                .font(.system(size: 10))
-                                // Light blue marks "has keywords" at a glance.
-                                .foregroundColor(Color(red: 0.39, green: 0.71, blue: 0.96))
-                                .padding(3)
-                                .background(Color.black.opacity(0.55))
-                                .clipShape(Circle())
-                                .help("\(video.tags.count) keyword\(video.tags.count == 1 ? "" : "s")")
-                        }
-                        if video.hasProxies {
-                            Image(systemName: "rectangle.on.rectangle.angled")
-                                .font(.system(size: 10))
-                                .foregroundColor(.white)
-                                .padding(3)
-                                .background(Color.black.opacity(0.55))
-                                .clipShape(Circle())
-                                .help("\(video.proxyCount) proxy/proxies available for inline playback.")
-                        }
-                        // Full-resolution badge — only when the daemon's
-                        // classifier was sure either way; unspecified renders nothing.
-                        switch video.fullResolution {
-                        case .full:
-                            Image(systemName: "checkmark.seal.fill")
-                                .font(.system(size: 10))
-                                // Subtle green marks "full resolution" (matches the grid card).
-                                .foregroundColor(Color(red: 0.51, green: 0.78, blue: 0.52))
-                                .padding(3)
-                                .background(Color.black.opacity(0.55))
-                                .clipShape(Circle())
-                                .help("Full resolution — matches a known native sensor mode for \(video.cameraDisplayName.isEmpty ? "this camera" : video.cameraDisplayName).")
-                        case .notFull:
-                            Image(systemName: "crop")
-                                .font(.system(size: 10))
-                                .foregroundColor(.white)
-                                .padding(3)
-                                .background(Color.black.opacity(0.55))
-                                .clipShape(Circle())
-                                .help("Not full resolution — recorded dimensions don't match any native sensor mode for \(video.cameraDisplayName.isEmpty ? "this camera" : video.cameraDisplayName).")
-                        case .unspecified:
-                            EmptyView()
-                        }
-                    }
+                    CardStatusBadges(video: video, portrait: listIsPortrait)
                 }
             }
-            .padding(6)
+            .padding(.trailing, cardBadgeSize)
+            .padding(.bottom, listBottomBadgeInset)
         }
         .opacity(isStackChild ? 0.85 : 1.0)
     }
@@ -1282,6 +1257,21 @@ struct VideoListHorizontalCardView: View {
 
     private var video: VideoSummary { item.video }
     private var cardWidth: CGFloat { thumbnailHeight }
+
+    /// Aspect ratio of the clip (w/h); 1 when dimensions are unknown.
+    private var hVideoAspect: CGFloat {
+        (video.width > 0 && video.height > 0)
+            ? CGFloat(video.width) / CGFloat(video.height) : 1
+    }
+    private var hIsPortrait: Bool { hVideoAspect < 1 }
+    /// Bottom inset for the bottom badges, measured from the thumbnail box's
+    /// bottom edge (the video letterboxes inside an 8 pt inset within the box).
+    private var hBottomBadgeInset: CGFloat {
+        let available = max(0, min(cardWidth, thumbnailHeight) - 16)
+        let videoH = hVideoAspect >= 1 ? available / hVideoAspect : available
+        let gap = 8 + (available - videoH) / 2
+        return cardBottomBadgeInset(gap: gap, portrait: hIsPortrait)
+    }
 
     private var displayedImage: NSImage? {
         if let x = hoverX, cardWidth > 0, !scrubFrames.isEmpty {
@@ -1485,6 +1475,7 @@ struct VideoListHorizontalCardView: View {
                 .allowsHitTesting(false)
             }
 
+            // Bottom-left location badge.
             if video.hasLocation, let handler = onLocationClick {
                 VStack {
                     Spacer()
@@ -1494,7 +1485,7 @@ struct VideoListHorizontalCardView: View {
                                 .font(.system(size: 9))
                                 // Light green (matching the full-resolution badge).
                                 .foregroundColor(Color(red: 0.51, green: 0.78, blue: 0.52))
-                                .padding(3)
+                                .frame(width: cardBadgeSize, height: cardBadgeSize)
                                 .background(Color.black.opacity(0.55))
                                 .clipShape(Circle())
                         }
@@ -1503,45 +1494,21 @@ struct VideoListHorizontalCardView: View {
                         Spacer()
                     }
                 }
-                .padding(4)
+                .padding(.leading, cardBadgeSize)
+                .padding(.bottom, hBottomBadgeInset)
             }
 
-            // Bottom-right status icons — keyword / proxy / full-resolution.
-            // Mirrors the grid and collapsed-row cards so an expanded stack's
-            // member cards aren't bare.
+            // Bottom-right status badges — a row in landscape; a 90°-CW-rotated
+            // column up the right side in portrait.
             VStack {
                 Spacer()
-                HStack(spacing: 4) {
+                HStack {
                     Spacer()
-                    if !video.tags.isEmpty {
-                        Image(systemName: "tag.fill")
-                            .font(.system(size: 9)).foregroundColor(Color(red: 0.39, green: 0.71, blue: 0.96))
-                            .padding(3).background(Color.black.opacity(0.55)).clipShape(Circle())
-                            .help("\(video.tags.count) keyword\(video.tags.count == 1 ? "" : "s")")
-                    }
-                    if video.hasProxies {
-                        Image(systemName: "rectangle.on.rectangle.angled")
-                            .font(.system(size: 9)).foregroundColor(.white)
-                            .padding(3).background(Color.black.opacity(0.55)).clipShape(Circle())
-                            .help("\(video.proxyCount) proxy/proxies available for inline playback.")
-                    }
-                    switch video.fullResolution {
-                    case .full:
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.system(size: 9)).foregroundColor(Color(red: 0.51, green: 0.78, blue: 0.52))
-                            .padding(3).background(Color.black.opacity(0.55)).clipShape(Circle())
-                            .help("Full resolution.")
-                    case .notFull:
-                        Image(systemName: "crop")
-                            .font(.system(size: 9)).foregroundColor(.white)
-                            .padding(3).background(Color.black.opacity(0.55)).clipShape(Circle())
-                            .help("Not full resolution.")
-                    case .unspecified:
-                        EmptyView()
-                    }
+                    CardStatusBadges(video: video, portrait: hIsPortrait, iconSize: 9)
                 }
             }
-            .padding(4)
+            .padding(.trailing, cardBadgeSize)
+            .padding(.bottom, hBottomBadgeInset)
         }
         .onContinuousHover { phase in
             switch phase {

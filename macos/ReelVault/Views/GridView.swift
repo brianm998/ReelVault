@@ -628,6 +628,26 @@ struct VideoCardView: View {
     /// colour-label tint behind it room to read.
     private var photoPadding: CGFloat { 8 }
 
+    /// Aspect ratio of the clip (w/h); 1 when dimensions are unknown.
+    private var videoAspect: CGFloat {
+        (video.width > 0 && video.height > 0)
+            ? CGFloat(video.width) / CGFloat(video.height) : 1
+    }
+    /// Portrait clips (taller than wide) lay the status badges out as a
+    /// rotated column up the right side instead of a row along the bottom.
+    private var isPortraitVideo: Bool { videoAspect < 1 }
+    /// Bottom inset for the bottom badges, measured from the photo-area bottom.
+    /// `thumbnailWidth` is the (photoPadding-inset) thumbnail box the video
+    /// letterboxes inside, so the gap up to the video's bottom edge is the
+    /// bottom letterbox plus photoPadding. The badges themselves sit inside
+    /// that inset box, so callers subtract photoPadding when applying this.
+    private var bottomBadgeInset: CGFloat {
+        let available = max(0, thumbnailWidth)
+        let videoH = videoAspect >= 1 ? available / videoAspect : available
+        let gap = photoPadding + (available - videoH) / 2
+        return cardBottomBadgeInset(gap: gap, portrait: isPortraitVideo)
+    }
+
     /// Drag preview shown under the cursor while dragging out of ReelVault.
     /// Displays the card thumbnail (or a placeholder), the filename, and a
     /// count badge when multiple files are selected.
@@ -1525,9 +1545,12 @@ struct VideoCardView: View {
             // (The stack/group badge moved up to a photo-area overlay so it
             // can be centred in the top letterbox band — see `body`.)
 
-            // Bottom-left location badge — shown when the video has GPS
-            // coordinates embedded. Tapping opens the global map focused on
-            // this video's position.
+            // Bottom-left location badge — one badge-width in from the
+            // photo-area left edge; the bottom inset transitions from a
+            // badge-height of padding to centred-in-the-gap as the thumbnail
+            // shrinks. The badge sits inside the photoPadding-inset thumbnail
+            // box, so both insets subtract photoPadding to land on the
+            // photo-area edges.
             if video.hasLocation, let handler = onLocationClick {
                 VStack {
                     Spacer()
@@ -1539,7 +1562,7 @@ struct VideoCardView: View {
                                 .font(.system(size: 10))
                                 // Light green (matching the full-resolution badge).
                                 .foregroundColor(Color(red: 0.51, green: 0.78, blue: 0.52))
-                                .padding(3)
+                                .frame(width: cardBadgeSize, height: cardBadgeSize)
                                 .background(Color.black.opacity(0.55))
                                 .clipShape(Circle())
                         }
@@ -1548,78 +1571,22 @@ struct VideoCardView: View {
                         Spacer()
                     }
                 }
-                // Sit 6 pt above the photo-area's bottom edge — the negative
-                // bottom cancels the surrounding `photoPadding` inset so the
-                // badge isn't left floating high above the bottom band (matches
-                // the Compose card's BottomStart placement).
-                // Same 6 pt inset on the side and the bottom (was cancelling
-                // photoPadding to sit at the photo-area edge) so the bottom
-                // badges line up against the same margin as the stack badge.
-                .padding(6)
+                .padding(.leading, cardBadgeSize - photoPadding)
+                .padding(.bottom, bottomBadgeInset - photoPadding)
             }
 
-            // Bottom-right icon row — Lightroom-style. The old proxy / resolution /
-            // duration chips have been retired; users who want resolution
-            // or duration on the card put them in one of the four
-            // configurable top stat slots. This corner keeps the at-a-
-            // glance "has keywords" and "has proxies" indicators visible
-            // without crowding the thumbnail.
+            // Bottom-right status badges — a row in landscape; a 90°-CW-rotated
+            // column up the right side in portrait. One badge-width in from the
+            // photo-area right edge; bottom inset transitions with zoom.
             VStack {
                 Spacer()
                 HStack {
                     Spacer()
-                    HStack(spacing: 4) {
-                        if !video.tags.isEmpty {
-                            Image(systemName: "tag.fill")
-                                .font(.system(size: 10))
-                                // Light blue marks "has keywords" at a glance.
-                                .foregroundColor(Color(red: 0.39, green: 0.71, blue: 0.96))
-                                .padding(3)
-                                .background(Color.black.opacity(0.55))
-                                .clipShape(Circle())
-                                .help("\(video.tags.count) keyword\(video.tags.count == 1 ? "" : "s")")
-                        }
-                        if video.hasProxies {
-                            Image(systemName: "rectangle.on.rectangle.angled")
-                                .font(.system(size: 10))
-                                .foregroundColor(.white)
-                                .padding(3)
-                                .background(Color.black.opacity(0.55))
-                                .clipShape(Circle())
-                                .help("\(video.proxyCount) proxy/proxies available for inline playback.")
-                        }
-                        // Full-resolution badge — only renders when the
-                        // daemon's classifier was sure either way. Unspecified
-                        // (unknown camera or standard video format) ->
-                        // intentionally no badge.
-                        switch video.fullResolution {
-                        case .full:
-                            Image(systemName: "checkmark.seal.fill")
-                                .font(.system(size: 10))
-                                // Subtle green marks "full resolution" — distinct
-                                // from the neutral/white of the other card glyphs.
-                                .foregroundColor(Color(red: 0.51, green: 0.78, blue: 0.52))
-                                .padding(3)
-                                .background(Color.black.opacity(0.55))
-                                .clipShape(Circle())
-                                .help("Full resolution — matches a known native sensor mode for \(video.cameraDisplayName.isEmpty ? "this camera" : video.cameraDisplayName).")
-                        case .notFull:
-                            Image(systemName: "crop")
-                                .font(.system(size: 10))
-                                .foregroundColor(.white)
-                                .padding(3)
-                                .background(Color.black.opacity(0.55))
-                                .clipShape(Circle())
-                                .help("Not full resolution — recorded dimensions don't match any native sensor mode for \(video.cameraDisplayName.isEmpty ? "this camera" : video.cameraDisplayName).")
-                        case .unspecified:
-                            EmptyView()
-                        }
-                    }
+                    CardStatusBadges(video: video, portrait: isPortraitVideo)
                 }
             }
-            // See the location badge above — cancel the photoPadding inset so
-            // the icon row sits 6 pt off the photo-area bottom, not 14.
-            .padding(EdgeInsets(top: 6, leading: 6, bottom: 6 - photoPadding, trailing: 6))
+            .padding(.trailing, cardBadgeSize - photoPadding)
+            .padding(.bottom, bottomBadgeInset - photoPadding)
 
             // (The "Too large to play here" marker now sits in the
             // letterbox area below the video, positioned by a

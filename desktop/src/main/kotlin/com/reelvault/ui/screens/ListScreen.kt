@@ -44,8 +44,11 @@ import com.reelvault.LocalShiftPressed
 import com.reelvault.data.models.FullResolutionStatus
 import com.reelvault.data.models.VideoSummary
 import com.reelvault.ui.components.AdaptiveStatRow
+import com.reelvault.ui.components.CardBadgeSize
+import com.reelvault.ui.components.CardStatusBadges
 import com.reelvault.ui.components.ComposeVideoPlayer
 import com.reelvault.ui.components.Tooltip
+import com.reelvault.ui.components.cardBottomBadgeInset
 import com.reelvault.ui.components.VlcUnavailableOverlay
 import com.reelvault.ui.theme.ReelVaultSpacing
 import com.reelvault.util.FileDragSource
@@ -1068,16 +1071,24 @@ fun VideoListRow(
                 // Surface with the Layers icon + member count. Clicking it
                 // toggles the stack's expansion; the pointer-input consume
                 // pattern stops the same click from also selecting the row.
+                // Shared geometry for the badges: the thumbnail box IS the
+                // photo area; the video is letterboxed inside an 8 dp inset.
+                // Top and bottom letterboxes are symmetric, so one `cardGap` —
+                // photo-area edge to the nearest video edge — drives both the
+                // stack band at the top and the badge inset at the bottom.
+                val cardAspect = if (video.width > 0 && video.height > 0)
+                    video.width.toFloat() / video.height.toFloat() else 1f
+                val cardPortrait = cardAspect < 1f
+                val cardInner = (minOf(cardWidth, thumbnailHeight) - 16.dp).coerceAtLeast(0.dp)
+                val cardVideoH = if (cardAspect >= 1f) cardInner / cardAspect else cardInner
+                val cardGap = 8.dp + ((cardInner - cardVideoH) / 2f).coerceAtLeast(0.dp)
+                val cardBottomInset = cardBottomBadgeInset(cardGap, cardPortrait)
+
                 if (video.isInGroup) {
-                    // Centre the stack badge in the top letterbox gap above the
-                    // video — and use the same 6 dp side inset as the bottom
-                    // badges — so its position matches the grid card.
-                    val badgeAspect = if (video.width > 0 && video.height > 0)
-                        video.width.toFloat() / video.height.toFloat() else 1f
-                    val badgeInner = (minOf(cardWidth, thumbnailHeight) - 16.dp).coerceAtLeast(0.dp)
-                    val badgeVideoH = if (badgeAspect >= 1f) badgeInner / badgeAspect else badgeInner
-                    val badgeTopBand = ((badgeInner - badgeVideoH) / 2)
-                        .coerceAtLeast(ReelVaultSpacing.Large)
+                    // Centre the stack badge in the band between the photo-area
+                    // top and the video's top edge (clamp 20 dp) — matching the
+                    // macOS list card.
+                    val badgeTopBand = cardGap.coerceAtLeast(20.dp)
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopStart)
@@ -1145,7 +1156,7 @@ fun VideoListRow(
                         ),
                         modifier = Modifier
                             .align(Alignment.BottomStart)
-                            .padding(6.dp),
+                            .padding(start = CardBadgeSize, bottom = cardBottomInset),
                     ) {
                         Box(
                             modifier = Modifier
@@ -1175,98 +1186,17 @@ fun VideoListRow(
                     }
                 }
 
-                // Bottom-right status badges — keyword / proxy / full-resolution,
-                // mirroring the grid card so list and grid cards read identically.
-                Row(
+                // Bottom-right status badges — a row in landscape, a 90°-CW
+                // rotated column up the right side in portrait. Right inset of
+                // one badge width; bottom inset transitions with zoom.
+                CardStatusBadges(
+                    video = video,
+                    portrait = cardPortrait,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    if (video.tags.isNotEmpty()) {
-                        Tooltip(
-                            text = "${video.tags.size} keyword${if (video.tags.size == 1) "" else "s"}: ${video.tags.joinToString(", ")}"
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(18.dp)
-                                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Sell,
-                                    contentDescription = "${video.tags.size} keyword(s)",
-                                    modifier = Modifier.size(10.dp),
-                                    // Light blue marks "has keywords" at a glance.
-                                    tint = Color(0xFF64B5F6)
-                                )
-                            }
-                        }
-                    }
-                    if (video.hasProxies) {
-                        Tooltip(
-                            text = "${video.proxyCount} proxy/proxies available for inline playback"
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(18.dp)
-                                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.FilterNone,
-                                    contentDescription = "${video.proxyCount} proxy/proxies",
-                                    modifier = Modifier.size(10.dp),
-                                    tint = Color.White
-                                )
-                            }
-                        }
-                    }
-                    // Full-resolution badge — only when the daemon's classifier
-                    // was sure either way; Unspecified renders nothing.
-                    when (video.fullResolution) {
-                        FullResolutionStatus.Full -> {
-                            Tooltip(
-                                text = "Full resolution — matches a known native sensor mode for ${video.cameraDisplayName.ifEmpty { "this camera" }}"
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(18.dp)
-                                        .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Verified,
-                                        contentDescription = "Full resolution",
-                                        modifier = Modifier.size(10.dp),
-                                        // Subtle green marks "full resolution" (matches the grid card).
-                                        tint = Color(0xFF81C784)
-                                    )
-                                }
-                            }
-                        }
-                        FullResolutionStatus.NotFull -> {
-                            Tooltip(
-                                text = "Not full resolution — recorded dimensions don't match any native sensor mode for ${video.cameraDisplayName.ifEmpty { "this camera" }}"
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(18.dp)
-                                        .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Crop,
-                                        contentDescription = "Not full resolution",
-                                        modifier = Modifier.size(10.dp),
-                                        tint = Color.White
-                                    )
-                                }
-                            }
-                        }
-                        FullResolutionStatus.Unspecified -> {}
-                    }
-                }
+                        .padding(end = CardBadgeSize, bottom = cardBottomInset),
+                    iconSize = 10.dp,
+                )
 
                 // 1 dp black border tight around the video frame itself
                 // (matches the grid card). Last child of the thumbnail box so
@@ -1797,6 +1727,13 @@ private fun VideoListHorizontalCard(
                         .border(1.dp, Color.Black)
                 )
 
+                // Bottom-badge geometry — this card has no photoPadding inset,
+                // so the video letterboxes within the full box; the top and
+                // bottom letterboxes are symmetric.
+                val hPortrait = frameAspect < 1f
+                val hGap = ((frameInner - frameH) / 2f).coerceAtLeast(0.dp)
+                val hBottomInset = cardBottomBadgeInset(hGap, hPortrait)
+
                 // Status badges — mirror the grid / collapsed-row cards so an
                 // expanded stack's member cards aren't bare. Bottom-left
                 // location, bottom-right keyword / proxy / full-resolution.
@@ -1805,7 +1742,7 @@ private fun VideoListHorizontalCard(
                         text = "Recorded at %.4f, %.4f — click to show on map".format(
                             video.gpsLatitude, video.gpsLongitude
                         ),
-                        modifier = Modifier.align(Alignment.BottomStart).padding(6.dp),
+                        modifier = Modifier.align(Alignment.BottomStart).padding(start = CardBadgeSize, bottom = hBottomInset),
                     ) {
                         Box(
                             modifier = Modifier
@@ -1825,38 +1762,14 @@ private fun VideoListHorizontalCard(
                         }
                     }
                 }
-                Row(
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    if (video.tags.isNotEmpty()) {
-                        Tooltip(text = "${video.tags.size} keyword${if (video.tags.size == 1) "" else "s"}: ${video.tags.joinToString(", ")}") {
-                            Box(Modifier.size(18.dp).background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)), contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Sell, "${video.tags.size} keyword(s)", Modifier.size(10.dp), tint = Color(0xFF64B5F6))
-                            }
-                        }
-                    }
-                    if (video.hasProxies) {
-                        Tooltip(text = "${video.proxyCount} proxy/proxies available for inline playback") {
-                            Box(Modifier.size(18.dp).background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)), contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.FilterNone, "${video.proxyCount} proxy/proxies", Modifier.size(10.dp), tint = Color.White)
-                            }
-                        }
-                    }
-                    when (video.fullResolution) {
-                        FullResolutionStatus.Full -> Tooltip(text = "Full resolution — matches a known native sensor mode for ${video.cameraDisplayName.ifEmpty { "this camera" }}") {
-                            Box(Modifier.size(18.dp).background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)), contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Verified, "Full resolution", Modifier.size(10.dp), tint = Color(0xFF81C784))
-                            }
-                        }
-                        FullResolutionStatus.NotFull -> Tooltip(text = "Not full resolution — recorded dimensions don't match any native sensor mode for ${video.cameraDisplayName.ifEmpty { "this camera" }}") {
-                            Box(Modifier.size(18.dp).background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)), contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Crop, "Not full resolution", Modifier.size(10.dp), tint = Color.White)
-                            }
-                        }
-                        FullResolutionStatus.Unspecified -> {}
-                    }
-                }
+                CardStatusBadges(
+                    video = video,
+                    portrait = hPortrait,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = CardBadgeSize, bottom = hBottomInset),
+                    iconSize = 10.dp,
+                )
             }
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(bandDividerColor))
             // Rating band

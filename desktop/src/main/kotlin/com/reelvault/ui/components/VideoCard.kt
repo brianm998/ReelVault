@@ -687,226 +687,9 @@ fun VideoCard(
                 // float over the thumbnail are gone — those stats are now
                 // surfaced via the four configurable top-of-card slots.)
 
-                // Stack/group badge — shown on group representatives AND stack children
-                // Clicking the badge toggles expansion of the stack.
-                if (video.isInGroup) {
-                    val badgeIsChild = isStackChild
-                    val stackTip = when {
-                        isStackExpanded -> "Collapse this stack of ${video.groupSize} videos back to one card"
-                        isStackChild -> "Member of a stack of ${video.groupSize} variants"
-                        else -> "Expand this stack to see all ${video.groupSize} variants inline"
-                    }
-                    // Centre the badge vertically in the letterbox gap above
-                    // the video instead of letting it hug the separator above.
-                    // `thumbSize` is the (photoPadding-inset) thumbnail box the
-                    // video letterboxes inside. Clamp so a near-square clip with
-                    // a tiny gap still leaves room for the badge.
-                    val badgeAspect = if (video.width > 0 && video.height > 0)
-                        video.width.toFloat() / video.height.toFloat() else 1f
-                    val badgeAvailable = with(LocalDensity.current) {
-                        minOf(thumbSize.width, thumbSize.height).toDp()
-                    }
-                    val badgeVideoH = if (badgeAspect >= 1f) badgeAvailable / badgeAspect else badgeAvailable
-                    val badgeTopBand = ((badgeAvailable - badgeVideoH) / 2)
-                        .coerceAtLeast(ReelVaultSpacing.Large)
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .height(badgeTopBand)
-                            // Same 6 dp side inset the bottom-corner badges use,
-                            // so the stack indicator and the bottom badges line
-                            // up against the same margin.
-                            .padding(start = 6.dp),
-                        contentAlignment = Alignment.CenterStart,
-                    ) {
-                    com.reelvault.ui.components.Tooltip(text = stackTip) {
-                    Surface(
-                        modifier = Modifier
-                            // Consume pointer down so the parent card click handler doesn't fire.
-                            .pointerInput(onStackBadgeClick) {
-                                awaitEachGesture {
-                                    val down = awaitFirstDown(requireUnconsumed = false)
-                                    down.consume()
-                                    val up = waitForUpOrCancellation()
-                                    if (up != null) {
-                                        up.consume()
-                                        onStackBadgeClick()
-                                    }
-                                }
-                            },
-                        color = when {
-                            isStackExpanded -> MaterialTheme.colorScheme.primary
-                            badgeIsChild -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.85f)
-                            else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
-                        },
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(
-                                horizontal = ReelVaultSpacing.Small,
-                                vertical = 2.dp
-                            ),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Layers,
-                                contentDescription = if (isStackExpanded) "Collapse stack" else "Expand stack",
-                                modifier = Modifier.size(12.dp),
-                                tint = MaterialTheme.colorScheme.onPrimary
-                            )
-                            Spacer(modifier = Modifier.width(2.dp))
-                            // For expanded stacks, show "n / m" position. Otherwise just the count.
-                            Text(
-                                text = if (stackMemberCount > 0 && stackMemberPosition > 0) {
-                                    "$stackMemberPosition / $stackMemberCount"
-                                } else {
-                                    "${video.groupSize}"
-                                },
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        }
-                    }
-                    } // Tooltip
-                    } // top-band centring Box
-                }
-
-                // Bottom-right icon row — at-a-glance status (keyword, proxy).
-                // Lightroom-equivalent placement: small mono icons over the
-                // thumbnail's bottom-right corner.
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    if (video.tags.isNotEmpty()) {
-                        com.reelvault.ui.components.Tooltip(
-                            text = "${video.tags.size} keyword${if (video.tags.size == 1) "" else "s"}: ${video.tags.joinToString(", ")}"
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(18.dp)
-                                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Sell,
-                                    contentDescription = "${video.tags.size} keyword(s)",
-                                    modifier = Modifier.size(10.dp),
-                                    // Light blue marks "has keywords" at a glance.
-                                    tint = Color(0xFF64B5F6)
-                                )
-                            }
-                        }
-                    }
-                    if (video.hasProxies) {
-                        com.reelvault.ui.components.Tooltip(
-                            text = "${video.proxyCount} proxy/proxies available for inline playback"
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(18.dp)
-                                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.FilterNone,
-                                    contentDescription = "${video.proxyCount} proxy/proxies",
-                                    modifier = Modifier.size(10.dp),
-                                    tint = Color.White
-                                )
-                            }
-                        }
-                    }
-                    // Full-resolution badge — only renders when the daemon's
-                    // classifier was sure either way (matched a known native
-                    // sensor mode, or definitely doesn't match). Unspecified
-                    // (unknown camera or standard video format) -> no badge.
-                    when (video.fullResolution) {
-                        FullResolutionStatus.Full -> {
-                            com.reelvault.ui.components.Tooltip(
-                                text = "Full resolution — matches a known native sensor mode for ${video.cameraDisplayName.ifEmpty { "this camera" }}"
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(18.dp)
-                                        .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Verified,
-                                        contentDescription = "Full resolution",
-                                        modifier = Modifier.size(10.dp),
-                                        // Subtle green marks "full resolution" — distinct from
-                                        // the neutral/white of the other card glyphs.
-                                        tint = Color(0xFF81C784)
-                                    )
-                                }
-                            }
-                        }
-                        FullResolutionStatus.NotFull -> {
-                            com.reelvault.ui.components.Tooltip(
-                                text = "Not full resolution — recorded dimensions don't match any native sensor mode for ${video.cameraDisplayName.ifEmpty { "this camera" }}"
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(18.dp)
-                                        .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Crop,
-                                        contentDescription = "Not full resolution",
-                                        modifier = Modifier.size(10.dp),
-                                        tint = Color.White
-                                    )
-                                }
-                            }
-                        }
-                        FullResolutionStatus.Unspecified -> {} // intentionally no badge
-                    }
-                }
-
-                // Bottom-left location badge — shown when the video has GPS
-                // coordinates. Tapping it fires [onLocationClick] so the
-                // caller can open the global map focused on this video.
-                if (video.hasLocation && onLocationClick != null) {
-                    com.reelvault.ui.components.Tooltip(
-                        text = "Recorded at %.4f, %.4f — click to show on map".format(
-                            video.gpsLatitude, video.gpsLongitude
-                        ),
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(6.dp),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(18.dp)
-                                .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50))
-                                .pointerInput(video.gpsLatitude, video.gpsLongitude) {
-                                    awaitEachGesture {
-                                        val down = awaitFirstDown(requireUnconsumed = false)
-                                        down.consume()
-                                        val up = waitForUpOrCancellation()
-                                        if (up != null) {
-                                            up.consume()
-                                            onLocationClick(video.gpsLatitude, video.gpsLongitude)
-                                        }
-                                    }
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.NearMe,
-                                contentDescription = "Show on map",
-                                modifier = Modifier.size(11.dp),
-                                // Light green (matching the full-resolution badge).
-                                tint = Color(0xFF81C784)
-                            )
-                        }
-                    }
-                }
+                // (Stack/group badge + bottom location/status badges moved out
+                //  to the photo-area level below, so their insets are measured
+                //  against the real photo-area edges — see "Card badges".)
 
                 // ("Too large to play here" badge moved out of the inner
                 //  padded box — it now sits in the letterbox area
@@ -974,6 +757,143 @@ fun VideoCard(
                         .align(Alignment.Center)
                         .size(videoFrameW, videoFrameH)
                         .border(1.dp, Color.Black)
+                )
+
+                // ── Card badges (photo-area-relative) ───────────────────
+                // Placed at the photo-area level (not inside the
+                // photoPadding-inset thumbnail box) so their insets measure
+                // against the real photo-area edges, matching the macOS card.
+                // The top and bottom letterboxes are symmetric, so a single
+                // `edgeGap` — photo-area edge to the nearest video edge —
+                // drives both the stack band at the top and the badge inset at
+                // the bottom.
+                val isPortrait = videoAspect < 1f
+                val topLetterbox = ((videoAvailable - videoFrameH) / 2f).coerceAtLeast(0.dp)
+                val edgeGap = photoPadding + topLetterbox
+                val bottomInset = cardBottomBadgeInset(edgeGap, isPortrait)
+
+                // Stack/group badge — centred vertically in the band between
+                // the photo-area top and the video's top edge (mirrors the
+                // macOS grid card); clamped so a near-square clip still leaves
+                // room. Clicking it toggles stack expansion.
+                if (video.isInGroup) {
+                    val badgeIsChild = isStackChild
+                    val stackTip = when {
+                        isStackExpanded -> "Collapse this stack of ${video.groupSize} videos back to one card"
+                        isStackChild -> "Member of a stack of ${video.groupSize} variants"
+                        else -> "Expand this stack to see all ${video.groupSize} variants inline"
+                    }
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .height(edgeGap.coerceAtLeast(ReelVaultSpacing.Large))
+                            // photoPadding + 6 dp from the photo-area left edge,
+                            // matching the macOS card's stack-badge inset.
+                            .padding(start = photoPadding + 6.dp),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        com.reelvault.ui.components.Tooltip(text = stackTip) {
+                            Surface(
+                                modifier = Modifier
+                                    // Consume pointer down so the parent card click handler doesn't fire.
+                                    .pointerInput(onStackBadgeClick) {
+                                        awaitEachGesture {
+                                            val down = awaitFirstDown(requireUnconsumed = false)
+                                            down.consume()
+                                            val up = waitForUpOrCancellation()
+                                            if (up != null) {
+                                                up.consume()
+                                                onStackBadgeClick()
+                                            }
+                                        }
+                                    },
+                                color = when {
+                                    isStackExpanded -> MaterialTheme.colorScheme.primary
+                                    badgeIsChild -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.85f)
+                                    else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+                                },
+                                shape = MaterialTheme.shapes.small
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(
+                                        horizontal = ReelVaultSpacing.Small,
+                                        vertical = 2.dp
+                                    ),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Layers,
+                                        contentDescription = if (isStackExpanded) "Collapse stack" else "Expand stack",
+                                        modifier = Modifier.size(12.dp),
+                                        tint = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    // For expanded stacks, show "n / m" position. Otherwise just the count.
+                                    Text(
+                                        text = if (stackMemberCount > 0 && stackMemberPosition > 0) {
+                                            "$stackMemberPosition / $stackMemberCount"
+                                        } else {
+                                            "${video.groupSize}"
+                                        },
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Bottom-left location badge — left inset of one badge width;
+                // bottom inset transitions from a badge-height of padding to
+                // centred-in-the-gap as the thumbnail shrinks.
+                if (video.hasLocation && onLocationClick != null) {
+                    com.reelvault.ui.components.Tooltip(
+                        text = "Recorded at %.4f, %.4f — click to show on map".format(
+                            video.gpsLatitude, video.gpsLongitude
+                        ),
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(start = CardBadgeSize, bottom = bottomInset),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(CardBadgeSize)
+                                .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50))
+                                .pointerInput(video.gpsLatitude, video.gpsLongitude) {
+                                    awaitEachGesture {
+                                        val down = awaitFirstDown(requireUnconsumed = false)
+                                        down.consume()
+                                        val up = waitForUpOrCancellation()
+                                        if (up != null) {
+                                            up.consume()
+                                            onLocationClick(video.gpsLatitude, video.gpsLongitude)
+                                        }
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.NearMe,
+                                contentDescription = "Show on map",
+                                modifier = Modifier.size(11.dp),
+                                // Light green (matching the full-resolution badge).
+                                tint = Color(0xFF81C784)
+                            )
+                        }
+                    }
+                }
+
+                // Bottom-right status badges — keyword / proxy / full-resolution.
+                // A row in landscape; a 90°-CW-rotated column up the right side
+                // in portrait. Right inset of one badge width.
+                CardStatusBadges(
+                    video = video,
+                    portrait = isPortrait,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = CardBadgeSize, bottom = bottomInset),
+                    iconSize = 10.dp,
                 )
             } // outer photo-area Box (background + corner badge)
         } // end of square-thumbnail run { }
