@@ -753,11 +753,20 @@ impl ReelVaultService {
                     .unwrap_or_else(|| camera_model_str.clone())
                 };
 
+                // `has_thumbnail` gates whether the client even requests a
+                // still. The daemon now regenerates a missing still on demand
+                // (see get_thumbnail), so for an *online* video the client
+                // should always ask — otherwise a cleared/!-yet-generated still
+                // (common for ProRes RAW, whose stills can only be made via the
+                // QuickLook/AVFoundation path) leaves the card on the placeholder
+                // forever, since the regen only fires on a request. Offline
+                // videos can't be regenerated, so there we still require a
+                // cached file.
                 let thumb_path = self
                     .config
                     .thumbnail_cache_path
                     .join(format!("{}_medium.jpg", seed.id));
-                let has_thumbnail = thumb_path.exists();
+                let has_thumbnail = is_online || thumb_path.exists();
 
                 let (group_id, group_size, group_preferred_id, group_preferred_path) =
                     match group_id_opt {
