@@ -576,6 +576,9 @@ class GridViewModel: ObservableObject {
         reloadFromTop(showSpinner: true)
         // Every filter change also re-narrows the available metadata facets.
         scheduleFacetRefresh()
+        // If we're viewing a smart collection, note whether the user has now
+        // edited the filter away from what's saved (drives the Update banner).
+        updateSmartDivergence()
     }
 
     /// - Parameter showSpinner: When true, clear the current grid and flip
@@ -917,14 +920,16 @@ class GridViewModel: ObservableObject {
         }
     }
 
-    func buildSmartCollectionFilterJson() -> String {
+    /// The live Library Filter as a `SmartCollectionFilters` — what would be
+    /// saved if the user created/updated a smart collection right now.
+    private func currentSmartFilters() -> SmartCollectionFilters {
         // Capture every narrowed metadata column (camera, lens, codec, year,
         // iso, exposure, … — not just the four the old format knew). The
         // "location" virtual key is captured as geo below, not as a column.
         let columns: [SmartCollectionColumn] = metadataColumns
             .filter { !$0.key.isEmpty && $0.key != locationMetadataKey && !$0.values.isEmpty }
             .map { SmartCollectionColumn(key: $0.key, values: $0.values.sorted()) }
-        let f = SmartCollectionFilters(
+        return SmartCollectionFilters(
             columns: columns,
             minRating: filterMinRating,
             colorLabel: filterColorLabel,
@@ -934,7 +939,76 @@ class GridViewModel: ObservableObject {
             geoLon: filterLocation?.longitude ?? 0.0,
             geoRadiusKm: filterLocation?.radiusKm ?? 0.0
         )
-        return f.toJson()
+    }
+
+    func buildSmartCollectionFilterJson() -> String { currentSmartFilters().toJson() }
+
+    // MARK: Edit-while-viewing-a-smart-collection ("ask before modifying")
+
+    /// Name of the active smart collection whose live filter the user has since
+    /// edited (so it no longer matches what's saved), or nil. Drives the
+    /// "Update / Revert" banner. Switching away still reverts via the snapshot.
+    @Published var divergedSmartCollection: String?
+
+    /// Order-independent signature of a filter set, for comparing the live bar
+    /// to a smart collection's saved spec without depending on column order.
+    private func smartSig(_ f: SmartCollectionFilters) -> String {
+        let cols = f.columns
+            .map { "\($0.key)=\($0.values.sorted().joined(separator: ","))" }
+            .sorted()
+            .joined(separator: ";")
+        return "\(cols)|\(f.minRating)|\(f.colorLabel)|\(f.searchQuery)|\(f.tagIds.sorted())|\(f.geoLat)|\(f.geoLon)|\(f.geoRadiusKm)"
+    }
+
+    /// Recompute whether the live filter has diverged from the active smart
+    /// collection. Called after every filter change (via reloadForFilterChange).
+    private func updateSmartDivergence() {
+        guard let id = activeSmartCollectionId,
+              let col = collections.first(where: { $0.id == id }) else {
+            divergedSmartCollection = nil
+            return
+        }
+        let saved = SmartCollectionFilters.from(json: col.filterJson) ?? SmartCollectionFilters()
+        divergedSmartCollection = smartSig(currentSmartFilters()) != smartSig(saved) ? col.name : nil
+    }
+
+    /// Persist the live filter into the active smart collection. The core has no
+    /// UpdateCollection RPC, so this re-creates the collection (smart collections
+    /// have no members to preserve) and re-points the active/selected id.
+    func updateActiveSmartCollection() {
+        guard let id = activeSmartCollectionId,
+              let name = collections.first(where: { $0.id == id })?.name else { return }
+        let json = buildSmartCollectionFilterJson()
+        Task {
+            do {
+                _ = try await repository.deleteCollection(id: id)
+                let created = try await repository.createCollection(name: name, isSmart: true, filterJson: json)
+                collections = try await repository.listCollections().sorted { $0.name.lowercased() < $1.name.lowercased() }
+                let newId = created?.id ?? collections.first(where: { $0.name == name && $0.isSmart })?.id
+                activeSmartCollectionId = newId
+                selectedCollectionId = newId
+                refreshSmartCollectionCounts()
+                divergedSmartCollection = nil
+            } catch {
+                NSLog("Failed to update smart collection: \(error)")
+            }
+        }
+    }
+
+    /// Discard the user's edits and restore the active smart collection's saved
+    /// filter.
+    func revertActiveSmartCollection() {
+        guard let id = activeSmartCollectionId,
+              let col = collections.first(where: { $0.id == id }),
+              let f = SmartCollectionFilters.from(json: col.filterJson) else { return }
+        metadataColumns = Self.metadataColumns(from: f)
+        LibraryFilterPrefs.saveColumns(metadataColumns)
+        filterMinRating = f.minRating
+        filterColorLabel = f.colorLabel
+        searchQuery = f.searchQuery
+        filterTagId = f.tagIds.first ?? ""
+        filterLocation = f.hasGeo ? GeoFilter(latitude: f.geoLat, longitude: f.geoLon, radiusKm: f.geoRadiusKm) : nil
+        reloadForFilterChange()
     }
 
     /// Build metadata columns from a smart collection's saved column filters.

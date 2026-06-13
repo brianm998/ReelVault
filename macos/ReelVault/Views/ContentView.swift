@@ -1005,6 +1005,25 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 if viewMode != .detail {
                     LibraryFilterBar(vm: gridViewModel, hideLocationOption: viewMode == .map)
+                    // "You edited this smart collection's filter" banner. Offers
+                    // to save the change back to the collection or revert;
+                    // switching away reverts automatically anyway.
+                    if let name = gridViewModel.divergedSmartCollection {
+                        HStack(spacing: 8) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 11))
+                            Text("You changed the filter for smart collection “\(name)”. Update it to match, or revert.")
+                                .font(.caption)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Button("Revert") { gridViewModel.revertActiveSmartCollection() }
+                            Button("Update collection") { gridViewModel.updateActiveSmartCollection() }
+                                .buttonStyle(.borderedProminent)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.accentColor.opacity(0.15))
+                    }
                 }
                 switch viewMode {
                 case .grid:

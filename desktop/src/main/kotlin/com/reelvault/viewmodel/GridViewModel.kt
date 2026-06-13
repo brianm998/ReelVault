@@ -663,6 +663,9 @@ class GridViewModel(
         reloadFromTop(showSpinner = true)
         // Every filter change also re-narrows the available metadata facets.
         scheduleFacetRefresh()
+        // If we're viewing a smart collection, note whether the user has now
+        // edited the filter away from what's saved (drives the Update banner).
+        updateSmartDivergence()
     }
 
     /**
@@ -2487,7 +2490,9 @@ class GridViewModel(
         }
     }
 
-    fun buildSmartCollectionFilterJson(): String {
+    /** The live Library Filter as a [SmartCollectionFilters] — what would be
+     *  saved if the user created/updated a smart collection right now. */
+    private fun currentSmartFilters(): com.reelvault.data.models.SmartCollectionFilters {
         val tagId = _filterTagId.value
         // Capture every narrowed metadata column (camera, lens, codec, year,
         // iso, exposure, … — not just the four the old format knew). The
@@ -2513,7 +2518,81 @@ class GridViewModel(
             geoLat = geo?.first ?: 0.0,
             geoLon = geo?.second ?: 0.0,
             geoRadiusKm = geo?.third ?: 0.0,
-        ).toJson()
+        )
+    }
+
+    fun buildSmartCollectionFilterJson(): String = currentSmartFilters().toJson()
+
+    // ---- Edit-while-viewing-a-smart-collection ("ask before modifying") ----
+
+    /** Name of the active smart collection whose live filter the user has since
+     *  edited (so it no longer matches what's saved), or null. Drives the
+     *  "Update / Revert" banner. Switching away still reverts via the snapshot. */
+    private val _divergedSmartCollection = MutableStateFlow<String?>(null)
+    val divergedSmartCollection: StateFlow<String?> = _divergedSmartCollection.asStateFlow()
+
+    /** Order-independent signature of a filter set, for comparing the live bar
+     *  to a smart collection's saved spec without depending on column order. */
+    private fun smartSig(f: com.reelvault.data.models.SmartCollectionFilters): String {
+        val cols = f.columns
+            .map { it.key to it.values.sorted() }
+            .sortedBy { it.first }
+            .toString()
+        return "$cols|${f.minRating}|${f.colorLabel}|${f.searchQuery}|" +
+            "${f.tagIds.sorted()}|${f.geoLat}|${f.geoLon}|${f.geoRadiusKm}"
+    }
+
+    /** Recompute whether the live filter has diverged from the active smart
+     *  collection. Called after every filter change (via reloadForFilterChange). */
+    private fun updateSmartDivergence() {
+        val id = activeSmartCollectionId
+        if (id == null) { _divergedSmartCollection.value = null; return }
+        val col = _collections.value.firstOrNull { it.id == id }
+        val saved = col?.filterJson?.let { com.reelvault.data.models.SmartCollectionFilters.fromJson(it) }
+            ?: com.reelvault.data.models.SmartCollectionFilters()
+        _divergedSmartCollection.value =
+            if (smartSig(currentSmartFilters()) != smartSig(saved)) col?.name else null
+    }
+
+    /** Persist the live filter into the active smart collection. The core has no
+     *  UpdateCollection RPC, so this re-creates the collection (smart collections
+     *  have no members to preserve) and re-points the active/selected id. */
+    fun updateActiveSmartCollection() {
+        val id = activeSmartCollectionId ?: return
+        val name = _collections.value.firstOrNull { it.id == id }?.name ?: return
+        val json = buildSmartCollectionFilterJson()
+        viewModelScope.launch {
+            try {
+                repository.deleteCollection(id)
+                val created = repository.createCollection(name, isSmart = true, filterJson = json)
+                _collections.value = repository.listCollections().sortedBy { it.name.lowercase() }
+                val newId = created?.id
+                    ?: _collections.value.firstOrNull { it.name == name && it.isSmart }?.id
+                activeSmartCollectionId = newId
+                _selectedCollectionId.value = newId
+                refreshSmartCollectionCounts()
+                _divergedSmartCollection.value = null
+            } catch (e: Exception) {
+                _error.value = "Failed to update smart collection: ${e.message}"
+            }
+        }
+    }
+
+    /** Discard the user's edits and restore the active smart collection's saved
+     *  filter. */
+    fun revertActiveSmartCollection() {
+        val id = activeSmartCollectionId ?: return
+        val col = _collections.value.firstOrNull { it.id == id } ?: return
+        val f = com.reelvault.data.models.SmartCollectionFilters.fromJson(col.filterJson)
+        _metadataColumns.value = metadataColumnsFromSmartFilters(f)
+        LibraryFilterPrefs.saveColumns(_metadataColumns.value)
+        _filterMinRating.value = f.minRating
+        _filterColorLabel.value = f.colorLabel
+        _searchQuery.value = f.searchQuery
+        filterTags = f.tagIds
+        _filterTagId.value = f.tagIds.firstOrNull() ?: ""
+        _filterLocation.value = if (f.hasGeo) Triple(f.geoLat, f.geoLon, f.geoRadiusKm) else null
+        reloadForFilterChange()
     }
 
     /** Build metadata columns from a smart collection's saved column filters.

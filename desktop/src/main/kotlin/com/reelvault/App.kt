@@ -1676,6 +1676,47 @@ fun ReelVaultApp(
                                     modifier = Modifier.fillMaxWidth(),
                                 )
                             }
+                            // "You edited this smart collection's filter" banner.
+                            // Offers to save the change back to the collection or
+                            // revert; switching away reverts automatically anyway.
+                            val divergedName =
+                                gridViewModel.divergedSmartCollection.collectAsState().value
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = viewMode != ViewMode.DETAIL && divergedName != null
+                            ) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.AutoAwesome,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                        Text(
+                                            text = "You changed the filter for smart collection " +
+                                                "“${divergedName ?: ""}”. Update it to match, or revert.",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                        TextButton(onClick = { gridViewModel.revertActiveSmartCollection() }) {
+                                            Text("Revert")
+                                        }
+                                        Button(onClick = { gridViewModel.updateActiveSmartCollection() }) {
+                                            Text("Update collection")
+                                        }
+                                    }
+                                }
+                            }
                             when (viewMode) {
                                 ViewMode.GRID -> GridScreen(
                                     viewModel = gridViewModel,
