@@ -146,6 +146,30 @@ The macOS client will connect to `localhost:50051` via gRPC.
 - **Async Thumbnail Loading**: Doesn't block UI
 - **MainActor Dispatch**: All UI updates marshaled to main thread
 
+## ProRes RAW thumbnails
+
+macOS is the only platform that renders ProRes RAW (Atomos S-Log3 /
+S-Gamut3.Cine) thumbnails *correctly* — ffmpeg can't develop it, so the
+Linux/Windows Compose client only gets ffmpeg's flat/dark fallback from the
+daemon. See [`../core/README.md`](../core/README.md) for the cross-platform
+decode matrix. On macOS the correct frames come from two places:
+
+- **From the daemon.** The Rust core decodes ProRes RAW via QuickLook /
+  AVFoundation and serves correct stills + per-frame scrub frames (it compiles
+  a tiny embedded `rv-frameshot` Swift helper for the per-timestamp extraction).
+  This is shared by both clients when the daemon runs on a Mac.
+- **Locally in this client.** `GridViewModel.proResRawScrubFrames` generates
+  the grid/list hover-scrub strip directly with `AVAssetImageGenerator`
+  (gated on `codecVideo == "prores_raw"`), so scrubbing shows real per-position
+  frames without a daemon round-trip; it falls back to the daemon strip if
+  local extraction yields nothing. The detail-loupe player already scrubs
+  ProRes RAW correctly because it's a plain `AVPlayer`.
+
+**Build note:** the daemon's embedded helper is compiled by `swiftc` at core
+build time — already present via the Xcode toolchain you use to build this
+client. If it's missing the daemon degrades to a single QuickLook poster
+(every scrub position identical) rather than failing.
+
 ## Troubleshooting
 
 ### "Failed to connect to ReelVault backend"

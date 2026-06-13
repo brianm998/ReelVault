@@ -56,6 +56,16 @@ SQLite Catalog + FFmpeg/FFprobe + Filesystem
 - **SQLite catalog** — WAL-mode database with FTS5 for full-text search. The
   schema lives in [`core/schema.sql`](core/schema.sql).
 
+> **ProRes RAW thumbnails are macOS-only quality.** ffmpeg can't develop
+> ProRes RAW (Atomos S-Log3 / S-Gamut), so on **macOS** the daemon decodes it
+> through QuickLook / AVFoundation — correct colour and true per-frame
+> scrubbing. On **Linux / Windows** there's no such decoder, so the daemon
+> falls back to ffmpeg: flatter/darker frames and a single repeated scrub
+> frame. The Rust core builds identically on all three platforms — AVFoundation
+> is never linked into it. Details: [`core/README.md`](core/README.md)
+> (build + decode paths) and [`macos/README.md`](macos/README.md) (the
+> macOS client). Every other codec is handled by ffmpeg the same way everywhere.
+
 ## Project status
 
 **MVP is functional on macOS and Compose Desktop.** Both clients ship the
