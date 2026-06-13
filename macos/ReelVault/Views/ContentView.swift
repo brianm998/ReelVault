@@ -920,6 +920,7 @@ struct ContentView: View {
                     rescanningPaths: Set(gridViewModel.rescanningPaths),
                     onCollapse: { setLeftPanelExpanded(false) },
                     collections: gridViewModel.collections,
+                    smartCollectionCounts: gridViewModel.smartCollectionCounts,
                     selectedCollectionId: gridViewModel.selectedCollectionId,
                     onSelectCollection: { gridViewModel.setCollectionFilter($0) },
                     onCreateCollection: { name in

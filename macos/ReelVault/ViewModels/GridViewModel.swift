@@ -731,9 +731,48 @@ class GridViewModel: ObservableObject {
         Task {
             do {
                 collections = try await repository.listCollections().sorted { $0.name.lowercased() < $1.name.lowercased() }
+                refreshSmartCollectionCounts()
             } catch {
                 NSLog("Failed to load collections: \(error)")
             }
+        }
+    }
+
+    /// Match counts for smart collections, keyed by collection id. Normal
+    /// collections carry their own `videoCount` from the members join; smart
+    /// collections have no members, so the left panel always showed 0 — we
+    /// compute their count by running their saved filter (limit=1, read total).
+    @Published var smartCollectionCounts: [String: Int64] = [:]
+
+    /// Re-count every smart collection. Runs sequentially (gentle on the NAS)
+    /// and publishes each count as it lands so badges fill in progressively.
+    private func refreshSmartCollectionCounts() {
+        let smarts = collections.filter { $0.isSmart && !$0.filterJson.isEmpty }
+        guard !smarts.isEmpty else { smartCollectionCounts = [:]; return }
+        Task {
+            var counts: [String: Int64] = [:]
+            for c in smarts {
+                guard let f = SmartCollectionFilters.from(json: c.filterJson) else { continue }
+                do {
+                    let result = try await repository.listVideos(
+                        limit: 1,
+                        offset: 0,
+                        searchQuery: f.searchQuery,
+                        filterTagIds: f.tagIds,
+                        geoFilter: f.hasGeo ? (latitude: f.geoLat, longitude: f.geoLon, radiusKm: f.geoRadiusKm) : nil,
+                        filterMinRating: f.minRating,
+                        filterColorLabel: f.colorLabel,
+                        metadataFilters: f.columns
+                            .filter { !$0.values.isEmpty }
+                            .map { (key: $0.key, value: $0.values.joined(separator: metadataValueSeparator)) }
+                    )
+                    counts[c.id] = result.totalCount
+                    smartCollectionCounts = counts
+                } catch {
+                    NSLog("Failed to count smart collection \(c.id): \(error)")
+                }
+            }
+            smartCollectionCounts = counts
         }
     }
 

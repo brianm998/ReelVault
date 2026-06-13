@@ -73,6 +73,10 @@ fun LibraryPanel(
     rescanningPaths: Set<String> = emptySet(),
     onCollapse: () -> Unit = {},
     collections: List<Collection> = emptyList(),
+    /** Match counts for smart collections, keyed by id. Smart collections have
+     *  no members, so their `videoCount` is always 0 — the count badge uses
+     *  this instead (computed by the view model from each collection's filter). */
+    smartCollectionCounts: Map<String, Long> = emptyMap(),
     selectedCollectionId: String? = null,
     onSelectCollection: ((String?) -> Unit)? = null,
     onCreateCollection: ((name: String) -> Unit)? = null,
@@ -317,15 +321,18 @@ fun LibraryPanel(
                             }
                         }
                     ) {
+                        val effectiveCount = if (col.isSmart)
+                            (smartCollectionCounts[col.id] ?: 0L) else col.videoCount
                         LocationRow(
                             icon = if (col.isSmart) Icons.Default.AutoAwesome else Icons.Outlined.FolderSpecial,
                             label = col.name,
-                            count = col.videoCount,
+                            count = effectiveCount,
                             isSelected = col.id == selectedCollectionId,
                             tooltip = if (col.isSmart)
-                                "Smart collection — filters videos automatically. Right-click to delete."
+                                "Smart collection — automatically gathers the $effectiveCount " +
+                                    "video${if (effectiveCount == 1L) "" else "s"} matching its filter. Right-click to delete."
                             else
-                                "${col.videoCount} video${if (col.videoCount == 1L) "" else "s"}. Right-click to delete.",
+                                "$effectiveCount video${if (effectiveCount == 1L) "" else "s"}. Right-click to delete.",
                             onClick = { _, _ ->
                                 onSelect("", false, false)
                                 onSelectCollection?.invoke(col.id)

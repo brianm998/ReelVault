@@ -2391,9 +2391,54 @@ class GridViewModel(
         viewModelScope.launch {
             try {
                 _collections.value = repository.listCollections().sortedBy { it.name.lowercase() }
+                refreshSmartCollectionCounts()
             } catch (e: Exception) {
                 logger.warn("Failed to load collections", e)
             }
+        }
+    }
+
+    /** Match counts for smart collections, keyed by collection id. Normal
+     *  collections carry their own `videoCount` from the members join; smart
+     *  collections have no members, so the left panel always showed 0 — we
+     *  compute their count by running their saved filter (limit=1, read total). */
+    private val _smartCollectionCounts = MutableStateFlow<Map<String, Long>>(emptyMap())
+    val smartCollectionCounts: StateFlow<Map<String, Long>> = _smartCollectionCounts.asStateFlow()
+
+    /** Re-count every smart collection. Runs sequentially (gentle on the NAS)
+     *  and publishes each count as it lands so badges fill in progressively. */
+    private fun refreshSmartCollectionCounts() {
+        val smarts = _collections.value.filter { it.isSmart && it.filterJson.isNotBlank() }
+        if (smarts.isEmpty()) { _smartCollectionCounts.value = emptyMap(); return }
+        viewModelScope.launch {
+            val counts = mutableMapOf<String, Long>()
+            for (c in smarts) {
+                try {
+                    val f = com.reelvault.data.models.SmartCollectionFilters.fromJson(c.filterJson)
+                    val (_, total) = repository.listVideos(
+                        limit = 1,
+                        offset = 0,
+                        filterTags = f.tagIds,
+                        geoFilter = if (f.hasGeo) Triple(f.geoLat, f.geoLon, f.geoRadiusKm) else null,
+                        filterMinRating = f.minRating,
+                        filterColorLabel = f.colorLabel,
+                        metadataFilters = f.columns
+                            .filter { it.values.isNotEmpty() }
+                            .map {
+                                com.reelvault.data.models.MetadataFilter(
+                                    it.key,
+                                    it.values.joinToString(com.reelvault.data.models.METADATA_VALUE_SEPARATOR),
+                                )
+                            },
+                        searchQuery = f.searchQuery,
+                    )
+                    counts[c.id] = total
+                    _smartCollectionCounts.value = counts.toMap()
+                } catch (e: Exception) {
+                    logger.warn("Failed to count smart collection ${c.id}", e)
+                }
+            }
+            _smartCollectionCounts.value = counts.toMap()
         }
     }
 

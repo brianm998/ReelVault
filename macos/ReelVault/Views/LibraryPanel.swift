@@ -31,6 +31,10 @@ struct LibraryPanel: View {
     let onCollapse: () -> Void
 
     var collections: [Collection] = []
+    /// Match counts for smart collections, keyed by id. Smart collections have
+    /// no members, so their `videoCount` is always 0 — the badge uses this
+    /// instead (computed by the view model from each collection's filter).
+    var smartCollectionCounts: [String: Int64] = [:]
     var selectedCollectionId: String? = nil
     var onSelectCollection: ((String?) -> Void)? = nil
     var onCreateCollection: ((String) -> Void)? = nil
@@ -165,15 +169,17 @@ struct LibraryPanel: View {
                             .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
                     } else {
                         ForEach(collections) { col in
+                            let effectiveCount = col.isSmart
+                                ? (smartCollectionCounts[col.id] ?? 0) : col.videoCount
                             LocationRow(
                                 systemImage: col.isSmart ? "sparkles" : "folder.badge.plus",
                                 label: col.name,
                                 sublabel: nil,
-                                count: col.videoCount,
+                                count: effectiveCount,
                                 isSelected: col.id == selectedCollectionId,
                                 tooltip: col.isSmart
-                                    ? "Smart collection — filters videos automatically. Right-click to delete."
-                                    : "\(col.videoCount) video\(col.videoCount == 1 ? "" : "s"). Right-click to delete.",
+                                    ? "Smart collection — automatically gathers the \(effectiveCount) video\(effectiveCount == 1 ? "" : "s") matching its filter. Right-click to delete."
+                                    : "\(effectiveCount) video\(effectiveCount == 1 ? "" : "s"). Right-click to delete.",
                                 onClick: {
                                     onSelect("")
                                     onSelectCollection?(col.id)

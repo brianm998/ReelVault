@@ -1456,6 +1456,7 @@ fun ReelVaultApp(
                                 rescanningPaths = gridViewModel.rescanningPaths.collectAsState().value,
                                 onCollapse = { setLeftPanelExpanded(false) },
                                 collections = gridViewModel.collections.collectAsState().value,
+                                smartCollectionCounts = gridViewModel.smartCollectionCounts.collectAsState().value,
                                 selectedCollectionId = gridViewModel.selectedCollectionId.collectAsState().value,
                                 onSelectCollection = { id -> gridViewModel.setCollection(id) },
                                 onCreateCollection = { name ->
