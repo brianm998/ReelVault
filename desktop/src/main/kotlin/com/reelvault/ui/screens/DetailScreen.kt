@@ -1056,13 +1056,14 @@ fun DetailScreen(
                     } // if (proxiesExpanded)
                 }
 
-                // No proxy yet — offer to create one. Detail mode only (per
-                // spec), and never for clips that are themselves proxies. The
-                // button opens the existing resolution picker, which asks for
-                // the target size before encoding and adds the result to the
+                // No proxy yet — offer to create one. Shown in grid, list and
+                // detail mode (everywhere the inspector renders except the map's
+                // own panel), and never for clips that are themselves proxies.
+                // The button opens the existing resolution picker, which asks
+                // for the target size before encoding and adds the result to the
                 // catalog.
                 val createProxySummary = currentSummary.value
-                if (viewMode == ViewMode.DETAIL &&
+                if (viewMode != ViewMode.MAP &&
                     proxies.value.isEmpty() &&
                     activeProxyCreation == null &&
                     createProxySummary != null &&

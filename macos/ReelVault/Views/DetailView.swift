@@ -713,12 +713,12 @@ struct DetailView: View {
                 }
             }
 
-            // No proxy yet — offer to create one. Loupe (detail) mode only per
-            // spec, and never for clips that are themselves proxies. Opens the
-            // existing resolution picker, which asks for the target size before
-            // encoding and adds the result to the catalog.
-            if isLoupeMode,
-               viewModel.proxies.isEmpty,
+            // No proxy yet — offer to create one. Shown in grid, list and detail
+            // mode (DetailView is the inspector for all three; the map has its
+            // own panel), and never for clips that are themselves proxies. Opens
+            // the existing resolution picker, which asks for the target size
+            // before encoding and adds the result to the catalog.
+            if viewModel.proxies.isEmpty,
                activeProxyCreation == nil,
                let summary = viewModel.currentSummary,
                !summary.isProxy {
