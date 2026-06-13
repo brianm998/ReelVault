@@ -17,8 +17,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.zIndex
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import kotlin.math.roundToInt
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.reelvault.LocalAppWindow
@@ -605,11 +610,17 @@ fun DetailScreen(
                     }
                     if (stackExpanded.value) {
                     Text(
-                        text = "Double-click opens the preferred variant. Click ⭐ to change preferred.",
+                        text = "Drag the handle to reorder. Double-click opens the preferred variant. Click ⭐ to change preferred.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
+                    // Drag-to-reorder state for the member rows below. The
+                    // dragged row floats by `dragOffsetY`; on release we move it
+                    // by round(offset / rowHeight) slots and persist the order.
+                    var dragFromIdx by remember(groupMembers.value) { mutableStateOf<Int?>(null) }
+                    var dragOffsetY by remember(groupMembers.value) { mutableStateOf(0f) }
+                    var rowHeightPx by remember { mutableStateOf(0f) }
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -625,12 +636,68 @@ fun DetailScreen(
                                     color = MaterialTheme.colorScheme.outlineVariant
                                 )
                             }
+                            val isDragging = dragFromIdx == idx
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .onSizeChanged { rowHeightPx = it.height.toFloat() }
+                                    .then(if (isDragging) Modifier.zIndex(1f) else Modifier)
+                                    .then(
+                                        if (isDragging) Modifier.offset { IntOffset(0, dragOffsetY.roundToInt()) }
+                                        else Modifier
+                                    )
+                                    .background(
+                                        if (isDragging) MaterialTheme.colorScheme.surfaceVariant
+                                        else androidx.compose.ui.graphics.Color.Transparent
+                                    )
                                     .padding(ReelVaultSpacing.Small),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                // Drag handle — grab here to reorder this variant
+                                // within the stack. Consumes its own pointer events
+                                // so the surrounding panel doesn't scroll mid-drag.
+                                com.reelvault.ui.components.Tooltip(
+                                    text = "Drag to reorder this variant within the stack"
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.DragIndicator,
+                                        contentDescription = "Drag to reorder",
+                                        modifier = Modifier
+                                            .size(20.dp)
+                                            .pointerInput(member.id, groupMembers.value.size) {
+                                                awaitEachGesture {
+                                                    awaitFirstDown(requireUnconsumed = false).also { it.consume() }
+                                                    dragFromIdx = idx
+                                                    dragOffsetY = 0f
+                                                    while (true) {
+                                                        val ev = awaitPointerEvent()
+                                                        val ch = ev.changes.firstOrNull() ?: break
+                                                        if (!ch.pressed) break
+                                                        dragOffsetY += ch.positionChange().y
+                                                        ch.consume()
+                                                    }
+                                                    val from = dragFromIdx
+                                                    val members = groupMembers.value
+                                                    if (from != null && rowHeightPx > 0f && members.size > 1) {
+                                                        val delta = (dragOffsetY / rowHeightPx).roundToInt()
+                                                        val to = (from + delta).coerceIn(0, members.size - 1)
+                                                        if (to != from) {
+                                                            val ids = members.map { it.id }.toMutableList()
+                                                            val moved = ids.removeAt(from)
+                                                            ids.add(to, moved)
+                                                            viewModel.reorderGroupMembers(ids) { gid ->
+                                                                gridViewModel.refreshAfterStackChange(gid)
+                                                            }
+                                                        }
+                                                    }
+                                                    dragFromIdx = null
+                                                    dragOffsetY = 0f
+                                                }
+                                            },
+                                        tint = MaterialTheme.colorScheme.outline,
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(ReelVaultSpacing.XSmall))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = member.filename,

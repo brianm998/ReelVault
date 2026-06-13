@@ -263,6 +263,28 @@ class DetailViewModel(
         }
     }
 
+    /** Persist a new member order for the current stack (drag-to-reorder).
+     *  Reuses CreateGroup: passing the full membership in a new order is a pure
+     *  reorder server-side — same group id, positions updated, leader untouched.
+     *  [onChanged] fires with the group id so the grid's expanded-stack cache
+     *  can refresh. */
+    fun reorderGroupMembers(orderedIds: List<String>, onChanged: (String) -> Unit = {}) {
+        val groupId = currentVideoSummary?.groupId ?: return
+        if (groupId.isEmpty() || orderedIds.size < 2) return
+        val preferred = _groupPreferredId.value
+        viewModelScope.launch {
+            try {
+                val info = repository.createGroup(orderedIds, name = "", preferredVideoId = preferred)
+                val gid = info?.id?.ifEmpty { groupId } ?: groupId
+                loadGroupMembers(gid)
+                onChanged(gid)
+                logger.info("Reordered stack $gid")
+            } catch (e: Exception) {
+                _error.value = "Failed to reorder stack: ${e.message}"
+            }
+        }
+    }
+
     fun setGroupPreferred(videoId: String) {
         val groupId = currentVideoSummary?.groupId ?: return
         if (groupId.isEmpty()) return

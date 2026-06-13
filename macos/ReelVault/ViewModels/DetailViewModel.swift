@@ -233,6 +233,26 @@ class DetailViewModel: ObservableObject {
         }
     }
 
+    /// Persist a new member order for the current stack (drag-to-reorder).
+    /// Reuses CreateGroup: passing the full membership in a new order is a pure
+    /// reorder server-side — same group id, positions updated, leader untouched.
+    /// `onChanged` fires with the group id so the grid's expanded-stack cache
+    /// can refresh.
+    func reorderGroupMembers(orderedIds: [String], onChanged: ((String) -> Void)? = nil) {
+        guard let groupId = currentVideoSummary?.groupId, !groupId.isEmpty, orderedIds.count >= 2 else { return }
+        let preferred = groupPreferredId
+        Task {
+            do {
+                let info = try await repository.createGroup(videoIds: orderedIds, name: "", preferredVideoId: preferred)
+                let gid = (info?.id.isEmpty == false ? info!.id : groupId)
+                loadGroupMembers(groupId: gid)
+                onChanged?(gid)
+            } catch {
+                self.error = "Failed to reorder stack: \(error.localizedDescription)"
+            }
+        }
+    }
+
     func setGroupPreferred(videoId: String) {
         guard let groupId = currentVideoSummary?.groupId, !groupId.isEmpty else { return }
         Task {

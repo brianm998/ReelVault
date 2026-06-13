@@ -3,6 +3,7 @@
 
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 /// A details-panel section with a clickable title row that collapses/expands
 /// its content. Collapsed shows only the title (+ chevron); expanded shows the
@@ -27,6 +28,30 @@ private struct CollapsibleSection<Content: View>: View {
             .buttonStyle(.plain)
             if expanded { content() }
         }
+    }
+}
+
+/// Reorders a stack's member list when one row is dropped onto another.
+/// Computes the new order from the dragged id and the drop target, then commits
+/// once via `onReorder` (which persists it through CreateGroup).
+private struct StackReorderDrop: DropDelegate {
+    let targetId: String
+    @Binding var draggingId: String?
+    let memberIds: [String]
+    let onReorder: ([String]) -> Void
+
+    func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
+
+    func performDrop(info: DropInfo) -> Bool {
+        defer { draggingId = nil }
+        guard let dragging = draggingId, dragging != targetId,
+              let from = memberIds.firstIndex(of: dragging),
+              let to = memberIds.firstIndex(of: targetId) else { return false }
+        var ids = memberIds
+        let moved = ids.remove(at: from)
+        ids.insert(moved, at: to)
+        onReorder(ids)
+        return true
     }
 }
 
@@ -56,6 +81,8 @@ struct DetailView: View {
     @State private var keywordsExpanded = true
     @State private var stackExpanded = true
     @State private var proxiesExpanded = true
+    /// Id of the stack member currently being dragged to reorder, or nil.
+    @State private var draggingMemberId: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -441,13 +468,17 @@ struct DetailView: View {
                     .help("Remove this video from the stack. The other members stay grouped.")
                 }
                 if stackExpanded {
-                Text("Double-click in the grid opens the preferred variant. Click ⭐ to change preferred.")
+                Text("Drag a row to reorder. Double-click in the grid opens the preferred variant. Click ⭐ to change preferred.")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
                 VStack(spacing: 0) {
                     ForEach(Array(viewModel.groupMembers.enumerated()), id: \.element.id) { idx, member in
                         if idx > 0 { Divider() }
                         HStack(spacing: 6) {
+                            Image(systemName: "line.3.horizontal")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                                .help("Drag to reorder this variant within the stack")
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(member.filename)
                                     .font(.system(size: 11))
@@ -482,6 +513,24 @@ struct DetailView: View {
                         }
                         .padding(.vertical, 4)
                         .padding(.horizontal, 6)
+                        .opacity(draggingMemberId == member.id ? 0.4 : 1.0)
+                        .contentShape(Rectangle())
+                        // Drag a row onto another to reorder the stack. Persisted
+                        // via CreateGroup (a pure reorder server-side).
+                        .onDrag {
+                            draggingMemberId = member.id
+                            return NSItemProvider(object: member.id as NSString)
+                        }
+                        .onDrop(of: [UTType.text], delegate: StackReorderDrop(
+                            targetId: member.id,
+                            draggingId: $draggingMemberId,
+                            memberIds: viewModel.groupMembers.map { $0.id },
+                            onReorder: { ids in
+                                viewModel.reorderGroupMembers(orderedIds: ids) { gid in
+                                    gridViewModel.refreshAfterStackChange(groupId: gid)
+                                }
+                            }
+                        ))
                     }
                 }
                 .background(Color(.windowBackgroundColor).opacity(0.5))
