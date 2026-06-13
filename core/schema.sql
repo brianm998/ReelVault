@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS videos (
   created_at TIMESTAMP,
   modified_at TIMESTAMP,
   is_online INTEGER DEFAULT 1,
-  group_id TEXT
+  group_id TEXT,
+  group_position INTEGER NOT NULL DEFAULT 0  -- order within the stack (drag-to-reorder)
 );
 
 -- Video groups (Lightroom-style "stacks" of related variants)

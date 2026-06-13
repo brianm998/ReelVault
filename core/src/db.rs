@@ -314,6 +314,10 @@ impl Database {
         // "duplicate column" error.
         let migrations: &[(&str, &str)] = &[
             ("videos.group_id", "ALTER TABLE videos ADD COLUMN group_id TEXT"),
+            // Per-member order within a stack (drag-to-reorder). 0 for every
+            // pre-existing row, so members fall back to filename order until
+            // the user reorders.
+            ("videos.group_position", "ALTER TABLE videos ADD COLUMN group_position INTEGER NOT NULL DEFAULT 0"),
             ("metadata.frame_count", "ALTER TABLE metadata ADD COLUMN frame_count INTEGER DEFAULT 0"),
             // Proxy relation. `proxy_of` is the video this row is a
             // lower-resolution stand-in for; `proxy_confidence` is the
@@ -1563,6 +1567,60 @@ impl Database {
             "combine/create_group: expanded selection to full stack membership"
         );
 
+        // Pure reorder: the caller passed exactly the current membership of a
+        // single existing stack (no new videos, no merge). Update member order
+        // (and the preferred) in place rather than minting a new group — this
+        // keeps the group id, name and base_name stable for drag-to-reorder.
+        if source_groups.len() == 1 {
+            let gid = source_groups.iter().next().unwrap().clone();
+            let current: BTreeSet<String> = {
+                let mut stmt = tx
+                    .prepare("SELECT id FROM videos WHERE group_id = ? AND proxy_of IS NULL")
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+                let rows = stmt
+                    .query_map(params![gid], |row| row.get::<_, String>(0))
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+                let mut s = BTreeSet::new();
+                for row in rows {
+                    s.insert(row.map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?);
+                }
+                s
+            };
+            if current == members {
+                // Position by the requested order; append any member the caller
+                // somehow omitted so every row still gets a stable position.
+                let mut ordered: Vec<&String> = Vec::new();
+                for vid in video_ids {
+                    if members.contains(vid) && !ordered.iter().any(|v| *v == vid) {
+                        ordered.push(vid);
+                    }
+                }
+                for vid in &members {
+                    if !ordered.iter().any(|v| **v == *vid) {
+                        ordered.push(vid);
+                    }
+                }
+                for (pos, vid) in ordered.iter().enumerate() {
+                    tx.execute(
+                        "UPDATE videos SET group_position = ? WHERE id = ?",
+                        params![pos as i64, vid],
+                    )
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+                }
+                if let Some(p) = preferred_video_id.filter(|p| members.contains(*p)) {
+                    tx.execute(
+                        "UPDATE video_groups SET preferred_video_id = ? WHERE id = ?",
+                        params![p, gid],
+                    )
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+                }
+                tx.commit()
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+                tracing::info!(group = %gid, "create_group: pure reorder — updated positions in place");
+                return Ok(gid);
+            }
+        }
+
         let group_id = Uuid::new_v4().to_string();
 
         // Honour the requested preferred only if it ended up in the merged
@@ -1587,6 +1645,28 @@ impl Database {
                     params![group_id, vid],
                 )
                 .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        }
+
+        // Assign stack order: explicit selection first (in request order), then
+        // any absorbed members, so a freshly combined stack has a deterministic
+        // order the user can then drag to refine.
+        let mut ordered: Vec<&String> = Vec::new();
+        for vid in video_ids {
+            if members.contains(vid) && !ordered.iter().any(|v| *v == vid) {
+                ordered.push(vid);
+            }
+        }
+        for vid in &members {
+            if !ordered.iter().any(|v| **v == *vid) {
+                ordered.push(vid);
+            }
+        }
+        for (pos, vid) in ordered.iter().enumerate() {
+            tx.execute(
+                "UPDATE videos SET group_position = ? WHERE id = ?",
+                params![pos as i64, vid],
+            )
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         }
 
         // Delete each source stack that no longer has any members. The new
@@ -1690,11 +1770,13 @@ impl Database {
         Ok(result)
     }
 
-    /// Get all member video IDs for a group.
+    /// Get all member video IDs for a group, in the user's chosen stack order
+    /// (drag-to-reorder writes `group_position`); filename breaks ties and is
+    /// the order for stacks never manually reordered (all positions 0).
     pub fn list_group_member_ids(&self, group_id: &str) -> Result<Vec<String>> {
         let conn = self.get_connection()?;
         let mut stmt = conn
-            .prepare("SELECT id FROM videos WHERE group_id = ? ORDER BY filename")
+            .prepare("SELECT id FROM videos WHERE group_id = ? ORDER BY group_position, filename")
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let ids = stmt
             .query_map([group_id], |row| row.get::<_, String>(0))
@@ -3799,6 +3881,41 @@ mod tests {
         assert_eq!(total, 1, "the two stacks collapsed into one");
         assert_eq!(reps.len(), 1);
         assert_eq!(reps[0].id, a1, "the requested preferred leads the merged stack");
+    }
+
+    /// Re-calling create_group with exactly one stack's current membership is a
+    /// drag-to-reorder: it must update member order *in place* — same group id,
+    /// new `list_group_member_ids` order — not mint a fresh group.
+    #[test]
+    fn reordering_a_stack_updates_order_in_place() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+
+        let v1 = db.add_video("/l/v1.mov", "v1.mov", None, None, Some(1)).unwrap();
+        let v2 = db.add_video("/l/v2.mov", "v2.mov", None, None, Some(1)).unwrap();
+        let v3 = db.add_video("/l/v3.mov", "v3.mov", None, None, Some(1)).unwrap();
+
+        let group = db
+            .create_group(None, None, &[v1.clone(), v2.clone(), v3.clone()], Some(v1.as_str()))
+            .unwrap();
+        // Fresh stack: order follows the request.
+        assert_eq!(db.list_group_member_ids(&group).unwrap(), vec![v1.clone(), v2.clone(), v3.clone()]);
+
+        // Reorder to v3, v1, v2 by passing the full membership in the new order.
+        let same = db
+            .create_group(None, None, &[v3.clone(), v1.clone(), v2.clone()], Some(v1.as_str()))
+            .unwrap();
+        assert_eq!(same, group, "a pure reorder keeps the same group id");
+        assert_eq!(
+            db.list_group_member_ids(&group).unwrap(),
+            vec![v3.clone(), v1.clone(), v2.clone()],
+            "members come back in the reordered order",
+        );
+        // The leader is untouched by a reorder.
+        assert_eq!(
+            db.get_group(&group).unwrap().and_then(|g| g.preferred_video_id).as_deref(),
+            Some(v1.as_str()),
+        );
     }
 
     /// A stack whose `preferred_video_id` points at a video that has left the
