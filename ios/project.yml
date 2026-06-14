@@ -1,6 +1,6 @@
 name: ReelVault
 options:
-  bundleIdPrefix: com.preffect.reelvault
+  bundleIdPrefix: com.reelvault
   deploymentTarget:
     iOS: "18.0"
   createIntermediateGroups: true
@@ -23,7 +23,7 @@ targets:
         product: ReelVaultKit
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.preffect.reelvault.ios
+        PRODUCT_BUNDLE_IDENTIFIER: com.reelvault.ios
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: NO

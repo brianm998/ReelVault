@@ -316,10 +316,16 @@ async fn video(
     }
 }
 
-/// Transcode `src` to a cached downscaled MP4 capped at `height` px (never
-/// upscaled), returning its path. Concurrent identical requests share one ffmpeg
-/// via a per-key lock; the result is cached under `<cache>/stream/` for reuse.
+/// Resolve a playable rendition of `id` capped near `height` px. Prefers an
+/// existing proxy closest to the requested height (so we don't transcode the —
+/// possibly huge — original on demand, the whole point for remote tablet/phone
+/// playback over Wi-Fi); only transcodes when the video has no usable proxy.
+/// Concurrent identical transcode requests share one ffmpeg via a per-key lock;
+/// the result is cached under `<cache>/stream/` for reuse.
 async fn ensure_downscaled(state: &MediaState, id: &str, src: &str, height: i32) -> Option<PathBuf> {
+    if let Some(proxy) = closest_proxy_path(state, id, height) {
+        return Some(PathBuf::from(proxy));
+    }
     let dir = state.cache_dir.join("stream");
     let out = dir.join(format!("{id}_{height}.mp4"));
     if out.exists() {
@@ -379,6 +385,35 @@ async fn ensure_downscaled(state: &MediaState, id: &str, src: &str, height: i32)
             let _ = std::fs::remove_file(&out_tmp);
             None
         }
+    }
+}
+
+/// The existing proxy whose height best matches `height`: the shortest proxy at
+/// least as tall as `height` (least upscaling on the device), or the tallest
+/// available if every proxy is shorter than the request. Returns its on-disk
+/// path, or `None` when the video has no proxy whose file is present (the caller
+/// then transcodes the original). This is what makes remote playback cheap —
+/// serving a pre-rendered proxy beats transcoding a multi-GB original per play.
+fn closest_proxy_path(state: &MediaState, id: &str, height: i32) -> Option<String> {
+    let proxies = match state.db.list_proxies(id) {
+        Ok(p) if !p.is_empty() => p,
+        _ => return None,
+    };
+    let chosen = proxies
+        .iter()
+        .filter(|p| p.height >= height)
+        .min_by_key(|p| p.height)
+        .or_else(|| proxies.iter().max_by_key(|p| p.height))?;
+    if std::path::Path::new(&chosen.path).exists() {
+        tracing::info!(
+            "media: serving proxy {} ({}x{}) for {} (requested {}p)",
+            chosen.filename, chosen.width, chosen.height, id, height
+        );
+        Some(chosen.path.clone())
+    } else {
+        // Proxy registered but its file is missing (unmounted drive, moved) —
+        // fall back to transcoding the original.
+        None
     }
 }
 
