@@ -8,17 +8,16 @@ import ReelVaultKit
 
 /// Full-screen detail screen (iPhone / compact width): a streaming player
 /// (downscaled to fit) plus metadata. Pushed onto the navigation stack when a
-/// card is tapped. The iPad / regular layout shows the same content in the
-/// `InspectorPanel` side column instead — both compose the shared
-/// `StreamingPlayerView` + `VideoMetadataSection` below.
+/// card is tapped.
 struct VideoDetailView: View {
     let video: VideoSummary
     let mediaEndpoint: AppRouter.ConnectionInfo?
+    @StateObject private var stream = StreamPlayer()
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                StreamingPlayerView(video: video, endpoint: mediaEndpoint)
+                StreamingPlayerView(stream: stream, video: video, endpoint: mediaEndpoint)
                 VideoMetadataSection(video: video)
             }
             .padding()
@@ -28,51 +27,104 @@ struct VideoDetailView: View {
     }
 }
 
-/// A streaming player for one video, downscaled by the daemon to fit. Playback
-/// streams the daemon's rendition over the pinned media endpoint via
-/// `MediaClient` (the core HTTPS media server, A3/A4). Resets when `video`
-/// changes so the inspector follows the grid selection.
+/// Owns a single `AVPlayer` for a streamed rendition. Sharing one instance
+/// between the inline detail player and the full-screen cover guarantees the
+/// same video never plays twice at once (which produced doubled, offset audio).
+@MainActor
+final class StreamPlayer: ObservableObject {
+    @Published var player: AVPlayer?
+    @Published var isPreparing = false
+    @Published var error: String?
+    private var preparedVideoId: String?
+
+    /// Prepare (download + pin-verify) the rendition and start playing. No-ops
+    /// if the same video is already prepared (so the inline view and the
+    /// full-screen cover share one player rather than racing two).
+    func prepare(video: VideoSummary, endpoint: AppRouter.ConnectionInfo?) async {
+        if preparedVideoId == video.id, player != nil {
+            player?.play()
+            return
+        }
+        guard let conn = endpoint else { error = "No media connection available."; return }
+        isPreparing = true
+        defer { isPreparing = false }
+        error = nil
+        let mediaEndpoint = MediaClient.Endpoint(
+            host: conn.host, mediaPort: conn.mediaPort,
+            fingerprintHex: conn.fingerprintHex, bearerToken: conn.bearerToken)
+        // Always request a fit-to-device height (never the raw original): the
+        // server serves the proxy closest to this height when one exists, else
+        // transcodes down — so big originals don't stream raw over Wi-Fi.
+        let height = Self.streamHeight()
+        do {
+            let item = try await MediaClient().playerItem(
+                videoId: video.id, height: height, ext: "mp4", from: mediaEndpoint)
+            let p = AVPlayer(playerItem: item)
+            player = p
+            preparedVideoId = video.id
+            p.play()
+        } catch {
+            NSLog("ReelVault: playback prepare failed for \(video.id) (h\(height)): \(error)")
+            self.error = "Couldn't play this video: \(error.localizedDescription)"
+        }
+    }
+
+    /// Tear down when the view's video changes, so a new selection doesn't keep
+    /// playing the previous one.
+    func resetIfDifferent(_ videoId: String) {
+        if preparedVideoId != videoId {
+            player?.pause()
+            player = nil
+            preparedVideoId = nil
+            error = nil
+        }
+    }
+
+    func pause() { player?.pause() }
+
+    /// Target playback height: the device's native pixel height, capped at 1440
+    /// so a no-proxy fallback still transcodes down to a Wi-Fi-friendly size.
+    static func streamHeight() -> Int {
+        let native = Int(UIScreen.main.nativeBounds.height)
+        return min(max(native, 480), 1440)
+    }
+}
+
+/// The player surface, bound to a (possibly shared) `StreamPlayer`.
 struct StreamingPlayerView: View {
+    @ObservedObject var stream: StreamPlayer
     let video: VideoSummary
     let endpoint: AppRouter.ConnectionInfo?
-    /// Start playing as soon as the rendition is ready (full-screen mode).
+    /// Begin playing as soon as the view appears (full-screen mode).
     var autoPlay: Bool = false
     /// Fill the available space instead of a 16:9 box (full-screen mode).
     var fill: Bool = false
 
-    @State private var player: AVPlayer?
-    @State private var isPreparing = false
-    @State private var playbackError: String?
-
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             playerBox
-            if let playbackError {
-                Text(playbackError)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+            if let error = stream.error {
+                Text(error).font(.footnote).foregroundStyle(.secondary)
             }
         }
         .task(id: video.id) {
-            player?.pause()
-            player = nil
-            playbackError = nil
-            if autoPlay { await preparePlayback() }
+            stream.resetIfDifferent(video.id)
+            if autoPlay { await stream.prepare(video: video, endpoint: endpoint) }
         }
-        .onDisappear { player?.pause() }
+        .onDisappear { if !fill { stream.pause() } }
     }
 
     @ViewBuilder private var playerBox: some View {
         let box = ZStack {
             if !fill { RoundedRectangle(cornerRadius: 10).fill(.black) }
-            if let player {
+            if let player = stream.player {
                 VideoPlayer(player: player)
                     .clipShape(RoundedRectangle(cornerRadius: fill ? 0 : 10))
-            } else if isPreparing {
+            } else if stream.isPreparing {
                 ProgressView().tint(.white)
             } else {
                 Button {
-                    Task { await preparePlayback() }
+                    Task { await stream.prepare(video: video, endpoint: endpoint) }
                 } label: {
                     Label("Play", systemImage: "play.fill")
                 }
@@ -85,48 +137,9 @@ struct StreamingPlayerView: View {
             box.aspectRatio(16.0 / 9.0, contentMode: .fit)
         }
     }
-
-    private func preparePlayback() async {
-        guard let conn = endpoint else {
-            playbackError = "No media connection available."
-            return
-        }
-        isPreparing = true
-        defer { isPreparing = false }
-        let mediaEndpoint = MediaClient.Endpoint(
-            host: conn.host,
-            mediaPort: conn.mediaPort,
-            fingerprintHex: conn.fingerprintHex,
-            bearerToken: conn.bearerToken
-        )
-        // Always request a fit-to-device height (never the raw original): the
-        // server serves the proxy closest to this height when one exists, else
-        // transcodes down to it — so we don't stream a multi-GB original to a
-        // tablet over Wi-Fi. Capped so a no-proxy fallback still downscales.
-        let height = Self.streamHeight()
-        do {
-            let item = try await MediaClient().playerItem(
-                videoId: video.id, height: height, ext: "mp4", from: mediaEndpoint)
-            let p = AVPlayer(playerItem: item)
-            player = p
-            p.play()
-        } catch {
-            NSLog("ReelVault: playback prepare failed for \(video.id) (h\(height)): \(error)")
-            playbackError = "Couldn't play this video: \(error.localizedDescription)"
-        }
-    }
-
-    /// Target playback height: the device's native pixel height, capped at
-    /// 1440 so a no-proxy fallback still transcodes down to a Wi-Fi-friendly
-    /// size. The server uses this to pick the closest existing proxy (or to
-    /// downscale), so big originals never stream at full resolution.
-    static func streamHeight() -> Int {
-        let native = Int(UIScreen.main.nativeBounds.height)
-        return min(max(native, 480), 1440)
-    }
 }
 
-/// The read-only metadata list shared by the detail screen and the inspector.
+/// The read-only metadata list shown in Detail mode and the compact detail screen.
 struct VideoMetadataSection: View {
     let video: VideoSummary
 

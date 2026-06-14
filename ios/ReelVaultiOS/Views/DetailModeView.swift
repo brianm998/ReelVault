@@ -5,12 +5,12 @@ import SwiftUI
 import ReelVaultKit
 
 /// Detail view mode: the big playable video for the current selection, plus its
-/// metadata, with a full-screen button. This is where playback lives now — the
-/// right-hand inspector is metadata-only. Mirrors the macOS DetailLoupeView:
-/// shows an empty state until a video is selected (in Grid/List mode).
+/// metadata, with a full-screen button. Playback lives here (not the inspector).
+/// Shows an empty state until a video is selected (in Grid/List mode).
 struct DetailModeView: View {
     @ObservedObject var grid: GridViewModel
     let connection: AppRouter.ConnectionInfo?
+    @StateObject private var stream = StreamPlayer()
     @State private var fullScreen = false
 
     private var video: VideoSummary? {
@@ -22,7 +22,7 @@ struct DetailModeView: View {
             if let video {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        StreamingPlayerView(video: video, endpoint: connection)
+                        StreamingPlayerView(stream: stream, video: video, endpoint: connection)
                         VideoMetadataSection(video: video)
                     }
                     .padding()
@@ -38,7 +38,7 @@ struct DetailModeView: View {
                     }
                 }
                 .fullScreenCover(isPresented: $fullScreen) {
-                    FullScreenPlayer(video: video, endpoint: connection)
+                    FullScreenPlayer(stream: stream, video: video, endpoint: connection)
                 }
             } else {
                 ContentUnavailableView(
@@ -52,8 +52,10 @@ struct DetailModeView: View {
 }
 
 /// A black, edge-to-edge full-screen player with a close button. Reuses the
-/// pinned-streaming `StreamingPlayerView` (auto-playing, filling the screen).
+/// SAME `StreamPlayer` as the inline detail player (one AVPlayer → no doubled,
+/// offset audio), just rendered full-bleed and auto-playing.
 struct FullScreenPlayer: View {
+    @ObservedObject var stream: StreamPlayer
     let video: VideoSummary
     let endpoint: AppRouter.ConnectionInfo?
     @Environment(\.dismiss) private var dismiss
@@ -61,7 +63,8 @@ struct FullScreenPlayer: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             Color.black.ignoresSafeArea()
-            StreamingPlayerView(video: video, endpoint: endpoint, autoPlay: true, fill: true)
+            StreamingPlayerView(stream: stream, video: video, endpoint: endpoint,
+                                autoPlay: true, fill: true)
                 .ignoresSafeArea()
             Button { dismiss() } label: {
                 Image(systemName: "xmark.circle.fill")

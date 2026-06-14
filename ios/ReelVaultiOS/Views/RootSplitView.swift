@@ -68,16 +68,30 @@ private struct RegularLayout: View {
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
+        // Two-column split (library | main). The metadata inspector is a small
+        // fixed-width trailing panel *inside* the main area — shown only in
+        // Grid/List with a selection — so it never squeezes the grid into one
+        // column or appears in Detail/Map mode.
         NavigationSplitView(columnVisibility: $columnVisibility) {
             LibrarySidebar(
                 grid: grid, viewMode: $viewMode, selection: $selection,
                 hasSelection: grid.selectedVideoId != nil, onSelect: apply)
-        } content: {
-            center
         } detail: {
-            InspectorPanel(video: selectedVideo(grid)) { viewMode = .detail }
+            HStack(spacing: 0) {
+                center
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if showInspector {
+                    Divider()
+                    InspectorPanel(video: selectedVideo(grid)) { viewMode = .detail }
+                        .frame(width: 300)
+                }
+            }
         }
-        .navigationSplitViewStyle(.balanced)
+    }
+
+    /// Inspector appears only when browsing (grid/list) with a selection.
+    private var showInspector: Bool {
+        (viewMode == .grid || viewMode == .list) && selectedVideo(grid) != nil
     }
 
     @ViewBuilder private var center: some View {

@@ -42,6 +42,12 @@ struct VideoListView: View {
                             onActivate(video)
                         }
                     }
+                    .contextMenu {
+                        VideoCardMenu(
+                            video: video,
+                            onSetRating: { grid.setRating($0, for: [video.id]) },
+                            onSetColorLabel: { grid.setColorLabel($0, for: [video.id]) })
+                    }
                     .onAppear { grid.loadThumbnail(videoId: video.id) }
                 }
             }

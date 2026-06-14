@@ -12,6 +12,7 @@ struct LibraryTopBar: View {
     @ObservedObject var grid: GridViewModel
     @Binding var thumbnailWidth: Double
     @State private var showFilters = false
+    @State private var showCardStats = false
 
     /// Sort fields offered, matching the macOS picker (label, server key).
     private static let sortFields: [(String, String)] = [
@@ -29,6 +30,7 @@ struct LibraryTopBar: View {
             searchField
             filterButton
             sortMenu
+            cardStatsButton
             Spacer(minLength: 8)
             thumbnailSlider
         }
@@ -38,6 +40,16 @@ struct LibraryTopBar: View {
         .sheet(isPresented: $showFilters) {
             LibraryFilterSheet(grid: grid)
         }
+        .sheet(isPresented: $showCardStats) {
+            TopSlotsConfigSheet(grid: grid)
+        }
+    }
+
+    private var cardStatsButton: some View {
+        Button { showCardStats = true } label: {
+            Image(systemName: "slider.horizontal.below.rectangle")
+        }
+        .help("Configure card stats")
     }
 
     private var searchField: some View {
@@ -213,5 +225,50 @@ struct LibraryFilterSheet: View {
             }
         }
         .pickerStyle(.menu)
+    }
+}
+
+/// Configure which metadata appears in the card's four top stat slots. Writes
+/// the catalog-wide `topSlots` and persists via `saveGridSettings()` (shared
+/// with the macOS/desktop clients).
+struct TopSlotsConfigSheet: View {
+    @ObservedObject var grid: GridViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Text("Choose the four stats shown at the top of each card.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+                ForEach(0..<4, id: \.self) { i in
+                    Picker("Slot \(i + 1)", selection: slotBinding(i)) {
+                        ForEach(GridStatKey.allCases) { key in
+                            Text(key.displayName).tag(key.rawValue)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Card Stats")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func slotBinding(_ i: Int) -> Binding<String> {
+        Binding(
+            get: { i < grid.topSlots.count ? grid.topSlots[i] : "" },
+            set: { newValue in
+                var slots = grid.topSlots
+                while slots.count < 4 { slots.append("") }
+                slots[i] = newValue
+                grid.topSlots = slots
+                grid.saveGridSettings()
+            }
+        )
     }
 }

@@ -64,7 +64,8 @@ struct VideoGridView: View {
                                             onActivate(video)
                                         }
                                     },
-                                    onSetRating: { grid.setRating($0, for: [video.id]) }
+                                    onSetRating: { grid.setRating($0, for: [video.id]) },
+                                    onSetColorLabel: { grid.setColorLabel($0, for: [video.id]) }
                                 )
                                 .onAppear { grid.loadThumbnail(videoId: video.id) }
                                 .id(video.id)
@@ -141,6 +142,7 @@ struct VideoCardView: View {
     var isChecked: Bool = false
     var onActivate: () -> Void = {}
     var onSetRating: (Int) -> Void = { _ in }
+    var onSetColorLabel: (String) -> Void = { _ in }
 
     private let bandColor = Color(white: 0.11)   // card chrome (dark)
     private let dividerColor = Color.black.opacity(0.6)
@@ -167,6 +169,7 @@ struct VideoCardView: View {
                 .strokeBorder(Color.accentColor, lineWidth: showBorder ? 3 : 0)
         )
         .opacity(video.isOnline ? 1 : 0.5)
+        .contextMenu { VideoCardMenu(video: video, onSetRating: onSetRating, onSetColorLabel: onSetColorLabel) }
     }
 
     /// Highlight the card when it's the active selection or a checked
@@ -266,5 +269,36 @@ struct VideoCardView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 3)
+    }
+}
+
+/// Long-press context menu for a video card / list row: set the star rating and
+/// the colour label (the iOS counterpart of the macOS right-click menu).
+struct VideoCardMenu: View {
+    let video: VideoSummary
+    var onSetRating: (Int) -> Void
+    var onSetColorLabel: (String) -> Void
+
+    var body: some View {
+        Menu("Rating") {
+            ForEach(Array((0...5).reversed()), id: \.self) { n in
+                Button {
+                    onSetRating(n)
+                } label: {
+                    Label(n == 0 ? "None" : String(repeating: "★", count: n),
+                          systemImage: video.rating == n ? "checkmark" : "")
+                }
+            }
+        }
+        Menu("Color Label") {
+            ForEach(ColorLabel.allCases) { label in
+                Button {
+                    onSetColorLabel(label.rawValue)
+                } label: {
+                    Label(label.displayName,
+                          systemImage: video.colorLabel == label.rawValue ? "checkmark" : "circle.fill")
+                }
+            }
+        }
     }
 }
