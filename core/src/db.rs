@@ -426,6 +426,15 @@ impl Database {
                 PRIMARY KEY (video_id, tag_name),
                 FOREIGN KEY(video_id) REFERENCES videos(id) ON DELETE CASCADE
             )"),
+            // Devices that completed the one-time LAN pairing handshake. We
+            // store only the SHA-256 of the bearer token, never the token
+            // itself. `last_seen` is bumped on each authenticated request.
+            ("paired_devices table", "CREATE TABLE IF NOT EXISTS paired_devices (
+                token_hash TEXT PRIMARY KEY,
+                device_name TEXT NOT NULL,
+                paired_at INTEGER NOT NULL,
+                last_seen INTEGER NOT NULL
+            )"),
         ];
         for (label, sql) in migrations {
             match conn.execute(sql, []) {
@@ -439,6 +448,58 @@ impl Database {
             }
         }
         Ok(())
+    }
+
+    // ----- Device pairing (LAN auth) -----
+
+    /// Record a paired device, storing only the token hash.
+    pub fn add_paired_device(&self, token_hash: &str, device_name: &str) -> Result<()> {
+        let conn = self.get_connection()?;
+        let now = chrono::Utc::now().timestamp();
+        conn.execute(
+            "INSERT OR REPLACE INTO paired_devices (token_hash, device_name, paired_at, last_seen)
+             VALUES (?1, ?2, ?3, ?3)",
+            params![token_hash, device_name, now],
+        )
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
+    /// True iff `token_hash` belongs to a paired device; bumps `last_seen`.
+    pub fn is_paired_token(&self, token_hash: &str) -> Result<bool> {
+        let conn = self.get_connection()?;
+        let now = chrono::Utc::now().timestamp();
+        let updated = conn
+            .execute(
+                "UPDATE paired_devices SET last_seen = ?2 WHERE token_hash = ?1",
+                params![token_hash, now],
+            )
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(updated > 0)
+    }
+
+    /// List paired devices as `(device_name, paired_at, last_seen)`.
+    pub fn list_paired_devices(&self) -> Result<Vec<(String, i64, i64)>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn
+            .prepare("SELECT device_name, paired_at, last_seen FROM paired_devices ORDER BY last_seen DESC")
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let rows = stmt
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(rows.filter_map(|r| r.ok()).collect())
+    }
+
+    /// Revoke a paired device by token hash. Returns true if one was removed.
+    pub fn revoke_paired_device(&self, token_hash: &str) -> Result<bool> {
+        let conn = self.get_connection()?;
+        let n = conn
+            .execute(
+                "DELETE FROM paired_devices WHERE token_hash = ?1",
+                params![token_hash],
+            )
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(n > 0)
     }
 
     pub fn get_connection(&self) -> Result<PooledConnection> {

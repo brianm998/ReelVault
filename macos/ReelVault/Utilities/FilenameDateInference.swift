@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import Foundation
+import ReelVaultKit
 
 /// Client-side mirror of the core scanner's filename → capture-date inference
 /// (`core/src/indexing.rs`, `FilenameDateRule`). Lets the UI preview and apply

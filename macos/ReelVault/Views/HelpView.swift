@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import SwiftUI
+import ReelVaultKit
 
 /// Full-page help reference displayed from Help → ReelVault Help.
 /// Organised into collapsible sections so experienced users can jump straight

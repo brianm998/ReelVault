@@ -11,7 +11,7 @@ import SwiftUI
 /// we can't classify (`.unspecified` — unknown camera or a common
 /// video standard like UHD/FHD). Clients render a badge for `.full`
 /// and `.notFull`; `.unspecified` gets no badge.
-enum FullResolutionStatus: Int {
+public enum FullResolutionStatus: Int, Sendable {
     case unspecified = 0
     case full = 1
     case notFull = 2
@@ -19,32 +19,32 @@ enum FullResolutionStatus: Int {
     /// Map an int from the proto wire format. Unknown values fall back
     /// to `.unspecified` so a daemon that adds a new variant doesn't
     /// crash an older client.
-    static func from(wire: Int) -> FullResolutionStatus {
+    public static func from(wire: Int) -> FullResolutionStatus {
         FullResolutionStatus(rawValue: wire) ?? .unspecified
     }
 }
 
-struct VideoSummary: Identifiable, Hashable {
-    let id: String
-    let filename: String
-    let path: String
-    let width: Int
-    let height: Int
-    let durationMs: Int
-    let fps: Double
-    let codecVideo: String
-    let codecAudio: String
-    let bitrateKbps: Int
-    let sizeBytes: Int
-    let indexedAt: Int64
-    let creationDate: Int64
-    let tags: [String]
-    let hasThumbnail: Bool
+public struct VideoSummary: Identifiable, Hashable, Sendable {
+    public let id: String
+    public let filename: String
+    public let path: String
+    public let width: Int
+    public let height: Int
+    public let durationMs: Int
+    public let fps: Double
+    public let codecVideo: String
+    public let codecAudio: String
+    public let bitrateKbps: Int
+    public let sizeBytes: Int
+    public let indexedAt: Int64
+    public let creationDate: Int64
+    public let tags: [String]
+    public let hasThumbnail: Bool
     // Group info
-    let groupId: String
-    let groupSize: Int
-    let groupPreferredId: String
-    let groupPreferredPath: String
+    public let groupId: String
+    public let groupSize: Int
+    public let groupPreferredId: String
+    public let groupPreferredPath: String
     // Proxy info. `proxyCount` drives the small "P×N" badge on the
     // card — non-zero means this video has lower-resolution proxies the
     // user can fall back to for inline playback. `proxyOf` non-empty
@@ -52,73 +52,73 @@ struct VideoSummary: Identifiable, Hashable {
     // hides such rows behind their source unless the user clicks
     // "show proxies". `playableNatively` is the server's verdict on
     // whether the video fits under the configured max-native-height.
-    let proxyCount: Int
-    let proxyOf: String
-    let playableNatively: Bool
+    public let proxyCount: Int
+    public let proxyOf: String
+    public let playableNatively: Bool
     /// Lightroom-style 0..5 star rating. 0 means unrated.
-    let rating: Int
+    public let rating: Int
     /// Lightroom-style color label — one of "", "red", "yellow", "green",
     /// "blue", "purple". Surfaces as the band-color around the card.
-    let colorLabel: String
+    public let colorLabel: String
     /// Raw EXIF camera body string (e.g. "SONY ILCE-7RM3"). Empty when the
     /// file has no camera metadata. Carried on the summary so the grid's
     /// configurable "Camera" top-of-card stat slot renders without a
     /// per-video VideoMetadata roundtrip.
-    let cameraModel: String
+    public let cameraModel: String
     /// Marketing-friendly camera name resolved by the daemon (e.g.
     /// "Sony a7R III"). Falls back to `cameraModel` when no mapping is
     /// known. UI uses this for display.
-    let cameraDisplayName: String
+    public let cameraDisplayName: String
     /// GPS latitude from embedded EXIF/metadata. 0.0 when absent. Carried
     /// on the summary so the grid card can show a location badge without a
     /// per-video VideoMetadata round-trip.
-    let gpsLatitude: Double
+    public let gpsLatitude: Double
     /// GPS longitude from embedded EXIF/metadata. 0.0 when absent.
-    let gpsLongitude: Double
+    public let gpsLongitude: Double
     /// Lens designation from the video's embedded XMP packet (`aux:Lens`).
     /// Empty when the file has no XMP. Surfaced on the summary so the grid
     /// can both sort by lens and display it in a configurable stat slot
     /// without a per-row VideoMetadata round-trip.
-    let lensModel: String
+    public let lensModel: String
     /// ISO from embedded XMP. 0 when absent.
-    let iso: Int
+    public let iso: Int
     /// F-number from embedded XMP (e.g. 1.8). 0.0 when absent.
-    let aperture: Double
+    public let aperture: Double
     /// Exposure time in seconds from embedded XMP. 0.0 when absent.
-    let exposureTimeS: Double
+    public let exposureTimeS: Double
     /// Focal length in millimeters from embedded XMP. 0.0 when absent.
-    let focalLengthMm: Double
+    public let focalLengthMm: Double
     /// Full-resolution badge state set by the daemon's classifier.
     /// `.unspecified` (the default) renders no badge; the other two
     /// render the "Full" / "Not full" chip on the card.
-    let fullResolution: FullResolutionStatus
+    public let fullResolution: FullResolutionStatus
     /// False when the daemon found the file missing at the last scan — moved,
     /// renamed, or on an unmounted drive. The grid dims such cards and shows an
     /// "offline" badge instead of only failing when the user hits play.
-    let isOnline: Bool
+    public let isOnline: Bool
     /// ffprobe's nb_frames for the video stream (proto `VideoSummary.frame_count`).
     /// 0 when the container didn't report one — `frameCountFormatted` then falls
     /// back to estimating from duration × fps. Surfaced on the summary so the
     /// grid's "Frame count" stat slot renders without a per-video round-trip.
-    let frameCount: Int64
+    public let frameCount: Int64
 
-    var isInGroup: Bool { !groupId.isEmpty && groupSize > 1 }
-    var hasProxies: Bool { proxyCount > 0 }
-    var isProxy: Bool { !proxyOf.isEmpty }
-    var hasLocation: Bool { abs(gpsLatitude) > 1e-6 || abs(gpsLongitude) > 1e-6 }
+    public var isInGroup: Bool { !groupId.isEmpty && groupSize > 1 }
+    public var hasProxies: Bool { proxyCount > 0 }
+    public var isProxy: Bool { !proxyOf.isEmpty }
+    public var hasLocation: Bool { abs(gpsLatitude) > 1e-6 || abs(gpsLongitude) > 1e-6 }
     /// True when the file carries an audio track. Drives the card's audio badge
     /// and the "has audio" attribute filter.
-    var hasAudio: Bool { !codecAudio.isEmpty }
+    public var hasAudio: Bool { !codecAudio.isEmpty }
     /// Orientation buckets for the orientation attribute filter. Square
     /// (width == height) counts as landscape; unknown dimensions are neither.
-    var isPortrait: Bool { height > width }
-    var isLandscape: Bool { width > 0 && width >= height }
+    public var isPortrait: Bool { height > width }
+    public var isLandscape: Bool { width > 0 && width >= height }
     /// Path to open on double-click — preferred member if in a group, else this video.
-    var openPath: String { groupPreferredPath.isEmpty ? path : groupPreferredPath }
+    public var openPath: String { groupPreferredPath.isEmpty ? path : groupPreferredPath }
 
-    var resolution: String { "\(width)×\(height)" }
+    public var resolution: String { "\(width)×\(height)" }
 
-    var durationFormatted: String {
+    public var durationFormatted: String {
         let totalSeconds = durationMs / 1000
         let hours = totalSeconds / 3600
         let minutes = (totalSeconds % 3600) / 60
@@ -133,7 +133,7 @@ struct VideoSummary: Identifiable, Hashable {
     /// estimate from duration × fps ("~12,345"), or nil when neither is known.
     /// Mirrors `VideoMetadata.frameCountFormatted` so the card and the detail
     /// panel show the same value.
-    var frameCountFormatted: String? {
+    public var frameCountFormatted: String? {
         if frameCount > 0 { return frameCount.formatted() }
         if fps > 0 && durationMs > 0 {
             let est = Int64((Double(durationMs) / 1000.0 * fps).rounded())
@@ -142,7 +142,7 @@ struct VideoSummary: Identifiable, Hashable {
         return nil
     }
 
-    var sizeFormatted: String {
+    public var sizeFormatted: String {
         let mb = Double(sizeBytes) / (1024 * 1024)
         if mb > 1024 {
             return String(format: "%.2f GB", mb / 1024)
@@ -153,7 +153,7 @@ struct VideoSummary: Identifiable, Hashable {
     /// Return a copy of self with `rating` replaced — used by the
     /// view-model's optimistic update path so a single field change
     /// doesn't require re-fetching the whole row.
-    func withRating(_ newRating: Int) -> VideoSummary {
+    public func withRating(_ newRating: Int) -> VideoSummary {
         VideoSummary(
             id: id, filename: filename, path: path,
             width: width, height: height, durationMs: durationMs,
@@ -177,7 +177,7 @@ struct VideoSummary: Identifiable, Hashable {
     }
 
     /// Return a copy of self with `tags` replaced.
-    func withTags(_ newTags: [String]) -> VideoSummary {
+    public func withTags(_ newTags: [String]) -> VideoSummary {
         VideoSummary(
             id: id, filename: filename, path: path,
             width: width, height: height, durationMs: durationMs,
@@ -201,7 +201,7 @@ struct VideoSummary: Identifiable, Hashable {
     }
 
     /// Return a copy of self with GPS coordinates replaced.
-    func withLocation(latitude: Double, longitude: Double) -> VideoSummary {
+    public func withLocation(latitude: Double, longitude: Double) -> VideoSummary {
         VideoSummary(
             id: id, filename: filename, path: path,
             width: width, height: height, durationMs: durationMs,
@@ -225,7 +225,7 @@ struct VideoSummary: Identifiable, Hashable {
     }
 
     /// Return a copy of self with `colorLabel` replaced.
-    func withColorLabel(_ newLabel: String) -> VideoSummary {
+    public func withColorLabel(_ newLabel: String) -> VideoSummary {
         VideoSummary(
             id: id, filename: filename, path: path,
             width: width, height: height, durationMs: durationMs,
@@ -249,62 +249,62 @@ struct VideoSummary: Identifiable, Hashable {
     }
 }
 
-struct VideoMetadata: Identifiable {
-    let id: String
-    let filename: String
-    let path: String
-    let width: Int
-    let height: Int
-    let durationMs: Int
-    let fps: Double
-    let codecVideo: String
-    let codecAudio: String
-    let bitrateKbps: Int
-    let sizeBytes: Int
-    let colorSpace: String
-    let hdr: Bool
-    let audioChannels: Int
-    let audioSampleRate: Int
-    let creationDate: Int64
-    let cameraModel: String
+public struct VideoMetadata: Identifiable, Sendable {
+    public let id: String
+    public let filename: String
+    public let path: String
+    public let width: Int
+    public let height: Int
+    public let durationMs: Int
+    public let fps: Double
+    public let codecVideo: String
+    public let codecAudio: String
+    public let bitrateKbps: Int
+    public let sizeBytes: Int
+    public let colorSpace: String
+    public let hdr: Bool
+    public let audioChannels: Int
+    public let audioSampleRate: Int
+    public let creationDate: Int64
+    public let cameraModel: String
     /// Marketing-friendly camera name (e.g. "Sony a7R III" for an internal
     /// "SONY ILCE-7RM3"). Falls back to `cameraModel` verbatim when no
     /// mapping is known. UI compares the two: when they differ a
     /// toggleable 'i' affordance reveals the internal name on click.
-    let cameraDisplayName: String
-    let lensModel: String
-    let gpsLat: Double
-    let gpsLon: Double
-    let gpsAltitude: Double
-    let notes: String
-    let tags: [String]
-    let collections: [String]
+    public let cameraDisplayName: String
+    public let lensModel: String
+    public let gpsLat: Double
+    public let gpsLon: Double
+    public let gpsAltitude: Double
+    public let notes: String
+    public let tags: [String]
+    public let collections: [String]
     /// Lightroom-style 0..5 star rating mirrored from VideoSummary.
-    let rating: Int
+    public let rating: Int
     /// Lightroom-style color label mirrored from VideoSummary.
-    let colorLabel: String
+    public let colorLabel: String
     /// Photo-EXIF recovered from the video's embedded XMP packet. Each is
     /// "absent" in a domain-specific way: a zero numeric or empty string
     /// means the video didn't carry that field. The detail/inspector view
     /// hides absent rows so a video with no XMP doesn't show seven empty
     /// rows under EXIF.
-    let iso: Int
-    let aperture: Double
-    let exposureTimeS: Double
-    let focalLengthMm: Double
-    let exposureMode: String
-    let exposureProgram: String
-    let whiteBalance: String
+    public let iso: Int
+    public let aperture: Double
+    public let exposureTimeS: Double
+    public let focalLengthMm: Double
+    public let exposureMode: String
+    public let exposureProgram: String
+    public let whiteBalance: String
     /// Mirrors `VideoSummary.fullResolution` — the detail panel shows a
     /// "Resolution Status" row in addition to the card badge.
-    let fullResolution: FullResolutionStatus
+    public let fullResolution: FullResolutionStatus
     /// Total frame count (ffprobe nb_frames), or 0 when the container didn't
     /// report one — `frameCountFormatted` then estimates from duration × fps.
-    let frameCount: Int64
+    public let frameCount: Int64
 
-    var resolution: String { "\(width)×\(height)" }
+    public var resolution: String { "\(width)×\(height)" }
 
-    var durationFormatted: String {
+    public var durationFormatted: String {
         let totalSeconds = durationMs / 1000
         let hours = totalSeconds / 3600
         let minutes = (totalSeconds % 3600) / 60
@@ -317,7 +317,7 @@ struct VideoMetadata: Identifiable {
 
     /// Frame count for display: the exact stored count when known, otherwise a
     /// "~" estimate from duration × fps, or nil when neither is available.
-    var frameCountFormatted: String? {
+    public var frameCountFormatted: String? {
         if frameCount > 0 { return frameCount.formatted() }
         if fps > 0 && durationMs > 0 {
             let est = Int64((Double(durationMs) / 1000.0 * fps).rounded())
@@ -326,7 +326,7 @@ struct VideoMetadata: Identifiable {
         return nil
     }
 
-    var sizeFormatted: String {
+    public var sizeFormatted: String {
         let mb = Double(sizeBytes) / (1024 * 1024)
         if mb > 1024 {
             return String(format: "%.2f GB", mb / 1024)
@@ -334,7 +334,7 @@ struct VideoMetadata: Identifiable {
         return String(format: "%.2f MB", mb)
     }
 
-    var bitrateFormatted: String {
+    public var bitrateFormatted: String {
         if bitrateKbps > 1000 {
             return String(format: "%.2f Mbps", Double(bitrateKbps) / 1000)
         }
@@ -345,26 +345,26 @@ struct VideoMetadata: Identifiable {
     /// creation timestamp is frequently wrong (cameras store local wall-clock
     /// without a timezone), so we deliberately show no finer granularity than
     /// the day.
-    var creationDateFormatted: String {
+    public var creationDateFormatted: String {
         if creationDate == 0 { return "Unknown" }
         let date = Date(timeIntervalSince1970: TimeInterval(creationDate / 1000))
         return date.formatted(date: .abbreviated, time: .omitted)
     }
 }
 
-struct Tag: Identifiable, Hashable {
-    let id: String
-    let name: String
-    let color: String?
-    let videoCount: Int64
+public struct Tag: Identifiable, Hashable, Sendable {
+    public let id: String
+    public let name: String
+    public let color: String?
+    public let videoCount: Int64
 }
 
-struct Collection: Identifiable, Hashable {
-    let id: String
-    let name: String
-    let isSmart: Bool
-    var filterJson: String = ""
-    let videoCount: Int64
+public struct Collection: Identifiable, Hashable, Sendable {
+    public let id: String
+    public let name: String
+    public let isSmart: Bool
+    public var filterJson: String = ""
+    public let videoCount: Int64
 }
 
 /// One metadata-column constraint captured in a smart collection: a metadata
@@ -372,46 +372,46 @@ struct Collection: Identifiable, Hashable {
 /// its selected facet `values` (OR-ed). Generalises the old fixed
 /// camera/lens/codec/year fields so a smart collection reproduces ANY metadata
 /// column the user had narrowed.
-struct SmartCollectionColumn {
-    var key: String
-    var values: [String]
+public struct SmartCollectionColumn: Sendable {
+    public var key: String
+    public var values: [String]
     /// "is not" column — matches videos lacking any of `values`.
-    var negate: Bool = false
+    public var negate: Bool = false
 }
 
-struct SmartCollectionFilters {
+public struct SmartCollectionFilters: Sendable {
     /// Arbitrary metadata-column constraints (replaces the old fixed
     /// camera/lens/codec/year scalars). The "location" virtual key is never
     /// stored here — geo lives in geoLat/geoLon/geoRadiusKm.
-    var columns: [SmartCollectionColumn] = []
-    var minRating: Int32 = 0
-    var colorLabel: String = ""
-    var tagIds: [String] = []
+    public var columns: [SmartCollectionColumn] = []
+    public var minRating: Int32 = 0
+    public var colorLabel: String = ""
+    public var tagIds: [String] = []
     /// Full-text search box ("keyword") query. Previously dropped, which made a
     /// smart collection saved from a search come back empty.
-    var searchQuery: String = ""
+    public var searchQuery: String = ""
     /// Map proximity filter: keep videos within geoRadiusKm of (geoLat, geoLon).
     /// A radius of 0 means "no geo constraint" (0,0 is a legitimate coordinate,
     /// so radius — never 0 for a real filter — is the presence flag).
-    var geoLat: Double = 0.0
-    var geoLon: Double = 0.0
-    var geoRadiusKm: Double = 0.0
+    public var geoLat: Double = 0.0
+    public var geoLon: Double = 0.0
+    public var geoRadiusKm: Double = 0.0
     /// Library-folder selection (the left panel). Empty = all folders. A smart
     /// collection can pin itself to one or more library locations.
-    var locationPaths: [String] = []
+    public var locationPaths: [String] = []
     /// Tri-state attribute filters mirrored from the Library Filter's
     /// "attribute" mode. `.any` means the dimension is unconstrained.
-    var hasLocation: AttributeFilterState = .any
-    var hasKeywords: AttributeFilterState = .any
-    var hasProxies: AttributeFilterState = .any
-    var fullResolution: AttributeFilterState = .any
-    var hasAudio: AttributeFilterState = .any
-    var orientation: OrientationFilterState = .any
+    public var hasLocation: AttributeFilterState = .any
+    public var hasKeywords: AttributeFilterState = .any
+    public var hasProxies: AttributeFilterState = .any
+    public var fullResolution: AttributeFilterState = .any
+    public var hasAudio: AttributeFilterState = .any
+    public var orientation: OrientationFilterState = .any
 
     /// True when a map-proximity constraint is active.
-    var hasGeo: Bool { geoRadiusKm > 0.0 }
+    public var hasGeo: Bool { geoRadiusKm > 0.0 }
 
-    func toJson() -> String {
+    public func toJson() -> String {
         func esc(_ s: String) -> String { "\"\(s.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\""))\"" }
         // Each column is encoded as "key=v1v2" — a flat string so the
         // existing string-array parser round-trips it without a nested-array
@@ -424,7 +424,7 @@ struct SmartCollectionFilters {
         return #"{"columns":[\#(colsJson)],"minRating":\#(minRating),"colorLabel":\#(esc(colorLabel)),"searchQuery":\#(esc(searchQuery)),"tagIds":[\#(tagsJson)],"geoLat":\#(geoLat),"geoLon":\#(geoLon),"geoRadiusKm":\#(geoRadiusKm)\#(attrs)}"#
     }
 
-    static func from(json: String) -> SmartCollectionFilters? {
+    public static func from(json: String) -> SmartCollectionFilters? {
         guard !json.isEmpty else { return nil }
         func strVal(_ key: String) -> String {
             guard let r = json.range(of: "\"\(key)\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"",
@@ -531,48 +531,48 @@ struct SmartCollectionFilters {
     }
 }
 
-struct LibraryLocation: Identifiable, Hashable {
-    var id: String { path }
-    let path: String
-    let recursive: Bool
-    let enabled: Bool
-    let videoCount: Int64
-    let lastScanned: Int64
+public struct LibraryLocation: Identifiable, Hashable, Sendable {
+    public var id: String { path }
+    public let path: String
+    public let recursive: Bool
+    public let enabled: Bool
+    public let videoCount: Int64
+    public let lastScanned: Int64
     /// True when this (recursive) location has at least one subdirectory
     /// containing videos — i.e. the library panel should offer to expand it.
-    var hasSubdirectories: Bool = false
+    public var hasSubdirectories: Bool = false
 }
 
 /// One immediate child directory of a library location (or another
 /// subdirectory), reported by the daemon's `ListSubdirectories` RPC. The tree
 /// is derived from indexed video paths, so a subdirectory appears only when it
 /// (recursively) contains videos.
-struct Subdirectory: Identifiable, Hashable {
-    var id: String { path }
-    let path: String
-    let videoCount: Int64
+public struct Subdirectory: Identifiable, Hashable, Sendable {
+    public var id: String { path }
+    public let path: String
+    public let videoCount: Int64
     /// Whether this directory has child directories containing videos of its
     /// own — i.e. it is itself expandable.
-    let hasSubdirectories: Bool
+    public let hasSubdirectories: Bool
 }
 
 /// A single visible row of the library panel's location tree: a library
 /// location or one of its (transitive) subdirectories, flattened in display
 /// order with its nesting `depth`.
-struct LibraryRow: Identifiable, Hashable {
+public struct LibraryRow: Identifiable, Hashable, Sendable {
     /// Composite of depth + path so a directory that is also a registered
     /// location (a nested library root) can appear at two depths without an
     /// id clash.
-    var id: String { "\(depth) \(path)" }
-    let path: String
-    let depth: Int
-    let videoCount: Int64
+    public var id: String { "\(depth) \(path)" }
+    public let path: String
+    public let depth: Int
+    public let videoCount: Int64
     /// Show a disclosure chevron (the dir has expandable children).
-    let isExpandable: Bool
-    let isExpanded: Bool
+    public let isExpandable: Bool
+    public let isExpanded: Bool
     /// False for subdirectory rows — only top-level library locations carry
     /// rescan / remove affordances and the full-path sublabel.
-    let isTopLevel: Bool
+    public let isTopLevel: Bool
 }
 
 /// Distinct values that can populate the top-bar filter dropdowns.
@@ -581,15 +581,15 @@ struct LibraryRow: Identifiable, Hashable {
 /// true when the user has added or overridden a row in this catalog.
 /// Both can be true at once — that's the "user replaced a built-in"
 /// case, where `marketingName` carries the user's chosen string.
-struct CameraNameMapping: Identifiable, Hashable {
-    let internalName: String
-    let marketingName: String
-    let isBuiltin: Bool
-    let isCustom: Bool
+public struct CameraNameMapping: Identifiable, Hashable, Sendable {
+    public let internalName: String
+    public let marketingName: String
+    public let isBuiltin: Bool
+    public let isCustom: Bool
 
     /// Stable identity for SwiftUI List/ForEach. Internal name is the
     /// catalog-unique key for a mapping.
-    var id: String { internalName }
+    public var id: String { internalName }
 }
 
 /// One row in the Lens Names editor. `rawName` is the lens string exactly
@@ -598,90 +598,90 @@ struct CameraNameMapping: Identifiable, Hashable {
 /// cameras there is no built-in table, so `alias` equals `rawName` unless
 /// the user set a custom override (`isCustom`). `inCatalog` is false for
 /// a stale override whose lens no longer appears in any video.
-struct LensNameMapping: Identifiable, Hashable {
-    let rawName: String
-    let alias: String
-    let isCustom: Bool
-    let inCatalog: Bool
+public struct LensNameMapping: Identifiable, Hashable, Sendable {
+    public let rawName: String
+    public let alias: String
+    public let isCustom: Bool
+    public let inCatalog: Bool
 
     /// Stable identity for SwiftUI List/ForEach. The raw lens string is
     /// the catalog-unique key for a mapping.
-    var id: String { rawName }
+    public var id: String { rawName }
 }
 
-struct FilterOptions: Equatable {
-    var cameras: [String] = []
+public struct FilterOptions: Equatable, Sendable {
+    public var cameras: [String] = []
     /// Marketing-friendly names for each entry in `cameras`, same order
     /// and length. Empty when the server didn't supply any (older
     /// catalog/daemon) — the UI then falls back to `cameras` verbatim.
-    var cameraDisplayNames: [String] = []
-    var lenses: [String] = []
-    var codecs: [String] = []
-    var captureYears: [Int32] = []
+    public var cameraDisplayNames: [String] = []
+    public var lenses: [String] = []
+    public var codecs: [String] = []
+    public var captureYears: [Int32] = []
 }
 
 /// Information about the catalog the backend currently has open. An empty
 /// `path` means the daemon is running but no SQLite file is mounted — the
 /// client must call `OpenCatalog` before issuing any other RPC.
-struct CatalogInfo: Equatable {
-    var path: String = ""
-    var name: String = ""
-    var videoCount: Int64 = 0
-    var openedAtMs: Int64 = 0
+public struct CatalogInfo: Equatable, Sendable {
+    public var path: String = ""
+    public var name: String = ""
+    public var videoCount: Int64 = 0
+    public var openedAtMs: Int64 = 0
 
-    var isOpen: Bool { !path.isEmpty }
+    public var isOpen: Bool { !path.isEmpty }
 
-    static let closed = CatalogInfo()
+    public static let closed = CatalogInfo()
 }
 
 /// A geotagged video — what the global-map view needs to render a pin.
 /// Returned by the daemon's `ListVideosWithLocations` RPC.
-struct VideoLocation: Identifiable, Equatable, Hashable {
-    let id: String
-    let filename: String
-    let path: String
-    let latitude: Double
-    let longitude: Double
-    let altitude: Double
-    let hasThumbnail: Bool
+public struct VideoLocation: Identifiable, Equatable, Hashable, Sendable {
+    public let id: String
+    public let filename: String
+    public let path: String
+    public let latitude: Double
+    public let longitude: Double
+    public let altitude: Double
+    public let hasThumbnail: Bool
 }
 
 /// A user-defined named place (e.g. "Home", "Yosemite Valley Visitor
 /// Center"). The catalog stores a small list of these; clients resolve any
 /// video's GPS into a name by picking the nearest entry within
 /// `radiusMeters`. See [GridViewModel.nameForLocation].
-struct NamedLocation: Identifiable, Equatable, Hashable {
-    let id: String
-    let name: String
-    let latitude: Double
-    let longitude: Double
+public struct NamedLocation: Identifiable, Equatable, Hashable, Sendable {
+    public let id: String
+    public let name: String
+    public let latitude: Double
+    public let longitude: Double
     /// Resolution tolerance in meters. Default 250 — overridable per-row
     /// in the schema for future "Yellowstone-sized" entries.
-    let radiusMeters: Double
+    public let radiusMeters: Double
     /// Unix ms (UTC). 0 if unknown.
-    let createdAtMs: Int64
-    let updatedAtMs: Int64
+    public let createdAtMs: Int64
+    public let updatedAtMs: Int64
 }
 
-struct ScanProgress {
-    let status: String
-    let videosFound: Int
-    let videosIndexed: Int
-    let currentFile: String
-    let progressPercent: Double
+public struct ScanProgress: Sendable {
+    public let status: String
+    public let videosFound: Int
+    public let videosIndexed: Int
+    public let currentFile: String
+    public let progressPercent: Double
 }
 
-struct GroupInfo {
-    let id: String
-    let name: String
-    let size: Int
-    let preferredVideoId: String
+public struct GroupInfo: Sendable {
+    public let id: String
+    public let name: String
+    public let size: Int
+    public let preferredVideoId: String
 }
 
-struct AttachProxiesResult {
-    let masterVideoId: String
-    let proxiesAttached: Int
-    let message: String
+public struct AttachProxiesResult: Sendable {
+    public let masterVideoId: String
+    public let proxiesAttached: Int
+    public let message: String
 }
 
 // MARK: - Real-time catalog events
@@ -690,7 +690,7 @@ struct AttachProxiesResult {
 /// on a domain enum instead of an int32. Adding cases is non-breaking
 /// because the repository falls back to `.unknown` for anything new the
 /// server might emit.
-enum CatalogEventKind {
+public enum CatalogEventKind: Sendable {
     case unknown
     case videoAdded
     case videoModified
@@ -707,14 +707,14 @@ enum CatalogEventKind {
     case postIndexCompleted
 }
 
-struct CatalogEvent: Equatable {
-    let kind: CatalogEventKind
-    let videoId: String     // Empty for watcher-/scan-lifecycle events.
-    let path: String        // The file that triggered it (best-effort).
-    let atMs: Int64         // Server-side Unix milliseconds.
-    let message: String     // Human-readable (filename for VideoRemoved, etc.)
+public struct CatalogEvent: Equatable, Sendable {
+    public let kind: CatalogEventKind
+    public let videoId: String     // Empty for watcher-/scan-lifecycle events.
+    public let path: String        // The file that triggered it (best-effort).
+    public let atMs: Int64         // Server-side Unix milliseconds.
+    public let message: String     // Human-readable (filename for VideoRemoved, etc.)
     /// Set only on `.postIndex*` events; nil otherwise.
-    var postIndex: PostIndexProgress? = nil
+    public var postIndex: PostIndexProgress? = nil
 }
 
 /// Payload for the `.postIndex*` catalog events — the daemon's background
@@ -722,30 +722,30 @@ struct CatalogEvent: Equatable {
 /// work is CPU- and IO-heavy and used to be invisible to the UI; the grid
 /// surfaces it in a background-activity panel so a long pass doesn't look
 /// like the daemon has silently pegged a core.
-struct PostIndexProgress: Equatable {
+public struct PostIndexProgress: Equatable, Sendable {
     /// Videos fully post-indexed in the current pass.
-    let processed: Int64
+    public let processed: Int64
     /// Expected total this pass; 0 when unknown.
-    let total: Int64
+    public let total: Int64
     /// 0..100; 0 when `total` is unknown.
-    let percent: Double
+    public let percent: Double
     /// Estimated seconds remaining; 0 when unknown.
-    let etaSeconds: Int64
+    public let etaSeconds: Int64
     /// Dominant activity: "grouping" | "proxies" | "sensors" | "tagging".
-    let phase: String
+    public let phase: String
     /// Last human-readable action, e.g. "linked a.mov → b.mov".
-    let detail: String
+    public let detail: String
 }
 
 /// Watcher knobs that govern the real-time scanner. Round-trip via
 /// `GetWatchSettings` / `UpdateWatchSettings` to surface in the Preferences
 /// dialog.
-struct WatchSettings: Equatable {
-    var enabled: Bool
-    var writeSettleMs: Int64
-    var pollIntervalMs: Int64
+public struct WatchSettings: Equatable, Sendable {
+    public var enabled: Bool
+    public var writeSettleMs: Int64
+    public var pollIntervalMs: Int64
 
-    static let `default` = WatchSettings(enabled: true, writeSettleMs: 5000, pollIntervalMs: 30000)
+    public static let `default` = WatchSettings(enabled: true, writeSettleMs: 5000, pollIntervalMs: 30000)
 }
 
 // MARK: - Lightroom-style color labels
@@ -754,22 +754,22 @@ struct WatchSettings: Equatable {
 /// `VideoSummary.colorLabel` as the raw value (the empty string means "no
 /// label"). The grid uses [.swatch] for the anchor card's band background
 /// and [.dimmed] for unselected cards with the same label.
-enum ColorLabel: String, CaseIterable, Identifiable, Hashable {
+public enum ColorLabel: String, CaseIterable, Identifiable, Hashable, Sendable {
     case none = ""
     case red, yellow, green, blue, purple
 
-    var id: String { rawValue }
+    public var id: String { rawValue }
 
     /// Initialise from the raw string on `VideoSummary.colorLabel`. Unknown
     /// values fall back to `.none` so the UI degrades gracefully if the
     /// server adds a colour we don't yet recognise.
-    init(_ raw: String) {
+    public init(_ raw: String) {
         self = ColorLabel(rawValue: raw) ?? .none
     }
 
     /// Display name for menus and tooltips. "None" reads better in the
     /// right-click submenu than an empty string.
-    var displayName: String {
+    public var displayName: String {
         switch self {
         case .none:   return "None"
         case .red:    return "Red"
@@ -783,7 +783,7 @@ enum ColorLabel: String, CaseIterable, Identifiable, Hashable {
     /// Fully-saturated swatch used as the band-background for the anchor
     /// card (the primary selection). Tuned to roughly match Lightroom's
     /// classic palette — desaturated enough not to overwhelm the thumbnail.
-    var swatch: Color {
+    public var swatch: Color {
         switch self {
         case .none:   return Color(white: 0.18)        // neutral panel tone
         case .red:    return Color(red: 0.78, green: 0.25, blue: 0.25)
@@ -797,17 +797,17 @@ enum ColorLabel: String, CaseIterable, Identifiable, Hashable {
     /// Toned-down variant used for unselected cards that still carry this
     /// colour label. Preserves the colour identity at a glance without
     /// shouting for the viewer's attention.
-    var dimmed: Color { swatch.opacity(0.45) }
+    public var dimmed: Color { swatch.opacity(0.45) }
 
     /// Mid-brightness variant used for secondary-selected (non-anchor)
     /// cards. Sits between [.swatch] and [.dimmed] so the user can tell
     /// at a glance which card is the anchor.
-    var secondary: Color { swatch.opacity(0.72) }
+    public var secondary: Color { swatch.opacity(0.72) }
 
     /// Keyboard shortcut digit that applies this label, or nil for
     /// labels with no shortcut. Matches Lightroom: 6/7/8/9 for the four
     /// primary colours; purple has no shortcut historically.
-    var shortcutKey: Character? {
+    public var shortcutKey: Character? {
         switch self {
         case .red:    return "6"
         case .yellow: return "7"
@@ -818,7 +818,7 @@ enum ColorLabel: String, CaseIterable, Identifiable, Hashable {
     }
 
     /// Map a keyboard digit back to a label, used by the global key handler.
-    static func from(shortcut: Character) -> ColorLabel? {
+    public static func from(shortcut: Character) -> ColorLabel? {
         switch shortcut {
         case "6": return .red
         case "7": return .yellow
@@ -835,7 +835,7 @@ enum ColorLabel: String, CaseIterable, Identifiable, Hashable {
 /// configurable top-of-card slots. The string value is exchanged with the
 /// daemon as part of `GridSettings.top_slots`, so it must match what the
 /// Kotlin client emits.
-enum GridStatKey: String, CaseIterable, Identifiable, Hashable {
+public enum GridStatKey: String, CaseIterable, Identifiable, Hashable, Sendable {
     case none           = ""
     case filename
     case fileSize       = "file_size"
@@ -857,9 +857,9 @@ enum GridStatKey: String, CaseIterable, Identifiable, Hashable {
     case focalLength    = "focal_length"
     case location
 
-    var id: String { rawValue }
+    public var id: String { rawValue }
 
-    var displayName: String {
+    public var displayName: String {
         switch self {
         case .none:             return "(empty)"
         case .filename:         return "Filename"
@@ -892,7 +892,7 @@ enum GridStatKey: String, CaseIterable, Identifiable, Hashable {
     /// place-name, or nil when none is in range — only consulted for the
     /// `.location` slot. When absent (or it returns nil) the raw coordinates
     /// are shown as "(lat, lon)", matching the detail panel's order.
-    func value(for video: VideoSummary, placeName: ((Double, Double) -> String?)? = nil) -> String {
+    public func value(for video: VideoSummary, placeName: ((Double, Double) -> String?)? = nil) -> String {
         switch self {
         case .none:             return ""
         case .filename:         return video.filename
@@ -970,7 +970,7 @@ enum GridStatKey: String, CaseIterable, Identifiable, Hashable {
     /// with N the nearest integer reciprocal (how a photographer reads a
     /// shutter speed); anything ≥ 1 s renders as "X.X s". Mirrors the
     /// desktop client's `GridStatKey.formatExposureTime`.
-    static func formatExposureTime(_ seconds: Double) -> String {
+    public static func formatExposureTime(_ seconds: Double) -> String {
         if seconds <= 0 { return "" }
         if seconds >= 1.0 { return String(format: "%.1f s", seconds) }
         let denom = Int((1.0 / seconds).rounded())
@@ -992,7 +992,7 @@ private struct PlaceNameResolverKey: EnvironmentKey {
 }
 
 extension EnvironmentValues {
-    var placeNameResolver: ((Double, Double) -> String?)? {
+    public var placeNameResolver: ((Double, Double) -> String?)? {
         get { self[PlaceNameResolverKey.self] }
         set { self[PlaceNameResolverKey.self] = newValue }
     }
@@ -1001,7 +1001,7 @@ extension EnvironmentValues {
 /// Default top-slot configuration if the catalog has nothing stored yet.
 /// Picks four stats that fit the Lightroom screenshot the user shared:
 /// filename, file size, resolution shorthand, FPS.
-let defaultGridTopSlots: [String] = [
+public let defaultGridTopSlots: [String] = [
     GridStatKey.filename.rawValue,
     GridStatKey.fileSize.rawValue,
     GridStatKey.resolutionName.rawValue,
@@ -1014,13 +1014,13 @@ let defaultGridTopSlots: [String] = [
 /// Text / Attribute / Metadata filters all stay applied at once; this only
 /// chooses which editor is shown. (Clear is a momentary action handled by the
 /// view model, not a resting mode.)
-enum LibraryFilterMode: String, CaseIterable, Identifiable, Hashable {
+public enum LibraryFilterMode: String, CaseIterable, Identifiable, Hashable, Sendable {
     // Declaration order drives the selector. A video's place is just another
     // kind of metadata (the `locationMetadataKey` field inside `.metadata`),
     // so there is no standalone location mode.
     case text, attribute, metadata, clear
-    var id: String { rawValue }
-    var displayName: String {
+    public var id: String { rawValue }
+    public var displayName: String {
         switch self {
         case .text:      return "Text"
         case .attribute: return "Attribute"
@@ -1034,25 +1034,25 @@ enum LibraryFilterMode: String, CaseIterable, Identifiable, Hashable {
 /// (see `locationMetadataKey`): a named place or an unnamed coordinate cluster,
 /// with how many catalog videos sit there. Picking one applies a geographic
 /// proximity filter centred on it.
-struct LocationFilterGroup: Identifiable, Hashable {
-    let label: String
-    let latitude: Double
-    let longitude: Double
+public struct LocationFilterGroup: Identifiable, Hashable, Sendable {
+    public let label: String
+    public let latitude: Double
+    public let longitude: Double
     /// Proximity radius (km) to filter by when this entry is chosen.
-    let radiusKm: Double
-    let count: Int
-    let isNamed: Bool
-    var id: String { "\(label)|\(latitude),\(longitude)" }
+    public let radiusKm: Double
+    public let count: Int
+    public let isNamed: Bool
+    public var id: String { "\(label)|\(latitude),\(longitude)" }
 }
 
 /// Tri-state presence toggle for a Library Filter "attribute" (video has a
 /// known location / keywords / proxies, or is full resolution). `any` applies
 /// no constraint; `yes` keeps only videos that have the attribute; `no` keeps
 /// only those that don't. Maps 1:1 to the proto `AttributeFilter`.
-enum AttributeFilterState: String, CaseIterable, Identifiable, Hashable {
+public enum AttributeFilterState: String, CaseIterable, Identifiable, Hashable, Sendable {
     case any, yes, no
-    var id: String { rawValue }
-    var displayName: String {
+    public var id: String { rawValue }
+    public var displayName: String {
         switch self {
         case .any: return "Any"
         case .yes: return "Yes"
@@ -1066,10 +1066,10 @@ enum AttributeFilterState: String, CaseIterable, Identifiable, Hashable {
 /// `landscape` keeps those at least as wide as tall (square counts as
 /// landscape). Sent to the daemon as an "orientation" metadata filter (value
 /// "portrait" / "landscape"), so it needs no dedicated proto field.
-enum OrientationFilterState: String, CaseIterable, Identifiable, Hashable {
+public enum OrientationFilterState: String, CaseIterable, Identifiable, Hashable, Sendable {
     case any, portrait, landscape
-    var id: String { rawValue }
-    var displayName: String {
+    public var id: String { rawValue }
+    public var displayName: String {
         switch self {
         case .any:       return "Any"
         case .portrait:  return "Portrait"
@@ -1082,47 +1082,66 @@ enum OrientationFilterState: String, CaseIterable, Identifiable, Hashable {
 /// token ("" = not chosen yet); `values` are the selected facet tokens, OR-ed
 /// together (empty = All). `anchor` is the value a range-select (shift-click)
 /// extends from — the last value picked by a plain or toggle click.
-struct MetadataColumn: Identifiable, Equatable {
-    let id = UUID()
-    var key: String = ""
-    var values: Set<String> = []
-    var anchor: String = ""
+public struct MetadataColumn: Identifiable, Equatable, Sendable {
+    public let id = UUID()
+    public var key: String = ""
+    public var values: Set<String> = []
+    public var anchor: String = ""
     /// When true the column matches videos that do NOT have any of `values`
     /// ("is not"); false (the default) is the plain "is" match.
-    var negate: Bool = false
+    public var negate: Bool = false
 }
 
 /// Separator joining a metadata column's multiple selected facet tokens into a
 /// single MetadataFilter value over the wire. ASCII Unit Separator (0x1F),
 /// which never appears in real metadata values; the daemon splits on it and
 /// OR-matches the parts. Must match the core's `METADATA_VALUE_SEPARATOR`.
-let metadataValueSeparator = "\u{1F}"
+public let metadataValueSeparator = "\u{1F}"
 
 /// Leading marker on a MetadataFilter value that flips the column from "is" to
 /// "is not". ASCII Record Separator (0x1E); must match the core's
 /// `METADATA_NEGATE_PREFIX`. Built from the scalar to avoid an escaped literal.
-let metadataNegatePrefix = String(Character(UnicodeScalar(UInt8(0x1E))))
+public let metadataNegatePrefix = String(Character(UnicodeScalar(UInt8(0x1E))))
 
 /// One selectable value within a metadata facet column.
-struct FacetValue: Equatable, Hashable {
-    let token: String
-    let display: String
-    let count: Int64
+public struct FacetValue: Equatable, Hashable, Sendable {
+    public let token: String
+    public let display: String
+    public let count: Int64
+
+    public init(token: String, display: String, count: Int64) {
+        self.token = token
+        self.display = display
+        self.count = count
+    }
 }
 
 /// The available values for one metadata column (server-computed cascade).
-struct MetadataFacetColumn: Equatable {
-    let key: String
-    let displayName: String
-    let isNumeric: Bool
-    let values: [FacetValue]
+public struct MetadataFacetColumn: Equatable, Sendable {
+    public let key: String
+    public let displayName: String
+    public let isNumeric: Bool
+    public let values: [FacetValue]
+
+    public init(key: String, displayName: String, isNumeric: Bool, values: [FacetValue]) {
+        self.key = key
+        self.displayName = displayName
+        self.isNumeric = isNumeric
+        self.values = values
+    }
 }
 
 /// A metadata key the user can choose for a column.
-struct MetadataKeyInfo: Equatable, Hashable {
-    let key: String
-    let displayName: String
-    let isNumeric: Bool
+public struct MetadataKeyInfo: Equatable, Hashable, Sendable {
+    public let key: String
+    public let displayName: String
+    public let isNumeric: Bool
+
+    public init(key: String, displayName: String, isNumeric: Bool) {
+        self.key = key
+        self.displayName = displayName
+        self.isNumeric = isNumeric
+    }
 }
 
 /// Canonical key of the "Location" metadata field. Unlike the registry-backed
@@ -1131,16 +1150,16 @@ struct MetadataKeyInfo: Equatable, Hashable {
 /// value applies a geographic proximity filter via `setLocationFilter` rather
 /// than a `MetadataFilter`. The daemon doesn't know this key — it returns an
 /// empty facet for it and ignores it as a filter — so it's never sent as one.
-let locationMetadataKey = "location"
+public let locationMetadataKey = "location"
 
 /// Result of a GetMetadataFacets call: per-column values + the key picker set.
-struct MetadataFacetsResult: Equatable {
-    var columns: [MetadataFacetColumn] = []
-    var availableKeys: [MetadataKeyInfo] = []
+public struct MetadataFacetsResult: Equatable, Sendable {
+    public var columns: [MetadataFacetColumn] = []
+    public var availableKeys: [MetadataKeyInfo] = []
 }
 
 /// Default metadata columns shown before the user customizes the bar.
-let defaultMetadataColumns: [MetadataColumn] = [
+public let defaultMetadataColumns: [MetadataColumn] = [
     MetadataColumn(key: "camera"),
     MetadataColumn(key: "lens"),
     MetadataColumn(key: "exposure"),

@@ -161,21 +161,40 @@ EOF
 
     if [[ "$ext" == ".exe" ]]; then
         cat >> "${pkg_dir}/INSTALL.txt" << 'EOF'
-  Run install-service.ps1 from an elevated PowerShell prompt.
-  The daemon will start automatically on boot and log to:
+  Run install-service.ps1 from an elevated PowerShell prompt:
+    .\install-service.ps1 -Catalog "D:\Media\reelvault.db" -ImportDir "D:\Media\Incoming"
+  The daemon starts automatically on boot and logs to:
     C:\ProgramData\ReelVault\logs\reelvault-core.log
+
+  -Catalog and -ImportDir are optional; without them the daemon uses the
+  default catalog and uploads are disabled until an import dir is configured.
 EOF
     else
         cat >> "${pkg_dir}/INSTALL.txt" << 'EOF'
   Run install-service.sh as root:
-    sudo ./install-service.sh
-  The daemon will start automatically on boot.
+    sudo ./install-service.sh --catalog /data/reelvault.db --import-dir /data/Incoming
+  The daemon starts automatically on boot.
+
+  --catalog and --import-dir are optional; without them the daemon uses the
+  default catalog and uploads are disabled until an import dir is configured.
 
   macOS logs:  /Library/Logs/ReelVault/reelvault-core.log
   Linux logs:  /var/log/reelvault/reelvault-core.log
                journalctl -u reelvault-core -f
 EOF
     fi
+
+    cat >> "${pkg_dir}/INSTALL.txt" << 'EOF'
+
+Remote clients (iOS / LAN)
+--------------------------
+  The installed service runs with --remote, so in addition to loopback it
+  binds the machine's LAN IP over TLS and advertises itself via mDNS
+  (_reelvault._tcp). The ReelVault iOS app auto-discovers it on the same
+  Wi-Fi, pairs once with a 6-digit code (shown in the daemon log and written
+  to <data-dir>/pairing.txt), and then browses, streams, and uploads.
+  Loopback desktop clients are unaffected and need no pairing.
+EOF
 
     # Create archive. Prefer 7z for zip (available on CI); fall back to zip (macOS/Linux).
     if [[ "$ext" == ".exe" ]]; then

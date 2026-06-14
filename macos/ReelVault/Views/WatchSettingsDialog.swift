@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import SwiftUI
+import ReelVaultKit
 
 /// Sheet that surfaces the daemon's real-time file-watcher knobs.
 ///

@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import SwiftUI
+import ReelVaultKit
 import MapKit
 
 /// Modal sheet that lets the user pin a location on a world map and apply

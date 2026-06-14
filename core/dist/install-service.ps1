@@ -3,16 +3,26 @@
 # Run from an elevated (Administrator) PowerShell prompt:
 #   .\install-service.ps1
 #   .\install-service.ps1 -Binary "C:\path\to\reelvault-core.exe"
+#   .\install-service.ps1 -Catalog "D:\Media\reelvault.db" -ImportDir "D:\Media\Incoming"
 #   .\install-service.ps1 -Uninstall
 #
 # The daemon installs to C:\Program Files\ReelVault\ and listens on
-# 127.0.0.1:50051, serving all users on this machine from a single catalog.
+# 127.0.0.1:50051 (loopback, plaintext) plus the LAN IP over TLS (--remote) so
+# remote clients (the iOS app) can discover and connect. It serves all users on
+# this machine from a single catalog.
+#
+#   -Catalog    SQLite catalog file the service opens at startup (templated into
+#               --db-path). Defaults to C:\ProgramData\ReelVault\catalog.db.
+#   -ImportDir  Directory uploads are written to and indexed from (templated into
+#               --import-dir). Configure this up front to enable uploads.
 #
 # Log location:  C:\ProgramData\ReelVault\logs\reelvault-core.log
 # Catalog:       C:\ProgramData\ReelVault\catalog.db
 
 param(
     [string]$Binary = "$PSScriptRoot\reelvault-core.exe",
+    [string]$Catalog,
+    [string]$ImportDir,
     [switch]$Uninstall
 )
 
@@ -55,7 +65,12 @@ function Install-Service {
     Copy-Item -Force $Binary $InstallBin
 
     Write-Host "==> Registering Windows service..."
-    $binPath = "`"$InstallBin`" --system-daemon --port 50051"
+    # `--remote` enables the LAN TLS + mDNS surface; --db-path / --import-dir are
+    # templated in only when the operator passed -Catalog / -ImportDir.
+    $svcArgs = "--system-daemon --port 50051 --remote"
+    if ($Catalog)   { $svcArgs += " --db-path `"$Catalog`"" }
+    if ($ImportDir) { $svcArgs += " --import-dir `"$ImportDir`"" }
+    $binPath = "`"$InstallBin`" $svcArgs"
     & sc.exe create $ServiceName `
         binPath= $binPath `
         start=   auto      `

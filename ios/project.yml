@@ -1,0 +1,48 @@
+name: ReelVault
+options:
+  bundleIdPrefix: com.preffect.reelvault
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+# Shared client code (models, view-models, gRPC client, discovery, pinned TLS,
+# media cache/client) lives in the local SwiftPM package consumed by both apps.
+packages:
+  ReelVaultKit:
+    path: ../kit
+
+targets:
+  ReelVault:
+    type: application
+    platform: iOS
+    sources:
+      - path: ReelVaultiOS
+    dependencies:
+      - package: ReelVaultKit
+        product: ReelVaultKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.preffect.reelvault.ios
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: ReelVaultiOS/Info.plist
+        TARGETED_DEVICE_FAMILY: "1,2"
+        # The app target uses the Swift 5 language mode to keep the new SwiftUI
+        # code free of strict-concurrency churn; ReelVaultKit stays Swift 6.
+        SWIFT_VERSION: "5.0"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: $(APPLE_TEAM_ID)
+
+schemes:
+  ReelVault:
+    build:
+      targets:
+        ReelVault: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    archive:
+      config: Release

@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import Foundation
+import ReelVaultKit
 
 struct ReleaseInfo {
     let version: String

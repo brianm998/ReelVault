@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import SwiftUI
+import ReelVaultKit
 import AppKit
 
 /// Dialog shown when the daemon has no catalog mounted — at first launch

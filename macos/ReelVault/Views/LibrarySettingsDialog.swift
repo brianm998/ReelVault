@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import SwiftUI
+import ReelVaultKit
 
 /// Library-wide auto-tagging / detection settings. Currently a single
 /// toggle — auto-tag timelapses — but the dialog is the home for any

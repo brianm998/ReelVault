@@ -18,709 +18,721 @@ import GRPCProtobuf
 
 /// Namespace containing generated types for the "reelvault.ReelVault" service.
 @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-internal enum Reelvault_ReelVault {
+public enum Reelvault_ReelVault {
     /// Service descriptor for the "reelvault.ReelVault" service.
-    internal static let descriptor = GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault")
+    public static let descriptor = GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault")
     /// Namespace for method metadata.
-    internal enum Method {
+    public enum Method {
         /// Namespace for "ListVideos" metadata.
-        internal enum ListVideos {
+        public enum ListVideos {
             /// Request type for "ListVideos".
-            internal typealias Input = Reelvault_ListVideosRequest
+            public typealias Input = Reelvault_ListVideosRequest
             /// Response type for "ListVideos".
-            internal typealias Output = Reelvault_ListVideosResponse
+            public typealias Output = Reelvault_ListVideosResponse
             /// Descriptor for "ListVideos".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "ListVideos"
             )
         }
         /// Namespace for "SearchVideos" metadata.
-        internal enum SearchVideos {
+        public enum SearchVideos {
             /// Request type for "SearchVideos".
-            internal typealias Input = Reelvault_SearchRequest
+            public typealias Input = Reelvault_SearchRequest
             /// Response type for "SearchVideos".
-            internal typealias Output = Reelvault_SearchResponse
+            public typealias Output = Reelvault_SearchResponse
             /// Descriptor for "SearchVideos".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "SearchVideos"
             )
         }
         /// Namespace for "GetMetadata" metadata.
-        internal enum GetMetadata {
+        public enum GetMetadata {
             /// Request type for "GetMetadata".
-            internal typealias Input = Reelvault_GetMetadataRequest
+            public typealias Input = Reelvault_GetMetadataRequest
             /// Response type for "GetMetadata".
-            internal typealias Output = Reelvault_VideoMetadata
+            public typealias Output = Reelvault_VideoMetadata
             /// Descriptor for "GetMetadata".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "GetMetadata"
             )
         }
         /// Namespace for "GetThumbnail" metadata.
-        internal enum GetThumbnail {
+        public enum GetThumbnail {
             /// Request type for "GetThumbnail".
-            internal typealias Input = Reelvault_GetThumbnailRequest
+            public typealias Input = Reelvault_GetThumbnailRequest
             /// Response type for "GetThumbnail".
-            internal typealias Output = Reelvault_ThumbnailChunk
+            public typealias Output = Reelvault_ThumbnailChunk
             /// Descriptor for "GetThumbnail".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "GetThumbnail"
             )
         }
         /// Namespace for "AddLibraryLocation" metadata.
-        internal enum AddLibraryLocation {
+        public enum AddLibraryLocation {
             /// Request type for "AddLibraryLocation".
-            internal typealias Input = Reelvault_AddLocationRequest
+            public typealias Input = Reelvault_AddLocationRequest
             /// Response type for "AddLibraryLocation".
-            internal typealias Output = Reelvault_LocationResponse
+            public typealias Output = Reelvault_LocationResponse
             /// Descriptor for "AddLibraryLocation".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "AddLibraryLocation"
             )
         }
         /// Namespace for "RemoveLibraryLocation" metadata.
-        internal enum RemoveLibraryLocation {
+        public enum RemoveLibraryLocation {
             /// Request type for "RemoveLibraryLocation".
-            internal typealias Input = Reelvault_RemoveLocationRequest
+            public typealias Input = Reelvault_RemoveLocationRequest
             /// Response type for "RemoveLibraryLocation".
-            internal typealias Output = Reelvault_LocationResponse
+            public typealias Output = Reelvault_LocationResponse
             /// Descriptor for "RemoveLibraryLocation".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "RemoveLibraryLocation"
             )
         }
         /// Namespace for "ListLibraryLocations" metadata.
-        internal enum ListLibraryLocations {
+        public enum ListLibraryLocations {
             /// Request type for "ListLibraryLocations".
-            internal typealias Input = Reelvault_ListLocationsRequest
+            public typealias Input = Reelvault_ListLocationsRequest
             /// Response type for "ListLibraryLocations".
-            internal typealias Output = Reelvault_ListLocationsResponse
+            public typealias Output = Reelvault_ListLocationsResponse
             /// Descriptor for "ListLibraryLocations".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "ListLibraryLocations"
             )
         }
         /// Namespace for "ListSubdirectories" metadata.
-        internal enum ListSubdirectories {
+        public enum ListSubdirectories {
             /// Request type for "ListSubdirectories".
-            internal typealias Input = Reelvault_ListSubdirectoriesRequest
+            public typealias Input = Reelvault_ListSubdirectoriesRequest
             /// Response type for "ListSubdirectories".
-            internal typealias Output = Reelvault_ListSubdirectoriesResponse
+            public typealias Output = Reelvault_ListSubdirectoriesResponse
             /// Descriptor for "ListSubdirectories".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "ListSubdirectories"
             )
         }
         /// Namespace for "ScanLibrary" metadata.
-        internal enum ScanLibrary {
+        public enum ScanLibrary {
             /// Request type for "ScanLibrary".
-            internal typealias Input = Reelvault_ScanLibraryRequest
+            public typealias Input = Reelvault_ScanLibraryRequest
             /// Response type for "ScanLibrary".
-            internal typealias Output = Reelvault_ScanProgress
+            public typealias Output = Reelvault_ScanProgress
             /// Descriptor for "ScanLibrary".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "ScanLibrary"
             )
         }
         /// Namespace for "GetScanStatus" metadata.
-        internal enum GetScanStatus {
+        public enum GetScanStatus {
             /// Request type for "GetScanStatus".
-            internal typealias Input = Reelvault_GetScanStatusRequest
+            public typealias Input = Reelvault_GetScanStatusRequest
             /// Response type for "GetScanStatus".
-            internal typealias Output = Reelvault_ScanStatusResponse
+            public typealias Output = Reelvault_ScanStatusResponse
             /// Descriptor for "GetScanStatus".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "GetScanStatus"
             )
         }
         /// Namespace for "CreateTag" metadata.
-        internal enum CreateTag {
+        public enum CreateTag {
             /// Request type for "CreateTag".
-            internal typealias Input = Reelvault_CreateTagRequest
+            public typealias Input = Reelvault_CreateTagRequest
             /// Response type for "CreateTag".
-            internal typealias Output = Reelvault_TagResponse
+            public typealias Output = Reelvault_TagResponse
             /// Descriptor for "CreateTag".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "CreateTag"
             )
         }
         /// Namespace for "DeleteTag" metadata.
-        internal enum DeleteTag {
+        public enum DeleteTag {
             /// Request type for "DeleteTag".
-            internal typealias Input = Reelvault_DeleteTagRequest
+            public typealias Input = Reelvault_DeleteTagRequest
             /// Response type for "DeleteTag".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "DeleteTag".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "DeleteTag"
             )
         }
         /// Namespace for "ListTags" metadata.
-        internal enum ListTags {
+        public enum ListTags {
             /// Request type for "ListTags".
-            internal typealias Input = Reelvault_ListTagsRequest
+            public typealias Input = Reelvault_ListTagsRequest
             /// Response type for "ListTags".
-            internal typealias Output = Reelvault_ListTagsResponse
+            public typealias Output = Reelvault_ListTagsResponse
             /// Descriptor for "ListTags".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "ListTags"
             )
         }
         /// Namespace for "TagVideos" metadata.
-        internal enum TagVideos {
+        public enum TagVideos {
             /// Request type for "TagVideos".
-            internal typealias Input = Reelvault_TagVideosRequest
+            public typealias Input = Reelvault_TagVideosRequest
             /// Response type for "TagVideos".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "TagVideos".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "TagVideos"
             )
         }
         /// Namespace for "UntagVideos" metadata.
-        internal enum UntagVideos {
+        public enum UntagVideos {
             /// Request type for "UntagVideos".
-            internal typealias Input = Reelvault_UntagVideosRequest
+            public typealias Input = Reelvault_UntagVideosRequest
             /// Response type for "UntagVideos".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "UntagVideos".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "UntagVideos"
             )
         }
         /// Namespace for "CreateCollection" metadata.
-        internal enum CreateCollection {
+        public enum CreateCollection {
             /// Request type for "CreateCollection".
-            internal typealias Input = Reelvault_CreateCollectionRequest
+            public typealias Input = Reelvault_CreateCollectionRequest
             /// Response type for "CreateCollection".
-            internal typealias Output = Reelvault_CollectionResponse
+            public typealias Output = Reelvault_CollectionResponse
             /// Descriptor for "CreateCollection".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "CreateCollection"
             )
         }
         /// Namespace for "DeleteCollection" metadata.
-        internal enum DeleteCollection {
+        public enum DeleteCollection {
             /// Request type for "DeleteCollection".
-            internal typealias Input = Reelvault_DeleteCollectionRequest
+            public typealias Input = Reelvault_DeleteCollectionRequest
             /// Response type for "DeleteCollection".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "DeleteCollection".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "DeleteCollection"
             )
         }
         /// Namespace for "ListCollections" metadata.
-        internal enum ListCollections {
+        public enum ListCollections {
             /// Request type for "ListCollections".
-            internal typealias Input = Reelvault_ListCollectionsRequest
+            public typealias Input = Reelvault_ListCollectionsRequest
             /// Response type for "ListCollections".
-            internal typealias Output = Reelvault_ListCollectionsResponse
+            public typealias Output = Reelvault_ListCollectionsResponse
             /// Descriptor for "ListCollections".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "ListCollections"
             )
         }
         /// Namespace for "AddToCollection" metadata.
-        internal enum AddToCollection {
+        public enum AddToCollection {
             /// Request type for "AddToCollection".
-            internal typealias Input = Reelvault_AddToCollectionRequest
+            public typealias Input = Reelvault_AddToCollectionRequest
             /// Response type for "AddToCollection".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "AddToCollection".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "AddToCollection"
             )
         }
         /// Namespace for "RemoveFromCollection" metadata.
-        internal enum RemoveFromCollection {
+        public enum RemoveFromCollection {
             /// Request type for "RemoveFromCollection".
-            internal typealias Input = Reelvault_RemoveFromCollectionRequest
+            public typealias Input = Reelvault_RemoveFromCollectionRequest
             /// Response type for "RemoveFromCollection".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "RemoveFromCollection".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "RemoveFromCollection"
             )
         }
         /// Namespace for "UpdateVideoNotes" metadata.
-        internal enum UpdateVideoNotes {
+        public enum UpdateVideoNotes {
             /// Request type for "UpdateVideoNotes".
-            internal typealias Input = Reelvault_UpdateNotesRequest
+            public typealias Input = Reelvault_UpdateNotesRequest
             /// Response type for "UpdateVideoNotes".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "UpdateVideoNotes".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "UpdateVideoNotes"
             )
         }
         /// Namespace for "DeleteVideo" metadata.
-        internal enum DeleteVideo {
+        public enum DeleteVideo {
             /// Request type for "DeleteVideo".
-            internal typealias Input = Reelvault_DeleteVideoRequest
+            public typealias Input = Reelvault_DeleteVideoRequest
             /// Response type for "DeleteVideo".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "DeleteVideo".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "DeleteVideo"
             )
         }
         /// Namespace for "ListGroupMembers" metadata.
-        internal enum ListGroupMembers {
+        public enum ListGroupMembers {
             /// Request type for "ListGroupMembers".
-            internal typealias Input = Reelvault_ListGroupMembersRequest
+            public typealias Input = Reelvault_ListGroupMembersRequest
             /// Response type for "ListGroupMembers".
-            internal typealias Output = Reelvault_ListGroupMembersResponse
+            public typealias Output = Reelvault_ListGroupMembersResponse
             /// Descriptor for "ListGroupMembers".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "ListGroupMembers"
             )
         }
         /// Namespace for "CreateGroup" metadata.
-        internal enum CreateGroup {
+        public enum CreateGroup {
             /// Request type for "CreateGroup".
-            internal typealias Input = Reelvault_CreateGroupRequest
+            public typealias Input = Reelvault_CreateGroupRequest
             /// Response type for "CreateGroup".
-            internal typealias Output = Reelvault_GroupResponse
+            public typealias Output = Reelvault_GroupResponse
             /// Descriptor for "CreateGroup".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "CreateGroup"
             )
         }
         /// Namespace for "UngroupVideo" metadata.
-        internal enum UngroupVideo {
+        public enum UngroupVideo {
             /// Request type for "UngroupVideo".
-            internal typealias Input = Reelvault_UngroupVideoRequest
+            public typealias Input = Reelvault_UngroupVideoRequest
             /// Response type for "UngroupVideo".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "UngroupVideo".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "UngroupVideo"
             )
         }
         /// Namespace for "SetGroupPreferred" metadata.
-        internal enum SetGroupPreferred {
+        public enum SetGroupPreferred {
             /// Request type for "SetGroupPreferred".
-            internal typealias Input = Reelvault_SetGroupPreferredRequest
+            public typealias Input = Reelvault_SetGroupPreferredRequest
             /// Response type for "SetGroupPreferred".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "SetGroupPreferred".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "SetGroupPreferred"
             )
         }
         /// Namespace for "AutoGroupVideos" metadata.
-        internal enum AutoGroupVideos {
+        public enum AutoGroupVideos {
             /// Request type for "AutoGroupVideos".
-            internal typealias Input = Reelvault_AutoGroupRequest
+            public typealias Input = Reelvault_AutoGroupRequest
             /// Response type for "AutoGroupVideos".
-            internal typealias Output = Reelvault_AutoGroupResponse
+            public typealias Output = Reelvault_AutoGroupResponse
             /// Descriptor for "AutoGroupVideos".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "AutoGroupVideos"
             )
         }
         /// Namespace for "GenerateProxy" metadata.
-        internal enum GenerateProxy {
+        public enum GenerateProxy {
             /// Request type for "GenerateProxy".
-            internal typealias Input = Reelvault_GenerateProxyRequest
+            public typealias Input = Reelvault_GenerateProxyRequest
             /// Response type for "GenerateProxy".
-            internal typealias Output = Reelvault_ProxyGenerationProgress
+            public typealias Output = Reelvault_ProxyGenerationProgress
             /// Descriptor for "GenerateProxy".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "GenerateProxy"
             )
         }
         /// Namespace for "ListProxies" metadata.
-        internal enum ListProxies {
+        public enum ListProxies {
             /// Request type for "ListProxies".
-            internal typealias Input = Reelvault_ListProxiesRequest
+            public typealias Input = Reelvault_ListProxiesRequest
             /// Response type for "ListProxies".
-            internal typealias Output = Reelvault_ListProxiesResponse
+            public typealias Output = Reelvault_ListProxiesResponse
             /// Descriptor for "ListProxies".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "ListProxies"
             )
         }
         /// Namespace for "SetProxyOf" metadata.
-        internal enum SetProxyOf {
+        public enum SetProxyOf {
             /// Request type for "SetProxyOf".
-            internal typealias Input = Reelvault_SetProxyOfRequest
+            public typealias Input = Reelvault_SetProxyOfRequest
             /// Response type for "SetProxyOf".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "SetProxyOf".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "SetProxyOf"
             )
         }
         /// Namespace for "RemoveProxyLink" metadata.
-        internal enum RemoveProxyLink {
+        public enum RemoveProxyLink {
             /// Request type for "RemoveProxyLink".
-            internal typealias Input = Reelvault_RemoveProxyLinkRequest
+            public typealias Input = Reelvault_RemoveProxyLinkRequest
             /// Response type for "RemoveProxyLink".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "RemoveProxyLink".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "RemoveProxyLink"
             )
         }
         /// Namespace for "DetectProxies" metadata.
-        internal enum DetectProxies {
+        public enum DetectProxies {
             /// Request type for "DetectProxies".
-            internal typealias Input = Reelvault_DetectProxiesRequest
+            public typealias Input = Reelvault_DetectProxiesRequest
             /// Response type for "DetectProxies".
-            internal typealias Output = Reelvault_DetectProxiesResponse
+            public typealias Output = Reelvault_DetectProxiesResponse
             /// Descriptor for "DetectProxies".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "DetectProxies"
             )
         }
         /// Namespace for "AttachProxies" metadata.
-        internal enum AttachProxies {
+        public enum AttachProxies {
             /// Request type for "AttachProxies".
-            internal typealias Input = Reelvault_AttachProxiesRequest
+            public typealias Input = Reelvault_AttachProxiesRequest
             /// Response type for "AttachProxies".
-            internal typealias Output = Reelvault_AttachProxiesResponse
+            public typealias Output = Reelvault_AttachProxiesResponse
             /// Descriptor for "AttachProxies".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "AttachProxies"
             )
         }
         /// Namespace for "GetFilterOptions" metadata.
-        internal enum GetFilterOptions {
+        public enum GetFilterOptions {
             /// Request type for "GetFilterOptions".
-            internal typealias Input = Reelvault_GetFilterOptionsRequest
+            public typealias Input = Reelvault_GetFilterOptionsRequest
             /// Response type for "GetFilterOptions".
-            internal typealias Output = Reelvault_FilterOptions
+            public typealias Output = Reelvault_FilterOptions
             /// Descriptor for "GetFilterOptions".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "GetFilterOptions"
             )
         }
         /// Namespace for "GetMetadataFacets" metadata.
-        internal enum GetMetadataFacets {
+        public enum GetMetadataFacets {
             /// Request type for "GetMetadataFacets".
-            internal typealias Input = Reelvault_MetadataFacetsRequest
+            public typealias Input = Reelvault_MetadataFacetsRequest
             /// Response type for "GetMetadataFacets".
-            internal typealias Output = Reelvault_MetadataFacetsResponse
+            public typealias Output = Reelvault_MetadataFacetsResponse
             /// Descriptor for "GetMetadataFacets".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "GetMetadataFacets"
             )
         }
         /// Namespace for "GetStatus" metadata.
-        internal enum GetStatus {
+        public enum GetStatus {
             /// Request type for "GetStatus".
-            internal typealias Input = Reelvault_GetStatusRequest
+            public typealias Input = Reelvault_GetStatusRequest
             /// Response type for "GetStatus".
-            internal typealias Output = Reelvault_StatusResponse
+            public typealias Output = Reelvault_StatusResponse
             /// Descriptor for "GetStatus".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "GetStatus"
             )
         }
         /// Namespace for "GetConfig" metadata.
-        internal enum GetConfig {
+        public enum GetConfig {
             /// Request type for "GetConfig".
-            internal typealias Input = Reelvault_GetConfigRequest
+            public typealias Input = Reelvault_GetConfigRequest
             /// Response type for "GetConfig".
-            internal typealias Output = Reelvault_ConfigResponse
+            public typealias Output = Reelvault_ConfigResponse
             /// Descriptor for "GetConfig".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "GetConfig"
             )
         }
         /// Namespace for "UpdateConfig" metadata.
-        internal enum UpdateConfig {
+        public enum UpdateConfig {
             /// Request type for "UpdateConfig".
-            internal typealias Input = Reelvault_UpdateConfigRequest
+            public typealias Input = Reelvault_UpdateConfigRequest
             /// Response type for "UpdateConfig".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "UpdateConfig".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "UpdateConfig"
             )
         }
+        /// Namespace for "StartPairing" metadata.
+        public enum StartPairing {
+            /// Request type for "StartPairing".
+            public typealias Input = Reelvault_StartPairingRequest
+            /// Response type for "StartPairing".
+            public typealias Output = Reelvault_StartPairingResponse
+            /// Descriptor for "StartPairing".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "StartPairing"
+            )
+        }
         /// Namespace for "OpenCatalog" metadata.
-        internal enum OpenCatalog {
+        public enum OpenCatalog {
             /// Request type for "OpenCatalog".
-            internal typealias Input = Reelvault_OpenCatalogRequest
+            public typealias Input = Reelvault_OpenCatalogRequest
             /// Response type for "OpenCatalog".
-            internal typealias Output = Reelvault_CatalogInfo
+            public typealias Output = Reelvault_CatalogInfo
             /// Descriptor for "OpenCatalog".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "OpenCatalog"
             )
         }
         /// Namespace for "CloseCatalog" metadata.
-        internal enum CloseCatalog {
+        public enum CloseCatalog {
             /// Request type for "CloseCatalog".
-            internal typealias Input = Reelvault_CloseCatalogRequest
+            public typealias Input = Reelvault_CloseCatalogRequest
             /// Response type for "CloseCatalog".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "CloseCatalog".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "CloseCatalog"
             )
         }
         /// Namespace for "GetCurrentCatalog" metadata.
-        internal enum GetCurrentCatalog {
+        public enum GetCurrentCatalog {
             /// Request type for "GetCurrentCatalog".
-            internal typealias Input = Reelvault_GetCurrentCatalogRequest
+            public typealias Input = Reelvault_GetCurrentCatalogRequest
             /// Response type for "GetCurrentCatalog".
-            internal typealias Output = Reelvault_CatalogInfo
+            public typealias Output = Reelvault_CatalogInfo
             /// Descriptor for "GetCurrentCatalog".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "GetCurrentCatalog"
             )
         }
         /// Namespace for "UpdateVideoLocation" metadata.
-        internal enum UpdateVideoLocation {
+        public enum UpdateVideoLocation {
             /// Request type for "UpdateVideoLocation".
-            internal typealias Input = Reelvault_UpdateVideoLocationRequest
+            public typealias Input = Reelvault_UpdateVideoLocationRequest
             /// Response type for "UpdateVideoLocation".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "UpdateVideoLocation".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "UpdateVideoLocation"
             )
         }
         /// Namespace for "ListVideosWithLocations" metadata.
-        internal enum ListVideosWithLocations {
+        public enum ListVideosWithLocations {
             /// Request type for "ListVideosWithLocations".
-            internal typealias Input = Reelvault_ListVideosWithLocationsRequest
+            public typealias Input = Reelvault_ListVideosWithLocationsRequest
             /// Response type for "ListVideosWithLocations".
-            internal typealias Output = Reelvault_VideoLocationsResponse
+            public typealias Output = Reelvault_VideoLocationsResponse
             /// Descriptor for "ListVideosWithLocations".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "ListVideosWithLocations"
             )
         }
         /// Namespace for "ListNamedLocations" metadata.
-        internal enum ListNamedLocations {
+        public enum ListNamedLocations {
             /// Request type for "ListNamedLocations".
-            internal typealias Input = Reelvault_ListNamedLocationsRequest
+            public typealias Input = Reelvault_ListNamedLocationsRequest
             /// Response type for "ListNamedLocations".
-            internal typealias Output = Reelvault_NamedLocationsResponse
+            public typealias Output = Reelvault_NamedLocationsResponse
             /// Descriptor for "ListNamedLocations".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "ListNamedLocations"
             )
         }
         /// Namespace for "UpsertNamedLocation" metadata.
-        internal enum UpsertNamedLocation {
+        public enum UpsertNamedLocation {
             /// Request type for "UpsertNamedLocation".
-            internal typealias Input = Reelvault_UpsertNamedLocationRequest
+            public typealias Input = Reelvault_UpsertNamedLocationRequest
             /// Response type for "UpsertNamedLocation".
-            internal typealias Output = Reelvault_NamedLocationResponse
+            public typealias Output = Reelvault_NamedLocationResponse
             /// Descriptor for "UpsertNamedLocation".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "UpsertNamedLocation"
             )
         }
         /// Namespace for "DeleteNamedLocation" metadata.
-        internal enum DeleteNamedLocation {
+        public enum DeleteNamedLocation {
             /// Request type for "DeleteNamedLocation".
-            internal typealias Input = Reelvault_DeleteNamedLocationRequest
+            public typealias Input = Reelvault_DeleteNamedLocationRequest
             /// Response type for "DeleteNamedLocation".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "DeleteNamedLocation".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "DeleteNamedLocation"
             )
         }
         /// Namespace for "UpdateVideoCaptureDate" metadata.
-        internal enum UpdateVideoCaptureDate {
+        public enum UpdateVideoCaptureDate {
             /// Request type for "UpdateVideoCaptureDate".
-            internal typealias Input = Reelvault_UpdateVideoCaptureDateRequest
+            public typealias Input = Reelvault_UpdateVideoCaptureDateRequest
             /// Response type for "UpdateVideoCaptureDate".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "UpdateVideoCaptureDate".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "UpdateVideoCaptureDate"
             )
         }
         /// Namespace for "UpdateVideoRating" metadata.
-        internal enum UpdateVideoRating {
+        public enum UpdateVideoRating {
             /// Request type for "UpdateVideoRating".
-            internal typealias Input = Reelvault_UpdateVideoRatingRequest
+            public typealias Input = Reelvault_UpdateVideoRatingRequest
             /// Response type for "UpdateVideoRating".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "UpdateVideoRating".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "UpdateVideoRating"
             )
         }
         /// Namespace for "UpdateVideoColorLabel" metadata.
-        internal enum UpdateVideoColorLabel {
+        public enum UpdateVideoColorLabel {
             /// Request type for "UpdateVideoColorLabel".
-            internal typealias Input = Reelvault_UpdateVideoColorLabelRequest
+            public typealias Input = Reelvault_UpdateVideoColorLabelRequest
             /// Response type for "UpdateVideoColorLabel".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "UpdateVideoColorLabel".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "UpdateVideoColorLabel"
             )
         }
         /// Namespace for "GetGridSettings" metadata.
-        internal enum GetGridSettings {
+        public enum GetGridSettings {
             /// Request type for "GetGridSettings".
-            internal typealias Input = Reelvault_GetGridSettingsRequest
+            public typealias Input = Reelvault_GetGridSettingsRequest
             /// Response type for "GetGridSettings".
-            internal typealias Output = Reelvault_GridSettings
+            public typealias Output = Reelvault_GridSettings
             /// Descriptor for "GetGridSettings".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "GetGridSettings"
             )
         }
         /// Namespace for "UpdateGridSettings" metadata.
-        internal enum UpdateGridSettings {
+        public enum UpdateGridSettings {
             /// Request type for "UpdateGridSettings".
-            internal typealias Input = Reelvault_GridSettings
+            public typealias Input = Reelvault_GridSettings
             /// Response type for "UpdateGridSettings".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "UpdateGridSettings".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "UpdateGridSettings"
             )
         }
         /// Namespace for "SubscribeCatalogEvents" metadata.
-        internal enum SubscribeCatalogEvents {
+        public enum SubscribeCatalogEvents {
             /// Request type for "SubscribeCatalogEvents".
-            internal typealias Input = Reelvault_SubscribeCatalogEventsRequest
+            public typealias Input = Reelvault_SubscribeCatalogEventsRequest
             /// Response type for "SubscribeCatalogEvents".
-            internal typealias Output = Reelvault_CatalogEvent
+            public typealias Output = Reelvault_CatalogEvent
             /// Descriptor for "SubscribeCatalogEvents".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "SubscribeCatalogEvents"
             )
         }
         /// Namespace for "GetWatchSettings" metadata.
-        internal enum GetWatchSettings {
+        public enum GetWatchSettings {
             /// Request type for "GetWatchSettings".
-            internal typealias Input = Reelvault_GetWatchSettingsRequest
+            public typealias Input = Reelvault_GetWatchSettingsRequest
             /// Response type for "GetWatchSettings".
-            internal typealias Output = Reelvault_WatchSettings
+            public typealias Output = Reelvault_WatchSettings
             /// Descriptor for "GetWatchSettings".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "GetWatchSettings"
             )
         }
         /// Namespace for "UpdateWatchSettings" metadata.
-        internal enum UpdateWatchSettings {
+        public enum UpdateWatchSettings {
             /// Request type for "UpdateWatchSettings".
-            internal typealias Input = Reelvault_WatchSettings
+            public typealias Input = Reelvault_WatchSettings
             /// Response type for "UpdateWatchSettings".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "UpdateWatchSettings".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "UpdateWatchSettings"
             )
         }
         /// Namespace for "ListCameraNameMappings" metadata.
-        internal enum ListCameraNameMappings {
+        public enum ListCameraNameMappings {
             /// Request type for "ListCameraNameMappings".
-            internal typealias Input = Reelvault_ListCameraNameMappingsRequest
+            public typealias Input = Reelvault_ListCameraNameMappingsRequest
             /// Response type for "ListCameraNameMappings".
-            internal typealias Output = Reelvault_ListCameraNameMappingsResponse
+            public typealias Output = Reelvault_ListCameraNameMappingsResponse
             /// Descriptor for "ListCameraNameMappings".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "ListCameraNameMappings"
             )
         }
         /// Namespace for "SetCameraNameMapping" metadata.
-        internal enum SetCameraNameMapping {
+        public enum SetCameraNameMapping {
             /// Request type for "SetCameraNameMapping".
-            internal typealias Input = Reelvault_SetCameraNameMappingRequest
+            public typealias Input = Reelvault_SetCameraNameMappingRequest
             /// Response type for "SetCameraNameMapping".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "SetCameraNameMapping".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "SetCameraNameMapping"
             )
         }
         /// Namespace for "ListLensNameMappings" metadata.
-        internal enum ListLensNameMappings {
+        public enum ListLensNameMappings {
             /// Request type for "ListLensNameMappings".
-            internal typealias Input = Reelvault_ListLensNameMappingsRequest
+            public typealias Input = Reelvault_ListLensNameMappingsRequest
             /// Response type for "ListLensNameMappings".
-            internal typealias Output = Reelvault_ListLensNameMappingsResponse
+            public typealias Output = Reelvault_ListLensNameMappingsResponse
             /// Descriptor for "ListLensNameMappings".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "ListLensNameMappings"
             )
         }
         /// Namespace for "SetLensNameMapping" metadata.
-        internal enum SetLensNameMapping {
+        public enum SetLensNameMapping {
             /// Request type for "SetLensNameMapping".
-            internal typealias Input = Reelvault_SetLensNameMappingRequest
+            public typealias Input = Reelvault_SetLensNameMappingRequest
             /// Response type for "SetLensNameMapping".
-            internal typealias Output = Reelvault_Response
+            public typealias Output = Reelvault_Response
             /// Descriptor for "SetLensNameMapping".
-            internal static let descriptor = GRPCCore.MethodDescriptor(
+            public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "SetLensNameMapping"
             )
         }
         /// Descriptors for all methods in the "reelvault.ReelVault" service.
-        internal static let descriptors: [GRPCCore.MethodDescriptor] = [
+        public static let descriptors: [GRPCCore.MethodDescriptor] = [
             ListVideos.descriptor,
             SearchVideos.descriptor,
             GetMetadata.descriptor,
@@ -759,6 +771,7 @@ internal enum Reelvault_ReelVault {
             GetStatus.descriptor,
             GetConfig.descriptor,
             UpdateConfig.descriptor,
+            StartPairing.descriptor,
             OpenCatalog.descriptor,
             CloseCatalog.descriptor,
             GetCurrentCatalog.descriptor,
@@ -786,7 +799,7 @@ internal enum Reelvault_ReelVault {
 @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
 extension GRPCCore.ServiceDescriptor {
     /// Service descriptor for the "reelvault.ReelVault" service.
-    internal static let reelvault_ReelVault = GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault")
+    public static let reelvault_ReelVault = GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault")
 }
 
 // MARK: reelvault.ReelVault (server)
@@ -807,7 +820,7 @@ extension Reelvault_ReelVault {
     /// > Source IDL Documentation:
     /// >
     /// > Core service definition
-    internal protocol StreamingServiceProtocol: GRPCCore.RegistrableRPCService {
+    public protocol StreamingServiceProtocol: GRPCCore.RegistrableRPCService {
         /// Handle the "ListVideos" method.
         ///
         /// > Source IDL Documentation:
@@ -1392,6 +1405,28 @@ extension Reelvault_ReelVault {
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response>
 
+        /// Handle the "StartPairing" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Pairing — a desktop/loopback client mints a one-time 6-digit code that the
+        /// > operator types on a new remote device (the iOS app) to authorize it. The
+        /// > same pending-code state backs the media server's POST /pair, which the new
+        /// > device calls to redeem the code for a bearer token. Intended for loopback
+        /// > callers; the LAN bind requires a token a new device doesn't have yet.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Reelvault_StartPairingRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Reelvault_StartPairingResponse` messages.
+        func startPairing(
+            request: GRPCCore.StreamingServerRequest<Reelvault_StartPairingRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_StartPairingResponse>
+
         /// Handle the "OpenCatalog" method.
         ///
         /// > Source IDL Documentation:
@@ -1763,7 +1798,7 @@ extension Reelvault_ReelVault {
     /// > Source IDL Documentation:
     /// >
     /// > Core service definition
-    internal protocol ServiceProtocol: Reelvault_ReelVault.StreamingServiceProtocol {
+    public protocol ServiceProtocol: Reelvault_ReelVault.StreamingServiceProtocol {
         /// Handle the "ListVideos" method.
         ///
         /// > Source IDL Documentation:
@@ -2348,6 +2383,28 @@ extension Reelvault_ReelVault {
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.ServerResponse<Reelvault_Response>
 
+        /// Handle the "StartPairing" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Pairing — a desktop/loopback client mints a one-time 6-digit code that the
+        /// > operator types on a new remote device (the iOS app) to authorize it. The
+        /// > same pending-code state backs the media server's POST /pair, which the new
+        /// > device calls to redeem the code for a bearer token. Intended for loopback
+        /// > callers; the LAN bind requires a token a new device doesn't have yet.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_StartPairingRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Reelvault_StartPairingResponse` message.
+        func startPairing(
+            request: GRPCCore.ServerRequest<Reelvault_StartPairingRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Reelvault_StartPairingResponse>
+
         /// Handle the "OpenCatalog" method.
         ///
         /// > Source IDL Documentation:
@@ -2717,7 +2774,7 @@ extension Reelvault_ReelVault {
     /// > Source IDL Documentation:
     /// >
     /// > Core service definition
-    internal protocol SimpleServiceProtocol: Reelvault_ReelVault.ServiceProtocol {
+    public protocol SimpleServiceProtocol: Reelvault_ReelVault.ServiceProtocol {
         /// Handle the "ListVideos" method.
         ///
         /// > Source IDL Documentation:
@@ -3305,6 +3362,28 @@ extension Reelvault_ReelVault {
             context: GRPCCore.ServerContext
         ) async throws -> Reelvault_Response
 
+        /// Handle the "StartPairing" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Pairing — a desktop/loopback client mints a one-time 6-digit code that the
+        /// > operator types on a new remote device (the iOS app) to authorize it. The
+        /// > same pending-code state backs the media server's POST /pair, which the new
+        /// > device calls to redeem the code for a bearer token. Intended for loopback
+        /// > callers; the LAN bind requires a token a new device doesn't have yet.
+        ///
+        /// - Parameters:
+        ///   - request: A `Reelvault_StartPairingRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Reelvault_StartPairingResponse` to respond with.
+        func startPairing(
+            request: Reelvault_StartPairingRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Reelvault_StartPairingResponse
+
         /// Handle the "OpenCatalog" method.
         ///
         /// > Source IDL Documentation:
@@ -3670,7 +3749,7 @@ extension Reelvault_ReelVault {
 // Default implementation of 'registerMethods(with:)'.
 @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
 extension Reelvault_ReelVault.StreamingServiceProtocol {
-    internal func registerMethods<Transport>(with router: inout GRPCCore.RPCRouter<Transport>) where Transport: GRPCCore.ServerTransport {
+    public func registerMethods<Transport>(with router: inout GRPCCore.RPCRouter<Transport>) where Transport: GRPCCore.ServerTransport {
         router.registerHandler(
             forMethod: Reelvault_ReelVault.Method.ListVideos.descriptor,
             deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_ListVideosRequest>(),
@@ -4090,6 +4169,17 @@ extension Reelvault_ReelVault.StreamingServiceProtocol {
             }
         )
         router.registerHandler(
+            forMethod: Reelvault_ReelVault.Method.StartPairing.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_StartPairingRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_StartPairingResponse>(),
+            handler: { request, context in
+                try await self.startPairing(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
             forMethod: Reelvault_ReelVault.Method.OpenCatalog.descriptor,
             deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_OpenCatalogRequest>(),
             serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_CatalogInfo>(),
@@ -4315,7 +4405,7 @@ extension Reelvault_ReelVault.StreamingServiceProtocol {
 // Default implementation of streaming methods from 'StreamingServiceProtocol'.
 @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
 extension Reelvault_ReelVault.ServiceProtocol {
-    internal func listVideos(
+    public func listVideos(
         request: GRPCCore.StreamingServerRequest<Reelvault_ListVideosRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ListVideosResponse> {
@@ -4326,7 +4416,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func searchVideos(
+    public func searchVideos(
         request: GRPCCore.StreamingServerRequest<Reelvault_SearchRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_SearchResponse> {
@@ -4337,7 +4427,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func getMetadata(
+    public func getMetadata(
         request: GRPCCore.StreamingServerRequest<Reelvault_GetMetadataRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_VideoMetadata> {
@@ -4348,7 +4438,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func getThumbnail(
+    public func getThumbnail(
         request: GRPCCore.StreamingServerRequest<Reelvault_GetThumbnailRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ThumbnailChunk> {
@@ -4359,7 +4449,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return response
     }
 
-    internal func addLibraryLocation(
+    public func addLibraryLocation(
         request: GRPCCore.StreamingServerRequest<Reelvault_AddLocationRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_LocationResponse> {
@@ -4370,7 +4460,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func removeLibraryLocation(
+    public func removeLibraryLocation(
         request: GRPCCore.StreamingServerRequest<Reelvault_RemoveLocationRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_LocationResponse> {
@@ -4381,7 +4471,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func listLibraryLocations(
+    public func listLibraryLocations(
         request: GRPCCore.StreamingServerRequest<Reelvault_ListLocationsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ListLocationsResponse> {
@@ -4392,7 +4482,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func listSubdirectories(
+    public func listSubdirectories(
         request: GRPCCore.StreamingServerRequest<Reelvault_ListSubdirectoriesRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ListSubdirectoriesResponse> {
@@ -4403,7 +4493,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func scanLibrary(
+    public func scanLibrary(
         request: GRPCCore.StreamingServerRequest<Reelvault_ScanLibraryRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ScanProgress> {
@@ -4414,7 +4504,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return response
     }
 
-    internal func getScanStatus(
+    public func getScanStatus(
         request: GRPCCore.StreamingServerRequest<Reelvault_GetScanStatusRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ScanStatusResponse> {
@@ -4425,7 +4515,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func createTag(
+    public func createTag(
         request: GRPCCore.StreamingServerRequest<Reelvault_CreateTagRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_TagResponse> {
@@ -4436,7 +4526,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func deleteTag(
+    public func deleteTag(
         request: GRPCCore.StreamingServerRequest<Reelvault_DeleteTagRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4447,7 +4537,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func listTags(
+    public func listTags(
         request: GRPCCore.StreamingServerRequest<Reelvault_ListTagsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ListTagsResponse> {
@@ -4458,7 +4548,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func tagVideos(
+    public func tagVideos(
         request: GRPCCore.StreamingServerRequest<Reelvault_TagVideosRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4469,7 +4559,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func untagVideos(
+    public func untagVideos(
         request: GRPCCore.StreamingServerRequest<Reelvault_UntagVideosRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4480,7 +4570,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func createCollection(
+    public func createCollection(
         request: GRPCCore.StreamingServerRequest<Reelvault_CreateCollectionRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_CollectionResponse> {
@@ -4491,7 +4581,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func deleteCollection(
+    public func deleteCollection(
         request: GRPCCore.StreamingServerRequest<Reelvault_DeleteCollectionRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4502,7 +4592,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func listCollections(
+    public func listCollections(
         request: GRPCCore.StreamingServerRequest<Reelvault_ListCollectionsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ListCollectionsResponse> {
@@ -4513,7 +4603,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func addToCollection(
+    public func addToCollection(
         request: GRPCCore.StreamingServerRequest<Reelvault_AddToCollectionRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4524,7 +4614,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func removeFromCollection(
+    public func removeFromCollection(
         request: GRPCCore.StreamingServerRequest<Reelvault_RemoveFromCollectionRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4535,7 +4625,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func updateVideoNotes(
+    public func updateVideoNotes(
         request: GRPCCore.StreamingServerRequest<Reelvault_UpdateNotesRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4546,7 +4636,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func deleteVideo(
+    public func deleteVideo(
         request: GRPCCore.StreamingServerRequest<Reelvault_DeleteVideoRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4557,7 +4647,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func listGroupMembers(
+    public func listGroupMembers(
         request: GRPCCore.StreamingServerRequest<Reelvault_ListGroupMembersRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ListGroupMembersResponse> {
@@ -4568,7 +4658,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func createGroup(
+    public func createGroup(
         request: GRPCCore.StreamingServerRequest<Reelvault_CreateGroupRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_GroupResponse> {
@@ -4579,7 +4669,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func ungroupVideo(
+    public func ungroupVideo(
         request: GRPCCore.StreamingServerRequest<Reelvault_UngroupVideoRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4590,7 +4680,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func setGroupPreferred(
+    public func setGroupPreferred(
         request: GRPCCore.StreamingServerRequest<Reelvault_SetGroupPreferredRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4601,7 +4691,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func autoGroupVideos(
+    public func autoGroupVideos(
         request: GRPCCore.StreamingServerRequest<Reelvault_AutoGroupRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_AutoGroupResponse> {
@@ -4612,7 +4702,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func generateProxy(
+    public func generateProxy(
         request: GRPCCore.StreamingServerRequest<Reelvault_GenerateProxyRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ProxyGenerationProgress> {
@@ -4623,7 +4713,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return response
     }
 
-    internal func listProxies(
+    public func listProxies(
         request: GRPCCore.StreamingServerRequest<Reelvault_ListProxiesRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ListProxiesResponse> {
@@ -4634,7 +4724,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func setProxyOf(
+    public func setProxyOf(
         request: GRPCCore.StreamingServerRequest<Reelvault_SetProxyOfRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4645,7 +4735,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func removeProxyLink(
+    public func removeProxyLink(
         request: GRPCCore.StreamingServerRequest<Reelvault_RemoveProxyLinkRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4656,7 +4746,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func detectProxies(
+    public func detectProxies(
         request: GRPCCore.StreamingServerRequest<Reelvault_DetectProxiesRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_DetectProxiesResponse> {
@@ -4667,7 +4757,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func attachProxies(
+    public func attachProxies(
         request: GRPCCore.StreamingServerRequest<Reelvault_AttachProxiesRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_AttachProxiesResponse> {
@@ -4678,7 +4768,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func getFilterOptions(
+    public func getFilterOptions(
         request: GRPCCore.StreamingServerRequest<Reelvault_GetFilterOptionsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_FilterOptions> {
@@ -4689,7 +4779,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func getMetadataFacets(
+    public func getMetadataFacets(
         request: GRPCCore.StreamingServerRequest<Reelvault_MetadataFacetsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_MetadataFacetsResponse> {
@@ -4700,7 +4790,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func getStatus(
+    public func getStatus(
         request: GRPCCore.StreamingServerRequest<Reelvault_GetStatusRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_StatusResponse> {
@@ -4711,7 +4801,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func getConfig(
+    public func getConfig(
         request: GRPCCore.StreamingServerRequest<Reelvault_GetConfigRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ConfigResponse> {
@@ -4722,7 +4812,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func updateConfig(
+    public func updateConfig(
         request: GRPCCore.StreamingServerRequest<Reelvault_UpdateConfigRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4733,7 +4823,18 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func openCatalog(
+    public func startPairing(
+        request: GRPCCore.StreamingServerRequest<Reelvault_StartPairingRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_StartPairingResponse> {
+        let response = try await self.startPairing(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    public func openCatalog(
         request: GRPCCore.StreamingServerRequest<Reelvault_OpenCatalogRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_CatalogInfo> {
@@ -4744,7 +4845,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func closeCatalog(
+    public func closeCatalog(
         request: GRPCCore.StreamingServerRequest<Reelvault_CloseCatalogRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4755,7 +4856,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func getCurrentCatalog(
+    public func getCurrentCatalog(
         request: GRPCCore.StreamingServerRequest<Reelvault_GetCurrentCatalogRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_CatalogInfo> {
@@ -4766,7 +4867,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func updateVideoLocation(
+    public func updateVideoLocation(
         request: GRPCCore.StreamingServerRequest<Reelvault_UpdateVideoLocationRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4777,7 +4878,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func listVideosWithLocations(
+    public func listVideosWithLocations(
         request: GRPCCore.StreamingServerRequest<Reelvault_ListVideosWithLocationsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_VideoLocationsResponse> {
@@ -4788,7 +4889,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func listNamedLocations(
+    public func listNamedLocations(
         request: GRPCCore.StreamingServerRequest<Reelvault_ListNamedLocationsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_NamedLocationsResponse> {
@@ -4799,7 +4900,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func upsertNamedLocation(
+    public func upsertNamedLocation(
         request: GRPCCore.StreamingServerRequest<Reelvault_UpsertNamedLocationRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_NamedLocationResponse> {
@@ -4810,7 +4911,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func deleteNamedLocation(
+    public func deleteNamedLocation(
         request: GRPCCore.StreamingServerRequest<Reelvault_DeleteNamedLocationRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4821,7 +4922,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func updateVideoCaptureDate(
+    public func updateVideoCaptureDate(
         request: GRPCCore.StreamingServerRequest<Reelvault_UpdateVideoCaptureDateRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4832,7 +4933,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func updateVideoRating(
+    public func updateVideoRating(
         request: GRPCCore.StreamingServerRequest<Reelvault_UpdateVideoRatingRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4843,7 +4944,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func updateVideoColorLabel(
+    public func updateVideoColorLabel(
         request: GRPCCore.StreamingServerRequest<Reelvault_UpdateVideoColorLabelRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4854,7 +4955,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func getGridSettings(
+    public func getGridSettings(
         request: GRPCCore.StreamingServerRequest<Reelvault_GetGridSettingsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_GridSettings> {
@@ -4865,7 +4966,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func updateGridSettings(
+    public func updateGridSettings(
         request: GRPCCore.StreamingServerRequest<Reelvault_GridSettings>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4876,7 +4977,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func subscribeCatalogEvents(
+    public func subscribeCatalogEvents(
         request: GRPCCore.StreamingServerRequest<Reelvault_SubscribeCatalogEventsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_CatalogEvent> {
@@ -4887,7 +4988,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return response
     }
 
-    internal func getWatchSettings(
+    public func getWatchSettings(
         request: GRPCCore.StreamingServerRequest<Reelvault_GetWatchSettingsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_WatchSettings> {
@@ -4898,7 +4999,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func updateWatchSettings(
+    public func updateWatchSettings(
         request: GRPCCore.StreamingServerRequest<Reelvault_WatchSettings>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4909,7 +5010,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func listCameraNameMappings(
+    public func listCameraNameMappings(
         request: GRPCCore.StreamingServerRequest<Reelvault_ListCameraNameMappingsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ListCameraNameMappingsResponse> {
@@ -4920,7 +5021,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func setCameraNameMapping(
+    public func setCameraNameMapping(
         request: GRPCCore.StreamingServerRequest<Reelvault_SetCameraNameMappingRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4931,7 +5032,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func listLensNameMappings(
+    public func listLensNameMappings(
         request: GRPCCore.StreamingServerRequest<Reelvault_ListLensNameMappingsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ListLensNameMappingsResponse> {
@@ -4942,7 +5043,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
         return GRPCCore.StreamingServerResponse(single: response)
     }
 
-    internal func setLensNameMapping(
+    public func setLensNameMapping(
         request: GRPCCore.StreamingServerRequest<Reelvault_SetLensNameMappingRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
@@ -4957,7 +5058,7 @@ extension Reelvault_ReelVault.ServiceProtocol {
 // Default implementation of methods from 'ServiceProtocol'.
 @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
 extension Reelvault_ReelVault.SimpleServiceProtocol {
-    internal func listVideos(
+    public func listVideos(
         request: GRPCCore.ServerRequest<Reelvault_ListVideosRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_ListVideosResponse> {
@@ -4970,7 +5071,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func searchVideos(
+    public func searchVideos(
         request: GRPCCore.ServerRequest<Reelvault_SearchRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_SearchResponse> {
@@ -4983,7 +5084,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func getMetadata(
+    public func getMetadata(
         request: GRPCCore.ServerRequest<Reelvault_GetMetadataRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_VideoMetadata> {
@@ -4996,7 +5097,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func getThumbnail(
+    public func getThumbnail(
         request: GRPCCore.ServerRequest<Reelvault_GetThumbnailRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ThumbnailChunk> {
@@ -5013,7 +5114,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func addLibraryLocation(
+    public func addLibraryLocation(
         request: GRPCCore.ServerRequest<Reelvault_AddLocationRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_LocationResponse> {
@@ -5026,7 +5127,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func removeLibraryLocation(
+    public func removeLibraryLocation(
         request: GRPCCore.ServerRequest<Reelvault_RemoveLocationRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_LocationResponse> {
@@ -5039,7 +5140,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func listLibraryLocations(
+    public func listLibraryLocations(
         request: GRPCCore.ServerRequest<Reelvault_ListLocationsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_ListLocationsResponse> {
@@ -5052,7 +5153,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func listSubdirectories(
+    public func listSubdirectories(
         request: GRPCCore.ServerRequest<Reelvault_ListSubdirectoriesRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_ListSubdirectoriesResponse> {
@@ -5065,7 +5166,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func scanLibrary(
+    public func scanLibrary(
         request: GRPCCore.ServerRequest<Reelvault_ScanLibraryRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ScanProgress> {
@@ -5082,7 +5183,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func getScanStatus(
+    public func getScanStatus(
         request: GRPCCore.ServerRequest<Reelvault_GetScanStatusRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_ScanStatusResponse> {
@@ -5095,7 +5196,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func createTag(
+    public func createTag(
         request: GRPCCore.ServerRequest<Reelvault_CreateTagRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_TagResponse> {
@@ -5108,7 +5209,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func deleteTag(
+    public func deleteTag(
         request: GRPCCore.ServerRequest<Reelvault_DeleteTagRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5121,7 +5222,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func listTags(
+    public func listTags(
         request: GRPCCore.ServerRequest<Reelvault_ListTagsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_ListTagsResponse> {
@@ -5134,7 +5235,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func tagVideos(
+    public func tagVideos(
         request: GRPCCore.ServerRequest<Reelvault_TagVideosRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5147,7 +5248,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func untagVideos(
+    public func untagVideos(
         request: GRPCCore.ServerRequest<Reelvault_UntagVideosRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5160,7 +5261,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func createCollection(
+    public func createCollection(
         request: GRPCCore.ServerRequest<Reelvault_CreateCollectionRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_CollectionResponse> {
@@ -5173,7 +5274,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func deleteCollection(
+    public func deleteCollection(
         request: GRPCCore.ServerRequest<Reelvault_DeleteCollectionRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5186,7 +5287,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func listCollections(
+    public func listCollections(
         request: GRPCCore.ServerRequest<Reelvault_ListCollectionsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_ListCollectionsResponse> {
@@ -5199,7 +5300,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func addToCollection(
+    public func addToCollection(
         request: GRPCCore.ServerRequest<Reelvault_AddToCollectionRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5212,7 +5313,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func removeFromCollection(
+    public func removeFromCollection(
         request: GRPCCore.ServerRequest<Reelvault_RemoveFromCollectionRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5225,7 +5326,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func updateVideoNotes(
+    public func updateVideoNotes(
         request: GRPCCore.ServerRequest<Reelvault_UpdateNotesRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5238,7 +5339,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func deleteVideo(
+    public func deleteVideo(
         request: GRPCCore.ServerRequest<Reelvault_DeleteVideoRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5251,7 +5352,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func listGroupMembers(
+    public func listGroupMembers(
         request: GRPCCore.ServerRequest<Reelvault_ListGroupMembersRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_ListGroupMembersResponse> {
@@ -5264,7 +5365,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func createGroup(
+    public func createGroup(
         request: GRPCCore.ServerRequest<Reelvault_CreateGroupRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_GroupResponse> {
@@ -5277,7 +5378,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func ungroupVideo(
+    public func ungroupVideo(
         request: GRPCCore.ServerRequest<Reelvault_UngroupVideoRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5290,7 +5391,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func setGroupPreferred(
+    public func setGroupPreferred(
         request: GRPCCore.ServerRequest<Reelvault_SetGroupPreferredRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5303,7 +5404,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func autoGroupVideos(
+    public func autoGroupVideos(
         request: GRPCCore.ServerRequest<Reelvault_AutoGroupRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_AutoGroupResponse> {
@@ -5316,7 +5417,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func generateProxy(
+    public func generateProxy(
         request: GRPCCore.ServerRequest<Reelvault_GenerateProxyRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ProxyGenerationProgress> {
@@ -5333,7 +5434,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func listProxies(
+    public func listProxies(
         request: GRPCCore.ServerRequest<Reelvault_ListProxiesRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_ListProxiesResponse> {
@@ -5346,7 +5447,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func setProxyOf(
+    public func setProxyOf(
         request: GRPCCore.ServerRequest<Reelvault_SetProxyOfRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5359,7 +5460,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func removeProxyLink(
+    public func removeProxyLink(
         request: GRPCCore.ServerRequest<Reelvault_RemoveProxyLinkRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5372,7 +5473,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func detectProxies(
+    public func detectProxies(
         request: GRPCCore.ServerRequest<Reelvault_DetectProxiesRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_DetectProxiesResponse> {
@@ -5385,7 +5486,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func attachProxies(
+    public func attachProxies(
         request: GRPCCore.ServerRequest<Reelvault_AttachProxiesRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_AttachProxiesResponse> {
@@ -5398,7 +5499,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func getFilterOptions(
+    public func getFilterOptions(
         request: GRPCCore.ServerRequest<Reelvault_GetFilterOptionsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_FilterOptions> {
@@ -5411,7 +5512,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func getMetadataFacets(
+    public func getMetadataFacets(
         request: GRPCCore.ServerRequest<Reelvault_MetadataFacetsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_MetadataFacetsResponse> {
@@ -5424,7 +5525,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func getStatus(
+    public func getStatus(
         request: GRPCCore.ServerRequest<Reelvault_GetStatusRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_StatusResponse> {
@@ -5437,7 +5538,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func getConfig(
+    public func getConfig(
         request: GRPCCore.ServerRequest<Reelvault_GetConfigRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_ConfigResponse> {
@@ -5450,7 +5551,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func updateConfig(
+    public func updateConfig(
         request: GRPCCore.ServerRequest<Reelvault_UpdateConfigRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5463,7 +5564,20 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func openCatalog(
+    public func startPairing(
+        request: GRPCCore.ServerRequest<Reelvault_StartPairingRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Reelvault_StartPairingResponse> {
+        return GRPCCore.ServerResponse<Reelvault_StartPairingResponse>(
+            message: try await self.startPairing(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    public func openCatalog(
         request: GRPCCore.ServerRequest<Reelvault_OpenCatalogRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_CatalogInfo> {
@@ -5476,7 +5590,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func closeCatalog(
+    public func closeCatalog(
         request: GRPCCore.ServerRequest<Reelvault_CloseCatalogRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5489,7 +5603,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func getCurrentCatalog(
+    public func getCurrentCatalog(
         request: GRPCCore.ServerRequest<Reelvault_GetCurrentCatalogRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_CatalogInfo> {
@@ -5502,7 +5616,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func updateVideoLocation(
+    public func updateVideoLocation(
         request: GRPCCore.ServerRequest<Reelvault_UpdateVideoLocationRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5515,7 +5629,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func listVideosWithLocations(
+    public func listVideosWithLocations(
         request: GRPCCore.ServerRequest<Reelvault_ListVideosWithLocationsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_VideoLocationsResponse> {
@@ -5528,7 +5642,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func listNamedLocations(
+    public func listNamedLocations(
         request: GRPCCore.ServerRequest<Reelvault_ListNamedLocationsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_NamedLocationsResponse> {
@@ -5541,7 +5655,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func upsertNamedLocation(
+    public func upsertNamedLocation(
         request: GRPCCore.ServerRequest<Reelvault_UpsertNamedLocationRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_NamedLocationResponse> {
@@ -5554,7 +5668,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func deleteNamedLocation(
+    public func deleteNamedLocation(
         request: GRPCCore.ServerRequest<Reelvault_DeleteNamedLocationRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5567,7 +5681,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func updateVideoCaptureDate(
+    public func updateVideoCaptureDate(
         request: GRPCCore.ServerRequest<Reelvault_UpdateVideoCaptureDateRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5580,7 +5694,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func updateVideoRating(
+    public func updateVideoRating(
         request: GRPCCore.ServerRequest<Reelvault_UpdateVideoRatingRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5593,7 +5707,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func updateVideoColorLabel(
+    public func updateVideoColorLabel(
         request: GRPCCore.ServerRequest<Reelvault_UpdateVideoColorLabelRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5606,7 +5720,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func getGridSettings(
+    public func getGridSettings(
         request: GRPCCore.ServerRequest<Reelvault_GetGridSettingsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_GridSettings> {
@@ -5619,7 +5733,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func updateGridSettings(
+    public func updateGridSettings(
         request: GRPCCore.ServerRequest<Reelvault_GridSettings>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5632,7 +5746,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func subscribeCatalogEvents(
+    public func subscribeCatalogEvents(
         request: GRPCCore.ServerRequest<Reelvault_SubscribeCatalogEventsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_CatalogEvent> {
@@ -5649,7 +5763,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func getWatchSettings(
+    public func getWatchSettings(
         request: GRPCCore.ServerRequest<Reelvault_GetWatchSettingsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_WatchSettings> {
@@ -5662,7 +5776,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func updateWatchSettings(
+    public func updateWatchSettings(
         request: GRPCCore.ServerRequest<Reelvault_WatchSettings>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5675,7 +5789,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func listCameraNameMappings(
+    public func listCameraNameMappings(
         request: GRPCCore.ServerRequest<Reelvault_ListCameraNameMappingsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_ListCameraNameMappingsResponse> {
@@ -5688,7 +5802,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func setCameraNameMapping(
+    public func setCameraNameMapping(
         request: GRPCCore.ServerRequest<Reelvault_SetCameraNameMappingRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5701,7 +5815,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func listLensNameMappings(
+    public func listLensNameMappings(
         request: GRPCCore.ServerRequest<Reelvault_ListLensNameMappingsRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_ListLensNameMappingsResponse> {
@@ -5714,7 +5828,7 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
         )
     }
 
-    internal func setLensNameMapping(
+    public func setLensNameMapping(
         request: GRPCCore.ServerRequest<Reelvault_SetLensNameMappingRequest>,
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
@@ -5740,7 +5854,7 @@ extension Reelvault_ReelVault {
     /// > Source IDL Documentation:
     /// >
     /// > Core service definition
-    internal protocol ClientProtocol: Sendable {
+    public protocol ClientProtocol: Sendable {
         /// Call the "ListVideos" method.
         ///
         /// > Source IDL Documentation:
@@ -6515,6 +6629,33 @@ extension Reelvault_ReelVault {
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
+        /// Call the "StartPairing" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Pairing — a desktop/loopback client mints a one-time 6-digit code that the
+        /// > operator types on a new remote device (the iOS app) to authorize it. The
+        /// > same pending-code state backs the media server's POST /pair, which the new
+        /// > device calls to redeem the code for a bearer token. Intended for loopback
+        /// > callers; the LAN bind requires a token a new device doesn't have yet.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_StartPairingRequest` message.
+        ///   - serializer: A serializer for `Reelvault_StartPairingRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_StartPairingResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func startPairing<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_StartPairingRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_StartPairingRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_StartPairingResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_StartPairingResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
         /// Call the "OpenCatalog" method.
         ///
         /// > Source IDL Documentation:
@@ -6984,14 +7125,14 @@ extension Reelvault_ReelVault {
     /// > Source IDL Documentation:
     /// >
     /// > Core service definition
-    internal struct Client<Transport>: ClientProtocol where Transport: GRPCCore.ClientTransport {
+    public struct Client<Transport>: ClientProtocol where Transport: GRPCCore.ClientTransport {
         private let client: GRPCCore.GRPCClient<Transport>
 
         /// Creates a new client wrapping the provided `GRPCCore.GRPCClient`.
         ///
         /// - Parameters:
         ///   - client: A `GRPCCore.GRPCClient` providing a communication channel to the service.
-        internal init(wrapping client: GRPCCore.GRPCClient<Transport>) {
+        public init(wrapping client: GRPCCore.GRPCClient<Transport>) {
             self.client = client
         }
 
@@ -7010,7 +7151,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func listVideos<Result>(
+        public func listVideos<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListVideosRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_ListVideosRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_ListVideosResponse>,
@@ -7040,7 +7181,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func searchVideos<Result>(
+        public func searchVideos<Result>(
             request: GRPCCore.ClientRequest<Reelvault_SearchRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_SearchRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_SearchResponse>,
@@ -7070,7 +7211,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func getMetadata<Result>(
+        public func getMetadata<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetMetadataRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_GetMetadataRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_VideoMetadata>,
@@ -7100,7 +7241,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func getThumbnail<Result>(
+        public func getThumbnail<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetThumbnailRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_GetThumbnailRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_ThumbnailChunk>,
@@ -7132,7 +7273,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func addLibraryLocation<Result>(
+        public func addLibraryLocation<Result>(
             request: GRPCCore.ClientRequest<Reelvault_AddLocationRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_AddLocationRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_LocationResponse>,
@@ -7162,7 +7303,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func removeLibraryLocation<Result>(
+        public func removeLibraryLocation<Result>(
             request: GRPCCore.ClientRequest<Reelvault_RemoveLocationRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_RemoveLocationRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_LocationResponse>,
@@ -7192,7 +7333,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func listLibraryLocations<Result>(
+        public func listLibraryLocations<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListLocationsRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_ListLocationsRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_ListLocationsResponse>,
@@ -7229,7 +7370,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func listSubdirectories<Result>(
+        public func listSubdirectories<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListSubdirectoriesRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_ListSubdirectoriesRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_ListSubdirectoriesResponse>,
@@ -7259,7 +7400,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func scanLibrary<Result>(
+        public func scanLibrary<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ScanLibraryRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_ScanLibraryRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_ScanProgress>,
@@ -7287,7 +7428,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func getScanStatus<Result>(
+        public func getScanStatus<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetScanStatusRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_GetScanStatusRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_ScanStatusResponse>,
@@ -7321,7 +7462,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func createTag<Result>(
+        public func createTag<Result>(
             request: GRPCCore.ClientRequest<Reelvault_CreateTagRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_CreateTagRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_TagResponse>,
@@ -7351,7 +7492,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func deleteTag<Result>(
+        public func deleteTag<Result>(
             request: GRPCCore.ClientRequest<Reelvault_DeleteTagRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_DeleteTagRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -7381,7 +7522,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func listTags<Result>(
+        public func listTags<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListTagsRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_ListTagsRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_ListTagsResponse>,
@@ -7411,7 +7552,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func tagVideos<Result>(
+        public func tagVideos<Result>(
             request: GRPCCore.ClientRequest<Reelvault_TagVideosRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_TagVideosRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -7441,7 +7582,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func untagVideos<Result>(
+        public func untagVideos<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UntagVideosRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_UntagVideosRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -7475,7 +7616,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func createCollection<Result>(
+        public func createCollection<Result>(
             request: GRPCCore.ClientRequest<Reelvault_CreateCollectionRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_CreateCollectionRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_CollectionResponse>,
@@ -7505,7 +7646,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func deleteCollection<Result>(
+        public func deleteCollection<Result>(
             request: GRPCCore.ClientRequest<Reelvault_DeleteCollectionRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_DeleteCollectionRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -7535,7 +7676,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func listCollections<Result>(
+        public func listCollections<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListCollectionsRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_ListCollectionsRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_ListCollectionsResponse>,
@@ -7565,7 +7706,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func addToCollection<Result>(
+        public func addToCollection<Result>(
             request: GRPCCore.ClientRequest<Reelvault_AddToCollectionRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_AddToCollectionRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -7595,7 +7736,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func removeFromCollection<Result>(
+        public func removeFromCollection<Result>(
             request: GRPCCore.ClientRequest<Reelvault_RemoveFromCollectionRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_RemoveFromCollectionRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -7629,7 +7770,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func updateVideoNotes<Result>(
+        public func updateVideoNotes<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpdateNotesRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_UpdateNotesRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -7659,7 +7800,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func deleteVideo<Result>(
+        public func deleteVideo<Result>(
             request: GRPCCore.ClientRequest<Reelvault_DeleteVideoRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_DeleteVideoRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -7693,7 +7834,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func listGroupMembers<Result>(
+        public func listGroupMembers<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListGroupMembersRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_ListGroupMembersRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_ListGroupMembersResponse>,
@@ -7723,7 +7864,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func createGroup<Result>(
+        public func createGroup<Result>(
             request: GRPCCore.ClientRequest<Reelvault_CreateGroupRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_CreateGroupRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_GroupResponse>,
@@ -7753,7 +7894,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func ungroupVideo<Result>(
+        public func ungroupVideo<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UngroupVideoRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_UngroupVideoRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -7783,7 +7924,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func setGroupPreferred<Result>(
+        public func setGroupPreferred<Result>(
             request: GRPCCore.ClientRequest<Reelvault_SetGroupPreferredRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_SetGroupPreferredRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -7813,7 +7954,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func autoGroupVideos<Result>(
+        public func autoGroupVideos<Result>(
             request: GRPCCore.ClientRequest<Reelvault_AutoGroupRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_AutoGroupRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_AutoGroupResponse>,
@@ -7847,7 +7988,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func generateProxy<Result>(
+        public func generateProxy<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GenerateProxyRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_GenerateProxyRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_ProxyGenerationProgress>,
@@ -7875,7 +8016,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func listProxies<Result>(
+        public func listProxies<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListProxiesRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_ListProxiesRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_ListProxiesResponse>,
@@ -7905,7 +8046,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func setProxyOf<Result>(
+        public func setProxyOf<Result>(
             request: GRPCCore.ClientRequest<Reelvault_SetProxyOfRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_SetProxyOfRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -7935,7 +8076,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func removeProxyLink<Result>(
+        public func removeProxyLink<Result>(
             request: GRPCCore.ClientRequest<Reelvault_RemoveProxyLinkRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_RemoveProxyLinkRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -7965,7 +8106,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func detectProxies<Result>(
+        public func detectProxies<Result>(
             request: GRPCCore.ClientRequest<Reelvault_DetectProxiesRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_DetectProxiesRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_DetectProxiesResponse>,
@@ -7995,7 +8136,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func attachProxies<Result>(
+        public func attachProxies<Result>(
             request: GRPCCore.ClientRequest<Reelvault_AttachProxiesRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_AttachProxiesRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_AttachProxiesResponse>,
@@ -8029,7 +8170,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func getFilterOptions<Result>(
+        public func getFilterOptions<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetFilterOptionsRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_GetFilterOptionsRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_FilterOptions>,
@@ -8068,7 +8209,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func getMetadataFacets<Result>(
+        public func getMetadataFacets<Result>(
             request: GRPCCore.ClientRequest<Reelvault_MetadataFacetsRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_MetadataFacetsRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_MetadataFacetsResponse>,
@@ -8102,7 +8243,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func getStatus<Result>(
+        public func getStatus<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetStatusRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_GetStatusRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_StatusResponse>,
@@ -8132,7 +8273,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func getConfig<Result>(
+        public func getConfig<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetConfigRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_GetConfigRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_ConfigResponse>,
@@ -8162,7 +8303,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func updateConfig<Result>(
+        public func updateConfig<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpdateConfigRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_UpdateConfigRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -8174,6 +8315,44 @@ extension Reelvault_ReelVault {
             try await self.client.unary(
                 request: request,
                 descriptor: Reelvault_ReelVault.Method.UpdateConfig.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "StartPairing" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Pairing — a desktop/loopback client mints a one-time 6-digit code that the
+        /// > operator types on a new remote device (the iOS app) to authorize it. The
+        /// > same pending-code state backs the media server's POST /pair, which the new
+        /// > device calls to redeem the code for a bearer token. Intended for loopback
+        /// > callers; the LAN bind requires a token a new device doesn't have yet.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_StartPairingRequest` message.
+        ///   - serializer: A serializer for `Reelvault_StartPairingRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_StartPairingResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func startPairing<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_StartPairingRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_StartPairingRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_StartPairingResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_StartPairingResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Reelvault_ReelVault.Method.StartPairing.descriptor,
                 serializer: serializer,
                 deserializer: deserializer,
                 options: options,
@@ -8198,7 +8377,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func openCatalog<Result>(
+        public func openCatalog<Result>(
             request: GRPCCore.ClientRequest<Reelvault_OpenCatalogRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_OpenCatalogRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_CatalogInfo>,
@@ -8228,7 +8407,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func closeCatalog<Result>(
+        public func closeCatalog<Result>(
             request: GRPCCore.ClientRequest<Reelvault_CloseCatalogRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_CloseCatalogRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -8258,7 +8437,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func getCurrentCatalog<Result>(
+        public func getCurrentCatalog<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetCurrentCatalogRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_GetCurrentCatalogRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_CatalogInfo>,
@@ -8293,7 +8472,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func updateVideoLocation<Result>(
+        public func updateVideoLocation<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpdateVideoLocationRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_UpdateVideoLocationRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -8323,7 +8502,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func listVideosWithLocations<Result>(
+        public func listVideosWithLocations<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListVideosWithLocationsRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_ListVideosWithLocationsRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_VideoLocationsResponse>,
@@ -8360,7 +8539,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func listNamedLocations<Result>(
+        public func listNamedLocations<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListNamedLocationsRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_ListNamedLocationsRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_NamedLocationsResponse>,
@@ -8390,7 +8569,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func upsertNamedLocation<Result>(
+        public func upsertNamedLocation<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpsertNamedLocationRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_UpsertNamedLocationRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_NamedLocationResponse>,
@@ -8420,7 +8599,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func deleteNamedLocation<Result>(
+        public func deleteNamedLocation<Result>(
             request: GRPCCore.ClientRequest<Reelvault_DeleteNamedLocationRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_DeleteNamedLocationRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -8457,7 +8636,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func updateVideoCaptureDate<Result>(
+        public func updateVideoCaptureDate<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpdateVideoCaptureDateRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_UpdateVideoCaptureDateRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -8494,7 +8673,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func updateVideoRating<Result>(
+        public func updateVideoRating<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpdateVideoRatingRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_UpdateVideoRatingRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -8524,7 +8703,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func updateVideoColorLabel<Result>(
+        public func updateVideoColorLabel<Result>(
             request: GRPCCore.ClientRequest<Reelvault_UpdateVideoColorLabelRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_UpdateVideoColorLabelRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -8560,7 +8739,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func getGridSettings<Result>(
+        public func getGridSettings<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetGridSettingsRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_GetGridSettingsRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_GridSettings>,
@@ -8590,7 +8769,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func updateGridSettings<Result>(
+        public func updateGridSettings<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GridSettings>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_GridSettings>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -8631,7 +8810,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func subscribeCatalogEvents<Result>(
+        public func subscribeCatalogEvents<Result>(
             request: GRPCCore.ClientRequest<Reelvault_SubscribeCatalogEventsRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_SubscribeCatalogEventsRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_CatalogEvent>,
@@ -8666,7 +8845,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func getWatchSettings<Result>(
+        public func getWatchSettings<Result>(
             request: GRPCCore.ClientRequest<Reelvault_GetWatchSettingsRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_GetWatchSettingsRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_WatchSettings>,
@@ -8696,7 +8875,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func updateWatchSettings<Result>(
+        public func updateWatchSettings<Result>(
             request: GRPCCore.ClientRequest<Reelvault_WatchSettings>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_WatchSettings>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -8738,7 +8917,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func listCameraNameMappings<Result>(
+        public func listCameraNameMappings<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListCameraNameMappingsRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_ListCameraNameMappingsRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_ListCameraNameMappingsResponse>,
@@ -8768,7 +8947,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func setCameraNameMapping<Result>(
+        public func setCameraNameMapping<Result>(
             request: GRPCCore.ClientRequest<Reelvault_SetCameraNameMappingRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_SetCameraNameMappingRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -8809,7 +8988,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func listLensNameMappings<Result>(
+        public func listLensNameMappings<Result>(
             request: GRPCCore.ClientRequest<Reelvault_ListLensNameMappingsRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_ListLensNameMappingsRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_ListLensNameMappingsResponse>,
@@ -8839,7 +9018,7 @@ extension Reelvault_ReelVault {
         ///       returned to the caller. Returning from the closure will cancel the RPC if it
         ///       hasn't already finished.
         /// - Returns: The result of `handleResponse`.
-        internal func setLensNameMapping<Result>(
+        public func setLensNameMapping<Result>(
             request: GRPCCore.ClientRequest<Reelvault_SetLensNameMappingRequest>,
             serializer: some GRPCCore.MessageSerializer<Reelvault_SetLensNameMappingRequest>,
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
@@ -8876,7 +9055,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listVideos<Result>(
+    public func listVideos<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListVideosRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListVideosResponse>) async throws -> Result = { response in
@@ -8901,7 +9080,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func searchVideos<Result>(
+    public func searchVideos<Result>(
         request: GRPCCore.ClientRequest<Reelvault_SearchRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_SearchResponse>) async throws -> Result = { response in
@@ -8926,7 +9105,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func getMetadata<Result>(
+    public func getMetadata<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GetMetadataRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_VideoMetadata>) async throws -> Result = { response in
@@ -8951,7 +9130,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func getThumbnail<Result>(
+    public func getThumbnail<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GetThumbnailRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Reelvault_ThumbnailChunk>) async throws -> Result
@@ -8978,7 +9157,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func addLibraryLocation<Result>(
+    public func addLibraryLocation<Result>(
         request: GRPCCore.ClientRequest<Reelvault_AddLocationRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_LocationResponse>) async throws -> Result = { response in
@@ -9003,7 +9182,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func removeLibraryLocation<Result>(
+    public func removeLibraryLocation<Result>(
         request: GRPCCore.ClientRequest<Reelvault_RemoveLocationRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_LocationResponse>) async throws -> Result = { response in
@@ -9028,7 +9207,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listLibraryLocations<Result>(
+    public func listLibraryLocations<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListLocationsRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListLocationsResponse>) async throws -> Result = { response in
@@ -9060,7 +9239,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listSubdirectories<Result>(
+    public func listSubdirectories<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListSubdirectoriesRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListSubdirectoriesResponse>) async throws -> Result = { response in
@@ -9085,7 +9264,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func scanLibrary<Result>(
+    public func scanLibrary<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ScanLibraryRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Reelvault_ScanProgress>) async throws -> Result
@@ -9108,7 +9287,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func getScanStatus<Result>(
+    public func getScanStatus<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GetScanStatusRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ScanStatusResponse>) async throws -> Result = { response in
@@ -9137,7 +9316,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func createTag<Result>(
+    public func createTag<Result>(
         request: GRPCCore.ClientRequest<Reelvault_CreateTagRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_TagResponse>) async throws -> Result = { response in
@@ -9162,7 +9341,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func deleteTag<Result>(
+    public func deleteTag<Result>(
         request: GRPCCore.ClientRequest<Reelvault_DeleteTagRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -9187,7 +9366,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listTags<Result>(
+    public func listTags<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListTagsRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListTagsResponse>) async throws -> Result = { response in
@@ -9212,7 +9391,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func tagVideos<Result>(
+    public func tagVideos<Result>(
         request: GRPCCore.ClientRequest<Reelvault_TagVideosRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -9237,7 +9416,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func untagVideos<Result>(
+    public func untagVideos<Result>(
         request: GRPCCore.ClientRequest<Reelvault_UntagVideosRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -9266,7 +9445,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func createCollection<Result>(
+    public func createCollection<Result>(
         request: GRPCCore.ClientRequest<Reelvault_CreateCollectionRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_CollectionResponse>) async throws -> Result = { response in
@@ -9291,7 +9470,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func deleteCollection<Result>(
+    public func deleteCollection<Result>(
         request: GRPCCore.ClientRequest<Reelvault_DeleteCollectionRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -9316,7 +9495,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listCollections<Result>(
+    public func listCollections<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListCollectionsRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListCollectionsResponse>) async throws -> Result = { response in
@@ -9341,7 +9520,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func addToCollection<Result>(
+    public func addToCollection<Result>(
         request: GRPCCore.ClientRequest<Reelvault_AddToCollectionRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -9366,7 +9545,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func removeFromCollection<Result>(
+    public func removeFromCollection<Result>(
         request: GRPCCore.ClientRequest<Reelvault_RemoveFromCollectionRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -9395,7 +9574,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func updateVideoNotes<Result>(
+    public func updateVideoNotes<Result>(
         request: GRPCCore.ClientRequest<Reelvault_UpdateNotesRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -9420,7 +9599,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func deleteVideo<Result>(
+    public func deleteVideo<Result>(
         request: GRPCCore.ClientRequest<Reelvault_DeleteVideoRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -9449,7 +9628,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listGroupMembers<Result>(
+    public func listGroupMembers<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListGroupMembersRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListGroupMembersResponse>) async throws -> Result = { response in
@@ -9474,7 +9653,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func createGroup<Result>(
+    public func createGroup<Result>(
         request: GRPCCore.ClientRequest<Reelvault_CreateGroupRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_GroupResponse>) async throws -> Result = { response in
@@ -9499,7 +9678,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func ungroupVideo<Result>(
+    public func ungroupVideo<Result>(
         request: GRPCCore.ClientRequest<Reelvault_UngroupVideoRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -9524,7 +9703,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func setGroupPreferred<Result>(
+    public func setGroupPreferred<Result>(
         request: GRPCCore.ClientRequest<Reelvault_SetGroupPreferredRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -9549,7 +9728,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func autoGroupVideos<Result>(
+    public func autoGroupVideos<Result>(
         request: GRPCCore.ClientRequest<Reelvault_AutoGroupRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_AutoGroupResponse>) async throws -> Result = { response in
@@ -9578,7 +9757,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func generateProxy<Result>(
+    public func generateProxy<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GenerateProxyRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Reelvault_ProxyGenerationProgress>) async throws -> Result
@@ -9601,7 +9780,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listProxies<Result>(
+    public func listProxies<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListProxiesRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListProxiesResponse>) async throws -> Result = { response in
@@ -9626,7 +9805,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func setProxyOf<Result>(
+    public func setProxyOf<Result>(
         request: GRPCCore.ClientRequest<Reelvault_SetProxyOfRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -9651,7 +9830,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func removeProxyLink<Result>(
+    public func removeProxyLink<Result>(
         request: GRPCCore.ClientRequest<Reelvault_RemoveProxyLinkRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -9676,7 +9855,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func detectProxies<Result>(
+    public func detectProxies<Result>(
         request: GRPCCore.ClientRequest<Reelvault_DetectProxiesRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_DetectProxiesResponse>) async throws -> Result = { response in
@@ -9701,7 +9880,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func attachProxies<Result>(
+    public func attachProxies<Result>(
         request: GRPCCore.ClientRequest<Reelvault_AttachProxiesRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_AttachProxiesResponse>) async throws -> Result = { response in
@@ -9730,7 +9909,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func getFilterOptions<Result>(
+    public func getFilterOptions<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GetFilterOptionsRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_FilterOptions>) async throws -> Result = { response in
@@ -9764,7 +9943,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func getMetadataFacets<Result>(
+    public func getMetadataFacets<Result>(
         request: GRPCCore.ClientRequest<Reelvault_MetadataFacetsRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_MetadataFacetsResponse>) async throws -> Result = { response in
@@ -9793,7 +9972,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func getStatus<Result>(
+    public func getStatus<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GetStatusRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_StatusResponse>) async throws -> Result = { response in
@@ -9818,7 +9997,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func getConfig<Result>(
+    public func getConfig<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GetConfigRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ConfigResponse>) async throws -> Result = { response in
@@ -9843,7 +10022,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func updateConfig<Result>(
+    public func updateConfig<Result>(
         request: GRPCCore.ClientRequest<Reelvault_UpdateConfigRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -9854,6 +10033,39 @@ extension Reelvault_ReelVault.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_UpdateConfigRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_Response>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "StartPairing" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Pairing — a desktop/loopback client mints a one-time 6-digit code that the
+    /// > operator types on a new remote device (the iOS app) to authorize it. The
+    /// > same pending-code state backs the media server's POST /pair, which the new
+    /// > device calls to redeem the code for a bearer token. Intended for loopback
+    /// > callers; the LAN bind requires a token a new device doesn't have yet.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Reelvault_StartPairingRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func startPairing<Result>(
+        request: GRPCCore.ClientRequest<Reelvault_StartPairingRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_StartPairingResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.startPairing(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_StartPairingRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_StartPairingResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -9874,7 +10086,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func openCatalog<Result>(
+    public func openCatalog<Result>(
         request: GRPCCore.ClientRequest<Reelvault_OpenCatalogRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_CatalogInfo>) async throws -> Result = { response in
@@ -9899,7 +10111,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func closeCatalog<Result>(
+    public func closeCatalog<Result>(
         request: GRPCCore.ClientRequest<Reelvault_CloseCatalogRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -9924,7 +10136,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func getCurrentCatalog<Result>(
+    public func getCurrentCatalog<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GetCurrentCatalogRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_CatalogInfo>) async throws -> Result = { response in
@@ -9954,7 +10166,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func updateVideoLocation<Result>(
+    public func updateVideoLocation<Result>(
         request: GRPCCore.ClientRequest<Reelvault_UpdateVideoLocationRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -9979,7 +10191,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listVideosWithLocations<Result>(
+    public func listVideosWithLocations<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListVideosWithLocationsRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_VideoLocationsResponse>) async throws -> Result = { response in
@@ -10011,7 +10223,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listNamedLocations<Result>(
+    public func listNamedLocations<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListNamedLocationsRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_NamedLocationsResponse>) async throws -> Result = { response in
@@ -10036,7 +10248,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func upsertNamedLocation<Result>(
+    public func upsertNamedLocation<Result>(
         request: GRPCCore.ClientRequest<Reelvault_UpsertNamedLocationRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_NamedLocationResponse>) async throws -> Result = { response in
@@ -10061,7 +10273,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func deleteNamedLocation<Result>(
+    public func deleteNamedLocation<Result>(
         request: GRPCCore.ClientRequest<Reelvault_DeleteNamedLocationRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -10093,7 +10305,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func updateVideoCaptureDate<Result>(
+    public func updateVideoCaptureDate<Result>(
         request: GRPCCore.ClientRequest<Reelvault_UpdateVideoCaptureDateRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -10125,7 +10337,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func updateVideoRating<Result>(
+    public func updateVideoRating<Result>(
         request: GRPCCore.ClientRequest<Reelvault_UpdateVideoRatingRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -10150,7 +10362,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func updateVideoColorLabel<Result>(
+    public func updateVideoColorLabel<Result>(
         request: GRPCCore.ClientRequest<Reelvault_UpdateVideoColorLabelRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -10181,7 +10393,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func getGridSettings<Result>(
+    public func getGridSettings<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GetGridSettingsRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_GridSettings>) async throws -> Result = { response in
@@ -10206,7 +10418,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func updateGridSettings<Result>(
+    public func updateGridSettings<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GridSettings>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -10242,7 +10454,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func subscribeCatalogEvents<Result>(
+    public func subscribeCatalogEvents<Result>(
         request: GRPCCore.ClientRequest<Reelvault_SubscribeCatalogEventsRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Reelvault_CatalogEvent>) async throws -> Result
@@ -10272,7 +10484,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func getWatchSettings<Result>(
+    public func getWatchSettings<Result>(
         request: GRPCCore.ClientRequest<Reelvault_GetWatchSettingsRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_WatchSettings>) async throws -> Result = { response in
@@ -10297,7 +10509,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func updateWatchSettings<Result>(
+    public func updateWatchSettings<Result>(
         request: GRPCCore.ClientRequest<Reelvault_WatchSettings>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -10334,7 +10546,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listCameraNameMappings<Result>(
+    public func listCameraNameMappings<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListCameraNameMappingsRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListCameraNameMappingsResponse>) async throws -> Result = { response in
@@ -10359,7 +10571,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func setCameraNameMapping<Result>(
+    public func setCameraNameMapping<Result>(
         request: GRPCCore.ClientRequest<Reelvault_SetCameraNameMappingRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -10395,7 +10607,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listLensNameMappings<Result>(
+    public func listLensNameMappings<Result>(
         request: GRPCCore.ClientRequest<Reelvault_ListLensNameMappingsRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListLensNameMappingsResponse>) async throws -> Result = { response in
@@ -10420,7 +10632,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func setLensNameMapping<Result>(
+    public func setLensNameMapping<Result>(
         request: GRPCCore.ClientRequest<Reelvault_SetLensNameMappingRequest>,
         options: GRPCCore.CallOptions = .defaults,
         onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
@@ -10454,7 +10666,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listVideos<Result>(
+    public func listVideos<Result>(
         _ message: Reelvault_ListVideosRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -10483,7 +10695,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func searchVideos<Result>(
+    public func searchVideos<Result>(
         _ message: Reelvault_SearchRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -10512,7 +10724,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func getMetadata<Result>(
+    public func getMetadata<Result>(
         _ message: Reelvault_GetMetadataRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -10541,7 +10753,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func getThumbnail<Result>(
+    public func getThumbnail<Result>(
         _ message: Reelvault_GetThumbnailRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -10572,7 +10784,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func addLibraryLocation<Result>(
+    public func addLibraryLocation<Result>(
         _ message: Reelvault_AddLocationRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -10601,7 +10813,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func removeLibraryLocation<Result>(
+    public func removeLibraryLocation<Result>(
         _ message: Reelvault_RemoveLocationRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -10630,7 +10842,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listLibraryLocations<Result>(
+    public func listLibraryLocations<Result>(
         _ message: Reelvault_ListLocationsRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -10666,7 +10878,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listSubdirectories<Result>(
+    public func listSubdirectories<Result>(
         _ message: Reelvault_ListSubdirectoriesRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -10695,7 +10907,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func scanLibrary<Result>(
+    public func scanLibrary<Result>(
         _ message: Reelvault_ScanLibraryRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -10722,7 +10934,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func getScanStatus<Result>(
+    public func getScanStatus<Result>(
         _ message: Reelvault_GetScanStatusRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -10755,7 +10967,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func createTag<Result>(
+    public func createTag<Result>(
         _ message: Reelvault_CreateTagRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -10784,7 +10996,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func deleteTag<Result>(
+    public func deleteTag<Result>(
         _ message: Reelvault_DeleteTagRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -10813,7 +11025,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listTags<Result>(
+    public func listTags<Result>(
         _ message: Reelvault_ListTagsRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -10842,7 +11054,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func tagVideos<Result>(
+    public func tagVideos<Result>(
         _ message: Reelvault_TagVideosRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -10871,7 +11083,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func untagVideos<Result>(
+    public func untagVideos<Result>(
         _ message: Reelvault_UntagVideosRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -10904,7 +11116,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func createCollection<Result>(
+    public func createCollection<Result>(
         _ message: Reelvault_CreateCollectionRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -10933,7 +11145,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func deleteCollection<Result>(
+    public func deleteCollection<Result>(
         _ message: Reelvault_DeleteCollectionRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -10962,7 +11174,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listCollections<Result>(
+    public func listCollections<Result>(
         _ message: Reelvault_ListCollectionsRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -10991,7 +11203,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func addToCollection<Result>(
+    public func addToCollection<Result>(
         _ message: Reelvault_AddToCollectionRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11020,7 +11232,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func removeFromCollection<Result>(
+    public func removeFromCollection<Result>(
         _ message: Reelvault_RemoveFromCollectionRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11053,7 +11265,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func updateVideoNotes<Result>(
+    public func updateVideoNotes<Result>(
         _ message: Reelvault_UpdateNotesRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11082,7 +11294,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func deleteVideo<Result>(
+    public func deleteVideo<Result>(
         _ message: Reelvault_DeleteVideoRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11115,7 +11327,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listGroupMembers<Result>(
+    public func listGroupMembers<Result>(
         _ message: Reelvault_ListGroupMembersRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11144,7 +11356,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func createGroup<Result>(
+    public func createGroup<Result>(
         _ message: Reelvault_CreateGroupRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11173,7 +11385,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func ungroupVideo<Result>(
+    public func ungroupVideo<Result>(
         _ message: Reelvault_UngroupVideoRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11202,7 +11414,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func setGroupPreferred<Result>(
+    public func setGroupPreferred<Result>(
         _ message: Reelvault_SetGroupPreferredRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11231,7 +11443,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func autoGroupVideos<Result>(
+    public func autoGroupVideos<Result>(
         _ message: Reelvault_AutoGroupRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11264,7 +11476,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func generateProxy<Result>(
+    public func generateProxy<Result>(
         _ message: Reelvault_GenerateProxyRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11291,7 +11503,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listProxies<Result>(
+    public func listProxies<Result>(
         _ message: Reelvault_ListProxiesRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11320,7 +11532,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func setProxyOf<Result>(
+    public func setProxyOf<Result>(
         _ message: Reelvault_SetProxyOfRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11349,7 +11561,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func removeProxyLink<Result>(
+    public func removeProxyLink<Result>(
         _ message: Reelvault_RemoveProxyLinkRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11378,7 +11590,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func detectProxies<Result>(
+    public func detectProxies<Result>(
         _ message: Reelvault_DetectProxiesRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11407,7 +11619,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func attachProxies<Result>(
+    public func attachProxies<Result>(
         _ message: Reelvault_AttachProxiesRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11440,7 +11652,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func getFilterOptions<Result>(
+    public func getFilterOptions<Result>(
         _ message: Reelvault_GetFilterOptionsRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11478,7 +11690,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func getMetadataFacets<Result>(
+    public func getMetadataFacets<Result>(
         _ message: Reelvault_MetadataFacetsRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11511,7 +11723,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func getStatus<Result>(
+    public func getStatus<Result>(
         _ message: Reelvault_GetStatusRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11540,7 +11752,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func getConfig<Result>(
+    public func getConfig<Result>(
         _ message: Reelvault_GetConfigRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11569,7 +11781,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func updateConfig<Result>(
+    public func updateConfig<Result>(
         _ message: Reelvault_UpdateConfigRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11582,6 +11794,43 @@ extension Reelvault_ReelVault.ClientProtocol {
             metadata: metadata
         )
         return try await self.updateConfig(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "StartPairing" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Pairing — a desktop/loopback client mints a one-time 6-digit code that the
+    /// > operator types on a new remote device (the iOS app) to authorize it. The
+    /// > same pending-code state backs the media server's POST /pair, which the new
+    /// > device calls to redeem the code for a bearer token. Intended for loopback
+    /// > callers; the LAN bind requires a token a new device doesn't have yet.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func startPairing<Result>(
+        _ message: Reelvault_StartPairingRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_StartPairingResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Reelvault_StartPairingRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.startPairing(
             request: request,
             options: options,
             onResponse: handleResponse
@@ -11604,7 +11853,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func openCatalog<Result>(
+    public func openCatalog<Result>(
         _ message: Reelvault_OpenCatalogRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11633,7 +11882,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func closeCatalog<Result>(
+    public func closeCatalog<Result>(
         _ message: Reelvault_CloseCatalogRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11662,7 +11911,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func getCurrentCatalog<Result>(
+    public func getCurrentCatalog<Result>(
         _ message: Reelvault_GetCurrentCatalogRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11696,7 +11945,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func updateVideoLocation<Result>(
+    public func updateVideoLocation<Result>(
         _ message: Reelvault_UpdateVideoLocationRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11725,7 +11974,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listVideosWithLocations<Result>(
+    public func listVideosWithLocations<Result>(
         _ message: Reelvault_ListVideosWithLocationsRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11761,7 +12010,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listNamedLocations<Result>(
+    public func listNamedLocations<Result>(
         _ message: Reelvault_ListNamedLocationsRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11790,7 +12039,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func upsertNamedLocation<Result>(
+    public func upsertNamedLocation<Result>(
         _ message: Reelvault_UpsertNamedLocationRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11819,7 +12068,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func deleteNamedLocation<Result>(
+    public func deleteNamedLocation<Result>(
         _ message: Reelvault_DeleteNamedLocationRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11855,7 +12104,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func updateVideoCaptureDate<Result>(
+    public func updateVideoCaptureDate<Result>(
         _ message: Reelvault_UpdateVideoCaptureDateRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11891,7 +12140,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func updateVideoRating<Result>(
+    public func updateVideoRating<Result>(
         _ message: Reelvault_UpdateVideoRatingRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11920,7 +12169,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func updateVideoColorLabel<Result>(
+    public func updateVideoColorLabel<Result>(
         _ message: Reelvault_UpdateVideoColorLabelRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11955,7 +12204,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func getGridSettings<Result>(
+    public func getGridSettings<Result>(
         _ message: Reelvault_GetGridSettingsRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -11984,7 +12233,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func updateGridSettings<Result>(
+    public func updateGridSettings<Result>(
         _ message: Reelvault_GridSettings,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -12024,7 +12273,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func subscribeCatalogEvents<Result>(
+    public func subscribeCatalogEvents<Result>(
         _ message: Reelvault_SubscribeCatalogEventsRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -12058,7 +12307,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func getWatchSettings<Result>(
+    public func getWatchSettings<Result>(
         _ message: Reelvault_GetWatchSettingsRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -12087,7 +12336,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func updateWatchSettings<Result>(
+    public func updateWatchSettings<Result>(
         _ message: Reelvault_WatchSettings,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -12128,7 +12377,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listCameraNameMappings<Result>(
+    public func listCameraNameMappings<Result>(
         _ message: Reelvault_ListCameraNameMappingsRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -12157,7 +12406,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func setCameraNameMapping<Result>(
+    public func setCameraNameMapping<Result>(
         _ message: Reelvault_SetCameraNameMappingRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -12197,7 +12446,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func listLensNameMappings<Result>(
+    public func listLensNameMappings<Result>(
         _ message: Reelvault_ListLensNameMappingsRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,
@@ -12226,7 +12475,7 @@ extension Reelvault_ReelVault.ClientProtocol {
     ///       returned to the caller. Returning from the closure will cancel the RPC if it
     ///       hasn't already finished.
     /// - Returns: The result of `handleResponse`.
-    internal func setLensNameMapping<Result>(
+    public func setLensNameMapping<Result>(
         _ message: Reelvault_SetLensNameMappingRequest,
         metadata: GRPCCore.Metadata = [:],
         options: GRPCCore.CallOptions = .defaults,

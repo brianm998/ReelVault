@@ -33,18 +33,18 @@ fileprivate nonisolated struct _GeneratedWithProtocGenSwiftVersion: SwiftProtobu
 /// the proto3 default (0) so an unset field means "no constraint". YES keeps
 /// only videos that have the attribute; NO keeps only those that don't — NO
 /// is the exact complement of YES, so YES ∪ NO together cover every video.
-nonisolated enum Reelvault_AttributeFilter: SwiftProtobuf.Enum, Swift.CaseIterable {
-  typealias RawValue = Int
+public nonisolated enum Reelvault_AttributeFilter: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
   case any // = 0
   case yes // = 1
   case no // = 2
   case UNRECOGNIZED(Int)
 
-  init() {
+  public init() {
     self = .any
   }
 
-  init?(rawValue: Int) {
+  public init?(rawValue: Int) {
     switch rawValue {
     case 0: self = .any
     case 1: self = .yes
@@ -53,7 +53,7 @@ nonisolated enum Reelvault_AttributeFilter: SwiftProtobuf.Enum, Swift.CaseIterab
     }
   }
 
-  var rawValue: Int {
+  public var rawValue: Int {
     switch self {
     case .any: return 0
     case .yes: return 1
@@ -63,7 +63,7 @@ nonisolated enum Reelvault_AttributeFilter: SwiftProtobuf.Enum, Swift.CaseIterab
   }
 
   // The compiler won't synthesize support with the UNRECOGNIZED case.
-  static let allCases: [Reelvault_AttributeFilter] = [
+  public static let allCases: [Reelvault_AttributeFilter] = [
     .any,
     .yes,
     .no,
@@ -71,8 +71,8 @@ nonisolated enum Reelvault_AttributeFilter: SwiftProtobuf.Enum, Swift.CaseIterab
 
 }
 
-nonisolated enum Reelvault_FullResolutionStatus: SwiftProtobuf.Enum, Swift.CaseIterable {
-  typealias RawValue = Int
+public nonisolated enum Reelvault_FullResolutionStatus: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
 
   /// Prost strips the SCREAMING_SNAKE form of the enum name from each
   /// value, so these become `FullResolutionStatus::{Unspecified, Full,
@@ -82,11 +82,11 @@ nonisolated enum Reelvault_FullResolutionStatus: SwiftProtobuf.Enum, Swift.CaseI
   case notFull // = 2
   case UNRECOGNIZED(Int)
 
-  init() {
+  public init() {
     self = .unspecified
   }
 
-  init?(rawValue: Int) {
+  public init?(rawValue: Int) {
     switch rawValue {
     case 0: self = .unspecified
     case 1: self = .full
@@ -95,7 +95,7 @@ nonisolated enum Reelvault_FullResolutionStatus: SwiftProtobuf.Enum, Swift.CaseI
     }
   }
 
-  var rawValue: Int {
+  public var rawValue: Int {
     switch self {
     case .unspecified: return 0
     case .full: return 1
@@ -105,7 +105,7 @@ nonisolated enum Reelvault_FullResolutionStatus: SwiftProtobuf.Enum, Swift.CaseI
   }
 
   // The compiler won't synthesize support with the UNRECOGNIZED case.
-  static let allCases: [Reelvault_FullResolutionStatus] = [
+  public static let allCases: [Reelvault_FullResolutionStatus] = [
     .unspecified,
     .full,
     .notFull,
@@ -120,31 +120,31 @@ nonisolated enum Reelvault_FullResolutionStatus: SwiftProtobuf.Enum, Swift.CaseI
 /// to arbitrary XMP keys later. `value` is the exact token to match (the
 /// `token` field of a FacetValue); an empty `value` means "no constraint" (the
 /// column is a placeholder / "All").
-nonisolated struct Reelvault_MetadataFilter: Sendable {
+public nonisolated struct Reelvault_MetadataFilter: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var key: String = String()
+  public var key: String = String()
 
-  var value: String = String()
+  public var value: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ListVideosRequest: @unchecked Sendable {
+public nonisolated struct Reelvault_ListVideosRequest: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var limit: Int32 {
+  public var limit: Int32 {
     get {_storage._limit}
     set {_uniqueStorage()._limit = newValue}
   }
 
-  var offset: Int32 {
+  public var offset: Int32 {
     get {_storage._offset}
     set {_uniqueStorage()._offset = newValue}
   }
@@ -155,50 +155,50 @@ nonisolated struct Reelvault_ListVideosRequest: @unchecked Sendable {
   ///   "duration", "size", "resolution", "fps", "codec", "bitrate",
   ///   "camera", "lens", "keyword", "rating", "color",
   ///   "iso", "aperture", "exposure_time", "focal_length".
-  var sortBy: String {
+  public var sortBy: String {
     get {_storage._sortBy}
     set {_uniqueStorage()._sortBy = newValue}
   }
 
-  var sortAscending: Bool {
+  public var sortAscending: Bool {
     get {_storage._sortAscending}
     set {_uniqueStorage()._sortAscending = newValue}
   }
 
-  var filterTags: [String] {
+  public var filterTags: [String] {
     get {_storage._filterTags}
     set {_uniqueStorage()._filterTags = newValue}
   }
 
-  var collectionID: String {
+  public var collectionID: String {
     get {_storage._collectionID}
     set {_uniqueStorage()._collectionID = newValue}
   }
 
   /// Filter to videos whose path is inside this directory (recursive).
   /// Empty means "all locations".
-  var locationPath: String {
+  public var locationPath: String {
     get {_storage._locationPath}
     set {_uniqueStorage()._locationPath = newValue}
   }
 
   /// Exact-match filters from the top-bar dropdowns. Empty / 0 = no filter.
-  var filterCamera: String {
+  public var filterCamera: String {
     get {_storage._filterCamera}
     set {_uniqueStorage()._filterCamera = newValue}
   }
 
-  var filterLens: String {
+  public var filterLens: String {
     get {_storage._filterLens}
     set {_uniqueStorage()._filterLens = newValue}
   }
 
-  var filterCodec: String {
+  public var filterCodec: String {
     get {_storage._filterCodec}
     set {_uniqueStorage()._filterCodec = newValue}
   }
 
-  var filterCaptureYear: Int32 {
+  public var filterCaptureYear: Int32 {
     get {_storage._filterCaptureYear}
     set {_uniqueStorage()._filterCaptureYear = newValue}
   }
@@ -207,22 +207,22 @@ nonisolated struct Reelvault_ListVideosRequest: @unchecked Sendable {
   /// lat/lon/radius_km to limit results to videos whose recorded coordinates
   /// fall within `filter_radius_km` of (filter_latitude, filter_longitude).
   /// Used when the user taps a pin on the global map.
-  var filterByLocation: Bool {
+  public var filterByLocation: Bool {
     get {_storage._filterByLocation}
     set {_uniqueStorage()._filterByLocation = newValue}
   }
 
-  var filterLatitude: Double {
+  public var filterLatitude: Double {
     get {_storage._filterLatitude}
     set {_uniqueStorage()._filterLatitude = newValue}
   }
 
-  var filterLongitude: Double {
+  public var filterLongitude: Double {
     get {_storage._filterLongitude}
     set {_uniqueStorage()._filterLongitude = newValue}
   }
 
-  var filterRadiusKm: Double {
+  public var filterRadiusKm: Double {
     get {_storage._filterRadiusKm}
     set {_uniqueStorage()._filterRadiusKm = newValue}
   }
@@ -231,12 +231,12 @@ nonisolated struct Reelvault_ListVideosRequest: @unchecked Sendable {
   ///   filter_min_rating: 0 = no filter; 1..5 = "≥ this many stars".
   ///   filter_color_label: "" = no filter; otherwise exact match
   ///     against one of "red" | "yellow" | "green" | "blue" | "purple".
-  var filterMinRating: Int32 {
+  public var filterMinRating: Int32 {
     get {_storage._filterMinRating}
     set {_uniqueStorage()._filterMinRating = newValue}
   }
 
-  var filterColorLabel: String {
+  public var filterColorLabel: String {
     get {_storage._filterColorLabel}
     set {_uniqueStorage()._filterColorLabel = newValue}
   }
@@ -245,7 +245,7 @@ nonisolated struct Reelvault_ListVideosRequest: @unchecked Sendable {
   /// AND-combined with everything else. Camera/lens/codec/year now travel here;
   /// the scalar fields 8–11 above remain honored for back-compat but new
   /// clients leave them empty and send these instead.
-  var metadataFilters: [Reelvault_MetadataFilter] {
+  public var metadataFilters: [Reelvault_MetadataFilter] {
     get {_storage._metadataFilters}
     set {_uniqueStorage()._metadataFilters = newValue}
   }
@@ -254,7 +254,7 @@ nonisolated struct Reelvault_ListVideosRequest: @unchecked Sendable {
   /// Empty = no text filter. Folding search into ListVideos lets the text
   /// filter compose with all the others; the separate SearchVideos RPC remains
   /// for legacy callers.
-  var searchQuery: String {
+  public var searchQuery: String {
     get {_storage._searchQuery}
     set {_uniqueStorage()._searchQuery = newValue}
   }
@@ -266,129 +266,129 @@ nonisolated struct Reelvault_ListVideosRequest: @unchecked Sendable {
   /// matches a known native sensor mode for their camera (see
   /// FullResolutionStatus / core/src/full_resolution.rs); NO keeps the rest
   /// (NOT_FULL and UNSPECIFIED alike).
-  var filterHasLocation: Reelvault_AttributeFilter {
+  public var filterHasLocation: Reelvault_AttributeFilter {
     get {_storage._filterHasLocation}
     set {_uniqueStorage()._filterHasLocation = newValue}
   }
 
-  var filterHasKeywords: Reelvault_AttributeFilter {
+  public var filterHasKeywords: Reelvault_AttributeFilter {
     get {_storage._filterHasKeywords}
     set {_uniqueStorage()._filterHasKeywords = newValue}
   }
 
-  var filterHasProxies: Reelvault_AttributeFilter {
+  public var filterHasProxies: Reelvault_AttributeFilter {
     get {_storage._filterHasProxies}
     set {_uniqueStorage()._filterHasProxies = newValue}
   }
 
-  var filterFullResolution: Reelvault_AttributeFilter {
+  public var filterFullResolution: Reelvault_AttributeFilter {
     get {_storage._filterFullResolution}
     set {_uniqueStorage()._filterFullResolution = newValue}
   }
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-nonisolated struct Reelvault_VideoSummary: @unchecked Sendable {
+public nonisolated struct Reelvault_VideoSummary: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var id: String {
+  public var id: String {
     get {_storage._id}
     set {_uniqueStorage()._id = newValue}
   }
 
-  var filename: String {
+  public var filename: String {
     get {_storage._filename}
     set {_uniqueStorage()._filename = newValue}
   }
 
-  var path: String {
+  public var path: String {
     get {_storage._path}
     set {_uniqueStorage()._path = newValue}
   }
 
-  var durationMs: Int64 {
+  public var durationMs: Int64 {
     get {_storage._durationMs}
     set {_uniqueStorage()._durationMs = newValue}
   }
 
-  var width: Int32 {
+  public var width: Int32 {
     get {_storage._width}
     set {_uniqueStorage()._width = newValue}
   }
 
-  var height: Int32 {
+  public var height: Int32 {
     get {_storage._height}
     set {_uniqueStorage()._height = newValue}
   }
 
-  var codecVideo: String {
+  public var codecVideo: String {
     get {_storage._codecVideo}
     set {_uniqueStorage()._codecVideo = newValue}
   }
 
-  var codecAudio: String {
+  public var codecAudio: String {
     get {_storage._codecAudio}
     set {_uniqueStorage()._codecAudio = newValue}
   }
 
-  var fps: Double {
+  public var fps: Double {
     get {_storage._fps}
     set {_uniqueStorage()._fps = newValue}
   }
 
-  var sizeBytes: Int64 {
+  public var sizeBytes: Int64 {
     get {_storage._sizeBytes}
     set {_uniqueStorage()._sizeBytes = newValue}
   }
 
   /// Unix timestamp ms
-  var indexedAt: Int64 {
+  public var indexedAt: Int64 {
     get {_storage._indexedAt}
     set {_uniqueStorage()._indexedAt = newValue}
   }
 
-  var creationDate: Int64 {
+  public var creationDate: Int64 {
     get {_storage._creationDate}
     set {_uniqueStorage()._creationDate = newValue}
   }
 
-  var tags: [String] {
+  public var tags: [String] {
     get {_storage._tags}
     set {_uniqueStorage()._tags = newValue}
   }
 
-  var hasThumbnail_p: Bool {
+  public var hasThumbnail_p: Bool {
     get {_storage._hasThumbnail_p}
     set {_uniqueStorage()._hasThumbnail_p = newValue}
   }
 
   /// Group info
-  var groupID: String {
+  public var groupID: String {
     get {_storage._groupID}
     set {_uniqueStorage()._groupID = newValue}
   }
 
   /// Number of videos in the group (1 if not grouped)
-  var groupSize: Int32 {
+  public var groupSize: Int32 {
     get {_storage._groupSize}
     set {_uniqueStorage()._groupSize = newValue}
   }
 
   /// Which video to open by default (e.g. on double-click)
-  var groupPreferredID: String {
+  public var groupPreferredID: String {
     get {_storage._groupPreferredID}
     set {_uniqueStorage()._groupPreferredID = newValue}
   }
 
   /// Direct path to preferred video for convenience
-  var groupPreferredPath: String {
+  public var groupPreferredPath: String {
     get {_storage._groupPreferredPath}
     set {_uniqueStorage()._groupPreferredPath = newValue}
   }
@@ -401,17 +401,17 @@ nonisolated struct Reelvault_VideoSummary: @unchecked Sendable {
   /// server's verdict that this video fits under the user-configured
   /// `max_native_playback_height` — surfaced so the client can render
   /// "create a proxy" affordances without re-fetching ConfigResponse.
-  var proxyCount: Int32 {
+  public var proxyCount: Int32 {
     get {_storage._proxyCount}
     set {_uniqueStorage()._proxyCount = newValue}
   }
 
-  var proxyOf: String {
+  public var proxyOf: String {
     get {_storage._proxyOf}
     set {_uniqueStorage()._proxyOf = newValue}
   }
 
-  var playableNatively: Bool {
+  public var playableNatively: Bool {
     get {_storage._playableNatively}
     set {_uniqueStorage()._playableNatively = newValue}
   }
@@ -420,12 +420,12 @@ nonisolated struct Reelvault_VideoSummary: @unchecked Sendable {
   /// `color_label` is "" (no label) or one of "red" / "yellow" / "green" /
   /// "blue" / "purple". The grid renders rating as stars/dots in the bottom
   /// band and color_label as the band's tint.
-  var rating: Int32 {
+  public var rating: Int32 {
     get {_storage._rating}
     set {_uniqueStorage()._rating = newValue}
   }
 
-  var colorLabel: String {
+  public var colorLabel: String {
     get {_storage._colorLabel}
     set {_uniqueStorage()._colorLabel = newValue}
   }
@@ -436,12 +436,12 @@ nonisolated struct Reelvault_VideoSummary: @unchecked Sendable {
   /// (e.g. "SONY ILCE-7RM3"); `camera_display_name` is the resolved
   /// marketing name (e.g. "Sony a7R III") with user overrides applied,
   /// falling back to `camera_model` when no mapping exists.
-  var cameraModel: String {
+  public var cameraModel: String {
     get {_storage._cameraModel}
     set {_uniqueStorage()._cameraModel = newValue}
   }
 
-  var cameraDisplayName: String {
+  public var cameraDisplayName: String {
     get {_storage._cameraDisplayName}
     set {_uniqueStorage()._cameraDisplayName = newValue}
   }
@@ -450,12 +450,12 @@ nonisolated struct Reelvault_VideoSummary: @unchecked Sendable {
   /// Both fields are 0.0 when the video has no embedded location. Carried
   /// here so the grid card can show a location badge without a per-video
   /// VideoMetadata round-trip.
-  var gpsLatitude: Double {
+  public var gpsLatitude: Double {
     get {_storage._gpsLatitude}
     set {_uniqueStorage()._gpsLatitude = newValue}
   }
 
-  var gpsLongitude: Double {
+  public var gpsLongitude: Double {
     get {_storage._gpsLongitude}
     set {_uniqueStorage()._gpsLongitude = newValue}
   }
@@ -465,29 +465,29 @@ nonisolated struct Reelvault_VideoSummary: @unchecked Sendable {
   /// from the video's embedded XMP packet (see xmp.rs); all-zero / empty
   /// when the video carries no XMP. Lens is the Adobe-canonical
   /// `aux:Lens` string; the rest mirror the standard EXIF semantics.
-  var lensModel: String {
+  public var lensModel: String {
     get {_storage._lensModel}
     set {_uniqueStorage()._lensModel = newValue}
   }
 
-  var iso: Int32 {
+  public var iso: Int32 {
     get {_storage._iso}
     set {_uniqueStorage()._iso = newValue}
   }
 
   /// f-number, e.g. 1.8
-  var aperture: Double {
+  public var aperture: Double {
     get {_storage._aperture}
     set {_uniqueStorage()._aperture = newValue}
   }
 
   /// seconds; 1/4000 -> 0.00025
-  var exposureTimeS: Double {
+  public var exposureTimeS: Double {
     get {_storage._exposureTimeS}
     set {_uniqueStorage()._exposureTimeS = newValue}
   }
 
-  var focalLengthMm: Double {
+  public var focalLengthMm: Double {
     get {_storage._focalLengthMm}
     set {_uniqueStorage()._focalLengthMm = newValue}
   }
@@ -500,7 +500,7 @@ nonisolated struct Reelvault_VideoSummary: @unchecked Sendable {
   /// is unknown, or the resolution is a common standard (UHD/FHD/etc.)
   /// we deliberately refuse to classify. Clients render badges for FULL
   /// and NOT_FULL; UNSPECIFIED renders no badge.
-  var fullResolution: Reelvault_FullResolutionStatus {
+  public var fullResolution: Reelvault_FullResolutionStatus {
     get {_storage._fullResolution}
     set {_uniqueStorage()._fullResolution = newValue}
   }
@@ -509,7 +509,7 @@ nonisolated struct Reelvault_VideoSummary: @unchecked Sendable {
   /// been moved, renamed, or its drive is unmounted (soft-deleted via
   /// is_online = 0 in the catalog). Clients dim such cards and badge them
   /// "offline" rather than only failing when the user hits play.
-  var isOnline: Bool {
+  public var isOnline: Bool {
     get {_storage._isOnline}
     set {_uniqueStorage()._isOnline = newValue}
   }
@@ -519,7 +519,7 @@ nonisolated struct Reelvault_VideoSummary: @unchecked Sendable {
   /// like camera/lens/the EXIF subset above — so the grid's configurable
   /// "Bitrate" stat slot renders without a per-video VideoMetadata round-trip.
   /// Same unit as VideoMetadata.bitrate; clients divide by 1000 for kbps.
-  var bitrate: Int64 {
+  public var bitrate: Int64 {
     get {_storage._bitrate}
     set {_uniqueStorage()._bitrate = newValue}
   }
@@ -529,238 +529,238 @@ nonisolated struct Reelvault_VideoSummary: @unchecked Sendable {
   /// (clients then estimate from duration × fps). Surfaced on the summary — like
   /// bitrate/iso/etc. above — so the grid's configurable "Frame count" stat slot
   /// renders without a per-video VideoMetadata round-trip.
-  var frameCount: Int64 {
+  public var frameCount: Int64 {
     get {_storage._frameCount}
     set {_uniqueStorage()._frameCount = newValue}
   }
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-nonisolated struct Reelvault_ListVideosResponse: Sendable {
+public nonisolated struct Reelvault_ListVideosResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var videos: [Reelvault_VideoSummary] = []
+  public var videos: [Reelvault_VideoSummary] = []
 
-  var totalCount: Int64 = 0
+  public var totalCount: Int64 = 0
 
-  var hasMore_p: Bool = false
+  public var hasMore_p: Bool = false
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_SearchRequest: Sendable {
+public nonisolated struct Reelvault_SearchRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var query: String = String()
+  public var query: String = String()
 
-  var limit: Int32 = 0
+  public var limit: Int32 = 0
 
-  var offset: Int32 = 0
+  public var offset: Int32 = 0
 
-  var filterTags: [String] = []
+  public var filterTags: [String] = []
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_SearchResponse: Sendable {
+public nonisolated struct Reelvault_SearchResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var videos: [Reelvault_VideoSummary] = []
+  public var videos: [Reelvault_VideoSummary] = []
 
-  var totalCount: Int64 = 0
+  public var totalCount: Int64 = 0
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_GetMetadataRequest: Sendable {
+public nonisolated struct Reelvault_GetMetadataRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var videoID: String = String()
+  public var videoID: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_VideoMetadata: @unchecked Sendable {
+public nonisolated struct Reelvault_VideoMetadata: @unchecked Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var id: String {
+  public var id: String {
     get {_storage._id}
     set {_uniqueStorage()._id = newValue}
   }
 
-  var filename: String {
+  public var filename: String {
     get {_storage._filename}
     set {_uniqueStorage()._filename = newValue}
   }
 
-  var path: String {
+  public var path: String {
     get {_storage._path}
     set {_uniqueStorage()._path = newValue}
   }
 
-  var sizeBytes: Int64 {
+  public var sizeBytes: Int64 {
     get {_storage._sizeBytes}
     set {_uniqueStorage()._sizeBytes = newValue}
   }
 
-  var durationMs: Int64 {
+  public var durationMs: Int64 {
     get {_storage._durationMs}
     set {_uniqueStorage()._durationMs = newValue}
   }
 
   /// Video technical
-  var width: Int32 {
+  public var width: Int32 {
     get {_storage._width}
     set {_uniqueStorage()._width = newValue}
   }
 
-  var height: Int32 {
+  public var height: Int32 {
     get {_storage._height}
     set {_uniqueStorage()._height = newValue}
   }
 
-  var fps: Double {
+  public var fps: Double {
     get {_storage._fps}
     set {_uniqueStorage()._fps = newValue}
   }
 
-  var bitrate: Int64 {
+  public var bitrate: Int64 {
     get {_storage._bitrate}
     set {_uniqueStorage()._bitrate = newValue}
   }
 
-  var codecVideo: String {
+  public var codecVideo: String {
     get {_storage._codecVideo}
     set {_uniqueStorage()._codecVideo = newValue}
   }
 
-  var colorSpace: String {
+  public var colorSpace: String {
     get {_storage._colorSpace}
     set {_uniqueStorage()._colorSpace = newValue}
   }
 
-  var hdr: Bool {
+  public var hdr: Bool {
     get {_storage._hdr}
     set {_uniqueStorage()._hdr = newValue}
   }
 
   /// Audio technical
-  var codecAudio: String {
+  public var codecAudio: String {
     get {_storage._codecAudio}
     set {_uniqueStorage()._codecAudio = newValue}
   }
 
-  var audioChannels: Int32 {
+  public var audioChannels: Int32 {
     get {_storage._audioChannels}
     set {_uniqueStorage()._audioChannels = newValue}
   }
 
-  var audioSampleRate: Int32 {
+  public var audioSampleRate: Int32 {
     get {_storage._audioSampleRate}
     set {_uniqueStorage()._audioSampleRate = newValue}
   }
 
   /// Dates
-  var creationDate: Int64 {
+  public var creationDate: Int64 {
     get {_storage._creationDate}
     set {_uniqueStorage()._creationDate = newValue}
   }
 
-  var modificationDate: Int64 {
+  public var modificationDate: Int64 {
     get {_storage._modificationDate}
     set {_uniqueStorage()._modificationDate = newValue}
   }
 
-  var indexedAt: Int64 {
+  public var indexedAt: Int64 {
     get {_storage._indexedAt}
     set {_uniqueStorage()._indexedAt = newValue}
   }
 
   /// EXIF/Camera data
-  var cameraModel: String {
+  public var cameraModel: String {
     get {_storage._cameraModel}
     set {_uniqueStorage()._cameraModel = newValue}
   }
 
-  var lensModel: String {
+  public var lensModel: String {
     get {_storage._lensModel}
     set {_uniqueStorage()._lensModel = newValue}
   }
 
   /// GPS
-  var gpsLatitude: Double {
+  public var gpsLatitude: Double {
     get {_storage._gpsLatitude}
     set {_uniqueStorage()._gpsLatitude = newValue}
   }
 
-  var gpsLongitude: Double {
+  public var gpsLongitude: Double {
     get {_storage._gpsLongitude}
     set {_uniqueStorage()._gpsLongitude = newValue}
   }
 
-  var gpsAltitude: Double {
+  public var gpsAltitude: Double {
     get {_storage._gpsAltitude}
     set {_uniqueStorage()._gpsAltitude = newValue}
   }
 
   /// Organization
-  var tags: [String] {
+  public var tags: [String] {
     get {_storage._tags}
     set {_uniqueStorage()._tags = newValue}
   }
 
-  var collections: [String] {
+  public var collections: [String] {
     get {_storage._collections}
     set {_uniqueStorage()._collections = newValue}
   }
 
-  var notes: String {
+  public var notes: String {
     get {_storage._notes}
     set {_uniqueStorage()._notes = newValue}
   }
 
   /// Volume info
-  var volumeID: String {
+  public var volumeID: String {
     get {_storage._volumeID}
     set {_uniqueStorage()._volumeID = newValue}
   }
 
-  var isOnline: Bool {
+  public var isOnline: Bool {
     get {_storage._isOnline}
     set {_uniqueStorage()._isOnline = newValue}
   }
 
   /// Lightroom-style user marks (mirror of VideoSummary.rating /
   /// color_label so the detail panel doesn't need a second lookup).
-  var rating: Int32 {
+  public var rating: Int32 {
     get {_storage._rating}
     set {_uniqueStorage()._rating = newValue}
   }
 
-  var colorLabel: String {
+  public var colorLabel: String {
     get {_storage._colorLabel}
     set {_uniqueStorage()._colorLabel = newValue}
   }
@@ -769,7 +769,7 @@ nonisolated struct Reelvault_VideoMetadata: @unchecked Sendable {
   /// `camera_model`. Defaults to `camera_model` verbatim when no
   /// mapping is known — clients can detect "no mapping" by checking
   /// whether the two fields match.
-  var cameraDisplayName: String {
+  public var cameraDisplayName: String {
     get {_storage._cameraDisplayName}
     set {_uniqueStorage()._cameraDisplayName = newValue}
   }
@@ -785,37 +785,37 @@ nonisolated struct Reelvault_VideoMetadata: @unchecked Sendable {
   ///     human-readable strings translated from their EXIF integer
   ///     codes ("Manual", "Aperture-priority", "Auto", …) — the raw
   ///     codes are not exposed, since the client never needs them.
-  var iso: Int32 {
+  public var iso: Int32 {
     get {_storage._iso}
     set {_uniqueStorage()._iso = newValue}
   }
 
-  var aperture: Double {
+  public var aperture: Double {
     get {_storage._aperture}
     set {_uniqueStorage()._aperture = newValue}
   }
 
-  var exposureTimeS: Double {
+  public var exposureTimeS: Double {
     get {_storage._exposureTimeS}
     set {_uniqueStorage()._exposureTimeS = newValue}
   }
 
-  var focalLengthMm: Double {
+  public var focalLengthMm: Double {
     get {_storage._focalLengthMm}
     set {_uniqueStorage()._focalLengthMm = newValue}
   }
 
-  var exposureMode: String {
+  public var exposureMode: String {
     get {_storage._exposureMode}
     set {_uniqueStorage()._exposureMode = newValue}
   }
 
-  var exposureProgram: String {
+  public var exposureProgram: String {
     get {_storage._exposureProgram}
     set {_uniqueStorage()._exposureProgram = newValue}
   }
 
-  var whiteBalance: String {
+  public var whiteBalance: String {
     get {_storage._whiteBalance}
     set {_uniqueStorage()._whiteBalance = newValue}
   }
@@ -823,7 +823,7 @@ nonisolated struct Reelvault_VideoMetadata: @unchecked Sendable {
   /// Mirror of VideoSummary.full_resolution — see that field's doc
   /// comment and the FullResolutionStatus enum for semantics. Computed
   /// server-side via core/src/full_resolution.rs.
-  var fullResolution: Reelvault_FullResolutionStatus {
+  public var fullResolution: Reelvault_FullResolutionStatus {
     get {_storage._fullResolution}
     set {_uniqueStorage()._fullResolution = newValue}
   }
@@ -831,27 +831,27 @@ nonisolated struct Reelvault_VideoMetadata: @unchecked Sendable {
   /// Total frame count from the container (ffprobe's nb_frames), or 0 when the
   /// container doesn't report one. Clients fall back to duration × fps for an
   /// (approximate) estimate when this is 0.
-  var frameCount: Int64 {
+  public var frameCount: Int64 {
     get {_storage._frameCount}
     set {_uniqueStorage()._frameCount = newValue}
   }
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
-nonisolated struct Reelvault_GetThumbnailRequest: Sendable {
+public nonisolated struct Reelvault_GetThumbnailRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var videoID: String = String()
+  public var videoID: String = String()
 
   /// "small", "medium", "large", or "scrub_N"
-  var size: String = String()
+  public var size: String = String()
 
   /// Higher-resolution request. 0 = serve the cached default for `size`. When
   /// > 0, the daemon serves (generating on demand) a variant of that frame at
@@ -859,172 +859,172 @@ nonisolated struct Reelvault_GetThumbnailRequest: Sendable {
   /// ask for scrub frames sized to its render area ("all pixels at the display
   /// size") without baking full-resolution stills for high-resolution videos.
   /// Cached separately as `<id>_<size>_w<max_width>.jpg`.
-  var maxWidth: Int32 = 0
+  public var maxWidth: Int32 = 0
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ThumbnailChunk: Sendable {
+public nonisolated struct Reelvault_ThumbnailChunk: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var data: Data = Data()
+  public var data: Data = Data()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_AddLocationRequest: Sendable {
+public nonisolated struct Reelvault_AddLocationRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var path: String = String()
+  public var path: String = String()
 
-  var recursive: Bool = false
+  public var recursive: Bool = false
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_RemoveLocationRequest: Sendable {
+public nonisolated struct Reelvault_RemoveLocationRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var path: String = String()
+  public var path: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_LocationResponse: Sendable {
+public nonisolated struct Reelvault_LocationResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var success: Bool = false
+  public var success: Bool = false
 
-  var message: String = String()
+  public var message: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ListLocationsRequest: Sendable {
+public nonisolated struct Reelvault_ListLocationsRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_LibraryLocation: Sendable {
+public nonisolated struct Reelvault_LibraryLocation: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var path: String = String()
+  public var path: String = String()
 
-  var recursive: Bool = false
+  public var recursive: Bool = false
 
-  var enabled: Bool = false
+  public var enabled: Bool = false
 
-  var videoCount: Int64 = 0
+  public var videoCount: Int64 = 0
 
-  var lastScanned: Int64 = 0
+  public var lastScanned: Int64 = 0
 
   /// True when this location is recursive AND has at least one subdirectory
   /// containing a grid-visible video — i.e. the library panel should show a
   /// disclosure chevron to expand it.
-  var hasSubdirectories_p: Bool = false
+  public var hasSubdirectories_p: Bool = false
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ListLocationsResponse: Sendable {
+public nonisolated struct Reelvault_ListLocationsResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var locations: [Reelvault_LibraryLocation] = []
+  public var locations: [Reelvault_LibraryLocation] = []
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// Lists the immediate child directories of `path` (an absolute directory;
 /// the server tilde-expands it) that contain grid-visible videos.
-nonisolated struct Reelvault_ListSubdirectoriesRequest: Sendable {
+public nonisolated struct Reelvault_ListSubdirectoriesRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var path: String = String()
+  public var path: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_Subdirectory: Sendable {
+public nonisolated struct Reelvault_Subdirectory: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   /// Full absolute path of the child directory.
-  var path: String = String()
+  public var path: String = String()
 
   /// Recursive count of grid-visible videos under this directory (same
   /// representative filter the grid uses, so it matches what selecting the
   /// directory will show).
-  var videoCount: Int64 = 0
+  public var videoCount: Int64 = 0
 
   /// True when this directory itself has child directories containing
   /// grid-visible videos — i.e. it should show its own disclosure chevron.
-  var hasSubdirectories_p: Bool = false
+  public var hasSubdirectories_p: Bool = false
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ListSubdirectoriesResponse: Sendable {
+public nonisolated struct Reelvault_ListSubdirectoriesResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var subdirectories: [Reelvault_Subdirectory] = []
+  public var subdirectories: [Reelvault_Subdirectory] = []
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ScanLibraryRequest: Sendable {
+public nonisolated struct Reelvault_ScanLibraryRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   /// Optional: scan specific location
-  var locationPath: String = String()
+  public var locationPath: String = String()
 
-  var forceFullScan: Bool = false
+  public var forceFullScan: Bool = false
 
   /// If true, auto-group similar variants after scanning
-  var autoGroup: Bool = false
+  public var autoGroup: Bool = false
 
   /// Filename-based capture-date inference. When `filename_date_format` is
   /// non-empty, the scanner attempts to parse a date from each video's filename
@@ -1035,388 +1035,388 @@ nonisolated struct Reelvault_ScanLibraryRequest: Sendable {
   ///   may be `-`, `_`, `.`, or `/` (any non-digit character).
   /// filename_date_position: "anywhere" | "beginning" | "end"
   ///   Where in the filename (without extension) the date must appear.
-  var filenameDateFormat: String = String()
+  public var filenameDateFormat: String = String()
 
-  var filenameDatePosition: String = String()
+  public var filenameDatePosition: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ScanProgress: Sendable {
+public nonisolated struct Reelvault_ScanProgress: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   /// "scanning", "indexing_metadata", "generating_thumbnails", "complete"
-  var status: String = String()
+  public var status: String = String()
 
-  var videosFound: Int64 = 0
+  public var videosFound: Int64 = 0
 
-  var videosIndexed: Int64 = 0
+  public var videosIndexed: Int64 = 0
 
-  var currentFile: String = String()
+  public var currentFile: String = String()
 
-  var progressPercent: Double = 0
+  public var progressPercent: Double = 0
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_GetScanStatusRequest: Sendable {
+public nonisolated struct Reelvault_GetScanStatusRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ScanStatusResponse: Sendable {
+public nonisolated struct Reelvault_ScanStatusResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var isScanning: Bool = false
+  public var isScanning: Bool = false
 
-  var progressPercent: Double = 0
+  public var progressPercent: Double = 0
 
-  var currentActivity: String = String()
+  public var currentActivity: String = String()
 
-  var totalVideosInLibrary: Int64 = 0
+  public var totalVideosInLibrary: Int64 = 0
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_CreateTagRequest: Sendable {
+public nonisolated struct Reelvault_CreateTagRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var name: String = String()
+  public var name: String = String()
 
   /// Hex color like "#FF5733"
-  var color: String = String()
+  public var color: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_TagResponse: Sendable {
+public nonisolated struct Reelvault_TagResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var id: String = String()
+  public var id: String = String()
 
-  var name: String = String()
+  public var name: String = String()
 
-  var color: String = String()
+  public var color: String = String()
 
   /// How many videos currently have this tag
-  var videoCount: Int64 = 0
+  public var videoCount: Int64 = 0
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_DeleteTagRequest: Sendable {
+public nonisolated struct Reelvault_DeleteTagRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var tagID: String = String()
+  public var tagID: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ListTagsRequest: Sendable {
+public nonisolated struct Reelvault_ListTagsRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ListTagsResponse: Sendable {
+public nonisolated struct Reelvault_ListTagsResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var tags: [Reelvault_TagResponse] = []
+  public var tags: [Reelvault_TagResponse] = []
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_TagVideosRequest: Sendable {
+public nonisolated struct Reelvault_TagVideosRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var videoIds: [String] = []
+  public var videoIds: [String] = []
 
-  var tagID: String = String()
+  public var tagID: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_UntagVideosRequest: Sendable {
+public nonisolated struct Reelvault_UntagVideosRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var videoIds: [String] = []
+  public var videoIds: [String] = []
 
-  var tagID: String = String()
+  public var tagID: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_CreateCollectionRequest: Sendable {
+public nonisolated struct Reelvault_CreateCollectionRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var name: String = String()
+  public var name: String = String()
 
-  var isSmart: Bool = false
+  public var isSmart: Bool = false
 
   /// For smart collections
-  var filterJson: String = String()
+  public var filterJson: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_CollectionResponse: Sendable {
+public nonisolated struct Reelvault_CollectionResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var id: String = String()
+  public var id: String = String()
 
-  var name: String = String()
+  public var name: String = String()
 
-  var isSmart: Bool = false
+  public var isSmart: Bool = false
 
-  var videoCount: Int64 = 0
+  public var videoCount: Int64 = 0
 
-  var filterJson: String = String()
+  public var filterJson: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_DeleteCollectionRequest: Sendable {
+public nonisolated struct Reelvault_DeleteCollectionRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var collectionID: String = String()
+  public var collectionID: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ListCollectionsRequest: Sendable {
+public nonisolated struct Reelvault_ListCollectionsRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ListCollectionsResponse: Sendable {
+public nonisolated struct Reelvault_ListCollectionsResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var collections: [Reelvault_CollectionResponse] = []
+  public var collections: [Reelvault_CollectionResponse] = []
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_AddToCollectionRequest: Sendable {
+public nonisolated struct Reelvault_AddToCollectionRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var collectionID: String = String()
+  public var collectionID: String = String()
 
-  var videoIds: [String] = []
+  public var videoIds: [String] = []
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_RemoveFromCollectionRequest: Sendable {
+public nonisolated struct Reelvault_RemoveFromCollectionRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var collectionID: String = String()
+  public var collectionID: String = String()
 
-  var videoIds: [String] = []
+  public var videoIds: [String] = []
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_UpdateNotesRequest: Sendable {
+public nonisolated struct Reelvault_UpdateNotesRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var videoID: String = String()
+  public var videoID: String = String()
 
-  var notes: String = String()
+  public var notes: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_DeleteVideoRequest: Sendable {
+public nonisolated struct Reelvault_DeleteVideoRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var videoID: String = String()
+  public var videoID: String = String()
 
   /// Also delete from disk
-  var deleteFile: Bool = false
+  public var deleteFile: Bool = false
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_GenerateProxyRequest: Sendable {
+public nonisolated struct Reelvault_GenerateProxyRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var videoID: String = String()
+  public var videoID: String = String()
 
   /// Target proxy height in pixels (e.g. 720, 1080). Width is computed
   /// from the source's aspect ratio. If 0, the daemon uses the configured
   /// `proxy_target_height` setting (default 720).
-  var targetHeight: Int32 = 0
+  public var targetHeight: Int32 = 0
 
   /// Optional override for the proxy output path. Empty = use the
   /// suggested path beside the source (`<stem>_proxy_<H>p.<ext>`).
-  var outputPath: String = String()
+  public var outputPath: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ProxyGenerationProgress: Sendable {
+public nonisolated struct Reelvault_ProxyGenerationProgress: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   /// "started", "encoding", "indexing", "complete", "error"
-  var status: String = String()
+  public var status: String = String()
 
-  var progressPercent: Double = 0
+  public var progressPercent: Double = 0
 
-  var message: String = String()
+  public var message: String = String()
 
   /// Set on the final "complete" message: the new proxy's video_id, so
   /// the client can refresh the source video's metadata to show it.
-  var proxyVideoID: String = String()
+  public var proxyVideoID: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ListProxiesRequest: Sendable {
+public nonisolated struct Reelvault_ListProxiesRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var videoID: String = String()
+  public var videoID: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ProxyInfo: Sendable {
+public nonisolated struct Reelvault_ProxyInfo: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   /// The proxy's video_id.
-  var id: String = String()
+  public var id: String = String()
 
-  var filename: String = String()
+  public var filename: String = String()
 
-  var path: String = String()
+  public var path: String = String()
 
-  var sizeBytes: Int64 = 0
+  public var sizeBytes: Int64 = 0
 
-  var width: Int32 = 0
+  public var width: Int32 = 0
 
-  var height: Int32 = 0
+  public var height: Int32 = 0
 
   /// Thumbnail-similarity confidence at detection time. 1.0 for proxies
   /// that ReelVault generated itself or that the user marked manually.
-  var confidence: Double = 0
+  public var confidence: Double = 0
 
   /// True if ReelVault inferred this link.
-  var autoDetected: Bool = false
+  public var autoDetected: Bool = false
 
   /// The server's verdict that this proxy fits under the user-configured
   /// `max_native_playback_height` (same test as VideoSummary.playable_natively).
   /// Lets the detail view default to a *playable* proxy when the master is too
   /// large to play locally.
-  var playableNatively: Bool = false
+  public var playableNatively: Bool = false
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ListProxiesResponse: Sendable {
+public nonisolated struct Reelvault_ListProxiesResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var proxies: [Reelvault_ProxyInfo] = []
+  public var proxies: [Reelvault_ProxyInfo] = []
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// Set or clear a manual proxy_of pointer. Used by the right-panel
@@ -1424,63 +1424,63 @@ nonisolated struct Reelvault_ListProxiesResponse: Sendable {
 /// proxy links for `proxy_id` (the row stops being a proxy of anything).
 /// To break a single master/proxy pair without affecting other masters,
 /// use `RemoveProxyLink` instead.
-nonisolated struct Reelvault_SetProxyOfRequest: Sendable {
+public nonisolated struct Reelvault_SetProxyOfRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var proxyID: String = String()
+  public var proxyID: String = String()
 
   /// Empty to un-mark every link for this proxy.
-  var originalID: String = String()
+  public var originalID: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// Remove a single master ↔ proxy edge from the junction table. Lets
 /// the user "break" an incorrect auto-detection without wiping the row's
 /// other (correct) proxy relationships.
-nonisolated struct Reelvault_RemoveProxyLinkRequest: Sendable {
+public nonisolated struct Reelvault_RemoveProxyLinkRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var masterID: String = String()
+  public var masterID: String = String()
 
-  var proxyID: String = String()
+  public var proxyID: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// Sweep the catalog for thumbnail-similar pairs and mark proxies. Idempotent.
-nonisolated struct Reelvault_DetectProxiesRequest: Sendable {
+public nonisolated struct Reelvault_DetectProxiesRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_DetectProxiesResponse: Sendable {
+public nonisolated struct Reelvault_DetectProxiesResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var pairsCompared: Int32 = 0
+  public var pairsCompared: Int32 = 0
 
-  var proxiesMarked: Int32 = 0
+  public var proxiesMarked: Int32 = 0
 
-  var message: String = String()
+  public var message: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// Manually attach proxies — the proxy-world analogue of CreateGroup
@@ -1490,99 +1490,125 @@ nonisolated struct Reelvault_DetectProxiesResponse: Sendable {
 /// proxy of it (confidence 1.0, auto_detected = false). For mopping up the
 /// pairs auto-detection missed. Each attached proxy is evicted from any stack
 /// it belonged to (a video can't be both a stack member and a proxy).
-nonisolated struct Reelvault_AttachProxiesRequest: Sendable {
+public nonisolated struct Reelvault_AttachProxiesRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var videoIds: [String] = []
+  public var videoIds: [String] = []
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_AttachProxiesResponse: Sendable {
+public nonisolated struct Reelvault_AttachProxiesResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   /// the member chosen as master
-  var masterVideoID: String = String()
+  public var masterVideoID: String = String()
 
   /// how many videos became proxies of it
-  var proxiesAttached: Int32 = 0
+  public var proxiesAttached: Int32 = 0
 
-  var message: String = String()
+  public var message: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_GetStatusRequest: Sendable {
+public nonisolated struct Reelvault_GetStatusRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_StatusResponse: Sendable {
+public nonisolated struct Reelvault_StartPairingRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var running: Bool = false
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  var totalVideos: Int64 = 0
-
-  var totalLibrarySizeBytes: Int64 = 0
-
-  var cacheSizeBytes: Int64 = 0
-
-  var uptimeSeconds: Int64 = 0
-
-  var version: String = String()
-
-  var unknownFields = SwiftProtobuf.UnknownStorage()
-
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_GetConfigRequest: Sendable {
+public nonisolated struct Reelvault_StartPairingResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  /// The 6-digit code to type on the new device.
+  public var code: String = String()
 
-  init() {}
+  /// Unix epoch milliseconds at which the code stops being accepted (~5 min out).
+  public var expiresAtMs: Int64 = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
 }
 
-nonisolated struct Reelvault_ConfigResponse: Sendable {
+public nonisolated struct Reelvault_StatusResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var running: Bool = false
+
+  public var totalVideos: Int64 = 0
+
+  public var totalLibrarySizeBytes: Int64 = 0
+
+  public var cacheSizeBytes: Int64 = 0
+
+  public var uptimeSeconds: Int64 = 0
+
+  public var version: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Reelvault_GetConfigRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public nonisolated struct Reelvault_ConfigResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   /// 4 = generate proxies for videos > 4x resolution
-  var proxyThresholdScale: Int32 = 0
+  public var proxyThresholdScale: Int32 = 0
 
-  var thumbnailCachePath: String = String()
+  public var thumbnailCachePath: String = String()
 
-  var maxConcurrentJobs: Int32 = 0
+  public var maxConcurrentJobs: Int32 = 0
 
-  var enableAutoTagging: Bool = false
+  public var enableAutoTagging: Bool = false
 
   /// Largest height (in pixels) we'll attempt to play natively in-grid.
   /// Videos taller than this are marked "too large to play here" and the
   /// user is offered the option to make a proxy. Default 2160 (4K).
-  var maxNativePlaybackHeight: Int32 = 0
+  public var maxNativePlaybackHeight: Int32 = 0
 
   /// Default height (px) for newly-generated proxies. Default 720.
-  var proxyTargetHeight: Int32 = 0
+  public var proxyTargetHeight: Int32 = 0
 
   /// Apply the "timelapse" tag automatically when a video's recorded
   /// resolution exceeds its camera's max in-camera video resolution.
@@ -1590,194 +1616,194 @@ nonisolated struct Reelvault_ConfigResponse: Sendable {
   /// catalog remembers, so removing the tag manually is permanent
   /// (the auto-tagger won't re-apply on subsequent scans). Backed by
   /// the `auto_tag_history` SQLite table.
-  var autoTagTimelapses: Bool = false
+  public var autoTagTimelapses: Bool = false
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_UpdateConfigRequest: Sendable {
+public nonisolated struct Reelvault_UpdateConfigRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var proxyThresholdScale: Int32 = 0
+  public var proxyThresholdScale: Int32 = 0
 
-  var maxConcurrentJobs: Int32 = 0
+  public var maxConcurrentJobs: Int32 = 0
 
-  var enableAutoTagging: Bool = false
+  public var enableAutoTagging: Bool = false
 
-  var maxNativePlaybackHeight: Int32 = 0
+  public var maxNativePlaybackHeight: Int32 = 0
 
-  var proxyTargetHeight: Int32 = 0
+  public var proxyTargetHeight: Int32 = 0
 
   /// See ConfigResponse.auto_tag_timelapses for semantics.
-  var autoTagTimelapses: Bool = false
+  public var autoTagTimelapses: Bool = false
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ListGroupMembersRequest: Sendable {
+public nonisolated struct Reelvault_ListGroupMembersRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var groupID: String = String()
+  public var groupID: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ListGroupMembersResponse: Sendable {
+public nonisolated struct Reelvault_ListGroupMembersResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var members: [Reelvault_VideoSummary] = []
+  public var members: [Reelvault_VideoSummary] = []
 
-  var preferredVideoID: String = String()
+  public var preferredVideoID: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_CreateGroupRequest: Sendable {
+public nonisolated struct Reelvault_CreateGroupRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var videoIds: [String] = []
+  public var videoIds: [String] = []
 
-  var name: String = String()
+  public var name: String = String()
 
   /// Optional - defaults to first
-  var preferredVideoID: String = String()
+  public var preferredVideoID: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_GroupResponse: Sendable {
+public nonisolated struct Reelvault_GroupResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var id: String = String()
+  public var id: String = String()
 
-  var name: String = String()
+  public var name: String = String()
 
-  var size: Int32 = 0
+  public var size: Int32 = 0
 
-  var preferredVideoID: String = String()
+  public var preferredVideoID: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_UngroupVideoRequest: Sendable {
+public nonisolated struct Reelvault_UngroupVideoRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var videoID: String = String()
+  public var videoID: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_SetGroupPreferredRequest: Sendable {
+public nonisolated struct Reelvault_SetGroupPreferredRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var groupID: String = String()
+  public var groupID: String = String()
 
-  var videoID: String = String()
+  public var videoID: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_AutoGroupRequest: Sendable {
+public nonisolated struct Reelvault_AutoGroupRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   /// If true, only group videos that share the same parent directory.
-  var sameDirectoryOnly: Bool = false
+  public var sameDirectoryOnly: Bool = false
 
   /// If true, require duration to match within 5%.
-  var matchDuration: Bool = false
+  public var matchDuration: Bool = false
 
   /// If true, require fps to be identical (rounded).
-  var matchFps: Bool = false
+  public var matchFps: Bool = false
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_AutoGroupResponse: Sendable {
+public nonisolated struct Reelvault_AutoGroupResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var groupsCreated: Int32 = 0
+  public var groupsCreated: Int32 = 0
 
-  var videosGrouped: Int32 = 0
+  public var videosGrouped: Int32 = 0
 
-  var message: String = String()
+  public var message: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_GetFilterOptionsRequest: Sendable {
+public nonisolated struct Reelvault_GetFilterOptionsRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_FilterOptions: Sendable {
+public nonisolated struct Reelvault_FilterOptions: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var cameras: [String] = []
+  public var cameras: [String] = []
 
-  var lenses: [String] = []
+  public var lenses: [String] = []
 
-  var codecs: [String] = []
+  public var codecs: [String] = []
 
-  var captureYears: [Int32] = []
+  public var captureYears: [Int32] = []
 
   /// Marketing-friendly names for each entry in `cameras`, in the same
   /// order. Each value is either the curated marketing name (e.g.
   /// "Sony a7R III") or — when no mapping exists — the internal name
   /// verbatim. Clients can use these as the dropdown labels while
   /// sending the matching `cameras` entry as the filter value.
-  var cameraDisplayNames: [String] = []
+  public var cameraDisplayNames: [String] = []
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_MetadataFacetsRequest: Sendable {
+public nonisolated struct Reelvault_MetadataFacetsRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -1786,183 +1812,183 @@ nonisolated struct Reelvault_MetadataFacetsRequest: Sendable {
   /// grid (library location, keyword/tags, collection, geo proximity, the
   /// Lightroom user-mark "attribute" filters, and the text query). Facet values
   /// are computed within the set these select.
-  var locationPath: String = String()
+  public var locationPath: String = String()
 
-  var filterTags: [String] = []
+  public var filterTags: [String] = []
 
-  var collectionID: String = String()
+  public var collectionID: String = String()
 
-  var filterByLocation: Bool = false
+  public var filterByLocation: Bool = false
 
-  var filterLatitude: Double = 0
+  public var filterLatitude: Double = 0
 
-  var filterLongitude: Double = 0
+  public var filterLongitude: Double = 0
 
-  var filterRadiusKm: Double = 0
+  public var filterRadiusKm: Double = 0
 
-  var filterMinRating: Int32 = 0
+  public var filterMinRating: Int32 = 0
 
-  var filterColorLabel: String = String()
+  public var filterColorLabel: String = String()
 
-  var searchQuery: String = String()
+  public var searchQuery: String = String()
 
   /// The ordered metadata columns, left→right. Column i's returned values are
   /// computed with every column to its LEFT applied (the cascade) plus all the
   /// upstream filters above. A column whose `value` is empty adds no constraint;
   /// a column whose `key` is empty is a placeholder slot (returns no values but
   /// still occupies a position so the response stays index-aligned).
-  var columns: [Reelvault_MetadataFilter] = []
+  public var columns: [Reelvault_MetadataFilter] = []
 
   /// The same tri-state presence filters the grid applies (see
   /// ListVideosRequest). Facet values are computed within the set these
   /// select, so the counts stay consistent with the visible grid.
-  var filterHasLocation: Reelvault_AttributeFilter = .any
+  public var filterHasLocation: Reelvault_AttributeFilter = .any
 
-  var filterHasKeywords: Reelvault_AttributeFilter = .any
+  public var filterHasKeywords: Reelvault_AttributeFilter = .any
 
-  var filterHasProxies: Reelvault_AttributeFilter = .any
+  public var filterHasProxies: Reelvault_AttributeFilter = .any
 
-  var filterFullResolution: Reelvault_AttributeFilter = .any
+  public var filterFullResolution: Reelvault_AttributeFilter = .any
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// One selectable value within a facet column.
-nonisolated struct Reelvault_FacetValue: Sendable {
+public nonisolated struct Reelvault_FacetValue: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   /// exact value to echo back as MetadataFilter.value
-  var token: String = String()
+  public var token: String = String()
 
   /// human-readable label (e.g. "Sony a7R III", "1/4000 s", "f/1.8")
-  var display: String = String()
+  public var display: String = String()
 
   /// videos matching this value within the column's cascade
-  var count: Int64 = 0
+  public var count: Int64 = 0
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// The available values for one metadata column.
-nonisolated struct Reelvault_MetadataFacetColumn: Sendable {
+public nonisolated struct Reelvault_MetadataFacetColumn: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   /// echoes the request column's key ("" for a placeholder)
-  var key: String = String()
+  public var key: String = String()
 
   /// human-readable column title ("Camera", "ISO", "Exposure")
-  var displayName: String = String()
+  public var displayName: String = String()
 
   /// formatting / sorting hint
-  var isNumeric: Bool = false
+  public var isNumeric: Bool = false
 
-  var values: [Reelvault_FacetValue] = []
+  public var values: [Reelvault_FacetValue] = []
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// A metadata key the user can choose for a column.
-nonisolated struct Reelvault_MetadataKeyInfo: Sendable {
+public nonisolated struct Reelvault_MetadataKeyInfo: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var key: String = String()
+  public var key: String = String()
 
-  var displayName: String = String()
+  public var displayName: String = String()
 
-  var isNumeric: Bool = false
+  public var isNumeric: Bool = false
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_MetadataFacetsResponse: Sendable {
+public nonisolated struct Reelvault_MetadataFacetsResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   /// One entry per request column, in the SAME order (placeholder columns get an
   /// empty `values` list) so clients align facets to columns by index.
-  var columns: [Reelvault_MetadataFacetColumn] = []
+  public var columns: [Reelvault_MetadataFacetColumn] = []
 
   /// Every metadata key that has at least one value in the current upstream-
   /// filtered set — populates each column's "change key" picker.
-  var availableKeys: [Reelvault_MetadataKeyInfo] = []
+  public var availableKeys: [Reelvault_MetadataKeyInfo] = []
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// Open / switch to the catalog file at `path`. If a catalog is currently
 /// open it's closed first. The file is created if it doesn't exist; the
 /// daemon initializes the schema on its first open.
-nonisolated struct Reelvault_OpenCatalogRequest: Sendable {
+public nonisolated struct Reelvault_OpenCatalogRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var path: String = String()
+  public var path: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_CloseCatalogRequest: Sendable {
+public nonisolated struct Reelvault_CloseCatalogRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_GetCurrentCatalogRequest: Sendable {
+public nonisolated struct Reelvault_GetCurrentCatalogRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// Information about the catalog the daemon currently has open. `path` is
 /// empty when no catalog is open — clients should treat that as a precondition
 /// failure for every other RPC.
-nonisolated struct Reelvault_CatalogInfo: Sendable {
+public nonisolated struct Reelvault_CatalogInfo: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var path: String = String()
+  public var path: String = String()
 
   /// Display name (filename stem, e.g. "MyLibrary")
-  var name: String = String()
+  public var name: String = String()
 
   /// Total videos currently indexed
-  var videoCount: Int64 = 0
+  public var videoCount: Int64 = 0
 
   /// Unix ms at which this catalog was opened
-  var openedAtMs: Int64 = 0
+  public var openedAtMs: Int64 = 0
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// Set or replace GPS coordinates on a single video. The catalog's metadata
@@ -1971,260 +1997,260 @@ nonisolated struct Reelvault_CatalogInfo: Sendable {
 /// ffmpeg's `-metadata location=...` (using `-c copy` so no re-encoding
 /// happens). File mutation is opt-in because some users won't want ReelVault
 /// touching their original files.
-nonisolated struct Reelvault_UpdateVideoLocationRequest: Sendable {
+public nonisolated struct Reelvault_UpdateVideoLocationRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var videoID: String = String()
+  public var videoID: String = String()
 
-  var latitude: Double = 0
+  public var latitude: Double = 0
 
-  var longitude: Double = 0
+  public var longitude: Double = 0
 
   /// 0 if unknown
-  var altitude: Double = 0
+  public var altitude: Double = 0
 
   /// embed in the video file as well as the catalog
-  var writeToFile: Bool = false
+  public var writeToFile: Bool = false
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ListVideosWithLocationsRequest: Sendable {
+public nonisolated struct Reelvault_ListVideosWithLocationsRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// A geotagged video — the minimum a client needs to render a pin on the
 /// global map and turn it into a grid filter when tapped.
-nonisolated struct Reelvault_VideoLocation: Sendable {
+public nonisolated struct Reelvault_VideoLocation: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var id: String = String()
+  public var id: String = String()
 
-  var filename: String = String()
+  public var filename: String = String()
 
-  var path: String = String()
+  public var path: String = String()
 
-  var latitude: Double = 0
+  public var latitude: Double = 0
 
-  var longitude: Double = 0
+  public var longitude: Double = 0
 
-  var altitude: Double = 0
+  public var altitude: Double = 0
 
-  var hasThumbnail_p: Bool = false
+  public var hasThumbnail_p: Bool = false
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_VideoLocationsResponse: Sendable {
+public nonisolated struct Reelvault_VideoLocationsResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var locations: [Reelvault_VideoLocation] = []
+  public var locations: [Reelvault_VideoLocation] = []
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// User-named place (e.g. "Home" → 37.7749, -122.4194). The clients fetch
 /// every named location for the active catalog once on dialog open, then
 /// resolve each video's GPS to a name client-side by picking the nearest
 /// entry whose haversine distance is within `radius_m`.
-nonisolated struct Reelvault_NamedLocation: Sendable {
+public nonisolated struct Reelvault_NamedLocation: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var id: String = String()
+  public var id: String = String()
 
-  var name: String = String()
+  public var name: String = String()
 
-  var latitude: Double = 0
+  public var latitude: Double = 0
 
-  var longitude: Double = 0
+  public var longitude: Double = 0
 
   /// Resolution tolerance. Default 250 on new rows.
-  var radiusM: Double = 0
+  public var radiusM: Double = 0
 
   /// Unix milliseconds (UTC), 0 if unknown.
-  var createdAtMs: Int64 = 0
+  public var createdAtMs: Int64 = 0
 
-  var updatedAtMs: Int64 = 0
+  public var updatedAtMs: Int64 = 0
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ListNamedLocationsRequest: Sendable {
+public nonisolated struct Reelvault_ListNamedLocationsRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_NamedLocationsResponse: Sendable {
+public nonisolated struct Reelvault_NamedLocationsResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var locations: [Reelvault_NamedLocation] = []
+  public var locations: [Reelvault_NamedLocation] = []
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// Insert or update a named location. If `id` is empty, a new row is created;
 /// otherwise the existing row is updated. `radius_m <= 0` falls back to the
 /// schema default (250 m).
-nonisolated struct Reelvault_UpsertNamedLocationRequest: Sendable {
+public nonisolated struct Reelvault_UpsertNamedLocationRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var id: String = String()
+  public var id: String = String()
 
-  var name: String = String()
+  public var name: String = String()
 
-  var latitude: Double = 0
+  public var latitude: Double = 0
 
-  var longitude: Double = 0
+  public var longitude: Double = 0
 
-  var radiusM: Double = 0
+  public var radiusM: Double = 0
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_NamedLocationResponse: Sendable {
+public nonisolated struct Reelvault_NamedLocationResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var success: Bool = false
+  public var success: Bool = false
 
-  var message: String = String()
+  public var message: String = String()
 
   /// The persisted row (with assigned id, timestamps).
-  var location: Reelvault_NamedLocation {
+  public var location: Reelvault_NamedLocation {
     get {_location ?? Reelvault_NamedLocation()}
     set {_location = newValue}
   }
   /// Returns true if `location` has been explicitly set.
-  var hasLocation: Bool {self._location != nil}
+  public var hasLocation: Bool {self._location != nil}
   /// Clears the value of `location`. Subsequent reads from it will return its default value.
-  mutating func clearLocation() {self._location = nil}
+  public mutating func clearLocation() {self._location = nil}
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 
   fileprivate var _location: Reelvault_NamedLocation? = nil
 }
 
-nonisolated struct Reelvault_DeleteNamedLocationRequest: Sendable {
+public nonisolated struct Reelvault_DeleteNamedLocationRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var id: String = String()
+  public var id: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// Set or replace the capture time on a single video. `timestamp_ms` is
 /// Unix milliseconds (UTC). If `write_to_file` is true the daemon embeds it
 /// into the underlying video file's container metadata via ffmpeg's
 /// `-metadata creation_time=...` (using `-c copy`, no re-encoding).
-nonisolated struct Reelvault_UpdateVideoCaptureDateRequest: Sendable {
+public nonisolated struct Reelvault_UpdateVideoCaptureDateRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var videoID: String = String()
+  public var videoID: String = String()
 
-  var timestampMs: Int64 = 0
+  public var timestampMs: Int64 = 0
 
-  var writeToFile: Bool = false
+  public var writeToFile: Bool = false
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_SubscribeCatalogEventsRequest: Sendable {
+public nonisolated struct Reelvault_SubscribeCatalogEventsRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// A single change observed by the server's file watcher. `video_id` is set
 /// when the event refers to a specific video row; for watcher-lifecycle
 /// events (`WATCHER_STARTED`, `WATCHER_DISABLED`) it's empty and the client
 /// just updates its "live updates" indicator.
-nonisolated struct Reelvault_CatalogEvent: Sendable {
+public nonisolated struct Reelvault_CatalogEvent: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var kind: Reelvault_CatalogEvent.Kind = .unspecified
+  public var kind: Reelvault_CatalogEvent.Kind = .unspecified
 
   /// Empty for watcher-lifecycle events.
-  var videoID: String = String()
+  public var videoID: String = String()
 
   /// The file that triggered the event (best-effort).
-  var path: String = String()
+  public var path: String = String()
 
   /// Server-side Unix milliseconds.
-  var atMs: Int64 = 0
+  public var atMs: Int64 = 0
 
   /// Optional human-readable note. For SCAN_* events, the user-facing
   /// location path; for VIDEO_REMOVED, the prior filename so the client
   /// can display a meaningful toast.
-  var message: String = String()
+  public var message: String = String()
 
   /// Populated only for POST_INDEX_* kinds (absent otherwise). Carries the
   /// counts, current phase, and ETA the client renders in its
   /// background-activity panel.
-  var postIndex: Reelvault_PostIndexProgress {
+  public var postIndex: Reelvault_PostIndexProgress {
     get {_postIndex ?? Reelvault_PostIndexProgress()}
     set {_postIndex = newValue}
   }
   /// Returns true if `postIndex` has been explicitly set.
-  var hasPostIndex: Bool {self._postIndex != nil}
+  public var hasPostIndex: Bool {self._postIndex != nil}
   /// Clears the value of `postIndex`. Subsequent reads from it will return its default value.
-  mutating func clearPostIndex() {self._postIndex = nil}
+  public mutating func clearPostIndex() {self._postIndex = nil}
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  nonisolated enum Kind: SwiftProtobuf.Enum, Swift.CaseIterable {
-    typealias RawValue = Int
+  public nonisolated enum Kind: SwiftProtobuf.Enum, Swift.CaseIterable {
+    public typealias RawValue = Int
     case unspecified // = 0
 
     /// A new video was indexed.
@@ -2265,11 +2291,11 @@ nonisolated struct Reelvault_CatalogEvent: Sendable {
     case postIndexCompleted // = 10
     case UNRECOGNIZED(Int)
 
-    init() {
+    public init() {
       self = .unspecified
     }
 
-    init?(rawValue: Int) {
+    public init?(rawValue: Int) {
       switch rawValue {
       case 0: self = .unspecified
       case 1: self = .videoAdded
@@ -2286,7 +2312,7 @@ nonisolated struct Reelvault_CatalogEvent: Sendable {
       }
     }
 
-    var rawValue: Int {
+    public var rawValue: Int {
       switch self {
       case .unspecified: return 0
       case .videoAdded: return 1
@@ -2304,7 +2330,7 @@ nonisolated struct Reelvault_CatalogEvent: Sendable {
     }
 
     // The compiler won't synthesize support with the UNRECOGNIZED case.
-    static let allCases: [Reelvault_CatalogEvent.Kind] = [
+    public static let allCases: [Reelvault_CatalogEvent.Kind] = [
       .unspecified,
       .videoAdded,
       .videoModified,
@@ -2320,7 +2346,7 @@ nonisolated struct Reelvault_CatalogEvent: Sendable {
 
   }
 
-  init() {}
+  public init() {}
 
   fileprivate var _postIndex: Reelvault_PostIndexProgress? = nil
 }
@@ -2335,48 +2361,48 @@ nonisolated struct Reelvault_CatalogEvent: Sendable {
 /// short pass — so clients should treat back-to-back passes as one
 /// continuous "busy" state (linger briefly on COMPLETED) rather than a
 /// single global percentage.
-nonisolated struct Reelvault_PostIndexProgress: Sendable {
+public nonisolated struct Reelvault_PostIndexProgress: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   /// Videos fully post-indexed in this pass.
-  var processed: Int64 = 0
+  public var processed: Int64 = 0
 
   /// Expected videos this pass; 0 = unknown.
-  var total: Int64 = 0
+  public var total: Int64 = 0
 
   /// 0..100 (0 when total is unknown).
-  var percent: Double = 0
+  public var percent: Double = 0
 
   /// Estimated seconds remaining; 0 = unknown.
-  var etaSeconds: Int64 = 0
+  public var etaSeconds: Int64 = 0
 
   /// Dominant current activity, one of: "grouping" | "proxies" |
   /// "sensors" | "tagging". Proxy detection dominates wall-clock, so this
   /// usually reads "proxies" — the honest answer to "why is the core busy?".
-  var phase: String = String()
+  public var phase: String = String()
 
   /// Last human-readable action, e.g. "linked clip_1080p.mov → clip_4k.mov".
   /// Lets the panel show live activity even when `total` is unknown.
-  var detail: String = String()
+  public var detail: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_GetWatchSettingsRequest: Sendable {
+public nonisolated struct Reelvault_GetWatchSettingsRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_WatchSettings: Sendable {
+public nonisolated struct Reelvault_WatchSettings: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -2384,72 +2410,72 @@ nonisolated struct Reelvault_WatchSettings: Sendable {
   /// Master switch. When false the daemon does not start a watcher and
   /// never publishes VIDEO_ADDED/MODIFIED/REMOVED for un-prompted disk
   /// changes — clients fall back to manual ScanLibrary.
-  var enabled: Bool = false
+  public var enabled: Bool = false
 
   /// Milliseconds a file's size must hold constant before the watcher
   /// believes the writer is done. Default 5000 ms.
-  var writeSettleMs: Int64 = 0
+  public var writeSettleMs: Int64 = 0
 
   /// Fallback poll interval (ms) used on paths where FSEvents / inotify
   /// can't deliver events (NFS / SMB / SAN). 0 disables the poll
   /// fallback entirely. Default 30 000 ms.
-  var pollIntervalMs: Int64 = 0
+  public var pollIntervalMs: Int64 = 0
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// Apply a rating (0..5) to one or more videos. Sending video_ids of length
 /// > 1 lets the keyboard shortcut "press 5 with N cards selected" land in
 /// a single round-trip. `rating` of 0 means "unrated" (clear).
-nonisolated struct Reelvault_UpdateVideoRatingRequest: Sendable {
+public nonisolated struct Reelvault_UpdateVideoRatingRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var videoIds: [String] = []
+  public var videoIds: [String] = []
 
   /// 0..5
-  var rating: Int32 = 0
+  public var rating: Int32 = 0
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// Apply a color label to one or more videos. `color_label` must be one of
 /// "" (no label / clear), "red", "yellow", "green", "blue", "purple". The
 /// daemon validates and rejects unknown values.
-nonisolated struct Reelvault_UpdateVideoColorLabelRequest: Sendable {
+public nonisolated struct Reelvault_UpdateVideoColorLabelRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var videoIds: [String] = []
+  public var videoIds: [String] = []
 
-  var colorLabel: String = String()
+  public var colorLabel: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// GridSettings carries the catalog-scoped layout configuration that needs
 /// to be shared between clients opening the same catalog. Today it only
 /// covers the four configurable top-of-card stat slots; future fields can
 /// be added here without bumping a major version.
-nonisolated struct Reelvault_GetGridSettingsRequest: Sendable {
+public nonisolated struct Reelvault_GetGridSettingsRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_GridSettings: Sendable {
+public nonisolated struct Reelvault_GridSettings: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -2459,11 +2485,11 @@ nonisolated struct Reelvault_GridSettings: Sendable {
   /// "filename", "file_size", "resolution", "fps", "camera_model". Empty
   /// string ("") means "blank slot". Both clients ship the same set of
   /// recognized keys; unknown keys render as blank.
-  var topSlots: [String] = []
+  public var topSlots: [String] = []
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// --- Camera marketing-name mappings (per-catalog overrides) ---
@@ -2474,35 +2500,35 @@ nonisolated struct Reelvault_GridSettings: Sendable {
 /// catalog's config (which may *be* a built-in name the user has
 /// re-mapped, in which case both flags are true and `marketing` is the
 /// user's chosen string).
-nonisolated struct Reelvault_CameraNameMapping: Sendable {
+public nonisolated struct Reelvault_CameraNameMapping: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var `internal`: String = String()
+  public var `internal`: String = String()
 
-  var marketing: String = String()
+  public var marketing: String = String()
 
-  var isBuiltin: Bool = false
+  public var isBuiltin: Bool = false
 
-  var isCustom: Bool = false
+  public var isCustom: Bool = false
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ListCameraNameMappingsRequest: Sendable {
+public nonisolated struct Reelvault_ListCameraNameMappingsRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ListCameraNameMappingsResponse: Sendable {
+public nonisolated struct Reelvault_ListCameraNameMappingsResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -2511,62 +2537,62 @@ nonisolated struct Reelvault_ListCameraNameMappingsResponse: Sendable {
   /// entries (i.e. user mappings whose internal name has no built-in
   /// counterpart). Each entry's `marketing` already reflects custom
   /// overrides — clients can render the string directly.
-  var mappings: [Reelvault_CameraNameMapping] = []
+  public var mappings: [Reelvault_CameraNameMapping] = []
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// Add or update a custom override. Sending `marketing = ""` deletes
 /// the override (and reveals the built-in entry, if there is one).
-nonisolated struct Reelvault_SetCameraNameMappingRequest: Sendable {
+public nonisolated struct Reelvault_SetCameraNameMappingRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var `internal`: String = String()
+  public var `internal`: String = String()
 
-  var marketing: String = String()
+  public var marketing: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_LensNameMapping: Sendable {
+public nonisolated struct Reelvault_LensNameMapping: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
   /// lens string exactly as stored in the catalog
-  var raw: String = String()
+  public var raw: String = String()
 
   /// active display name (custom alias, else `raw`)
-  var alias: String = String()
+  public var alias: String = String()
 
   /// true when a user override is in effect
-  var isCustom: Bool = false
+  public var isCustom: Bool = false
 
   /// true when this lens currently appears in the catalog
-  var inCatalog: Bool = false
+  public var inCatalog: Bool = false
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ListLensNameMappingsRequest: Sendable {
+public nonisolated struct Reelvault_ListLensNameMappingsRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_ListLensNameMappingsResponse: Sendable {
+public nonisolated struct Reelvault_ListLensNameMappingsResponse: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -2574,43 +2600,43 @@ nonisolated struct Reelvault_ListLensNameMappingsResponse: Sendable {
   /// Catalog lenses first (alphabetised by raw value), then any
   /// custom-only overrides whose raw value no longer appears in the
   /// catalog. Each entry's `alias` already reflects the override.
-  var mappings: [Reelvault_LensNameMapping] = []
+  public var mappings: [Reelvault_LensNameMapping] = []
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 /// Add or update a custom lens alias. Sending `alias = ""` deletes the
 /// override and falls back to displaying the raw lens string.
-nonisolated struct Reelvault_SetLensNameMappingRequest: Sendable {
+public nonisolated struct Reelvault_SetLensNameMappingRequest: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var raw: String = String()
+  public var raw: String = String()
 
-  var alias: String = String()
+  public var alias: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
-nonisolated struct Reelvault_Response: Sendable {
+public nonisolated struct Reelvault_Response: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  var success: Bool = false
+  public var success: Bool = false
 
-  var message: String = String()
+  public var message: String = String()
 
-  var error: String = String()
+  public var error: String = String()
 
-  var unknownFields = SwiftProtobuf.UnknownStorage()
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
 
-  init() {}
+  public init() {}
 }
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
@@ -2618,18 +2644,18 @@ nonisolated struct Reelvault_Response: Sendable {
 fileprivate nonisolated let _protobuf_package = "reelvault"
 
 nonisolated extension Reelvault_AttributeFilter: SwiftProtobuf._ProtoNameProviding {
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0ATTRIBUTE_FILTER_ANY\0\u{1}ATTRIBUTE_FILTER_YES\0\u{1}ATTRIBUTE_FILTER_NO\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0ATTRIBUTE_FILTER_ANY\0\u{1}ATTRIBUTE_FILTER_YES\0\u{1}ATTRIBUTE_FILTER_NO\0")
 }
 
 nonisolated extension Reelvault_FullResolutionStatus: SwiftProtobuf._ProtoNameProviding {
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0FULL_RESOLUTION_STATUS_UNSPECIFIED\0\u{1}FULL_RESOLUTION_STATUS_FULL\0\u{1}FULL_RESOLUTION_STATUS_NOT_FULL\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0FULL_RESOLUTION_STATUS_UNSPECIFIED\0\u{1}FULL_RESOLUTION_STATUS_FULL\0\u{1}FULL_RESOLUTION_STATUS_NOT_FULL\0")
 }
 
 nonisolated extension Reelvault_MetadataFilter: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".MetadataFilter"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}key\0\u{1}value\0")
+  public static let protoMessageName: String = _protobuf_package + ".MetadataFilter"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}key\0\u{1}value\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -2642,7 +2668,7 @@ nonisolated extension Reelvault_MetadataFilter: SwiftProtobuf.Message, SwiftProt
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.key.isEmpty {
       try visitor.visitSingularStringField(value: self.key, fieldNumber: 1)
     }
@@ -2652,7 +2678,7 @@ nonisolated extension Reelvault_MetadataFilter: SwiftProtobuf.Message, SwiftProt
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_MetadataFilter, rhs: Reelvault_MetadataFilter) -> Bool {
+  public static func ==(lhs: Reelvault_MetadataFilter, rhs: Reelvault_MetadataFilter) -> Bool {
     if lhs.key != rhs.key {return false}
     if lhs.value != rhs.value {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -2661,8 +2687,8 @@ nonisolated extension Reelvault_MetadataFilter: SwiftProtobuf.Message, SwiftProt
 }
 
 nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ListVideosRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}limit\0\u{1}offset\0\u{3}sort_by\0\u{3}sort_ascending\0\u{3}filter_tags\0\u{3}collection_id\0\u{3}location_path\0\u{3}filter_camera\0\u{3}filter_lens\0\u{3}filter_codec\0\u{3}filter_capture_year\0\u{3}filter_by_location\0\u{3}filter_latitude\0\u{3}filter_longitude\0\u{3}filter_radius_km\0\u{3}filter_min_rating\0\u{3}filter_color_label\0\u{3}metadata_filters\0\u{3}search_query\0\u{3}filter_has_location\0\u{3}filter_has_keywords\0\u{3}filter_has_proxies\0\u{3}filter_full_resolution\0")
+  public static let protoMessageName: String = _protobuf_package + ".ListVideosRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}limit\0\u{1}offset\0\u{3}sort_by\0\u{3}sort_ascending\0\u{3}filter_tags\0\u{3}collection_id\0\u{3}location_path\0\u{3}filter_camera\0\u{3}filter_lens\0\u{3}filter_codec\0\u{3}filter_capture_year\0\u{3}filter_by_location\0\u{3}filter_latitude\0\u{3}filter_longitude\0\u{3}filter_radius_km\0\u{3}filter_min_rating\0\u{3}filter_color_label\0\u{3}metadata_filters\0\u{3}search_query\0\u{3}filter_has_location\0\u{3}filter_has_keywords\0\u{3}filter_has_proxies\0\u{3}filter_full_resolution\0")
 
   fileprivate class _StorageClass {
     var _limit: Int32 = 0
@@ -2731,7 +2757,7 @@ nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftP
     return _storage
   }
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     _ = _uniqueStorage()
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2768,7 +2794,7 @@ nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftP
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       if _storage._limit != 0 {
         try visitor.visitSingularInt32Field(value: _storage._limit, fieldNumber: 1)
@@ -2843,7 +2869,7 @@ nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftP
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ListVideosRequest, rhs: Reelvault_ListVideosRequest) -> Bool {
+  public static func ==(lhs: Reelvault_ListVideosRequest, rhs: Reelvault_ListVideosRequest) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -2881,8 +2907,8 @@ nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftP
 }
 
 nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".VideoSummary"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0\u{3}proxy_count\0\u{3}proxy_of\0\u{3}playable_natively\0\u{1}rating\0\u{3}color_label\0\u{3}camera_model\0\u{3}camera_display_name\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}lens_model\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}full_resolution\0\u{3}is_online\0\u{1}bitrate\0\u{3}frame_count\0")
+  public static let protoMessageName: String = _protobuf_package + ".VideoSummary"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0\u{3}proxy_count\0\u{3}proxy_of\0\u{3}playable_natively\0\u{1}rating\0\u{3}color_label\0\u{3}camera_model\0\u{3}camera_display_name\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}lens_model\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}full_resolution\0\u{3}is_online\0\u{1}bitrate\0\u{3}frame_count\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -2977,7 +3003,7 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
     return _storage
   }
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     _ = _uniqueStorage()
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3027,7 +3053,7 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       if !_storage._id.isEmpty {
         try visitor.visitSingularStringField(value: _storage._id, fieldNumber: 1)
@@ -3141,7 +3167,7 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_VideoSummary, rhs: Reelvault_VideoSummary) -> Bool {
+  public static func ==(lhs: Reelvault_VideoSummary, rhs: Reelvault_VideoSummary) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -3192,10 +3218,10 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
 }
 
 nonisolated extension Reelvault_ListVideosResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ListVideosResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}videos\0\u{3}total_count\0\u{3}has_more\0")
+  public static let protoMessageName: String = _protobuf_package + ".ListVideosResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}videos\0\u{3}total_count\0\u{3}has_more\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -3209,7 +3235,7 @@ nonisolated extension Reelvault_ListVideosResponse: SwiftProtobuf.Message, Swift
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.videos.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.videos, fieldNumber: 1)
     }
@@ -3222,7 +3248,7 @@ nonisolated extension Reelvault_ListVideosResponse: SwiftProtobuf.Message, Swift
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ListVideosResponse, rhs: Reelvault_ListVideosResponse) -> Bool {
+  public static func ==(lhs: Reelvault_ListVideosResponse, rhs: Reelvault_ListVideosResponse) -> Bool {
     if lhs.videos != rhs.videos {return false}
     if lhs.totalCount != rhs.totalCount {return false}
     if lhs.hasMore_p != rhs.hasMore_p {return false}
@@ -3232,10 +3258,10 @@ nonisolated extension Reelvault_ListVideosResponse: SwiftProtobuf.Message, Swift
 }
 
 nonisolated extension Reelvault_SearchRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".SearchRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}query\0\u{1}limit\0\u{1}offset\0\u{3}filter_tags\0")
+  public static let protoMessageName: String = _protobuf_package + ".SearchRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}query\0\u{1}limit\0\u{1}offset\0\u{3}filter_tags\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -3250,7 +3276,7 @@ nonisolated extension Reelvault_SearchRequest: SwiftProtobuf.Message, SwiftProto
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.query.isEmpty {
       try visitor.visitSingularStringField(value: self.query, fieldNumber: 1)
     }
@@ -3266,7 +3292,7 @@ nonisolated extension Reelvault_SearchRequest: SwiftProtobuf.Message, SwiftProto
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_SearchRequest, rhs: Reelvault_SearchRequest) -> Bool {
+  public static func ==(lhs: Reelvault_SearchRequest, rhs: Reelvault_SearchRequest) -> Bool {
     if lhs.query != rhs.query {return false}
     if lhs.limit != rhs.limit {return false}
     if lhs.offset != rhs.offset {return false}
@@ -3277,10 +3303,10 @@ nonisolated extension Reelvault_SearchRequest: SwiftProtobuf.Message, SwiftProto
 }
 
 nonisolated extension Reelvault_SearchResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".SearchResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}videos\0\u{3}total_count\0")
+  public static let protoMessageName: String = _protobuf_package + ".SearchResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}videos\0\u{3}total_count\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -3293,7 +3319,7 @@ nonisolated extension Reelvault_SearchResponse: SwiftProtobuf.Message, SwiftProt
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.videos.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.videos, fieldNumber: 1)
     }
@@ -3303,7 +3329,7 @@ nonisolated extension Reelvault_SearchResponse: SwiftProtobuf.Message, SwiftProt
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_SearchResponse, rhs: Reelvault_SearchResponse) -> Bool {
+  public static func ==(lhs: Reelvault_SearchResponse, rhs: Reelvault_SearchResponse) -> Bool {
     if lhs.videos != rhs.videos {return false}
     if lhs.totalCount != rhs.totalCount {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -3312,10 +3338,10 @@ nonisolated extension Reelvault_SearchResponse: SwiftProtobuf.Message, SwiftProt
 }
 
 nonisolated extension Reelvault_GetMetadataRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".GetMetadataRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0")
+  public static let protoMessageName: String = _protobuf_package + ".GetMetadataRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -3327,14 +3353,14 @@ nonisolated extension Reelvault_GetMetadataRequest: SwiftProtobuf.Message, Swift
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.videoID.isEmpty {
       try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_GetMetadataRequest, rhs: Reelvault_GetMetadataRequest) -> Bool {
+  public static func ==(lhs: Reelvault_GetMetadataRequest, rhs: Reelvault_GetMetadataRequest) -> Bool {
     if lhs.videoID != rhs.videoID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -3342,8 +3368,8 @@ nonisolated extension Reelvault_GetMetadataRequest: SwiftProtobuf.Message, Swift
 }
 
 nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".VideoMetadata"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0\u{1}rating\0\u{3}color_label\0\u{3}camera_display_name\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}exposure_mode\0\u{3}exposure_program\0\u{3}white_balance\0\u{3}full_resolution\0\u{3}frame_count\0")
+  public static let protoMessageName: String = _protobuf_package + ".VideoMetadata"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0\u{1}rating\0\u{3}color_label\0\u{3}camera_display_name\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}exposure_mode\0\u{3}exposure_program\0\u{3}white_balance\0\u{3}full_resolution\0\u{3}frame_count\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -3446,7 +3472,7 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
     return _storage
   }
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     _ = _uniqueStorage()
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3500,7 +3526,7 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try withExtendedLifetime(_storage) { (_storage: _StorageClass) in
       if !_storage._id.isEmpty {
         try visitor.visitSingularStringField(value: _storage._id, fieldNumber: 1)
@@ -3626,7 +3652,7 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_VideoMetadata, rhs: Reelvault_VideoMetadata) -> Bool {
+  public static func ==(lhs: Reelvault_VideoMetadata, rhs: Reelvault_VideoMetadata) -> Bool {
     if lhs._storage !== rhs._storage {
       let storagesAreEqual: Bool = withExtendedLifetime((lhs._storage, rhs._storage)) { (_args: (_StorageClass, _StorageClass)) in
         let _storage = _args.0
@@ -3681,10 +3707,10 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
 }
 
 nonisolated extension Reelvault_GetThumbnailRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".GetThumbnailRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{1}size\0\u{3}max_width\0")
+  public static let protoMessageName: String = _protobuf_package + ".GetThumbnailRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{1}size\0\u{3}max_width\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -3698,7 +3724,7 @@ nonisolated extension Reelvault_GetThumbnailRequest: SwiftProtobuf.Message, Swif
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.videoID.isEmpty {
       try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
     }
@@ -3711,7 +3737,7 @@ nonisolated extension Reelvault_GetThumbnailRequest: SwiftProtobuf.Message, Swif
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_GetThumbnailRequest, rhs: Reelvault_GetThumbnailRequest) -> Bool {
+  public static func ==(lhs: Reelvault_GetThumbnailRequest, rhs: Reelvault_GetThumbnailRequest) -> Bool {
     if lhs.videoID != rhs.videoID {return false}
     if lhs.size != rhs.size {return false}
     if lhs.maxWidth != rhs.maxWidth {return false}
@@ -3721,10 +3747,10 @@ nonisolated extension Reelvault_GetThumbnailRequest: SwiftProtobuf.Message, Swif
 }
 
 nonisolated extension Reelvault_ThumbnailChunk: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ThumbnailChunk"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}data\0")
+  public static let protoMessageName: String = _protobuf_package + ".ThumbnailChunk"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}data\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -3736,14 +3762,14 @@ nonisolated extension Reelvault_ThumbnailChunk: SwiftProtobuf.Message, SwiftProt
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.data.isEmpty {
       try visitor.visitSingularBytesField(value: self.data, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ThumbnailChunk, rhs: Reelvault_ThumbnailChunk) -> Bool {
+  public static func ==(lhs: Reelvault_ThumbnailChunk, rhs: Reelvault_ThumbnailChunk) -> Bool {
     if lhs.data != rhs.data {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -3751,10 +3777,10 @@ nonisolated extension Reelvault_ThumbnailChunk: SwiftProtobuf.Message, SwiftProt
 }
 
 nonisolated extension Reelvault_AddLocationRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".AddLocationRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{1}recursive\0")
+  public static let protoMessageName: String = _protobuf_package + ".AddLocationRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{1}recursive\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -3767,7 +3793,7 @@ nonisolated extension Reelvault_AddLocationRequest: SwiftProtobuf.Message, Swift
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.path.isEmpty {
       try visitor.visitSingularStringField(value: self.path, fieldNumber: 1)
     }
@@ -3777,7 +3803,7 @@ nonisolated extension Reelvault_AddLocationRequest: SwiftProtobuf.Message, Swift
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_AddLocationRequest, rhs: Reelvault_AddLocationRequest) -> Bool {
+  public static func ==(lhs: Reelvault_AddLocationRequest, rhs: Reelvault_AddLocationRequest) -> Bool {
     if lhs.path != rhs.path {return false}
     if lhs.recursive != rhs.recursive {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -3786,10 +3812,10 @@ nonisolated extension Reelvault_AddLocationRequest: SwiftProtobuf.Message, Swift
 }
 
 nonisolated extension Reelvault_RemoveLocationRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".RemoveLocationRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0")
+  public static let protoMessageName: String = _protobuf_package + ".RemoveLocationRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -3801,14 +3827,14 @@ nonisolated extension Reelvault_RemoveLocationRequest: SwiftProtobuf.Message, Sw
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.path.isEmpty {
       try visitor.visitSingularStringField(value: self.path, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_RemoveLocationRequest, rhs: Reelvault_RemoveLocationRequest) -> Bool {
+  public static func ==(lhs: Reelvault_RemoveLocationRequest, rhs: Reelvault_RemoveLocationRequest) -> Bool {
     if lhs.path != rhs.path {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -3816,10 +3842,10 @@ nonisolated extension Reelvault_RemoveLocationRequest: SwiftProtobuf.Message, Sw
 }
 
 nonisolated extension Reelvault_LocationResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".LocationResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}success\0\u{1}message\0")
+  public static let protoMessageName: String = _protobuf_package + ".LocationResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}success\0\u{1}message\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -3832,7 +3858,7 @@ nonisolated extension Reelvault_LocationResponse: SwiftProtobuf.Message, SwiftPr
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if self.success != false {
       try visitor.visitSingularBoolField(value: self.success, fieldNumber: 1)
     }
@@ -3842,7 +3868,7 @@ nonisolated extension Reelvault_LocationResponse: SwiftProtobuf.Message, SwiftPr
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_LocationResponse, rhs: Reelvault_LocationResponse) -> Bool {
+  public static func ==(lhs: Reelvault_LocationResponse, rhs: Reelvault_LocationResponse) -> Bool {
     if lhs.success != rhs.success {return false}
     if lhs.message != rhs.message {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -3851,29 +3877,29 @@ nonisolated extension Reelvault_LocationResponse: SwiftProtobuf.Message, SwiftPr
 }
 
 nonisolated extension Reelvault_ListLocationsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ListLocationsRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+  public static let protoMessageName: String = _protobuf_package + ".ListLocationsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     // Load everything into unknown fields
     while try decoder.nextFieldNumber() != nil {}
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ListLocationsRequest, rhs: Reelvault_ListLocationsRequest) -> Bool {
+  public static func ==(lhs: Reelvault_ListLocationsRequest, rhs: Reelvault_ListLocationsRequest) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
 nonisolated extension Reelvault_LibraryLocation: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".LibraryLocation"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{1}recursive\0\u{1}enabled\0\u{3}video_count\0\u{3}last_scanned\0\u{3}has_subdirectories\0")
+  public static let protoMessageName: String = _protobuf_package + ".LibraryLocation"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{1}recursive\0\u{1}enabled\0\u{3}video_count\0\u{3}last_scanned\0\u{3}has_subdirectories\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -3890,7 +3916,7 @@ nonisolated extension Reelvault_LibraryLocation: SwiftProtobuf.Message, SwiftPro
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.path.isEmpty {
       try visitor.visitSingularStringField(value: self.path, fieldNumber: 1)
     }
@@ -3912,7 +3938,7 @@ nonisolated extension Reelvault_LibraryLocation: SwiftProtobuf.Message, SwiftPro
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_LibraryLocation, rhs: Reelvault_LibraryLocation) -> Bool {
+  public static func ==(lhs: Reelvault_LibraryLocation, rhs: Reelvault_LibraryLocation) -> Bool {
     if lhs.path != rhs.path {return false}
     if lhs.recursive != rhs.recursive {return false}
     if lhs.enabled != rhs.enabled {return false}
@@ -3925,10 +3951,10 @@ nonisolated extension Reelvault_LibraryLocation: SwiftProtobuf.Message, SwiftPro
 }
 
 nonisolated extension Reelvault_ListLocationsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ListLocationsResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}locations\0")
+  public static let protoMessageName: String = _protobuf_package + ".ListLocationsResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}locations\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -3940,14 +3966,14 @@ nonisolated extension Reelvault_ListLocationsResponse: SwiftProtobuf.Message, Sw
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.locations.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.locations, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ListLocationsResponse, rhs: Reelvault_ListLocationsResponse) -> Bool {
+  public static func ==(lhs: Reelvault_ListLocationsResponse, rhs: Reelvault_ListLocationsResponse) -> Bool {
     if lhs.locations != rhs.locations {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -3955,10 +3981,10 @@ nonisolated extension Reelvault_ListLocationsResponse: SwiftProtobuf.Message, Sw
 }
 
 nonisolated extension Reelvault_ListSubdirectoriesRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ListSubdirectoriesRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0")
+  public static let protoMessageName: String = _protobuf_package + ".ListSubdirectoriesRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -3970,14 +3996,14 @@ nonisolated extension Reelvault_ListSubdirectoriesRequest: SwiftProtobuf.Message
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.path.isEmpty {
       try visitor.visitSingularStringField(value: self.path, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ListSubdirectoriesRequest, rhs: Reelvault_ListSubdirectoriesRequest) -> Bool {
+  public static func ==(lhs: Reelvault_ListSubdirectoriesRequest, rhs: Reelvault_ListSubdirectoriesRequest) -> Bool {
     if lhs.path != rhs.path {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -3985,10 +4011,10 @@ nonisolated extension Reelvault_ListSubdirectoriesRequest: SwiftProtobuf.Message
 }
 
 nonisolated extension Reelvault_Subdirectory: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".Subdirectory"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{3}video_count\0\u{3}has_subdirectories\0")
+  public static let protoMessageName: String = _protobuf_package + ".Subdirectory"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{3}video_count\0\u{3}has_subdirectories\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4002,7 +4028,7 @@ nonisolated extension Reelvault_Subdirectory: SwiftProtobuf.Message, SwiftProtob
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.path.isEmpty {
       try visitor.visitSingularStringField(value: self.path, fieldNumber: 1)
     }
@@ -4015,7 +4041,7 @@ nonisolated extension Reelvault_Subdirectory: SwiftProtobuf.Message, SwiftProtob
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_Subdirectory, rhs: Reelvault_Subdirectory) -> Bool {
+  public static func ==(lhs: Reelvault_Subdirectory, rhs: Reelvault_Subdirectory) -> Bool {
     if lhs.path != rhs.path {return false}
     if lhs.videoCount != rhs.videoCount {return false}
     if lhs.hasSubdirectories_p != rhs.hasSubdirectories_p {return false}
@@ -4025,10 +4051,10 @@ nonisolated extension Reelvault_Subdirectory: SwiftProtobuf.Message, SwiftProtob
 }
 
 nonisolated extension Reelvault_ListSubdirectoriesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ListSubdirectoriesResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}subdirectories\0")
+  public static let protoMessageName: String = _protobuf_package + ".ListSubdirectoriesResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}subdirectories\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4040,14 +4066,14 @@ nonisolated extension Reelvault_ListSubdirectoriesResponse: SwiftProtobuf.Messag
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.subdirectories.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.subdirectories, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ListSubdirectoriesResponse, rhs: Reelvault_ListSubdirectoriesResponse) -> Bool {
+  public static func ==(lhs: Reelvault_ListSubdirectoriesResponse, rhs: Reelvault_ListSubdirectoriesResponse) -> Bool {
     if lhs.subdirectories != rhs.subdirectories {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -4055,10 +4081,10 @@ nonisolated extension Reelvault_ListSubdirectoriesResponse: SwiftProtobuf.Messag
 }
 
 nonisolated extension Reelvault_ScanLibraryRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ScanLibraryRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}location_path\0\u{3}force_full_scan\0\u{3}auto_group\0\u{3}filename_date_format\0\u{3}filename_date_position\0")
+  public static let protoMessageName: String = _protobuf_package + ".ScanLibraryRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}location_path\0\u{3}force_full_scan\0\u{3}auto_group\0\u{3}filename_date_format\0\u{3}filename_date_position\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4074,7 +4100,7 @@ nonisolated extension Reelvault_ScanLibraryRequest: SwiftProtobuf.Message, Swift
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.locationPath.isEmpty {
       try visitor.visitSingularStringField(value: self.locationPath, fieldNumber: 1)
     }
@@ -4093,7 +4119,7 @@ nonisolated extension Reelvault_ScanLibraryRequest: SwiftProtobuf.Message, Swift
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ScanLibraryRequest, rhs: Reelvault_ScanLibraryRequest) -> Bool {
+  public static func ==(lhs: Reelvault_ScanLibraryRequest, rhs: Reelvault_ScanLibraryRequest) -> Bool {
     if lhs.locationPath != rhs.locationPath {return false}
     if lhs.forceFullScan != rhs.forceFullScan {return false}
     if lhs.autoGroup != rhs.autoGroup {return false}
@@ -4105,10 +4131,10 @@ nonisolated extension Reelvault_ScanLibraryRequest: SwiftProtobuf.Message, Swift
 }
 
 nonisolated extension Reelvault_ScanProgress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ScanProgress"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}status\0\u{3}videos_found\0\u{3}videos_indexed\0\u{3}current_file\0\u{3}progress_percent\0")
+  public static let protoMessageName: String = _protobuf_package + ".ScanProgress"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}status\0\u{3}videos_found\0\u{3}videos_indexed\0\u{3}current_file\0\u{3}progress_percent\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4124,7 +4150,7 @@ nonisolated extension Reelvault_ScanProgress: SwiftProtobuf.Message, SwiftProtob
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.status.isEmpty {
       try visitor.visitSingularStringField(value: self.status, fieldNumber: 1)
     }
@@ -4143,7 +4169,7 @@ nonisolated extension Reelvault_ScanProgress: SwiftProtobuf.Message, SwiftProtob
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ScanProgress, rhs: Reelvault_ScanProgress) -> Bool {
+  public static func ==(lhs: Reelvault_ScanProgress, rhs: Reelvault_ScanProgress) -> Bool {
     if lhs.status != rhs.status {return false}
     if lhs.videosFound != rhs.videosFound {return false}
     if lhs.videosIndexed != rhs.videosIndexed {return false}
@@ -4155,29 +4181,29 @@ nonisolated extension Reelvault_ScanProgress: SwiftProtobuf.Message, SwiftProtob
 }
 
 nonisolated extension Reelvault_GetScanStatusRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".GetScanStatusRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+  public static let protoMessageName: String = _protobuf_package + ".GetScanStatusRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     // Load everything into unknown fields
     while try decoder.nextFieldNumber() != nil {}
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_GetScanStatusRequest, rhs: Reelvault_GetScanStatusRequest) -> Bool {
+  public static func ==(lhs: Reelvault_GetScanStatusRequest, rhs: Reelvault_GetScanStatusRequest) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
 nonisolated extension Reelvault_ScanStatusResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ScanStatusResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}is_scanning\0\u{3}progress_percent\0\u{3}current_activity\0\u{3}total_videos_in_library\0")
+  public static let protoMessageName: String = _protobuf_package + ".ScanStatusResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}is_scanning\0\u{3}progress_percent\0\u{3}current_activity\0\u{3}total_videos_in_library\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4192,7 +4218,7 @@ nonisolated extension Reelvault_ScanStatusResponse: SwiftProtobuf.Message, Swift
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if self.isScanning != false {
       try visitor.visitSingularBoolField(value: self.isScanning, fieldNumber: 1)
     }
@@ -4208,7 +4234,7 @@ nonisolated extension Reelvault_ScanStatusResponse: SwiftProtobuf.Message, Swift
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ScanStatusResponse, rhs: Reelvault_ScanStatusResponse) -> Bool {
+  public static func ==(lhs: Reelvault_ScanStatusResponse, rhs: Reelvault_ScanStatusResponse) -> Bool {
     if lhs.isScanning != rhs.isScanning {return false}
     if lhs.progressPercent != rhs.progressPercent {return false}
     if lhs.currentActivity != rhs.currentActivity {return false}
@@ -4219,10 +4245,10 @@ nonisolated extension Reelvault_ScanStatusResponse: SwiftProtobuf.Message, Swift
 }
 
 nonisolated extension Reelvault_CreateTagRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".CreateTagRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}color\0")
+  public static let protoMessageName: String = _protobuf_package + ".CreateTagRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{1}color\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4235,7 +4261,7 @@ nonisolated extension Reelvault_CreateTagRequest: SwiftProtobuf.Message, SwiftPr
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.name.isEmpty {
       try visitor.visitSingularStringField(value: self.name, fieldNumber: 1)
     }
@@ -4245,7 +4271,7 @@ nonisolated extension Reelvault_CreateTagRequest: SwiftProtobuf.Message, SwiftPr
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_CreateTagRequest, rhs: Reelvault_CreateTagRequest) -> Bool {
+  public static func ==(lhs: Reelvault_CreateTagRequest, rhs: Reelvault_CreateTagRequest) -> Bool {
     if lhs.name != rhs.name {return false}
     if lhs.color != rhs.color {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -4254,10 +4280,10 @@ nonisolated extension Reelvault_CreateTagRequest: SwiftProtobuf.Message, SwiftPr
 }
 
 nonisolated extension Reelvault_TagResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".TagResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}color\0\u{3}video_count\0")
+  public static let protoMessageName: String = _protobuf_package + ".TagResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}color\0\u{3}video_count\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4272,7 +4298,7 @@ nonisolated extension Reelvault_TagResponse: SwiftProtobuf.Message, SwiftProtobu
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.id.isEmpty {
       try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
     }
@@ -4288,7 +4314,7 @@ nonisolated extension Reelvault_TagResponse: SwiftProtobuf.Message, SwiftProtobu
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_TagResponse, rhs: Reelvault_TagResponse) -> Bool {
+  public static func ==(lhs: Reelvault_TagResponse, rhs: Reelvault_TagResponse) -> Bool {
     if lhs.id != rhs.id {return false}
     if lhs.name != rhs.name {return false}
     if lhs.color != rhs.color {return false}
@@ -4299,10 +4325,10 @@ nonisolated extension Reelvault_TagResponse: SwiftProtobuf.Message, SwiftProtobu
 }
 
 nonisolated extension Reelvault_DeleteTagRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".DeleteTagRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tag_id\0")
+  public static let protoMessageName: String = _protobuf_package + ".DeleteTagRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}tag_id\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4314,14 +4340,14 @@ nonisolated extension Reelvault_DeleteTagRequest: SwiftProtobuf.Message, SwiftPr
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.tagID.isEmpty {
       try visitor.visitSingularStringField(value: self.tagID, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_DeleteTagRequest, rhs: Reelvault_DeleteTagRequest) -> Bool {
+  public static func ==(lhs: Reelvault_DeleteTagRequest, rhs: Reelvault_DeleteTagRequest) -> Bool {
     if lhs.tagID != rhs.tagID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -4329,29 +4355,29 @@ nonisolated extension Reelvault_DeleteTagRequest: SwiftProtobuf.Message, SwiftPr
 }
 
 nonisolated extension Reelvault_ListTagsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ListTagsRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+  public static let protoMessageName: String = _protobuf_package + ".ListTagsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     // Load everything into unknown fields
     while try decoder.nextFieldNumber() != nil {}
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ListTagsRequest, rhs: Reelvault_ListTagsRequest) -> Bool {
+  public static func ==(lhs: Reelvault_ListTagsRequest, rhs: Reelvault_ListTagsRequest) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
 nonisolated extension Reelvault_ListTagsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ListTagsResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}tags\0")
+  public static let protoMessageName: String = _protobuf_package + ".ListTagsResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}tags\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4363,14 +4389,14 @@ nonisolated extension Reelvault_ListTagsResponse: SwiftProtobuf.Message, SwiftPr
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.tags.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.tags, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ListTagsResponse, rhs: Reelvault_ListTagsResponse) -> Bool {
+  public static func ==(lhs: Reelvault_ListTagsResponse, rhs: Reelvault_ListTagsResponse) -> Bool {
     if lhs.tags != rhs.tags {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -4378,10 +4404,10 @@ nonisolated extension Reelvault_ListTagsResponse: SwiftProtobuf.Message, SwiftPr
 }
 
 nonisolated extension Reelvault_TagVideosRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".TagVideosRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_ids\0\u{3}tag_id\0")
+  public static let protoMessageName: String = _protobuf_package + ".TagVideosRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_ids\0\u{3}tag_id\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4394,7 +4420,7 @@ nonisolated extension Reelvault_TagVideosRequest: SwiftProtobuf.Message, SwiftPr
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.videoIds.isEmpty {
       try visitor.visitRepeatedStringField(value: self.videoIds, fieldNumber: 1)
     }
@@ -4404,7 +4430,7 @@ nonisolated extension Reelvault_TagVideosRequest: SwiftProtobuf.Message, SwiftPr
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_TagVideosRequest, rhs: Reelvault_TagVideosRequest) -> Bool {
+  public static func ==(lhs: Reelvault_TagVideosRequest, rhs: Reelvault_TagVideosRequest) -> Bool {
     if lhs.videoIds != rhs.videoIds {return false}
     if lhs.tagID != rhs.tagID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -4413,10 +4439,10 @@ nonisolated extension Reelvault_TagVideosRequest: SwiftProtobuf.Message, SwiftPr
 }
 
 nonisolated extension Reelvault_UntagVideosRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".UntagVideosRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_ids\0\u{3}tag_id\0")
+  public static let protoMessageName: String = _protobuf_package + ".UntagVideosRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_ids\0\u{3}tag_id\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4429,7 +4455,7 @@ nonisolated extension Reelvault_UntagVideosRequest: SwiftProtobuf.Message, Swift
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.videoIds.isEmpty {
       try visitor.visitRepeatedStringField(value: self.videoIds, fieldNumber: 1)
     }
@@ -4439,7 +4465,7 @@ nonisolated extension Reelvault_UntagVideosRequest: SwiftProtobuf.Message, Swift
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_UntagVideosRequest, rhs: Reelvault_UntagVideosRequest) -> Bool {
+  public static func ==(lhs: Reelvault_UntagVideosRequest, rhs: Reelvault_UntagVideosRequest) -> Bool {
     if lhs.videoIds != rhs.videoIds {return false}
     if lhs.tagID != rhs.tagID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -4448,10 +4474,10 @@ nonisolated extension Reelvault_UntagVideosRequest: SwiftProtobuf.Message, Swift
 }
 
 nonisolated extension Reelvault_CreateCollectionRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".CreateCollectionRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{3}is_smart\0\u{3}filter_json\0")
+  public static let protoMessageName: String = _protobuf_package + ".CreateCollectionRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}name\0\u{3}is_smart\0\u{3}filter_json\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4465,7 +4491,7 @@ nonisolated extension Reelvault_CreateCollectionRequest: SwiftProtobuf.Message, 
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.name.isEmpty {
       try visitor.visitSingularStringField(value: self.name, fieldNumber: 1)
     }
@@ -4478,7 +4504,7 @@ nonisolated extension Reelvault_CreateCollectionRequest: SwiftProtobuf.Message, 
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_CreateCollectionRequest, rhs: Reelvault_CreateCollectionRequest) -> Bool {
+  public static func ==(lhs: Reelvault_CreateCollectionRequest, rhs: Reelvault_CreateCollectionRequest) -> Bool {
     if lhs.name != rhs.name {return false}
     if lhs.isSmart != rhs.isSmart {return false}
     if lhs.filterJson != rhs.filterJson {return false}
@@ -4488,10 +4514,10 @@ nonisolated extension Reelvault_CreateCollectionRequest: SwiftProtobuf.Message, 
 }
 
 nonisolated extension Reelvault_CollectionResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".CollectionResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{3}is_smart\0\u{3}video_count\0\u{3}filter_json\0")
+  public static let protoMessageName: String = _protobuf_package + ".CollectionResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{3}is_smart\0\u{3}video_count\0\u{3}filter_json\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4507,7 +4533,7 @@ nonisolated extension Reelvault_CollectionResponse: SwiftProtobuf.Message, Swift
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.id.isEmpty {
       try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
     }
@@ -4526,7 +4552,7 @@ nonisolated extension Reelvault_CollectionResponse: SwiftProtobuf.Message, Swift
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_CollectionResponse, rhs: Reelvault_CollectionResponse) -> Bool {
+  public static func ==(lhs: Reelvault_CollectionResponse, rhs: Reelvault_CollectionResponse) -> Bool {
     if lhs.id != rhs.id {return false}
     if lhs.name != rhs.name {return false}
     if lhs.isSmart != rhs.isSmart {return false}
@@ -4538,10 +4564,10 @@ nonisolated extension Reelvault_CollectionResponse: SwiftProtobuf.Message, Swift
 }
 
 nonisolated extension Reelvault_DeleteCollectionRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".DeleteCollectionRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}collection_id\0")
+  public static let protoMessageName: String = _protobuf_package + ".DeleteCollectionRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}collection_id\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4553,14 +4579,14 @@ nonisolated extension Reelvault_DeleteCollectionRequest: SwiftProtobuf.Message, 
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.collectionID.isEmpty {
       try visitor.visitSingularStringField(value: self.collectionID, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_DeleteCollectionRequest, rhs: Reelvault_DeleteCollectionRequest) -> Bool {
+  public static func ==(lhs: Reelvault_DeleteCollectionRequest, rhs: Reelvault_DeleteCollectionRequest) -> Bool {
     if lhs.collectionID != rhs.collectionID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -4568,29 +4594,29 @@ nonisolated extension Reelvault_DeleteCollectionRequest: SwiftProtobuf.Message, 
 }
 
 nonisolated extension Reelvault_ListCollectionsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ListCollectionsRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+  public static let protoMessageName: String = _protobuf_package + ".ListCollectionsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     // Load everything into unknown fields
     while try decoder.nextFieldNumber() != nil {}
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ListCollectionsRequest, rhs: Reelvault_ListCollectionsRequest) -> Bool {
+  public static func ==(lhs: Reelvault_ListCollectionsRequest, rhs: Reelvault_ListCollectionsRequest) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
 nonisolated extension Reelvault_ListCollectionsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ListCollectionsResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}collections\0")
+  public static let protoMessageName: String = _protobuf_package + ".ListCollectionsResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}collections\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4602,14 +4628,14 @@ nonisolated extension Reelvault_ListCollectionsResponse: SwiftProtobuf.Message, 
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.collections.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.collections, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ListCollectionsResponse, rhs: Reelvault_ListCollectionsResponse) -> Bool {
+  public static func ==(lhs: Reelvault_ListCollectionsResponse, rhs: Reelvault_ListCollectionsResponse) -> Bool {
     if lhs.collections != rhs.collections {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -4617,10 +4643,10 @@ nonisolated extension Reelvault_ListCollectionsResponse: SwiftProtobuf.Message, 
 }
 
 nonisolated extension Reelvault_AddToCollectionRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".AddToCollectionRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}collection_id\0\u{3}video_ids\0")
+  public static let protoMessageName: String = _protobuf_package + ".AddToCollectionRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}collection_id\0\u{3}video_ids\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4633,7 +4659,7 @@ nonisolated extension Reelvault_AddToCollectionRequest: SwiftProtobuf.Message, S
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.collectionID.isEmpty {
       try visitor.visitSingularStringField(value: self.collectionID, fieldNumber: 1)
     }
@@ -4643,7 +4669,7 @@ nonisolated extension Reelvault_AddToCollectionRequest: SwiftProtobuf.Message, S
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_AddToCollectionRequest, rhs: Reelvault_AddToCollectionRequest) -> Bool {
+  public static func ==(lhs: Reelvault_AddToCollectionRequest, rhs: Reelvault_AddToCollectionRequest) -> Bool {
     if lhs.collectionID != rhs.collectionID {return false}
     if lhs.videoIds != rhs.videoIds {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -4652,10 +4678,10 @@ nonisolated extension Reelvault_AddToCollectionRequest: SwiftProtobuf.Message, S
 }
 
 nonisolated extension Reelvault_RemoveFromCollectionRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".RemoveFromCollectionRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}collection_id\0\u{3}video_ids\0")
+  public static let protoMessageName: String = _protobuf_package + ".RemoveFromCollectionRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}collection_id\0\u{3}video_ids\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4668,7 +4694,7 @@ nonisolated extension Reelvault_RemoveFromCollectionRequest: SwiftProtobuf.Messa
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.collectionID.isEmpty {
       try visitor.visitSingularStringField(value: self.collectionID, fieldNumber: 1)
     }
@@ -4678,7 +4704,7 @@ nonisolated extension Reelvault_RemoveFromCollectionRequest: SwiftProtobuf.Messa
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_RemoveFromCollectionRequest, rhs: Reelvault_RemoveFromCollectionRequest) -> Bool {
+  public static func ==(lhs: Reelvault_RemoveFromCollectionRequest, rhs: Reelvault_RemoveFromCollectionRequest) -> Bool {
     if lhs.collectionID != rhs.collectionID {return false}
     if lhs.videoIds != rhs.videoIds {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -4687,10 +4713,10 @@ nonisolated extension Reelvault_RemoveFromCollectionRequest: SwiftProtobuf.Messa
 }
 
 nonisolated extension Reelvault_UpdateNotesRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".UpdateNotesRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{1}notes\0")
+  public static let protoMessageName: String = _protobuf_package + ".UpdateNotesRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{1}notes\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4703,7 +4729,7 @@ nonisolated extension Reelvault_UpdateNotesRequest: SwiftProtobuf.Message, Swift
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.videoID.isEmpty {
       try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
     }
@@ -4713,7 +4739,7 @@ nonisolated extension Reelvault_UpdateNotesRequest: SwiftProtobuf.Message, Swift
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_UpdateNotesRequest, rhs: Reelvault_UpdateNotesRequest) -> Bool {
+  public static func ==(lhs: Reelvault_UpdateNotesRequest, rhs: Reelvault_UpdateNotesRequest) -> Bool {
     if lhs.videoID != rhs.videoID {return false}
     if lhs.notes != rhs.notes {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -4722,10 +4748,10 @@ nonisolated extension Reelvault_UpdateNotesRequest: SwiftProtobuf.Message, Swift
 }
 
 nonisolated extension Reelvault_DeleteVideoRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".DeleteVideoRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{3}delete_file\0")
+  public static let protoMessageName: String = _protobuf_package + ".DeleteVideoRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{3}delete_file\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4738,7 +4764,7 @@ nonisolated extension Reelvault_DeleteVideoRequest: SwiftProtobuf.Message, Swift
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.videoID.isEmpty {
       try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
     }
@@ -4748,7 +4774,7 @@ nonisolated extension Reelvault_DeleteVideoRequest: SwiftProtobuf.Message, Swift
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_DeleteVideoRequest, rhs: Reelvault_DeleteVideoRequest) -> Bool {
+  public static func ==(lhs: Reelvault_DeleteVideoRequest, rhs: Reelvault_DeleteVideoRequest) -> Bool {
     if lhs.videoID != rhs.videoID {return false}
     if lhs.deleteFile != rhs.deleteFile {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -4757,10 +4783,10 @@ nonisolated extension Reelvault_DeleteVideoRequest: SwiftProtobuf.Message, Swift
 }
 
 nonisolated extension Reelvault_GenerateProxyRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".GenerateProxyRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{3}target_height\0\u{3}output_path\0")
+  public static let protoMessageName: String = _protobuf_package + ".GenerateProxyRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{3}target_height\0\u{3}output_path\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4774,7 +4800,7 @@ nonisolated extension Reelvault_GenerateProxyRequest: SwiftProtobuf.Message, Swi
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.videoID.isEmpty {
       try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
     }
@@ -4787,7 +4813,7 @@ nonisolated extension Reelvault_GenerateProxyRequest: SwiftProtobuf.Message, Swi
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_GenerateProxyRequest, rhs: Reelvault_GenerateProxyRequest) -> Bool {
+  public static func ==(lhs: Reelvault_GenerateProxyRequest, rhs: Reelvault_GenerateProxyRequest) -> Bool {
     if lhs.videoID != rhs.videoID {return false}
     if lhs.targetHeight != rhs.targetHeight {return false}
     if lhs.outputPath != rhs.outputPath {return false}
@@ -4797,10 +4823,10 @@ nonisolated extension Reelvault_GenerateProxyRequest: SwiftProtobuf.Message, Swi
 }
 
 nonisolated extension Reelvault_ProxyGenerationProgress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ProxyGenerationProgress"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}status\0\u{3}progress_percent\0\u{1}message\0\u{3}proxy_video_id\0")
+  public static let protoMessageName: String = _protobuf_package + ".ProxyGenerationProgress"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}status\0\u{3}progress_percent\0\u{1}message\0\u{3}proxy_video_id\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4815,7 +4841,7 @@ nonisolated extension Reelvault_ProxyGenerationProgress: SwiftProtobuf.Message, 
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.status.isEmpty {
       try visitor.visitSingularStringField(value: self.status, fieldNumber: 1)
     }
@@ -4831,7 +4857,7 @@ nonisolated extension Reelvault_ProxyGenerationProgress: SwiftProtobuf.Message, 
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ProxyGenerationProgress, rhs: Reelvault_ProxyGenerationProgress) -> Bool {
+  public static func ==(lhs: Reelvault_ProxyGenerationProgress, rhs: Reelvault_ProxyGenerationProgress) -> Bool {
     if lhs.status != rhs.status {return false}
     if lhs.progressPercent != rhs.progressPercent {return false}
     if lhs.message != rhs.message {return false}
@@ -4842,10 +4868,10 @@ nonisolated extension Reelvault_ProxyGenerationProgress: SwiftProtobuf.Message, 
 }
 
 nonisolated extension Reelvault_ListProxiesRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ListProxiesRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0")
+  public static let protoMessageName: String = _protobuf_package + ".ListProxiesRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4857,14 +4883,14 @@ nonisolated extension Reelvault_ListProxiesRequest: SwiftProtobuf.Message, Swift
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.videoID.isEmpty {
       try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ListProxiesRequest, rhs: Reelvault_ListProxiesRequest) -> Bool {
+  public static func ==(lhs: Reelvault_ListProxiesRequest, rhs: Reelvault_ListProxiesRequest) -> Bool {
     if lhs.videoID != rhs.videoID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -4872,10 +4898,10 @@ nonisolated extension Reelvault_ListProxiesRequest: SwiftProtobuf.Message, Swift
 }
 
 nonisolated extension Reelvault_ProxyInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ProxyInfo"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{1}width\0\u{1}height\0\u{1}confidence\0\u{3}auto_detected\0\u{3}playable_natively\0")
+  public static let protoMessageName: String = _protobuf_package + ".ProxyInfo"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{1}width\0\u{1}height\0\u{1}confidence\0\u{3}auto_detected\0\u{3}playable_natively\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4895,7 +4921,7 @@ nonisolated extension Reelvault_ProxyInfo: SwiftProtobuf.Message, SwiftProtobuf.
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.id.isEmpty {
       try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
     }
@@ -4926,7 +4952,7 @@ nonisolated extension Reelvault_ProxyInfo: SwiftProtobuf.Message, SwiftProtobuf.
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ProxyInfo, rhs: Reelvault_ProxyInfo) -> Bool {
+  public static func ==(lhs: Reelvault_ProxyInfo, rhs: Reelvault_ProxyInfo) -> Bool {
     if lhs.id != rhs.id {return false}
     if lhs.filename != rhs.filename {return false}
     if lhs.path != rhs.path {return false}
@@ -4942,10 +4968,10 @@ nonisolated extension Reelvault_ProxyInfo: SwiftProtobuf.Message, SwiftProtobuf.
 }
 
 nonisolated extension Reelvault_ListProxiesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ListProxiesResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}proxies\0")
+  public static let protoMessageName: String = _protobuf_package + ".ListProxiesResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}proxies\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4957,14 +4983,14 @@ nonisolated extension Reelvault_ListProxiesResponse: SwiftProtobuf.Message, Swif
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.proxies.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.proxies, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ListProxiesResponse, rhs: Reelvault_ListProxiesResponse) -> Bool {
+  public static func ==(lhs: Reelvault_ListProxiesResponse, rhs: Reelvault_ListProxiesResponse) -> Bool {
     if lhs.proxies != rhs.proxies {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -4972,10 +4998,10 @@ nonisolated extension Reelvault_ListProxiesResponse: SwiftProtobuf.Message, Swif
 }
 
 nonisolated extension Reelvault_SetProxyOfRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".SetProxyOfRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}proxy_id\0\u{3}original_id\0")
+  public static let protoMessageName: String = _protobuf_package + ".SetProxyOfRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}proxy_id\0\u{3}original_id\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -4988,7 +5014,7 @@ nonisolated extension Reelvault_SetProxyOfRequest: SwiftProtobuf.Message, SwiftP
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.proxyID.isEmpty {
       try visitor.visitSingularStringField(value: self.proxyID, fieldNumber: 1)
     }
@@ -4998,7 +5024,7 @@ nonisolated extension Reelvault_SetProxyOfRequest: SwiftProtobuf.Message, SwiftP
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_SetProxyOfRequest, rhs: Reelvault_SetProxyOfRequest) -> Bool {
+  public static func ==(lhs: Reelvault_SetProxyOfRequest, rhs: Reelvault_SetProxyOfRequest) -> Bool {
     if lhs.proxyID != rhs.proxyID {return false}
     if lhs.originalID != rhs.originalID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -5007,10 +5033,10 @@ nonisolated extension Reelvault_SetProxyOfRequest: SwiftProtobuf.Message, SwiftP
 }
 
 nonisolated extension Reelvault_RemoveProxyLinkRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".RemoveProxyLinkRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}master_id\0\u{3}proxy_id\0")
+  public static let protoMessageName: String = _protobuf_package + ".RemoveProxyLinkRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}master_id\0\u{3}proxy_id\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -5023,7 +5049,7 @@ nonisolated extension Reelvault_RemoveProxyLinkRequest: SwiftProtobuf.Message, S
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.masterID.isEmpty {
       try visitor.visitSingularStringField(value: self.masterID, fieldNumber: 1)
     }
@@ -5033,7 +5059,7 @@ nonisolated extension Reelvault_RemoveProxyLinkRequest: SwiftProtobuf.Message, S
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_RemoveProxyLinkRequest, rhs: Reelvault_RemoveProxyLinkRequest) -> Bool {
+  public static func ==(lhs: Reelvault_RemoveProxyLinkRequest, rhs: Reelvault_RemoveProxyLinkRequest) -> Bool {
     if lhs.masterID != rhs.masterID {return false}
     if lhs.proxyID != rhs.proxyID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -5042,29 +5068,29 @@ nonisolated extension Reelvault_RemoveProxyLinkRequest: SwiftProtobuf.Message, S
 }
 
 nonisolated extension Reelvault_DetectProxiesRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".DetectProxiesRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+  public static let protoMessageName: String = _protobuf_package + ".DetectProxiesRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     // Load everything into unknown fields
     while try decoder.nextFieldNumber() != nil {}
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_DetectProxiesRequest, rhs: Reelvault_DetectProxiesRequest) -> Bool {
+  public static func ==(lhs: Reelvault_DetectProxiesRequest, rhs: Reelvault_DetectProxiesRequest) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
 nonisolated extension Reelvault_DetectProxiesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".DetectProxiesResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pairs_compared\0\u{3}proxies_marked\0\u{1}message\0")
+  public static let protoMessageName: String = _protobuf_package + ".DetectProxiesResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}pairs_compared\0\u{3}proxies_marked\0\u{1}message\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -5078,7 +5104,7 @@ nonisolated extension Reelvault_DetectProxiesResponse: SwiftProtobuf.Message, Sw
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if self.pairsCompared != 0 {
       try visitor.visitSingularInt32Field(value: self.pairsCompared, fieldNumber: 1)
     }
@@ -5091,7 +5117,7 @@ nonisolated extension Reelvault_DetectProxiesResponse: SwiftProtobuf.Message, Sw
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_DetectProxiesResponse, rhs: Reelvault_DetectProxiesResponse) -> Bool {
+  public static func ==(lhs: Reelvault_DetectProxiesResponse, rhs: Reelvault_DetectProxiesResponse) -> Bool {
     if lhs.pairsCompared != rhs.pairsCompared {return false}
     if lhs.proxiesMarked != rhs.proxiesMarked {return false}
     if lhs.message != rhs.message {return false}
@@ -5101,10 +5127,10 @@ nonisolated extension Reelvault_DetectProxiesResponse: SwiftProtobuf.Message, Sw
 }
 
 nonisolated extension Reelvault_AttachProxiesRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".AttachProxiesRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_ids\0")
+  public static let protoMessageName: String = _protobuf_package + ".AttachProxiesRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_ids\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -5116,14 +5142,14 @@ nonisolated extension Reelvault_AttachProxiesRequest: SwiftProtobuf.Message, Swi
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.videoIds.isEmpty {
       try visitor.visitRepeatedStringField(value: self.videoIds, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_AttachProxiesRequest, rhs: Reelvault_AttachProxiesRequest) -> Bool {
+  public static func ==(lhs: Reelvault_AttachProxiesRequest, rhs: Reelvault_AttachProxiesRequest) -> Bool {
     if lhs.videoIds != rhs.videoIds {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -5131,10 +5157,10 @@ nonisolated extension Reelvault_AttachProxiesRequest: SwiftProtobuf.Message, Swi
 }
 
 nonisolated extension Reelvault_AttachProxiesResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".AttachProxiesResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}master_video_id\0\u{3}proxies_attached\0\u{1}message\0")
+  public static let protoMessageName: String = _protobuf_package + ".AttachProxiesResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}master_video_id\0\u{3}proxies_attached\0\u{1}message\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -5148,7 +5174,7 @@ nonisolated extension Reelvault_AttachProxiesResponse: SwiftProtobuf.Message, Sw
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.masterVideoID.isEmpty {
       try visitor.visitSingularStringField(value: self.masterVideoID, fieldNumber: 1)
     }
@@ -5161,7 +5187,7 @@ nonisolated extension Reelvault_AttachProxiesResponse: SwiftProtobuf.Message, Sw
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_AttachProxiesResponse, rhs: Reelvault_AttachProxiesResponse) -> Bool {
+  public static func ==(lhs: Reelvault_AttachProxiesResponse, rhs: Reelvault_AttachProxiesResponse) -> Bool {
     if lhs.masterVideoID != rhs.masterVideoID {return false}
     if lhs.proxiesAttached != rhs.proxiesAttached {return false}
     if lhs.message != rhs.message {return false}
@@ -5171,29 +5197,83 @@ nonisolated extension Reelvault_AttachProxiesResponse: SwiftProtobuf.Message, Sw
 }
 
 nonisolated extension Reelvault_GetStatusRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".GetStatusRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+  public static let protoMessageName: String = _protobuf_package + ".GetStatusRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     // Load everything into unknown fields
     while try decoder.nextFieldNumber() != nil {}
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_GetStatusRequest, rhs: Reelvault_GetStatusRequest) -> Bool {
+  public static func ==(lhs: Reelvault_GetStatusRequest, rhs: Reelvault_GetStatusRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_StartPairingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".StartPairingRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_StartPairingRequest, rhs: Reelvault_StartPairingRequest) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Reelvault_StartPairingResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".StartPairingResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}code\0\u{3}expires_at_ms\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.code) }()
+      case 2: try { try decoder.decodeSingularInt64Field(value: &self.expiresAtMs) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.code.isEmpty {
+      try visitor.visitSingularStringField(value: self.code, fieldNumber: 1)
+    }
+    if self.expiresAtMs != 0 {
+      try visitor.visitSingularInt64Field(value: self.expiresAtMs, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Reelvault_StartPairingResponse, rhs: Reelvault_StartPairingResponse) -> Bool {
+    if lhs.code != rhs.code {return false}
+    if lhs.expiresAtMs != rhs.expiresAtMs {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
 nonisolated extension Reelvault_StatusResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".StatusResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}running\0\u{3}total_videos\0\u{3}total_library_size_bytes\0\u{3}cache_size_bytes\0\u{3}uptime_seconds\0\u{1}version\0")
+  public static let protoMessageName: String = _protobuf_package + ".StatusResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}running\0\u{3}total_videos\0\u{3}total_library_size_bytes\0\u{3}cache_size_bytes\0\u{3}uptime_seconds\0\u{1}version\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -5210,7 +5290,7 @@ nonisolated extension Reelvault_StatusResponse: SwiftProtobuf.Message, SwiftProt
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if self.running != false {
       try visitor.visitSingularBoolField(value: self.running, fieldNumber: 1)
     }
@@ -5232,7 +5312,7 @@ nonisolated extension Reelvault_StatusResponse: SwiftProtobuf.Message, SwiftProt
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_StatusResponse, rhs: Reelvault_StatusResponse) -> Bool {
+  public static func ==(lhs: Reelvault_StatusResponse, rhs: Reelvault_StatusResponse) -> Bool {
     if lhs.running != rhs.running {return false}
     if lhs.totalVideos != rhs.totalVideos {return false}
     if lhs.totalLibrarySizeBytes != rhs.totalLibrarySizeBytes {return false}
@@ -5245,29 +5325,29 @@ nonisolated extension Reelvault_StatusResponse: SwiftProtobuf.Message, SwiftProt
 }
 
 nonisolated extension Reelvault_GetConfigRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".GetConfigRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+  public static let protoMessageName: String = _protobuf_package + ".GetConfigRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     // Load everything into unknown fields
     while try decoder.nextFieldNumber() != nil {}
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_GetConfigRequest, rhs: Reelvault_GetConfigRequest) -> Bool {
+  public static func ==(lhs: Reelvault_GetConfigRequest, rhs: Reelvault_GetConfigRequest) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
 nonisolated extension Reelvault_ConfigResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ConfigResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}proxy_threshold_scale\0\u{3}thumbnail_cache_path\0\u{3}max_concurrent_jobs\0\u{3}enable_auto_tagging\0\u{4}\u{2}max_native_playback_height\0\u{3}proxy_target_height\0\u{3}auto_tag_timelapses\0\u{b}external_editors\0\u{c}\u{5}\u{1}")
+  public static let protoMessageName: String = _protobuf_package + ".ConfigResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}proxy_threshold_scale\0\u{3}thumbnail_cache_path\0\u{3}max_concurrent_jobs\0\u{3}enable_auto_tagging\0\u{4}\u{2}max_native_playback_height\0\u{3}proxy_target_height\0\u{3}auto_tag_timelapses\0\u{b}external_editors\0\u{c}\u{5}\u{1}")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -5285,7 +5365,7 @@ nonisolated extension Reelvault_ConfigResponse: SwiftProtobuf.Message, SwiftProt
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if self.proxyThresholdScale != 0 {
       try visitor.visitSingularInt32Field(value: self.proxyThresholdScale, fieldNumber: 1)
     }
@@ -5310,7 +5390,7 @@ nonisolated extension Reelvault_ConfigResponse: SwiftProtobuf.Message, SwiftProt
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ConfigResponse, rhs: Reelvault_ConfigResponse) -> Bool {
+  public static func ==(lhs: Reelvault_ConfigResponse, rhs: Reelvault_ConfigResponse) -> Bool {
     if lhs.proxyThresholdScale != rhs.proxyThresholdScale {return false}
     if lhs.thumbnailCachePath != rhs.thumbnailCachePath {return false}
     if lhs.maxConcurrentJobs != rhs.maxConcurrentJobs {return false}
@@ -5324,10 +5404,10 @@ nonisolated extension Reelvault_ConfigResponse: SwiftProtobuf.Message, SwiftProt
 }
 
 nonisolated extension Reelvault_UpdateConfigRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".UpdateConfigRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}proxy_threshold_scale\0\u{3}max_concurrent_jobs\0\u{3}enable_auto_tagging\0\u{3}max_native_playback_height\0\u{3}proxy_target_height\0\u{3}auto_tag_timelapses\0")
+  public static let protoMessageName: String = _protobuf_package + ".UpdateConfigRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}proxy_threshold_scale\0\u{3}max_concurrent_jobs\0\u{3}enable_auto_tagging\0\u{3}max_native_playback_height\0\u{3}proxy_target_height\0\u{3}auto_tag_timelapses\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -5344,7 +5424,7 @@ nonisolated extension Reelvault_UpdateConfigRequest: SwiftProtobuf.Message, Swif
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if self.proxyThresholdScale != 0 {
       try visitor.visitSingularInt32Field(value: self.proxyThresholdScale, fieldNumber: 1)
     }
@@ -5366,7 +5446,7 @@ nonisolated extension Reelvault_UpdateConfigRequest: SwiftProtobuf.Message, Swif
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_UpdateConfigRequest, rhs: Reelvault_UpdateConfigRequest) -> Bool {
+  public static func ==(lhs: Reelvault_UpdateConfigRequest, rhs: Reelvault_UpdateConfigRequest) -> Bool {
     if lhs.proxyThresholdScale != rhs.proxyThresholdScale {return false}
     if lhs.maxConcurrentJobs != rhs.maxConcurrentJobs {return false}
     if lhs.enableAutoTagging != rhs.enableAutoTagging {return false}
@@ -5379,10 +5459,10 @@ nonisolated extension Reelvault_UpdateConfigRequest: SwiftProtobuf.Message, Swif
 }
 
 nonisolated extension Reelvault_ListGroupMembersRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ListGroupMembersRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}group_id\0")
+  public static let protoMessageName: String = _protobuf_package + ".ListGroupMembersRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}group_id\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -5394,14 +5474,14 @@ nonisolated extension Reelvault_ListGroupMembersRequest: SwiftProtobuf.Message, 
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.groupID.isEmpty {
       try visitor.visitSingularStringField(value: self.groupID, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ListGroupMembersRequest, rhs: Reelvault_ListGroupMembersRequest) -> Bool {
+  public static func ==(lhs: Reelvault_ListGroupMembersRequest, rhs: Reelvault_ListGroupMembersRequest) -> Bool {
     if lhs.groupID != rhs.groupID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -5409,10 +5489,10 @@ nonisolated extension Reelvault_ListGroupMembersRequest: SwiftProtobuf.Message, 
 }
 
 nonisolated extension Reelvault_ListGroupMembersResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ListGroupMembersResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}members\0\u{3}preferred_video_id\0")
+  public static let protoMessageName: String = _protobuf_package + ".ListGroupMembersResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}members\0\u{3}preferred_video_id\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -5425,7 +5505,7 @@ nonisolated extension Reelvault_ListGroupMembersResponse: SwiftProtobuf.Message,
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.members.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.members, fieldNumber: 1)
     }
@@ -5435,7 +5515,7 @@ nonisolated extension Reelvault_ListGroupMembersResponse: SwiftProtobuf.Message,
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ListGroupMembersResponse, rhs: Reelvault_ListGroupMembersResponse) -> Bool {
+  public static func ==(lhs: Reelvault_ListGroupMembersResponse, rhs: Reelvault_ListGroupMembersResponse) -> Bool {
     if lhs.members != rhs.members {return false}
     if lhs.preferredVideoID != rhs.preferredVideoID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -5444,10 +5524,10 @@ nonisolated extension Reelvault_ListGroupMembersResponse: SwiftProtobuf.Message,
 }
 
 nonisolated extension Reelvault_CreateGroupRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".CreateGroupRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_ids\0\u{1}name\0\u{3}preferred_video_id\0")
+  public static let protoMessageName: String = _protobuf_package + ".CreateGroupRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_ids\0\u{1}name\0\u{3}preferred_video_id\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -5461,7 +5541,7 @@ nonisolated extension Reelvault_CreateGroupRequest: SwiftProtobuf.Message, Swift
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.videoIds.isEmpty {
       try visitor.visitRepeatedStringField(value: self.videoIds, fieldNumber: 1)
     }
@@ -5474,7 +5554,7 @@ nonisolated extension Reelvault_CreateGroupRequest: SwiftProtobuf.Message, Swift
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_CreateGroupRequest, rhs: Reelvault_CreateGroupRequest) -> Bool {
+  public static func ==(lhs: Reelvault_CreateGroupRequest, rhs: Reelvault_CreateGroupRequest) -> Bool {
     if lhs.videoIds != rhs.videoIds {return false}
     if lhs.name != rhs.name {return false}
     if lhs.preferredVideoID != rhs.preferredVideoID {return false}
@@ -5484,10 +5564,10 @@ nonisolated extension Reelvault_CreateGroupRequest: SwiftProtobuf.Message, Swift
 }
 
 nonisolated extension Reelvault_GroupResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".GroupResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}size\0\u{3}preferred_video_id\0")
+  public static let protoMessageName: String = _protobuf_package + ".GroupResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}size\0\u{3}preferred_video_id\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -5502,7 +5582,7 @@ nonisolated extension Reelvault_GroupResponse: SwiftProtobuf.Message, SwiftProto
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.id.isEmpty {
       try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
     }
@@ -5518,7 +5598,7 @@ nonisolated extension Reelvault_GroupResponse: SwiftProtobuf.Message, SwiftProto
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_GroupResponse, rhs: Reelvault_GroupResponse) -> Bool {
+  public static func ==(lhs: Reelvault_GroupResponse, rhs: Reelvault_GroupResponse) -> Bool {
     if lhs.id != rhs.id {return false}
     if lhs.name != rhs.name {return false}
     if lhs.size != rhs.size {return false}
@@ -5529,10 +5609,10 @@ nonisolated extension Reelvault_GroupResponse: SwiftProtobuf.Message, SwiftProto
 }
 
 nonisolated extension Reelvault_UngroupVideoRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".UngroupVideoRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0")
+  public static let protoMessageName: String = _protobuf_package + ".UngroupVideoRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -5544,14 +5624,14 @@ nonisolated extension Reelvault_UngroupVideoRequest: SwiftProtobuf.Message, Swif
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.videoID.isEmpty {
       try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_UngroupVideoRequest, rhs: Reelvault_UngroupVideoRequest) -> Bool {
+  public static func ==(lhs: Reelvault_UngroupVideoRequest, rhs: Reelvault_UngroupVideoRequest) -> Bool {
     if lhs.videoID != rhs.videoID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -5559,10 +5639,10 @@ nonisolated extension Reelvault_UngroupVideoRequest: SwiftProtobuf.Message, Swif
 }
 
 nonisolated extension Reelvault_SetGroupPreferredRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".SetGroupPreferredRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}group_id\0\u{3}video_id\0")
+  public static let protoMessageName: String = _protobuf_package + ".SetGroupPreferredRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}group_id\0\u{3}video_id\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -5575,7 +5655,7 @@ nonisolated extension Reelvault_SetGroupPreferredRequest: SwiftProtobuf.Message,
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.groupID.isEmpty {
       try visitor.visitSingularStringField(value: self.groupID, fieldNumber: 1)
     }
@@ -5585,7 +5665,7 @@ nonisolated extension Reelvault_SetGroupPreferredRequest: SwiftProtobuf.Message,
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_SetGroupPreferredRequest, rhs: Reelvault_SetGroupPreferredRequest) -> Bool {
+  public static func ==(lhs: Reelvault_SetGroupPreferredRequest, rhs: Reelvault_SetGroupPreferredRequest) -> Bool {
     if lhs.groupID != rhs.groupID {return false}
     if lhs.videoID != rhs.videoID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -5594,10 +5674,10 @@ nonisolated extension Reelvault_SetGroupPreferredRequest: SwiftProtobuf.Message,
 }
 
 nonisolated extension Reelvault_AutoGroupRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".AutoGroupRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}same_directory_only\0\u{3}match_duration\0\u{3}match_fps\0")
+  public static let protoMessageName: String = _protobuf_package + ".AutoGroupRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}same_directory_only\0\u{3}match_duration\0\u{3}match_fps\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -5611,7 +5691,7 @@ nonisolated extension Reelvault_AutoGroupRequest: SwiftProtobuf.Message, SwiftPr
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if self.sameDirectoryOnly != false {
       try visitor.visitSingularBoolField(value: self.sameDirectoryOnly, fieldNumber: 1)
     }
@@ -5624,7 +5704,7 @@ nonisolated extension Reelvault_AutoGroupRequest: SwiftProtobuf.Message, SwiftPr
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_AutoGroupRequest, rhs: Reelvault_AutoGroupRequest) -> Bool {
+  public static func ==(lhs: Reelvault_AutoGroupRequest, rhs: Reelvault_AutoGroupRequest) -> Bool {
     if lhs.sameDirectoryOnly != rhs.sameDirectoryOnly {return false}
     if lhs.matchDuration != rhs.matchDuration {return false}
     if lhs.matchFps != rhs.matchFps {return false}
@@ -5634,10 +5714,10 @@ nonisolated extension Reelvault_AutoGroupRequest: SwiftProtobuf.Message, SwiftPr
 }
 
 nonisolated extension Reelvault_AutoGroupResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".AutoGroupResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}groups_created\0\u{3}videos_grouped\0\u{1}message\0")
+  public static let protoMessageName: String = _protobuf_package + ".AutoGroupResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}groups_created\0\u{3}videos_grouped\0\u{1}message\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -5651,7 +5731,7 @@ nonisolated extension Reelvault_AutoGroupResponse: SwiftProtobuf.Message, SwiftP
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if self.groupsCreated != 0 {
       try visitor.visitSingularInt32Field(value: self.groupsCreated, fieldNumber: 1)
     }
@@ -5664,7 +5744,7 @@ nonisolated extension Reelvault_AutoGroupResponse: SwiftProtobuf.Message, SwiftP
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_AutoGroupResponse, rhs: Reelvault_AutoGroupResponse) -> Bool {
+  public static func ==(lhs: Reelvault_AutoGroupResponse, rhs: Reelvault_AutoGroupResponse) -> Bool {
     if lhs.groupsCreated != rhs.groupsCreated {return false}
     if lhs.videosGrouped != rhs.videosGrouped {return false}
     if lhs.message != rhs.message {return false}
@@ -5674,29 +5754,29 @@ nonisolated extension Reelvault_AutoGroupResponse: SwiftProtobuf.Message, SwiftP
 }
 
 nonisolated extension Reelvault_GetFilterOptionsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".GetFilterOptionsRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+  public static let protoMessageName: String = _protobuf_package + ".GetFilterOptionsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     // Load everything into unknown fields
     while try decoder.nextFieldNumber() != nil {}
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_GetFilterOptionsRequest, rhs: Reelvault_GetFilterOptionsRequest) -> Bool {
+  public static func ==(lhs: Reelvault_GetFilterOptionsRequest, rhs: Reelvault_GetFilterOptionsRequest) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
 nonisolated extension Reelvault_FilterOptions: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".FilterOptions"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}cameras\0\u{1}lenses\0\u{1}codecs\0\u{3}capture_years\0\u{3}camera_display_names\0")
+  public static let protoMessageName: String = _protobuf_package + ".FilterOptions"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}cameras\0\u{1}lenses\0\u{1}codecs\0\u{3}capture_years\0\u{3}camera_display_names\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -5712,7 +5792,7 @@ nonisolated extension Reelvault_FilterOptions: SwiftProtobuf.Message, SwiftProto
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.cameras.isEmpty {
       try visitor.visitRepeatedStringField(value: self.cameras, fieldNumber: 1)
     }
@@ -5731,7 +5811,7 @@ nonisolated extension Reelvault_FilterOptions: SwiftProtobuf.Message, SwiftProto
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_FilterOptions, rhs: Reelvault_FilterOptions) -> Bool {
+  public static func ==(lhs: Reelvault_FilterOptions, rhs: Reelvault_FilterOptions) -> Bool {
     if lhs.cameras != rhs.cameras {return false}
     if lhs.lenses != rhs.lenses {return false}
     if lhs.codecs != rhs.codecs {return false}
@@ -5743,10 +5823,10 @@ nonisolated extension Reelvault_FilterOptions: SwiftProtobuf.Message, SwiftProto
 }
 
 nonisolated extension Reelvault_MetadataFacetsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".MetadataFacetsRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}location_path\0\u{3}filter_tags\0\u{3}collection_id\0\u{3}filter_by_location\0\u{3}filter_latitude\0\u{3}filter_longitude\0\u{3}filter_radius_km\0\u{3}filter_min_rating\0\u{3}filter_color_label\0\u{3}search_query\0\u{1}columns\0\u{3}filter_has_location\0\u{3}filter_has_keywords\0\u{3}filter_has_proxies\0\u{3}filter_full_resolution\0")
+  public static let protoMessageName: String = _protobuf_package + ".MetadataFacetsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}location_path\0\u{3}filter_tags\0\u{3}collection_id\0\u{3}filter_by_location\0\u{3}filter_latitude\0\u{3}filter_longitude\0\u{3}filter_radius_km\0\u{3}filter_min_rating\0\u{3}filter_color_label\0\u{3}search_query\0\u{1}columns\0\u{3}filter_has_location\0\u{3}filter_has_keywords\0\u{3}filter_has_proxies\0\u{3}filter_full_resolution\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -5772,7 +5852,7 @@ nonisolated extension Reelvault_MetadataFacetsRequest: SwiftProtobuf.Message, Sw
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.locationPath.isEmpty {
       try visitor.visitSingularStringField(value: self.locationPath, fieldNumber: 1)
     }
@@ -5821,7 +5901,7 @@ nonisolated extension Reelvault_MetadataFacetsRequest: SwiftProtobuf.Message, Sw
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_MetadataFacetsRequest, rhs: Reelvault_MetadataFacetsRequest) -> Bool {
+  public static func ==(lhs: Reelvault_MetadataFacetsRequest, rhs: Reelvault_MetadataFacetsRequest) -> Bool {
     if lhs.locationPath != rhs.locationPath {return false}
     if lhs.filterTags != rhs.filterTags {return false}
     if lhs.collectionID != rhs.collectionID {return false}
@@ -5843,10 +5923,10 @@ nonisolated extension Reelvault_MetadataFacetsRequest: SwiftProtobuf.Message, Sw
 }
 
 nonisolated extension Reelvault_FacetValue: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".FacetValue"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}token\0\u{1}display\0\u{1}count\0")
+  public static let protoMessageName: String = _protobuf_package + ".FacetValue"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}token\0\u{1}display\0\u{1}count\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -5860,7 +5940,7 @@ nonisolated extension Reelvault_FacetValue: SwiftProtobuf.Message, SwiftProtobuf
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.token.isEmpty {
       try visitor.visitSingularStringField(value: self.token, fieldNumber: 1)
     }
@@ -5873,7 +5953,7 @@ nonisolated extension Reelvault_FacetValue: SwiftProtobuf.Message, SwiftProtobuf
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_FacetValue, rhs: Reelvault_FacetValue) -> Bool {
+  public static func ==(lhs: Reelvault_FacetValue, rhs: Reelvault_FacetValue) -> Bool {
     if lhs.token != rhs.token {return false}
     if lhs.display != rhs.display {return false}
     if lhs.count != rhs.count {return false}
@@ -5883,10 +5963,10 @@ nonisolated extension Reelvault_FacetValue: SwiftProtobuf.Message, SwiftProtobuf
 }
 
 nonisolated extension Reelvault_MetadataFacetColumn: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".MetadataFacetColumn"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}key\0\u{3}display_name\0\u{3}is_numeric\0\u{1}values\0")
+  public static let protoMessageName: String = _protobuf_package + ".MetadataFacetColumn"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}key\0\u{3}display_name\0\u{3}is_numeric\0\u{1}values\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -5901,7 +5981,7 @@ nonisolated extension Reelvault_MetadataFacetColumn: SwiftProtobuf.Message, Swif
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.key.isEmpty {
       try visitor.visitSingularStringField(value: self.key, fieldNumber: 1)
     }
@@ -5917,7 +5997,7 @@ nonisolated extension Reelvault_MetadataFacetColumn: SwiftProtobuf.Message, Swif
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_MetadataFacetColumn, rhs: Reelvault_MetadataFacetColumn) -> Bool {
+  public static func ==(lhs: Reelvault_MetadataFacetColumn, rhs: Reelvault_MetadataFacetColumn) -> Bool {
     if lhs.key != rhs.key {return false}
     if lhs.displayName != rhs.displayName {return false}
     if lhs.isNumeric != rhs.isNumeric {return false}
@@ -5928,10 +6008,10 @@ nonisolated extension Reelvault_MetadataFacetColumn: SwiftProtobuf.Message, Swif
 }
 
 nonisolated extension Reelvault_MetadataKeyInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".MetadataKeyInfo"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}key\0\u{3}display_name\0\u{3}is_numeric\0")
+  public static let protoMessageName: String = _protobuf_package + ".MetadataKeyInfo"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}key\0\u{3}display_name\0\u{3}is_numeric\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -5945,7 +6025,7 @@ nonisolated extension Reelvault_MetadataKeyInfo: SwiftProtobuf.Message, SwiftPro
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.key.isEmpty {
       try visitor.visitSingularStringField(value: self.key, fieldNumber: 1)
     }
@@ -5958,7 +6038,7 @@ nonisolated extension Reelvault_MetadataKeyInfo: SwiftProtobuf.Message, SwiftPro
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_MetadataKeyInfo, rhs: Reelvault_MetadataKeyInfo) -> Bool {
+  public static func ==(lhs: Reelvault_MetadataKeyInfo, rhs: Reelvault_MetadataKeyInfo) -> Bool {
     if lhs.key != rhs.key {return false}
     if lhs.displayName != rhs.displayName {return false}
     if lhs.isNumeric != rhs.isNumeric {return false}
@@ -5968,10 +6048,10 @@ nonisolated extension Reelvault_MetadataKeyInfo: SwiftProtobuf.Message, SwiftPro
 }
 
 nonisolated extension Reelvault_MetadataFacetsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".MetadataFacetsResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}columns\0\u{3}available_keys\0")
+  public static let protoMessageName: String = _protobuf_package + ".MetadataFacetsResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}columns\0\u{3}available_keys\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -5984,7 +6064,7 @@ nonisolated extension Reelvault_MetadataFacetsResponse: SwiftProtobuf.Message, S
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.columns.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.columns, fieldNumber: 1)
     }
@@ -5994,7 +6074,7 @@ nonisolated extension Reelvault_MetadataFacetsResponse: SwiftProtobuf.Message, S
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_MetadataFacetsResponse, rhs: Reelvault_MetadataFacetsResponse) -> Bool {
+  public static func ==(lhs: Reelvault_MetadataFacetsResponse, rhs: Reelvault_MetadataFacetsResponse) -> Bool {
     if lhs.columns != rhs.columns {return false}
     if lhs.availableKeys != rhs.availableKeys {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -6003,10 +6083,10 @@ nonisolated extension Reelvault_MetadataFacetsResponse: SwiftProtobuf.Message, S
 }
 
 nonisolated extension Reelvault_OpenCatalogRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".OpenCatalogRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0")
+  public static let protoMessageName: String = _protobuf_package + ".OpenCatalogRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -6018,14 +6098,14 @@ nonisolated extension Reelvault_OpenCatalogRequest: SwiftProtobuf.Message, Swift
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.path.isEmpty {
       try visitor.visitSingularStringField(value: self.path, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_OpenCatalogRequest, rhs: Reelvault_OpenCatalogRequest) -> Bool {
+  public static func ==(lhs: Reelvault_OpenCatalogRequest, rhs: Reelvault_OpenCatalogRequest) -> Bool {
     if lhs.path != rhs.path {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -6033,48 +6113,48 @@ nonisolated extension Reelvault_OpenCatalogRequest: SwiftProtobuf.Message, Swift
 }
 
 nonisolated extension Reelvault_CloseCatalogRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".CloseCatalogRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+  public static let protoMessageName: String = _protobuf_package + ".CloseCatalogRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     // Load everything into unknown fields
     while try decoder.nextFieldNumber() != nil {}
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_CloseCatalogRequest, rhs: Reelvault_CloseCatalogRequest) -> Bool {
+  public static func ==(lhs: Reelvault_CloseCatalogRequest, rhs: Reelvault_CloseCatalogRequest) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
 nonisolated extension Reelvault_GetCurrentCatalogRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".GetCurrentCatalogRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+  public static let protoMessageName: String = _protobuf_package + ".GetCurrentCatalogRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     // Load everything into unknown fields
     while try decoder.nextFieldNumber() != nil {}
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_GetCurrentCatalogRequest, rhs: Reelvault_GetCurrentCatalogRequest) -> Bool {
+  public static func ==(lhs: Reelvault_GetCurrentCatalogRequest, rhs: Reelvault_GetCurrentCatalogRequest) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
 nonisolated extension Reelvault_CatalogInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".CatalogInfo"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{1}name\0\u{3}video_count\0\u{3}opened_at_ms\0")
+  public static let protoMessageName: String = _protobuf_package + ".CatalogInfo"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}path\0\u{1}name\0\u{3}video_count\0\u{3}opened_at_ms\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -6089,7 +6169,7 @@ nonisolated extension Reelvault_CatalogInfo: SwiftProtobuf.Message, SwiftProtobu
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.path.isEmpty {
       try visitor.visitSingularStringField(value: self.path, fieldNumber: 1)
     }
@@ -6105,7 +6185,7 @@ nonisolated extension Reelvault_CatalogInfo: SwiftProtobuf.Message, SwiftProtobu
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_CatalogInfo, rhs: Reelvault_CatalogInfo) -> Bool {
+  public static func ==(lhs: Reelvault_CatalogInfo, rhs: Reelvault_CatalogInfo) -> Bool {
     if lhs.path != rhs.path {return false}
     if lhs.name != rhs.name {return false}
     if lhs.videoCount != rhs.videoCount {return false}
@@ -6116,10 +6196,10 @@ nonisolated extension Reelvault_CatalogInfo: SwiftProtobuf.Message, SwiftProtobu
 }
 
 nonisolated extension Reelvault_UpdateVideoLocationRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".UpdateVideoLocationRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{1}latitude\0\u{1}longitude\0\u{1}altitude\0\u{3}write_to_file\0")
+  public static let protoMessageName: String = _protobuf_package + ".UpdateVideoLocationRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{1}latitude\0\u{1}longitude\0\u{1}altitude\0\u{3}write_to_file\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -6135,7 +6215,7 @@ nonisolated extension Reelvault_UpdateVideoLocationRequest: SwiftProtobuf.Messag
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.videoID.isEmpty {
       try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
     }
@@ -6154,7 +6234,7 @@ nonisolated extension Reelvault_UpdateVideoLocationRequest: SwiftProtobuf.Messag
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_UpdateVideoLocationRequest, rhs: Reelvault_UpdateVideoLocationRequest) -> Bool {
+  public static func ==(lhs: Reelvault_UpdateVideoLocationRequest, rhs: Reelvault_UpdateVideoLocationRequest) -> Bool {
     if lhs.videoID != rhs.videoID {return false}
     if lhs.latitude != rhs.latitude {return false}
     if lhs.longitude != rhs.longitude {return false}
@@ -6166,29 +6246,29 @@ nonisolated extension Reelvault_UpdateVideoLocationRequest: SwiftProtobuf.Messag
 }
 
 nonisolated extension Reelvault_ListVideosWithLocationsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ListVideosWithLocationsRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+  public static let protoMessageName: String = _protobuf_package + ".ListVideosWithLocationsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     // Load everything into unknown fields
     while try decoder.nextFieldNumber() != nil {}
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ListVideosWithLocationsRequest, rhs: Reelvault_ListVideosWithLocationsRequest) -> Bool {
+  public static func ==(lhs: Reelvault_ListVideosWithLocationsRequest, rhs: Reelvault_ListVideosWithLocationsRequest) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
 nonisolated extension Reelvault_VideoLocation: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".VideoLocation"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{1}latitude\0\u{1}longitude\0\u{1}altitude\0\u{3}has_thumbnail\0")
+  public static let protoMessageName: String = _protobuf_package + ".VideoLocation"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{1}latitude\0\u{1}longitude\0\u{1}altitude\0\u{3}has_thumbnail\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -6206,7 +6286,7 @@ nonisolated extension Reelvault_VideoLocation: SwiftProtobuf.Message, SwiftProto
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.id.isEmpty {
       try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
     }
@@ -6231,7 +6311,7 @@ nonisolated extension Reelvault_VideoLocation: SwiftProtobuf.Message, SwiftProto
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_VideoLocation, rhs: Reelvault_VideoLocation) -> Bool {
+  public static func ==(lhs: Reelvault_VideoLocation, rhs: Reelvault_VideoLocation) -> Bool {
     if lhs.id != rhs.id {return false}
     if lhs.filename != rhs.filename {return false}
     if lhs.path != rhs.path {return false}
@@ -6245,10 +6325,10 @@ nonisolated extension Reelvault_VideoLocation: SwiftProtobuf.Message, SwiftProto
 }
 
 nonisolated extension Reelvault_VideoLocationsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".VideoLocationsResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}locations\0")
+  public static let protoMessageName: String = _protobuf_package + ".VideoLocationsResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}locations\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -6260,14 +6340,14 @@ nonisolated extension Reelvault_VideoLocationsResponse: SwiftProtobuf.Message, S
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.locations.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.locations, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_VideoLocationsResponse, rhs: Reelvault_VideoLocationsResponse) -> Bool {
+  public static func ==(lhs: Reelvault_VideoLocationsResponse, rhs: Reelvault_VideoLocationsResponse) -> Bool {
     if lhs.locations != rhs.locations {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -6275,10 +6355,10 @@ nonisolated extension Reelvault_VideoLocationsResponse: SwiftProtobuf.Message, S
 }
 
 nonisolated extension Reelvault_NamedLocation: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".NamedLocation"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}latitude\0\u{1}longitude\0\u{3}radius_m\0\u{3}created_at_ms\0\u{3}updated_at_ms\0")
+  public static let protoMessageName: String = _protobuf_package + ".NamedLocation"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}latitude\0\u{1}longitude\0\u{3}radius_m\0\u{3}created_at_ms\0\u{3}updated_at_ms\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -6296,7 +6376,7 @@ nonisolated extension Reelvault_NamedLocation: SwiftProtobuf.Message, SwiftProto
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.id.isEmpty {
       try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
     }
@@ -6321,7 +6401,7 @@ nonisolated extension Reelvault_NamedLocation: SwiftProtobuf.Message, SwiftProto
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_NamedLocation, rhs: Reelvault_NamedLocation) -> Bool {
+  public static func ==(lhs: Reelvault_NamedLocation, rhs: Reelvault_NamedLocation) -> Bool {
     if lhs.id != rhs.id {return false}
     if lhs.name != rhs.name {return false}
     if lhs.latitude != rhs.latitude {return false}
@@ -6335,29 +6415,29 @@ nonisolated extension Reelvault_NamedLocation: SwiftProtobuf.Message, SwiftProto
 }
 
 nonisolated extension Reelvault_ListNamedLocationsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ListNamedLocationsRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+  public static let protoMessageName: String = _protobuf_package + ".ListNamedLocationsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     // Load everything into unknown fields
     while try decoder.nextFieldNumber() != nil {}
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ListNamedLocationsRequest, rhs: Reelvault_ListNamedLocationsRequest) -> Bool {
+  public static func ==(lhs: Reelvault_ListNamedLocationsRequest, rhs: Reelvault_ListNamedLocationsRequest) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
 nonisolated extension Reelvault_NamedLocationsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".NamedLocationsResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}locations\0")
+  public static let protoMessageName: String = _protobuf_package + ".NamedLocationsResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}locations\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -6369,14 +6449,14 @@ nonisolated extension Reelvault_NamedLocationsResponse: SwiftProtobuf.Message, S
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.locations.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.locations, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_NamedLocationsResponse, rhs: Reelvault_NamedLocationsResponse) -> Bool {
+  public static func ==(lhs: Reelvault_NamedLocationsResponse, rhs: Reelvault_NamedLocationsResponse) -> Bool {
     if lhs.locations != rhs.locations {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -6384,10 +6464,10 @@ nonisolated extension Reelvault_NamedLocationsResponse: SwiftProtobuf.Message, S
 }
 
 nonisolated extension Reelvault_UpsertNamedLocationRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".UpsertNamedLocationRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}latitude\0\u{1}longitude\0\u{3}radius_m\0")
+  public static let protoMessageName: String = _protobuf_package + ".UpsertNamedLocationRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}latitude\0\u{1}longitude\0\u{3}radius_m\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -6403,7 +6483,7 @@ nonisolated extension Reelvault_UpsertNamedLocationRequest: SwiftProtobuf.Messag
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.id.isEmpty {
       try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
     }
@@ -6422,7 +6502,7 @@ nonisolated extension Reelvault_UpsertNamedLocationRequest: SwiftProtobuf.Messag
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_UpsertNamedLocationRequest, rhs: Reelvault_UpsertNamedLocationRequest) -> Bool {
+  public static func ==(lhs: Reelvault_UpsertNamedLocationRequest, rhs: Reelvault_UpsertNamedLocationRequest) -> Bool {
     if lhs.id != rhs.id {return false}
     if lhs.name != rhs.name {return false}
     if lhs.latitude != rhs.latitude {return false}
@@ -6434,10 +6514,10 @@ nonisolated extension Reelvault_UpsertNamedLocationRequest: SwiftProtobuf.Messag
 }
 
 nonisolated extension Reelvault_NamedLocationResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".NamedLocationResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}success\0\u{1}message\0\u{1}location\0")
+  public static let protoMessageName: String = _protobuf_package + ".NamedLocationResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}success\0\u{1}message\0\u{1}location\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -6451,7 +6531,7 @@ nonisolated extension Reelvault_NamedLocationResponse: SwiftProtobuf.Message, Sw
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     // The use of inline closures is to circumvent an issue where the compiler
     // allocates stack space for every if/case branch local when no optimizations
     // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
@@ -6468,7 +6548,7 @@ nonisolated extension Reelvault_NamedLocationResponse: SwiftProtobuf.Message, Sw
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_NamedLocationResponse, rhs: Reelvault_NamedLocationResponse) -> Bool {
+  public static func ==(lhs: Reelvault_NamedLocationResponse, rhs: Reelvault_NamedLocationResponse) -> Bool {
     if lhs.success != rhs.success {return false}
     if lhs.message != rhs.message {return false}
     if lhs._location != rhs._location {return false}
@@ -6478,10 +6558,10 @@ nonisolated extension Reelvault_NamedLocationResponse: SwiftProtobuf.Message, Sw
 }
 
 nonisolated extension Reelvault_DeleteNamedLocationRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".DeleteNamedLocationRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0")
+  public static let protoMessageName: String = _protobuf_package + ".DeleteNamedLocationRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -6493,14 +6573,14 @@ nonisolated extension Reelvault_DeleteNamedLocationRequest: SwiftProtobuf.Messag
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.id.isEmpty {
       try visitor.visitSingularStringField(value: self.id, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_DeleteNamedLocationRequest, rhs: Reelvault_DeleteNamedLocationRequest) -> Bool {
+  public static func ==(lhs: Reelvault_DeleteNamedLocationRequest, rhs: Reelvault_DeleteNamedLocationRequest) -> Bool {
     if lhs.id != rhs.id {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -6508,10 +6588,10 @@ nonisolated extension Reelvault_DeleteNamedLocationRequest: SwiftProtobuf.Messag
 }
 
 nonisolated extension Reelvault_UpdateVideoCaptureDateRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".UpdateVideoCaptureDateRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{3}timestamp_ms\0\u{3}write_to_file\0")
+  public static let protoMessageName: String = _protobuf_package + ".UpdateVideoCaptureDateRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_id\0\u{3}timestamp_ms\0\u{3}write_to_file\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -6525,7 +6605,7 @@ nonisolated extension Reelvault_UpdateVideoCaptureDateRequest: SwiftProtobuf.Mes
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.videoID.isEmpty {
       try visitor.visitSingularStringField(value: self.videoID, fieldNumber: 1)
     }
@@ -6538,7 +6618,7 @@ nonisolated extension Reelvault_UpdateVideoCaptureDateRequest: SwiftProtobuf.Mes
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_UpdateVideoCaptureDateRequest, rhs: Reelvault_UpdateVideoCaptureDateRequest) -> Bool {
+  public static func ==(lhs: Reelvault_UpdateVideoCaptureDateRequest, rhs: Reelvault_UpdateVideoCaptureDateRequest) -> Bool {
     if lhs.videoID != rhs.videoID {return false}
     if lhs.timestampMs != rhs.timestampMs {return false}
     if lhs.writeToFile != rhs.writeToFile {return false}
@@ -6548,29 +6628,29 @@ nonisolated extension Reelvault_UpdateVideoCaptureDateRequest: SwiftProtobuf.Mes
 }
 
 nonisolated extension Reelvault_SubscribeCatalogEventsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".SubscribeCatalogEventsRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+  public static let protoMessageName: String = _protobuf_package + ".SubscribeCatalogEventsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     // Load everything into unknown fields
     while try decoder.nextFieldNumber() != nil {}
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_SubscribeCatalogEventsRequest, rhs: Reelvault_SubscribeCatalogEventsRequest) -> Bool {
+  public static func ==(lhs: Reelvault_SubscribeCatalogEventsRequest, rhs: Reelvault_SubscribeCatalogEventsRequest) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
 nonisolated extension Reelvault_CatalogEvent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".CatalogEvent"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{3}video_id\0\u{1}path\0\u{3}at_ms\0\u{1}message\0\u{3}post_index\0")
+  public static let protoMessageName: String = _protobuf_package + ".CatalogEvent"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}kind\0\u{3}video_id\0\u{1}path\0\u{3}at_ms\0\u{1}message\0\u{3}post_index\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -6587,7 +6667,7 @@ nonisolated extension Reelvault_CatalogEvent: SwiftProtobuf.Message, SwiftProtob
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     // The use of inline closures is to circumvent an issue where the compiler
     // allocates stack space for every if/case branch local when no optimizations
     // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
@@ -6613,7 +6693,7 @@ nonisolated extension Reelvault_CatalogEvent: SwiftProtobuf.Message, SwiftProtob
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_CatalogEvent, rhs: Reelvault_CatalogEvent) -> Bool {
+  public static func ==(lhs: Reelvault_CatalogEvent, rhs: Reelvault_CatalogEvent) -> Bool {
     if lhs.kind != rhs.kind {return false}
     if lhs.videoID != rhs.videoID {return false}
     if lhs.path != rhs.path {return false}
@@ -6626,14 +6706,14 @@ nonisolated extension Reelvault_CatalogEvent: SwiftProtobuf.Message, SwiftProtob
 }
 
 nonisolated extension Reelvault_CatalogEvent.Kind: SwiftProtobuf._ProtoNameProviding {
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0KIND_UNSPECIFIED\0\u{1}VIDEO_ADDED\0\u{1}VIDEO_MODIFIED\0\u{1}VIDEO_REMOVED\0\u{1}WATCHER_STARTED\0\u{1}WATCHER_DISABLED\0\u{1}SCAN_STARTED\0\u{1}SCAN_COMPLETED\0\u{1}POST_INDEX_STARTED\0\u{1}POST_INDEX_PROGRESS\0\u{1}POST_INDEX_COMPLETED\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0KIND_UNSPECIFIED\0\u{1}VIDEO_ADDED\0\u{1}VIDEO_MODIFIED\0\u{1}VIDEO_REMOVED\0\u{1}WATCHER_STARTED\0\u{1}WATCHER_DISABLED\0\u{1}SCAN_STARTED\0\u{1}SCAN_COMPLETED\0\u{1}POST_INDEX_STARTED\0\u{1}POST_INDEX_PROGRESS\0\u{1}POST_INDEX_COMPLETED\0")
 }
 
 nonisolated extension Reelvault_PostIndexProgress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".PostIndexProgress"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}processed\0\u{1}total\0\u{1}percent\0\u{3}eta_seconds\0\u{1}phase\0\u{1}detail\0")
+  public static let protoMessageName: String = _protobuf_package + ".PostIndexProgress"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}processed\0\u{1}total\0\u{1}percent\0\u{3}eta_seconds\0\u{1}phase\0\u{1}detail\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -6650,7 +6730,7 @@ nonisolated extension Reelvault_PostIndexProgress: SwiftProtobuf.Message, SwiftP
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if self.processed != 0 {
       try visitor.visitSingularInt64Field(value: self.processed, fieldNumber: 1)
     }
@@ -6672,7 +6752,7 @@ nonisolated extension Reelvault_PostIndexProgress: SwiftProtobuf.Message, SwiftP
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_PostIndexProgress, rhs: Reelvault_PostIndexProgress) -> Bool {
+  public static func ==(lhs: Reelvault_PostIndexProgress, rhs: Reelvault_PostIndexProgress) -> Bool {
     if lhs.processed != rhs.processed {return false}
     if lhs.total != rhs.total {return false}
     if lhs.percent != rhs.percent {return false}
@@ -6685,29 +6765,29 @@ nonisolated extension Reelvault_PostIndexProgress: SwiftProtobuf.Message, SwiftP
 }
 
 nonisolated extension Reelvault_GetWatchSettingsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".GetWatchSettingsRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+  public static let protoMessageName: String = _protobuf_package + ".GetWatchSettingsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     // Load everything into unknown fields
     while try decoder.nextFieldNumber() != nil {}
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_GetWatchSettingsRequest, rhs: Reelvault_GetWatchSettingsRequest) -> Bool {
+  public static func ==(lhs: Reelvault_GetWatchSettingsRequest, rhs: Reelvault_GetWatchSettingsRequest) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
 nonisolated extension Reelvault_WatchSettings: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".WatchSettings"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}enabled\0\u{3}write_settle_ms\0\u{3}poll_interval_ms\0")
+  public static let protoMessageName: String = _protobuf_package + ".WatchSettings"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}enabled\0\u{3}write_settle_ms\0\u{3}poll_interval_ms\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -6721,7 +6801,7 @@ nonisolated extension Reelvault_WatchSettings: SwiftProtobuf.Message, SwiftProto
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if self.enabled != false {
       try visitor.visitSingularBoolField(value: self.enabled, fieldNumber: 1)
     }
@@ -6734,7 +6814,7 @@ nonisolated extension Reelvault_WatchSettings: SwiftProtobuf.Message, SwiftProto
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_WatchSettings, rhs: Reelvault_WatchSettings) -> Bool {
+  public static func ==(lhs: Reelvault_WatchSettings, rhs: Reelvault_WatchSettings) -> Bool {
     if lhs.enabled != rhs.enabled {return false}
     if lhs.writeSettleMs != rhs.writeSettleMs {return false}
     if lhs.pollIntervalMs != rhs.pollIntervalMs {return false}
@@ -6744,10 +6824,10 @@ nonisolated extension Reelvault_WatchSettings: SwiftProtobuf.Message, SwiftProto
 }
 
 nonisolated extension Reelvault_UpdateVideoRatingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".UpdateVideoRatingRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_ids\0\u{1}rating\0")
+  public static let protoMessageName: String = _protobuf_package + ".UpdateVideoRatingRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_ids\0\u{1}rating\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -6760,7 +6840,7 @@ nonisolated extension Reelvault_UpdateVideoRatingRequest: SwiftProtobuf.Message,
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.videoIds.isEmpty {
       try visitor.visitRepeatedStringField(value: self.videoIds, fieldNumber: 1)
     }
@@ -6770,7 +6850,7 @@ nonisolated extension Reelvault_UpdateVideoRatingRequest: SwiftProtobuf.Message,
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_UpdateVideoRatingRequest, rhs: Reelvault_UpdateVideoRatingRequest) -> Bool {
+  public static func ==(lhs: Reelvault_UpdateVideoRatingRequest, rhs: Reelvault_UpdateVideoRatingRequest) -> Bool {
     if lhs.videoIds != rhs.videoIds {return false}
     if lhs.rating != rhs.rating {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -6779,10 +6859,10 @@ nonisolated extension Reelvault_UpdateVideoRatingRequest: SwiftProtobuf.Message,
 }
 
 nonisolated extension Reelvault_UpdateVideoColorLabelRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".UpdateVideoColorLabelRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_ids\0\u{3}color_label\0")
+  public static let protoMessageName: String = _protobuf_package + ".UpdateVideoColorLabelRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}video_ids\0\u{3}color_label\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -6795,7 +6875,7 @@ nonisolated extension Reelvault_UpdateVideoColorLabelRequest: SwiftProtobuf.Mess
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.videoIds.isEmpty {
       try visitor.visitRepeatedStringField(value: self.videoIds, fieldNumber: 1)
     }
@@ -6805,7 +6885,7 @@ nonisolated extension Reelvault_UpdateVideoColorLabelRequest: SwiftProtobuf.Mess
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_UpdateVideoColorLabelRequest, rhs: Reelvault_UpdateVideoColorLabelRequest) -> Bool {
+  public static func ==(lhs: Reelvault_UpdateVideoColorLabelRequest, rhs: Reelvault_UpdateVideoColorLabelRequest) -> Bool {
     if lhs.videoIds != rhs.videoIds {return false}
     if lhs.colorLabel != rhs.colorLabel {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -6814,29 +6894,29 @@ nonisolated extension Reelvault_UpdateVideoColorLabelRequest: SwiftProtobuf.Mess
 }
 
 nonisolated extension Reelvault_GetGridSettingsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".GetGridSettingsRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+  public static let protoMessageName: String = _protobuf_package + ".GetGridSettingsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     // Load everything into unknown fields
     while try decoder.nextFieldNumber() != nil {}
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_GetGridSettingsRequest, rhs: Reelvault_GetGridSettingsRequest) -> Bool {
+  public static func ==(lhs: Reelvault_GetGridSettingsRequest, rhs: Reelvault_GetGridSettingsRequest) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
 nonisolated extension Reelvault_GridSettings: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".GridSettings"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}top_slots\0")
+  public static let protoMessageName: String = _protobuf_package + ".GridSettings"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}top_slots\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -6848,14 +6928,14 @@ nonisolated extension Reelvault_GridSettings: SwiftProtobuf.Message, SwiftProtob
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.topSlots.isEmpty {
       try visitor.visitRepeatedStringField(value: self.topSlots, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_GridSettings, rhs: Reelvault_GridSettings) -> Bool {
+  public static func ==(lhs: Reelvault_GridSettings, rhs: Reelvault_GridSettings) -> Bool {
     if lhs.topSlots != rhs.topSlots {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -6863,10 +6943,10 @@ nonisolated extension Reelvault_GridSettings: SwiftProtobuf.Message, SwiftProtob
 }
 
 nonisolated extension Reelvault_CameraNameMapping: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".CameraNameMapping"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}internal\0\u{1}marketing\0\u{3}is_builtin\0\u{3}is_custom\0")
+  public static let protoMessageName: String = _protobuf_package + ".CameraNameMapping"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}internal\0\u{1}marketing\0\u{3}is_builtin\0\u{3}is_custom\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -6881,7 +6961,7 @@ nonisolated extension Reelvault_CameraNameMapping: SwiftProtobuf.Message, SwiftP
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.`internal`.isEmpty {
       try visitor.visitSingularStringField(value: self.`internal`, fieldNumber: 1)
     }
@@ -6897,7 +6977,7 @@ nonisolated extension Reelvault_CameraNameMapping: SwiftProtobuf.Message, SwiftP
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_CameraNameMapping, rhs: Reelvault_CameraNameMapping) -> Bool {
+  public static func ==(lhs: Reelvault_CameraNameMapping, rhs: Reelvault_CameraNameMapping) -> Bool {
     if lhs.`internal` != rhs.`internal` {return false}
     if lhs.marketing != rhs.marketing {return false}
     if lhs.isBuiltin != rhs.isBuiltin {return false}
@@ -6908,29 +6988,29 @@ nonisolated extension Reelvault_CameraNameMapping: SwiftProtobuf.Message, SwiftP
 }
 
 nonisolated extension Reelvault_ListCameraNameMappingsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ListCameraNameMappingsRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+  public static let protoMessageName: String = _protobuf_package + ".ListCameraNameMappingsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     // Load everything into unknown fields
     while try decoder.nextFieldNumber() != nil {}
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ListCameraNameMappingsRequest, rhs: Reelvault_ListCameraNameMappingsRequest) -> Bool {
+  public static func ==(lhs: Reelvault_ListCameraNameMappingsRequest, rhs: Reelvault_ListCameraNameMappingsRequest) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
 nonisolated extension Reelvault_ListCameraNameMappingsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ListCameraNameMappingsResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}mappings\0")
+  public static let protoMessageName: String = _protobuf_package + ".ListCameraNameMappingsResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}mappings\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -6942,14 +7022,14 @@ nonisolated extension Reelvault_ListCameraNameMappingsResponse: SwiftProtobuf.Me
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.mappings.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.mappings, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ListCameraNameMappingsResponse, rhs: Reelvault_ListCameraNameMappingsResponse) -> Bool {
+  public static func ==(lhs: Reelvault_ListCameraNameMappingsResponse, rhs: Reelvault_ListCameraNameMappingsResponse) -> Bool {
     if lhs.mappings != rhs.mappings {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -6957,10 +7037,10 @@ nonisolated extension Reelvault_ListCameraNameMappingsResponse: SwiftProtobuf.Me
 }
 
 nonisolated extension Reelvault_SetCameraNameMappingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".SetCameraNameMappingRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}internal\0\u{1}marketing\0")
+  public static let protoMessageName: String = _protobuf_package + ".SetCameraNameMappingRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}internal\0\u{1}marketing\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -6973,7 +7053,7 @@ nonisolated extension Reelvault_SetCameraNameMappingRequest: SwiftProtobuf.Messa
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.`internal`.isEmpty {
       try visitor.visitSingularStringField(value: self.`internal`, fieldNumber: 1)
     }
@@ -6983,7 +7063,7 @@ nonisolated extension Reelvault_SetCameraNameMappingRequest: SwiftProtobuf.Messa
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_SetCameraNameMappingRequest, rhs: Reelvault_SetCameraNameMappingRequest) -> Bool {
+  public static func ==(lhs: Reelvault_SetCameraNameMappingRequest, rhs: Reelvault_SetCameraNameMappingRequest) -> Bool {
     if lhs.`internal` != rhs.`internal` {return false}
     if lhs.marketing != rhs.marketing {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -6992,10 +7072,10 @@ nonisolated extension Reelvault_SetCameraNameMappingRequest: SwiftProtobuf.Messa
 }
 
 nonisolated extension Reelvault_LensNameMapping: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".LensNameMapping"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}raw\0\u{1}alias\0\u{3}is_custom\0\u{3}in_catalog\0")
+  public static let protoMessageName: String = _protobuf_package + ".LensNameMapping"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}raw\0\u{1}alias\0\u{3}is_custom\0\u{3}in_catalog\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -7010,7 +7090,7 @@ nonisolated extension Reelvault_LensNameMapping: SwiftProtobuf.Message, SwiftPro
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.raw.isEmpty {
       try visitor.visitSingularStringField(value: self.raw, fieldNumber: 1)
     }
@@ -7026,7 +7106,7 @@ nonisolated extension Reelvault_LensNameMapping: SwiftProtobuf.Message, SwiftPro
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_LensNameMapping, rhs: Reelvault_LensNameMapping) -> Bool {
+  public static func ==(lhs: Reelvault_LensNameMapping, rhs: Reelvault_LensNameMapping) -> Bool {
     if lhs.raw != rhs.raw {return false}
     if lhs.alias != rhs.alias {return false}
     if lhs.isCustom != rhs.isCustom {return false}
@@ -7037,29 +7117,29 @@ nonisolated extension Reelvault_LensNameMapping: SwiftProtobuf.Message, SwiftPro
 }
 
 nonisolated extension Reelvault_ListLensNameMappingsRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ListLensNameMappingsRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+  public static let protoMessageName: String = _protobuf_package + ".ListLensNameMappingsRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     // Load everything into unknown fields
     while try decoder.nextFieldNumber() != nil {}
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ListLensNameMappingsRequest, rhs: Reelvault_ListLensNameMappingsRequest) -> Bool {
+  public static func ==(lhs: Reelvault_ListLensNameMappingsRequest, rhs: Reelvault_ListLensNameMappingsRequest) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
 }
 
 nonisolated extension Reelvault_ListLensNameMappingsResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".ListLensNameMappingsResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}mappings\0")
+  public static let protoMessageName: String = _protobuf_package + ".ListLensNameMappingsResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}mappings\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -7071,14 +7151,14 @@ nonisolated extension Reelvault_ListLensNameMappingsResponse: SwiftProtobuf.Mess
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.mappings.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.mappings, fieldNumber: 1)
     }
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_ListLensNameMappingsResponse, rhs: Reelvault_ListLensNameMappingsResponse) -> Bool {
+  public static func ==(lhs: Reelvault_ListLensNameMappingsResponse, rhs: Reelvault_ListLensNameMappingsResponse) -> Bool {
     if lhs.mappings != rhs.mappings {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -7086,10 +7166,10 @@ nonisolated extension Reelvault_ListLensNameMappingsResponse: SwiftProtobuf.Mess
 }
 
 nonisolated extension Reelvault_SetLensNameMappingRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".SetLensNameMappingRequest"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}raw\0\u{1}alias\0")
+  public static let protoMessageName: String = _protobuf_package + ".SetLensNameMappingRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}raw\0\u{1}alias\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -7102,7 +7182,7 @@ nonisolated extension Reelvault_SetLensNameMappingRequest: SwiftProtobuf.Message
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if !self.raw.isEmpty {
       try visitor.visitSingularStringField(value: self.raw, fieldNumber: 1)
     }
@@ -7112,7 +7192,7 @@ nonisolated extension Reelvault_SetLensNameMappingRequest: SwiftProtobuf.Message
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_SetLensNameMappingRequest, rhs: Reelvault_SetLensNameMappingRequest) -> Bool {
+  public static func ==(lhs: Reelvault_SetLensNameMappingRequest, rhs: Reelvault_SetLensNameMappingRequest) -> Bool {
     if lhs.raw != rhs.raw {return false}
     if lhs.alias != rhs.alias {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
@@ -7121,10 +7201,10 @@ nonisolated extension Reelvault_SetLensNameMappingRequest: SwiftProtobuf.Message
 }
 
 nonisolated extension Reelvault_Response: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = _protobuf_package + ".Response"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}success\0\u{1}message\0\u{1}error\0")
+  public static let protoMessageName: String = _protobuf_package + ".Response"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}success\0\u{1}message\0\u{1}error\0")
 
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
       // The use of inline closures is to circumvent an issue where the compiler
       // allocates stack space for every case branch when no optimizations are
@@ -7138,7 +7218,7 @@ nonisolated extension Reelvault_Response: SwiftProtobuf.Message, SwiftProtobuf._
     }
   }
 
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
     if self.success != false {
       try visitor.visitSingularBoolField(value: self.success, fieldNumber: 1)
     }
@@ -7151,7 +7231,7 @@ nonisolated extension Reelvault_Response: SwiftProtobuf.Message, SwiftProtobuf._
     try unknownFields.traverse(visitor: &visitor)
   }
 
-  static func ==(lhs: Reelvault_Response, rhs: Reelvault_Response) -> Bool {
+  public static func ==(lhs: Reelvault_Response, rhs: Reelvault_Response) -> Bool {
     if lhs.success != rhs.success {return false}
     if lhs.message != rhs.message {return false}
     if lhs.error != rhs.error {return false}

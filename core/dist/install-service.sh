@@ -2,16 +2,23 @@
 # ReelVault Core — system daemon installer (macOS + Linux)
 #
 # Usage:
-#   sudo ./install-service.sh [--binary PATH] [--uninstall]
+#   sudo ./install-service.sh [--binary PATH] [--catalog PATH] [--import-dir PATH] [--uninstall]
 #
 # Options:
-#   --binary PATH   Path to the reelvault-core binary to install.
-#                   Defaults to ./reelvault-core (next to this script).
-#   --uninstall     Remove the service and binary instead of installing.
+#   --binary PATH      Path to the reelvault-core binary to install.
+#                      Defaults to ./reelvault-core (next to this script).
+#   --catalog PATH     SQLite catalog the daemon opens at startup (templated into
+#                      --db-path). Defaults to the platform system catalog.
+#   --import-dir PATH  Directory uploads are written to and indexed from
+#                      (templated into --import-dir). Set this up front to enable
+#                      uploads from remote clients (e.g. the iOS app).
+#   --uninstall        Remove the service and binary instead of installing.
 #
-# After installation the daemon starts automatically and restarts on crash.
-# It listens on 127.0.0.1:50051 and serves all users on this machine from a
-# single shared catalog.
+# After installation the daemon starts automatically and restarts on crash. It
+# listens on 127.0.0.1:50051 (loopback, plaintext) and — because the service
+# definition passes --remote — on the LAN IP over TLS + mDNS, so remote clients
+# can discover and connect. It serves all users on this machine from a single
+# shared catalog.
 #
 # Log locations:
 #   macOS:  /Library/Logs/ReelVault/reelvault-core.log
@@ -25,15 +32,47 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BINARY="${SCRIPT_DIR}/reelvault-core"
+CATALOG=""
+IMPORT_DIR=""
 UNINSTALL=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --binary)   BINARY="$2"; shift 2 ;;
-        --uninstall) UNINSTALL=1; shift ;;
+        --binary)     BINARY="$2"; shift 2 ;;
+        --catalog)    CATALOG="$2"; shift 2 ;;
+        --import-dir) IMPORT_DIR="$2"; shift 2 ;;
+        --uninstall)  UNINSTALL=1; shift ;;
         *) echo "Unknown option: $1" >&2; exit 1 ;;
     esac
 done
+
+# ---------------------------------------------------------------------------
+# Service-definition templating
+# ---------------------------------------------------------------------------
+# The shipped plist / unit files run `--system-daemon --port 50051 --remote`.
+# When the operator chose a catalog or import dir, splice the matching flags in.
+
+# Append `--db-path`/`--import-dir` <string> entries before </array> in a plist.
+inject_plist_args() {
+    local file="$1"
+    local extra=""
+    [[ -n "$CATALOG" ]] && extra+="        <string>--db-path</string>\n        <string>${CATALOG}</string>\n"
+    [[ -n "$IMPORT_DIR" ]] && extra+="        <string>--import-dir</string>\n        <string>${IMPORT_DIR}</string>\n"
+    [[ -z "$extra" ]] && return 0
+    awk -v ins="$extra" '!done && /<\/array>/ { printf "%s", ins; done=1 } { print }' \
+        "$file" > "${file}.tmp" && mv "${file}.tmp" "$file"
+}
+
+# Append `--db-path`/`--import-dir` to a systemd ExecStart= line.
+inject_unit_args() {
+    local file="$1"
+    local extra=""
+    [[ -n "$CATALOG" ]] && extra+=" --db-path \"${CATALOG}\""
+    [[ -n "$IMPORT_DIR" ]] && extra+=" --import-dir \"${IMPORT_DIR}\""
+    [[ -z "$extra" ]] && return 0
+    awk -v extra="$extra" '/^ExecStart=/ { print $0 extra; next } { print }' \
+        "$file" > "${file}.tmp" && mv "${file}.tmp" "$file"
+}
 
 # ---------------------------------------------------------------------------
 # OS detection
@@ -71,6 +110,7 @@ install_macos() {
 
     echo "==> Installing launchd plist…"
     cp -f "$plist_src" "$plist_dst"
+    inject_plist_args "$plist_dst"
     chmod 644 "$plist_dst"
     chown root:wheel "$plist_dst"
 
@@ -114,6 +154,12 @@ install_linux() {
 
     echo "==> Installing systemd unit…"
     cp -f "$unit_src" "$unit_dst"
+    inject_unit_args "$unit_dst"
+    # The import dir must be writable by the dedicated 'reelvault' service user.
+    if [[ -n "$IMPORT_DIR" ]]; then
+        mkdir -p "$IMPORT_DIR"
+        chown reelvault:reelvault "$IMPORT_DIR" 2>/dev/null || true
+    fi
     chmod 644 "$unit_dst"
 
     systemctl daemon-reload

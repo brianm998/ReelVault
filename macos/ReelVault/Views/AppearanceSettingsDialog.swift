@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import SwiftUI
+import ReelVaultKit
 
 /// Appearance & Browse settings: accent color scheme, scrub-frame count,
 /// and reference information about the other configurable values.

@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import SwiftUI
+import ReelVaultKit
 
 /// The shared "infer a capture date from the filename" picker: a Format menu
 /// (component ordering) and a Position menu (where in the name the date sits).

@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import SwiftUI
+import ReelVaultKit
 import AppKit
 
 /// Sheet for adding one or more library locations in a single session.

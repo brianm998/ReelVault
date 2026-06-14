@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import SwiftUI
+import ReelVaultKit
 
 /// Sheet that asks the user which target resolution they want when
 /// creating a proxy. Surfaced by `GridViewModel.proxyCreationVideoId`;

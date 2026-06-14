@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import SwiftUI
+import ReelVaultKit
 
 /// Sheet for setting the capture date/time on one or more videos. Uses
 /// SwiftUI's native `DatePicker` for both the calendar and the time picker,

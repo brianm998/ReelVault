@@ -74,6 +74,13 @@ service ReelVault {
   rpc GetConfig(GetConfigRequest) returns (ConfigResponse);
   rpc UpdateConfig(UpdateConfigRequest) returns (Response);
 
+  // Pairing — a desktop/loopback client mints a one-time 6-digit code that the
+  // operator types on a new remote device (the iOS app) to authorize it. The
+  // same pending-code state backs the media server's POST /pair, which the new
+  // device calls to redeem the code for a bearer token. Intended for loopback
+  // callers; the LAN bind requires a token a new device doesn't have yet.
+  rpc StartPairing(StartPairingRequest) returns (StartPairingResponse);
+
   // Catalog lifecycle — the catalog is the SQLite file backing the daemon.
   // Switching catalogs at runtime lets a single server process serve multiple
   // libraries over its lifetime; the client treats each as a separate session.
@@ -724,6 +731,15 @@ message AttachProxiesResponse {
 // System / Config
 
 message GetStatusRequest {}
+
+message StartPairingRequest {}
+
+message StartPairingResponse {
+  // The 6-digit code to type on the new device.
+  string code = 1;
+  // Unix epoch milliseconds at which the code stops being accepted (~5 min out).
+  int64 expires_at_ms = 2;
+}
 
 message StatusResponse {
   bool running = 1;

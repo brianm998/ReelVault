@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import Foundation
+import ReelVaultKit
 
 /// Filesystem helpers for the path-completion text field. Pure functions:
 /// no actor isolation, no caching, no asynchronous work — the calls go

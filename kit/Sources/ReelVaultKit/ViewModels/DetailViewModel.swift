@@ -5,36 +5,42 @@ import SwiftUI
 import Combine
 
 @MainActor
-class DetailViewModel: ObservableObject {
-    @Published var metadata: VideoMetadata?
-    @Published var thumbnail: NSImage?
-    @Published var isLoading = false
-    @Published var error: String?
-    @Published var notes = ""
+public class DetailViewModel: ObservableObject {
+    public init() {}
 
-    @Published var groupMembers: [VideoSummary] = []
-    @Published var groupPreferredId: String = ""
+    @Published public var metadata: VideoMetadata?
+    @Published public var thumbnail: PlatformImage?
+    @Published public var isLoading = false
+    @Published public var error: String?
+    @Published public var notes = ""
+
+    @Published public var groupMembers: [VideoSummary] = []
+    @Published public var groupPreferredId: String = ""
 
     /// Proxies attached to the currently-selected video. Sorted by
     /// pixel count descending (server contract). UI sites can read
     /// `.last` for the smallest proxy (used by inline grid/list
     /// playback) or `.first` for the largest.
-    @Published var proxies: [VideoRepository.ProxyInfo] = []
+    @Published public var proxies: [VideoRepository.ProxyInfo] = []
 
     /// ID of the proxy the user explicitly picked for full-screen
     /// detail-view playback. `nil` means "play the master" (with the
     /// implicit unplayable-master → smallest-proxy fallback applied by
     /// `playbackPath(for:)`).
-    @Published var selectedProxyId: String?
+    @Published public var selectedProxyId: String?
 
     /// Content for the top-bar proxy-playback indicator.
-    struct ProxyBanner: Equatable {
+    public struct ProxyBanner: Equatable {
         /// True when the user explicitly picked this proxy in the right
         /// panel; false when it's the automatic unplayable-master fallback.
-        var selected: Bool
+        public var selected: Bool
         /// "filename • 1080p"-style detail, or nil when the proxy row is
         /// unknown. Surfaced in the indicator's tooltip.
-        var detail: String?
+        public var detail: String?
+        public init(selected: Bool, detail: String?) {
+            self.selected = selected
+            self.detail = detail
+        }
     }
 
     /// Drives the proxy-playback indicator that now lives in the top bar
@@ -42,32 +48,32 @@ class DetailViewModel: ObservableObject {
     /// `nil` hides it — the master is playing, or the loupe isn't on screen.
     /// `DetailLoupeView` sets this as it resolves the effective playback path
     /// and clears it when the loupe is left.
-    @Published var proxyBanner: ProxyBanner?
+    @Published public var proxyBanner: ProxyBanner?
 
     /// The proxy the loupe is actually playing right now (auto-chosen or the
     /// user's pick), so the right-panel list can highlight which one is playing
     /// by default — without pinning `selectedProxyId` (which stays the user's
     /// explicit choice so they can still revert to the master).
-    @Published var playingProxyId: String?
+    @Published public var playingProxyId: String?
 
     /// Incremented when the user clicks the top-bar "Playing proxy" indicator
     /// (#13b). `DetailView` observes it and scrolls the right panel to the
     /// proxy list, expanding the section first.
-    @Published var scrollToProxiesToken: Int = 0
-    func requestScrollToProxies() { scrollToProxiesToken += 1 }
+    @Published public var scrollToProxiesToken: Int = 0
+    public func requestScrollToProxies() { scrollToProxiesToken += 1 }
 
     /// The summary backing the currently-selected card. Exposed so the
     /// right panel's proxy section can decide whether to render itself
     /// (keys off `hasProxies` and `playableNatively`, neither of which
     /// is carried by `VideoMetadata`).
-    @Published var currentSummary: VideoSummary?
+    @Published public var currentSummary: VideoSummary?
 
     private var currentVideoSummary: VideoSummary? { currentSummary }
     private let repository = VideoRepository.shared
 
     /// Called by the grid when the user selects a video — drives the group/stack
     /// section in addition to the regular metadata load.
-    func setCurrentVideo(_ video: VideoSummary) {
+    public func setCurrentVideo(_ video: VideoSummary) {
         currentSummary = video
         if video.isInGroup {
             loadGroupMembers(groupId: video.groupId)
@@ -100,7 +106,7 @@ class DetailViewModel: ObservableObject {
 
     /// User picked a specific proxy in the detail-view right panel.
     /// Pass `nil` to revert to playing the master.
-    func setSelectedProxy(_ proxyId: String?) {
+    public func setSelectedProxy(_ proxyId: String?) {
         selectedProxyId = proxyId
     }
 
@@ -108,7 +114,7 @@ class DetailViewModel: ObservableObject {
     /// selection and the player's render height. Called by `DetailLoupeView`
     /// whenever the effective path could change (selection, proxy list,
     /// render-area resize). Sets `proxyBanner` to nil when the master plays.
-    func updateProxyBanner(for video: VideoSummary, areaHeightPx: Int) {
+    public func updateProxyBanner(for video: VideoSummary, areaHeightPx: Int) {
         let effective = playbackPath(for: video, areaHeightPx: areaHeightPx) ?? video.path
         if effective != video.path {
             let active = proxies.first(where: { $0.path == effective })
@@ -124,14 +130,14 @@ class DetailViewModel: ObservableObject {
     }
 
     /// Hide the top-bar proxy indicator (loupe left, or selection cleared).
-    func clearProxyBanner() {
+    public func clearProxyBanner() {
         proxyBanner = nil
         playingProxyId = nil
     }
 
     /// Break the link between the currently-displayed master and one
     /// of its proxies. Refreshes the proxy list on success.
-    func breakProxyLink(proxyId: String, onChanged: @escaping () -> Void = {}) {
+    public func breakProxyLink(proxyId: String, onChanged: @escaping () -> Void = {}) {
         guard let masterId = currentSummary?.id else { return }
         Task {
             let ok = await repository.removeProxyLink(masterId: masterId, proxyId: proxyId)
@@ -154,7 +160,7 @@ class DetailViewModel: ObservableObject {
     /// Mark `proxyId` as a manual proxy of the currently-displayed
     /// master. Surfaces via the inspector's "Add selected video as
     /// proxy" affordance.
-    func forceProxyLink(proxyId: String, onChanged: @escaping () -> Void = {}) {
+    public func forceProxyLink(proxyId: String, onChanged: @escaping () -> Void = {}) {
         guard let masterId = currentSummary?.id else { return }
         guard masterId != proxyId else {
             error = "A video can't be a proxy of itself"
@@ -186,7 +192,7 @@ class DetailViewModel: ObservableObject {
     ///     a natively-playable master — detail playback defaults to a proxy,
     ///     with the master one click away via the right-panel picker.
     ///   * Otherwise → nil; the caller falls back to the master path.
-    func playbackPath(for video: VideoSummary, areaHeightPx: Int = 0) -> String? {
+    public func playbackPath(for video: VideoSummary, areaHeightPx: Int = 0) -> String? {
         if let picked = selectedProxyId,
            let row = proxies.first(where: { $0.id == picked }) {
             return row.path
@@ -238,7 +244,7 @@ class DetailViewModel: ObservableObject {
     /// reorder server-side — same group id, positions updated, leader untouched.
     /// `onChanged` fires with the group id so the grid's expanded-stack cache
     /// can refresh.
-    func reorderGroupMembers(orderedIds: [String], onChanged: ((String) -> Void)? = nil) {
+    public func reorderGroupMembers(orderedIds: [String], onChanged: ((String) -> Void)? = nil) {
         guard let groupId = currentVideoSummary?.groupId, !groupId.isEmpty, orderedIds.count >= 2 else { return }
         let preferred = groupPreferredId
         Task {
@@ -253,7 +259,7 @@ class DetailViewModel: ObservableObject {
         }
     }
 
-    func setGroupPreferred(videoId: String) {
+    public func setGroupPreferred(videoId: String) {
         guard let groupId = currentVideoSummary?.groupId, !groupId.isEmpty else { return }
         Task {
             do {
@@ -272,7 +278,7 @@ class DetailViewModel: ObservableObject {
     /// fires after the daemon call succeeds — callers wire it to
     /// `GridViewModel.refreshAfterStackChange(groupId:)` so the grid's
     /// representative + expanded-member caches catch up.
-    func ungroupCurrent(onComplete: ((_ groupId: String) -> Void)? = nil) {
+    public func ungroupCurrent(onComplete: ((_ groupId: String) -> Void)? = nil) {
         guard let videoId = metadata?.id else { return }
         // Capture the *current* group id before we tell the daemon to
         // drop it — `VideoMetadata` doesn't track groupId, so we read it
@@ -293,7 +299,7 @@ class DetailViewModel: ObservableObject {
         }
     }
 
-    func loadMetadata(videoId: String) {
+    public func loadMetadata(videoId: String) {
         isLoading = true
         error = nil
 
@@ -319,7 +325,7 @@ class DetailViewModel: ObservableObject {
         }
     }
 
-    func updateNotes(_ newNotes: String) {
+    public func updateNotes(_ newNotes: String) {
         notes = newNotes
         guard let videoId = metadata?.id else { return }
         Task {
@@ -332,9 +338,9 @@ class DetailViewModel: ObservableObject {
         }
     }
 
-    func clearError() { error = nil }
+    public func clearError() { error = nil }
 
-    func clear() {
+    public func clear() {
         metadata = nil
         thumbnail = nil
         notes = ""

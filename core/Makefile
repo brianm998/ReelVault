@@ -34,13 +34,13 @@ release:
 	cargo build --release
 
 run:
-	cargo run --bin reelvault-core -- $(ARGS)
+	cargo run --bin reelvault-core -- --remote $(ARGS)
 
 run-release:
-	cargo run --release --bin reelvault-core -- $(ARGS)
+	cargo run --release --bin reelvault-core -- --remote $(ARGS)
 
 dev:
-	RUST_LOG=debug cargo run --bin reelvault-core -- $(ARGS)
+	RUST_LOG=debug cargo run --bin reelvault-core -- --remote $(ARGS)
 
 cli:
 	cargo run --bin reelvault-cli -- $(ARGS)

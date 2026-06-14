@@ -52,6 +52,12 @@ pub struct Config {
     /// or changed files into the same settle queue. Set to 0 to disable
     /// the poll fallback entirely. Default = 30 000 ms (30 s).
     pub watch_poll_interval_ms: i64,
+
+    // --- Upload ---
+    /// Directory where uploaded videos are written and then indexed. Set via
+    /// `--import-dir` (persisted) or left None to refuse uploads. Should sit
+    /// inside an enabled library location so the file is watched/served.
+    pub import_dir: Option<PathBuf>,
 }
 
 /// A user-supplied override for the built-in camera-name mapping table
@@ -144,6 +150,8 @@ impl Config {
             .parse::<bool>()
             .unwrap_or(true);
 
+        let import_dir_str = Self::get_config_value(&conn, "import_dir", "")?;
+
         std::fs::create_dir_all(&thumbnail_cache_path)
             .map_err(|e| ReelVaultError::ConfigError(format!("Failed to create cache directory: {}", e)))?;
 
@@ -159,6 +167,11 @@ impl Config {
             watch_write_settle_ms,
             watch_poll_interval_ms,
             auto_tag_timelapses,
+            import_dir: if import_dir_str.is_empty() {
+                None
+            } else {
+                Some(PathBuf::from(import_dir_str))
+            },
         })
     }
 
@@ -175,6 +188,11 @@ impl Config {
         Self::set_config_value(&conn, "watch_write_settle_ms", &self.watch_write_settle_ms.to_string())?;
         Self::set_config_value(&conn, "watch_poll_interval_ms", &self.watch_poll_interval_ms.to_string())?;
         Self::set_config_value(&conn, "auto_tag_timelapses", &self.auto_tag_timelapses.to_string())?;
+        Self::set_config_value(
+            &conn,
+            "import_dir",
+            &self.import_dir.as_ref().map(|p| p.to_string_lossy().to_string()).unwrap_or_default(),
+        )?;
 
         Ok(())
     }
@@ -218,6 +236,7 @@ impl Config {
             watch_write_settle_ms: 5000,
             watch_poll_interval_ms: 30000,
             auto_tag_timelapses: true,
+            import_dir: None,
         }
     }
 

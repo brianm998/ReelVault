@@ -58,6 +58,11 @@ pub struct ReelVaultService {
     /// (which is immutable after load) so we don't have to clone it
     /// just to change three integers.
     watch_settings: Arc<tokio::sync::RwLock<WatchSettingsCurrent>>,
+    /// Pending one-time pairing code, shared with the media server so a code
+    /// minted by `StartPairing` here is redeemable at `POST /pair` there.
+    pairing: crate::pairing::PairingState,
+    /// Per-OS data dir, used to write `pairing.txt` when a code is issued.
+    data_dir: std::path::PathBuf,
 }
 
 /// Snapshot of the watcher knobs. Live in a RwLock so the gRPC handlers
@@ -71,7 +76,12 @@ pub struct WatchSettingsCurrent {
 }
 
 impl ReelVaultService {
-    pub fn new(db: Arc<Database>, config: Arc<Config>) -> Self {
+    pub fn new(
+        db: Arc<Database>,
+        config: Arc<Config>,
+        pairing: crate::pairing::PairingState,
+        data_dir: std::path::PathBuf,
+    ) -> Self {
         // If `db` was constructed with an already-open catalog, treat
         // "now" as its open timestamp.
         let initial_opened = if db.current_path().is_some() {
@@ -95,6 +105,8 @@ impl ReelVaultService {
             catalog_events: catalog_tx,
             watcher: Arc::new(tokio::sync::Mutex::new(None)),
             watch_settings: Arc::new(tokio::sync::RwLock::new(watch_settings)),
+            pairing,
+            data_dir,
         };
 
         // Boot the watcher if config says so and a catalog is open.
@@ -2748,6 +2760,22 @@ impl ReelVaultTrait for ReelVaultService {
             cache_size_bytes: 0,
             uptime_seconds: 0,
             version: env!("CARGO_PKG_VERSION").to_string(),
+        }))
+    }
+
+    async fn start_pairing(
+        &self,
+        _request: Request<StartPairingRequest>,
+    ) -> std::result::Result<Response<StartPairingResponse>, Status> {
+        // Mint a one-time code and surface it (log + pairing.txt). The same
+        // pending cell backs the media server's POST /pair, so the new device
+        // redeems this code there for a bearer token. Loopback callers only in
+        // practice — the LAN gRPC bind requires a token a new device lacks.
+        let (code, expires_at_ms) =
+            crate::pairing::issue_code(&self.pairing, &self.data_dir).await;
+        Ok(Response::new(StartPairingResponse {
+            code,
+            expires_at_ms,
         }))
     }
 

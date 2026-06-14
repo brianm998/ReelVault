@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import SwiftUI
+import ReelVaultKit
 
 /// Map-view right panel: the videos at the location(s) the user has selected on
 /// the map, rendered with the same `VideoCardView` used by the grid.

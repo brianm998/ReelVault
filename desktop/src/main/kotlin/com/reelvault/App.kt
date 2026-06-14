@@ -685,6 +685,8 @@ fun ReelVaultApp(
     // Library-wide auto-tagging / detection settings (currently houses
     // the timelapse auto-tag toggle; future home for other library knobs).
     var showLibrarySettingsDialog by remember { mutableStateOf(false) }
+    // "Pair a New Device" — shows a one-time code for a phone/tablet to enter.
+    var showPairDeviceDialog by remember { mutableStateOf(false) }
     // Library removal confirmation. Non-null while the "Are you sure?" dialog is shown.
     var pendingRemoveLocation by remember { mutableStateOf<com.reelvault.data.models.LibraryLocation?>(null) }
     // Collection deletion confirmation. Non-null while the "Are you sure?" dialog is shown.
@@ -1118,6 +1120,7 @@ fun ReelVaultApp(
                         },
                         onCloseCatalog = { closeCatalog() },
                         onOpenRecent = { path -> openCatalog(path) },
+                        onPairDevice = { showPairDeviceDialog = true },
                         catalogIsOpen = currentCatalog.isOpen,
                         catalogName = currentCatalog.name,
                         recents = recents.list(),
@@ -1998,6 +2001,14 @@ fun ReelVaultApp(
                     HelpDialog(onDismiss = { showHelpDialog = false })
                 }
 
+                // Pair-a-new-device dialog — mints a one-time code to enter on a phone.
+                if (showPairDeviceDialog) {
+                    com.reelvault.ui.screens.PairDeviceDialog(
+                        repository = repository,
+                        onDismiss = { showPairDeviceDialog = false }
+                    )
+                }
+
                 // Appearance (accent color scheme) dialog
                 if (showAppearanceDialog) {
                     com.reelvault.ui.screens.AppearanceSettingsDialog(
@@ -2702,6 +2713,8 @@ fun ReelVaultTopBar(
     onOpenCatalog: () -> Unit = {},
     onCloseCatalog: () -> Unit = {},
     onOpenRecent: (String) -> Unit = {},
+    /** Mints a one-time pairing code and shows it for a new device to enter. */
+    onPairDevice: () -> Unit = {},
     catalogIsOpen: Boolean = false,
     catalogName: String = "",
     recents: List<String> = emptyList(),
@@ -2796,6 +2809,12 @@ fun ReelVaultTopBar(
                             onClick = { onCloseCatalog(); showFileMenu = false },
                             enabled = catalogIsOpen,
                             leadingIcon = { Icon(Icons.Default.Close, contentDescription = null) }
+                        )
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text("Pair a New Device…") },
+                            onClick = { onPairDevice(); showFileMenu = false },
+                            leadingIcon = { Icon(Icons.Default.PhoneIphone, contentDescription = null) }
                         )
                         if (recents.isNotEmpty()) {
                             HorizontalDivider()

@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import SwiftUI
+import ReelVaultKit
 import AppKit
 
 /// A SwiftUI path-input field with bash/zsh-style tab completion against

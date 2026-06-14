@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import Foundation
+import ReelVaultKit
 
 /// Most-recently-opened catalog list. Persists to `UserDefaults` under the
 /// key `recentCatalogs`. Entries are stored newest-first and capped at
