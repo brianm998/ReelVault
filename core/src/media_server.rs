@@ -363,14 +363,26 @@ async fn hls_file(
         return StatusCode::UNAUTHORIZED.into_response();
     }
     if !is_allowed_hls_file(&file) {
+        tracing::warn!("hls: rejected filename {file:?} ({id})");
         return StatusCode::NOT_FOUND.into_response();
     }
     let height = height.clamp(144, 2160);
     let dir = match ensure_hls_session(&state, &id, height).await {
         Some(d) => d,
-        None => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        None => {
+            tracing::warn!("hls: {id}@{height}p {file} -> 500 (no session: transcode failed or timed out)");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
     };
-    serve_file_range(&dir.join(&file).to_string_lossy(), &headers).await
+    let path = dir.join(&file);
+    if !path.exists() {
+        // The two common cases: a forward-seek past the live transcode head, or a
+        // segment that an LRU sweep removed mid-playback.
+        tracing::warn!("hls: {id}@{height}p {file} -> 404 (not on disk: ahead of live head, or evicted)");
+        return StatusCode::NOT_FOUND.into_response();
+    }
+    tracing::debug!("hls: {id}@{height}p serving {file}");
+    serve_file_range(&path.to_string_lossy(), &headers).await
 }
 
 /// Strict allowlist for the HLS `file` segment — defeats path traversal and
@@ -446,23 +458,56 @@ async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option
             },
         };
         evict_old_hls_sessions(&state.cache_dir);
+        tracing::info!(
+            "hls: start {id}@{height}p — {} from {}",
+            if copy { "copy-mux" } else { "re-encode" }, src
+        );
         spawn_hls_transcode(dir.clone(), src, height, copy);
+    } else {
+        tracing::info!("hls: join in-progress session {id}@{height}p");
     }
     drop(guard); // release the start/join lock; do NOT hold it during transcode.
 
     // Wait-for-first-segment: AVPlayer fails the asset on a 404 master, so block
     // until master.m3u8 exists, the transcode marks failure, or we time out.
-    for _ in 0..200 {
+    let started = Instant::now();
+    for i in 0..200 {
         if master.exists() {
+            tracing::info!("hls: {id}@{height}p playlist ready in {}ms", started.elapsed().as_millis());
             return Some(dir);
         }
         if failed.exists() {
+            tracing::warn!("hls: {id}@{height}p transcode failed before first segment");
             return None;
+        }
+        // Progress every ~5s so a slow-but-working transcode is distinguishable
+        // from a stuck one (the common 8K case: re-encode is just slow).
+        if i > 0 && i % 50 == 0 {
+            tracing::info!("hls: {id}@{height}p still preparing — {}s, {} segment(s)", i / 10, count_ts(&dir));
         }
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     }
-    tracing::warn!("media: hls {id}@{height}p produced no playlist within 20s");
+    tracing::warn!(
+        "hls: {id}@{height}p no playlist within 20s ({} segment(s) so far — slow transcode of a large source; the detached job keeps running, so a retry will join it)",
+        count_ts(&dir)
+    );
     None
+}
+
+/// Count finished `.ts` segments in a session dir (for progress logging).
+fn count_ts(dir: &Path) -> usize {
+    std::fs::read_dir(dir)
+        .map(|rd| {
+            rd.flatten()
+                .filter(|e| {
+                    e.file_name()
+                        .to_str()
+                        .map(|n| n.starts_with("seg_") && n.ends_with(".ts"))
+                        .unwrap_or(false)
+                })
+                .count()
+        })
+        .unwrap_or(0)
 }
 
 /// Spawn a detached ffmpeg writing a growing HLS session into `dir`. Holds one
@@ -513,6 +558,11 @@ fn spawn_hls_transcode(dir: PathBuf, src: String, height: i32, copy: bool) {
             Ok(o) if o.status.success() => {
                 ensure_endlist(&index);
                 let _ = std::fs::write(dir.join(".complete"), b"");
+                tracing::info!(
+                    "hls: complete {} ({} segments)",
+                    dir.file_name().and_then(|n| n.to_str()).unwrap_or("?"),
+                    count_ts(&dir)
+                );
             }
             Ok(o) => {
                 let stderr = String::from_utf8_lossy(&o.stderr);
@@ -584,6 +634,7 @@ fn evict_old_hls_sessions(cache_dir: &Path) {
     completed.sort_by_key(|(t, _)| *t); // oldest first
     let remove = completed.len() - KEEP;
     for (_, p) in completed.into_iter().take(remove) {
+        tracing::info!("hls: evicting old session {}", p.file_name().and_then(|n| n.to_str()).unwrap_or("?"));
         let _ = std::fs::remove_dir_all(&p);
     }
 }

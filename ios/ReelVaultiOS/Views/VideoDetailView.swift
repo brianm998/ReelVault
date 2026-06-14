@@ -55,6 +55,12 @@ final class StreamPlayer: ObservableObject {
     /// Live loopback proxy backing an HLS stream; retained for the player's
     /// lifetime (segments 502 if it deallocs mid-playback).
     private var proxy: LoopbackMediaProxy?
+    /// Diagnostics for the current item: the "unable to play" triangle otherwise
+    /// fails silently. The HLS error log names the failing segment URI + HTTP
+    /// status, which (with the loopback-proxy trace and the daemon log) pins down
+    /// intermittent failures.
+    private var diagObservers: [NSObjectProtocol] = []
+    private var statusObservation: NSKeyValueObservation?
 
     /// Prepare the rendition and start playing. Tries HLS streaming first (begins
     /// playing before the whole file transcodes, via a pinned loopback proxy),
@@ -87,7 +93,9 @@ final class StreamPlayer: ObservableObject {
             let asset = AVURLAsset(url: proxy.hlsURL(videoId: video.id, height: height))
             if (try? await asset.load(.isPlayable)) == true {
                 self.proxy = proxy
-                let p = AVPlayer(playerItem: AVPlayerItem(asset: asset))
+                let item = AVPlayerItem(asset: asset)
+                attachDiagnostics(to: item)
+                let p = AVPlayer(playerItem: item)
                 player = p
                 preparedVideoId = video.id
                 p.play()
@@ -103,6 +111,7 @@ final class StreamPlayer: ObservableObject {
         do {
             let item = try await MediaClient().playerItem(
                 videoId: video.id, height: height, ext: "mp4", from: mediaEndpoint)
+            attachDiagnostics(to: item)
             let p = AVPlayer(playerItem: item)
             player = p
             preparedVideoId = video.id
@@ -122,12 +131,50 @@ final class StreamPlayer: ObservableObject {
             preparedVideoId = nil
             error = nil
             teardownProxy()
+            clearDiagnostics()
         }
     }
 
     private func teardownProxy() {
         proxy?.stop()
         proxy = nil
+    }
+
+    /// Log a playback failure (the silent "unable to play" triangle) with the
+    /// AVPlayer error log — which records the failing segment URI + HTTP status —
+    /// plus stalls and the item's terminal error.
+    private func attachDiagnostics(to item: AVPlayerItem) {
+        clearDiagnostics()
+        statusObservation = item.observe(\.status, options: [.new]) { item, _ in
+            if item.status == .failed {
+                NSLog("ReelVault player: item FAILED — \(item.error?.localizedDescription ?? "unknown error")")
+            }
+        }
+        let nc = NotificationCenter.default
+        diagObservers.append(nc.addObserver(
+            forName: .AVPlayerItemNewErrorLogEntry, object: item, queue: .main
+        ) { [weak item] _ in
+            guard let event = item?.errorLog()?.events.last else { return }
+            NSLog("ReelVault player: HLS error — status=\(event.errorStatusCode) domain=\(event.errorDomain) uri=\(event.uri ?? "—") comment=\(event.errorComment ?? "—")")
+        })
+        diagObservers.append(nc.addObserver(
+            forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: .main
+        ) { note in
+            let err = note.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error
+            NSLog("ReelVault player: failed to play to end — \(err?.localizedDescription ?? "unknown")")
+        })
+        diagObservers.append(nc.addObserver(
+            forName: .AVPlayerItemPlaybackStalled, object: item, queue: .main
+        ) { _ in
+            NSLog("ReelVault player: playback stalled (buffering / waiting on segments)")
+        })
+    }
+
+    private func clearDiagnostics() {
+        statusObservation?.invalidate()
+        statusObservation = nil
+        diagObservers.forEach { NotificationCenter.default.removeObserver($0) }
+        diagObservers.removeAll()
     }
 
     func pause() { player?.pause() }

@@ -162,8 +162,21 @@ public final class LoopbackMediaProxy: @unchecked Sendable {
         if let range { req.setValue(range, forHTTPHeaderField: "Range") }   // byte-range passthrough
         let task = upstream.dataTask(with: req) { [weak self] data, resp, error in
             guard let self else { box.conn.cancel(); return }
-            guard let http = resp as? HTTPURLResponse, let data, error == nil else {
+            if let error {
+                NSLog("ReelVault proxy: upstream ERROR for \(target): \(error.localizedDescription)")
                 self.writeError(box, 502); return
+            }
+            guard let http = resp as? HTTPURLResponse, let data else {
+                NSLog("ReelVault proxy: no/invalid response for \(target)")
+                self.writeError(box, 502); return
+            }
+            // Trace every fetch so a failed segment (404 ahead of the live head,
+            // 500 from a dead transcode) is visible in the client log next to the
+            // AVPlayer error-log entry that references the same URI.
+            if (200..<300).contains(http.statusCode) {
+                NSLog("ReelVault proxy: \(http.statusCode) \(target) (\(data.count)B)")
+            } else {
+                NSLog("ReelVault proxy: upstream HTTP \(http.statusCode) for \(target) (\(data.count)B)")
             }
             self.writeResponse(box, http: http, body: data, target: target)
         }
