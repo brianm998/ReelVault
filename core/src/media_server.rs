@@ -11,6 +11,10 @@
 //!   clients that discovered us without mDNS.
 //! - `GET /video/{id}` — the video file, range-aware (206 / `Accept-Ranges`).
 //! - `GET /video/{id}?height=H` — an on-the-fly downscaled rendition (A4).
+//! - `GET /hls/{id}/{height}/{file}` — on-the-fly HLS stream that begins playing
+//!   before the whole file finishes transcoding; `file` is `master.m3u8`,
+//!   `index.m3u8`, or `seg_NNNNN.ts`. Height lives in the path (not a query) so
+//!   the playlist's relative segment URIs carry it (A4).
 //! - `POST /pair/start`, `POST /pair` — one-time device pairing (A5).
 //! - `POST /upload?filename=` — authenticated upload into the import dir (A6).
 //!
@@ -101,6 +105,7 @@ pub async fn serve(
         .route("/pair", post(pair))
         .route("/upload", post(upload).layer(DefaultBodyLimit::disable()))
         .route("/video/:id", get(video))
+        .route("/hls/:id/:height/*file", get(hls_file))
         .with_state(state);
 
     let config = RustlsConfig::from_pem(cert_pem.into_bytes(), key_pem.into_bytes())
@@ -338,6 +343,234 @@ async fn video(
     }
 }
 
+/// `GET /hls/{id}/{height}/{file}` — serve one file of an on-the-fly HLS stream.
+///
+/// `file` is `master.m3u8`, `index.m3u8`, or `seg_NNNNN.ts`. The first request
+/// for an `(id, height)` starts a detached ffmpeg that progressively writes a
+/// growing EVENT playlist into `<cache>/hls/{id}_{height}/`; we block that first
+/// request only until `master.m3u8` exists (AVPlayer treats a 404 on the master
+/// as fatal), then serve files straight off disk via [`serve_file_range`], which
+/// already maps the `.m3u8`/`.ts` content types and is range-aware.
+async fn hls_file(
+    AxPath((id, height, file)): AxPath<(String, i32, String)>,
+    State(state): State<MediaState>,
+    headers: HeaderMap,
+) -> Response {
+    let authz = headers
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok());
+    if !crate::auth::is_authorized(&state.db, authz) {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+    if !is_allowed_hls_file(&file) {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+    let height = height.clamp(144, 2160);
+    let dir = match ensure_hls_session(&state, &id, height).await {
+        Some(d) => d,
+        None => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
+    serve_file_range(&dir.join(&file).to_string_lossy(), &headers).await
+}
+
+/// Strict allowlist for the HLS `file` segment — defeats path traversal and
+/// keeps a half-written `seg_NNNNN.ts.tmp` (ffmpeg's `temp_file`) from ever
+/// being served.
+fn is_allowed_hls_file(file: &str) -> bool {
+    if file == "master.m3u8" || file == "index.m3u8" {
+        return true;
+    }
+    match file.strip_prefix("seg_").and_then(|s| s.strip_suffix(".ts")) {
+        Some(mid) => mid.len() == 5 && mid.bytes().all(|b| b.is_ascii_digit()),
+        None => false,
+    }
+}
+
+/// Ensure an HLS session dir for `(id, height)` exists and return it, blocking
+/// the *first* request only until `master.m3u8` appears (or the transcode fails
+/// / times out). Mirrors [`ensure_downscaled`] — dedup via `transcode_locks`,
+/// ffmpeg under a permit — but returns *before* ffmpeg finishes so the playlist
+/// can grow while playback proceeds.
+async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option<PathBuf> {
+    let dir = state.cache_dir.join("hls").join(format!("{id}_{height}"));
+    let master = dir.join("master.m3u8");
+    let complete = dir.join(".complete");
+    if complete.exists() && master.exists() {
+        return Some(dir);
+    }
+
+    // Serialize the start-vs-join decision (NOT the whole transcode). A separate
+    // key namespace from the one-shot MP4 path so the two never collide.
+    let key = format!("{id}_hls_{height}");
+    let lock = {
+        let mut map = state.transcode_locks.lock().await;
+        map.entry(key)
+            .or_insert_with(|| Arc::new(Mutex::new(())))
+            .clone()
+    };
+    let guard = lock.lock().await;
+    if master.exists() {
+        // Either already complete, or a session is running and this client joins
+        // it (tails the same growing playlist).
+        drop(guard);
+        return Some(dir);
+    }
+    // A leftover dir with no master is a previous failed/killed attempt — clear it.
+    if dir.exists() {
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+    if let Err(e) = std::fs::create_dir_all(&dir) {
+        tracing::warn!("media: hls create dir failed: {e}");
+        drop(guard);
+        return None;
+    }
+
+    // Cheapest source: a streamable proxy already <= the target height is
+    // copy-muxed (near-instant, complete VOD); a taller proxy or the original is
+    // re-encoded (downscaled) progressively.
+    let (src, copy) = match closest_streamable_proxy(state, id, height) {
+        Some((path, ph)) if ph <= height => (path, true),
+        Some((path, _)) => (path, false),
+        None => match state.db.get_video(id) {
+            Ok(Some(v)) => (v.path, false),
+            _ => {
+                drop(guard);
+                return None;
+            }
+        },
+    };
+
+    evict_old_hls_sessions(&state.cache_dir);
+    spawn_hls_transcode(dir.clone(), src, height, copy);
+    drop(guard); // release the start/join lock; do NOT hold it during transcode.
+
+    // Wait-for-first-segment: AVPlayer fails the asset on a 404 master, so block
+    // until master.m3u8 exists, the transcode marks failure, or we time out.
+    let failed = dir.join(".failed");
+    for _ in 0..200 {
+        if master.exists() {
+            return Some(dir);
+        }
+        if failed.exists() {
+            return None;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
+    tracing::warn!("media: hls {id}@{height}p produced no playlist within 20s");
+    None
+}
+
+/// Spawn a detached ffmpeg writing a growing HLS session into `dir`. Holds one
+/// ffmpeg permit for the *whole* transcode (a streaming transcode is long-lived,
+/// unlike the one-shot MP4 cache). Writes `.complete` on success or `.failed` on
+/// error — both consulted by [`ensure_hls_session`].
+fn spawn_hls_transcode(dir: PathBuf, src: String, height: i32, copy: bool) {
+    tokio::task::spawn_blocking(move || {
+        let _permit = crate::concurrency::acquire_ffmpeg_permit();
+        let index = dir.join("index.m3u8");
+        let seg = dir.join("seg_%05d.ts");
+        let mut cmd = crate::ffmpeg::ffmpeg_command();
+        cmd.arg("-y").arg("-i").arg(&src);
+        if copy {
+            // Streamable proxy already <= target height: copy video, but always
+            // re-encode audio to AAC — ProRes/proxy sources often carry PCM,
+            // which mpegts can't deliver to AVPlayer.
+            cmd.args(["-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-ac", "2"]);
+        } else {
+            let vf = format!("scale=-2:min({height}\\,ih)");
+            cmd.args([
+                "-vf", &vf,
+                "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+                "-profile:v", "high", "-level", "4.1", "-pix_fmt", "yuv420p",
+                // Keyframe every 48 frames so -hls_time cuts on GOP boundaries
+                // and independent_segments lets AVPlayer start on any segment.
+                "-g", "48", "-keyint_min", "48", "-sc_threshold", "0",
+                "-c:a", "aac", "-b:a", "128k", "-ac", "2",
+            ]);
+        }
+        cmd.args([
+            "-f", "hls",
+            "-hls_time", "4",
+            // EVENT = append-only playlist with no ENDLIST until done, so the
+            // client starts playing the first segments while the rest transcodes.
+            "-hls_playlist_type", "event",
+            // temp_file = write seg_NNNNN.ts.tmp then rename, so a reader never
+            // sees a half-muxed segment (the playlist is renamed atomically too).
+            "-hls_flags", "independent_segments+temp_file",
+            "-hls_segment_type", "mpegts",
+            "-start_number", "0",
+            "-master_pl_name", "master.m3u8",
+        ]);
+        cmd.arg("-hls_segment_filename").arg(&seg).arg(&index);
+        cmd.stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::piped());
+        match cmd.output() {
+            Ok(o) if o.status.success() => {
+                ensure_endlist(&index);
+                let _ = std::fs::write(dir.join(".complete"), b"");
+            }
+            Ok(o) => {
+                let stderr = String::from_utf8_lossy(&o.stderr);
+                let mut lines: Vec<&str> = stderr.lines().collect();
+                let start = lines.len().saturating_sub(8);
+                let tail = lines.split_off(start).join("\n");
+                tracing::warn!(
+                    "media: hls transcode failed (exit {:?}) — ffmpeg said:\n{tail}",
+                    o.status.code()
+                );
+                let _ = std::fs::write(dir.join(".failed"), b"");
+            }
+            Err(e) => {
+                tracing::warn!("media: hls ffmpeg could not spawn: {e}");
+                let _ = std::fs::write(dir.join(".failed"), b"");
+            }
+        }
+    });
+}
+
+/// Append `#EXT-X-ENDLIST` if ffmpeg didn't (it normally does on a clean exit,
+/// but a killed process leaves an open EVENT playlist that AVPlayer polls
+/// forever). Cheap defensive finalize.
+fn ensure_endlist(playlist: &Path) {
+    if let Ok(s) = std::fs::read_to_string(playlist) {
+        if !s.contains("#EXT-X-ENDLIST") {
+            use std::io::Write;
+            if let Ok(mut f) = std::fs::OpenOptions::new().append(true).open(playlist) {
+                let _ = writeln!(f, "#EXT-X-ENDLIST");
+            }
+        }
+    }
+}
+
+/// Bound disk use: keep the most-recent completed HLS session dirs and delete
+/// older completed ones. Never touches an in-progress dir (no `.complete`), which
+/// a client may be tailing.
+fn evict_old_hls_sessions(cache_dir: &Path) {
+    const KEEP: usize = 24;
+    let entries = match std::fs::read_dir(cache_dir.join("hls")) {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+    let mut completed: Vec<(std::time::SystemTime, PathBuf)> = Vec::new();
+    for ent in entries.flatten() {
+        let p = ent.path();
+        if !p.is_dir() {
+            continue;
+        }
+        if let Ok(meta) = std::fs::metadata(p.join(".complete")) {
+            completed.push((meta.modified().unwrap_or(std::time::UNIX_EPOCH), p));
+        }
+    }
+    if completed.len() <= KEEP {
+        return;
+    }
+    completed.sort_by_key(|(t, _)| *t); // oldest first
+    let remove = completed.len() - KEEP;
+    for (_, p) in completed.into_iter().take(remove) {
+        let _ = std::fs::remove_dir_all(&p);
+    }
+}
+
 /// Resolve a playable rendition of `id` capped near `height` px. Prefers an
 /// existing proxy closest to the requested height (so we don't transcode the —
 /// possibly huge — original on demand, the whole point for remote tablet/phone
@@ -433,14 +666,24 @@ async fn ensure_downscaled(state: &MediaState, id: &str, src: &str, height: i32)
 /// then transcodes the original). This is what makes remote playback cheap —
 /// serving a pre-rendered proxy beats transcoding a multi-GB original per play.
 fn closest_proxy_path(state: &MediaState, id: &str, height: i32) -> Option<String> {
+    let (path, ph) = closest_streamable_proxy(state, id, height)?;
+    tracing::info!("media: serving proxy {path} ({ph}p) for {id} (requested {height}p)");
+    Some(path)
+}
+
+/// Like [`closest_proxy_path`] but also returns the chosen proxy's height. The
+/// HLS path uses the height to decide whether it can copy-mux the proxy (already
+/// at or below the target) or must downscale-re-encode it.
+///
+/// Only proxies the client can actually decode (H.264/HEVC) are considered. A
+/// proxy in a mastering codec — common when proxies were made by an external
+/// tool (e.g. a ProRes-422 .mov) — would download fine but AVPlayer can't play
+/// it, so we skip it and let the caller transcode to H.264 instead.
+fn closest_streamable_proxy(state: &MediaState, id: &str, height: i32) -> Option<(String, i32)> {
     let proxies = match state.db.list_proxies(id) {
         Ok(p) if !p.is_empty() => p,
         _ => return None,
     };
-    // Only consider proxies the client can actually decode (H.264/HEVC). A proxy
-    // in a mastering codec — common when proxies were made by an external tool
-    // (e.g. a ProRes-422 .mov) — would download fine but AVPlayer can't play it,
-    // so we skip it here and let the caller transcode to H.264 instead.
     let candidates: Vec<_> = proxies
         .iter()
         .filter(|p| is_streamable_codec(&p.codec_video))
@@ -454,11 +697,7 @@ fn closest_proxy_path(state: &MediaState, id: &str, height: i32) -> Option<Strin
         .min_by_key(|p| p.height)
         .or_else(|| candidates.iter().max_by_key(|p| p.height))?;
     if std::path::Path::new(&chosen.path).exists() {
-        tracing::info!(
-            "media: serving {} proxy {} ({}x{}) for {} (requested {}p)",
-            chosen.codec_video, chosen.filename, chosen.width, chosen.height, id, height
-        );
-        Some(chosen.path.clone())
+        Some((chosen.path.clone(), chosen.height))
     } else {
         // Proxy registered but its file is missing (unmounted drive, moved) —
         // fall back to transcoding the original.
