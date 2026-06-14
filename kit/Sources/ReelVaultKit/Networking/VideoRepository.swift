@@ -68,12 +68,20 @@ public class VideoRepository: ObservableObject {
                     target: .dns(host: host, port: port),
                     transportSecurity: .plaintext
                 )
-            case .pinnedTLS:
-                // TODO(C1): fingerprint-pinned TLS for the iOS client. Until that
-                // lands, refuse rather than silently downgrade to plaintext.
-                NSLog("ReelVault: pinned-TLS transport not yet implemented")
-                isConnected = false
-                return false
+            case .pinnedTLS(let fingerprintHex):
+                // Fetch the server's self-signed cert (TOFU), verify its
+                // fingerprint, and pin it as the sole trust root.
+                guard let der = await PinnedTLS.fetchServerCertificate(
+                    host: host, port: port, expectedFingerprintHex: fingerprintHex
+                ) else {
+                    NSLog("ReelVault: could not fetch/verify server certificate for pinning")
+                    isConnected = false
+                    return false
+                }
+                transport = try HTTP2ClientTransport.Posix(
+                    target: .dns(host: host, port: port),
+                    transportSecurity: PinnedTLS.clientSecurity(pinnedCertDER: der)
+                )
             }
             let client = GRPCClient(transport: transport)
             self.grpcClient = client
