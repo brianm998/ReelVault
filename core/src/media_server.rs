@@ -363,10 +363,11 @@ async fn hls_file(
         return StatusCode::UNAUTHORIZED.into_response();
     }
     let height = height.clamp(144, 2160);
-    // Progress for the client's readiness gate (does not start a session itself;
-    // the client's playlist load does that).
+    // Progress for the client's readiness gate. This also *starts* the session,
+    // so the client can drive everything from status polling and only build the
+    // player once enough is buffered.
     if file == "status" {
-        return hls_status(&state, &id, height);
+        return hls_status(&state, &id, height).await;
     }
     if !is_allowed_hls_file(&file) {
         tracing::warn!("hls: rejected filename {file:?} ({id})");
@@ -391,14 +392,21 @@ async fn hls_file(
 }
 
 /// `GET /hls/{id}/{height}/status` — JSON progress for the client's readiness
-/// gate: how many segments are transcoded and whether the session is complete.
-/// The client knows the video duration, so it can estimate the encode rate (by
-/// polling) and decide whether to start now or show an ETA.
-fn hls_status(state: &MediaState, id: &str, height: i32) -> Response {
+/// gate: how many segments are transcoded, whether the session is complete, and
+/// whether the transcode failed. Also starts/joins the session so polling alone
+/// drives the transcode. The client knows the video duration, so it can estimate
+/// the encode rate (by polling) and decide whether to start now or show an ETA.
+async fn hls_status(state: &MediaState, id: &str, height: i32) -> Response {
+    // Start (or join) the session; ignore the result — `.failed`/segment counts
+    // below report the real state (a slow first segment returns None on timeout
+    // but is NOT a failure; the detached transcode keeps going).
+    let _ = ensure_hls_session(state, id, height).await;
     let dir = state.cache_dir.join("hls").join(format!("{id}_{height}"));
     let segments = count_ts(&dir);
     let complete = dir.join(".complete").exists();
-    let body = format!("{{\"segments\":{segments},\"complete\":{complete},\"segSeconds\":4}}");
+    let failed = dir.join(".failed").exists();
+    let body =
+        format!("{{\"segments\":{segments},\"complete\":{complete},\"failed\":{failed},\"segSeconds\":4}}");
     Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
@@ -507,7 +515,8 @@ async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option
         );
         spawn_hls_transcode(dir.clone(), src, height, copy);
     } else {
-        tracing::info!("hls: join in-progress session {id}@{height}p");
+        // Debug, not info: status polling joins every second and would spam.
+        tracing::debug!("hls: join in-progress session {id}@{height}p");
     }
     drop(guard); // release the start/join lock; do NOT hold it during transcode.
 

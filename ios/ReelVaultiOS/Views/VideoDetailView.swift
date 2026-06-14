@@ -88,32 +88,37 @@ final class StreamPlayer: ObservableObject {
         // stream raw over Wi-Fi.
         let height = Self.streamHeight()
 
-        // 1) HLS streaming via the loopback proxy: AVPlayer plays as segments
-        //    arrive instead of waiting for the whole file.
+        // 1) HLS streaming via the loopback proxy. Drive it from /status: wait
+        //    (spinner + ETA) until enough is transcoded to play smoothly, THEN
+        //    build a fresh player on the now multi-segment playlist and play. We
+        //    deliberately do NOT create the player early and hold it — that left
+        //    AVPlayer fetching the playlist but never a segment.
         teardownProxy()
         let proxy = LoopbackMediaProxy(endpoint: mediaEndpoint)
         do {
             _ = try await proxy.start()
-            let asset = AVURLAsset(url: proxy.hlsURL(videoId: video.id, height: height))
-            if (try? await asset.load(.isPlayable)) == true {
-                self.proxy = proxy
-                let item = AVPlayerItem(asset: asset)
-                attachDiagnostics(to: item)
-                let p = AVPlayer(playerItem: item)
-                // Readiness gate: for a sub-realtime re-encode, wait (spinner +
-                // ETA) until enough is buffered to play through without stalling.
-                // Returns ~immediately for complete / copy-mux / fast-enough cases.
-                await waitUntilReady(proxy: proxy, video: video, height: height)
-                player = p
-                preparedVideoId = video.id
-                p.play()
-                return
+            self.proxy = proxy
+            let outcome = await waitUntilReady(proxy: proxy, video: video, height: height)
+            if outcome != .failed {
+                let asset = AVURLAsset(url: proxy.hlsURL(videoId: video.id, height: height))
+                if (try? await asset.load(.isPlayable)) == true {
+                    let item = AVPlayerItem(asset: asset)
+                    attachDiagnostics(to: item)
+                    let p = AVPlayer(playerItem: item)
+                    player = p
+                    preparedVideoId = video.id
+                    p.play()
+                    NSLog("ReelVault: HLS playing \(video.id) (h\(height), \(outcome))")
+                    return
+                }
+                NSLog("ReelVault: HLS asset not playable for \(video.id) (h\(height)) — falling back to download")
+            } else {
+                NSLog("ReelVault: HLS transcode failed for \(video.id) (h\(height)) — falling back to download")
             }
-            NSLog("ReelVault: HLS not playable for \(video.id) (h\(height)); falling back to download")
         } catch {
-            NSLog("ReelVault: HLS proxy start failed for \(video.id): \(error); falling back to download")
+            NSLog("ReelVault: HLS proxy start failed for \(video.id): \(error) — falling back to download")
         }
-        proxy.stop()
+        teardownProxy()
 
         // 2) Fallback: download-then-play (pin-verified, correct but not progressive).
         do {
@@ -144,49 +149,70 @@ final class StreamPlayer: ObservableObject {
         }
     }
 
-    /// Poll the server's HLS status and return once it's safe to start playing
-    /// without stalling: the session is complete, the encoder keeps up with
-    /// playback, or enough is buffered that playback won't catch the encoder
-    /// (buffer ≥ duration × (1 − encodeRate)). Publishes an ETA after a short
-    /// grace. Any error or the wait cap → just play (never worse than before).
-    private func waitUntilReady(proxy: LoopbackMediaProxy, video: VideoSummary, height: Int) async {
-        let durationSec = Double(video.durationMs) / 1000.0
-        guard durationSec > 0 else { return }
-        let statusURL = proxy.statusURL(videoId: video.id, height: height)
-        let start = Date()
-        let maxWait: TimeInterval = 90
-        var prev: (buffered: Double, at: Date)?
-        while Date().timeIntervalSince(start) < maxWait {
-            if Task.isCancelled { return }
-            guard let status = await fetchStatus(statusURL) else { return }
-            if status.complete { preparingDetail = nil; return }
-            let buffered = Double(status.segments * status.segSeconds)
-            let now = Date()
-            if let prev {
-                let dt = now.timeIntervalSince(prev.at)
-                let rate = dt > 0 ? max(0, (buffered - prev.buffered) / dt) : 0
-                // Either the encoder keeps up (with a small head start), or we've
-                // buffered enough that playback can't catch the encoder before it
-                // finishes the file.
-                let target = durationSec * (1.0 - min(rate, 0.99))
-                if (rate >= 0.95 && buffered >= 6) || buffered >= target {
-                    preparingDetail = nil
-                    return
-                }
-                if now.timeIntervalSince(start) >= 2.5 {
-                    let eta = rate > 0.05 ? (target - buffered) / rate : Double.infinity
-                    preparingDetail = eta.isFinite
-                        ? "Preparing… ready in ~\(Int(eta.rounded()))s"
-                        : "Preparing…"
-                }
+    enum ReadyOutcome: Equatable, CustomStringConvertible {
+        case ready, capped, failed
+        var description: String {
+            switch self {
+            case .ready: return "ready"
+            case .capped: return "cap-reached"
+            case .failed: return "failed"
             }
-            prev = (buffered, now)
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
         }
-        preparingDetail = nil
     }
 
-    private struct HLSStatus { let segments: Int; let complete: Bool; let segSeconds: Int }
+    /// Poll the server's HLS `/status` (which also starts the transcode) until
+    /// it's safe to start playing without stalling: the session is complete, the
+    /// encoder keeps up with playback, or enough is buffered that playback can't
+    /// catch the encoder (buffer ≥ duration × (1 − encodeRate)). Publishes an ETA
+    /// after a short grace. `.failed` → caller falls back to download; a status
+    /// error or the wait cap → `.ready`/`.capped` so we still try to play.
+    private func waitUntilReady(proxy: LoopbackMediaProxy, video: VideoSummary, height: Int) async -> ReadyOutcome {
+        let durationSec = max(1, Double(video.durationMs) / 1000.0)
+        let statusURL = proxy.statusURL(videoId: video.id, height: height)
+        let start = Date()
+        let maxWait: TimeInterval = 60
+        preparingDetail = "Preparing…"
+        // A short window of samples → a smoothed rate that ignores the 0→1
+        // segment jump (which looked like an infinitely fast encoder).
+        var samples: [(buffered: Double, at: Date)] = []
+        while Date().timeIntervalSince(start) < maxWait {
+            if Task.isCancelled { return .ready }
+            guard let status = await fetchStatus(statusURL) else { return .ready }
+            if status.failed { return .failed }
+            if status.complete { preparingDetail = nil; return .ready }
+            let buffered = Double(status.segments * status.segSeconds)
+            let now = Date()
+            samples.append((buffered, now))
+            if samples.count > 6 { samples.removeFirst() }
+            var rate = 0.0
+            if let first = samples.first, samples.count >= 2 {
+                let dt = now.timeIntervalSince(first.at)
+                if dt > 0.5 { rate = max(0, (buffered - first.buffered) / dt) }
+            }
+            let target = durationSec * (1.0 - min(rate, 0.95))
+            // Need a real head start (≥2 segments) AND either the encoder keeps up
+            // or there's enough buffer to finish without stalling.
+            if buffered >= 8, rate >= 1.0 || buffered >= target {
+                NSLog("ReelVault: HLS ready \(video.id) — buffered \(Int(buffered))s, rate \(String(format: "%.2f", rate))")
+                preparingDetail = nil
+                return .ready
+            }
+            if now.timeIntervalSince(start) >= 2.5 {
+                if buffered >= 4, rate > 0.05 {
+                    let eta = max(0, (target - buffered) / rate)
+                    preparingDetail = "Preparing… ready in ~\(Int(eta.rounded()))s"
+                } else {
+                    preparingDetail = "Preparing…"
+                }
+            }
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+        }
+        NSLog("ReelVault: HLS readiness cap reached for \(video.id) — playing anyway")
+        preparingDetail = nil
+        return .capped
+    }
+
+    private struct HLSStatus { let segments: Int; let complete: Bool; let failed: Bool; let segSeconds: Int }
 
     private func fetchStatus(_ url: URL) async -> HLSStatus? {
         guard let (data, _) = try? await URLSession.shared.data(from: url),
@@ -195,6 +221,7 @@ final class StreamPlayer: ObservableObject {
         return HLSStatus(
             segments: (obj["segments"] as? Int) ?? 0,
             complete: (obj["complete"] as? Bool) ?? false,
+            failed: (obj["failed"] as? Bool) ?? false,
             segSeconds: (obj["segSeconds"] as? Int) ?? 4)
     }
 
