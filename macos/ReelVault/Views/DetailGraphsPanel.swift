@@ -43,6 +43,12 @@ struct DetailGraphsPanel: View {
         (selectedId ?? "") + ":" + frames.map { $0 == nil ? "0" : "1" }.joined()
     }
 
+    /// Audio loudness-over-time for the selected video (the daemon's ffmpeg
+    /// series), each sample normalized to 0...1. Empty when there's no audio.
+    private var loudness: [Float] { selectedId.flatMap { gridViewModel.audioLoudness[$0] } ?? [] }
+    private var hasStats: Bool { stats.count >= 2 }
+    private var hasLoudness: Bool { loudness.count >= 2 }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
@@ -59,7 +65,7 @@ struct DetailGraphsPanel: View {
             .padding(.bottom, 8)
             Divider()
 
-            if stats.count < 2 {
+            if !hasStats && !hasLoudness {
                 Spacer()
                 Text(selectedId == nil ? "Select a video" : "Analyzing frames…")
                     .font(.caption)
@@ -69,12 +75,20 @@ struct DetailGraphsPanel: View {
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
-                        sectionLabel("Brightness")
-                        brightnessChart
-                        sectionLabel("Color over time")
-                        colorTimeline
-                        sectionLabel("RGB channels")
-                        rgbChart
+                        if hasStats {
+                            sectionLabel("Brightness")
+                            brightnessChart
+                            sectionLabel("Color over time")
+                            colorTimeline
+                            sectionLabel("RGB channels")
+                            rgbChart
+                        }
+                        // Loudness comes from the daemon (ffmpeg), independent of
+                        // the scrub frames, so it can appear before/without them.
+                        if hasLoudness {
+                            sectionLabel("Loudness")
+                            loudnessChart
+                        }
                     }
                     .padding(12)
                 }
@@ -131,6 +145,36 @@ struct DetailGraphsPanel: View {
         .cornerRadius(4)
     }
 
+    /// Filled loudness curve across the clip (left = start, right = end). Values
+    /// are normalized momentary loudness in 0...1 (silence ≈ 0, full scale ≈ 1).
+    private var loudnessChart: some View {
+        Canvas { ctx, size in
+            guard loudness.count >= 2 else { return }
+            let line = loudnessPath(size: size)
+            var area = line
+            area.addLine(to: CGPoint(x: size.width, y: size.height))
+            area.addLine(to: CGPoint(x: 0, y: size.height))
+            area.closeSubpath()
+            let teal = Color(red: 0.30, green: 0.82, blue: 0.88)
+            ctx.fill(area, with: .color(teal.opacity(0.20)))
+            ctx.stroke(line, with: .color(teal), lineWidth: 2)
+        }
+        .frame(height: 72)
+        .background(Color(white: 0.12))
+        .cornerRadius(4)
+    }
+
+    private func loudnessPath(size: CGSize) -> Path {
+        var p = Path()
+        let n = loudness.count
+        for (i, v) in loudness.enumerated() {
+            let x = n > 1 ? size.width * CGFloat(i) / CGFloat(n - 1) : 0
+            let y = size.height * (1 - CGFloat(max(0, min(1, Double(v)))))
+            if i == 0 { p.move(to: CGPoint(x: x, y: y)) } else { p.addLine(to: CGPoint(x: x, y: y)) }
+        }
+        return p
+    }
+
     private func path(for value: (FrameStat) -> Double, size: CGSize) -> Path {
         var p = Path()
         let n = stats.count
@@ -143,7 +187,10 @@ struct DetailGraphsPanel: View {
     }
 
     private func recompute() {
-        if let id = selectedId { gridViewModel.loadScrubFrames(videoId: id) }
+        if let id = selectedId {
+            gridViewModel.loadScrubFrames(videoId: id)
+            gridViewModel.loadAudioLoudness(videoId: id)
+        }
         // Snapshot each frame to an immutable CGImage on the main actor before
         // handing work off: NSImage isn't Sendable and these instances stay
         // owned by the view model, but CGImage is, so the per-pixel averaging

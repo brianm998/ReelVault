@@ -66,9 +66,17 @@ fun DetailGraphsPanel(
     val selectedId by viewModel.selectedVideoId.collectAsState()
     val scrubMap by viewModel.scrubFrames.collectAsState()
     val hiResMap by viewModel.hiResScrubFrames.collectAsState()
+    val loudnessMap by viewModel.audioLoudness.collectAsState()
 
-    // Ensure the frames are loading even if the centre view hasn't asked yet.
-    LaunchedEffect(selectedId) { selectedId?.let { viewModel.loadScrubFrames(it) } }
+    // Ensure the frames and loudness series are loading even if the centre view
+    // hasn't asked yet.
+    LaunchedEffect(selectedId) {
+        selectedId?.let {
+            viewModel.loadScrubFrames(it)
+            viewModel.loadAudioLoudness(it)
+        }
+    }
+    val loudness: List<Float> = selectedId?.let { loudnessMap[it] } ?: emptyList()
 
     // Prefer the detail-resolution frames per index, falling back to the base
     // set — more pixels make for steadier averages, and this tracks whatever
@@ -123,7 +131,12 @@ fun DetailGraphsPanel(
         // structure stays balanced when `stats` flips from empty to populated —
         // an early return there corrupts Compose's group stack and crashes
         // recomposition.
-        if (stats.size < 2) {
+        val hasStats = stats.size >= 2
+        val hasLoudness = loudness.size >= 2
+        // if/else (not an early `return@Column`) so the Column's child-group
+        // structure stays balanced when the content flips from empty to
+        // populated — an early return there corrupts Compose's group stack.
+        if (!hasStats && !hasLoudness) {
             Box(modifier = Modifier.fillMaxWidth().fillMaxHeight(), contentAlignment = Alignment.Center) {
                 Text(
                     text = if (selectedId == null) "Select a video" else "Analyzing frames…",
@@ -136,14 +149,22 @@ fun DetailGraphsPanel(
                 modifier = Modifier.fillMaxWidth().padding(ReelVaultSpacing.Medium),
                 verticalArrangement = Arrangement.spacedBy(ReelVaultSpacing.Medium),
             ) {
-                SectionLabel("Brightness")
-                BrightnessChart(stats)
+                if (hasStats) {
+                    SectionLabel("Brightness")
+                    BrightnessChart(stats)
 
-                SectionLabel("Color over time")
-                ColorTimeline(stats)
+                    SectionLabel("Color over time")
+                    ColorTimeline(stats)
 
-                SectionLabel("RGB channels")
-                RgbChart(stats)
+                    SectionLabel("RGB channels")
+                    RgbChart(stats)
+                }
+                // Loudness comes from the daemon (ffmpeg), independent of the
+                // scrub frames, so it can appear before/without the others.
+                if (hasLoudness) {
+                    SectionLabel("Loudness")
+                    LoudnessChart(loudness)
+                }
             }
         }
     }
@@ -185,6 +206,38 @@ private fun BrightnessChart(stats: List<FrameStat>) {
                 }
             }
             drawPath(line, color = Color.White, style = Stroke(width = 2f))
+        }
+    }
+}
+
+/** Filled loudness curve across the clip (left = start, right = end). Values are
+ *  normalized momentary loudness in 0..1 (silence ≈ 0, full scale ≈ 1). */
+@Composable
+private fun LoudnessChart(loudness: List<Float>) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .background(Color(0xFF1E1E1E), RoundedCornerShape(4.dp)),
+    ) {
+        Canvas(modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(4.dp)) {
+            val n = loudness.size
+            if (n < 2) return@Canvas
+            fun px(i: Int) = size.width * i / (n - 1)
+            fun py(v: Float) = size.height * (1f - v.coerceIn(0f, 1f))
+            val area = Path().apply {
+                moveTo(0f, size.height)
+                loudness.forEachIndexed { i, v -> lineTo(px(i), py(v)) }
+                lineTo(size.width, size.height)
+                close()
+            }
+            drawPath(area, color = Color(0xFF4DD0E1).copy(alpha = 0.20f))
+            val line = Path().apply {
+                loudness.forEachIndexed { i, v ->
+                    if (i == 0) moveTo(px(i), py(v)) else lineTo(px(i), py(v))
+                }
+            }
+            drawPath(line, color = Color(0xFF4DD0E1), style = Stroke(width = 2f))
         }
     }
 }

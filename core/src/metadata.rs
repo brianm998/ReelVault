@@ -855,6 +855,83 @@ pub(crate) fn merge_make_model(
     )
 }
 
+/// Extract an audio loudness-over-time series for the detail view's volume
+/// graph. Runs ffmpeg's EBU R128 meter over the file's audio and reads the
+/// momentary-loudness (`M:`) value it logs (~10 per second), then averages
+/// those down to at most `MAX_LOUDNESS_SAMPLES` points and normalises each to
+/// [0, 1] over a -60..0 LUFS window (silence ≈ 0, full scale ≈ 1).
+///
+/// Returns an empty vec when the file has no audio or ffmpeg can't be run — the
+/// caller then renders no graph. Honours the global ffmpeg permit, since a
+/// full-file audio decode over the (slow, networked) library is exactly the
+/// kind of I/O that throttle exists to bound.
+pub fn extract_audio_loudness(video_path: &Path) -> Vec<f32> {
+    const MAX_LOUDNESS_SAMPLES: usize = 480;
+    const FLOOR_DB: f32 = -60.0;
+    const RANGE_DB: f32 = 60.0; // 0 dB (loud) − FLOOR_DB (silence)
+
+    let _permit = crate::concurrency::acquire_ffmpeg_permit();
+    let output = match crate::ffmpeg::ffmpeg_command()
+        .args([
+            "-hide_banner",
+            "-nostats",
+            "-i",
+            video_path.to_str().unwrap_or(""),
+            "-vn", // ignore video — only the audio loudness is wanted
+            "-af",
+            "ebur128=metadata=1",
+            "-f",
+            "null",
+            "-",
+        ])
+        .output()
+    {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
+
+    // ebur128 logs its per-frame readings to stderr, e.g.
+    //   [Parsed_ebur128_0 @ 0x..] t: 0.1 ... M: -23.4 S: -120.7 I: ...
+    // Pull the momentary-loudness (M) value out of each such line.
+    let log = String::from_utf8_lossy(&output.stderr);
+    let mut db_values: Vec<f32> = Vec::new();
+    for line in log.lines() {
+        if let Some(idx) = line.find("M:") {
+            let token = line[idx + 2..].split_whitespace().next().unwrap_or("");
+            if let Ok(db) = token.parse::<f32>() {
+                if db.is_finite() {
+                    db_values.push(db);
+                }
+            }
+        }
+    }
+    if db_values.is_empty() {
+        return Vec::new();
+    }
+
+    downsample_avg(&db_values, MAX_LOUDNESS_SAMPLES)
+        .into_iter()
+        .map(|db| ((db.clamp(FLOOR_DB, 0.0) - FLOOR_DB) / RANGE_DB).clamp(0.0, 1.0))
+        .collect()
+}
+
+/// Average `src` down into at most `max` evenly spaced bins (returns it
+/// unchanged when already short enough). Used to keep the loudness series small
+/// regardless of clip length.
+fn downsample_avg(src: &[f32], max: usize) -> Vec<f32> {
+    if src.len() <= max {
+        return src.to_vec();
+    }
+    (0..max)
+        .map(|i| {
+            let start = i * src.len() / max;
+            let end = (((i + 1) * src.len() / max).max(start + 1)).min(src.len());
+            let slice = &src[start..end];
+            slice.iter().sum::<f32>() / slice.len() as f32
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

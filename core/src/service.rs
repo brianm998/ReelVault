@@ -153,6 +153,50 @@ impl ReelVaultService {
             .map_err(|e| Status::internal(format!("blocking task panicked: {e}")))?
     }
 
+    /// Compute the audio loudness-over-time blob for `video_id` (see
+    /// [`crate::metadata::extract_audio_loudness`]): little-endian f32 samples
+    /// in [0, 1], one per time slice. Returns empty bytes when the video is
+    /// unknown or has no audio track — the caller streams that back and the
+    /// client simply shows no graph. The ffmpeg decode runs off the async
+    /// runtime via `run_blocking`.
+    #[allow(clippy::result_large_err)]
+    async fn audio_loudness_blob(&self, video_id: &str) -> std::result::Result<Vec<u8>, Status> {
+        let video = match self.db.get_video(video_id) {
+            Ok(Some(v)) => v,
+            _ => return Ok(Vec::new()),
+        };
+        // Skip the (potentially slow) decode entirely for videos with no audio.
+        let has_audio = self
+            .db
+            .get_connection()
+            .ok()
+            .and_then(|c| {
+                c.query_row(
+                    "SELECT codec_audio FROM metadata WHERE video_id = ?",
+                    [video_id],
+                    |row| row.get::<_, Option<String>>(0),
+                )
+                .ok()
+            })
+            .flatten()
+            .map(|s| !s.is_empty())
+            .unwrap_or(false);
+        if !has_audio {
+            return Ok(Vec::new());
+        }
+
+        let path = video.path.clone();
+        self.run_blocking(move |_svc| {
+            let samples = crate::metadata::extract_audio_loudness(std::path::Path::new(&path));
+            let mut bytes = Vec::with_capacity(samples.len() * 4);
+            for s in samples {
+                bytes.extend_from_slice(&s.to_le_bytes());
+            }
+            Ok(bytes)
+        })
+        .await
+    }
+
     /// Load the user's custom camera-name overrides from the catalog
     /// config table and pre-normalise them into the map shape that
     /// [`camera_names::marketing_name_for_with_custom`] expects.
@@ -1210,6 +1254,22 @@ impl ReelVaultTrait for ReelVaultService {
         request: Request<GetThumbnailRequest>,
     ) -> std::result::Result<Response<Self::GetThumbnailStream>, Status> {
         let req = request.into_inner();
+
+        // Audio loudness-over-time series for the detail view's volume graph,
+        // delivered through this (already polymorphic) thumbnail RPC under a
+        // special size token — the same idea as the "scrub_N" frames — so it
+        // needs no dedicated RPC/proto. The payload is the loudness blob (see
+        // audio_loudness_blob): little-endian f32 samples, each in [0, 1].
+        if req.size == "audio_loudness" {
+            let data = self.audio_loudness_blob(&req.video_id).await?;
+            let (tx, rx) = tokio::sync::mpsc::channel(1);
+            tokio::spawn(async move {
+                let _ = tx.send(Ok(ThumbnailChunk { data })).await;
+            });
+            return Ok(Response::new(
+                Box::pin(ReceiverStream::new(rx)) as Self::GetThumbnailStream,
+            ));
+        }
 
         // Higher-resolution request (detail view): serve a width-specific
         // variant, generating just that one frame on demand. Bypasses the

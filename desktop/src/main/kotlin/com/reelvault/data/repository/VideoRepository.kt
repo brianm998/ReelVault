@@ -540,6 +540,26 @@ class VideoRepository(
             null
         }
 
+    /** Fetch the audio loudness-over-time series for [videoId] (the detail
+     *  view's volume graph). It travels over the thumbnail RPC under the special
+     *  "audio_loudness" size token; the daemon returns the series as
+     *  little-endian f32 samples, each normalized to 0..1. An empty list means
+     *  the video has no audio track (or the series was unavailable). */
+    suspend fun getAudioLoudness(videoId: String): List<Float> = withContext(Dispatchers.IO) {
+        val bytes = try {
+            getThumbnail(videoId, "audio_loudness")
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.warn("Failed to get audio loudness for $videoId: ${e.message}")
+            null
+        } ?: return@withContext emptyList()
+        val buf = java.nio.ByteBuffer.wrap(bytes).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+        val out = ArrayList<Float>(bytes.size / 4)
+        while (buf.remaining() >= 4) out.add(buf.float)
+        out
+    }
+
     suspend fun addLibraryLocation(path: String, recursive: Boolean = true): Boolean = withContext(Dispatchers.IO) {
         addLibraryLocationWithMessage(path, recursive).first
     }

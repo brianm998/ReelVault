@@ -3210,6 +3210,29 @@ class GridViewModel(
     }
 
     /** Fetch (once per video) the scrub frames used by the hover preview. */
+    /** Audio loudness-over-time series per video (the detail visuals panel's
+     *  volume graph), each sample normalized to 0..1. An empty list means the
+     *  video has no audio track. Cached for the session, like [scrubFrames]. */
+    private val _audioLoudness = MutableStateFlow<Map<String, List<Float>>>(emptyMap())
+    val audioLoudness: StateFlow<Map<String, List<Float>>> = _audioLoudness.asStateFlow()
+    private val audioLoudnessLoading = mutableSetOf<String>()
+
+    /** Fetch (once) the audio loudness series for [videoId] and cache it. */
+    fun loadAudioLoudness(videoId: String) {
+        if (_audioLoudness.value.containsKey(videoId)) return
+        if (videoId in audioLoudnessLoading) return
+        audioLoudnessLoading.add(videoId)
+        viewModelScope.launch {
+            try {
+                _audioLoudness.value = _audioLoudness.value + (videoId to repository.getAudioLoudness(videoId))
+            } catch (e: Exception) {
+                logger.warn("Failed to load audio loudness for $videoId", e)
+            } finally {
+                audioLoudnessLoading.remove(videoId)
+            }
+        }
+    }
+
     fun loadScrubFrames(videoId: String) {
         if (_scrubFrames.value.containsKey(videoId)) return
         if (videoId in scrubLoading) return

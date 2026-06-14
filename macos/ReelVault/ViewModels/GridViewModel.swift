@@ -216,6 +216,11 @@ class GridViewModel: ObservableObject {
     // Scrub frames per video, loaded lazily on first hover.
     @Published var scrubFrames: [String: [NSImage?]] = [:]
     private var scrubLoading: Set<String> = []
+    /// Audio loudness-over-time series per video (the detail visuals panel's
+    /// volume graph), each sample normalized to 0...1. An empty array means the
+    /// video has no audio track. Cached for the session, like `scrubFrames`.
+    @Published var audioLoudness: [String: [Float]] = [:]
+    private var audioLoudnessLoading: Set<String> = []
 
     // Higher-resolution detail thumbnails, populated only while the user dwells
     // on the detail view (see startHiResDetail). `hiResScrubFrames` mirrors
@@ -2440,6 +2445,17 @@ class GridViewModel: ObservableObject {
             }
         }
         return out
+    }
+
+    /// Fetch (once) the audio loudness series for `videoId` and cache it.
+    func loadAudioLoudness(videoId: String) {
+        if audioLoudness[videoId] != nil { return }
+        if audioLoudnessLoading.contains(videoId) { return }
+        audioLoudnessLoading.insert(videoId)
+        Task {
+            defer { audioLoudnessLoading.remove(videoId) }
+            audioLoudness[videoId] = await repository.getAudioLoudness(videoId: videoId)
+        }
     }
 
     func loadScrubFrames(videoId: String) {

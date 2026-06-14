@@ -679,6 +679,21 @@ class VideoRepository: ObservableObject {
         return NSImage(data: data)
     }
 
+    /// Fetch the audio loudness-over-time series for `videoId` (the detail
+    /// view's volume graph). It travels over the thumbnail RPC under the special
+    /// "audio_loudness" size token; the daemon returns the series as
+    /// little-endian f32 samples, each normalized to 0...1. An empty array means
+    /// the video has no audio track (or the series was unavailable).
+    func getAudioLoudness(videoId: String) async -> [Float] {
+        guard let data = try? await getThumbnailData(videoId: videoId, size: "audio_loudness"),
+              !data.isEmpty else { return [] }
+        let count = data.count / 4
+        // macOS hosts are little-endian, matching the daemon's f32 encoding.
+        return data.withUnsafeBytes { raw in
+            (0..<count).map { raw.loadUnaligned(fromByteOffset: $0 * 4, as: Float.self) }
+        }
+    }
+
     private func getThumbnailData(videoId: String, size: String, maxWidth: Int32 = 0) async throws -> Data {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
 
