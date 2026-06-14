@@ -388,13 +388,17 @@ async fn ensure_downscaled(state: &MediaState, id: &str, src: &str, height: i32)
                 out_str.as_str(),
             ])
             .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status()
+            // Capture stderr so a failed transcode tells us *why* (e.g. ProRes
+            // RAW, which ffmpeg can't decode — see rv-frameshot). Without this
+            // the only signal is a bare exit code and the client just sees
+            // "can't be played on this device".
+            .stderr(std::process::Stdio::piped())
+            .output()
     })
     .await;
 
     match res {
-        Ok(Ok(status)) if status.success() => match std::fs::rename(&out_tmp, &out) {
+        Ok(Ok(output)) if output.status.success() => match std::fs::rename(&out_tmp, &out) {
             Ok(()) => Some(out),
             Err(e) => {
                 tracing::warn!("media: rename transcode output failed: {e}");
@@ -402,8 +406,20 @@ async fn ensure_downscaled(state: &MediaState, id: &str, src: &str, height: i32)
                 None
             }
         },
+        Ok(Ok(output)) => {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let mut lines: Vec<&str> = stderr.lines().collect();
+            let start = lines.len().saturating_sub(8);
+            let tail = lines.split_off(start).join("\n");
+            tracing::warn!(
+                "media: transcode failed for {id} @ {height}p (exit {:?}) — ffmpeg said:\n{tail}",
+                output.status.code()
+            );
+            let _ = std::fs::remove_file(&out_tmp);
+            None
+        }
         other => {
-            tracing::warn!("media: transcode failed for {id} @ {height}p: {other:?}");
+            tracing::warn!("media: transcode could not spawn for {id} @ {height}p: {other:?}");
             let _ = std::fs::remove_file(&out_tmp);
             None
         }
