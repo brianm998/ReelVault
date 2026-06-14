@@ -2,13 +2,12 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import Foundation
-import AppKit
 import GRPCCore
 import GRPCNIOTransportHTTP2
 
 extension AttributeFilterState {
     /// The proto enum value for this tri-state attribute toggle.
-    var proto: Reelvault_AttributeFilter {
+    public var proto: Reelvault_AttributeFilter {
         switch self {
         case .any: return .any
         case .yes: return .yes
@@ -18,28 +17,39 @@ extension AttributeFilterState {
 }
 
 @MainActor
-class VideoRepository: ObservableObject {
-    static let shared = VideoRepository()
+public class VideoRepository: ObservableObject {
+    public static let shared = VideoRepository()
 
     private var grpcClient: GRPCClient<HTTP2ClientTransport.Posix>?
     private var serviceClient: Reelvault_ReelVault.Client<HTTP2ClientTransport.Posix>?
     private var runTask: Task<Void, Never>?
 
-    @Published var isConnected = false
+    @Published public var isConnected = false
 
     /// Host + port of the currently-active connection, or nil when offline.
     /// Used by the launcher flow to decide whether a reconnect is needed.
-    private(set) var currentHost: String = "localhost"
-    private(set) var currentPort: Int = 50051
+    public private(set) var currentHost: String = "localhost"
+    public private(set) var currentPort: Int = 50051
 
     private init() {}
 
     // MARK: - Connection lifecycle
 
-    /// Connect to the gRPC daemon at `host`:`port`. If the repository is
-    /// already connected to a different host:port, it tears that down first
-    /// so reconnecting to a freshly-spawned daemon "just works".
-    func connect(host: String = "localhost", port: Int = 50051) async -> Bool {
+    /// Connect to the gRPC daemon at `host`:`port` over plaintext (loopback).
+    /// Thin convenience wrapper preserved for the macOS app's existing call
+    /// sites; delegates to `connect(to:)`.
+    public func connect(host: String = "localhost", port: Int = 50051) async -> Bool {
+        await connect(to: ServerEndpoint(host: host, port: port, security: .plaintext))
+    }
+
+    /// Connect to a resolved daemon endpoint. The macOS app always uses
+    /// `.plaintext` (it spawns the daemon on loopback); the iOS app uses
+    /// `.pinnedTLS` against a daemon whose self-signed certificate fingerprint
+    /// was advertised over mDNS. If already connected to the same host:port the
+    /// existing connection is reused.
+    public func connect(to endpoint: ServerEndpoint) async -> Bool {
+        let host = endpoint.host
+        let port = endpoint.port
         // Re-use the existing connection if we're already pointed at the same
         // endpoint.
         if grpcClient != nil && isConnected && currentHost == host && currentPort == port {
@@ -51,10 +61,20 @@ class VideoRepository: ObservableObject {
         }
 
         do {
-            let transport = try HTTP2ClientTransport.Posix(
-                target: .dns(host: host, port: port),
-                transportSecurity: .plaintext
-            )
+            let transport: HTTP2ClientTransport.Posix
+            switch endpoint.security {
+            case .plaintext:
+                transport = try HTTP2ClientTransport.Posix(
+                    target: .dns(host: host, port: port),
+                    transportSecurity: .plaintext
+                )
+            case .pinnedTLS:
+                // TODO(C1): fingerprint-pinned TLS for the iOS client. Until that
+                // lands, refuse rather than silently downgrade to plaintext.
+                NSLog("ReelVault: pinned-TLS transport not yet implemented")
+                isConnected = false
+                return false
+            }
             let client = GRPCClient(transport: transport)
             self.grpcClient = client
             self.serviceClient = Reelvault_ReelVault.Client(wrapping: client)
@@ -89,7 +109,7 @@ class VideoRepository: ObservableObject {
         }
     }
 
-    func disconnect() async {
+    public func disconnect() async {
         grpcClient?.beginGracefulShutdown()
         await runTask?.value
         runTask = nil
@@ -103,7 +123,7 @@ class VideoRepository: ObservableObject {
     /// Ask the daemon to mount the SQLite catalog at `path`. Returns the
     /// resulting [CatalogInfo] on success, or `nil` if the server rejected
     /// the request.
-    func openCatalog(path: String) async -> CatalogInfo? {
+    public func openCatalog(path: String) async -> CatalogInfo? {
         guard let service = serviceClient else { return nil }
         var req = Reelvault_OpenCatalogRequest()
         req.path = path
@@ -124,7 +144,7 @@ class VideoRepository: ObservableObject {
     /// Ask the daemon to drop its current catalog. Subsequent RPCs will
     /// fail until `openCatalog` succeeds again.
     @discardableResult
-    func closeCatalog() async -> Bool {
+    public func closeCatalog() async -> Bool {
         guard let service = serviceClient else { return false }
         do {
             let resp = try await service.closeCatalog(Reelvault_CloseCatalogRequest())
@@ -136,7 +156,7 @@ class VideoRepository: ObservableObject {
     }
 
     /// Returns `.closed` when no catalog is open or the call fails.
-    func getCurrentCatalog() async -> CatalogInfo {
+    public func getCurrentCatalog() async -> CatalogInfo {
         guard let service = serviceClient else { return .closed }
         do {
             let info = try await service.getCurrentCatalog(Reelvault_GetCurrentCatalogRequest())
@@ -154,7 +174,7 @@ class VideoRepository: ObservableObject {
 
     // MARK: - Videos
 
-    func listVideos(
+    public func listVideos(
         limit: Int32 = 50,
         offset: Int32 = 0,
         searchQuery: String = "",
@@ -227,7 +247,7 @@ class VideoRepository: ObservableObject {
     /// Set GPS coordinates on `videoId`. Optionally also embed them into the
     /// underlying video file via the daemon's ffmpeg helper.
     @discardableResult
-    func updateVideoLocation(
+    public func updateVideoLocation(
         videoId: String,
         latitude: Double,
         longitude: Double,
@@ -254,7 +274,7 @@ class VideoRepository: ObservableObject {
     /// also embeds `creation_time` into the file via the daemon's ffmpeg
     /// helper.
     @discardableResult
-    func updateVideoCaptureDate(
+    public func updateVideoCaptureDate(
         videoId: String,
         timestampMs: Int64,
         writeToFile: Bool = false
@@ -278,7 +298,7 @@ class VideoRepository: ObservableObject {
     /// List every user-named place in the catalog. Clients cache the result
     /// and use [GridViewModel.nameForLocation] to resolve any (lat, lon)
     /// into a name client-side.
-    func listNamedLocations() async -> [NamedLocation] {
+    public func listNamedLocations() async -> [NamedLocation] {
         guard let client = serviceClient else { return [] }
         do {
             let resp = try await client.listNamedLocations(
@@ -303,7 +323,7 @@ class VideoRepository: ObservableObject {
     /// Insert or update a named location. Pass an empty `id` to create a
     /// new row; otherwise it updates the existing one. Returns the
     /// persisted entity (with assigned id + timestamps) or nil on failure.
-    func upsertNamedLocation(
+    public func upsertNamedLocation(
         id: String,
         name: String,
         latitude: Double,
@@ -339,7 +359,7 @@ class VideoRepository: ObservableObject {
     /// Delete a named location by id. Idempotent — deleting a missing id
     /// is silently a success on the server side.
     @discardableResult
-    func deleteNamedLocation(id: String) async -> Bool {
+    public func deleteNamedLocation(id: String) async -> Bool {
         guard let client = serviceClient else { return false }
         var req = Reelvault_DeleteNamedLocationRequest()
         req.id = id
@@ -353,7 +373,7 @@ class VideoRepository: ObservableObject {
     }
 
     /// Every geotagged video in the catalog — used to populate the global map.
-    func listVideosWithLocations() async -> [VideoLocation] {
+    public func listVideosWithLocations() async -> [VideoLocation] {
         guard let client = serviceClient else { return [] }
         do {
             let resp = try await client.listVideosWithLocations(Reelvault_ListVideosWithLocationsRequest())
@@ -374,7 +394,7 @@ class VideoRepository: ObservableObject {
         }
     }
 
-    func getFilterOptions() async -> FilterOptions {
+    public func getFilterOptions() async -> FilterOptions {
         guard let client = serviceClient else { return FilterOptions() }
         do {
             let response = try await client.getFilterOptions(Reelvault_GetFilterOptionsRequest())
@@ -396,7 +416,7 @@ class VideoRepository: ObservableObject {
     /// the available values for each column (cascaded left→right) plus the set
     /// of keys that have data in the current filtered set. Returns an empty
     /// result on error so the UI degrades to "no values" rather than throwing.
-    func getMetadataFacets(
+    public func getMetadataFacets(
         locationPath: String = "",
         filterTagIds: [String] = [],
         collectionId: String? = nil,
@@ -461,7 +481,7 @@ class VideoRepository: ObservableObject {
     /// any custom overrides the user has added. Each `CameraNameMapping`
     /// already has its `marketing` field reflecting the active override
     /// (when any).
-    func listCameraNameMappings() async throws -> [CameraNameMapping] {
+    public func listCameraNameMappings() async throws -> [CameraNameMapping] {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         let response = try await client.listCameraNameMappings(
             Reelvault_ListCameraNameMappingsRequest()
@@ -479,7 +499,7 @@ class VideoRepository: ObservableObject {
     /// Save a custom override. Pass `marketing == ""` to delete the
     /// override and fall back to the built-in entry (if one exists).
     @discardableResult
-    func setCameraNameMapping(internal internalName: String,
+    public func setCameraNameMapping(internal internalName: String,
                               marketing: String) async throws -> String {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var req = Reelvault_SetCameraNameMappingRequest()
@@ -501,7 +521,7 @@ class VideoRepository: ObservableObject {
     /// catalog, plus any custom-only overrides whose lens no longer
     /// appears. Each `LensNameMapping.alias` already reflects the active
     /// override (when any).
-    func listLensNameMappings() async throws -> [LensNameMapping] {
+    public func listLensNameMappings() async throws -> [LensNameMapping] {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         let response = try await client.listLensNameMappings(
             Reelvault_ListLensNameMappingsRequest()
@@ -519,7 +539,7 @@ class VideoRepository: ObservableObject {
     /// Save a custom lens alias. Pass `alias == ""` to delete the
     /// override and fall back to displaying the raw lens string.
     @discardableResult
-    func setLensNameMapping(raw: String, alias: String) async throws -> String {
+    public func setLensNameMapping(raw: String, alias: String) async throws -> String {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var req = Reelvault_SetLensNameMappingRequest()
         req.raw = raw
@@ -536,7 +556,7 @@ class VideoRepository: ObservableObject {
 
     // MARK: - Tags / keywords
 
-    func listTags() async throws -> [Tag] {
+    public func listTags() async throws -> [Tag] {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         let response = try await client.listTags(Reelvault_ListTagsRequest())
         return response.tags.map {
@@ -546,7 +566,7 @@ class VideoRepository: ObservableObject {
 
     /// Create a new tag, or return the existing one if a tag with this name
     /// already exists (the backend's create_tag is idempotent on name).
-    func createTag(name: String, color: String = "") async throws -> Tag? {
+    public func createTag(name: String, color: String = "") async throws -> Tag? {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_CreateTagRequest()
         request.name = name
@@ -560,7 +580,7 @@ class VideoRepository: ObservableObject {
         )
     }
 
-    func tagVideos(videoIds: [String], tagId: String) async throws -> Bool {
+    public func tagVideos(videoIds: [String], tagId: String) async throws -> Bool {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_TagVideosRequest()
         request.videoIds = videoIds
@@ -569,7 +589,7 @@ class VideoRepository: ObservableObject {
         return response.success
     }
 
-    func untagVideos(videoIds: [String], tagId: String) async throws -> Bool {
+    public func untagVideos(videoIds: [String], tagId: String) async throws -> Bool {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_UntagVideosRequest()
         request.videoIds = videoIds
@@ -580,7 +600,7 @@ class VideoRepository: ObservableObject {
 
     // MARK: - Collections
 
-    func listCollections() async throws -> [Collection] {
+    public func listCollections() async throws -> [Collection] {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         let response = try await client.listCollections(Reelvault_ListCollectionsRequest())
         return response.collections.map {
@@ -589,7 +609,7 @@ class VideoRepository: ObservableObject {
         }
     }
 
-    func createCollection(name: String, isSmart: Bool = false, filterJson: String = "") async throws -> Collection? {
+    public func createCollection(name: String, isSmart: Bool = false, filterJson: String = "") async throws -> Collection? {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_CreateCollectionRequest()
         request.name = name
@@ -600,7 +620,7 @@ class VideoRepository: ObservableObject {
                           filterJson: filterJson, videoCount: response.videoCount)
     }
 
-    func deleteCollection(id: String) async throws -> Bool {
+    public func deleteCollection(id: String) async throws -> Bool {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_DeleteCollectionRequest()
         request.collectionID = id
@@ -608,7 +628,7 @@ class VideoRepository: ObservableObject {
         return response.success
     }
 
-    func addToCollection(videoIds: [String], collectionId: String) async throws -> Bool {
+    public func addToCollection(videoIds: [String], collectionId: String) async throws -> Bool {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_AddToCollectionRequest()
         request.collectionID = collectionId
@@ -617,7 +637,7 @@ class VideoRepository: ObservableObject {
         return response.success
     }
 
-    func removeFromCollection(videoIds: [String], collectionId: String) async throws -> Bool {
+    public func removeFromCollection(videoIds: [String], collectionId: String) async throws -> Bool {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_RemoveFromCollectionRequest()
         request.collectionID = collectionId
@@ -626,7 +646,7 @@ class VideoRepository: ObservableObject {
         return response.success
     }
 
-    func getVideoMetadata(videoId: String) async throws -> VideoMetadata {
+    public func getVideoMetadata(videoId: String) async throws -> VideoMetadata {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_GetMetadataRequest()
         request.videoID = videoId
@@ -636,7 +656,7 @@ class VideoRepository: ObservableObject {
 
     /// Fetch all scrub frames for [videoId] in parallel. Returns an array
     /// of [count] entries; individual entries may be nil if a frame failed.
-    func getScrubFrames(videoId: String, count: Int = 10) async -> [NSImage?] {
+    public func getScrubFrames(videoId: String, count: Int = 10) async -> [PlatformImage?] {
         let frames = await withTaskGroup(of: (Int, Data?).self) { group in
             for i in 0..<count {
                 group.addTask { [self] in
@@ -650,9 +670,9 @@ class VideoRepository: ObservableObject {
             }
             return result
         }
-        var images: [NSImage?] = Array(repeating: nil, count: count)
+        var images: [PlatformImage?] = Array(repeating: nil, count: count)
         for (i, data) in frames {
-            images[i] = data.flatMap { NSImage(data: $0) }
+            images[i] = data.flatMap { PlatformImage.fromData($0) }
         }
         return images
     }
@@ -660,10 +680,10 @@ class VideoRepository: ObservableObject {
     /// Returns nil only when the daemon reports NOT_FOUND — a definitive miss
     /// the caller should not retry. Transient failures (daemon busy,
     /// connection hiccup) rethrow, so callers that care can retry quickly.
-    func getThumbnail(videoId: String, size: String = "medium") async throws -> NSImage? {
+    public func getThumbnail(videoId: String, size: String = "medium") async throws -> PlatformImage? {
         do {
             let data = try await getThumbnailData(videoId: videoId, size: size)
-            return NSImage(data: data)
+            return PlatformImage.fromData(data)
         } catch let error as RPCError where error.code == .notFound {
             return nil
         }
@@ -672,11 +692,11 @@ class VideoRepository: ObservableObject {
     /// Fetch a single thumbnail at a higher resolution (`maxWidth` px, never
     /// upscaled past the source) — used by the detail view to upgrade scrub
     /// frames to the render size. Returns nil on any failure.
-    func getThumbnailHiRes(videoId: String, size: String, maxWidth: Int32) async -> NSImage? {
+    public func getThumbnailHiRes(videoId: String, size: String, maxWidth: Int32) async -> PlatformImage? {
         guard let data = try? await getThumbnailData(videoId: videoId, size: size, maxWidth: maxWidth) else {
             return nil
         }
-        return NSImage(data: data)
+        return PlatformImage.fromData(data)
     }
 
     /// Fetch the audio loudness-over-time series for `videoId` (the detail
@@ -684,7 +704,7 @@ class VideoRepository: ObservableObject {
     /// "audio_loudness" size token; the daemon returns the series as
     /// little-endian f32 samples, each normalized to 0...1. An empty array means
     /// the video has no audio track (or the series was unavailable).
-    func getAudioLoudness(videoId: String) async -> [Float] {
+    public func getAudioLoudness(videoId: String) async -> [Float] {
         guard let data = try? await getThumbnailData(videoId: videoId, size: "audio_loudness"),
               !data.isEmpty else { return [] }
         let count = data.count / 4
@@ -711,7 +731,7 @@ class VideoRepository: ObservableObject {
         }
     }
 
-    func updateVideoNotes(videoId: String, notes: String) async throws -> Bool {
+    public func updateVideoNotes(videoId: String, notes: String) async throws -> Bool {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_UpdateNotesRequest()
         request.videoID = videoId
@@ -722,7 +742,7 @@ class VideoRepository: ObservableObject {
 
     // MARK: - Library locations
 
-    func listLibraryLocations() async throws -> [LibraryLocation] {
+    public func listLibraryLocations() async throws -> [LibraryLocation] {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         let response = try await client.listLibraryLocations(Reelvault_ListLocationsRequest())
         return response.locations.map { l in
@@ -741,7 +761,7 @@ class VideoRepository: ObservableObject {
 
     /// List the immediate child directories of `path` that contain videos
     /// (recursively), for the library panel's expandable tree.
-    func listSubdirectories(_ path: String) async throws -> [Subdirectory] {
+    public func listSubdirectories(_ path: String) async throws -> [Subdirectory] {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_ListSubdirectoriesRequest()
         request.path = path
@@ -756,7 +776,7 @@ class VideoRepository: ObservableObject {
     }
 
     /// Add a library location. Returns (success, server message).
-    func addLibraryLocation(path: String, recursive: Bool = true) async throws -> (Bool, String) {
+    public func addLibraryLocation(path: String, recursive: Bool = true) async throws -> (Bool, String) {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_AddLocationRequest()
         request.path = path
@@ -767,7 +787,7 @@ class VideoRepository: ObservableObject {
 
     /// Remove a library location and all its indexed videos from the catalog.
     /// The video files on disk are not touched. Returns true on success.
-    func removeLibraryLocation(path: String) async throws -> Bool {
+    public func removeLibraryLocation(path: String) async throws -> Bool {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_RemoveLocationRequest()
         request.path = path
@@ -776,7 +796,7 @@ class VideoRepository: ObservableObject {
     }
 
     /// Streaming scan — yields progress events as the backend works through the library.
-    func scanLibrary(
+    public func scanLibrary(
         locationPath: String = "",
         autoGroup: Bool = true,
         filenameDateFormat: String = "",
@@ -820,16 +840,16 @@ class VideoRepository: ObservableObject {
 
     /// Subset of `ConfigResponse` the macOS client currently surfaces.
     /// Extended as new fields are exposed.
-    struct ServerConfig: Equatable {
-        let maxNativePlaybackHeight: Int
-        let proxyTargetHeight: Int
-        let maxConcurrentJobs: Int
-        let enableAutoTagging: Bool
+    public struct ServerConfig: Equatable {
+        public let maxNativePlaybackHeight: Int
+        public let proxyTargetHeight: Int
+        public let maxConcurrentJobs: Int
+        public let enableAutoTagging: Bool
         /// When true, the post-index pipeline auto-applies a "timelapse" tag
         /// to videos whose recorded resolution exceeds their camera's max
         /// in-camera video resolution. Backed by `auto_tag_history` so a
         /// user-removed tag never gets re-applied.
-        let autoTagTimelapses: Bool
+        public let autoTagTimelapses: Bool
     }
 
     /// In-memory cache of the last successfully-fetched server config.
@@ -846,12 +866,12 @@ class VideoRepository: ObservableObject {
     /// `nil` means "never fetched yet" — dialogs fall back to sensible
     /// defaults until the first fetch completes (typically <100 ms
     /// after the catalog opens).
-    private(set) var cachedConfig: ServerConfig?
+    public private(set) var cachedConfig: ServerConfig?
 
     /// Read the daemon's current config. Returns nil on transport
     /// failure so the Preferences UI never has to handle a partial
     /// state — it shows a spinner instead and re-tries on save.
-    func getConfig() async -> ServerConfig? {
+    public func getConfig() async -> ServerConfig? {
         guard let client = serviceClient else { return nil }
         do {
             let response = try await client.getConfig(Reelvault_GetConfigRequest())
@@ -876,7 +896,7 @@ class VideoRepository: ObservableObject {
     /// (The server treats negative / out-of-range values as "use the
     /// existing config".)
     @discardableResult
-    func updateConfig(
+    public func updateConfig(
         maxNativePlaybackHeight: Int? = nil,
         proxyTargetHeight: Int? = nil,
         maxConcurrentJobs: Int? = nil,
@@ -925,25 +945,25 @@ class VideoRepository: ObservableObject {
     /// panel's proxy sub-list (filename, path, resolution, size) plus
     /// the auto-detection metadata so the UI can show a "🤖
     /// auto-detected" affordance.
-    struct ProxyInfo: Identifiable, Hashable {
-        let id: String
-        let filename: String
-        let path: String
-        let sizeBytes: Int64
-        let width: Int
-        let height: Int
-        let confidence: Double
-        let autoDetected: Bool
+    public struct ProxyInfo: Identifiable, Hashable {
+        public let id: String
+        public let filename: String
+        public let path: String
+        public let sizeBytes: Int64
+        public let width: Int
+        public let height: Int
+        public let confidence: Double
+        public let autoDetected: Bool
         /// Server's verdict that this proxy fits under the locally-playable
         /// height — the detail view prefers a playable proxy for oversize masters.
-        var playableNatively: Bool = true
+        public var playableNatively: Bool = true
     }
 
     /// Break a single master ↔ proxy junction-table edge without
     /// disturbing the row's other proxy relationships. Used by the
     /// inspector's per-row "break" button.
     @discardableResult
-    func removeProxyLink(masterId: String, proxyId: String) async -> Bool {
+    public func removeProxyLink(masterId: String, proxyId: String) async -> Bool {
         guard let client = serviceClient else { return false }
         var request = Reelvault_RemoveProxyLinkRequest()
         request.masterID = masterId
@@ -959,7 +979,7 @@ class VideoRepository: ObservableObject {
 
     /// List every lower-resolution proxy of `videoId`. Sorted descending
     /// by pixel count so the highest-resolution proxy is first.
-    func listProxies(videoId: String) async throws -> [ProxyInfo] {
+    public func listProxies(videoId: String) async throws -> [ProxyInfo] {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_ListProxiesRequest()
         request.videoID = videoId
@@ -986,7 +1006,7 @@ class VideoRepository: ObservableObject {
     /// message, proxyVideoId)` tuple per server event. The final event
     /// has status="complete" and `proxyVideoId` set to the newly-created
     /// video row.
-    func generateProxy(
+    public func generateProxy(
         videoId: String,
         targetHeight: Int = 0,
         outputPath: String = ""
@@ -1024,7 +1044,7 @@ class VideoRepository: ObservableObject {
     /// Manually mark `proxyId` as a proxy for `originalId`. Pass an
     /// empty `originalId` to un-mark.
     @discardableResult
-    func setProxyOf(proxyId: String, originalId: String) async -> Bool {
+    public func setProxyOf(proxyId: String, originalId: String) async -> Bool {
         guard let client = serviceClient else { return false }
         var request = Reelvault_SetProxyOfRequest()
         request.proxyID = proxyId
@@ -1041,7 +1061,7 @@ class VideoRepository: ObservableObject {
     /// Re-run the auto-detector. Useful from the menu after a manual
     /// scan or after thumbnails are regenerated; idempotent.
     @discardableResult
-    func detectProxies() async -> (pairsCompared: Int, proxiesMarked: Int) {
+    public func detectProxies() async -> (pairsCompared: Int, proxiesMarked: Int) {
         guard let client = serviceClient else { return (0, 0) }
         do {
             let response = try await client.detectProxies(Reelvault_DetectProxiesRequest())
@@ -1065,7 +1085,7 @@ class VideoRepository: ObservableObject {
     /// finishes *throwing* when the underlying gRPC call fails. Callers own
     /// a `Task` that loops over it, applies reconnect backoff on a thrown
     /// error, and is cancelled before the repository disconnects.
-    func subscribeCatalogEvents() -> AsyncThrowingStream<CatalogEvent, Error> {
+    public func subscribeCatalogEvents() -> AsyncThrowingStream<CatalogEvent, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
                 guard let client = serviceClient else {
@@ -1127,7 +1147,7 @@ class VideoRepository: ObservableObject {
     /// Read the daemon's current watcher knobs. Returns the protocol-default
     /// (`WatchSettings.default`) on any error so the Preferences UI never
     /// has to handle a missing-value case.
-    func getWatchSettings() async -> WatchSettings {
+    public func getWatchSettings() async -> WatchSettings {
         guard let client = serviceClient else { return .default }
         do {
             let response = try await client.getWatchSettings(Reelvault_GetWatchSettingsRequest())
@@ -1147,7 +1167,7 @@ class VideoRepository: ObservableObject {
     /// truth. Side effect on the daemon: the watcher is restarted with
     /// the new values.
     @discardableResult
-    func updateWatchSettings(_ settings: WatchSettings) async -> Bool {
+    public func updateWatchSettings(_ settings: WatchSettings) async -> Bool {
         guard let client = serviceClient else { return false }
         var request = Reelvault_WatchSettings()
         request.enabled = settings.enabled
@@ -1164,7 +1184,7 @@ class VideoRepository: ObservableObject {
 
     // MARK: - Groups (Lightroom-style stacks)
 
-    func listGroupMembers(groupId: String) async throws -> (members: [VideoSummary], preferredId: String) {
+    public func listGroupMembers(groupId: String) async throws -> (members: [VideoSummary], preferredId: String) {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_ListGroupMembersRequest()
         request.groupID = groupId
@@ -1172,7 +1192,7 @@ class VideoRepository: ObservableObject {
         return (response.members.map(Self.makeSummary), response.preferredVideoID)
     }
 
-    func createGroup(videoIds: [String], name: String = "", preferredVideoId: String = "") async throws -> GroupInfo? {
+    public func createGroup(videoIds: [String], name: String = "", preferredVideoId: String = "") async throws -> GroupInfo? {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_CreateGroupRequest()
         request.videoIds = videoIds
@@ -1190,7 +1210,7 @@ class VideoRepository: ObservableObject {
     /// Manually attach proxies — the proxy-world analogue of `createGroup`.
     /// The server picks the highest-resolution member of `videoIds` as the
     /// master and links every other selection as a manual proxy of it.
-    func attachProxies(videoIds: [String]) async throws -> AttachProxiesResult {
+    public func attachProxies(videoIds: [String]) async throws -> AttachProxiesResult {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_AttachProxiesRequest()
         request.videoIds = videoIds
@@ -1202,7 +1222,7 @@ class VideoRepository: ObservableObject {
         )
     }
 
-    func ungroupVideo(videoId: String) async throws -> Bool {
+    public func ungroupVideo(videoId: String) async throws -> Bool {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_UngroupVideoRequest()
         request.videoID = videoId
@@ -1210,7 +1230,7 @@ class VideoRepository: ObservableObject {
         return response.success
     }
 
-    func setGroupPreferred(groupId: String, videoId: String) async throws -> Bool {
+    public func setGroupPreferred(groupId: String, videoId: String) async throws -> Bool {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_SetGroupPreferredRequest()
         request.groupID = groupId
@@ -1307,7 +1327,7 @@ class VideoRepository: ObservableObject {
 
     /// Apply a 0..5 star rating to one or more videos in a single round-trip.
     @discardableResult
-    func updateVideoRating(videoIds: [String], rating: Int) async throws -> Bool {
+    public func updateVideoRating(videoIds: [String], rating: Int) async throws -> Bool {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_UpdateVideoRatingRequest()
         request.videoIds = videoIds
@@ -1318,7 +1338,7 @@ class VideoRepository: ObservableObject {
 
     /// Apply a colour label to one or more videos. Pass empty string to clear.
     @discardableResult
-    func updateVideoColorLabel(videoIds: [String], colorLabel: String) async throws -> Bool {
+    public func updateVideoColorLabel(videoIds: [String], colorLabel: String) async throws -> Bool {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_UpdateVideoColorLabelRequest()
         request.videoIds = videoIds
@@ -1331,7 +1351,7 @@ class VideoRepository: ObservableObject {
 
     /// Fetch the catalog's saved top-of-card slot configuration. Always
     /// returns exactly four entries; the server pads / truncates as needed.
-    func getGridSettings() async throws -> [String] {
+    public func getGridSettings() async throws -> [String] {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         let response = try await client.getGridSettings(Reelvault_GetGridSettingsRequest())
         return response.topSlots
@@ -1340,7 +1360,7 @@ class VideoRepository: ObservableObject {
     /// Persist the four-slot configuration. Both clients pick it up the next
     /// time they open the same catalog (or via a follow-up GetGridSettings).
     @discardableResult
-    func updateGridSettings(topSlots: [String]) async throws -> Bool {
+    public func updateGridSettings(topSlots: [String]) async throws -> Bool {
         guard let client = serviceClient else { throw RepositoryError.notConnected }
         var request = Reelvault_GridSettings()
         request.topSlots = topSlots
@@ -1363,14 +1383,14 @@ private extension GRPCClient {
     }
 }
 
-enum RepositoryError: LocalizedError {
+public enum RepositoryError: LocalizedError {
     case notConnected
     /// The daemon accepted the RPC but responded with `success == false`.
     /// Carries the human-readable error message the daemon returned so
     /// the UI can surface it in a toast or alert.
     case serverError(String)
 
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
         case .notConnected:
             return "Not connected to ReelVault backend"

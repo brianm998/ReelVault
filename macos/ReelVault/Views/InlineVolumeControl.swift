@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import SwiftUI
+import ReelVaultKit
 
 /// A compact playback-volume slider overlaid on the currently-playing inline
 /// card (grid / list). Shown only for clips that carry an audio track — the

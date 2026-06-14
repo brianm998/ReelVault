@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import Foundation
+import ReelVaultKit
 import Network
 
 /// Spawns the bundled `reelvault-core` daemon when the client can't find a

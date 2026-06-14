@@ -4,9 +4,12 @@
 import SwiftUI
 import Combine
 import AVFoundation
+#if canImport(AppKit)
+import AppKit
+#endif
 
 /// Arrow-key navigation direction in the grid / list.
-enum MoveDirection { case up, down, left, right }
+public enum MoveDirection { case up, down, left, right }
 
 /// Destination index for an arrow-key move, or -1 for "no move" (edge of the
 /// navigable area). Pure so the geometry is testable.
@@ -15,7 +18,7 @@ enum MoveDirection { case up, down, left, right }
 /// every direction collapses to previous/next, with Left/Up == previous and
 /// Right/Down == next. For a wider grid, Left/Right walk the flat visual order
 /// (wrapping across row boundaries) and Up/Down jump a whole row.
-func navTargetIndex(current: Int, size: Int, cols: Int, dir: MoveDirection) -> Int {
+public func navTargetIndex(current: Int, size: Int, cols: Int, dir: MoveDirection) -> Int {
     guard current >= 0, current < size else { return -1 }
     let columns = max(1, cols)
     switch dir {
@@ -40,7 +43,7 @@ func navTargetIndex(current: Int, size: Int, cols: Int, dir: MoveDirection) -> I
 /// multi-row selection: at a row's edge the next selected card is on the
 /// following row, so the cursor wraps a line. Returns -1 past the selection's
 /// first/last member.
-func nextSelectedIndex(_ order: [VideoSummary], from: Int, selected: Set<String>, forward: Bool) -> Int {
+public func nextSelectedIndex(_ order: [VideoSummary], from: Int, selected: Set<String>, forward: Bool) -> Int {
     if forward {
         var j = from + 1
         while j < order.count {
@@ -59,7 +62,7 @@ func nextSelectedIndex(_ order: [VideoSummary], from: Int, selected: Set<String>
 
 /// Identifies one removable rule within a smart collection's saved filter, so
 /// the details panel can offer a per-rule ✕ that deletes just that constraint.
-enum SmartCriterion: Equatable {
+public enum SmartCriterion: Equatable {
     case column(String)   // a metadata column (incl. the tag-backed "keyword")
     case minRating
     case colorLabel
@@ -76,53 +79,53 @@ enum SmartCriterion: Equatable {
 
 /// One human-readable rule of a smart collection, plus the [SmartCriterion] it
 /// maps to so it can be deleted individually.
-struct SmartCriterionRow: Identifiable {
-    let id = UUID()
-    let label: String
-    let value: String
-    let criterion: SmartCriterion
+public struct SmartCriterionRow: Identifiable {
+    public let id = UUID()
+    public let label: String
+    public let value: String
+    public let criterion: SmartCriterion
 }
 
 @MainActor
-class GridViewModel: ObservableObject {
+public class GridViewModel: ObservableObject {
     // Grid state
-    @Published var videos: [VideoSummary] = []
-    @Published var selectedVideoId: String?
-    @Published var selectedVideoIds: [String] = []
-    @Published var anchorVideoId: String?
+    @Published public var videos: [VideoSummary] = []
+    @Published public var selectedVideoId: String?
+    @Published public var selectedVideoIds: [String] = []
+    @Published public var anchorVideoId: String?
     /// Cached summary of the primary selection (the global "selected video"
     /// shared by grid, list, and the map's right panel). Lets the detail loupe
     /// show a video that isn't in the loaded (paginated) `videos` page — e.g.
     /// one picked from the map, whose full geotagged set is loaded separately.
-    @Published var selectedVideo: VideoSummary?
-    @Published var isLoading = false
-    @Published var error: String?
-    @Published var totalCount: Int64 = 0
-    @Published var hasMore = false
-    @Published var searchQuery = ""
+    @Published public var selectedVideo: VideoSummary?
+    @Published public var isLoading = false
+    @Published public var error: String?
+    @Published public var totalCount: Int64 = 0
+    @Published public var hasMore = false
+    @Published public var searchQuery = ""
 
     // Playback output volume (0–100), shared across the detail loupe and the
     // inline card players so the level the user picks sticks for the session.
-    @Published var playbackVolume: Int = 100
+    @Published public var playbackVolume: Int = 100
 
     // Sort — loaded from UserDefaults so the user's last choice survives a
     // relaunch (written back in `setSort`). Defaults match a fresh install
     // (newest-indexed first).
-    @Published var sortBy: String = SortPrefs.loadField()
-    @Published var sortAscending: Bool = SortPrefs.loadAscending()
+    @Published public var sortBy: String = SortPrefs.loadField()
+    @Published public var sortAscending: Bool = SortPrefs.loadAscending()
 
     // Library locations / filter
-    @Published var libraryLocations: [LibraryLocation] = []
-    @Published var selectedLocationPath: String = ""  // first selected ("" = all)
+    @Published public var libraryLocations: [LibraryLocation] = []
+    @Published public var selectedLocationPath: String = ""  // first selected ("" = all)
     // Multi-select: the set of selected library directories (empty = all). The
     // grid shows the union of their videos; the backend receives them as a
     // '\n'-joined string and matches a video under ANY of them.
-    @Published var selectedLocationPaths: [String] = []
+    @Published public var selectedLocationPaths: [String] = []
     // Pivot for Shift-click range selection over the library list.
     private var locationAnchorPath: String?
     /// Value sent to the backend's `location_path` (single dir or '\n'-joined).
     private var locationFilterValue: String { selectedLocationPaths.joined(separator: "\n") }
-    @Published var rescanningPaths: Set<String> = []
+    @Published public var rescanningPaths: Set<String> = []
 
     // ── Library subdirectory tree ───────────────────────────────────────────
     /// Directories the user has expanded (absolute paths). Children are fetched
@@ -134,19 +137,19 @@ class GridViewModel: ObservableObject {
     /// The flattened, display-ordered rows the library panel renders: each
     /// location followed by its expanded subdirectories. Rebuilt by
     /// `rebuildLibraryRows()` whenever the tree changes.
-    @Published var visibleLibraryRows: [LibraryRow] = []
+    @Published public var visibleLibraryRows: [LibraryRow] = []
 
     /// Path of a directory the left panel should scroll into view — set by
     /// "Go to Folder in Library" after it reveals a deep subdirectory.
-    @Published var pendingLibraryScroll: String?
+    @Published public var pendingLibraryScroll: String?
 
     // Keywords / tag filter
-    @Published var tags: [Tag] = []
-    @Published var filterTagId: String = ""  // "" = no filter
+    @Published public var tags: [Tag] = []
+    @Published public var filterTagId: String = ""  // "" = no filter
 
     // Collections
-    @Published var collections: [Collection] = []
-    @Published var selectedCollectionId: String? = nil
+    @Published public var collections: [Collection] = []
+    @Published public var selectedCollectionId: String? = nil
     /// The collection ID to pass to listVideos (nil for smart collections
     /// whose filters are applied via individual filter fields instead).
     private var collectionIdFilter: String? = nil
@@ -155,71 +158,71 @@ class GridViewModel: ObservableObject {
     // of columns (camera/lens/exposure/iso by default); `facetColumns` holds
     // the server's per-column available values (1:1 with columns by index);
     // `availableMetadataKeys` populates each column's key picker.
-    @Published var libraryFilterMode: LibraryFilterMode = .clear
-    @Published var metadataColumns: [MetadataColumn] = LibraryFilterPrefs.loadColumns()
-    @Published var facetColumns: [MetadataFacetColumn] = []
-    @Published var availableMetadataKeys: [MetadataKeyInfo] = []
+    @Published public var libraryFilterMode: LibraryFilterMode = .clear
+    @Published public var metadataColumns: [MetadataColumn] = LibraryFilterPrefs.loadColumns()
+    @Published public var facetColumns: [MetadataFacetColumn] = []
+    @Published public var availableMetadataKeys: [MetadataKeyInfo] = []
 
     // Lightroom-style user-mark filters.
     //   filterMinRating: 0 = no filter; 1..5 = "show videos with ≥ N stars".
     //   filterColorLabel: "" = no filter; otherwise exact-match the colour.
-    @Published var filterMinRating: Int32 = 0
-    @Published var filterColorLabel: String = ""
+    @Published public var filterMinRating: Int32 = 0
+    @Published public var filterColorLabel: String = ""
 
     // Tri-state presence filters (Library Filter "attribute" mode). .any = no
     // constraint; .yes = must have; .no = must not have.
-    @Published var filterHasLocation: AttributeFilterState = .any
-    @Published var filterHasKeywords: AttributeFilterState = .any
-    @Published var filterHasProxies: AttributeFilterState = .any
-    @Published var filterFullResolution: AttributeFilterState = .any
-    @Published var filterHasAudio: AttributeFilterState = .any
-    @Published var filterOrientation: OrientationFilterState = .any
+    @Published public var filterHasLocation: AttributeFilterState = .any
+    @Published public var filterHasKeywords: AttributeFilterState = .any
+    @Published public var filterHasProxies: AttributeFilterState = .any
+    @Published public var filterFullResolution: AttributeFilterState = .any
+    @Published public var filterHasAudio: AttributeFilterState = .any
+    @Published public var filterOrientation: OrientationFilterState = .any
 
     // Lightroom-style top-of-card stat slots. Exactly four entries — empty
     // string means "blank slot". Defaults to a sensible set on first launch;
     // overwritten by `loadGridSettings()` once the daemon answers.
-    @Published var topSlots: [String] = defaultGridTopSlots
+    @Published public var topSlots: [String] = defaultGridTopSlots
 
     // Geographic proximity filter — set when the user taps a pin on the
     // global map. nil = no proximity filter active.
-    @Published var filterLocation: GeoFilter? = nil
+    @Published public var filterLocation: GeoFilter? = nil
     // Known locations (named places + unnamed coordinate clusters) with video
     // counts, for the Library Filter's "Location" mode. Refreshed via
     // `loadFilterLocations` from the full geotagged set so the list isn't itself
     // narrowed by the active filter.
-    @Published var filterLocationGroups: [LocationFilterGroup] = []
+    @Published public var filterLocationGroups: [LocationFilterGroup] = []
 
     // Snapshot of every geotagged video, refreshed when the user opens
     // the global map view.
-    @Published var videoLocations: [VideoLocation] = []
+    @Published public var videoLocations: [VideoLocation] = []
 
     /// Full VideoSummary for every geotagged video in the current filtered
     /// set — captured alongside `videoLocations` so the map view's right panel
     /// can render real video cards for a selected pin without an extra
     /// round-trip. Same filter and order as `videoLocations`.
-    @Published var geotaggedVideos: [VideoSummary] = []
+    @Published public var geotaggedVideos: [VideoSummary] = []
 
     /// True while a filtered video-locations load is in flight. The map view's
     /// right panel shows a progress indicator (instead of an empty/stale list)
     /// while a clicked location's videos are still being resolved — important on
     /// a slow NAS catalog, where pins can appear before `geotaggedVideos` fills.
-    @Published var isLoadingVideoLocations = false
+    @Published public var isLoadingVideoLocations = false
 
     // Catalog's user-defined named places (e.g. "Home"). Refreshed by
     // [loadNamedLocations]; used by [nameForLocation] to render named pins
     // on the map and named GPS readouts in the detail panel.
-    @Published var namedLocations: [NamedLocation] = []
+    @Published public var namedLocations: [NamedLocation] = []
 
     // Thumbnails
-    @Published var thumbnails: [String: NSImage] = [:]
+    @Published public var thumbnails: [String: PlatformImage] = [:]
 
     // Scrub frames per video, loaded lazily on first hover.
-    @Published var scrubFrames: [String: [NSImage?]] = [:]
+    @Published public var scrubFrames: [String: [PlatformImage?]] = [:]
     private var scrubLoading: Set<String> = []
     /// Audio loudness-over-time series per video (the detail visuals panel's
     /// volume graph), each sample normalized to 0...1. An empty array means the
     /// video has no audio track. Cached for the session, like `scrubFrames`.
-    @Published var audioLoudness: [String: [Float]] = [:]
+    @Published public var audioLoudness: [String: [Float]] = [:]
     private var audioLoudnessLoading: Set<String> = []
 
     // Higher-resolution detail thumbnails, populated only while the user dwells
@@ -227,8 +230,8 @@ class GridViewModel: ObservableObject {
     // `scrubFrames` at the render resolution; `hiResPoster` is the upgraded
     // static (non-hover) frame. Filled incrementally and kept across a cancel
     // so returning to the video resumes rather than refetches.
-    @Published var hiResScrubFrames: [String: [NSImage?]] = [:]
-    @Published var hiResPoster: [String: NSImage] = [:]
+    @Published public var hiResScrubFrames: [String: [PlatformImage?]] = [:]
+    @Published public var hiResPoster: [String: PlatformImage] = [:]
     private var hiResTasks: [String: Task<Void, Never>] = [:]
     private var hiResWidth: [String: Int32] = [:]
     private let baseScrubWidth: Int32 = 320
@@ -240,25 +243,25 @@ class GridViewModel: ObservableObject {
     private var thumbnailLoading: Set<String> = []
 
     // Stack expansion
-    @Published var expandedGroupIds: Set<String> = []
-    @Published var expandedGroupMembers: [String: [VideoSummary]] = [:]
+    @Published public var expandedGroupIds: Set<String> = []
+    @Published public var expandedGroupMembers: [String: [VideoSummary]] = [:]
 
     // Scan status / result banners
-    @Published var scanStatus: String?
-    @Published var scanResult: ScanResult?
+    @Published public var scanStatus: String?
+    @Published public var scanResult: ScanResult?
 
     // Accumulated progress across all paths in a multi-path add+scan batch.
-    struct BatchScanProgress: Equatable {
+    public struct BatchScanProgress: Equatable {
         /// Total videos found across all paths scanned so far.
-        let found: Int
+        public let found: Int
         /// Total videos indexed across all paths scanned so far.
-        let indexed: Int
+        public let indexed: Int
         /// How many paths have finished scanning.
-        let pathsDone: Int
+        public let pathsDone: Int
         /// Total number of paths in the batch.
-        let pathsTotal: Int
+        public let pathsTotal: Int
     }
-    @Published var batchScanProgress: BatchScanProgress?
+    @Published public var batchScanProgress: BatchScanProgress?
 
     // Real-time updates from the server's file watcher.
     //
@@ -266,13 +269,13 @@ class GridViewModel: ObservableObject {
     // (initial value matches the server default; updated on the first
     // event after `startCatalogEventStream` connects). The toolbar uses
     // it to render the "live" indicator.
-    @Published var liveUpdatesEnabled: Bool = true
+    @Published public var liveUpdatesEnabled: Bool = true
     /// Best-effort sticky banner — "Scanning …" — set by SCAN_STARTED and
     /// cleared by SCAN_COMPLETED. Distinct from `scanStatus` (which is
     /// driven by the user's own `addLibraryAndScan` flow) so the watcher
     /// can light up the banner without colliding with that progress
     /// reporter.
-    @Published var watcherBanner: String?
+    @Published public var watcherBanner: String?
 
     /// Live progress for the daemon's background post-index pass (proxy
     /// detection / auto-grouping / camera-sensor lookups). `nil` when no
@@ -280,7 +283,7 @@ class GridViewModel: ObservableObject {
     /// rendered in a background-activity panel so a long, CPU-heavy pass
     /// isn't invisible — including watcher-triggered passes that have no
     /// user-initiated scan banner.
-    @Published var postIndexProgress: PostIndexProgress?
+    @Published public var postIndexProgress: PostIndexProgress?
 
     /// AsyncStream task owning the open `SubscribeCatalogEvents` connection.
     /// Cancelled in `stopCatalogEventStream()`; replaced if the stream
@@ -300,11 +303,11 @@ class GridViewModel: ObservableObject {
     /// single reload.
     private var watcherRefreshWorkItem: DispatchWorkItem?
 
-    struct ScanResult: Equatable {
-        let success: Bool
-        let message: String
-        let videosFound: Int
-        let videosIndexed: Int
+    public struct ScanResult: Equatable {
+        public let success: Bool
+        public let message: String
+        public let videosFound: Int
+        public let videosIndexed: Int
     }
 
     private let repository = VideoRepository.shared
@@ -320,7 +323,7 @@ class GridViewModel: ObservableObject {
     /// writing state.
     private var listLoadTask: Task<Void, Never>?
 
-    init() {
+    public init() {
         // Debounced search
         searchDebounce = $searchQuery
             .debounce(for: 0.5, scheduler: DispatchQueue.main)
@@ -343,7 +346,7 @@ class GridViewModel: ObservableObject {
     /// suppresses duplicate error logs so a daemon that stays offline
     /// doesn't spam the console with the same `Connection refused` error
     /// every two seconds. A single line is logged on reconnect.
-    func startCatalogEventStream() {
+    public func startCatalogEventStream() {
         catalogEventsTask?.cancel()
         catalogEventsTask = Task { [weak self] in
             guard let self else { return }
@@ -389,7 +392,7 @@ class GridViewModel: ObservableObject {
         }
     }
 
-    func stopCatalogEventStream() {
+    public func stopCatalogEventStream() {
         catalogEventsTask?.cancel()
         catalogEventsTask = nil
         postIndexClearWorkItem?.cancel()
@@ -448,31 +451,31 @@ class GridViewModel: ObservableObject {
 
     // MARK: - Proxy management
 
-    struct ProxyCreationState {
-        let videoId: String
-        let progressPercent: Double
-        let status: String
-        let message: String
+    public struct ProxyCreationState {
+        public let videoId: String
+        public let progressPercent: Double
+        public let status: String
+        public let message: String
     }
 
     /// Surfaces the "Create proxy" sheet for `videoId`. The actual sheet
     /// is hosted by ContentView; we just publish the request via this
     /// `@Published` property and clear it once acknowledged.
-    @Published var proxyCreationVideoId: String?
+    @Published public var proxyCreationVideoId: String?
     /// Per-video progress state for active proxy generation jobs.
-    @Published var activeProxyCreations: [String: ProxyCreationState] = [:]
+    @Published public var activeProxyCreations: [String: ProxyCreationState] = [:]
 
     /// Called by the grid's right-click menu. Just publishes the
     /// request — the sheet hosted by ContentView observes
     /// `proxyCreationVideoId` and presents a resolution picker; once
     /// the user confirms, it calls `startProxyCreation`.
-    func requestCreateProxy(videoId: String) {
+    public func requestCreateProxy(videoId: String) {
         proxyCreationVideoId = videoId
     }
 
     /// Dismiss the proxy picker without starting a job. Bound to the
     /// sheet's Cancel button.
-    func cancelProxyCreation() {
+    public func cancelProxyCreation() {
         proxyCreationVideoId = nil
     }
 
@@ -481,7 +484,7 @@ class GridViewModel: ObservableObject {
     /// appears on the source. Surfaces per-video progress through
     /// `activeProxyCreations`. Also clears `proxyCreationVideoId` so
     /// the picker sheet dismisses.
-    func startProxyCreation(videoId: String, targetHeight: Int) {
+    public func startProxyCreation(videoId: String, targetHeight: Int) {
         proxyCreationVideoId = nil
         activeProxyCreations[videoId] = ProxyCreationState(
             videoId: videoId,
@@ -523,14 +526,14 @@ class GridViewModel: ObservableObject {
     // MARK: - Inline grid playback
 
     /// ID of the video currently playing inline in the grid, or nil.
-    @Published var playingVideoId: String? = nil
+    @Published public var playingVideoId: String? = nil
     /// Filesystem path to play — set to a proxy path when the video is
     /// oversize and a proxy exists. nil means "use video.openPath".
-    @Published var playingVideoPath: String? = nil
+    @Published public var playingVideoPath: String? = nil
 
     /// Begin inline playback for the given video. Replaces any currently
     /// playing card.
-    func playVideo(videoId: String) {
+    public func playVideo(videoId: String) {
         playingVideoPath = nil
         playingVideoId = videoId
     }
@@ -548,7 +551,7 @@ class GridViewModel: ObservableObject {
     ///
     /// Falls back to the master path when no proxy exists or the gRPC
     /// call fails.
-    func playVideoPreferProxy(videoId: String) {
+    public func playVideoPreferProxy(videoId: String) {
         guard let video = videos.first(where: { $0.id == videoId }) else {
             playVideo(videoId: videoId)
             return
@@ -573,7 +576,7 @@ class GridViewModel: ObservableObject {
     }
 
     /// Stop inline playback and return the card to thumbnail mode.
-    func stopPlayback() {
+    public func stopPlayback() {
         playingVideoId = nil
         playingVideoPath = nil
     }
@@ -598,7 +601,7 @@ class GridViewModel: ObservableObject {
     /// Re-fetches the first page and replaces in place; does NOT clear the
     /// current grid or show a full-page spinner, so periodic scan ticks
     /// don't make the UI flicker every few seconds.
-    func loadVideos() {
+    public func loadVideos() {
         reloadFromTop(showSpinner: false)
     }
 
@@ -652,7 +655,7 @@ class GridViewModel: ObservableObject {
         }
     }
 
-    func loadMore() {
+    public func loadMore() {
         guard hasMore && !isLoading else { return }
         currentPage += 1
         isLoading = true
@@ -730,7 +733,7 @@ class GridViewModel: ObservableObject {
 
     // MARK: - Sort / filter
 
-    func setSort(_ field: String, ascending: Bool) {
+    public func setSort(_ field: String, ascending: Bool) {
         sortBy = field
         sortAscending = ascending
         // Persist so the next launch restores this sort (see property init).
@@ -740,7 +743,7 @@ class GridViewModel: ObservableObject {
 
     /// Plain click: replace the selection with this single directory (or clear
     /// it for the "All Videos" entry, path == "").
-    func setLocationFilter(_ path: String) {
+    public func setLocationFilter(_ path: String) {
         let paths = path.isEmpty ? [] : [path]
         applyLocationSelection(paths, anchor: path.isEmpty ? nil : path)
     }
@@ -751,7 +754,7 @@ class GridViewModel: ObservableObject {
     /// ancestor is expanded in the left panel so that row is revealed (fetching
     /// children as needed), and the panel is asked to scroll to it. Falls back
     /// to a plain filter when the video isn't under a known library location.
-    func goToFolderForVideo(_ videoPath: String) {
+    public func goToFolderForVideo(_ videoPath: String) {
         guard let slash = videoPath.lastIndex(of: "/") else { return }
         let dir = String(videoPath[..<slash])
         guard !dir.isEmpty else { return }
@@ -801,7 +804,7 @@ class GridViewModel: ObservableObject {
     }
 
     /// Cmd-click: toggle this directory's membership in the selection.
-    func toggleLocationFilter(_ path: String) {
+    public func toggleLocationFilter(_ path: String) {
         guard !path.isEmpty else { setLocationFilter(""); return }
         var next = selectedLocationPaths
         if let i = next.firstIndex(of: path) { next.remove(at: i) } else { next.append(path) }
@@ -810,7 +813,7 @@ class GridViewModel: ObservableObject {
 
     /// Shift-click: select every directory between the anchor and [path]
     /// (inclusive) in the library's display order.
-    func selectLocationRange(_ path: String) {
+    public func selectLocationRange(_ path: String) {
         guard !path.isEmpty else { setLocationFilter(""); return }
         // Range over the flattened *visible* tree (locations + expanded
         // subdirs), so Shift-click spans whatever is on screen.
@@ -834,7 +837,7 @@ class GridViewModel: ObservableObject {
 
     // MARK: - Collections
 
-    func loadCollections() {
+    public func loadCollections() {
         Task {
             do {
                 collections = try await repository.listCollections().sorted { $0.name.lowercased() < $1.name.lowercased() }
@@ -849,7 +852,7 @@ class GridViewModel: ObservableObject {
     /// collections carry their own `videoCount` from the members join; smart
     /// collections have no members, so the left panel always showed 0 — we
     /// compute their count by running their saved filter (limit=1, read total).
-    @Published var smartCollectionCounts: [String: Int64] = [:]
+    @Published public var smartCollectionCounts: [String: Int64] = [:]
 
     /// Re-count every smart collection. Runs sequentially (gentle on the NAS)
     /// and publishes each count as it lands so badges fill in progressively.
@@ -962,7 +965,7 @@ class GridViewModel: ObservableObject {
         LibraryFilterPrefs.saveColumns(metadataColumns)
     }
 
-    func setCollectionFilter(_ id: String?) {
+    public func setCollectionFilter(_ id: String?) {
         // Already viewing this collection (or already cleared) — keep the
         // current results rather than reloading and flashing the spinner.
         // Library rows clear the collection on every click, so without this
@@ -1008,7 +1011,7 @@ class GridViewModel: ObservableObject {
         reloadForFilterChange()
     }
 
-    func createCollection(name: String, isSmart: Bool, filterJson: String = "") {
+    public func createCollection(name: String, isSmart: Bool, filterJson: String = "") {
         Task {
             do {
                 _ = try await repository.createCollection(name: name, isSmart: isSmart, filterJson: filterJson)
@@ -1019,7 +1022,7 @@ class GridViewModel: ObservableObject {
         }
     }
 
-    func deleteCollection(id: String) {
+    public func deleteCollection(id: String) {
         Task {
             do {
                 _ = try await repository.deleteCollection(id: id)
@@ -1031,7 +1034,7 @@ class GridViewModel: ObservableObject {
         }
     }
 
-    func addToCollection(videoIds: [String], collectionId: String) {
+    public func addToCollection(videoIds: [String], collectionId: String) {
         Task {
             do {
                 _ = try await repository.addToCollection(videoIds: videoIds, collectionId: collectionId)
@@ -1042,7 +1045,7 @@ class GridViewModel: ObservableObject {
         }
     }
 
-    func removeFromCollection(videoIds: [String], collectionId: String) {
+    public func removeFromCollection(videoIds: [String], collectionId: String) {
         Task {
             do {
                 _ = try await repository.removeFromCollection(videoIds: videoIds, collectionId: collectionId)
@@ -1081,14 +1084,14 @@ class GridViewModel: ObservableObject {
         )
     }
 
-    func buildSmartCollectionFilterJson() -> String { currentSmartFilters().toJson() }
+    public func buildSmartCollectionFilterJson() -> String { currentSmartFilters().toJson() }
 
     // MARK: Edit-while-viewing-a-smart-collection ("ask before modifying")
 
     /// Name of the active smart collection whose live filter the user has since
     /// edited (so it no longer matches what's saved), or nil. Drives the
     /// "Update / Revert" banner. Switching away still reverts via the snapshot.
-    @Published var divergedSmartCollection: String?
+    @Published public var divergedSmartCollection: String?
 
     /// Order-independent signature of a filter set, for comparing the live bar
     /// to a smart collection's saved spec without depending on column order.
@@ -1115,7 +1118,7 @@ class GridViewModel: ObservableObject {
     /// Persist the live filter into the active smart collection. The core has no
     /// UpdateCollection RPC, so this re-creates the collection (smart collections
     /// have no members to preserve) and re-points the active/selected id.
-    func updateActiveSmartCollection() {
+    public func updateActiveSmartCollection() {
         guard let id = activeSmartCollectionId,
               let name = collections.first(where: { $0.id == id })?.name else { return }
         let json = buildSmartCollectionFilterJson()
@@ -1137,7 +1140,7 @@ class GridViewModel: ObservableObject {
 
     /// Discard the user's edits and restore the active smart collection's saved
     /// filter.
-    func revertActiveSmartCollection() {
+    public func revertActiveSmartCollection() {
         guard let id = activeSmartCollectionId,
               let col = collections.first(where: { $0.id == id }),
               let f = SmartCollectionFilters.from(json: col.filterJson) else { return }
@@ -1187,7 +1190,7 @@ class GridViewModel: ObservableObject {
     /// shows the whole catalog. Backs the smart-collection banner's ✕ button.
     /// Unlike navigating away (which restores the pre-collection filter), this
     /// is an explicit "show everything" reset, so it drops the snapshot too.
-    func clearSmartCollectionShowAll() {
+    public func clearSmartCollectionShowAll() {
         preSmartFilterSnapshot = nil
         activeSmartCollectionId = nil
         divergedSmartCollection = nil
@@ -1220,7 +1223,7 @@ class GridViewModel: ObservableObject {
     /// being viewed — re-apply the broadened filter to the live bar. The core has
     /// no UpdateCollection RPC, so this re-creates and re-points ids, like
     /// `updateActiveSmartCollection`.
-    func removeSmartCollectionCriterion(_ col: Collection, _ criterion: SmartCriterion) {
+    public func removeSmartCollectionCriterion(_ col: Collection, _ criterion: SmartCriterion) {
         guard var f = SmartCollectionFilters.from(json: col.filterJson) else { return }
         switch criterion {
         case .column(let key): f.columns.removeAll { $0.key == key }
@@ -1270,7 +1273,7 @@ class GridViewModel: ObservableObject {
     /// tag IDs to names. An empty array means the collection constrains nothing
     /// (it would match every video). Shown in the details panel when no card is
     /// selected, so the user can see why a smart collection gathers what it does.
-    func smartCollectionCriteria(_ collection: Collection) -> [SmartCriterionRow] {
+    public func smartCollectionCriteria(_ collection: Collection) -> [SmartCriterionRow] {
         guard let f = SmartCollectionFilters.from(json: collection.filterJson) else { return [] }
         // Friendly label for a metadata key; falls back to a capitalised key
         // for registry keys we don't special-case.
@@ -1329,7 +1332,7 @@ class GridViewModel: ObservableObject {
     /// Title + detail for the grid/list empty state, tailored to *why* the grid
     /// is empty. Keeps grid and list in sync and avoids the old advice to "add a
     /// library location", which is wrong inside an empty collection.
-    func emptyStateMessage() -> (title: String, detail: String) {
+    public func emptyStateMessage() -> (title: String, detail: String) {
         let col = selectedCollectionId.flatMap { id in collections.first(where: { $0.id == id }) }
         if let col = col, col.isSmart {
             return ("No videos match this smart collection",
@@ -1369,7 +1372,7 @@ class GridViewModel: ObservableObject {
 
     // MARK: - Keywords / tags
 
-    func loadTags() {
+    public func loadTags() {
         Task {
             do {
                 tags = try await repository.listTags().sorted { $0.name.lowercased() < $1.name.lowercased() }
@@ -1379,7 +1382,7 @@ class GridViewModel: ObservableObject {
         }
     }
 
-    func setTagFilter(_ tagId: String) {
+    public func setTagFilter(_ tagId: String) {
         guard filterTagId != tagId else { return }
         filterTagId = tagId
         reloadForFilterChange()
@@ -1387,49 +1390,49 @@ class GridViewModel: ObservableObject {
 
     // MARK: - Library Filter: attribute mode (rating + colour)
 
-    func setMinRatingFilter(_ n: Int32) {
+    public func setMinRatingFilter(_ n: Int32) {
         guard filterMinRating != n else { return }
         filterMinRating = n
         reloadForFilterChange()
     }
 
-    func setColorLabelFilter(_ label: String) {
+    public func setColorLabelFilter(_ label: String) {
         guard filterColorLabel != label else { return }
         filterColorLabel = label
         reloadForFilterChange()
     }
 
-    func setHasLocationFilter(_ state: AttributeFilterState) {
+    public func setHasLocationFilter(_ state: AttributeFilterState) {
         guard filterHasLocation != state else { return }
         filterHasLocation = state
         reloadForFilterChange()
     }
 
-    func setHasKeywordsFilter(_ state: AttributeFilterState) {
+    public func setHasKeywordsFilter(_ state: AttributeFilterState) {
         guard filterHasKeywords != state else { return }
         filterHasKeywords = state
         reloadForFilterChange()
     }
 
-    func setHasProxiesFilter(_ state: AttributeFilterState) {
+    public func setHasProxiesFilter(_ state: AttributeFilterState) {
         guard filterHasProxies != state else { return }
         filterHasProxies = state
         reloadForFilterChange()
     }
 
-    func setFullResolutionFilter(_ state: AttributeFilterState) {
+    public func setFullResolutionFilter(_ state: AttributeFilterState) {
         guard filterFullResolution != state else { return }
         filterFullResolution = state
         reloadForFilterChange()
     }
 
-    func setHasAudioFilter(_ state: AttributeFilterState) {
+    public func setHasAudioFilter(_ state: AttributeFilterState) {
         guard filterHasAudio != state else { return }
         filterHasAudio = state
         reloadForFilterChange()
     }
 
-    func setOrientationFilter(_ state: OrientationFilterState) {
+    public func setOrientationFilter(_ state: OrientationFilterState) {
         guard filterOrientation != state else { return }
         filterOrientation = state
         reloadForFilterChange()
@@ -1439,7 +1442,7 @@ class GridViewModel: ObservableObject {
 
     /// Switch which Library Filter editor is visible. The Clear button calls
     /// `clearLibraryFilter()` directly (it's a momentary action, not a mode).
-    func setLibraryFilterMode(_ mode: LibraryFilterMode) {
+    public func setLibraryFilterMode(_ mode: LibraryFilterMode) {
         if mode == .clear { clearLibraryFilter(); return }
         guard libraryFilterMode != mode else { return }
         libraryFilterMode = mode
@@ -1487,7 +1490,7 @@ class GridViewModel: ObservableObject {
 
     /// Facet column matched to `metadataColumns[index]` by position (nil while
     /// a refresh is in flight or for placeholder columns).
-    func facetColumn(at index: Int) -> MetadataFacetColumn? {
+    public func facetColumn(at index: Int) -> MetadataFacetColumn? {
         facetColumns.indices.contains(index) ? facetColumns[index] : nil
     }
 
@@ -1503,7 +1506,7 @@ class GridViewModel: ObservableObject {
     ///    clicked value (in the displayed facet order).
     ///  - plain click → select only that value.
     /// Selected values within one column are OR-ed by the daemon.
-    func onMetadataValueClicked(at index: Int, token: String, shift: Bool, toggle: Bool) {
+    public func onMetadataValueClicked(at index: Int, token: String, shift: Bool, toggle: Bool) {
         guard metadataColumns.indices.contains(index) else { return }
         var col = metadataColumns[index]
         let before = col.values
@@ -1536,7 +1539,7 @@ class GridViewModel: ObservableObject {
     }
 
     /// Change the metadata key of column `index`; resets its selected values.
-    func setMetadataColumnKey(at index: Int, key: String) {
+    public func setMetadataColumnKey(at index: Int, key: String) {
         guard metadataColumns.indices.contains(index),
               metadataColumns[index].key != key else { return }
         let hadActiveValue = !metadataColumns[index].key.isEmpty && !metadataColumns[index].values.isEmpty
@@ -1548,7 +1551,7 @@ class GridViewModel: ObservableObject {
     /// Flip column `index` between "is" (match the selected values) and "is not"
     /// (exclude them). Only re-queries when the column actually has values
     /// selected — an empty column doesn't filter either way.
-    func setMetadataColumnNegate(at index: Int, negate: Bool) {
+    public func setMetadataColumnNegate(at index: Int, negate: Bool) {
         guard metadataColumns.indices.contains(index),
               metadataColumns[index].negate != negate else { return }
         metadataColumns[index].negate = negate
@@ -1556,10 +1559,10 @@ class GridViewModel: ObservableObject {
         if !metadataColumns[index].values.isEmpty { reloadForFilterChange() }
     }
 
-    enum ColumnInsertPosition { case front, end }
+    public enum ColumnInsertPosition { case front, end }
 
     /// Insert a new (empty) metadata column at the front or the end.
-    func addMetadataColumn(at position: ColumnInsertPosition) {
+    public func addMetadataColumn(at position: ColumnInsertPosition) {
         switch position {
         case .front: metadataColumns.insert(MetadataColumn(), at: 0)
         case .end:   metadataColumns.append(MetadataColumn())
@@ -1569,7 +1572,7 @@ class GridViewModel: ObservableObject {
     }
 
     /// Remove metadata column `index`. No-op when only one column remains.
-    func removeMetadataColumn(at index: Int) {
+    public func removeMetadataColumn(at index: Int) {
         guard metadataColumns.count > 1, metadataColumns.indices.contains(index) else { return }
         let removed = metadataColumns.remove(at: index)
         LibraryFilterPrefs.saveColumns(metadataColumns)
@@ -1580,7 +1583,7 @@ class GridViewModel: ObservableObject {
     /// Reset the Library Filter (search + attribute + metadata values) so all
     /// videos show, subject to the higher-level location / keyword filters. The
     /// metadata column layout (keys/order) is preserved.
-    func clearLibraryFilter() {
+    public func clearLibraryFilter() {
         var changed = false
         if !searchQuery.isEmpty { searchQuery = ""; changed = true }
         if filterMinRating != 0 { filterMinRating = 0; changed = true }
@@ -1603,7 +1606,7 @@ class GridViewModel: ObservableObject {
     }
 
     /// Trigger an initial facet load (e.g. right after a catalog opens).
-    func refreshMetadataFacets() { scheduleFacetRefresh() }
+    public func refreshMetadataFacets() { scheduleFacetRefresh() }
 
     private var facetLoadTask: Task<Void, Never>?
 
@@ -1674,7 +1677,7 @@ class GridViewModel: ObservableObject {
     /// doesn't exist. Refreshes the tag list (for new counts) and the
     /// optional [onComplete] handler runs afterwards. When a target video
     /// belongs to a collapsed stack the keyword is applied to all members.
-    func applyKeyword(_ keyword: String, to videoIds: [String], onComplete: @escaping () -> Void = {}) {
+    public func applyKeyword(_ keyword: String, to videoIds: [String], onComplete: @escaping () -> Void = {}) {
         let name = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty, !videoIds.isEmpty else { return }
         Task {
@@ -1710,7 +1713,7 @@ class GridViewModel: ObservableObject {
         }
     }
 
-    func removeKeyword(tagId: String, from videoIds: [String], onComplete: @escaping () -> Void = {}) {
+    public func removeKeyword(tagId: String, from videoIds: [String], onComplete: @escaping () -> Void = {}) {
         guard !tagId.isEmpty, !videoIds.isEmpty else { return }
         Task {
             do {
@@ -1744,7 +1747,7 @@ class GridViewModel: ObservableObject {
 
     // MARK: - Library locations
 
-    func loadLibraryLocations() {
+    public func loadLibraryLocations() {
         Task {
             do {
                 libraryLocations = try await repository.listLibraryLocations()
@@ -1814,7 +1817,7 @@ class GridViewModel: ObservableObject {
     }
 
     /// Expand a collapsed directory or collapse an expanded one.
-    func toggleExpand(_ path: String) {
+    public func toggleExpand(_ path: String) {
         if expandedDirs.contains(path) {
             collapseDir(path)
             return
@@ -1844,7 +1847,7 @@ class GridViewModel: ObservableObject {
     /// subdirectory, it is promoted to `path` — the nearest still-visible
     /// ancestor — so the grid widens to the collapsed folder rather than
     /// silently filtering by an invisible directory.
-    func collapseDir(_ path: String) {
+    public func collapseDir(_ path: String) {
         let prefix = path + "/"
         expandedDirs = expandedDirs.filter { $0 != path && !$0.hasPrefix(prefix) }
 
@@ -1864,7 +1867,7 @@ class GridViewModel: ObservableObject {
 
     /// Remove a library location and all its indexed videos from the catalog.
     /// The video files on disk are not touched.
-    func removeLibraryLocation(path: String) {
+    public func removeLibraryLocation(path: String) {
         Task {
             do {
                 let success = try await repository.removeLibraryLocation(path: path)
@@ -1888,7 +1891,7 @@ class GridViewModel: ObservableObject {
         }
     }
 
-    func addLibraryAndScan(
+    public func addLibraryAndScan(
         path: String,
         recursive: Bool = true,
         autoGroup: Bool = true,
@@ -2009,7 +2012,7 @@ class GridViewModel: ObservableObject {
     /// template substitution). The `batchScanProgress` property accumulates
     /// totals across all paths so callers can show a single progress indicator
     /// for the entire batch instead of one that resets per path.
-    func addLibraryAndScanMultiple(
+    public func addLibraryAndScanMultiple(
         paths: [String],
         recursive: Bool = true,
         autoGroup: Bool = true,
@@ -2149,7 +2152,7 @@ class GridViewModel: ObservableObject {
         }
     }
 
-    func rescanLibrary(path: String) {
+    public func rescanLibrary(path: String) {
         Task {
             rescanningPaths.insert(path)
             defer {
@@ -2218,18 +2221,18 @@ class GridViewModel: ObservableObject {
         }
     }
 
-    func clearScanResult() { scanResult = nil }
+    public func clearScanResult() { scanResult = nil }
 
     // MARK: - Selection (plain / shift / cmd-click semantics)
 
-    func selectVideo(_ video: VideoSummary) {
+    public func selectVideo(_ video: VideoSummary) {
         selectedVideoIds = [video.id]
         anchorVideoId = video.id
         selectedVideoId = video.id
         selectedVideo = video
     }
 
-    func toggleVideoSelection(_ video: VideoSummary) {
+    public func toggleVideoSelection(_ video: VideoSummary) {
         if selectedVideoIds.contains(video.id) {
             selectedVideoIds.removeAll { $0 == video.id }
             if anchorVideoId == video.id {
@@ -2244,7 +2247,7 @@ class GridViewModel: ObservableObject {
     }
 
     /// Shift-click range selection. The caller computes [rangeIds] in visual order.
-    func selectRange(_ target: VideoSummary, rangeIds: [String]) {
+    public func selectRange(_ target: VideoSummary, rangeIds: [String]) {
         if rangeIds.isEmpty {
             selectVideo(target)
             return
@@ -2255,7 +2258,7 @@ class GridViewModel: ObservableObject {
         // anchor stays
     }
 
-    func clearSelection() {
+    public func clearSelection() {
         selectedVideoIds = []
         selectedVideoId = nil
         anchorVideoId = nil
@@ -2271,15 +2274,15 @@ class GridViewModel: ObservableObject {
     private var navColumns: Int = 1
     /// Set when arrow navigation moves the active card, so the scrolling view
     /// can bring it on screen without re-centering on every mouse click.
-    @Published var pendingScrollVideoId: String?
+    @Published public var pendingScrollVideoId: String?
     /// Bumped after a user filter/collection reload finishes loading, so the
     /// grid re-centers the (surviving) selection — its row usually moves under
     /// the new filter, and it shouldn't be left off-screen. Not bumped by
     /// background refreshes or pagination, which must not yank the scroll.
-    @Published var scrollToSelectionTick: Int = 0
+    @Published public var scrollToSelectionTick: Int = 0
 
     /// Whichever of grid / list is on screen reports its layout here.
-    func setNavContext(_ orderedVideos: [VideoSummary], columns: Int) {
+    public func setNavContext(_ orderedVideos: [VideoSummary], columns: Int) {
         navVideos = orderedVideos
         navColumns = max(1, columns)
     }
@@ -2287,7 +2290,7 @@ class GridViewModel: ObservableObject {
     /// Move the active card to [video] without disturbing the multi-selection
     /// or anchor — the highlighted card steps through the selection while every
     /// selected card stays selected (Lightroom-style).
-    func setActiveVideo(_ video: VideoSummary) {
+    public func setActiveVideo(_ video: VideoSummary) {
         selectedVideoId = video.id
         selectedVideo = video
     }
@@ -2298,7 +2301,7 @@ class GridViewModel: ObservableObject {
     /// replace-selects the neighbouring card. Returns the card moved to so the
     /// caller can sync the detail panel, or nil on a no-op.
     @discardableResult
-    func moveSelection(_ dir: MoveDirection) -> VideoSummary? {
+    public func moveSelection(_ dir: MoveDirection) -> VideoSummary? {
         let order = navVideos
         guard !order.isEmpty else { return nil }
         let curIdx = selectedVideoId.flatMap { id in order.firstIndex { $0.id == id } } ?? -1
@@ -2342,7 +2345,7 @@ class GridViewModel: ObservableObject {
     /// repeated Shift+arrows pivot from it. Returns the new active card, or nil
     /// on a no-op.
     @discardableResult
-    func extendSelection(_ dir: MoveDirection) -> VideoSummary? {
+    public func extendSelection(_ dir: MoveDirection) -> VideoSummary? {
         let order = navVideos
         guard !order.isEmpty else { return nil }
         let curIdx = selectedVideoId.flatMap { id in order.firstIndex { $0.id == id } } ?? -1
@@ -2366,7 +2369,7 @@ class GridViewModel: ObservableObject {
 
     // MARK: - Thumbnails
 
-    func loadThumbnail(videoId: String) {
+    public func loadThumbnail(videoId: String) {
         if thumbnails[videoId] != nil { return }
         if thumbnailLoading.contains(videoId) { return }
         thumbnailLoading.insert(videoId)
@@ -2425,7 +2428,7 @@ class GridViewModel: ObservableObject {
     /// a single QuickLook poster for every scrub position; this gives the macOS
     /// client a true per-position strip instead. A little seek tolerance keeps
     /// it responsive over the NAS — exact frames aren't needed for a hover strip.
-    private func proResRawScrubFrames(path: String, count: Int, durationMs: Int) async -> [NSImage?] {
+    private func proResRawScrubFrames(path: String, count: Int, durationMs: Int) async -> [PlatformImage?] {
         let asset = AVURLAsset(url: URL(fileURLWithPath: path))
         let gen = AVAssetImageGenerator(asset: asset)
         gen.appliesPreferredTrackTransform = true
@@ -2433,14 +2436,14 @@ class GridViewModel: ObservableObject {
         gen.requestedTimeToleranceAfter = CMTime(seconds: 0.5, preferredTimescale: 600)
         gen.maximumSize = CGSize(width: 480, height: 0)
         let durSec = max(0.1, Double(durationMs) / 1000.0)
-        var out: [NSImage?] = []
+        var out: [PlatformImage?] = []
         out.reserveCapacity(count)
         for i in 0..<count {
             let frac = (Double(i) + 0.5) / Double(count)
             let t = CMTime(seconds: durSec * frac, preferredTimescale: 600)
             do {
                 let result = try await gen.image(at: t)
-                out.append(NSImage(cgImage: result.image, size: .zero))
+                out.append(PlatformImage.fromCGImage(result.image))
             } catch {
                 out.append(nil)
             }
@@ -2449,7 +2452,7 @@ class GridViewModel: ObservableObject {
     }
 
     /// Fetch (once) the audio loudness series for `videoId` and cache it.
-    func loadAudioLoudness(videoId: String) {
+    public func loadAudioLoudness(videoId: String) {
         if audioLoudness[videoId] != nil { return }
         if audioLoudnessLoading.contains(videoId) { return }
         audioLoudnessLoading.insert(videoId)
@@ -2459,7 +2462,7 @@ class GridViewModel: ObservableObject {
         }
     }
 
-    func loadScrubFrames(videoId: String) {
+    public func loadScrubFrames(videoId: String) {
         if scrubFrames[videoId] != nil { return }
         if scrubLoading.contains(videoId) { return }
         scrubLoading.insert(videoId)
@@ -2500,7 +2503,7 @@ class GridViewModel: ObservableObject {
     /// caches incrementally. Idempotent at a given width; resumes (skips frames
     /// already fetched) after a cancel. No-op when the area is no wider than the
     /// base scrub resolution.
-    func startHiResDetail(videoId: String, targetWidth: Int32) {
+    public func startHiResDetail(videoId: String, targetWidth: Int32) {
         guard targetWidth > baseScrubWidth else { return }
         if hiResWidth[videoId] == targetWidth && hiResTasks[videoId] != nil { return }
         if let w = hiResWidth[videoId], w != targetWidth {
@@ -2538,7 +2541,7 @@ class GridViewModel: ObservableObject {
 
     /// Stop any in-flight hi-res detail fetch for `videoId` (the user left the
     /// detail view). Frames already fetched are kept so a return resumes.
-    func cancelHiResDetail(videoId: String) {
+    public func cancelHiResDetail(videoId: String) {
         hiResTasks[videoId]?.cancel()
         hiResTasks[videoId] = nil
     }
@@ -2559,7 +2562,7 @@ class GridViewModel: ObservableObject {
     /// ungroup that's already cleared the local state itself).
     /// Remove a single video from its stack and refresh the grid. Wired
     /// from the right-click "Remove from stack" menu item.
-    func removeFromStack(videoId: String, groupId: String) {
+    public func removeFromStack(videoId: String, groupId: String) {
         guard !videoId.isEmpty else { return }
         Task {
             do {
@@ -2578,7 +2581,7 @@ class GridViewModel: ObservableObject {
     /// representative shown when the stack is collapsed. Wired from the
     /// right-click "Promote to leader" menu item that appears only when
     /// the right-clicked card is a non-representative member.
-    func setStackMaster(videoId: String, groupId: String) {
+    public func setStackMaster(videoId: String, groupId: String) {
         guard !videoId.isEmpty, !groupId.isEmpty else { return }
         // Optimistic local update so the badge / grid order updates
         // before the round-trip completes.
@@ -2624,7 +2627,7 @@ class GridViewModel: ObservableObject {
     /// a bulk RPC because the daemon doesn't currently expose one;
     /// stacks are small (a handful of variants), so the chatter is
     /// fine.
-    func unstackGroup(groupId: String) {
+    public func unstackGroup(groupId: String) {
         guard !groupId.isEmpty else { return }
         Task {
             do {
@@ -2639,7 +2642,7 @@ class GridViewModel: ObservableObject {
         }
     }
 
-    func refreshAfterStackChange(groupId: String) {
+    public func refreshAfterStackChange(groupId: String) {
         if !groupId.isEmpty {
             // Re-pull the member list for this group. If the daemon
             // dissolved the group entirely (last member ungrouped), the
@@ -2668,7 +2671,7 @@ class GridViewModel: ObservableObject {
         loadVideos()
     }
 
-    func toggleStackExpansion(_ groupId: String) {
+    public func toggleStackExpansion(_ groupId: String) {
         guard !groupId.isEmpty else { return }
         if expandedGroupIds.contains(groupId) {
             expandedGroupIds.remove(groupId)
@@ -2697,7 +2700,7 @@ class GridViewModel: ObservableObject {
     /// stack's members in the row's info column alongside the other
     /// details. The cache is shared with `toggleStackExpansion` so a
     /// subsequent expand reuses the already-fetched members.
-    func ensureStackMembersLoaded(_ groupId: String) {
+    public func ensureStackMembersLoaded(_ groupId: String) {
         guard !groupId.isEmpty else { return }
         if expandedGroupMembers[groupId] != nil { return }
         if !stackMembersLoading.insert(groupId).inserted { return }
@@ -2714,7 +2717,7 @@ class GridViewModel: ObservableObject {
 
     // MARK: - Grouping
 
-    func groupSelectedVideos() {
+    public func groupSelectedVideos() {
         let ids = selectedVideoIds
         if ids.count < 2 {
             error = "Select at least 2 videos (Shift+click or Cmd+click) to create a group"
@@ -2772,7 +2775,7 @@ class GridViewModel: ObservableObject {
     /// highest-resolution selection as the master and links every other
     /// selection as a manual proxy of it; for mopping up the master/proxy
     /// pairs auto-detection missed.
-    func attachProxiesToSelection() {
+    public func attachProxiesToSelection() {
         let ids = selectedVideoIds
         if ids.count < 2 {
             error = "Select at least 2 videos (Shift+click or Cmd+click) to attach proxies"
@@ -2803,21 +2806,23 @@ class GridViewModel: ObservableObject {
 
     // MARK: - External app
 
-    func openVideoInExternal(path: String) {
+    public func openVideoInExternal(path: String) {
+        #if os(macOS)
         let url = URL(fileURLWithPath: path)
         if FileManager.default.fileExists(atPath: url.path) {
             NSWorkspace.shared.open(url)
         } else {
             error = "File not found: \(path)"
         }
+        #endif
     }
 
-    func clearError() { error = nil }
+    public func clearError() { error = nil }
 
     /// Select every video currently visible in the grid: each loaded
     /// representative plus, when its stack is expanded, all of its visible
     /// members. Drives the ⌘A shortcut.
-    func selectAllVisible() {
+    public func selectAllVisible() {
         var seen = Set<String>()
         var ids: [String] = []
         for v in videos {
@@ -2840,7 +2845,7 @@ class GridViewModel: ObservableObject {
     /// Wipe every piece of catalog-derived state so the UI doesn't leak data
     /// from the previously-mounted catalog. Called by `ContentView` right
     /// after `VideoRepository.closeCatalog()`.
-    func clearState() {
+    public func clearState() {
         videos = []
         selectedVideoId = nil
         selectedVideo = nil
@@ -2976,7 +2981,7 @@ class GridViewModel: ObservableObject {
     /// loupe); on returning to GRID/LIST/MAP we re-check and drop the selection
     /// if the (possibly just-edited) video no longer matches the active filter,
     /// so no stale details linger in the inspector.
-    func onViewModeChanged(isDetail: Bool) {
+    public func onViewModeChanged(isDetail: Bool) {
         detailModeActive = isDetail
         if !isDetail { forceClearSelectionIfFilteredOut() }
     }
@@ -3010,7 +3015,7 @@ class GridViewModel: ObservableObject {
     /// Apply a 0..5 star rating to one or more videos. Optimistically updates
     /// the cached `videos` list so the UI redraws immediately, then sends the
     /// RPC. The pattern mirrors how tag-add/-remove is handled today.
-    func setRating(_ rating: Int, for videoIds: [String]) {
+    public func setRating(_ rating: Int, for videoIds: [String]) {
         let clamped = max(0, min(5, rating))
         let ids = Set(videoIds.filter { !$0.isEmpty })
         guard !ids.isEmpty else { return }
@@ -3031,7 +3036,7 @@ class GridViewModel: ObservableObject {
 
     /// Apply a colour label to one or more videos. Empty string clears the
     /// label. Optimistic update like [setRating].
-    func setColorLabel(_ label: String, for videoIds: [String]) {
+    public func setColorLabel(_ label: String, for videoIds: [String]) {
         let ids = Set(videoIds.filter { !$0.isEmpty })
         guard !ids.isEmpty else { return }
         videos = videos.map { v in
@@ -3049,7 +3054,7 @@ class GridViewModel: ObservableObject {
 
     /// Apply the rating to the current selection (or to the anchor when no
     /// multi-select). Called by the keyboard handler for digits 0..5.
-    func setRatingOnSelection(_ rating: Int) {
+    public func setRatingOnSelection(_ rating: Int) {
         let ids = selectedVideoIds.isEmpty
             ? (selectedVideoId.map { [$0] } ?? [])
             : selectedVideoIds
@@ -3064,7 +3069,7 @@ class GridViewModel: ObservableObject {
     /// Pressing the same hotkey on a mixed (or differently-labelled)
     /// selection applies the colour uniformly. Explicit clear via backtick
     /// (`label == ""`) bypasses the toggle and always clears.
-    func setColorLabelOnSelection(_ label: String) {
+    public func setColorLabelOnSelection(_ label: String) {
         let ids = selectedVideoIds.isEmpty
             ? (selectedVideoId.map { [$0] } ?? [])
             : selectedVideoIds
@@ -3085,7 +3090,7 @@ class GridViewModel: ObservableObject {
     /// Pull the saved 4-slot configuration from the catalog. Called once
     /// after the catalog opens. Defaults survive an RPC failure so the grid
     /// never starts in a broken state.
-    func loadGridSettings() {
+    public func loadGridSettings() {
         Task {
             do {
                 let raw = try await repository.getGridSettings()
@@ -3104,7 +3109,7 @@ class GridViewModel: ObservableObject {
     /// debounced so reconfiguring several slots in quick succession collapses to
     /// a single round-trip instead of one DB write per click — which on a slow
     /// NAS-backed catalog could otherwise back up behind each other.
-    func saveGridSettings() {
+    public func saveGridSettings() {
         let slots = Self.normaliseSlots(topSlots)
         gridSettingsSaveTask?.cancel()
         gridSettingsSaveTask = Task { [weak self] in
@@ -3133,7 +3138,7 @@ class GridViewModel: ObservableObject {
 
     /// Apply (or clear) the geographic proximity filter and reload the grid.
     /// Called by the global-map view when the user taps a pin.
-    func setLocationFilter(latitude: Double?, longitude: Double?, radiusKm: Double = 1.0) {
+    public func setLocationFilter(latitude: Double?, longitude: Double?, radiusKm: Double = 1.0) {
         if let lat = latitude, let lon = longitude {
             filterLocation = GeoFilter(latitude: lat, longitude: lon, radiusKm: radiusKm)
             // A geographic filter means "videos at this place", which inherently
@@ -3150,7 +3155,7 @@ class GridViewModel: ObservableObject {
     /// clusters) with per-location video counts, for the Library Filter's
     /// "Location" mode. Always fetches the full geotagged set so the list isn't
     /// itself narrowed by whatever filter is currently active.
-    func loadFilterLocations() {
+    public func loadFilterLocations() {
         Task {
             let locs = await repository.listVideosWithLocations()
             filterLocationGroups = Self.buildLocationFilterGroups(locs, named: namedLocations)
@@ -3162,7 +3167,7 @@ class GridViewModel: ObservableObject {
     /// radius covering the farthest member (plus a small margin), so only that
     /// spot's videos show; unlocated videos lack coordinates and never match. A
     /// named place containing the centroid lends its own radius instead.
-    func filterToVideosLocation(_ videoIds: [String]) {
+    public func filterToVideosLocation(_ videoIds: [String]) {
         let idSet = Set(videoIds)
         var seen = Set<String>()
         let pts: [(Double, Double)] = (geotaggedVideos + videos).compactMap { v in
@@ -3224,7 +3229,7 @@ class GridViewModel: ObservableObject {
     }
 
     /// Refresh the list of geotagged videos used by the global-map view.
-    func loadVideoLocations() {
+    public func loadVideoLocations() {
         Task { await loadVideoLocationsAsync() }
     }
 
@@ -3232,14 +3237,14 @@ class GridViewModel: ObservableObject {
     /// they take a UI action (opening a sheet, framing a map) can `await`
     /// this. Always reads from the daemon; relies on the catalog-open
     /// pre-load to keep the call fast in steady state.
-    func loadVideoLocationsAsync() async {
+    public func loadVideoLocationsAsync() async {
         videoLocations = await repository.listVideosWithLocations()
     }
 
     /// Load GPS-tagged videos matching the current grid filters and update `videoLocations`.
     /// Uses a large page size to minimise round-trips. Does NOT apply `filterLocation`
     /// so the pin list is not constrained by an active proximity circle.
-    func loadVideoLocationsFiltered() {
+    public func loadVideoLocationsFiltered() {
         Task { await loadVideoLocationsFilteredAsync() }
     }
 
@@ -3259,7 +3264,7 @@ class GridViewModel: ObservableObject {
         }
     }
 
-    func loadVideoLocationsFilteredAsync() async {
+    public func loadVideoLocationsFilteredAsync() async {
         isLoadingVideoLocations = true
         defer { isLoadingVideoLocations = false }
         let batchSize: Int32 = 500
@@ -3318,19 +3323,19 @@ class GridViewModel: ObservableObject {
     /// Refresh the catalog's named-location list. Called whenever a sheet
     /// needs to display or resolve names — cheap (typically a few hundred
     /// rows at most) so we never paginate.
-    func loadNamedLocations() {
+    public func loadNamedLocations() {
         Task { await loadNamedLocationsAsync() }
     }
 
     /// Awaitable variant of [loadNamedLocations].
-    func loadNamedLocationsAsync() async {
+    public func loadNamedLocationsAsync() async {
         namedLocations = await repository.listNamedLocations()
     }
 
     /// Resolve a (lat, lon) into the nearest named place within its
     /// `radiusMeters`, or nil if no entry is close enough. Linear scan —
     /// the named-location list is small.
-    func nameForLocation(latitude: Double, longitude: Double) -> NamedLocation? {
+    public func nameForLocation(latitude: Double, longitude: Double) -> NamedLocation? {
         guard !namedLocations.isEmpty else { return nil }
         var best: (NamedLocation, Double)? = nil
         for loc in namedLocations {
@@ -3348,7 +3353,7 @@ class GridViewModel: ObservableObject {
     /// Upsert a named location on the daemon and (on success) merge the
     /// returned row into the local cache so the UI sees it immediately
     /// without a full reload.
-    func saveNamedLocation(
+    public func saveNamedLocation(
         id: String,
         name: String,
         latitude: Double,
@@ -3395,7 +3400,7 @@ class GridViewModel: ObservableObject {
     /// writes complete the grid and global-map are reloaded. When a target
     /// video belongs to a collapsed stack the location is applied to all
     /// members of that stack.
-    func setVideoLocations(
+    public func setVideoLocations(
         videoIds: [String],
         latitude: Double,
         longitude: Double,
@@ -3467,14 +3472,14 @@ class GridViewModel: ObservableObject {
 
     /// Remove the GPS location from every video in `videoIds`. Clearing is
     /// done by writing lat/lon 0.0 which the catalog treats as "no location".
-    func clearVideoLocations(videoIds: [String], onComplete: @escaping () -> Void = {}) {
+    public func clearVideoLocations(videoIds: [String], onComplete: @escaping () -> Void = {}) {
         setVideoLocations(videoIds: videoIds, latitude: 0.0, longitude: 0.0,
                           writeToFile: false, onComplete: onComplete)
     }
 
     /// Persist a new capture timestamp (Unix ms, UTC) on every video in
     /// `videoIds`. Reloads the grid + year-filter dropdown afterwards.
-    func setVideoCaptureDates(
+    public func setVideoCaptureDates(
         videoIds: [String],
         timestampMs: Int64,
         writeToFile: Bool,
@@ -3506,7 +3511,7 @@ class GridViewModel: ObservableObject {
     /// filename — used by the grid/list right-click "Set Capture Date to …" /
     /// "from filename" action, where every selected card can resolve to a
     /// different date. Reloads the grid + facets afterward.
-    func setInferredCaptureDates(
+    public func setInferredCaptureDates(
         _ perVideo: [(id: String, timestampMs: Int64)],
         onComplete: @escaping () -> Void = {}
     ) {
@@ -3533,10 +3538,16 @@ class GridViewModel: ObservableObject {
 /// Proximity filter — kept as a named struct so SwiftUI can compare-and-redraw
 /// reliably, and so the parameter list of [GridViewModel] doesn't fan out a
 /// half-typed tuple everywhere.
-struct GeoFilter: Equatable {
-    let latitude: Double
-    let longitude: Double
-    let radiusKm: Double
+public struct GeoFilter: Equatable {
+    public let latitude: Double
+    public let longitude: Double
+    public let radiusKm: Double
+
+    public init(latitude: Double, longitude: Double, radiusKm: Double) {
+        self.latitude = latitude
+        self.longitude = longitude
+        self.radiusKm = radiusKm
+    }
 }
 
 /// Async counting semaphore used to cap concurrent thumbnail gRPC streams.

@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import SwiftUI
+import ReelVaultKit
 
 /// Left-side panel listing scanned library locations and collections.
 /// Clicking a location row filters the grid to that path; clicking a

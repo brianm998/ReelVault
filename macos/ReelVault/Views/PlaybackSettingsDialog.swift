@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import SwiftUI
+import ReelVaultKit
 
 /// Preferences sheet for inline-playback gating and default proxy
 /// resolution. Two sliders backed by the server's `max_native_playback_height`

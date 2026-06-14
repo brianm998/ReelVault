@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import SwiftUI
+import ReelVaultKit
 
 /// Name / rename a map location. Presented as a sheet when the user picks
 /// "Name / Rename location" from the map view's right-click menu. On save the

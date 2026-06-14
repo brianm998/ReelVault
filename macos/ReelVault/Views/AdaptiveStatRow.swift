@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import SwiftUI
+import ReelVaultKit
 
 /// One row of a card's top stat band: a leading (start-aligned) subview and a
 /// trailing (end-aligned) subview. Unlike a plain even split, a short value

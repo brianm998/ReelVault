@@ -1,4 +1,5 @@
 import SwiftUI
+import ReelVaultKit
 
 /// Shared badge rendering for the video cards (grid, list row, expanded-stack
 /// row, and the map panel, which reuses the grid card). Centralising the

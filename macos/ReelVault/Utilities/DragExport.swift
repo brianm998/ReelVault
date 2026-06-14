@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import AppKit
+import ReelVaultKit
 import UniformTypeIdentifiers
 
 /// Builds an NSItemProvider suitable for dragging one or more video files
