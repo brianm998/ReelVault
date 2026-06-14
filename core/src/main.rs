@@ -12,6 +12,7 @@ use tonic::transport::{Identity as TonicIdentity, Server, ServerTlsConfig};
 
 use reelvault_core::config::Config;
 use reelvault_core::db::Database;
+use reelvault_core::discovery;
 use reelvault_core::identity;
 use reelvault_core::service::ReelVaultService;
 
@@ -88,10 +89,15 @@ struct Args {
     #[arg(long, default_value_t = 50051u16)]
     remote_grpc_port: u16,
 
-    /// Human-friendly server name baked into the TLS certificate (and, later,
-    /// advertised over mDNS). Defaults to the machine hostname.
+    /// Human-friendly server name baked into the TLS certificate and advertised
+    /// over mDNS. Defaults to the machine hostname.
     #[arg(long, value_name = "NAME")]
     advertise_name: Option<String>,
+
+    /// Port for the `--remote` HTTPS media server (download/stream + upload).
+    /// Advertised over mDNS so clients know where to stream from.
+    #[arg(long, default_value_t = 50052u16)]
+    media_port: u16,
 }
 
 #[tokio::main]
@@ -168,6 +174,13 @@ async fn main() -> Result<()> {
             config.max_concurrent_ffmpeg.to_string()
         }
     );
+
+    // Catalog display name for the mDNS advertisement (computed before `db` is
+    // moved into the service).
+    let catalog_name = db
+        .current_path()
+        .and_then(|p| p.file_stem().map(|s| s.to_string_lossy().into_owned()))
+        .unwrap_or_else(|| "ReelVault".to_string());
 
     let service = ReelVaultService::new(db, config);
 
@@ -257,6 +270,39 @@ async fn main() -> Result<()> {
             id.fingerprint_hex
         );
         tracing::info!("Backend ready (loopback + remote)");
+
+        // Advertise over mDNS so clients auto-discover us. The guard lives until
+        // the process exits (after the servers below run forever), unregistering
+        // on drop.
+        let adv_ip: Option<Ipv4Addr> = match lan_ip {
+            IpAddr::V4(v4) if !v4.is_unspecified() => Some(v4),
+            _ => primary_lan_ipv4(),
+        };
+        let _adv = adv_ip.and_then(|ip| {
+            match discovery::Advertisement::start(
+                &server_name,
+                ip,
+                args.remote_grpc_port,
+                args.media_port,
+                &id.fingerprint_hex,
+                &catalog_name,
+                env!("CARGO_PKG_VERSION"),
+                "none", // auth: pairing is added in a later step
+                "",     // features: media/upload added as those land
+            ) {
+                Ok(a) => {
+                    tracing::info!("Advertising _reelvault._tcp at {} (mDNS)", ip);
+                    Some(a)
+                }
+                Err(e) => {
+                    tracing::warn!("mDNS advertisement failed: {}", e);
+                    None
+                }
+            }
+        });
+        if adv_ip.is_none() {
+            tracing::warn!("No LAN IPv4 available to advertise over mDNS");
+        }
 
         let tls = Server::builder()
             .tls_config(ServerTlsConfig::new().identity(tonic_id))?

@@ -7,6 +7,7 @@ pub mod thumbnails;
 pub mod search;
 pub mod indexing;
 pub mod config;
+pub mod discovery;
 pub mod error;
 pub mod identity;
 pub mod service;
