@@ -99,6 +99,18 @@ public final class LoopbackMediaProxy: @unchecked Sendable {
         return c.url!
     }
 
+    /// `http://127.0.0.1:<port>/hls/<id>/<height>/status` — JSON progress
+    /// (`{segments, complete, segSeconds}`) for the client's readiness gate.
+    public func statusURL(videoId: String, height: Int) -> URL {
+        lock.lock(); let p = port; lock.unlock()
+        var c = URLComponents()
+        c.scheme = "http"
+        c.host = "127.0.0.1"
+        c.port = Int(p)
+        c.path = "/hls/\(videoId)/\(height)/status"
+        return c.url!
+    }
+
     public func stop() {
         lock.lock(); let l = listener; listener = nil; lock.unlock()
         l?.cancel()

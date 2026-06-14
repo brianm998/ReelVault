@@ -51,6 +51,9 @@ final class StreamPlayer: ObservableObject {
     @Published var player: AVPlayer?
     @Published var isPreparing = false
     @Published var error: String?
+    /// While preparing a sub-realtime HLS re-encode, an ETA like
+    /// "Preparing… ready in ~12s" for the spinner; nil when ready/unknown.
+    @Published var preparingDetail: String?
     private var preparedVideoId: String?
     /// Live loopback proxy backing an HLS stream; retained for the player's
     /// lifetime (segments 502 if it deallocs mid-playback).
@@ -68,13 +71,14 @@ final class StreamPlayer: ObservableObject {
     /// prepared, so the inline view and the full-screen cover share one player
     /// rather than racing two.
     func prepare(video: VideoSummary, endpoint: AppRouter.ConnectionInfo?) async {
+        if isPreparing { return }   // a prepare (incl. the readiness wait) is in flight
         if preparedVideoId == video.id, player != nil {
             player?.play()
             return
         }
         guard let conn = endpoint else { error = "No media connection available."; return }
         isPreparing = true
-        defer { isPreparing = false }
+        defer { isPreparing = false; preparingDetail = nil }
         error = nil
         let mediaEndpoint = MediaClient.Endpoint(
             host: conn.host, mediaPort: conn.mediaPort,
@@ -96,6 +100,10 @@ final class StreamPlayer: ObservableObject {
                 let item = AVPlayerItem(asset: asset)
                 attachDiagnostics(to: item)
                 let p = AVPlayer(playerItem: item)
+                // Readiness gate: for a sub-realtime re-encode, wait (spinner +
+                // ETA) until enough is buffered to play through without stalling.
+                // Returns ~immediately for complete / copy-mux / fast-enough cases.
+                await waitUntilReady(proxy: proxy, video: video, height: height)
                 player = p
                 preparedVideoId = video.id
                 p.play()
@@ -130,9 +138,64 @@ final class StreamPlayer: ObservableObject {
             player = nil
             preparedVideoId = nil
             error = nil
+            preparingDetail = nil
             teardownProxy()
             clearDiagnostics()
         }
+    }
+
+    /// Poll the server's HLS status and return once it's safe to start playing
+    /// without stalling: the session is complete, the encoder keeps up with
+    /// playback, or enough is buffered that playback won't catch the encoder
+    /// (buffer ≥ duration × (1 − encodeRate)). Publishes an ETA after a short
+    /// grace. Any error or the wait cap → just play (never worse than before).
+    private func waitUntilReady(proxy: LoopbackMediaProxy, video: VideoSummary, height: Int) async {
+        let durationSec = Double(video.durationMs) / 1000.0
+        guard durationSec > 0 else { return }
+        let statusURL = proxy.statusURL(videoId: video.id, height: height)
+        let start = Date()
+        let maxWait: TimeInterval = 90
+        var prev: (buffered: Double, at: Date)?
+        while Date().timeIntervalSince(start) < maxWait {
+            if Task.isCancelled { return }
+            guard let status = await fetchStatus(statusURL) else { return }
+            if status.complete { preparingDetail = nil; return }
+            let buffered = Double(status.segments * status.segSeconds)
+            let now = Date()
+            if let prev {
+                let dt = now.timeIntervalSince(prev.at)
+                let rate = dt > 0 ? max(0, (buffered - prev.buffered) / dt) : 0
+                // Either the encoder keeps up (with a small head start), or we've
+                // buffered enough that playback can't catch the encoder before it
+                // finishes the file.
+                let target = durationSec * (1.0 - min(rate, 0.99))
+                if (rate >= 0.95 && buffered >= 6) || buffered >= target {
+                    preparingDetail = nil
+                    return
+                }
+                if now.timeIntervalSince(start) >= 2.5 {
+                    let eta = rate > 0.05 ? (target - buffered) / rate : Double.infinity
+                    preparingDetail = eta.isFinite
+                        ? "Preparing… ready in ~\(Int(eta.rounded()))s"
+                        : "Preparing…"
+                }
+            }
+            prev = (buffered, now)
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+        }
+        preparingDetail = nil
+    }
+
+    private struct HLSStatus { let segments: Int; let complete: Bool; let segSeconds: Int }
+
+    private func fetchStatus(_ url: URL) async -> HLSStatus? {
+        guard let (data, _) = try? await URLSession.shared.data(from: url),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return nil }
+        return HLSStatus(
+            segments: (obj["segments"] as? Int) ?? 0,
+            complete: (obj["complete"] as? Bool) ?? false,
+            segSeconds: (obj["segSeconds"] as? Int) ?? 4)
     }
 
     private func teardownProxy() {
@@ -218,7 +281,12 @@ struct StreamingPlayerView: View {
                 VideoPlayer(player: player)
                     .clipShape(RoundedRectangle(cornerRadius: fill ? 0 : 10))
             } else if stream.isPreparing {
-                ProgressView().tint(.white)
+                VStack(spacing: 8) {
+                    ProgressView().tint(.white)
+                    if let detail = stream.preparingDetail {
+                        Text(detail).font(.caption).foregroundStyle(.white.opacity(0.85))
+                    }
+                }
             } else {
                 Button {
                     Task { await stream.prepare(video: video, endpoint: endpoint) }
