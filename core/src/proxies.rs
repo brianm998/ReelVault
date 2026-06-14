@@ -700,36 +700,26 @@ pub struct CreateProxyProgress {
 /// `re_index_after`: when true, the new file is also indexed normally so
 /// the videos row exists before we try to link it. Set to false only if
 /// you're going to call `scan_single_file` immediately afterwards.
-#[allow(clippy::too_many_arguments)]
-pub fn create_proxy(
-    db: &Database,
-    source_id: &str,
+/// The ffmpeg proxy-transcode leaf behind the CLI
+/// [`crate::media_backend::MediaBackend`] `transcode_proxy`. libx264 / AAC with
+/// `-movflags +faststart` at `target_height`, reporting encode progress on the
+/// 0–85% band via `progress` (parsed from ffmpeg's `-progress pipe:1` `frame=`
+/// lines; `total_frames == 0` means unknown → pulse 5–50%). Acquires one ffmpeg
+/// permit for the whole encode. The args reproduce the previous inline
+/// invocation verbatim, so the proxy file is bit-identical.
+pub(crate) fn ffmpeg_transcode_proxy(
     source: &Path,
     output_path: &Path,
-    target_height: u32,
-    thumbnail_cache: &Path,
-    re_index_after: bool,
-    on_progress: impl Fn(&CreateProxyProgress),
-) -> Result<String> {
-    on_progress(&CreateProxyProgress {
-        status: "started".into(),
-        progress_percent: 0.0,
-        message: format!("Generating {}p proxy", target_height),
-    });
-
+    target_height: i32,
+    total_frames: i64,
+    progress: &mut dyn FnMut(f64),
+) -> Result<()> {
     // Bound concurrent ffmpeg invocations the same way scan does.
     let _permit = crate::concurrency::acquire_ffmpeg_permit();
 
-    // Total frame count drives the encoding progress percentage.
-    // Falls back gracefully to 0 when metadata isn't available yet.
-    let total_frames = db.get_video_frame_count(source_id);
-
-    // Build the ffmpeg command. `-y` to overwrite if a partial file is
-    // left over from a prior interrupted run. `-progress pipe:1` writes
-    // machine-readable key=value progress lines to stdout so we can
-    // stream real frame-by-frame progress back through the gRPC channel.
-    // `-nostats` suppresses the interleaved per-frame stat lines that
-    // would otherwise clutter stdout.
+    // `-y` to overwrite a partial file left by an interrupted run. `-progress
+    // pipe:1` writes machine-readable key=value progress to stdout; `-nostats`
+    // suppresses the interleaved per-frame stat lines.
     let scale_filter = format!("scale=-2:{}", target_height);
     let mut child = crate::ffmpeg::ffmpeg_command()
         .args([
@@ -762,9 +752,8 @@ pub fn create_proxy(
         .spawn()
         .map_err(|e| crate::error::ReelVaultError::FfmpegError(format!("spawn ffmpeg: {}", e)))?;
 
-    // Parse stdout for `frame=N` progress lines and forward them as
-    // "encoding" events. The 0-85% band is reserved for encoding;
-    // "indexing" and "complete" cover 90-100% after ffmpeg exits.
+    // Parse stdout for `frame=N` progress lines and map them onto the 0-85%
+    // band; "indexing"/"complete" cover 90-100% after ffmpeg exits.
     let stdout = child.stdout.take().expect("stdout was piped");
     use std::io::BufRead;
     for line in std::io::BufReader::new(stdout).lines().map_while(|l| l.ok()) {
@@ -777,15 +766,7 @@ pub fn create_proxy(
                     // bar moves without making up a completion claim.
                     ((frame % 10) as f64 * 4.5 + 5.0).min(50.0)
                 };
-                on_progress(&CreateProxyProgress {
-                    status: "encoding".into(),
-                    progress_percent: percent,
-                    message: if total_frames > 0 {
-                        format!("Encoding… {:.0}%", percent)
-                    } else {
-                        format!("Encoding… frame {}", frame)
-                    },
-                });
+                progress(percent);
             }
         }
     }
@@ -799,6 +780,46 @@ pub fn create_proxy(
             exit_status,
         )));
     }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn create_proxy(
+    db: &Database,
+    source_id: &str,
+    source: &Path,
+    output_path: &Path,
+    target_height: u32,
+    thumbnail_cache: &Path,
+    re_index_after: bool,
+    on_progress: impl Fn(&CreateProxyProgress),
+) -> Result<String> {
+    on_progress(&CreateProxyProgress {
+        status: "started".into(),
+        progress_percent: 0.0,
+        message: format!("Generating {}p proxy", target_height),
+    });
+
+    // Total frame count drives the encoding progress percentage.
+    // Falls back gracefully to 0 when metadata isn't available yet.
+    let total_frames = db.get_video_frame_count(source_id);
+
+    // Transcode through the media backend (ffmpeg on desktop; native on iOS).
+    // Progress arrives on the 0–85% band; "indexing"/"complete" cover 90–100%
+    // afterward. The backend acquires its own ffmpeg permit for the encode.
+    crate::media_backend::backend().transcode_proxy(
+        &crate::media_backend::MediaSource::Path(source.to_path_buf()),
+        output_path,
+        target_height as i32,
+        total_frames,
+        &mut |percent| {
+            on_progress(&CreateProxyProgress {
+                status: "encoding".into(),
+                progress_percent: percent,
+                message: format!("Encoding… {:.0}%", percent),
+            });
+        },
+    )?;
 
     on_progress(&CreateProxyProgress {
         status: "indexing".into(),

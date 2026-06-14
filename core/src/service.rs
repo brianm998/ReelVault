@@ -206,7 +206,8 @@ impl ReelVaultService {
 
         let path = video.path.clone();
         self.run_blocking(move |_svc| {
-            let samples = crate::metadata::extract_audio_loudness(std::path::Path::new(&path));
+            let samples = crate::media_backend::backend()
+                .extract_loudness(&crate::media_backend::MediaSource::Path(path.clone().into()));
             let mut bytes = Vec::with_capacity(samples.len() * 4);
             for s in samples {
                 bytes.extend_from_slice(&s.to_le_bytes());
@@ -2917,8 +2918,8 @@ impl ReelVaultTrait for ReelVaultService {
         let mut file_write_message = String::new();
         if req.write_to_file {
             if let Ok(Some(v)) = self.db.get_video(&req.video_id) {
-                match crate::metadata::MetadataExtractor::write_location_tag(
-                    &v.path,
+                match crate::media_backend::backend().write_location(
+                    &crate::media_backend::MediaSource::Path(v.path.clone().into()),
                     req.latitude,
                     req.longitude,
                     req.altitude,
@@ -2995,8 +2996,8 @@ impl ReelVaultTrait for ReelVaultService {
         let mut file_write_message = String::new();
         if req.write_to_file {
             if let Ok(Some(v)) = self.db.get_video(&req.video_id) {
-                match crate::metadata::MetadataExtractor::write_creation_time_tag(
-                    &v.path,
+                match crate::media_backend::backend().write_creation_time(
+                    &crate::media_backend::MediaSource::Path(v.path.clone().into()),
                     req.timestamp_ms,
                 ) {
                     Ok(()) => {

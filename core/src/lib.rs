@@ -17,6 +17,7 @@ pub mod service;
 pub mod grouping;
 pub mod concurrency;
 pub mod ffmpeg;
+pub mod media_backend;
 pub mod watcher;
 pub mod imagehash;
 pub mod proxies;

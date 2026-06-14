@@ -4,6 +4,7 @@
 use crate::concurrency::acquire_ffmpeg_permit;
 use crate::db::Database;
 use crate::error::{Result, ReelVaultError};
+use crate::media_backend::{backend, MediaSource};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
@@ -84,12 +85,13 @@ impl ThumbnailGenerator {
 
         // Calculate seek position at 50% of duration
         let seek_pos = if duration_secs > 0.0 {
-            (duration_secs * 0.5).to_string()
+            duration_secs * 0.5
         } else {
-            "0".to_string()
+            0.0
         };
 
-        let color_info = probe_color_info(video_path);
+        let src = MediaSource::path(video_path);
+        let color_info = backend().probe_color(&src);
 
         // ProRes RAW on macOS: ffmpeg can't develop it, so source the frame from
         // QuickLook (the OS decoder) at a size big enough for the largest cached
@@ -100,32 +102,9 @@ impl ThumbnailGenerator {
             return Ok(temp_path);
         }
 
-        let vf = build_thumbnail_vf(&color_info, "scale=min(400\\,iw):-1");
-
-        let _permit = acquire_ffmpeg_permit();
-        let output = crate::ffmpeg::ffmpeg_command()
-            .args([
-                "-v",
-                "error",
-                "-ss",
-                &seek_pos,
-                "-i",
-                video_path.to_str().unwrap_or(""),
-                "-vframes",
-                "1",
-                "-vf",
-                &vf,
-                "-q:v",
-                "5",
-                temp_path.to_str().unwrap_or(""),
-            ])
-            .output()
-            .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to run ffmpeg: {}", e)))?;
-
-        if !output.status.success() {
-            let error_msg = String::from_utf8_lossy(&output.stderr);
-            return Err(ReelVaultError::ThumbnailGenerationFailed(error_msg.to_string()));
-        }
+        // Frame at 400px wide, JPEG quality 5 — the source still that
+        // `generate_size` then downscales into the small/medium/large variants.
+        backend().extract_frame(&src, &color_info, seek_pos, 400, 5, &temp_path)?;
 
         Ok(temp_path)
     }
@@ -220,7 +199,8 @@ impl ThumbnailGenerator {
         }
 
         // Probe color info once — applied to every scrub frame from this video.
-        let color_info = probe_color_info(video_path);
+        let src = MediaSource::path(video_path);
+        let color_info = backend().probe_color(&src);
 
         // ProRes RAW on macOS: ffmpeg can't develop it. Prefer real per-position
         // frames via the embedded AVFoundation helper (the OS decoder seeks to a
@@ -270,9 +250,6 @@ impl ThumbnailGenerator {
             // QuickLook failed too — fall through to the ffmpeg path below.
         }
 
-        let scrub_scale = format!("scale=min({}\\,iw):-1", Self::SCRUB_WIDTH);
-        let vf = build_thumbnail_vf(&color_info, &scrub_scale);
-
         let count = Self::SCRUB_FRAME_COUNT;
         for i in 0..count {
             let output = cache_dir.join(format!("{}_scrub_{}.jpg", video_id, i));
@@ -289,45 +266,19 @@ impl ThumbnailGenerator {
             };
             let seek_pos = duration_secs * pct;
 
-            // Single ffmpeg call: seek (fast input-side seek), extract one
-            // frame, scale, write JPEG. ~50–500ms per call typically. The
-            // permit is dropped at the end of the loop iteration, freeing
-            // a slot for another concurrent ffmpeg run.
-            let _permit = acquire_ffmpeg_permit();
-            let result = crate::ffmpeg::ffmpeg_command()
-                .args([
-                    "-v",
-                    "error",
-                    "-ss",
-                    &format!("{:.3}", seek_pos),
-                    "-i",
-                    video_path.to_str().unwrap_or(""),
-                    "-frames:v",
-                    "1",
-                    "-vf",
-                    &vf,
-                    "-q:v",
-                    "6",
-                    "-y",
-                    output.to_str().unwrap_or(""),
-                ])
-                .output();
-
-            match result {
-                Ok(o) if o.status.success() => {}
-                Ok(o) => {
-                    let msg = String::from_utf8_lossy(&o.stderr);
-                    tracing::warn!(
-                        "Scrub frame {} for {} (t={:.3}s) failed: {}",
-                        i,
-                        video_id,
-                        seek_pos,
-                        msg
-                    );
-                }
-                Err(e) => {
-                    tracing::warn!("ffmpeg invocation failed: {}", e);
-                }
+            // One frame per position at SCRUB_WIDTH, JPEG quality 6. The backend
+            // acquires/releases an ffmpeg permit per call, so a slot frees for
+            // another concurrent run between iterations.
+            if let Err(e) =
+                backend().extract_frame(&src, &color_info, seek_pos, Self::SCRUB_WIDTH, 6, &output)
+            {
+                tracing::warn!(
+                    "Scrub frame {} for {} (t={:.3}s) failed: {}",
+                    i,
+                    video_id,
+                    seek_pos,
+                    e
+                );
             }
         }
         Ok(())
@@ -400,7 +351,8 @@ impl ThumbnailGenerator {
             return Ok(());
         }
         let seek_pos = Self::frame_seek_pos(size, duration_secs);
-        let color_info = probe_color_info(video_path);
+        let src = MediaSource::path(video_path);
+        let color_info = backend().probe_color(&src);
 
         // ProRes RAW on macOS: a real frame at the requested position via the
         // AVFoundation helper (so hi-res scrub_N frames differ), falling back to
@@ -414,35 +366,9 @@ impl ThumbnailGenerator {
             }
         }
 
-        let scale = format!("scale=min({}\\,iw):-1", max_width);
-        let vf = build_thumbnail_vf(&color_info, &scale);
-
-        let _permit = acquire_ffmpeg_permit();
-        let result = crate::ffmpeg::ffmpeg_command()
-            .args([
-                "-v",
-                "error",
-                "-ss",
-                &format!("{:.3}", seek_pos),
-                "-i",
-                video_path.to_str().unwrap_or(""),
-                "-frames:v",
-                "1",
-                "-vf",
-                &vf,
-                "-q:v",
-                "3",
-                "-y",
-                output.to_str().unwrap_or(""),
-            ])
-            .output();
-        match result {
-            Ok(o) if o.status.success() => Ok(()),
-            Ok(o) => Err(ReelVaultError::ThumbnailGenerationFailed(
-                String::from_utf8_lossy(&o.stderr).to_string(),
-            )),
-            Err(e) => Err(ReelVaultError::FfmpegError(e.to_string())),
-        }
+        // One frame at the requested width, JPEG quality 3 (the detail view
+        // wants a crisper still than the grid).
+        backend().extract_frame(&src, &color_info, seek_pos, max_width, 3, &output)
     }
 }
 
@@ -461,21 +387,23 @@ fn read_cache_file(path: &Path) -> Result<Option<Vec<u8>>> {
 }
 
 /// Color metadata probed from a single video stream — used to decide whether
-/// thumbnail extraction needs a tonemap/colorspace conversion step.
+/// thumbnail extraction needs a tonemap/colorspace conversion step. Public so
+/// the [`crate::media_backend::MediaBackend`] trait can pass it to
+/// `extract_frame` (probed once per video, reused across scrub frames).
 #[derive(Debug, Default, Clone)]
-struct ColorInfo {
-    codec_name: String,
-    pix_fmt: String,
-    color_space: String,
-    color_transfer: String,
-    color_primaries: String,
+pub struct ColorInfo {
+    pub codec_name: String,
+    pub pix_fmt: String,
+    pub color_space: String,
+    pub color_transfer: String,
+    pub color_primaries: String,
 }
 
 /// Run ffprobe once to fetch the fields needed by [`build_thumbnail_vf`].
 /// Cheap (~30ms) and tolerant of failure — on any error the returned
 /// `ColorInfo` is all-empty, which makes [`build_thumbnail_vf`] fall back
 /// to the plain scale filter (preserving prior behavior).
-fn probe_color_info(video_path: &Path) -> ColorInfo {
+pub(crate) fn probe_color_info(video_path: &Path) -> ColorInfo {
     let mut info = ColorInfo::default();
     let output = crate::ffmpeg::ffprobe_command()
         .args([
@@ -530,6 +458,54 @@ fn build_thumbnail_vf(ci: &ColorInfo, scale_filter: &str) -> String {
         Some(prefix) => format!("{},{}", prefix, scale_filter),
         None => scale_filter.to_string(),
     }
+}
+
+/// The shared ffmpeg frame-extraction leaf behind every thumbnail call site
+/// (still / scrub / on-demand) and the CLI [`crate::media_backend::MediaBackend`]
+/// `extract_frame`. Decodes one frame at `seek_secs`, scales so the longest side
+/// is `max_px` (never upscaled — `scale=min(max_px,iw):-1`), tonemaps per
+/// `color`, and writes a JPEG at ffmpeg `-q:v quality`. Acquires one ffmpeg
+/// permit for the call. The args reproduce the previous per-site invocations
+/// verbatim (only the per-site `-q:v` and scale width differed), so cached
+/// thumbnails are bit-identical.
+pub(crate) fn ffmpeg_extract_frame(
+    video_path: &Path,
+    color: &ColorInfo,
+    seek_secs: f64,
+    max_px: i32,
+    quality: u8,
+    out: &Path,
+) -> Result<()> {
+    let scale = format!("scale=min({}\\,iw):-1", max_px);
+    let vf = build_thumbnail_vf(color, &scale);
+
+    let _permit = acquire_ffmpeg_permit();
+    let output = crate::ffmpeg::ffmpeg_command()
+        .args([
+            "-v",
+            "error",
+            "-ss",
+            &format!("{:.3}", seek_secs),
+            "-i",
+            video_path.to_str().unwrap_or(""),
+            "-frames:v",
+            "1",
+            "-vf",
+            &vf,
+            "-q:v",
+            &quality.to_string(),
+            "-y",
+            out.to_str().unwrap_or(""),
+        ])
+        .output()
+        .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to run ffmpeg: {}", e)))?;
+
+    if !output.status.success() {
+        return Err(ReelVaultError::ThumbnailGenerationFailed(
+            String::from_utf8_lossy(&output.stderr).to_string(),
+        ));
+    }
+    Ok(())
 }
 
 fn tonemap_prefix(ci: &ColorInfo) -> Option<String> {

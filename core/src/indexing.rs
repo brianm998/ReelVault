@@ -3,6 +3,7 @@
 
 use crate::db::Database;
 use crate::error::{Result, ReelVaultError};
+use crate::media_backend::{backend, MediaSource};
 use crate::metadata::MetadataExtractor;
 use crate::post_index;
 use crate::thumbnails::ThumbnailGenerator;
@@ -353,8 +354,9 @@ impl IndexingEngine {
             .map(|m| m.len() as i64)
             .ok();
 
-        // Extract metadata
-        let probe_output = MetadataExtractor::extract(video_path)?;
+        // Extract metadata (through the media backend: ffprobe on desktop,
+        // AVFoundation on iOS).
+        let probe_output = backend().probe(&MediaSource::Path(video_path.to_path_buf()))?;
 
         // Check if already indexed — if so, reuse the existing ID and just refresh metadata.
         let video_id = if let Ok(Some(existing)) = db.get_video_by_path(video_path.to_str().unwrap_or("")) {
