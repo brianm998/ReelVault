@@ -51,6 +51,43 @@ struct DiscoveryErrorView: View {
     }
 }
 
+/// One-time pairing: the daemon shows a 6-digit code (in a connected desktop
+/// client, the daemon log, or <data_dir>/pairing.txt); the user enters it here.
+struct PairingCodeView: View {
+    let server: DiscoveredServer
+    @EnvironmentObject private var router: AppRouter
+    @State private var code = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Label("Pair with \(server.name)", systemImage: "lock.shield")
+                    Text("A 6-digit code is shown on the computer running ReelVault "
+                         + "(in the desktop app or the daemon log). Enter it to pair "
+                         + "this device — you only do this once.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                Section {
+                    TextField("6-digit code", text: $code)
+                        .keyboardType(.numberPad)
+                        .textContentType(.oneTimeCode)
+                        .font(.system(.title2, design: .monospaced))
+                    Button("Pair") {
+                        router.submitPairingCode(code.trimmingCharacters(in: .whitespaces))
+                    }
+                    .disabled(code.trimmingCharacters(in: .whitespaces).count < 4)
+                }
+                Section {
+                    Button("Cancel", role: .cancel) { router.cancelPairing() }
+                }
+            }
+            .navigationTitle("Enter Pairing Code")
+        }
+    }
+}
+
 /// Shown when more than one server was discovered.
 struct ServerPickerView: View {
     let servers: [DiscoveredServer]

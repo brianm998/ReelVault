@@ -31,6 +31,8 @@ struct RootView: View {
             DiscoveryErrorView(error: nil)
         case .connecting(let server):
             ConnectingView(server: server)
+        case .needsPairing(let server):
+            PairingCodeView(server: server)
         case .connected:
             ConnectedRootView()
         case .failed(let message):

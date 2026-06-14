@@ -3,6 +3,7 @@
 
 import Foundation
 import SwiftUI
+import UIKit
 import ReelVaultKit
 
 /// Drives the launch flow: discover servers on the LAN, connect over pinned TLS,
@@ -15,6 +16,7 @@ final class AppRouter: ObservableObject {
         case picker([DiscoveredServer])
         case noServer
         case connecting(DiscoveredServer)
+        case needsPairing(DiscoveredServer)
         case connected
         case failed(String)
     }
@@ -34,6 +36,8 @@ final class AppRouter: ObservableObject {
     private let discovery = ServerDiscovery()
     private var discoverTask: Task<Void, Never>?
     private var collectTask: Task<Void, Never>?
+    /// Server + resolved fingerprint awaiting a pairing code.
+    private var pending: (server: DiscoveredServer, fingerprint: String)?
 
     /// Begin (or restart) discovery.
     func start() {
@@ -87,30 +91,79 @@ final class AppRouter: ObservableObject {
             phase = .failed("Could not reach a TLS server at \(server.host):\(server.grpcPort).")
             return
         }
+
+        // Use a stored token if we have one; otherwise pair if the server asks.
+        let token = TokenStore.load(for: pin)
+        if token == nil && server.requiresPairing {
+            _ = await PairingClient().startPairing(
+                host: server.host, mediaPort: server.mediaPort ?? 50052, fingerprintHex: pin
+            )
+            pending = (server, pin)
+            phase = .needsPairing(server)
+            return
+        }
+        await finishConnect(server: server, fingerprint: pin, token: token)
+    }
+
+    /// Submit the code the user entered on the pairing screen.
+    func submitPairingCode(_ code: String) {
+        guard let (server, pin) = pending else { return }
+        phase = .connecting(server)
+        Task { [weak self] in
+            guard let self else { return }
+            let token = await PairingClient().pair(
+                host: server.host, mediaPort: server.mediaPort ?? 50052,
+                fingerprintHex: pin, pin: code, deviceName: Self.deviceName()
+            )
+            guard let token else {
+                self.phase = .failed("Pairing failed — check the code and try again.")
+                return
+            }
+            TokenStore.save(token, for: pin)
+            self.pending = nil
+            await self.finishConnect(server: server, fingerprint: pin, token: token)
+        }
+    }
+
+    func cancelPairing() {
+        pending = nil
+        start()
+    }
+
+    private func finishConnect(server: DiscoveredServer, fingerprint: String, token: String?) async {
         let endpoint = ServerEndpoint(
             host: server.host, port: server.grpcPort,
-            security: .pinnedTLS(fingerprintSHA256Hex: pin)
+            security: .pinnedTLS(fingerprintSHA256Hex: fingerprint),
+            bearerToken: token
         )
         let ok = await VideoRepository.shared.connect(to: endpoint)
         if ok {
             connection = ConnectionInfo(
                 host: server.host,
                 mediaPort: server.mediaPort ?? 50052,
-                fingerprintHex: pin,
-                bearerToken: nil
+                fingerprintHex: fingerprint,
+                bearerToken: token
             )
             phase = .connected
         } else {
+            // A stale/revoked token will fail auth — drop it so we re-pair next time.
+            if token != nil { TokenStore.delete(for: fingerprint) }
             phase = .failed("Could not connect to \(server.host):\(server.grpcPort).")
         }
     }
 
-    /// Connect to a manually-entered server (from the error screen).
+    /// Connect to a manually-entered server (from the error screen). Assumes the
+    /// server requires pairing (the daemon's LAN bind is auth=pin by default).
     func connectManually(host: String, port: Int, fingerprintHex: String?) {
         let fp = (fingerprintHex?.isEmpty == false) ? fingerprintHex : nil
         let server = DiscoveredServer(
-            name: host, host: host, grpcPort: port, fingerprintHex: fp, source: .manual
+            name: host, host: host, grpcPort: port,
+            fingerprintHex: fp, requiresPairing: true, source: .manual
         )
         Task { await connect(to: server) }
+    }
+
+    private static func deviceName() -> String {
+        UIDevice.current.name
     }
 }

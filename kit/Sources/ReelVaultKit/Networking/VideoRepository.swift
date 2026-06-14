@@ -83,7 +83,15 @@ public class VideoRepository: ObservableObject {
                     transportSecurity: PinnedTLS.clientSecurity(pinnedCertDER: der)
                 )
             }
-            let client = GRPCClient(transport: transport)
+            let client: GRPCClient<HTTP2ClientTransport.Posix>
+            if let token = endpoint.bearerToken, !token.isEmpty {
+                client = GRPCClient(
+                    transport: transport,
+                    interceptors: [BearerTokenInterceptor(token: token)]
+                )
+            } else {
+                client = GRPCClient(transport: transport)
+            }
             self.grpcClient = client
             self.serviceClient = Reelvault_ReelVault.Client(wrapping: client)
             self.currentHost = host

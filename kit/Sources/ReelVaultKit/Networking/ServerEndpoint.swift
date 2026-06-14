@@ -23,11 +23,19 @@ public struct ServerEndpoint: Sendable, Equatable {
     public var host: String
     public var port: Int
     public var security: EndpointSecurity
+    /// Paired-device bearer token, attached to every gRPC call as
+    /// `authorization: Bearer <token>`. nil on loopback / unpaired.
+    public var bearerToken: String?
 
-    public init(host: String, port: Int, security: EndpointSecurity = .plaintext) {
+    public init(
+        host: String, port: Int,
+        security: EndpointSecurity = .plaintext,
+        bearerToken: String? = nil
+    ) {
         self.host = host
         self.port = port
         self.security = security
+        self.bearerToken = bearerToken
     }
 
     /// The loopback endpoint the macOS app uses today (plaintext localhost).
