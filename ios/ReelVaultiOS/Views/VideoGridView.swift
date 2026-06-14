@@ -12,10 +12,38 @@ import ReelVaultKit
 /// drives the shared view-model's arrow-key navigation when a hardware keyboard
 /// is attached (iPad), mirroring the macOS client. Cards lazily load thumbnails
 /// over gRPC and highlight the current selection.
+/// One rendered row: a collapsed video, or an expanded stack member inserted
+/// right after its representative. Used by both the grid and list so stacks
+/// render and expand identically.
+struct StackRow: Identifiable {
+    let video: VideoSummary
+    let isMember: Bool
+    /// Distinct from the representative's id so an expanded member never collides
+    /// with a top-level row in `ForEach`.
+    var id: String { isMember ? "member:\(video.id)" : video.id }
+}
+
+/// Flatten `grid.videos` (collapsed representatives) into render rows, inserting
+/// an expanded stack's members right after their representative.
+@MainActor
+func stackRenderedVideos(_ grid: GridViewModel) -> [StackRow] {
+    var out: [StackRow] = []
+    for video in grid.videos {
+        out.append(StackRow(video: video, isMember: false))
+        if video.isInGroup, grid.expandedGroupIds.contains(video.groupId),
+           let members = grid.expandedGroupMembers[video.groupId] {
+            for member in members where member.id != video.id {
+                out.append(StackRow(video: member, isMember: true))
+            }
+        }
+    }
+    return out
+}
+
 struct VideoGridView: View {
     @ObservedObject var grid: GridViewModel
     /// Minimum card width; the grid flows as many columns as fit.
-    var minCardWidth: CGFloat = 150
+    var minCardWidth: CGFloat = 170
     /// Enable hardware-keyboard arrow navigation (iPad / regular width). On
     /// iPhone-portrait (compact) the grid is touch-only, matching the plan's
     /// "keyboard shortcuts apply to macOS + iPad-with-keyboard, not iPhone" rule.
@@ -48,26 +76,35 @@ struct VideoGridView: View {
                         .padding(.top, 80)
                     } else {
                         LazyVGrid(columns: columns, spacing: spacing) {
-                            ForEach(grid.videos) { video in
-                                Button {
-                                    if selecting {
-                                        grid.toggleVideoSelection(video)
-                                    } else {
-                                        grid.selectVideo(video)
-                                        onActivate(video)
-                                    }
-                                } label: {
-                                    VideoCardView(
-                                        video: video,
-                                        image: grid.thumbnails[video.id],
-                                        isSelected: !selecting && grid.selectedVideoId == video.id,
-                                        showCheck: selecting,
-                                        isChecked: grid.selectedVideoIds.contains(video.id)
-                                    )
-                                    .onAppear { grid.loadThumbnail(videoId: video.id) }
-                                }
-                                .buttonStyle(.plain)
-                                .id(video.id)
+                            ForEach(stackRenderedVideos(grid)) { row in
+                                let video = row.video
+                                VideoCardView(
+                                    video: video,
+                                    image: grid.thumbnails[video.id],
+                                    topSlots: grid.topSlots,
+                                    isSelected: !selecting && grid.selectedVideoId == video.id,
+                                    showCheck: selecting,
+                                    isChecked: grid.selectedVideoIds.contains(video.id),
+                                    onActivate: {
+                                        if selecting {
+                                            grid.toggleVideoSelection(video)
+                                        } else {
+                                            grid.selectVideo(video)
+                                            onActivate(video)
+                                        }
+                                    },
+                                    onSetRating: { grid.setRating($0, for: [video.id]) },
+                                    onSetColorLabel: { grid.setColorLabel($0, for: [video.id]) },
+                                    isStackMember: row.isMember,
+                                    selectedCount: grid.selectedVideoIds.count,
+                                    onToggleExpand: { grid.toggleStackExpansion(video.groupId) },
+                                    onCombine: { grid.groupSelectedVideos() },
+                                    onPromote: { grid.setStackMaster(videoId: video.id, groupId: video.groupId) },
+                                    onRemoveFromStack: { grid.removeFromStack(videoId: video.id, groupId: video.groupId) },
+                                    onUnstack: { grid.unstackGroup(groupId: video.groupId) }
+                                )
+                                .onAppear { grid.loadThumbnail(videoId: video.id) }
+                                .id(row.id)
                             }
                         }
                         .padding(spacing)
@@ -127,33 +164,133 @@ private struct GridKeyboardNavigation: ViewModifier {
     }
 }
 
-/// A single grid card: thumbnail (or placeholder) plus filename + resolution.
+/// A grid card matching the macOS/desktop clients: a configurable top stat band
+/// (Lightroom-style 2×2 slots), a square photo area with a colour-label tint and
+/// status badges, and a 5-star rating band. Tapping the photo/stats activates
+/// the card; tapping a star sets the rating.
 struct VideoCardView: View {
     let video: VideoSummary
     let image: PlatformImage?
+    var topSlots: [String] = defaultGridTopSlots
     var isSelected: Bool = false
     /// Show the multi-select checkmark overlay (share-export mode).
     var showCheck: Bool = false
     var isChecked: Bool = false
+    var onActivate: () -> Void = {}
+    var onSetRating: (Int) -> Void = { _ in }
+    var onSetColorLabel: (String) -> Void = { _ in }
+    /// This card is an expanded stack member (rendered after its representative).
+    var isStackMember: Bool = false
+    /// Multi-selected count (Select mode), passed to the menu's "Combine" gate.
+    var selectedCount: Int = 0
+    var onToggleExpand: () -> Void = {}
+    var onCombine: () -> Void = {}
+    var onPromote: () -> Void = {}
+    var onRemoveFromStack: () -> Void = {}
+    var onUnstack: () -> Void = {}
+
+    private let bandColor = Color(white: 0.11)   // card chrome (dark)
+    private let dividerColor = Color.black.opacity(0.6)
+
+    private var colorLabel: ColorLabel { ColorLabel(video.colorLabel) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            ZStack {
-                Rectangle().fill(.quaternary)
+        VStack(spacing: 0) {
+            VStack(spacing: 0) {
+                topStatBand
+                Rectangle().fill(dividerColor).frame(height: 1)
+                photoArea
+            }
+            .contentShape(Rectangle())
+            .onTapGesture { onActivate() }
+
+            Rectangle().fill(dividerColor).frame(height: 1)
+            ratingBand
+        }
+        .background(bandColor)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(Color.accentColor, lineWidth: showBorder ? 3 : 0)
+        )
+        .opacity(video.isOnline ? 1 : 0.5)
+        .contextMenu {
+            VideoCardMenu(
+                video: video, selectedCount: selectedCount,
+                onSetRating: onSetRating, onSetColorLabel: onSetColorLabel,
+                onCombine: onCombine, onPromote: onPromote,
+                onRemoveFromStack: onRemoveFromStack, onUnstack: onUnstack)
+        }
+    }
+
+    /// Highlight the card when it's the active selection or a checked
+    /// multi-select item.
+    private var showBorder: Bool { isSelected || (showCheck && isChecked) }
+
+    // MARK: Top stat band (2×2 configurable slots)
+
+    private var paddedSlots: [String] {
+        var s = topSlots
+        while s.count < 4 { s.append("") }
+        return Array(s.prefix(4))
+    }
+
+    private var topStatBand: some View {
+        let slots = paddedSlots
+        return VStack(spacing: 1) {
+            HStack(spacing: 6) {
+                statCell(slots[0], leading: true, emphasized: true)
+                statCell(slots[2], leading: false, emphasized: false)
+            }
+            HStack(spacing: 6) {
+                statCell(slots[1], leading: true, emphasized: false)
+                statCell(slots[3], leading: false, emphasized: false)
+            }
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+    }
+
+    private func statCell(_ key: String, leading: Bool, emphasized: Bool) -> some View {
+        let text = GridStatKey(rawValue: key).map { $0.value(for: video) } ?? ""
+        return Text(text)
+            .font(.system(size: 10, weight: emphasized ? .semibold : .regular))
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .foregroundStyle(.white.opacity(0.92))
+            .frame(maxWidth: .infinity, alignment: leading ? .leading : .trailing)
+    }
+
+    // MARK: Photo area (square, colour-label tint, badges)
+
+    private var photoArea: some View {
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .background(colorLabel == .none ? Color(white: 0.28) : colorLabel.dimmed)
+            .overlay {
                 if let image {
                     Image(uiImage: image)
                         .resizable()
-                        .scaledToFill()
+                        .scaledToFit()
                 } else {
                     Image(systemName: "film")
                         .font(.title2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.white.opacity(0.5))
                 }
             }
-            .aspectRatio(16.0 / 9.0, contentMode: .fill)
-            .frame(maxWidth: .infinity)
             .clipped()
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(alignment: .bottomTrailing) {
+                CardStatusBadges(video: video).padding(4)
+            }
+            .overlay(alignment: .topLeading) {
+                if video.hasLocation {
+                    Image(systemName: "mappin.circle.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.white)
+                        .padding(4)
+                        .shadow(radius: 1)
+                }
+            }
             .overlay(alignment: .topTrailing) {
                 if showCheck {
                     Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
@@ -161,23 +298,110 @@ struct VideoCardView: View {
                         .symbolRenderingMode(.palette)
                         .foregroundStyle(.white, isChecked ? Color.accentColor : .black.opacity(0.4))
                         .padding(6)
+                } else if video.isInGroup && !isStackMember {
+                    stackBadge
                 }
             }
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .strokeBorder(Color.accentColor, lineWidth: (isSelected || (showCheck && isChecked)) ? 3 : 0)
-            )
+            .overlay(alignment: .bottomLeading) {
+                if isStackMember {
+                    Image(systemName: "arrow.turn.down.right")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.white)
+                        .frame(width: 18, height: 18)
+                        .background(Color.black.opacity(0.55))
+                        .clipShape(Circle())
+                        .padding(4)
+                }
+            }
+    }
 
-            Text(video.filename)
-                .font(.caption)
-                .lineLimit(1)
-            if video.width > 0 && video.height > 0 {
-                Text("\(video.width)×\(video.height)")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+    /// Stack indicator on a representative card: member count, taps to expand/collapse.
+    private var stackBadge: some View {
+        Button(action: onToggleExpand) {
+            HStack(spacing: 2) {
+                Image(systemName: "square.stack.3d.up.fill").font(.system(size: 9))
+                Text("\(video.groupSize)").font(.system(size: 10, weight: .semibold))
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(Color.black.opacity(0.6), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .padding(4)
+    }
+
+    // MARK: Rating band (5 tappable stars)
+
+    private var ratingBand: some View {
+        HStack(spacing: 4) {
+            ForEach(1...5, id: \.self) { position in
+                Image(systemName: position <= video.rating ? "star.fill" : "star")
+                    .font(.system(size: position <= video.rating ? 11 : 10))
+                    .foregroundStyle(position <= video.rating ? .white : .white.opacity(0.3))
+                    .frame(width: 18, height: 18)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        // Tap a set star again to clear (Lightroom-style).
+                        onSetRating(video.rating == position ? 0 : position)
+                    }
             }
         }
-        .contentShape(Rectangle())
-        .opacity(video.isOnline ? 1 : 0.5)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 3)
+    }
+}
+
+/// Long-press context menu for a video card / list row: set the star rating and
+/// the colour label (the iOS counterpart of the macOS right-click menu). Uses
+/// Pickers so the current value gets a checkmark, and colored emoji for the
+/// labels (menu-item SF Symbols can't be tinted per-item — they'd all take the
+/// menu's accent, which is why the dots were all purple).
+struct VideoCardMenu: View {
+    let video: VideoSummary
+    /// Count of multi-selected videos (Select mode) — gates "Combine into Stack".
+    var selectedCount: Int = 0
+    var onSetRating: (Int) -> Void
+    var onSetColorLabel: (String) -> Void
+    var onCombine: () -> Void = {}
+    var onPromote: () -> Void = {}
+    var onRemoveFromStack: () -> Void = {}
+    var onUnstack: () -> Void = {}
+
+    var body: some View {
+        Picker("Rating", selection: Binding(get: { video.rating }, set: { onSetRating($0) })) {
+            ForEach(Array((0...5).reversed()), id: \.self) { n in
+                Text(n == 0 ? "None" : String(repeating: "★", count: n)).tag(n)
+            }
+        }
+        Picker("Color Label", selection: Binding(get: { video.colorLabel }, set: { onSetColorLabel($0) })) {
+            ForEach(ColorLabel.allCases) { label in
+                Text("\(Self.dot(label)) \(label.displayName)").tag(label.rawValue)
+            }
+        }
+        if selectedCount >= 2 || video.isInGroup {
+            Divider()
+            if selectedCount >= 2 {
+                Button { onCombine() } label: { Label("Combine into Stack", systemImage: "square.stack.3d.up") }
+            }
+            if video.isInGroup {
+                if video.id != video.groupPreferredId {
+                    Button { onPromote() } label: { Label("Promote to Stack Cover", systemImage: "star") }
+                }
+                Button { onRemoveFromStack() } label: { Label("Remove from Stack", systemImage: "rectangle.stack.badge.minus") }
+                Button(role: .destructive) { onUnstack() } label: { Label("Unstack", systemImage: "square.stack.3d.up.slash") }
+            }
+        }
+    }
+
+    private static func dot(_ label: ColorLabel) -> String {
+        switch label {
+        case .none: return "⚪️"
+        case .red: return "🔴"
+        case .yellow: return "🟡"
+        case .green: return "🟢"
+        case .blue: return "🔵"
+        case .purple: return "🟣"
+        }
     }
 }

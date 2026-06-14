@@ -51,14 +51,22 @@ public actor MediaClient {
     }
 
     /// Local file URL for the video at the given downscale height, downloading +
-    /// caching on a miss. `height == 0` means the original.
-    public func localURL(videoId: String, height: Int, from endpoint: Endpoint) async throws -> URL {
-        if let cached = await cache.cachedURL(videoId: videoId, height: height) {
+    /// caching on a miss. `height == 0` means the original. `ext` is the
+    /// rendition's container extension (`mp4` for a transcode, the source
+    /// extension for an original) — it's stamped on the cached file so
+    /// AVFoundation can infer the format (a cached blob with no extension fails
+    /// to play).
+    public func localURL(
+        videoId: String, height: Int, ext: String = "mp4", from endpoint: Endpoint
+    ) async throws -> URL {
+        if let cached = await cache.cachedURL(videoId: videoId, height: height, ext: ext) {
+            NSLog("ReelVault media: cache hit \(videoId) h\(height) -> \(cached.lastPathComponent)")
             return cached
         }
         guard let url = endpoint.renditionURL(videoId: videoId, height: height) else {
             throw MediaError.badURL
         }
+        NSLog("ReelVault media: downloading \(url.absoluteString)")
         var req = URLRequest(url: url)
         if let token = endpoint.bearerToken {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -66,20 +74,56 @@ public actor MediaClient {
         let delegate = FingerprintPinningDelegate(expectedFingerprintHex: endpoint.fingerprintHex)
         let session = URLSession(configuration: .ephemeral, delegate: delegate, delegateQueue: nil)
         defer { session.finishTasksAndInvalidate() }
-        let (tmp, response) = try await session.download(for: req)
-        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-            throw MediaError.http(http.statusCode)
+        let tmp: URL
+        let response: URLResponse
+        do {
+            (tmp, response) = try await session.download(for: req)
+        } catch {
+            NSLog("ReelVault media: download failed for \(url.absoluteString): \(error)")
+            throw error
         }
-        return try await cache.adopt(tmp, videoId: videoId, height: height)
+        if let http = response as? HTTPURLResponse {
+            NSLog("ReelVault media: HTTP \(http.statusCode) for \(url.absoluteString)")
+            if !(200..<300).contains(http.statusCode) {
+                throw MediaError.http(http.statusCode)
+            }
+        }
+        let local = try await cache.adopt(tmp, videoId: videoId, height: height, ext: ext)
+        let bytes = (try? FileManager.default.attributesOfItem(atPath: local.path)[.size] as? Int64) ?? nil
+        NSLog("ReelVault media: cached \(local.lastPathComponent) (\(bytes ?? 0) bytes)")
+        return local
     }
 
-    /// Convenience: produce an `AVPlayerItem` for the (downloaded, cached) rendition.
-    public func playerItem(videoId: String, height: Int, from endpoint: Endpoint) async throws -> AVPlayerItem {
-        let url = try await localURL(videoId: videoId, height: height, from: endpoint)
-        return AVPlayerItem(url: url)
+    /// Convenience: produce an `AVPlayerItem` for the (downloaded, cached)
+    /// rendition. Pre-loads `isPlayable` so an undecodable file surfaces as a
+    /// real error rather than a silent black player.
+    public func playerItem(
+        videoId: String, height: Int, ext: String = "mp4", from endpoint: Endpoint
+    ) async throws -> AVPlayerItem {
+        let url = try await localURL(videoId: videoId, height: height, ext: ext, from: endpoint)
+        let asset = AVURLAsset(url: url)
+        let playable = (try? await asset.load(.isPlayable)) ?? false
+        if !playable {
+            NSLog("ReelVault media: asset not playable: \(url.lastPathComponent)")
+            throw MediaError.notPlayable
+        }
+        return AVPlayerItem(asset: asset)
     }
 
-    public enum MediaError: Error { case badURL, http(Int) }
+    public enum MediaError: Error, LocalizedError {
+        case badURL
+        case http(Int)
+        case notPlayable
+
+        public var errorDescription: String? {
+            switch self {
+            case .badURL: return "Bad media URL."
+            case .http(let code): return "The server returned HTTP \(code)."
+            case .notPlayable:
+                return "The downloaded video can't be played on this device (unsupported codec or container)."
+            }
+        }
+    }
 }
 
 /// URLSession delegate that pins the server's leaf certificate by SHA-256

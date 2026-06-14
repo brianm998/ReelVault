@@ -12,6 +12,11 @@ struct ConnectedRootView: View {
 
     var body: some View {
         RootSplitView(grid: grid, connection: router.connection)
-            .task { grid.loadVideos() }
+            .task {
+                // Load the user's configured top-of-card stat slots so iOS cards
+                // match what they set on the desktop/macOS clients.
+                grid.loadGridSettings()
+                grid.loadVideos()
+            }
     }
 }

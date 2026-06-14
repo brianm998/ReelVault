@@ -4,43 +4,44 @@
 import SwiftUI
 import ReelVaultKit
 
-/// One selectable source in the library sidebar. Selecting a source resets the
-/// other facet filters so the sidebar behaves Lightroom-style: one active source
-/// at a time (All Videos, the map, a location folder, a collection, or a tag).
+/// One selectable *source* in the library sidebar — which videos to show.
+/// Orthogonal to the view *mode* (grid/list/detail/map). Lightroom-style: one
+/// active source at a time (All Videos, a folder, a collection, or a tag).
 enum LibrarySection: Hashable {
     case allVideos
-    case map
     case location(String)   // library location path
     case collection(String) // collection id
     case tag(String)        // tag id
 }
 
-/// The library/filter panel: search box + browsable sources (all videos, map,
-/// folders, collections, tags). Used as the leading column of the iPad
-/// 3-column layout and as the contents of the iPhone filter sheet. Bound to the
-/// shared `GridViewModel`, so it drives the same filter state the macOS client
-/// uses; applying a selection lives in the parent via `onSelect`.
+/// The library panel (leading column / iPhone sheet): the view-mode switcher
+/// (Grid/List/Detail/Map, Detail gated on a selection) plus the browsable
+/// sources (all videos, folders, collections, tags). Bound to the shared
+/// `GridViewModel`; the parent owns mode + source application.
 struct LibrarySidebar: View {
     @ObservedObject var grid: GridViewModel
+    @Binding var viewMode: LibraryViewMode
     @Binding var selection: LibrarySection
+    /// Whether a video is selected (gates Detail mode).
+    var hasSelection: Bool
     /// Apply the chosen source to the shared view-model (parent owns the logic).
     var onSelect: (LibrarySection) -> Void
 
     var body: some View {
-        List(selection: Binding(
+        List(selection: Binding<LibrarySection?>(
             get: { selection },
             set: { newValue in
                 if let newValue { selection = newValue; onSelect(newValue) }
             }
         )) {
-            librarySection
+            viewSection
+            sourcesSection
             if !grid.libraryLocations.isEmpty { locationsSection }
             if !grid.collections.isEmpty { collectionsSection }
             if !grid.tags.isEmpty { tagsSection }
         }
         .listStyle(.sidebar)
         .navigationTitle("Library")
-        .searchable(text: $grid.searchQuery, prompt: "Search videos")
         .task {
             grid.loadLibraryLocations()
             grid.loadCollections()
@@ -48,10 +49,31 @@ struct LibrarySidebar: View {
         }
     }
 
-    private var librarySection: some View {
+    private var viewSection: some View {
+        Section("View") {
+            ForEach(LibraryViewMode.allCases) { mode in
+                Button {
+                    viewMode = mode
+                } label: {
+                    HStack {
+                        Label(mode.label, systemImage: mode.systemImage)
+                        Spacer()
+                        if viewMode == mode {
+                            Image(systemName: "checkmark").foregroundStyle(.tint)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(mode == .detail && !hasSelection)
+                .foregroundStyle(viewMode == mode ? Color.accentColor : .primary)
+            }
+        }
+    }
+
+    private var sourcesSection: some View {
         Section {
             Label("All Videos", systemImage: "film.stack").tag(LibrarySection.allVideos)
-            Label("Map", systemImage: "map").tag(LibrarySection.map)
         }
     }
 
@@ -79,7 +101,12 @@ struct LibrarySidebar: View {
                     HStack {
                         Text(col.name).lineLimit(1)
                         Spacer()
-                        countBadge(col.videoCount)
+                        // Smart collections have no stored members, so the
+                        // server reports 0; the shared view-model resolves their
+                        // real count client-side into `smartCollectionCounts`.
+                        countBadge(col.isSmart
+                            ? (grid.smartCollectionCounts[col.id] ?? 0)
+                            : col.videoCount)
                     }
                 } icon: {
                     Image(systemName: col.isSmart ? "gearshape.2" : "rectangle.stack")

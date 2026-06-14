@@ -4,13 +4,16 @@
 import SwiftUI
 import ReelVaultKit
 
-/// The video grid plus its action affordances (add/upload, multi-select, share),
-/// shared by both the iPad 3-column and iPhone-portrait layouts so the toolbar
-/// and sheets aren't duplicated. The surrounding navigation chrome differs per
-/// layout; this is the common middle.
+/// The browse surface for Grid and List view modes: the filter/search/sort +
+/// thumbnail-size top bar, the grid or list itself, and the action affordances
+/// (add/upload, multi-select, share). Shared by both the iPad 3-column and
+/// iPhone layouts so the toolbar and sheets aren't duplicated.
 struct LibraryGridScreen: View {
     @ObservedObject var grid: GridViewModel
     let connection: AppRouter.ConnectionInfo?
+    /// Grid or List (the only two modes this screen renders).
+    var listMode: Bool = false
+    @Binding var thumbnailWidth: Double
     var keyboardEnabled: Bool = false
     /// Activate a card when not selecting: select into the inspector (regular)
     /// or push the detail screen (compact).
@@ -22,12 +25,11 @@ struct LibraryGridScreen: View {
     @StateObject private var share = ShareExportModel()
 
     var body: some View {
-        VideoGridView(
-            grid: grid,
-            keyboardEnabled: keyboardEnabled && !selecting,
-            selecting: selecting,
-            onActivate: onActivate
-        )
+        VStack(spacing: 0) {
+            LibraryTopBar(grid: grid, thumbnailWidth: $thumbnailWidth)
+            Divider()
+            content
+        }
         .toolbar { toolbarContent }
         .sheet(isPresented: $showImport) {
             if let connection {
@@ -48,6 +50,25 @@ struct LibraryGridScreen: View {
             Button("Original") { startShare(height: 0) }
             Button("720p (smaller)") { startShare(height: 720) }
             Button("Cancel", role: .cancel) {}
+        }
+    }
+
+    @ViewBuilder private var content: some View {
+        if listMode {
+            VideoListView(
+                grid: grid,
+                thumbnailHeight: CGFloat(thumbnailWidth) * 0.4,
+                selecting: selecting,
+                onActivate: onActivate
+            )
+        } else {
+            VideoGridView(
+                grid: grid,
+                minCardWidth: CGFloat(thumbnailWidth),
+                keyboardEnabled: keyboardEnabled && !selecting,
+                selecting: selecting,
+                onActivate: onActivate
+            )
         }
     }
 

@@ -43,12 +43,25 @@ public struct PairingClient {
         defer { session.finishTasksAndInvalidate() }
         do {
             let (data, resp) = try await session.data(for: req)
-            guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            let http = resp as? HTTPURLResponse
+            let status = http?.statusCode ?? -1
+            guard let http, (200..<300).contains(http.statusCode) else {
+                let body = String(data: data, encoding: .utf8) ?? ""
+                NSLog("ReelVault pair: POST https://\(host):\(mediaPort)/pair -> HTTP \(status): \(body)")
                 return nil
             }
             let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-            return obj?["token"] as? String
+            if let token = obj?["token"] as? String {
+                NSLog("ReelVault pair: success (HTTP \(status))")
+                return token
+            }
+            NSLog("ReelVault pair: HTTP \(status) but no token in response")
+            return nil
         } catch {
+            // A pinning/TLS/connection failure lands here (vs. a code rejection,
+            // which is a non-2xx logged above) — important for diagnosing why a
+            // device that "discovers" the server still can't pair.
+            NSLog("ReelVault pair: request to https://\(host):\(mediaPort)/pair failed: \(error)")
             return nil
         }
     }

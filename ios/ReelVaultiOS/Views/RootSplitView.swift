@@ -4,27 +4,32 @@
 import SwiftUI
 import ReelVaultKit
 
-/// Size-class-adaptive root of the connected app.
+/// Size-class-adaptive root of the connected app, mirroring the macOS client's
+/// view-mode model (Grid / List / Detail / Map).
 ///
-/// - **Regular width** (iPad both orientations, iPhone landscape): a 3-column
-///   `NavigationSplitView` ≈ the macOS client — library/filter sidebar | grid
-///   (or map) | inspector. Hardware-keyboard arrow navigation is enabled.
-/// - **Compact width** (iPhone portrait): a full-bleed grid in a
-///   `NavigationStack`; the sidebar and inspector become sheets reached from
-///   toolbar buttons (`.presentationDetents`), and tapping a card pushes the
-///   detail screen. Touch-only — no keyboard, per the three-client rule.
+/// - **Regular width** (iPad): a 3-column `NavigationSplitView` — library panel
+///   (view-mode switcher + sources) | the mode's center content | metadata
+///   inspector. Playback lives in Detail mode, not the inspector.
+/// - **Compact width** (iPhone): the mode's center in a `NavigationStack`;
+///   the library panel is a sheet; tapping a card pushes the detail screen.
 struct RootSplitView: View {
     @ObservedObject var grid: GridViewModel
     let connection: AppRouter.ConnectionInfo?
 
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var selection: LibrarySection = .allVideos
+    @State private var viewMode: LibraryViewMode = .grid
+    @AppStorage("ios.thumbnailWidth") private var thumbnailWidth: Double = 170
 
     var body: some View {
         if sizeClass == .compact {
-            CompactLayout(grid: grid, connection: connection, selection: $selection, apply: apply)
+            CompactLayout(grid: grid, connection: connection,
+                          selection: $selection, viewMode: $viewMode,
+                          thumbnailWidth: $thumbnailWidth, apply: apply)
         } else {
-            RegularLayout(grid: grid, connection: connection, selection: $selection, apply: apply)
+            RegularLayout(grid: grid, connection: connection,
+                          selection: $selection, viewMode: $viewMode,
+                          thumbnailWidth: $thumbnailWidth, apply: apply)
         }
     }
 
@@ -32,54 +37,79 @@ struct RootSplitView: View {
     /// active source at a time, so picking one resets the other facet filters.
     private func apply(_ section: LibrarySection) {
         switch section {
-        case .allVideos, .map:
-            grid.setCollectionFilter(nil)
-            grid.setTagFilter("")
-            grid.setLocationFilter("")
+        case .allVideos:
+            grid.setCollectionFilter(nil); grid.setTagFilter(""); grid.setLocationFilter("")
         case .location(let path):
-            grid.setCollectionFilter(nil)
-            grid.setTagFilter("")
-            grid.setLocationFilter(path)
+            grid.setCollectionFilter(nil); grid.setTagFilter(""); grid.setLocationFilter(path)
         case .collection(let id):
-            grid.setTagFilter("")
-            grid.setLocationFilter("")
-            grid.setCollectionFilter(id)
+            grid.setTagFilter(""); grid.setLocationFilter(""); grid.setCollectionFilter(id)
         case .tag(let id):
-            grid.setCollectionFilter(nil)
-            grid.setLocationFilter("")
-            grid.setTagFilter(id)
+            grid.setCollectionFilter(nil); grid.setLocationFilter(""); grid.setTagFilter(id)
         }
     }
 }
 
-// MARK: - Regular (iPad / landscape): 3-column split
+/// The selected video (preferring the live row, falling back to the cached one).
+@MainActor
+private func selectedVideo(_ grid: GridViewModel) -> VideoSummary? {
+    grid.videos.first(where: { $0.id == grid.selectedVideoId }) ?? grid.selectedVideo
+}
+
+// MARK: - Regular (iPad): 3-column split
 
 private struct RegularLayout: View {
     @ObservedObject var grid: GridViewModel
     let connection: AppRouter.ConnectionInfo?
     @Binding var selection: LibrarySection
+    @Binding var viewMode: LibraryViewMode
+    @Binding var thumbnailWidth: Double
     let apply: (LibrarySection) -> Void
 
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     var body: some View {
+        // Two-column split (library | main). The metadata inspector is a small
+        // fixed-width trailing panel *inside* the main area — shown only in
+        // Grid/List with a selection — so it never squeezes the grid into one
+        // column or appears in Detail/Map mode.
         NavigationSplitView(columnVisibility: $columnVisibility) {
-            LibrarySidebar(grid: grid, selection: $selection, onSelect: apply)
-        } content: {
-            Group {
-                if selection == .map {
-                    LibraryMapView(grid: grid) { _ in }   // selection handled in-place
-                        .navigationTitle("Map")
-                } else {
-                    LibraryGridScreen(grid: grid, connection: connection, keyboardEnabled: true) { _ in }
-                        .navigationTitle(title)
-                        .navigationBarTitleDisplayMode(.inline)
+            LibrarySidebar(
+                grid: grid, viewMode: $viewMode, selection: $selection,
+                hasSelection: grid.selectedVideoId != nil, onSelect: apply)
+        } detail: {
+            HStack(spacing: 0) {
+                center
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if showInspector {
+                    Divider()
+                    InspectorPanel(video: selectedVideo(grid)) { viewMode = .detail }
+                        .frame(width: 300)
                 }
             }
-        } detail: {
-            InspectorPanel(video: grid.selectedVideo, connection: connection)
         }
-        .navigationSplitViewStyle(.balanced)
+    }
+
+    /// Inspector appears only when browsing (grid/list) with a selection.
+    private var showInspector: Bool {
+        (viewMode == .grid || viewMode == .list) && selectedVideo(grid) != nil
+    }
+
+    @ViewBuilder private var center: some View {
+        switch viewMode {
+        case .grid:
+            LibraryGridScreen(grid: grid, connection: connection, listMode: false,
+                              thumbnailWidth: $thumbnailWidth, keyboardEnabled: true) { _ in }
+                .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
+        case .list:
+            LibraryGridScreen(grid: grid, connection: connection, listMode: true,
+                              thumbnailWidth: $thumbnailWidth, keyboardEnabled: true) { _ in }
+                .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
+        case .detail:
+            DetailModeView(grid: grid, connection: connection)
+        case .map:
+            LibraryMapView(grid: grid) { _ in }
+                .navigationTitle("Map").navigationBarTitleDisplayMode(.inline)
+        }
     }
 
     private var title: String {
@@ -87,68 +117,67 @@ private struct RegularLayout: View {
     }
 }
 
-// MARK: - Compact (iPhone portrait): grid + sheets
+// MARK: - Compact (iPhone): center + sheets + push detail
 
 private struct CompactLayout: View {
     @ObservedObject var grid: GridViewModel
     let connection: AppRouter.ConnectionInfo?
     @Binding var selection: LibrarySection
+    @Binding var viewMode: LibraryViewMode
+    @Binding var thumbnailWidth: Double
     let apply: (LibrarySection) -> Void
 
     @State private var pushedVideo: VideoSummary?
-    @State private var showFilters = false
-    @State private var showMap = false
+    @State private var showLibrary = false
 
     var body: some View {
         NavigationStack {
-            LibraryGridScreen(grid: grid, connection: connection, keyboardEnabled: false) { video in
-                pushedVideo = video
-            }
-            .navigationTitle("ReelVault")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(item: $pushedVideo) { video in
-                VideoDetailView(video: video, mediaEndpoint: connection)
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { showFilters = true } label: {
-                        Label("Library", systemImage: "line.3.horizontal.decrease.circle")
+            center
+                .navigationTitle("ReelVault")
+                .navigationBarTitleDisplayMode(.inline)
+                .navigationDestination(item: $pushedVideo) { video in
+                    VideoDetailView(video: video, mediaEndpoint: connection)
+                }
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button { showLibrary = true } label: {
+                            Label("Library", systemImage: "sidebar.left")
+                        }
                     }
                 }
-                ToolbarItem(placement: .bottomBar) {
-                    Button { showMap = true } label: {
-                        Label("Map", systemImage: "map")
-                    }
-                }
-            }
         }
-        .sheet(isPresented: $showFilters) {
+        .sheet(isPresented: $showLibrary) {
             NavigationStack {
-                LibrarySidebar(grid: grid, selection: $selection) { section in
+                LibrarySidebar(
+                    grid: grid, viewMode: $viewMode, selection: $selection,
+                    hasSelection: grid.selectedVideoId != nil
+                ) { section in
                     apply(section)
-                    showFilters = false
+                    showLibrary = false
                 }
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button("Done") { showFilters = false }
+                        Button("Done") { showLibrary = false }
                     }
                 }
             }
             .presentationDetents([.medium, .large])
         }
-        .sheet(isPresented: $showMap) {
-            NavigationStack {
-                LibraryMapView(grid: grid) { id in
-                    showMap = false
-                    pushedVideo = grid.videos.first(where: { $0.id == id })
-                }
-                .navigationTitle("Map")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Done") { showMap = false }
-                    }
-                }
+    }
+
+    @ViewBuilder private var center: some View {
+        switch viewMode {
+        case .grid:
+            LibraryGridScreen(grid: grid, connection: connection, listMode: false,
+                              thumbnailWidth: $thumbnailWidth) { video in pushedVideo = video }
+        case .list:
+            LibraryGridScreen(grid: grid, connection: connection, listMode: true,
+                              thumbnailWidth: $thumbnailWidth) { video in pushedVideo = video }
+        case .detail:
+            DetailModeView(grid: grid, connection: connection)
+        case .map:
+            LibraryMapView(grid: grid) { id in
+                pushedVideo = grid.videos.first(where: { $0.id == id })
             }
         }
     }
