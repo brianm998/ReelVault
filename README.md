@@ -30,11 +30,14 @@ ReelVault helps you:
 ## Architecture
 
 ```
-Frontend Clients (Kotlin Compose / SwiftUI)
-        ↓ gRPC over loopback
-Rust Backend Daemon (reelvault-core)
-        ↓
-SQLite Catalog + FFmpeg/FFprobe + Filesystem
+Desktop / macOS clients          iOS client (iPhone / iPad)
+   ↓ gRPC over loopback             ↓ gRPC + HTTPS media over the LAN
+   │                                │ (mDNS discovery · pinned TLS · paired)
+   └───────────────┬────────────────┘
+                   ↓
+        Rust Backend Daemon (reelvault-core)
+                   ↓
+        SQLite Catalog + FFmpeg/FFprobe + Filesystem
 ```
 
 - **Rust core** (`core/`) — Tonic-based gRPC daemon. Owns the SQLite catalog,
@@ -53,6 +56,17 @@ SQLite Catalog + FFmpeg/FFprobe + Filesystem
   the same auto-spawn flow, a real macOS File menu (Commands group), and a
   reactive window title that tracks the open catalog.
 
+- **SwiftUI iOS client** (`ios/`) — A **remote-only** iPhone / iPad app. It
+  has no local file access and embeds no daemon: it discovers a daemon over
+  Wi‑Fi (mDNS), connects over a fingerprint-pinned TLS channel after a one-time
+  pairing, browses over gRPC, and **streams** video (downscaled HLS) from the
+  daemon's media server. Replaces editor drag-out with the iOS share sheet and
+  adds upload from Photos / Files. See [`ios/README.md`](ios/README.md).
+
+- **ReelVaultKit** (`kit/`) — A local SwiftPM package of shared Swift used by
+  **both** Apple clients: models, view-models, the gRPC client, discovery,
+  pinned TLS, and the media cache/streaming layer.
+
 - **SQLite catalog** — WAL-mode database with FTS5 for full-text search. The
   schema lives in [`core/schema.sql`](core/schema.sql).
 
@@ -70,7 +84,9 @@ SQLite Catalog + FFmpeg/FFprobe + Filesystem
 
 **MVP is functional on macOS and Compose Desktop.** Both clients ship the
 same feature set; the macOS client adds native menu-bar commands and
-NSWorkspace-driven editor launches.
+NSWorkspace-driven editor launches. A **remote-only iOS client** (iPhone /
+iPad) connects to a daemon over the LAN and streams video — browse, inspect,
+stack, share, and upload; see [`ios/README.md`](ios/README.md).
 
 ### ✅ Done
 
@@ -138,6 +154,8 @@ NSWorkspace-driven editor launches.
   and thumbnail/scrub-frame generation.
 - **JDK 17+** + Gradle (wrapper included) — for the Kotlin desktop client.
 - **Swift 5.9+ / Xcode 15+** — for the macOS client.
+- **Xcode 16+ (iOS 18 SDK) + [XcodeGen](https://github.com/yonaskolb/XcodeGen)**
+  (`brew install xcodegen`) — for the iOS client.
 
 See [`SETUP.md`](SETUP.md) for platform-specific install instructions.
 
@@ -197,6 +215,30 @@ in-bundle `Resources/reelvault-core` path that's used by signed app
 bundles). Use `⌘O` to open a catalog and `⇧⌘W` to close it; the recent list
 lives under `File → Open Recent`.
 
+### Run the iOS SwiftUI client
+
+The iOS client is **remote-only** — it connects to a daemon over the LAN
+rather than spawning one. Start the daemon in remote mode on a machine on the
+same Wi‑Fi:
+
+```bash
+reelvault-core --remote --db-path /path/to/library.db --import-dir /path/to/imports
+```
+
+Then generate the Xcode project (the `.xcodeproj` isn't committed) and build:
+
+```bash
+cd ios
+make project          # requires XcodeGen: brew install xcodegen
+make build            # iOS Simulator; or open ReelVault.xcodeproj to run on a device
+```
+
+On first launch the app discovers the daemon over mDNS, you authorize the
+device once with a 6-digit pairing code (generate it from a desktop client's
+**File → Pair a New Device**, or the daemon log), and then browse + stream.
+Requires **iOS 18+** and **Xcode 16+**. Full details, including the streaming
+and pairing model, are in [`ios/README.md`](ios/README.md).
+
 ## Documentation
 
 - [`CLAUDE.md`](CLAUDE.md) — Project vision, architecture details, database
@@ -206,6 +248,9 @@ lives under `File → Open Recent`.
   Rust core's modules and RPC surface.
 - [`CLIENT_COMPARISON.md`](CLIENT_COMPARISON.md) — Side-by-side comparison
   of the Kotlin and SwiftUI clients.
+- [`ios/README.md`](ios/README.md) — The remote-only iOS (iPhone / iPad)
+  client: discovery, pairing, pinned TLS, and HLS streaming.
+- [`macos/README.md`](macos/README.md) — The native macOS client.
 
 ## Contributing
 
