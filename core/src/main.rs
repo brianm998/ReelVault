@@ -254,6 +254,9 @@ where
     let auth_db = Arc::clone(&db);
     let media_cache_dir = config.thumbnail_cache_path.clone();
     let media_import_dir = config.import_dir.clone();
+    // Configured proxy height; a live HLS re-encode at this height is promoted to
+    // a durable proxy. Captured before `config` moves into the service.
+    let media_proxy_target_height = config.proxy_target_height;
 
     // Per-OS data dir (TLS identity, pairing.txt). Computed once and shared by
     // the gRPC service (StartPairing writes pairing.txt) and, under --remote,
@@ -418,6 +421,8 @@ where
                 media_cache_dir,
                 data_dir.clone(),
                 media_import_dir,
+                media_proxy_target_height,
+                service.catalog_events(),
                 pairing.clone(),
             ),
         );

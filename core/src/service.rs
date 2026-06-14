@@ -121,6 +121,13 @@ impl ReelVaultService {
         service
     }
 
+    /// A sender on the catalog-change broadcast bus. The media server holds one
+    /// so an HLS transcode it promotes to a durable proxy can publish a
+    /// `VideoAdded` event, just as `GenerateProxy` does.
+    pub fn catalog_events(&self) -> broadcast::Sender<CatalogChange> {
+        self.catalog_events.clone()
+    }
+
     /// Light handle used by `tokio::spawn`-ed helpers that need to restart
     /// the watcher (after AddLibraryLocation, UpdateWatchSettings, etc.).
     /// Clones the Arcs only — not a deep copy.

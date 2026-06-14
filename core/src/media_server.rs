@@ -55,21 +55,32 @@ pub struct MediaState {
     /// transcode instead of each spawning their own ffmpeg.
     pub transcode_locks: Arc<Mutex<HashMap<String, Arc<Mutex<()>>>>>,
     /// Per-OS data dir; the pending pairing code is written here for headless admins.
+    /// Promoted HLS proxies are stored under `<data_dir>/generated-proxies/`.
     pub data_dir: PathBuf,
     /// Where uploaded videos are stored (None = uploads refused).
     pub import_dir: Option<PathBuf>,
+    /// The configured proxy height (`config.proxy_target_height`). A live HLS
+    /// re-encode at exactly this height is promoted to a durable proxy so it is
+    /// only encoded once (subsequent plays copy-mux it) and shows in the inspector.
+    pub proxy_target_height: i32,
+    /// The catalog-change bus; a promoted proxy publishes `VideoAdded` so clients
+    /// refresh the source card's proxy badge / inspector list live.
+    pub events: tokio::sync::broadcast::Sender<crate::watcher::CatalogChange>,
     /// The current pending pairing code — shared with the gRPC service so a code
     /// minted by a desktop client (StartPairing) is redeemable here.
     pairing: crate::pairing::PairingState,
 }
 
 impl MediaState {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         db: Arc<Database>,
         fingerprint_hex: String,
         cache_dir: PathBuf,
         data_dir: PathBuf,
         import_dir: Option<PathBuf>,
+        proxy_target_height: i32,
+        events: tokio::sync::broadcast::Sender<crate::watcher::CatalogChange>,
         pairing: crate::pairing::PairingState,
     ) -> Self {
         Self {
@@ -79,6 +90,8 @@ impl MediaState {
             transcode_locks: Arc::new(Mutex::new(HashMap::new())),
             data_dir,
             import_dir,
+            proxy_target_height,
+            events,
             pairing,
         }
     }
@@ -513,7 +526,7 @@ async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option
             "hls: start {id}@{height}p — {} from {}",
             if copy { "copy-mux" } else { "re-encode" }, src
         );
-        spawn_hls_transcode(dir.clone(), src, height, copy);
+        spawn_hls_transcode(state.clone(), id.to_string(), dir.clone(), src, height, copy);
     } else {
         // Debug, not info: status polling joins every second and would spam.
         tracing::debug!("hls: join in-progress session {id}@{height}p");
@@ -566,13 +579,34 @@ fn count_ts(dir: &Path) -> usize {
 /// ffmpeg permit for the *whole* transcode (a streaming transcode is long-lived,
 /// unlike the one-shot MP4 cache). Writes `.complete` on success or `.failed` on
 /// error — both consulted by [`ensure_hls_session`].
-fn spawn_hls_transcode(dir: PathBuf, src: String, height: i32, copy: bool) {
+fn spawn_hls_transcode(state: MediaState, id: String, dir: PathBuf, src: String, height: i32, copy: bool) {
     tokio::task::spawn_blocking(move || {
+        // Scope the ffmpeg permit to the streaming transcode only. Promotion
+        // (below) acquires its own permit for the remux, so the permit must be
+        // released first or, with max_concurrent_ffmpeg == 1, promotion would
+        // deadlock waiting on a slot this closure still holds.
+        let ok = run_hls_transcode(&dir, &src, height, copy);
+
+        // Promote a real re-encode at the configured proxy height to a durable
+        // catalog proxy: encode once, copy-mux forever, and surface it in the
+        // inspector. A copy-mux means a streamable proxy already exists, so
+        // there's nothing to persist.
+        if ok && !copy && height == state.proxy_target_height {
+            promote_hls_to_proxy(&state, &id, height, &dir);
+        }
+    });
+}
+
+/// Run the streaming ffmpeg into `dir`, writing `.complete`/`.failed`. Returns
+/// whether it succeeded. Holds one ffmpeg permit for the whole transcode (a
+/// streaming transcode is long-lived, unlike the one-shot MP4 cache).
+fn run_hls_transcode(dir: &Path, src: &str, height: i32, copy: bool) -> bool {
+    {
         let _permit = crate::concurrency::acquire_ffmpeg_permit();
         let index = dir.join("index.m3u8");
         let seg = dir.join("seg_%05d.ts");
         let mut cmd = crate::ffmpeg::ffmpeg_command();
-        cmd.arg("-y").arg("-i").arg(&src);
+        cmd.arg("-y").arg("-i").arg(src);
         if copy {
             // Streamable proxy already <= target height: copy video, but always
             // re-encode audio to AAC — ProRes/proxy sources often carry PCM,
@@ -612,8 +646,9 @@ fn spawn_hls_transcode(dir: PathBuf, src: String, height: i32, copy: bool) {
                 tracing::info!(
                     "hls: complete {} ({} segments)",
                     dir.file_name().and_then(|n| n.to_str()).unwrap_or("?"),
-                    count_ts(&dir)
+                    count_ts(dir)
                 );
+                true
             }
             Ok(o) => {
                 let stderr = String::from_utf8_lossy(&o.stderr);
@@ -625,13 +660,107 @@ fn spawn_hls_transcode(dir: PathBuf, src: String, height: i32, copy: bool) {
                     o.status.code()
                 );
                 let _ = std::fs::write(dir.join(".failed"), b"");
+                false
             }
             Err(e) => {
                 tracing::warn!("media: hls ffmpeg could not spawn: {e}");
                 let _ = std::fs::write(dir.join(".failed"), b"");
+                false
             }
         }
-    });
+    }
+}
+
+/// Promote a completed HLS re-encode into a durable catalog proxy.
+///
+/// The streaming output is a directory of MPEG-TS segments; a catalog proxy is a
+/// single file. We **remux** (not re-encode) the finished playlist into one
+/// faststart MP4 (`-c copy`, lossless and cheap since the segments are already
+/// H.264/AAC), store it under `<data_dir>/generated-proxies/<id>/` — daemon-owned,
+/// never beside the user's source files and never under a library location (so a
+/// rescan's offline sweep can't touch it) — then index + link it like
+/// [`crate::proxies::create_proxy`] does and publish `VideoAdded`.
+///
+/// Best-effort: any failure just leaves the ephemeral HLS session in place (the
+/// stream already played); the next play re-encodes again. Idempotent in
+/// practice — once linked, a future request for this height copy-muxes the proxy
+/// (`copy == true`) and never re-enters this path.
+fn promote_hls_to_proxy(state: &MediaState, id: &str, height: i32, hls_dir: &Path) {
+    let source = match state.db.get_video(id) {
+        Ok(Some(v)) => v,
+        _ => {
+            tracing::warn!("hls: promote {id}@{height}p skipped — source video not found");
+            return;
+        }
+    };
+    let stem = Path::new(&source.path)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("video");
+    // One subdir per source id keeps filenames from colliding across videos that
+    // happen to share a stem.
+    let safe_id: String = id
+        .chars()
+        .map(|c| if std::path::is_separator(c) { '_' } else { c })
+        .collect();
+    let out_dir = state.data_dir.join("generated-proxies").join(&safe_id);
+    if let Err(e) = std::fs::create_dir_all(&out_dir) {
+        tracing::warn!("hls: promote {id}@{height}p — mkdir failed: {e}");
+        return;
+    }
+    let out = out_dir.join(format!("{stem}_{height}p.mp4"));
+
+    {
+        let _permit = crate::concurrency::acquire_ffmpeg_permit();
+        let index = hls_dir.join("index.m3u8");
+        // `-c copy` from MPEG-TS to MP4: lossless remux. Modern ffmpeg auto-
+        // applies the aac_adtstoasc bitstream filter the MP4 muxer needs.
+        let mut cmd = crate::ffmpeg::ffmpeg_command();
+        cmd.arg("-y")
+            .arg("-i")
+            .arg(&index)
+            .args(["-c", "copy", "-movflags", "+faststart"])
+            .arg(&out)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::piped());
+        match cmd.output() {
+            Ok(o) if o.status.success() => {}
+            Ok(o) => {
+                let stderr = String::from_utf8_lossy(&o.stderr);
+                let tail: Vec<&str> = stderr.lines().rev().take(8).collect();
+                tracing::warn!(
+                    "hls: promote {id}@{height}p — remux failed (exit {:?}): {}",
+                    o.status.code(),
+                    tail.into_iter().rev().collect::<Vec<_>>().join(" | ")
+                );
+                let _ = std::fs::remove_file(&out);
+                return;
+            }
+            Err(e) => {
+                tracing::warn!("hls: promote {id}@{height}p — remux could not spawn: {e}");
+                return;
+            }
+        }
+    }
+
+    // Index the new file (gives it a videos row), then link it as a proxy of the
+    // source — exactly the create_proxy tail.
+    match crate::indexing::IndexingEngine::scan_single_file(&state.db, &out, &state.cache_dir, None) {
+        Ok((proxy_id, _)) => {
+            if let Err(e) = state.db.set_proxy_of(&proxy_id, id, 1.0, false) {
+                tracing::warn!("hls: promote {id}@{height}p — set_proxy_of failed: {e}");
+                return;
+            }
+            let _ = state.events.send(crate::watcher::CatalogChange::VideoAdded {
+                video_id: proxy_id,
+                path: out.clone(),
+            });
+            tracing::info!("hls: promoted {id}@{height}p to durable proxy {}", out.display());
+        }
+        Err(e) => {
+            tracing::warn!("hls: promote {id}@{height}p — indexing the remux failed: {e}");
+        }
+    }
 }
 
 /// Append `#EXT-X-ENDLIST` if ffmpeg didn't (it normally does on a clean exit,

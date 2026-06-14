@@ -151,7 +151,9 @@ Large videos (4K/8K originals) are too big to stream raw, so the daemon serves a
   proxy when one fits (instant), re-encodes from the closest proxy when only a
   mastering-codec (e.g. ProRes) proxy exists, and only re-encodes the original as
   a last resort. (HLS/MPEG-TS can't carry ProRes, so the *stream* is always
-  H.264.)
+  H.264.) A re-encode at the configured proxy height is **promoted to a durable
+  proxy** (remuxed once into an MP4 the catalog tracks), so it shows up in the
+  inspector and every later play copy-muxes it instead of re-encoding.
 - **Readiness gate.** For a slow (sub-realtime) re-encode, the client polls
   `/hls/{id}/{height}/status` and shows a spinner with a *"Preparing… ready in
   ~N s"* ETA until enough is buffered to play through without stalling.
