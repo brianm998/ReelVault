@@ -3,6 +3,7 @@
 
 import AVKit
 import SwiftUI
+import UIKit
 import ReelVaultKit
 
 /// Full-screen detail screen (iPhone / compact width): a streaming player
@@ -34,6 +35,10 @@ struct VideoDetailView: View {
 struct StreamingPlayerView: View {
     let video: VideoSummary
     let endpoint: AppRouter.ConnectionInfo?
+    /// Start playing as soon as the rendition is ready (full-screen mode).
+    var autoPlay: Bool = false
+    /// Fill the available space instead of a 16:9 box (full-screen mode).
+    var fill: Bool = false
 
     @State private var player: AVPlayer?
     @State private var isPreparing = false
@@ -41,36 +46,44 @@ struct StreamingPlayerView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10).fill(.black)
-                if let player {
-                    VideoPlayer(player: player)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                } else if isPreparing {
-                    ProgressView().tint(.white)
-                } else {
-                    Button {
-                        Task { await preparePlayback() }
-                    } label: {
-                        Label("Play", systemImage: "play.fill")
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
-            }
-            .aspectRatio(16.0 / 9.0, contentMode: .fit)
-
+            playerBox
             if let playbackError {
                 Text(playbackError)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
         }
-        .onChange(of: video.id) { _, _ in
+        .task(id: video.id) {
             player?.pause()
             player = nil
             playbackError = nil
+            if autoPlay { await preparePlayback() }
         }
         .onDisappear { player?.pause() }
+    }
+
+    @ViewBuilder private var playerBox: some View {
+        let box = ZStack {
+            if !fill { RoundedRectangle(cornerRadius: 10).fill(.black) }
+            if let player {
+                VideoPlayer(player: player)
+                    .clipShape(RoundedRectangle(cornerRadius: fill ? 0 : 10))
+            } else if isPreparing {
+                ProgressView().tint(.white)
+            } else {
+                Button {
+                    Task { await preparePlayback() }
+                } label: {
+                    Label("Play", systemImage: "play.fill")
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        if fill {
+            box.frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            box.aspectRatio(16.0 / 9.0, contentMode: .fit)
+        }
     }
 
     private func preparePlayback() async {
@@ -86,14 +99,14 @@ struct StreamingPlayerView: View {
             fingerprintHex: conn.fingerprintHex,
             bearerToken: conn.bearerToken
         )
-        // Natively-playable videos stream as-is (height 0 = original, range-served,
-        // no server transcode); everything else is downscaled to fit. A
-        // transcode is always MP4; an original keeps its source container.
-        let height = video.playableNatively ? 0 : 720
-        let ext = height > 0 ? "mp4" : Self.sourceExtension(of: video.filename)
+        // Always request a fit-to-device height (never the raw original): the
+        // server serves the proxy closest to this height when one exists, else
+        // transcodes down to it — so we don't stream a multi-GB original to a
+        // tablet over Wi-Fi. Capped so a no-proxy fallback still downscales.
+        let height = Self.streamHeight()
         do {
             let item = try await MediaClient().playerItem(
-                videoId: video.id, height: height, ext: ext, from: mediaEndpoint)
+                videoId: video.id, height: height, ext: "mp4", from: mediaEndpoint)
             let p = AVPlayer(playerItem: item)
             player = p
             p.play()
@@ -103,11 +116,13 @@ struct StreamingPlayerView: View {
         }
     }
 
-    /// The source container extension to stamp on a cached original, derived
-    /// from the filename. Defaults to "mov" when the name has no usable suffix.
-    private static func sourceExtension(of filename: String) -> String {
-        let ext = (filename as NSString).pathExtension.lowercased()
-        return ext.isEmpty ? "mov" : ext
+    /// Target playback height: the device's native pixel height, capped at
+    /// 1440 so a no-proxy fallback still transcodes down to a Wi-Fi-friendly
+    /// size. The server uses this to pick the closest existing proxy (or to
+    /// downscale), so big originals never stream at full resolution.
+    static func streamHeight() -> Int {
+        let native = Int(UIScreen.main.nativeBounds.height)
+        return min(max(native, 480), 1440)
     }
 }
 

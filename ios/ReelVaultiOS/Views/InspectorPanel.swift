@@ -4,18 +4,23 @@
 import SwiftUI
 import ReelVaultKit
 
-/// The detail/inspector column of the iPad (regular-width) 3-column layout, and
-/// the body of the metadata sheet on iPhone. Shows the streaming player +
-/// metadata for the grid's current selection, or an empty-state prompt.
+/// The metadata inspector column of the iPad 3-column layout. Metadata only —
+/// playback now lives in the dedicated Detail view mode (switch to Detail to
+/// watch a video). Shows the current selection's details, or an empty state.
 struct InspectorPanel: View {
     let video: VideoSummary?
-    let connection: AppRouter.ConnectionInfo?
+    /// How to switch into Detail (player) mode for the selected video.
+    var onPlay: () -> Void = {}
 
     var body: some View {
         if let video {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    StreamingPlayerView(video: video, endpoint: connection)
+                    Button(action: onPlay) {
+                        Label("Play in Detail", systemImage: "play.rectangle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
                     VideoMetadataSection(video: video)
                 }
                 .padding()
@@ -26,7 +31,7 @@ struct InspectorPanel: View {
             ContentUnavailableView(
                 "No selection",
                 systemImage: "sidebar.right",
-                description: Text("Select a video to see its details and play it.")
+                description: Text("Select a video to see its details.")
             )
         }
     }
