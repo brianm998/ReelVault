@@ -8,10 +8,11 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio_stream::wrappers::TcpListenerStream;
-use tonic::transport::Server;
+use tonic::transport::{Identity as TonicIdentity, Server, ServerTlsConfig};
 
 use reelvault_core::config::Config;
 use reelvault_core::db::Database;
+use reelvault_core::identity;
 use reelvault_core::service::ReelVaultService;
 
 /// ReelVault backend daemon.
@@ -68,6 +69,29 @@ struct Args {
     /// Windows default:     C:\ProgramData\ReelVault\reelvault-core.pid
     #[arg(long, value_name = "PATH")]
     pid_file: Option<PathBuf>,
+
+    /// Expose the daemon to LAN clients (e.g. the iOS app): in addition to the
+    /// loopback plaintext listener, bind a TLS gRPC listener on the LAN IP using
+    /// a persisted self-signed certificate. Off by default, so the desktop
+    /// subprocess case is byte-for-byte unchanged.
+    #[arg(long, default_value_t = false)]
+    remote: bool,
+
+    /// Interface IP for the `--remote` TLS listener. Defaults to the
+    /// auto-detected primary non-loopback IPv4. Use `0.0.0.0` for all
+    /// interfaces (then pick a `--remote-grpc-port` other than `--port`).
+    #[arg(long, value_name = "IP")]
+    remote_host: Option<String>,
+
+    /// Port for the `--remote` TLS gRPC listener. Defaults to 50051 (same number
+    /// as `--port`, but bound to the LAN IP, so the two don't collide).
+    #[arg(long, default_value_t = 50051u16)]
+    remote_grpc_port: u16,
+
+    /// Human-friendly server name baked into the TLS certificate (and, later,
+    /// advertised over mDNS). Defaults to the machine hostname.
+    #[arg(long, value_name = "NAME")]
+    advertise_name: Option<String>,
 }
 
 #[tokio::main]
@@ -146,8 +170,10 @@ async fn main() -> Result<()> {
     );
 
     let service = ReelVaultService::new(db, config);
-    let server = service.into_server();
 
+    // Loopback plaintext listener — desktop clients spawn the daemon and
+    // connect here; this path is unchanged. (Port 0 => OS-assigned, reported
+    // via the sentinel below.)
     let host: IpAddr = args
         .host
         .parse()
@@ -170,19 +196,78 @@ async fn main() -> Result<()> {
     // keep the prefix stable. It is also useful in service logs for confirming
     // the daemon came up correctly.
     println!("REELVAULT_LISTENING_ON=127.0.0.1:{}", local.port());
-    tracing::info!("gRPC server listening on {}", local);
+    tracing::info!("gRPC server listening on {} (loopback, plaintext)", local);
     if args.system_daemon {
-        tracing::info!("Running as system daemon — shared catalog, port {}", local.port());
+        tracing::info!(
+            "Running as system daemon — shared catalog, port {}",
+            local.port()
+        );
     }
-    tracing::info!("Backend ready");
     // Flush stdout so any parent process that reads the sentinel line sees it.
-    use std::io::Write as _;
-    let _ = std::io::stdout().flush();
+    {
+        use std::io::Write as _;
+        let _ = std::io::stdout().flush();
+    }
 
-    Server::builder()
-        .add_service(server)
-        .serve_with_incoming(TcpListenerStream::new(listener))
-        .await?;
+    let loopback = Server::builder()
+        .add_service(service.clone().into_server())
+        .serve_with_incoming(TcpListenerStream::new(listener));
+
+    if args.remote {
+        // LAN-facing TLS listener for remote clients (iOS). Uses a persisted
+        // self-signed certificate; clients pin its fingerprint (advertised over
+        // mDNS in a later step). Loopback stays plaintext and auth-exempt.
+        let data_dir = get_data_dir(args.system_daemon)?;
+        let lan_ip: IpAddr = match args.remote_host.as_deref() {
+            Some(s) => s.parse().unwrap_or_else(|_| {
+                tracing::warn!("Invalid --remote-host {:?}; binding 0.0.0.0", s);
+                IpAddr::V4(Ipv4Addr::UNSPECIFIED)
+            }),
+            None => primary_lan_ipv4().map(IpAddr::V4).unwrap_or_else(|| {
+                tracing::warn!("Could not auto-detect a LAN IPv4; binding 0.0.0.0");
+                IpAddr::V4(Ipv4Addr::UNSPECIFIED)
+            }),
+        };
+        let server_name = args
+            .advertise_name
+            .clone()
+            .unwrap_or_else(hostname_or_default);
+
+        // SANs are advisory (clients pin by fingerprint) but include the obvious
+        // names so a stricter validator could still succeed.
+        let mut sans = vec![
+            server_name.clone(),
+            format!("{server_name}.local"),
+            "localhost".to_string(),
+        ];
+        if let IpAddr::V4(v4) = lan_ip {
+            if !v4.is_unspecified() {
+                sans.push(v4.to_string());
+            }
+        }
+
+        let id = identity::load_or_create(&data_dir, &sans)?;
+        let tonic_id = TonicIdentity::from_pem(id.cert_pem.clone(), id.key_pem.clone());
+        let lan_addr = SocketAddr::new(lan_ip, args.remote_grpc_port);
+
+        tracing::info!(
+            "Remote TLS gRPC listening on {} as \"{}\" (cert sha256={})",
+            lan_addr,
+            server_name,
+            id.fingerprint_hex
+        );
+        tracing::info!("Backend ready (loopback + remote)");
+
+        let tls = Server::builder()
+            .tls_config(ServerTlsConfig::new().identity(tonic_id))?
+            .add_service(service.clone().into_server())
+            .serve(lan_addr);
+
+        tokio::try_join!(loopback, tls)?;
+    } else {
+        tracing::info!("Backend ready");
+        loopback.await?;
+    }
 
     if let Some(ref path) = pid_path {
         remove_pid_file(path);
@@ -282,22 +367,18 @@ fn get_log_dir() -> PathBuf {
     }
 }
 
-/// System-wide catalog path used when `--system-daemon` is set.
-fn get_system_catalog_path() -> Result<PathBuf> {
-    let dir = if cfg!(target_os = "macos") {
-        PathBuf::from("/Library/Application Support/ReelVault")
-    } else if cfg!(target_os = "windows") {
-        PathBuf::from(r"C:\ProgramData\ReelVault")
-    } else {
-        PathBuf::from("/var/lib/reelvault")
-    };
-    std::fs::create_dir_all(&dir)?;
-    Ok(dir.join("catalog.db"))
-}
-
-/// Per-user catalog path used in interactive (non-daemon) mode.
-fn get_default_db_path() -> Result<PathBuf> {
-    let data_dir = if cfg!(target_os = "macos") {
+/// Per-OS data directory (without the catalog filename). Shared by the catalog
+/// path helpers and the TLS identity store (`identity/`) so they live together.
+fn get_data_dir(system_daemon: bool) -> Result<PathBuf> {
+    let dir = if system_daemon {
+        if cfg!(target_os = "macos") {
+            PathBuf::from("/Library/Application Support/ReelVault")
+        } else if cfg!(target_os = "windows") {
+            PathBuf::from(r"C:\ProgramData\ReelVault")
+        } else {
+            PathBuf::from("/var/lib/reelvault")
+        }
+    } else if cfg!(target_os = "macos") {
         dirs::home_dir()
             .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?
             .join("Library")
@@ -312,8 +393,49 @@ fn get_default_db_path() -> Result<PathBuf> {
             .ok_or_else(|| anyhow::anyhow!("Could not determine data directory"))?
             .join("reelvault")
     };
-    std::fs::create_dir_all(&data_dir)?;
-    Ok(data_dir.join("catalog.db"))
+    std::fs::create_dir_all(&dir)?;
+    Ok(dir)
+}
+
+/// System-wide catalog path used when `--system-daemon` is set.
+fn get_system_catalog_path() -> Result<PathBuf> {
+    Ok(get_data_dir(true)?.join("catalog.db"))
+}
+
+/// Per-user catalog path used in interactive (non-daemon) mode.
+fn get_default_db_path() -> Result<PathBuf> {
+    Ok(get_data_dir(false)?.join("catalog.db"))
+}
+
+/// Best-effort detection of the primary non-loopback IPv4 address. Opens a UDP
+/// socket and "connects" it to a public address — no packets are sent; this
+/// just asks the OS which local interface serves the default route.
+fn primary_lan_ipv4() -> Option<Ipv4Addr> {
+    use std::net::UdpSocket;
+    let sock = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0)).ok()?;
+    sock.connect((Ipv4Addr::new(8, 8, 8, 8), 80)).ok()?;
+    match sock.local_addr().ok()? {
+        SocketAddr::V4(v4) => {
+            let ip = *v4.ip();
+            if ip.is_loopback() || ip.is_unspecified() {
+                None
+            } else {
+                Some(ip)
+            }
+        }
+        _ => None,
+    }
+}
+
+/// The machine hostname for the advertised server name, or a generic fallback.
+/// Reads the usual environment variables to avoid a dedicated dependency.
+fn hostname_or_default() -> String {
+    std::env::var("HOSTNAME")
+        .or_else(|_| std::env::var("COMPUTERNAME"))
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "ReelVault".to_string())
 }
 
 /// Default PID file path for `--system-daemon` mode.

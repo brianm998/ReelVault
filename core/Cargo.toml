@@ -17,10 +17,21 @@ tokio = { version = "1.35", features = ["full"] }
 tokio-util = "0.7"
 tokio-stream = { version = "0.1", features = ["net"] }
 
-# gRPC and serialization
-tonic = "0.11"
+# gRPC and serialization. The "tls" feature adds the rustls-backed
+# ServerTlsConfig used for the LAN-facing listener (--remote).
+tonic = { version = "0.11", features = ["tls"] }
 prost = "0.12"
 prost-types = "0.12"
+
+# Self-signed TLS identity for the LAN listener (--remote). The daemon presents
+# a self-signed cert that the iOS client pins by SHA-256 fingerprint (no CA).
+# base64 is used to PEM-wrap the exact DER we fingerprint, so the presented cert
+# and the advertised fingerprint are guaranteed to be the same bytes (rcgen
+# re-signs on each serialize call, so we must serialize the DER only once).
+rcgen = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+base64 = "0.22"
 
 # Database
 rusqlite = { version = "0.31", features = ["bundled", "chrono", "uuid"] }

@@ -8,6 +8,7 @@ pub mod search;
 pub mod indexing;
 pub mod config;
 pub mod error;
+pub mod identity;
 pub mod service;
 pub mod grouping;
 pub mod concurrency;
