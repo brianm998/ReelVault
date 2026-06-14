@@ -102,21 +102,22 @@ public final class FingerprintPinningDelegate: NSObject, URLSessionDelegate, @un
             completionHandler(.performDefaultHandling, nil)
             return
         }
-        // No pin configured => accept (dev only).
-        guard let expected else {
-            completionHandler(.useCredential, URLCredential(trust: trust))
-            return
-        }
-        guard let der = Self.leafDER(from: trust) else {
-            completionHandler(.cancelAuthenticationChallenge, nil)
-            return
-        }
-        let fp = SHA256.hash(data: der).map { String(format: "%02x", $0) }.joined()
-        if fp == expected {
+        if Self.certificateMatches(trust, expectedFingerprintHex: expected) {
             completionHandler(.useCredential, URLCredential(trust: trust))
         } else {
             completionHandler(.cancelAuthenticationChallenge, nil)
         }
+    }
+
+    /// Whether the server trust's leaf certificate matches the pinned SHA-256
+    /// fingerprint. A `nil` fingerprint disables pinning (accepts any cert —
+    /// dev only). Shared by the download (`MediaClient`) and upload
+    /// (`UploadManager`) sessions so both pin identically.
+    public static func certificateMatches(_ trust: SecTrust, expectedFingerprintHex expected: String?) -> Bool {
+        guard let expected = expected?.lowercased() else { return true }
+        guard let der = leafDER(from: trust) else { return false }
+        let fp = SHA256.hash(data: der).map { String(format: "%02x", $0) }.joined()
+        return fp == expected
     }
 
     private static func leafDER(from trust: SecTrust) -> Data? {
