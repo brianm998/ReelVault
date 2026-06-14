@@ -479,6 +479,18 @@ public enum Reelvault_ReelVault {
                 method: "UpdateConfig"
             )
         }
+        /// Namespace for "StartPairing" metadata.
+        public enum StartPairing {
+            /// Request type for "StartPairing".
+            public typealias Input = Reelvault_StartPairingRequest
+            /// Response type for "StartPairing".
+            public typealias Output = Reelvault_StartPairingResponse
+            /// Descriptor for "StartPairing".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "StartPairing"
+            )
+        }
         /// Namespace for "OpenCatalog" metadata.
         public enum OpenCatalog {
             /// Request type for "OpenCatalog".
@@ -759,6 +771,7 @@ public enum Reelvault_ReelVault {
             GetStatus.descriptor,
             GetConfig.descriptor,
             UpdateConfig.descriptor,
+            StartPairing.descriptor,
             OpenCatalog.descriptor,
             CloseCatalog.descriptor,
             GetCurrentCatalog.descriptor,
@@ -1391,6 +1404,28 @@ extension Reelvault_ReelVault {
             request: GRPCCore.StreamingServerRequest<Reelvault_UpdateConfigRequest>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response>
+
+        /// Handle the "StartPairing" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Pairing — a desktop/loopback client mints a one-time 6-digit code that the
+        /// > operator types on a new remote device (the iOS app) to authorize it. The
+        /// > same pending-code state backs the media server's POST /pair, which the new
+        /// > device calls to redeem the code for a bearer token. Intended for loopback
+        /// > callers; the LAN bind requires a token a new device doesn't have yet.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Reelvault_StartPairingRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Reelvault_StartPairingResponse` messages.
+        func startPairing(
+            request: GRPCCore.StreamingServerRequest<Reelvault_StartPairingRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_StartPairingResponse>
 
         /// Handle the "OpenCatalog" method.
         ///
@@ -2347,6 +2382,28 @@ extension Reelvault_ReelVault {
             request: GRPCCore.ServerRequest<Reelvault_UpdateConfigRequest>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.ServerResponse<Reelvault_Response>
+
+        /// Handle the "StartPairing" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Pairing — a desktop/loopback client mints a one-time 6-digit code that the
+        /// > operator types on a new remote device (the iOS app) to authorize it. The
+        /// > same pending-code state backs the media server's POST /pair, which the new
+        /// > device calls to redeem the code for a bearer token. Intended for loopback
+        /// > callers; the LAN bind requires a token a new device doesn't have yet.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_StartPairingRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Reelvault_StartPairingResponse` message.
+        func startPairing(
+            request: GRPCCore.ServerRequest<Reelvault_StartPairingRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Reelvault_StartPairingResponse>
 
         /// Handle the "OpenCatalog" method.
         ///
@@ -3305,6 +3362,28 @@ extension Reelvault_ReelVault {
             context: GRPCCore.ServerContext
         ) async throws -> Reelvault_Response
 
+        /// Handle the "StartPairing" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Pairing — a desktop/loopback client mints a one-time 6-digit code that the
+        /// > operator types on a new remote device (the iOS app) to authorize it. The
+        /// > same pending-code state backs the media server's POST /pair, which the new
+        /// > device calls to redeem the code for a bearer token. Intended for loopback
+        /// > callers; the LAN bind requires a token a new device doesn't have yet.
+        ///
+        /// - Parameters:
+        ///   - request: A `Reelvault_StartPairingRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Reelvault_StartPairingResponse` to respond with.
+        func startPairing(
+            request: Reelvault_StartPairingRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Reelvault_StartPairingResponse
+
         /// Handle the "OpenCatalog" method.
         ///
         /// > Source IDL Documentation:
@@ -4090,6 +4169,17 @@ extension Reelvault_ReelVault.StreamingServiceProtocol {
             }
         )
         router.registerHandler(
+            forMethod: Reelvault_ReelVault.Method.StartPairing.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_StartPairingRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_StartPairingResponse>(),
+            handler: { request, context in
+                try await self.startPairing(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
             forMethod: Reelvault_ReelVault.Method.OpenCatalog.descriptor,
             deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_OpenCatalogRequest>(),
             serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_CatalogInfo>(),
@@ -4727,6 +4817,17 @@ extension Reelvault_ReelVault.ServiceProtocol {
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
         let response = try await self.updateConfig(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    public func startPairing(
+        request: GRPCCore.StreamingServerRequest<Reelvault_StartPairingRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_StartPairingResponse> {
+        let response = try await self.startPairing(
             request: GRPCCore.ServerRequest(stream: request),
             context: context
         )
@@ -5456,6 +5557,19 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
         return GRPCCore.ServerResponse<Reelvault_Response>(
             message: try await self.updateConfig(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    public func startPairing(
+        request: GRPCCore.ServerRequest<Reelvault_StartPairingRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Reelvault_StartPairingResponse> {
+        return GRPCCore.ServerResponse<Reelvault_StartPairingResponse>(
+            message: try await self.startPairing(
                 request: request.message,
                 context: context
             ),
@@ -6513,6 +6627,33 @@ extension Reelvault_ReelVault {
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "StartPairing" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Pairing — a desktop/loopback client mints a one-time 6-digit code that the
+        /// > operator types on a new remote device (the iOS app) to authorize it. The
+        /// > same pending-code state backs the media server's POST /pair, which the new
+        /// > device calls to redeem the code for a bearer token. Intended for loopback
+        /// > callers; the LAN bind requires a token a new device doesn't have yet.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_StartPairingRequest` message.
+        ///   - serializer: A serializer for `Reelvault_StartPairingRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_StartPairingResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func startPairing<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_StartPairingRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_StartPairingRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_StartPairingResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_StartPairingResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
 
         /// Call the "OpenCatalog" method.
@@ -8174,6 +8315,44 @@ extension Reelvault_ReelVault {
             try await self.client.unary(
                 request: request,
                 descriptor: Reelvault_ReelVault.Method.UpdateConfig.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "StartPairing" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > Pairing — a desktop/loopback client mints a one-time 6-digit code that the
+        /// > operator types on a new remote device (the iOS app) to authorize it. The
+        /// > same pending-code state backs the media server's POST /pair, which the new
+        /// > device calls to redeem the code for a bearer token. Intended for loopback
+        /// > callers; the LAN bind requires a token a new device doesn't have yet.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_StartPairingRequest` message.
+        ///   - serializer: A serializer for `Reelvault_StartPairingRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_StartPairingResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func startPairing<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_StartPairingRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_StartPairingRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_StartPairingResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_StartPairingResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Reelvault_ReelVault.Method.StartPairing.descriptor,
                 serializer: serializer,
                 deserializer: deserializer,
                 options: options,
@@ -9854,6 +10033,39 @@ extension Reelvault_ReelVault.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_UpdateConfigRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_Response>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "StartPairing" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Pairing — a desktop/loopback client mints a one-time 6-digit code that the
+    /// > operator types on a new remote device (the iOS app) to authorize it. The
+    /// > same pending-code state backs the media server's POST /pair, which the new
+    /// > device calls to redeem the code for a bearer token. Intended for loopback
+    /// > callers; the LAN bind requires a token a new device doesn't have yet.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Reelvault_StartPairingRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func startPairing<Result>(
+        request: GRPCCore.ClientRequest<Reelvault_StartPairingRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_StartPairingResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.startPairing(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_StartPairingRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_StartPairingResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -11582,6 +11794,43 @@ extension Reelvault_ReelVault.ClientProtocol {
             metadata: metadata
         )
         return try await self.updateConfig(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "StartPairing" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > Pairing — a desktop/loopback client mints a one-time 6-digit code that the
+    /// > operator types on a new remote device (the iOS app) to authorize it. The
+    /// > same pending-code state backs the media server's POST /pair, which the new
+    /// > device calls to redeem the code for a bearer token. Intended for loopback
+    /// > callers; the LAN bind requires a token a new device doesn't have yet.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func startPairing<Result>(
+        _ message: Reelvault_StartPairingRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_StartPairingResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Reelvault_StartPairingRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.startPairing(
             request: request,
             options: options,
             onResponse: handleResponse

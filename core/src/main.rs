@@ -255,7 +255,16 @@ where
     let media_cache_dir = config.thumbnail_cache_path.clone();
     let media_import_dir = config.import_dir.clone();
 
-    let service = ReelVaultService::new(db, config);
+    // Per-OS data dir (TLS identity, pairing.txt). Computed once and shared by
+    // the gRPC service (StartPairing writes pairing.txt) and, under --remote,
+    // the media server.
+    let data_dir = get_data_dir(args.system_daemon)?;
+    // One pending-pairing cell shared by the gRPC service (StartPairing) and the
+    // media server (POST /pair), so a code minted on either path redeems on the
+    // other.
+    let pairing = reelvault_core::pairing::new_state();
+
+    let service = ReelVaultService::new(db, config, pairing.clone(), data_dir.clone());
 
     // Loopback plaintext listener — desktop clients spawn the daemon and
     // connect here; this path is unchanged. (Port 0 => OS-assigned, reported
@@ -303,7 +312,6 @@ where
         // LAN-facing TLS listener for remote clients (iOS). Uses a persisted
         // self-signed certificate; clients pin its fingerprint (advertised over
         // mDNS in a later step). Loopback stays plaintext and auth-exempt.
-        let data_dir = get_data_dir(args.system_daemon)?;
         let lan_ip: IpAddr = match args.remote_host.as_deref() {
             Some(s) => s.parse().unwrap_or_else(|_| {
                 tracing::warn!("Invalid --remote-host {:?}; binding 0.0.0.0", s);
@@ -410,6 +418,7 @@ where
                 media_cache_dir,
                 data_dir.clone(),
                 media_import_dir,
+                pairing.clone(),
             ),
         );
 

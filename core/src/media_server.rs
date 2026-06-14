@@ -32,19 +32,13 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 use tokio::sync::Mutex;
 use tokio_stream::StreamExt;
 use tokio_util::io::ReaderStream;
 
 use crate::db::Database;
-
-/// A pending one-time pairing code (set by /pair/start, consumed by /pair).
-struct PendingPairing {
-    code: String,
-    expires: Instant,
-}
 
 /// Shared state for the media handlers.
 #[derive(Clone)]
@@ -60,8 +54,9 @@ pub struct MediaState {
     pub data_dir: PathBuf,
     /// Where uploaded videos are stored (None = uploads refused).
     pub import_dir: Option<PathBuf>,
-    /// The current pending pairing code.
-    pairing: Arc<Mutex<Option<PendingPairing>>>,
+    /// The current pending pairing code — shared with the gRPC service so a code
+    /// minted by a desktop client (StartPairing) is redeemable here.
+    pairing: crate::pairing::PairingState,
 }
 
 impl MediaState {
@@ -71,6 +66,7 @@ impl MediaState {
         cache_dir: PathBuf,
         data_dir: PathBuf,
         import_dir: Option<PathBuf>,
+        pairing: crate::pairing::PairingState,
     ) -> Self {
         Self {
             db,
@@ -79,7 +75,7 @@ impl MediaState {
             transcode_locks: Arc::new(Mutex::new(HashMap::new())),
             data_dir,
             import_dir,
-            pairing: Arc::new(Mutex::new(None)),
+            pairing,
         }
     }
 }
@@ -122,19 +118,11 @@ async fn fingerprint(State(state): State<MediaState>) -> String {
     state.fingerprint_hex.clone()
 }
 
-/// Begin pairing: generate a 6-digit code (5-min TTL) and surface it to the
-/// admin (daemon log + `<data_dir>/pairing.txt`) for entry on the new device.
+/// Begin pairing from the device side: mint a 6-digit code (5-min TTL) and
+/// surface it (daemon log + `<data_dir>/pairing.txt`). A desktop client can also
+/// mint one via the `StartPairing` gRPC RPC — both share the same pending cell.
 async fn pair_start(State(state): State<MediaState>) -> StatusCode {
-    let code = gen_code();
-    {
-        let mut p = state.pairing.lock().await;
-        *p = Some(PendingPairing {
-            code: code.clone(),
-            expires: Instant::now() + Duration::from_secs(300),
-        });
-    }
-    tracing::info!("PAIRING CODE: {code} — enter on the device within 5 minutes");
-    let _ = std::fs::write(state.data_dir.join("pairing.txt"), format!("{code}\n"));
+    crate::pairing::issue_code(&state.pairing, &state.data_dir).await;
     StatusCode::OK
 }
 
@@ -178,13 +166,6 @@ async fn pair(State(state): State<MediaState>, Json(req): Json<PairRequest>) -> 
     let _ = std::fs::remove_file(state.data_dir.join("pairing.txt"));
     tracing::info!("Paired new device: {name}");
     Json(PairResponse { token }).into_response()
-}
-
-/// A 6-digit pairing code derived from random UUID bytes (no extra RNG dep).
-fn gen_code() -> String {
-    let b = uuid::Uuid::new_v4().into_bytes();
-    let n = u32::from_le_bytes([b[0], b[1], b[2], b[3]]) % 1_000_000;
-    format!("{n:06}")
 }
 
 #[derive(serde::Deserialize)]

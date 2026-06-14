@@ -188,6 +188,36 @@ public class VideoRepository: ObservableObject {
         }
     }
 
+    // MARK: - Pairing
+
+    /// A freshly-minted one-time pairing code for authorizing a new remote
+    /// device (the iOS app). The operator reads it off this client and types it
+    /// on the device, which redeems it at the media server's `POST /pair`.
+    public struct PairingCode: Sendable, Equatable {
+        public let code: String
+        /// Unix epoch milliseconds at which the code stops being accepted.
+        public let expiresAtMs: Int64
+        public init(code: String, expiresAtMs: Int64) {
+            self.code = code
+            self.expiresAtMs = expiresAtMs
+        }
+    }
+
+    /// Ask the connected daemon to mint a one-time pairing code. Intended for a
+    /// loopback/desktop client — the daemon surfaces the same code to the
+    /// pairing endpoint a new device redeems against. Returns nil if not
+    /// connected or the call fails.
+    public func startPairing() async -> PairingCode? {
+        guard let service = serviceClient else { return nil }
+        do {
+            let resp = try await service.startPairing(Reelvault_StartPairingRequest())
+            return PairingCode(code: resp.code, expiresAtMs: resp.expiresAtMs)
+        } catch {
+            NSLog("StartPairing failed: \(error)")
+            return nil
+        }
+    }
+
     // MARK: - Videos
 
     public func listVideos(
