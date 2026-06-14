@@ -12,9 +12,9 @@
 //! - `GET /video/{id}` — the video file, range-aware (206 / `Accept-Ranges`).
 //! - `GET /video/{id}?height=H` — an on-the-fly downscaled rendition (A4).
 //! - `GET /hls/{id}/{height}/{file}` — on-the-fly HLS stream that begins playing
-//!   before the whole file finishes transcoding; `file` is `master.m3u8`,
-//!   `index.m3u8`, or `seg_NNNNN.ts`. Height lives in the path (not a query) so
-//!   the playlist's relative segment URIs carry it (A4).
+//!   before the whole file finishes transcoding; `file` is the media playlist
+//!   `index.m3u8` or a segment `seg_NNNNN.ts`. Height lives in the path (not a
+//!   query) so the playlist's relative segment URIs carry it (A4).
 //! - `POST /pair/start`, `POST /pair` — one-time device pairing (A5).
 //! - `POST /upload?filename=` — authenticated upload into the import dir (A6).
 //!
@@ -399,15 +399,18 @@ fn is_allowed_hls_file(file: &str) -> bool {
 }
 
 /// Ensure an HLS session dir for `(id, height)` exists and return it, blocking
-/// the *first* request only until `master.m3u8` appears (or the transcode fails
-/// / times out). Mirrors [`ensure_downscaled`] — dedup via `transcode_locks`,
-/// ffmpeg under a permit — but returns *before* ffmpeg finishes so the playlist
-/// can grow while playback proceeds.
+/// the *first* request only until the media playlist `index.m3u8` appears (or
+/// the transcode fails / times out). We gate on `index.m3u8` (which always has
+/// a segment when it exists, and is what the client plays) rather than the
+/// `master.m3u8`, which ffmpeg can publish variant-less mid-transcode → an empty
+/// 25-byte master that AVPlayer dead-ends on. Mirrors [`ensure_downscaled`] —
+/// dedup via `transcode_locks`, ffmpeg under a permit — but returns *before*
+/// ffmpeg finishes so the playlist can grow while playback proceeds.
 async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option<PathBuf> {
     let dir = state.cache_dir.join("hls").join(format!("{id}_{height}"));
-    let master = dir.join("master.m3u8");
+    let index = dir.join("index.m3u8");
     let complete = dir.join(".complete");
-    if complete.exists() && master.exists() {
+    if complete.exists() && index.exists() {
         return Some(dir);
     }
 
@@ -422,7 +425,7 @@ async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option
     };
     let guard = lock.lock().await;
     let failed = dir.join(".failed");
-    if complete.exists() && master.exists() {
+    if complete.exists() && index.exists() {
         drop(guard);
         return Some(dir);
     }
@@ -433,7 +436,7 @@ async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option
     // would otherwise delete the directory out from under the live transcode.
     // Only (re)start when there's no session, a failed one, or a dead/stale one
     // (e.g. the daemon was SIGKILLed mid-transcode).
-    let running = (master.exists() || dir.exists()) && !failed.exists() && !dir_is_stale(&dir);
+    let running = (index.exists() || dir.exists()) && !failed.exists() && !dir_is_stale(&dir);
     if !running {
         if dir.exists() {
             let _ = std::fs::remove_dir_all(&dir);
@@ -468,11 +471,11 @@ async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option
     }
     drop(guard); // release the start/join lock; do NOT hold it during transcode.
 
-    // Wait-for-first-segment: AVPlayer fails the asset on a 404 master, so block
-    // until master.m3u8 exists, the transcode marks failure, or we time out.
+    // Wait-for-first-segment: AVPlayer fails the asset on a 404 playlist, so block
+    // until index.m3u8 exists, the transcode marks failure, or we time out.
     let started = Instant::now();
     for i in 0..200 {
-        if master.exists() {
+        if index.exists() {
             tracing::info!("hls: {id}@{height}p playlist ready in {}ms", started.elapsed().as_millis());
             return Some(dir);
         }
@@ -549,7 +552,6 @@ fn spawn_hls_transcode(dir: PathBuf, src: String, height: i32, copy: bool) {
             "-hls_flags", "independent_segments+temp_file",
             "-hls_segment_type", "mpegts",
             "-start_number", "0",
-            "-master_pl_name", "master.m3u8",
         ]);
         cmd.arg("-hls_segment_filename").arg(&seg).arg(&index);
         cmd.stdout(std::process::Stdio::null())

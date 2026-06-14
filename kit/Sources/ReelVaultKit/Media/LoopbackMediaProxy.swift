@@ -85,15 +85,17 @@ public final class LoopbackMediaProxy: @unchecked Sendable {
         }
     }
 
-    /// `http://127.0.0.1:<port>/hls/<id>/<height>/master.m3u8` — hand THIS to
-    /// `AVPlayer` (plain http to loopback, no pinning/ATS work needed).
+    /// `http://127.0.0.1:<port>/hls/<id>/<height>/index.m3u8` — hand THIS to
+    /// `AVPlayer` (plain http to loopback, no pinning/ATS work needed). We point
+    /// at the media playlist, not a master: ffmpeg can publish a variant-less
+    /// (empty) master mid-transcode, which AVPlayer dead-ends on.
     public func hlsURL(videoId: String, height: Int) -> URL {
         lock.lock(); let p = port; lock.unlock()
         var c = URLComponents()
         c.scheme = "http"
         c.host = "127.0.0.1"
         c.port = Int(p)
-        c.path = "/hls/\(videoId)/\(height)/master.m3u8"
+        c.path = "/hls/\(videoId)/\(height)/index.m3u8"
         return c.url!
     }
 
