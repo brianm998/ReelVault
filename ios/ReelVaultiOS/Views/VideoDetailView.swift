@@ -36,10 +36,15 @@ final class StreamPlayer: ObservableObject {
     @Published var isPreparing = false
     @Published var error: String?
     private var preparedVideoId: String?
+    /// Live loopback proxy backing an HLS stream; retained for the player's
+    /// lifetime (segments 502 if it deallocs mid-playback).
+    private var proxy: LoopbackMediaProxy?
 
-    /// Prepare (download + pin-verify) the rendition and start playing. No-ops
-    /// if the same video is already prepared (so the inline view and the
-    /// full-screen cover share one player rather than racing two).
+    /// Prepare the rendition and start playing. Tries HLS streaming first (begins
+    /// playing before the whole file transcodes, via a pinned loopback proxy),
+    /// then falls back to download-then-play. No-ops if the same video is already
+    /// prepared, so the inline view and the full-screen cover share one player
+    /// rather than racing two.
     func prepare(video: VideoSummary, endpoint: AppRouter.ConnectionInfo?) async {
         if preparedVideoId == video.id, player != nil {
             player?.play()
@@ -53,9 +58,32 @@ final class StreamPlayer: ObservableObject {
             host: conn.host, mediaPort: conn.mediaPort,
             fingerprintHex: conn.fingerprintHex, bearerToken: conn.bearerToken)
         // Always request a fit-to-device height (never the raw original): the
-        // server serves the proxy closest to this height when one exists, else
-        // transcodes down — so big originals don't stream raw over Wi-Fi.
+        // server serves/transcodes the closest rendition — so big originals don't
+        // stream raw over Wi-Fi.
         let height = Self.streamHeight()
+
+        // 1) HLS streaming via the loopback proxy: AVPlayer plays as segments
+        //    arrive instead of waiting for the whole file.
+        teardownProxy()
+        let proxy = LoopbackMediaProxy(endpoint: mediaEndpoint)
+        do {
+            _ = try await proxy.start()
+            let asset = AVURLAsset(url: proxy.hlsURL(videoId: video.id, height: height))
+            if (try? await asset.load(.isPlayable)) == true {
+                self.proxy = proxy
+                let p = AVPlayer(playerItem: AVPlayerItem(asset: asset))
+                player = p
+                preparedVideoId = video.id
+                p.play()
+                return
+            }
+            NSLog("ReelVault: HLS not playable for \(video.id) (h\(height)); falling back to download")
+        } catch {
+            NSLog("ReelVault: HLS proxy start failed for \(video.id): \(error); falling back to download")
+        }
+        proxy.stop()
+
+        // 2) Fallback: download-then-play (pin-verified, correct but not progressive).
         do {
             let item = try await MediaClient().playerItem(
                 videoId: video.id, height: height, ext: "mp4", from: mediaEndpoint)
@@ -77,7 +105,13 @@ final class StreamPlayer: ObservableObject {
             player = nil
             preparedVideoId = nil
             error = nil
+            teardownProxy()
         }
+    }
+
+    private func teardownProxy() {
+        proxy?.stop()
+        proxy = nil
     }
 
     func pause() { player?.pause() }
