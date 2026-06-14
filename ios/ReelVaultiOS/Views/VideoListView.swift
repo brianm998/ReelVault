@@ -22,7 +22,8 @@ struct VideoListView: View {
             )
         } else {
             List {
-                ForEach(grid.videos) { video in
+                ForEach(stackRenderedVideos(grid)) { row in
+                    let video = row.video
                     VideoListRow(
                         video: video,
                         image: grid.thumbnails[video.id],
@@ -30,7 +31,9 @@ struct VideoListView: View {
                         thumbnailHeight: thumbnailHeight,
                         isSelected: grid.selectedVideoId == video.id,
                         showCheck: selecting,
-                        isChecked: grid.selectedVideoIds.contains(video.id)
+                        isChecked: grid.selectedVideoIds.contains(video.id),
+                        isStackMember: row.isMember,
+                        onToggleExpand: { grid.toggleStackExpansion(video.groupId) }
                     )
                     .listRowBackground(grid.selectedVideoId == video.id ? Color.accentColor.opacity(0.18) : Color.clear)
                     .contentShape(Rectangle())
@@ -44,9 +47,13 @@ struct VideoListView: View {
                     }
                     .contextMenu {
                         VideoCardMenu(
-                            video: video,
+                            video: video, selectedCount: grid.selectedVideoIds.count,
                             onSetRating: { grid.setRating($0, for: [video.id]) },
-                            onSetColorLabel: { grid.setColorLabel($0, for: [video.id]) })
+                            onSetColorLabel: { grid.setColorLabel($0, for: [video.id]) },
+                            onCombine: { grid.groupSelectedVideos() },
+                            onPromote: { grid.setStackMaster(videoId: video.id, groupId: video.groupId) },
+                            onRemoveFromStack: { grid.removeFromStack(videoId: video.id, groupId: video.groupId) },
+                            onUnstack: { grid.unstackGroup(groupId: video.groupId) })
                     }
                     .onAppear { grid.loadThumbnail(videoId: video.id) }
                 }
@@ -64,9 +71,14 @@ private struct VideoListRow: View {
     let isSelected: Bool
     let showCheck: Bool
     let isChecked: Bool
+    var isStackMember: Bool = false
+    var onToggleExpand: () -> Void = {}
 
     var body: some View {
         HStack(spacing: 12) {
+            if isStackMember {
+                Image(systemName: "arrow.turn.down.right").font(.caption).foregroundStyle(.secondary)
+            }
             if showCheck {
                 Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(isChecked ? Color.accentColor : .secondary)
@@ -84,8 +96,19 @@ private struct VideoListRow: View {
                 }
             }
             Spacer(minLength: 0)
+            if video.isInGroup && !isStackMember {
+                Button(action: onToggleExpand) {
+                    HStack(spacing: 2) {
+                        Image(systemName: "square.stack.3d.up.fill").font(.system(size: 9))
+                        Text("\(video.groupSize)").font(.caption2.weight(.semibold))
+                    }
+                    .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
             CardStatusBadges(video: video, iconSize: 9)
         }
+        .padding(.leading, isStackMember ? 16 : 0)
         .opacity(video.isOnline ? 1 : 0.5)
         .padding(.vertical, 2)
     }

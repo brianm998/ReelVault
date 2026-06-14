@@ -12,6 +12,34 @@ import ReelVaultKit
 /// drives the shared view-model's arrow-key navigation when a hardware keyboard
 /// is attached (iPad), mirroring the macOS client. Cards lazily load thumbnails
 /// over gRPC and highlight the current selection.
+/// One rendered row: a collapsed video, or an expanded stack member inserted
+/// right after its representative. Used by both the grid and list so stacks
+/// render and expand identically.
+struct StackRow: Identifiable {
+    let video: VideoSummary
+    let isMember: Bool
+    /// Distinct from the representative's id so an expanded member never collides
+    /// with a top-level row in `ForEach`.
+    var id: String { isMember ? "member:\(video.id)" : video.id }
+}
+
+/// Flatten `grid.videos` (collapsed representatives) into render rows, inserting
+/// an expanded stack's members right after their representative.
+@MainActor
+func stackRenderedVideos(_ grid: GridViewModel) -> [StackRow] {
+    var out: [StackRow] = []
+    for video in grid.videos {
+        out.append(StackRow(video: video, isMember: false))
+        if video.isInGroup, grid.expandedGroupIds.contains(video.groupId),
+           let members = grid.expandedGroupMembers[video.groupId] {
+            for member in members where member.id != video.id {
+                out.append(StackRow(video: member, isMember: true))
+            }
+        }
+    }
+    return out
+}
+
 struct VideoGridView: View {
     @ObservedObject var grid: GridViewModel
     /// Minimum card width; the grid flows as many columns as fit.
@@ -48,7 +76,8 @@ struct VideoGridView: View {
                         .padding(.top, 80)
                     } else {
                         LazyVGrid(columns: columns, spacing: spacing) {
-                            ForEach(grid.videos) { video in
+                            ForEach(stackRenderedVideos(grid)) { row in
+                                let video = row.video
                                 VideoCardView(
                                     video: video,
                                     image: grid.thumbnails[video.id],
@@ -65,10 +94,17 @@ struct VideoGridView: View {
                                         }
                                     },
                                     onSetRating: { grid.setRating($0, for: [video.id]) },
-                                    onSetColorLabel: { grid.setColorLabel($0, for: [video.id]) }
+                                    onSetColorLabel: { grid.setColorLabel($0, for: [video.id]) },
+                                    isStackMember: row.isMember,
+                                    selectedCount: grid.selectedVideoIds.count,
+                                    onToggleExpand: { grid.toggleStackExpansion(video.groupId) },
+                                    onCombine: { grid.groupSelectedVideos() },
+                                    onPromote: { grid.setStackMaster(videoId: video.id, groupId: video.groupId) },
+                                    onRemoveFromStack: { grid.removeFromStack(videoId: video.id, groupId: video.groupId) },
+                                    onUnstack: { grid.unstackGroup(groupId: video.groupId) }
                                 )
                                 .onAppear { grid.loadThumbnail(videoId: video.id) }
-                                .id(video.id)
+                                .id(row.id)
                             }
                         }
                         .padding(spacing)
@@ -143,6 +179,15 @@ struct VideoCardView: View {
     var onActivate: () -> Void = {}
     var onSetRating: (Int) -> Void = { _ in }
     var onSetColorLabel: (String) -> Void = { _ in }
+    /// This card is an expanded stack member (rendered after its representative).
+    var isStackMember: Bool = false
+    /// Multi-selected count (Select mode), passed to the menu's "Combine" gate.
+    var selectedCount: Int = 0
+    var onToggleExpand: () -> Void = {}
+    var onCombine: () -> Void = {}
+    var onPromote: () -> Void = {}
+    var onRemoveFromStack: () -> Void = {}
+    var onUnstack: () -> Void = {}
 
     private let bandColor = Color(white: 0.11)   // card chrome (dark)
     private let dividerColor = Color.black.opacity(0.6)
@@ -169,7 +214,13 @@ struct VideoCardView: View {
                 .strokeBorder(Color.accentColor, lineWidth: showBorder ? 3 : 0)
         )
         .opacity(video.isOnline ? 1 : 0.5)
-        .contextMenu { VideoCardMenu(video: video, onSetRating: onSetRating, onSetColorLabel: onSetColorLabel) }
+        .contextMenu {
+            VideoCardMenu(
+                video: video, selectedCount: selectedCount,
+                onSetRating: onSetRating, onSetColorLabel: onSetColorLabel,
+                onCombine: onCombine, onPromote: onPromote,
+                onRemoveFromStack: onRemoveFromStack, onUnstack: onUnstack)
+        }
     }
 
     /// Highlight the card when it's the active selection or a checked
@@ -247,8 +298,37 @@ struct VideoCardView: View {
                         .symbolRenderingMode(.palette)
                         .foregroundStyle(.white, isChecked ? Color.accentColor : .black.opacity(0.4))
                         .padding(6)
+                } else if video.isInGroup && !isStackMember {
+                    stackBadge
                 }
             }
+            .overlay(alignment: .bottomLeading) {
+                if isStackMember {
+                    Image(systemName: "arrow.turn.down.right")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.white)
+                        .frame(width: 18, height: 18)
+                        .background(Color.black.opacity(0.55))
+                        .clipShape(Circle())
+                        .padding(4)
+                }
+            }
+    }
+
+    /// Stack indicator on a representative card: member count, taps to expand/collapse.
+    private var stackBadge: some View {
+        Button(action: onToggleExpand) {
+            HStack(spacing: 2) {
+                Image(systemName: "square.stack.3d.up.fill").font(.system(size: 9))
+                Text("\(video.groupSize)").font(.system(size: 10, weight: .semibold))
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(Color.black.opacity(0.6), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .padding(4)
     }
 
     // MARK: Rating band (5 tappable stars)
@@ -279,8 +359,14 @@ struct VideoCardView: View {
 /// menu's accent, which is why the dots were all purple).
 struct VideoCardMenu: View {
     let video: VideoSummary
+    /// Count of multi-selected videos (Select mode) — gates "Combine into Stack".
+    var selectedCount: Int = 0
     var onSetRating: (Int) -> Void
     var onSetColorLabel: (String) -> Void
+    var onCombine: () -> Void = {}
+    var onPromote: () -> Void = {}
+    var onRemoveFromStack: () -> Void = {}
+    var onUnstack: () -> Void = {}
 
     var body: some View {
         Picker("Rating", selection: Binding(get: { video.rating }, set: { onSetRating($0) })) {
@@ -291,6 +377,19 @@ struct VideoCardMenu: View {
         Picker("Color Label", selection: Binding(get: { video.colorLabel }, set: { onSetColorLabel($0) })) {
             ForEach(ColorLabel.allCases) { label in
                 Text("\(Self.dot(label)) \(label.displayName)").tag(label.rawValue)
+            }
+        }
+        if selectedCount >= 2 || video.isInGroup {
+            Divider()
+            if selectedCount >= 2 {
+                Button { onCombine() } label: { Label("Combine into Stack", systemImage: "square.stack.3d.up") }
+            }
+            if video.isInGroup {
+                if video.id != video.groupPreferredId {
+                    Button { onPromote() } label: { Label("Promote to Stack Cover", systemImage: "star") }
+                }
+                Button { onRemoveFromStack() } label: { Label("Remove from Stack", systemImage: "rectangle.stack.badge.minus") }
+                Button(role: .destructive) { onUnstack() } label: { Label("Unstack", systemImage: "square.stack.3d.up.slash") }
             }
         }
     }
