@@ -17,16 +17,19 @@
 use anyhow::{Context, Result};
 use axum::{
     body::Body,
-    extract::{Path as AxPath, State},
+    extract::{Path as AxPath, Query as AxQuery, State},
     http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::get,
     Router,
 };
 use axum_server::tls_rustls::RustlsConfig;
+use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
+use tokio::sync::Mutex;
 use tokio_util::io::ReaderStream;
 
 use crate::db::Database;
@@ -36,6 +39,28 @@ use crate::db::Database;
 pub struct MediaState {
     pub db: Arc<Database>,
     pub fingerprint_hex: String,
+    /// Directory for cached downscaled renditions (a subdir of the thumb cache).
+    pub cache_dir: PathBuf,
+    /// Per-`{id}_{height}` locks so concurrent identical requests share one
+    /// transcode instead of each spawning their own ffmpeg.
+    pub transcode_locks: Arc<Mutex<HashMap<String, Arc<Mutex<()>>>>>,
+}
+
+impl MediaState {
+    pub fn new(db: Arc<Database>, fingerprint_hex: String, cache_dir: PathBuf) -> Self {
+        Self {
+            db,
+            fingerprint_hex,
+            cache_dir,
+            transcode_locks: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct VideoQuery {
+    /// Target max height; 0/absent means "serve the stored file as-is".
+    height: Option<i32>,
 }
 
 /// Serve the media endpoints on `addr` over TLS using the given PEM cert+key.
@@ -69,6 +94,7 @@ async fn fingerprint(State(state): State<MediaState>) -> String {
 
 async fn video(
     AxPath(id): AxPath<String>,
+    AxQuery(q): AxQuery<VideoQuery>,
     State(state): State<MediaState>,
     headers: HeaderMap,
 ) -> Response {
@@ -80,7 +106,81 @@ async fn video(
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
-    serve_file_range(&record.path, &headers).await
+    let height = q.height.unwrap_or(0);
+    if height > 0 {
+        match ensure_downscaled(&state, &id, &record.path, height).await {
+            Some(path) => serve_file_range(&path.to_string_lossy(), &headers).await,
+            None => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        }
+    } else {
+        serve_file_range(&record.path, &headers).await
+    }
+}
+
+/// Transcode `src` to a cached downscaled MP4 capped at `height` px (never
+/// upscaled), returning its path. Concurrent identical requests share one ffmpeg
+/// via a per-key lock; the result is cached under `<cache>/stream/` for reuse.
+async fn ensure_downscaled(state: &MediaState, id: &str, src: &str, height: i32) -> Option<PathBuf> {
+    let dir = state.cache_dir.join("stream");
+    let out = dir.join(format!("{id}_{height}.mp4"));
+    if out.exists() {
+        return Some(out);
+    }
+    // Serialize concurrent identical requests behind one transcode.
+    let key = format!("{id}_{height}");
+    let lock = {
+        let mut map = state.transcode_locks.lock().await;
+        map.entry(key)
+            .or_insert_with(|| Arc::new(Mutex::new(())))
+            .clone()
+    };
+    let _guard = lock.lock().await;
+    if out.exists() {
+        return Some(out); // produced while we waited on the lock
+    }
+    if let Err(e) = std::fs::create_dir_all(&dir) {
+        tracing::warn!("media: create cache dir failed: {e}");
+        return None;
+    }
+
+    let out_tmp = dir.join(format!(".{id}_{height}.tmp.mp4"));
+    let out_tmp_for_job = out_tmp.clone();
+    let src = src.to_string();
+    let res = tokio::task::spawn_blocking(move || {
+        // Same global semaphore that bounds all other ffmpeg work.
+        let _permit = crate::concurrency::acquire_ffmpeg_permit();
+        let vf = format!("scale=-2:min({height}\\,ih)");
+        let out_str = out_tmp_for_job.to_string_lossy().to_string();
+        crate::ffmpeg::ffmpeg_command()
+            .args([
+                "-y", "-i", src.as_str(),
+                "-vf", vf.as_str(),
+                "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+                "-c:a", "aac", "-b:a", "128k",
+                "-movflags", "+faststart",
+                out_str.as_str(),
+            ])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+    })
+    .await;
+
+    match res {
+        Ok(Ok(status)) if status.success() => match std::fs::rename(&out_tmp, &out) {
+            Ok(()) => Some(out),
+            Err(e) => {
+                tracing::warn!("media: rename transcode output failed: {e}");
+                let _ = std::fs::remove_file(&out_tmp);
+                None
+            }
+        },
+        other => {
+            tracing::warn!("media: transcode failed for {id} @ {height}p: {other:?}");
+            let _ = std::fs::remove_file(&out_tmp);
+            None
+        }
+    }
 }
 
 /// Serve `path` with single-range support (the form AVPlayer issues).

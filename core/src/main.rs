@@ -182,8 +182,9 @@ async fn main() -> Result<()> {
         .current_path()
         .and_then(|p| p.file_stem().map(|s| s.to_string_lossy().into_owned()))
         .unwrap_or_else(|| "ReelVault".to_string());
-    // Keep a handle to the DB for the media server before `db` moves into the service.
+    // Keep handles for the media server before `db`/`config` move into the service.
     let media_db = Arc::clone(&db);
+    let media_cache_dir = config.thumbnail_cache_path.clone();
 
     let service = ReelVaultService::new(db, config);
 
@@ -319,10 +320,11 @@ async fn main() -> Result<()> {
             media_addr,
             id.cert_pem.clone(),
             id.key_pem.clone(),
-            media_server::MediaState {
-                db: media_db,
-                fingerprint_hex: id.fingerprint_hex.clone(),
-            },
+            media_server::MediaState::new(
+                media_db,
+                id.fingerprint_hex.clone(),
+                media_cache_dir,
+            ),
         );
 
         // All three run forever; unify their error types for try_join!.

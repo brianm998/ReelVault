@@ -70,8 +70,11 @@ struct VideoDetailView: View {
             fingerprintHex: conn.fingerprintHex,
             bearerToken: conn.bearerToken
         )
+        // Natively-playable videos stream as-is (height 0 = original, range-served,
+        // no server transcode); everything else is downscaled to fit.
+        let height = video.playableNatively ? 0 : 720
         do {
-            let item = try await MediaClient().playerItem(videoId: video.id, height: 720, from: endpoint)
+            let item = try await MediaClient().playerItem(videoId: video.id, height: height, from: endpoint)
             let p = AVPlayer(playerItem: item)
             player = p
             p.play()
