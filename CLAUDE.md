@@ -241,7 +241,8 @@ ReelVault/
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── DATABASE.md
-│   └── API.md
+│   ├── API.md
+│   └── IOS_CORE_PORT.md  # iOS on-device port design (proposal)
 ├── .github/
 │   └── workflows/        # CI/CD
 └── CLAUDE.md             # This file
