@@ -36,8 +36,10 @@ struct DetailLoupeView: View {
     /// When true the loupe is full screen: the video fills the area and a
     /// semi-transparent floating control (auto-hiding) replaces the bottom bar.
     var fullscreen: Bool = false
-    /// Exit full screen — wired to the floating control's exit button.
-    var onExitFullscreen: () -> Void = {}
+    /// Toggle full screen — wired to both the control bar's "full screen" button
+    /// (enter) and the floating control's exit button. The closure toggles, so
+    /// the same action serves both directions.
+    var onToggleFullscreen: () -> Void = {}
 
     /// Configurable step size for the ±N-frame buttons. Default 20.
     @State private var stepFrames: Int = 20
@@ -263,7 +265,7 @@ struct DetailLoupeView: View {
                     },
                     onPlayPause: { onPlayPause(for: video) },
                     onScrub: { seconds in seek(to: seconds) },
-                    onExitFullscreen: onExitFullscreen
+                    onExitFullscreen: onToggleFullscreen
                 )
                 .padding(.bottom, 32)
                 .opacity(fsControlsVisible ? 1 : 0)
@@ -301,7 +303,8 @@ struct DetailLoupeView: View {
             onStepForwardOne: { stepFrames(by: 1, for: video) },
             onStepBackN: { stepFrames(by: -stepFrames, for: video) },
             onStepForwardN: { stepFrames(by: stepFrames, for: video) },
-            onScrub: { seconds in seek(to: seconds) }
+            onScrub: { seconds in seek(to: seconds) },
+            onEnterFullscreen: onToggleFullscreen
         )
         }
     }
@@ -550,6 +553,7 @@ private struct ControlBar: View {
     let onStepBackN: () -> Void
     let onStepForwardN: () -> Void
     let onScrub: (Double) -> Void
+    let onEnterFullscreen: () -> Void
 
     private var maxSeconds: Double { max(durationSec, 0.1) }
 
@@ -647,6 +651,16 @@ private struct ControlBar: View {
                         .controlSize(.small)
                 }
                 .help("How many frames the \"step ±N\" buttons skip. Default 20.")
+
+                Spacer().frame(width: 12)
+
+                // Full screen — same as the 'f' shortcut; the help text reveals it.
+                Button(action: onEnterFullscreen) {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.system(size: 14))
+                }
+                .buttonStyle(.borderless)
+                .help("Full screen (f) — fill the screen with just the video and a floating control. Press f again to exit.")
             }
         }
         .padding(.horizontal, 12)

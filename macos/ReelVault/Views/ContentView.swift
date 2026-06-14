@@ -1153,7 +1153,7 @@ struct ContentView: View {
                         stepBackToggle: detailStepBackToggle,
                         stepForwardToggle: detailStepForwardToggle,
                         fullscreen: detailFullscreen,
-                        onExitFullscreen: { NSApp.keyWindow?.toggleFullScreen(nil) }
+                        onToggleFullscreen: { NSApp.keyWindow?.toggleFullScreen(nil) }
                     )
                     .frame(maxWidth: .infinity)
                 case .map:

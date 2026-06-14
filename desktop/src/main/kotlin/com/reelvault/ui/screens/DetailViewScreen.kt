@@ -424,6 +424,7 @@ fun DetailViewScreen(
                 onStepFramesChange = { stepFrames = it.coerceIn(1, 600) },
                 volume = volume,
                 onVolumeChange = changeVolume,
+                onEnterFullscreen = onToggleFullscreen,
             )
         }
     }
@@ -507,6 +508,7 @@ private fun ControlBar(
     onStepFramesChange: (Int) -> Unit,
     volume: Int = 100,
     onVolumeChange: (Int) -> Unit = {},
+    onEnterFullscreen: () -> Unit = {},
 ) {
     val currentMs by player.currentTimeMs
     val lengthMs by player.lengthMs
@@ -697,6 +699,17 @@ private fun ControlBar(
                         contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
                         modifier = Modifier.height(28.dp)
                     ) { Text("+5", style = MaterialTheme.typography.labelSmall) }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(ReelVaultSpacing.Large))
+
+            // Full screen — same as the 'f' shortcut; the tooltip reveals the key.
+            com.reelvault.ui.components.Tooltip(
+                text = "Full screen (f) — fill the window with just the video and a floating control. Press f again to exit."
+            ) {
+                IconButton(onClick = onEnterFullscreen) {
+                    Icon(Icons.Default.Fullscreen, contentDescription = "Full screen")
                 }
             }
         }
