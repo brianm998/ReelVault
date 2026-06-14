@@ -6,6 +6,7 @@ pub mod metadata;
 pub mod thumbnails;
 pub mod search;
 pub mod indexing;
+pub mod auth;
 pub mod config;
 pub mod discovery;
 pub mod error;

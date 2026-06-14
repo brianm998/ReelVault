@@ -20,19 +20,26 @@ use axum::{
     extract::{Path as AxPath, Query as AxQuery, State},
     http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
-    routing::get,
-    Router,
+    routing::{get, post},
+    Json, Router,
 };
 use axum_server::tls_rustls::RustlsConfig;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
 use tokio::sync::Mutex;
 use tokio_util::io::ReaderStream;
 
 use crate::db::Database;
+
+/// A pending one-time pairing code (set by /pair/start, consumed by /pair).
+struct PendingPairing {
+    code: String,
+    expires: Instant,
+}
 
 /// Shared state for the media handlers.
 #[derive(Clone)]
@@ -44,15 +51,26 @@ pub struct MediaState {
     /// Per-`{id}_{height}` locks so concurrent identical requests share one
     /// transcode instead of each spawning their own ffmpeg.
     pub transcode_locks: Arc<Mutex<HashMap<String, Arc<Mutex<()>>>>>,
+    /// Per-OS data dir; the pending pairing code is written here for headless admins.
+    pub data_dir: PathBuf,
+    /// The current pending pairing code.
+    pairing: Arc<Mutex<Option<PendingPairing>>>,
 }
 
 impl MediaState {
-    pub fn new(db: Arc<Database>, fingerprint_hex: String, cache_dir: PathBuf) -> Self {
+    pub fn new(
+        db: Arc<Database>,
+        fingerprint_hex: String,
+        cache_dir: PathBuf,
+        data_dir: PathBuf,
+    ) -> Self {
         Self {
             db,
             fingerprint_hex,
             cache_dir,
             transcode_locks: Arc::new(Mutex::new(HashMap::new())),
+            data_dir,
+            pairing: Arc::new(Mutex::new(None)),
         }
     }
 }
@@ -74,6 +92,8 @@ pub async fn serve(
     let app = Router::new()
         .route("/healthz", get(|| async { "ok" }))
         .route("/fingerprint", get(fingerprint))
+        .route("/pair/start", post(pair_start))
+        .route("/pair", post(pair))
         .route("/video/:id", get(video))
         .with_state(state);
 
@@ -92,12 +112,83 @@ async fn fingerprint(State(state): State<MediaState>) -> String {
     state.fingerprint_hex.clone()
 }
 
+/// Begin pairing: generate a 6-digit code (5-min TTL) and surface it to the
+/// admin (daemon log + `<data_dir>/pairing.txt`) for entry on the new device.
+async fn pair_start(State(state): State<MediaState>) -> StatusCode {
+    let code = gen_code();
+    {
+        let mut p = state.pairing.lock().await;
+        *p = Some(PendingPairing {
+            code: code.clone(),
+            expires: Instant::now() + Duration::from_secs(300),
+        });
+    }
+    tracing::info!("PAIRING CODE: {code} — enter on the device within 5 minutes");
+    let _ = std::fs::write(state.data_dir.join("pairing.txt"), format!("{code}\n"));
+    StatusCode::OK
+}
+
+#[derive(serde::Deserialize)]
+struct PairRequest {
+    pin: String,
+    device_name: Option<String>,
+}
+
+#[derive(serde::Serialize)]
+struct PairResponse {
+    token: String,
+}
+
+/// Complete pairing: validate the PIN and, on success, mint a long-lived bearer
+/// token (only its hash is stored) for the device to use on all future calls.
+async fn pair(State(state): State<MediaState>, Json(req): Json<PairRequest>) -> Response {
+    let valid = {
+        let mut p = state.pairing.lock().await;
+        match p.as_ref() {
+            Some(pp) if pp.code == req.pin.trim() && pp.expires > Instant::now() => {
+                *p = None; // single-use
+                true
+            }
+            _ => false,
+        }
+    };
+    if !valid {
+        return (StatusCode::UNAUTHORIZED, "invalid or expired pairing code").into_response();
+    }
+    let token = format!(
+        "{}{}",
+        uuid::Uuid::new_v4().simple(),
+        uuid::Uuid::new_v4().simple()
+    );
+    let name = req.device_name.unwrap_or_else(|| "device".to_string());
+    if let Err(e) = state.db.add_paired_device(&crate::auth::token_hash(&token), &name) {
+        tracing::warn!("pair: add_paired_device failed: {e}");
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    }
+    let _ = std::fs::remove_file(state.data_dir.join("pairing.txt"));
+    tracing::info!("Paired new device: {name}");
+    Json(PairResponse { token }).into_response()
+}
+
+/// A 6-digit pairing code derived from random UUID bytes (no extra RNG dep).
+fn gen_code() -> String {
+    let b = uuid::Uuid::new_v4().into_bytes();
+    let n = u32::from_le_bytes([b[0], b[1], b[2], b[3]]) % 1_000_000;
+    format!("{n:06}")
+}
+
 async fn video(
     AxPath(id): AxPath<String>,
     AxQuery(q): AxQuery<VideoQuery>,
     State(state): State<MediaState>,
     headers: HeaderMap,
 ) -> Response {
+    let authz = headers
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok());
+    if !crate::auth::is_authorized(&state.db, authz) {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
     let record = match state.db.get_video(&id) {
         Ok(Some(v)) => v,
         Ok(None) => return StatusCode::NOT_FOUND.into_response(),

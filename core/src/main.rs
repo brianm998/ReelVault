@@ -10,6 +10,9 @@ use tokio::net::TcpListener;
 use tokio_stream::wrappers::TcpListenerStream;
 use tonic::transport::{Identity as TonicIdentity, Server, ServerTlsConfig};
 
+use tonic::service::interceptor::InterceptedService;
+
+use reelvault_core::auth;
 use reelvault_core::config::Config;
 use reelvault_core::db::Database;
 use reelvault_core::discovery;
@@ -182,8 +185,10 @@ async fn main() -> Result<()> {
         .current_path()
         .and_then(|p| p.file_stem().map(|s| s.to_string_lossy().into_owned()))
         .unwrap_or_else(|| "ReelVault".to_string());
-    // Keep handles for the media server before `db`/`config` move into the service.
+    // Keep handles for the media server + LAN auth before `db`/`config` move
+    // into the service.
     let media_db = Arc::clone(&db);
+    let auth_db = Arc::clone(&db);
     let media_cache_dir = config.thumbnail_cache_path.clone();
 
     let service = ReelVaultService::new(db, config);
@@ -291,7 +296,7 @@ async fn main() -> Result<()> {
                 &id.fingerprint_hex,
                 &catalog_name,
                 env!("CARGO_PKG_VERSION"),
-                "none",  // auth: pairing is added in a later step
+                "pin",   // auth: one-time device pairing required
                 "media", // features: range download/stream available
             ) {
                 Ok(a) => {
@@ -308,9 +313,21 @@ async fn main() -> Result<()> {
             tracing::warn!("No LAN IPv4 available to advertise over mDNS");
         }
 
+        // Gate every LAN gRPC call on a paired-device bearer token. Loopback is
+        // never wrapped, so desktop clients stay exempt.
+        let interceptor =
+            move |req: tonic::Request<()>| -> Result<tonic::Request<()>, tonic::Status> {
+                let authz = req.metadata().get("authorization").and_then(|v| v.to_str().ok());
+                if auth::is_authorized(&auth_db, authz) {
+                    Ok(req)
+                } else {
+                    Err(tonic::Status::unauthenticated("device not paired"))
+                }
+            };
+        let lan_service = InterceptedService::new(service.clone().into_server(), interceptor);
         let tls = Server::builder()
             .tls_config(ServerTlsConfig::new().identity(tonic_id))?
-            .add_service(service.clone().into_server())
+            .add_service(lan_service)
             .serve(lan_addr);
 
         // HTTPS media server on the same identity cert.
@@ -324,6 +341,7 @@ async fn main() -> Result<()> {
                 media_db,
                 id.fingerprint_hex.clone(),
                 media_cache_dir,
+                data_dir.clone(),
             ),
         );
 
