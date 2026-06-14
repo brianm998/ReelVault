@@ -140,14 +140,36 @@ struct PairResponse {
 /// Complete pairing: validate the PIN and, on success, mint a long-lived bearer
 /// token (only its hash is stored) for the device to use on all future calls.
 async fn pair(State(state): State<MediaState>, Json(req): Json<PairRequest>) -> Response {
+    let entered = req.pin.trim();
+    tracing::info!(
+        "pair: attempt from {:?} ({} digit code)",
+        req.device_name.as_deref().unwrap_or("device"),
+        entered.len()
+    );
     let valid = {
         let mut p = state.pairing.lock().await;
         match p.as_ref() {
-            Some(pp) if pp.code == req.pin.trim() && pp.expires > Instant::now() => {
+            Some(pp) if pp.code == entered && pp.expires > Instant::now() => {
                 *p = None; // single-use
                 true
             }
-            _ => false,
+            // Distinguish the failure modes so a bad pairing is diagnosable.
+            Some(pp) if pp.expires <= Instant::now() => {
+                tracing::warn!("pair: rejected — code expired (regenerate it on the desktop)");
+                false
+            }
+            Some(_) => {
+                tracing::warn!("pair: rejected — code mismatch");
+                false
+            }
+            None => {
+                tracing::warn!(
+                    "pair: rejected — no pending code (it's single-use; \
+                     already consumed by another device, or never generated). \
+                     Generate a fresh code per device."
+                );
+                false
+            }
         }
     };
     if !valid {
