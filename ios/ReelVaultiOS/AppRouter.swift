@@ -19,8 +19,17 @@ final class AppRouter: ObservableObject {
         case failed(String)
     }
 
+    /// Everything the media client needs to stream from the connected server.
+    struct ConnectionInfo: Equatable {
+        var host: String
+        var mediaPort: Int
+        var fingerprintHex: String
+        var bearerToken: String?
+    }
+
     @Published var phase: Phase = .discovering
     @Published var discovered: [DiscoveredServer] = []
+    @Published var connection: ConnectionInfo?
 
     private let discovery = ServerDiscovery()
     private var discoverTask: Task<Void, Never>?
@@ -83,7 +92,17 @@ final class AppRouter: ObservableObject {
             security: .pinnedTLS(fingerprintSHA256Hex: pin)
         )
         let ok = await VideoRepository.shared.connect(to: endpoint)
-        phase = ok ? .connected : .failed("Could not connect to \(server.host):\(server.grpcPort).")
+        if ok {
+            connection = ConnectionInfo(
+                host: server.host,
+                mediaPort: server.mediaPort ?? 50052,
+                fingerprintHex: pin,
+                bearerToken: nil
+            )
+            phase = .connected
+        } else {
+            phase = .failed("Could not connect to \(server.host):\(server.grpcPort).")
+        }
     }
 
     /// Connect to a manually-entered server (from the error screen).
