@@ -21,6 +21,12 @@ targets:
     dependencies:
       - package: ReelVaultKit
         product: ReelVaultKit
+      # Embedded Rust core (on-device "Local Library" mode). Static library, so
+      # it is linked, not embedded. Build it first: `make xcframework`
+      # (ios/build-core-xcframework.sh). The .xcframework is a generated artifact
+      # and is gitignored.
+      - framework: Frameworks/ReelVaultCore.xcframework
+        embed: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.reelvault.ios
@@ -28,6 +34,10 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: ReelVaultiOS/Info.plist
+        # Bridge the embedded-core C ABI into Swift. The header is resolved from
+        # the core tree (the .xcframework provides the linked symbols).
+        SWIFT_OBJC_BRIDGING_HEADER: ReelVaultiOS/ReelVault-Bridging-Header.h
+        HEADER_SEARCH_PATHS: $(SRCROOT)/../core/include
         # App icon from Assets.xcassets/AppIcon.appiconset (extracted from the
         # macOS client's AppIcon.icns).
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

@@ -26,6 +26,13 @@ struct DiscoveryErrorView: View {
                         .foregroundStyle(.secondary)
                     Button("Retry") { router.retry() }
                 }
+                Section("On this device") {
+                    Text("Open a library stored on this device — no daemon needed. "
+                         + "The core runs inside the app.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Button("Open On-Device Library") { router.startLocal() }
+                }
                 Section("Connect manually") {
                     TextField("Host or IP", text: $host)
                         .textInputAutocapitalization(.never)

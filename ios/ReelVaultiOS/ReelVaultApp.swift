@@ -39,6 +39,8 @@ struct RootView: View {
             ConnectingView(server: server)
         case .needsPairing(let server):
             PairingCodeView(server: server)
+        case .startingLocal:
+            StartingLocalView()
         case .connected:
             ConnectedRootView()
         case .failed(let message):
@@ -59,6 +61,18 @@ struct DiscoveringView: View {
                 Text("\(router.discovered.count) found")
                     .font(.footnote).foregroundStyle(.secondary)
             }
+        }
+        .padding()
+    }
+}
+
+/// Shown while the embedded core boots for on-device (Local Library) mode.
+struct StartingLocalView: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+            Text("Starting on-device library…")
+                .foregroundStyle(.secondary)
         }
         .padding()
     }

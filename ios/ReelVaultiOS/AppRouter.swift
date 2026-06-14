@@ -17,6 +17,7 @@ final class AppRouter: ObservableObject {
         case noServer
         case connecting(DiscoveredServer)
         case needsPairing(DiscoveredServer)
+        case startingLocal
         case connected
         case failed(String)
     }
@@ -150,6 +151,34 @@ final class AppRouter: ObservableObject {
             // A stale/revoked token will fail auth — drop it so we re-pair next time.
             if token != nil { TokenStore.delete(for: fingerprint) }
             phase = .failed("Could not connect to \(server.host):\(server.grpcPort).")
+        }
+    }
+
+    /// On-device "Local Library" mode: boot the embedded core in-process and
+    /// connect to it over loopback — no LAN, no discovery, no pairing. Local mode
+    /// has no media server (originals are on-device), so `connection` stays nil
+    /// and streaming/upload affordances are absent (docs/IOS_CORE_PORT.md §7.4).
+    func startLocal() {
+        discoverTask?.cancel()
+        collectTask?.cancel()
+        discovery.stop()
+        phase = .startingLocal
+        Task { [weak self] in
+            guard let self else { return }
+            // Booting opens SQLite + binds a loopback port; do it off the main
+            // actor so the UI can show the progress state first.
+            let port = await Task.detached { LocalCore.start() }.value
+            guard let port else {
+                self.phase = .failed("Could not start the on-device library.")
+                return
+            }
+            let ok = await VideoRepository.shared.connect(to: .loopback(port: port))
+            if ok {
+                self.connection = nil
+                self.phase = .connected
+            } else {
+                self.phase = .failed("Started the on-device core but couldn't connect on port \(port).")
+            }
         }
     }
 
