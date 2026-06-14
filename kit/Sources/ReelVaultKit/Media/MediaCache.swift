@@ -64,7 +64,7 @@ public actor MediaCache {
     public func store(_ data: Data, videoId: String, height: Int, ext: String = "mp4") throws -> URL {
         let url = fileURL(Self.key(videoId: videoId, height: height, ext: ext))
         try data.write(to: url, options: .atomic)
-        evictIfNeeded()
+        evictIfNeeded(keeping: url)
         return url
     }
 
@@ -76,7 +76,7 @@ public actor MediaCache {
             try? FileManager.default.removeItem(at: url)
         }
         try FileManager.default.moveItem(at: source, to: url)
-        evictIfNeeded()
+        evictIfNeeded(keeping: url)
         return url
     }
 
@@ -114,15 +114,24 @@ public actor MediaCache {
     }
 
     /// Evict least-recently-used files until total size is within budget.
-    private func evictIfNeeded() {
+    ///
+    /// `keeping` protects a file (typically the one just added) from eviction in
+    /// this pass — without it, a single rendition larger than `maxBytes` would be
+    /// deleted immediately after being stored, leaving the caller a 0-byte/missing
+    /// file (a multi-GB ProRes proxy hit exactly this). The oversized file is then
+    /// the oldest entry and gets evicted on the *next* insertion of a different
+    /// item, so the budget is still honoured over time.
+    private func evictIfNeeded(keeping protected: URL? = nil) {
         var items = entries()
         var total = items.reduce(0) { $0 + $1.size }
         guard total > maxBytes else { return }
         // Oldest first.
         items.sort { $0.accessed < $1.accessed }
+        let protectedPath = protected?.standardizedFileURL.path
         let fm = FileManager.default
         for item in items {
             if total <= maxBytes { break }
+            if let protectedPath, item.url.standardizedFileURL.path == protectedPath { continue }
             try? fm.removeItem(at: item.url)
             total -= item.size
         }
