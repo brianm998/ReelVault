@@ -87,16 +87,27 @@ struct StreamingPlayerView: View {
             bearerToken: conn.bearerToken
         )
         // Natively-playable videos stream as-is (height 0 = original, range-served,
-        // no server transcode); everything else is downscaled to fit.
+        // no server transcode); everything else is downscaled to fit. A
+        // transcode is always MP4; an original keeps its source container.
         let height = video.playableNatively ? 0 : 720
+        let ext = height > 0 ? "mp4" : Self.sourceExtension(of: video.filename)
         do {
-            let item = try await MediaClient().playerItem(videoId: video.id, height: height, from: mediaEndpoint)
+            let item = try await MediaClient().playerItem(
+                videoId: video.id, height: height, ext: ext, from: mediaEndpoint)
             let p = AVPlayer(playerItem: item)
             player = p
             p.play()
         } catch {
-            playbackError = "Streaming requires the ReelVault media server, which isn't available yet."
+            NSLog("ReelVault: playback prepare failed for \(video.id) (h\(height)): \(error)")
+            playbackError = "Couldn't play this video: \(error.localizedDescription)"
         }
+    }
+
+    /// The source container extension to stamp on a cached original, derived
+    /// from the filename. Defaults to "mov" when the name has no usable suffix.
+    private static func sourceExtension(of filename: String) -> String {
+        let ext = (filename as NSString).pathExtension.lowercased()
+        return ext.isEmpty ? "mov" : ext
     }
 }
 
@@ -126,7 +137,8 @@ struct VideoMetadataSection: View {
             if video.hasLocation {
                 detailRow("Location", String(format: "%.5f, %.5f", video.gpsLatitude, video.gpsLongitude))
             }
-            detailRow("Path", video.path)
+            // The server-side file path is intentionally omitted — it's
+            // meaningless on a remote iOS client with no filesystem access.
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

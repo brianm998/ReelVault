@@ -12,6 +12,12 @@ struct ReelVaultApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(router)
+                // Always dark, like the macOS + desktop clients: black/near-black
+                // backgrounds and white text. `.dark` makes the system
+                // background/label colors resolve to their dark variants.
+                .preferredColorScheme(.dark)
+                // ReelVault purple accent (matches the desktop client's default).
+                .tint(Color(red: 0.733, green: 0.525, blue: 0.988))
                 .task { router.start() }
         }
     }

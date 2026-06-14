@@ -79,7 +79,12 @@ struct LibrarySidebar: View {
                     HStack {
                         Text(col.name).lineLimit(1)
                         Spacer()
-                        countBadge(col.videoCount)
+                        // Smart collections have no stored members, so the
+                        // server reports 0; the shared view-model resolves their
+                        // real count client-side into `smartCollectionCounts`.
+                        countBadge(col.isSmart
+                            ? (grid.smartCollectionCounts[col.id] ?? 0)
+                            : col.videoCount)
                     }
                 } icon: {
                     Image(systemName: col.isSmart ? "gearshape.2" : "rectangle.stack")

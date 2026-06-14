@@ -28,6 +28,9 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: ReelVaultiOS/Info.plist
+        # App icon from Assets.xcassets/AppIcon.appiconset (extracted from the
+        # macOS client's AppIcon.icns).
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1,2"
         # The app target uses the Swift 5 language mode to keep the new SwiftUI
         # code free of strict-concurrency churn; ReelVaultKit stays Swift 6.
