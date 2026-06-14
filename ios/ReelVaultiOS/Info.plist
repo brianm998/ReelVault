@@ -22,13 +22,26 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>UILaunchScreen</key>
-	<dict/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_reelvault._tcp</string>
+	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>ReelVault finds and connects to your ReelVault server on this Wi-Fi network.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ReelVault uploads videos you choose to your server at full resolution.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<true/>
 	</dict>
+	<key>UILaunchScreen</key>
+	<dict/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
@@ -42,22 +55,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<!-- Required for mDNS browse + LAN port scan (iOS Local Network privacy). -->
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>ReelVault finds and connects to your ReelVault server on this Wi-Fi network.</string>
-	<key>NSBonjourServices</key>
-	<array>
-		<string>_reelvault._tcp</string>
-	</array>
-	<!-- Required to upload videos you pick from Photos. -->
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>ReelVault uploads videos you choose to your server at full resolution.</string>
-	<!-- The server uses a pinned self-signed certificate on the local network;
-	     real security is enforced by fingerprint pinning, not the system chain. -->
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
-	</dict>
 </dict>
 </plist>

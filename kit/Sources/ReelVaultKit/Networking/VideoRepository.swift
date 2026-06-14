@@ -4,6 +4,7 @@
 import Foundation
 import GRPCCore
 import GRPCNIOTransportHTTP2
+import Network
 
 extension AttributeFilterState {
     /// The proto enum value for this tri-state attribute toggle.
@@ -61,13 +62,10 @@ public class VideoRepository: ObservableObject {
         }
 
         do {
-            let transport: HTTP2ClientTransport.Posix
+            let security: HTTP2ClientTransport.Posix.TransportSecurity
             switch endpoint.security {
             case .plaintext:
-                transport = try HTTP2ClientTransport.Posix(
-                    target: .dns(host: host, port: port),
-                    transportSecurity: .plaintext
-                )
+                security = .plaintext
             case .pinnedTLS(let fingerprintHex):
                 // Fetch the server's self-signed cert (TOFU), verify its
                 // fingerprint, and pin it as the sole trust root.
@@ -78,11 +76,15 @@ public class VideoRepository: ObservableObject {
                     isConnected = false
                     return false
                 }
-                transport = try HTTP2ClientTransport.Posix(
-                    target: .dns(host: host, port: port),
-                    transportSecurity: PinnedTLS.clientSecurity(pinnedCertDER: der)
-                )
+                security = PinnedTLS.clientSecurity(pinnedCertDER: der)
             }
+            // Pick the target by host type. A `.dns` target sets the connection
+            // authority to the host, which becomes the TLS SNI server name — and
+            // NIOSSL rejects a literal IP as SNI ("cannotUseIPAddressInSNI").
+            // For an IP we use an `.ipv4`/`.ipv6` target, whose authority is nil,
+            // so SNI is omitted. Pinning is unaffected (we trust the pinned cert
+            // as the sole root with hostname verification off).
+            let transport = try Self.makeTransport(host: host, port: port, security: security)
             let client: GRPCClient<HTTP2ClientTransport.Posix>
             if let token = endpoint.bearerToken, !token.isEmpty {
                 client = GRPCClient(
@@ -132,6 +134,25 @@ public class VideoRepository: ObservableObject {
         grpcClient = nil
         serviceClient = nil
         isConnected = false
+    }
+
+    /// Build a transport, choosing the resolver target by host type. IP literals
+    /// use `.ipv4`/`.ipv6` (authority nil → no TLS SNI, which NIOSSL forbids for
+    /// IPs); hostnames use `.dns`. Security (plaintext or pinned TLS) is decided
+    /// by the caller and applies regardless of target.
+    private static func makeTransport(
+        host: String, port: Int, security: HTTP2ClientTransport.Posix.TransportSecurity
+    ) throws -> HTTP2ClientTransport.Posix {
+        if IPv4Address(host) != nil {
+            return try HTTP2ClientTransport.Posix(
+                target: .ipv4(host: host, port: port), transportSecurity: security)
+        }
+        if IPv6Address(host) != nil {
+            return try HTTP2ClientTransport.Posix(
+                target: .ipv6(host: host, port: port), transportSecurity: security)
+        }
+        return try HTTP2ClientTransport.Posix(
+            target: .dns(host: host, port: port), transportSecurity: security)
     }
 
     // MARK: - Catalog lifecycle
