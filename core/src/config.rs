@@ -251,6 +251,14 @@ impl Config {
             dirs::cache_dir()
                 .ok_or_else(|| ReelVaultError::ConfigError("Could not find cache directory".to_string()))?
                 .join("ReelVault")
+        } else if cfg!(target_os = "ios") {
+            // App-container Caches (<container>/Library/Caches). In practice the
+            // iOS embed passes an explicit cache dir through the FFI entry point
+            // rather than relying on this (docs/IOS_CORE_PORT.md §6.10); this is
+            // only the fallback when `default_cache_path` is consulted directly.
+            dirs::cache_dir()
+                .ok_or_else(|| ReelVaultError::ConfigError("Could not find cache directory".to_string()))?
+                .join("ReelVault")
         } else {
             dirs::cache_dir()
                 .ok_or_else(|| ReelVaultError::ConfigError("Could not find cache directory".to_string()))?

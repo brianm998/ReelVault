@@ -45,6 +45,12 @@ mdns-sd = "0.11"
 axum = "0.7"
 axum-server = { version = "0.7", features = ["tls-rustls"] }
 
+# Camera sensor-spec fetch (sensor_cache.rs) — replaces shelling out to `curl`,
+# which iOS can't do. rustls + bundled webpki roots (no OpenSSL, links on iOS;
+# reuses the rustls already in the tree). `blocking` because the fetch runs on a
+# synchronous post_index worker thread, not inside the tokio runtime.
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
+
 # Database
 rusqlite = { version = "0.31", features = ["bundled", "chrono", "uuid"] }
 rusqlite_migration = "1.2"

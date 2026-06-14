@@ -64,10 +64,20 @@ static FFMPEG_SEMAPHORE: OnceLock<Arc<BlockingSemaphore>> = OnceLock::new();
 ///
 /// Falls back to 4 if `available_parallelism()` returns an error (very rare —
 /// only in unusual sandboxed environments).
+///
+/// On iOS the native decode/encode sessions this gates (AVFoundation /
+/// VideoToolbox, not subprocesses) run under tight thermal and memory limits, so
+/// the default is capped at 2 regardless of core count
+/// (docs/IOS_CORE_PORT.md §6.11).
 pub fn default_max_concurrent_ffmpeg() -> usize {
-    std::thread::available_parallelism()
+    let cores = std::thread::available_parallelism()
         .map(|n| n.get())
-        .unwrap_or(4)
+        .unwrap_or(4);
+    if cfg!(target_os = "ios") {
+        cores.min(2)
+    } else {
+        cores
+    }
 }
 
 /// Set the maximum number of concurrent ffmpeg/ffprobe invocations. Should be

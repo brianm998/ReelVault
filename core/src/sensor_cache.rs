@@ -6,10 +6,9 @@
 //! The built-in [`crate::full_resolution::SENSOR_RESOLUTIONS`] table
 //! ships with the binary and covers the bodies we've hand-curated. When
 //! the indexer encounters a `camera_model` that's not in that table,
-//! [`ensure_cached`] issues a best-effort Wikidata SPARQL query (via
-//! `curl`, mirroring the `Command::new("ffprobe")` pattern in
-//! `metadata.rs`) and caches the result in the catalog's
-//! `camera_sensor_cache` SQLite table.
+//! [`ensure_cached`] issues a best-effort Wikidata SPARQL query (a blocking
+//! `reqwest` HTTPS request — no subprocess, so it works on iOS too) and caches
+//! the result in the catalog's `camera_sensor_cache` SQLite table.
 //!
 //! Lookups via [`classify_with_cache`] merge cached entries on top of
 //! the built-in table — built-in always wins for cameras present in
@@ -27,7 +26,6 @@
 use crate::error::{Result, ReelVaultError};
 use crate::full_resolution::{builtin_natives, classify_with_natives, Classification};
 use rusqlite::{params, Connection};
-use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// How long to remember a "we asked Wikidata and got nothing" verdict.
@@ -45,7 +43,7 @@ const WIKIDATA_ENDPOINT: &str = "https://query.wikidata.org/sparql";
 /// or blocked entirely.
 fn user_agent() -> String {
     format!(
-        "ReelVault/{} (https://github.com/reelvault/reelvault) curl",
+        "ReelVault/{} (https://github.com/reelvault/reelvault)",
         env!("CARGO_PKG_VERSION")
     )
 }
@@ -54,7 +52,7 @@ fn user_agent() -> String {
 /// service has been slow in the past; 30 seconds is generous enough
 /// that flaky weather doesn't poison the cache with negatives, but
 /// short enough that an unreachable endpoint doesn't stall a scan.
-const CURL_TIMEOUT_SECS: u64 = 30;
+const HTTP_TIMEOUT_SECS: u64 = 30;
 
 /// Classify a video using both the built-in table and any cached
 /// runtime entry for this camera.
@@ -148,7 +146,7 @@ pub fn store_cached(
 /// - The camera is already covered by the built-in table.
 /// - A non-stale cache entry already exists (positive or negative).
 ///
-/// Blocks for up to [`CURL_TIMEOUT_SECS`] when an actual fetch
+/// Blocks for up to [`HTTP_TIMEOUT_SECS`] when an actual fetch
 /// happens. Designed to be called from the post-index worker pool,
 /// where a per-video latency hit is acceptable and naturally throttled.
 pub fn ensure_cached(conn: &Connection, camera_model: &str) -> Result<Vec<(u32, u32)>> {
@@ -178,10 +176,10 @@ pub fn ensure_cached(conn: &Connection, camera_model: &str) -> Result<Vec<(u32, 
     // Reserve the slot with a "pending" marker so concurrent workers
     // dedupe on the cache key. This is racey — two workers may both
     // see "no entry" and both write the pending row — but the only
-    // cost is duplicated curl, not duplicated cache state.
+    // cost is a duplicated HTTP fetch, not duplicated cache state.
     store_cached(conn, camera_model, None, "pending")?;
 
-    match fetch_via_curl(camera_model) {
+    match fetch_remote(camera_model) {
         Ok(Some(natives)) => {
             tracing::info!(
                 camera = %camera_model,
@@ -238,41 +236,37 @@ LIMIT 5
     )
 }
 
-/// Shell out to `curl` to POST the SPARQL query. Returns the raw JSON
-/// body on success.
-fn fetch_via_curl(camera_model: &str) -> std::result::Result<Option<Vec<(u32, u32)>>, String> {
+/// POST the SPARQL query to Wikidata over HTTPS and return the parsed result.
+///
+/// Uses a blocking `reqwest` client (rustls) instead of shelling out to `curl`,
+/// so it works in the iOS sandbox where subprocess `exec` is forbidden
+/// (docs/IOS_CORE_PORT.md §6.7). Called from a synchronous `post_index` worker
+/// thread, so the blocking client is safe (no surrounding tokio runtime). The
+/// `.form(...)` body is `application/x-www-form-urlencoded`, matching curl's
+/// `--data-urlencode`.
+fn fetch_remote(camera_model: &str) -> std::result::Result<Option<Vec<(u32, u32)>>, String> {
     let query = build_sparql_query(camera_model);
-    let output = Command::new("curl")
-        .args([
-            "--silent",
-            "--show-error",
-            "--fail",
-            "--max-time",
-            &CURL_TIMEOUT_SECS.to_string(),
-            "--user-agent",
-            &user_agent(),
-            "--header",
-            "Accept: application/sparql-results+json",
-            "--data-urlencode",
-        ])
-        .arg(format!("query={query}"))
-        .arg("--data-urlencode")
-        .arg("format=json")
-        .arg(WIKIDATA_ENDPOINT)
-        .output()
-        .map_err(|e| format!("curl spawn failed: {e}"))?;
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(HTTP_TIMEOUT_SECS))
+        .user_agent(user_agent())
+        .build()
+        .map_err(|e| format!("http client build failed: {e}"))?;
 
-    if !output.status.success() {
-        return Err(format!(
-            "curl exit {}: {}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr).trim()
-        ));
+    let resp = client
+        .post(WIKIDATA_ENDPOINT)
+        .header("Accept", "application/sparql-results+json")
+        .form(&[("query", query.as_str()), ("format", "json")])
+        .send()
+        .map_err(|e| format!("sensor fetch request failed: {e}"))?;
+
+    if !resp.status().is_success() {
+        return Err(format!("sensor fetch HTTP {}", resp.status()));
     }
 
-    let body = std::str::from_utf8(&output.stdout)
-        .map_err(|e| format!("curl returned non-UTF-8: {e}"))?;
-    parse_sparql_response(body)
+    let body = resp
+        .text()
+        .map_err(|e| format!("sensor fetch read failed: {e}"))?;
+    parse_sparql_response(&body)
 }
 
 /// Decode the SPARQL JSON results into a deduped list of (w, h) pairs.
