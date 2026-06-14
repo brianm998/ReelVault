@@ -102,6 +102,12 @@ struct Args {
     /// Advertised over mDNS so clients know where to stream from.
     #[arg(long, default_value_t = 50052u16)]
     media_port: u16,
+
+    /// Directory where uploaded videos are stored on the server and then
+    /// indexed. Persisted to the catalog config; required before clients can
+    /// upload. Should live inside an enabled library location.
+    #[arg(long, value_name = "PATH")]
+    import_dir: Option<PathBuf>,
 }
 
 #[tokio::main]
@@ -164,8 +170,18 @@ async fn main() -> Result<()> {
         db
     };
 
-    let config = Arc::new(Config::load(db.as_ref()).await?);
+    let mut config = Config::load(db.as_ref()).await?;
+    if let Some(ref dir) = args.import_dir {
+        config.import_dir = Some(dir.clone());
+        if let Err(e) = config.save(db.as_ref()) {
+            tracing::warn!("Could not persist --import-dir: {}", e);
+        }
+    }
+    let config = Arc::new(config);
     tracing::info!("Cache: {}", config.thumbnail_cache_path.display());
+    if let Some(ref dir) = config.import_dir {
+        tracing::info!("Import directory: {}", dir.display());
+    }
 
     reelvault_core::concurrency::set_ffmpeg_concurrency_limit(
         config.max_concurrent_ffmpeg.max(0) as usize,
@@ -190,6 +206,7 @@ async fn main() -> Result<()> {
     let media_db = Arc::clone(&db);
     let auth_db = Arc::clone(&db);
     let media_cache_dir = config.thumbnail_cache_path.clone();
+    let media_import_dir = config.import_dir.clone();
 
     let service = ReelVaultService::new(db, config);
 
@@ -342,6 +359,7 @@ async fn main() -> Result<()> {
                 id.fingerprint_hex.clone(),
                 media_cache_dir,
                 data_dir.clone(),
+                media_import_dir,
             ),
         );
 

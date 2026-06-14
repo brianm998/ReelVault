@@ -17,7 +17,7 @@
 use anyhow::{Context, Result};
 use axum::{
     body::Body,
-    extract::{Path as AxPath, Query as AxQuery, State},
+    extract::{DefaultBodyLimit, Path as AxPath, Query as AxQuery, State},
     http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::{get, post},
@@ -26,11 +26,12 @@ use axum::{
 use axum_server::tls_rustls::RustlsConfig;
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::io::{AsyncReadExt, AsyncSeekExt};
+use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 use tokio::sync::Mutex;
+use tokio_stream::StreamExt;
 use tokio_util::io::ReaderStream;
 
 use crate::db::Database;
@@ -53,6 +54,8 @@ pub struct MediaState {
     pub transcode_locks: Arc<Mutex<HashMap<String, Arc<Mutex<()>>>>>,
     /// Per-OS data dir; the pending pairing code is written here for headless admins.
     pub data_dir: PathBuf,
+    /// Where uploaded videos are stored (None = uploads refused).
+    pub import_dir: Option<PathBuf>,
     /// The current pending pairing code.
     pairing: Arc<Mutex<Option<PendingPairing>>>,
 }
@@ -63,6 +66,7 @@ impl MediaState {
         fingerprint_hex: String,
         cache_dir: PathBuf,
         data_dir: PathBuf,
+        import_dir: Option<PathBuf>,
     ) -> Self {
         Self {
             db,
@@ -70,6 +74,7 @@ impl MediaState {
             cache_dir,
             transcode_locks: Arc::new(Mutex::new(HashMap::new())),
             data_dir,
+            import_dir,
             pairing: Arc::new(Mutex::new(None)),
         }
     }
@@ -94,6 +99,7 @@ pub async fn serve(
         .route("/fingerprint", get(fingerprint))
         .route("/pair/start", post(pair_start))
         .route("/pair", post(pair))
+        .route("/upload", post(upload).layer(DefaultBodyLimit::disable()))
         .route("/video/:id", get(video))
         .with_state(state);
 
@@ -175,6 +181,123 @@ fn gen_code() -> String {
     let b = uuid::Uuid::new_v4().into_bytes();
     let n = u32::from_le_bytes([b[0], b[1], b[2], b[3]]) % 1_000_000;
     format!("{n:06}")
+}
+
+#[derive(serde::Deserialize)]
+struct UploadQuery {
+    filename: String,
+}
+
+/// Upload a full-resolution video (streamed) into the configured import dir,
+/// then index it. Single-shot for now; resumable chunking is a follow-up.
+async fn upload(
+    AxQuery(q): AxQuery<UploadQuery>,
+    State(state): State<MediaState>,
+    headers: HeaderMap,
+    body: Body,
+) -> Response {
+    let authz = headers
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok());
+    if !crate::auth::is_authorized(&state.db, authz) {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+    let import_dir = match &state.import_dir {
+        Some(d) => d.clone(),
+        None => {
+            return (StatusCode::CONFLICT, "import directory not configured on the server")
+                .into_response()
+        }
+    };
+    // Sanitize to a bare filename (defeats `..`/path-separator traversal).
+    let fname = match Path::new(&q.filename).file_name().and_then(|s| s.to_str()) {
+        Some(f) if !f.is_empty() => f.to_string(),
+        _ => return (StatusCode::BAD_REQUEST, "invalid filename").into_response(),
+    };
+
+    let uploads = import_dir.join(".uploads");
+    if let Err(e) = std::fs::create_dir_all(&uploads) {
+        tracing::warn!("upload: mkdir failed: {e}");
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    }
+    let tmp = uploads.join(format!("{}.part", uuid::Uuid::new_v4().simple()));
+
+    // Stream the request body to the temp file.
+    let mut file = match tokio::fs::File::create(&tmp).await {
+        Ok(f) => f,
+        Err(e) => {
+            tracing::warn!("upload: create tmp failed: {e}");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    };
+    let mut stream = body.into_data_stream();
+    while let Some(chunk) = stream.next().await {
+        match chunk {
+            Ok(bytes) => {
+                if let Err(e) = file.write_all(&bytes).await {
+                    tracing::warn!("upload: write failed: {e}");
+                    let _ = tokio::fs::remove_file(&tmp).await;
+                    return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+                }
+            }
+            Err(e) => {
+                tracing::warn!("upload: body stream error: {e}");
+                let _ = tokio::fs::remove_file(&tmp).await;
+                return StatusCode::BAD_REQUEST.into_response();
+            }
+        }
+    }
+    let _ = file.flush().await;
+    drop(file);
+
+    // Atomic move into the import dir, de-duping filename collisions.
+    let final_path = dedup_path(&import_dir, &fname);
+    if let Err(e) = std::fs::rename(&tmp, &final_path) {
+        tracing::warn!("upload: rename failed: {e}");
+        let _ = std::fs::remove_file(&tmp);
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    }
+
+    // Index the new file (ffprobe + thumbnails) off the async runtime.
+    let db = Arc::clone(&state.db);
+    let cache = state.cache_dir.clone();
+    let path = final_path.clone();
+    let indexed = tokio::task::spawn_blocking(move || {
+        crate::indexing::IndexingEngine::scan_single_file(&db, &path, &cache, None)
+    })
+    .await;
+    match indexed {
+        Ok(Ok((id, _))) => {
+            tracing::info!("Uploaded + indexed {}", final_path.display());
+            Json(serde_json::json!({ "video_id": id, "filename": fname })).into_response()
+        }
+        other => {
+            // The file landed; report success so the client doesn't re-upload.
+            tracing::warn!("upload: indexing {} failed: {other:?}", final_path.display());
+            Json(serde_json::json!({ "video_id": serde_json::Value::Null, "filename": fname }))
+                .into_response()
+        }
+    }
+}
+
+/// Pick a non-colliding path in `dir` for `fname`, appending " (2)", " (3)", ….
+fn dedup_path(dir: &Path, fname: &str) -> PathBuf {
+    let p = dir.join(fname);
+    if !p.exists() {
+        return p;
+    }
+    let stem = Path::new(fname).file_stem().and_then(|s| s.to_str()).unwrap_or("file");
+    let ext = Path::new(fname).extension().and_then(|s| s.to_str());
+    for i in 2..1000 {
+        let cand = match ext {
+            Some(e) => dir.join(format!("{stem} ({i}).{e}")),
+            None => dir.join(format!("{stem} ({i})")),
+        };
+        if !cand.exists() {
+            return cand;
+        }
+    }
+    dir.join(format!("{stem}-{}", uuid::Uuid::new_v4().simple()))
 }
 
 async fn video(
