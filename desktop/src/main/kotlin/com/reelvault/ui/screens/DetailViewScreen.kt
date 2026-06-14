@@ -597,7 +597,7 @@ private fun ControlBar(
                     onClick = { player.skipFrames(-stepFrames, fps) },
                     enabled = playbackStarted && player.available
                 ) {
-                    Icon(Icons.Default.FastRewind, contentDescription = "Step back $stepFrames frames")
+                    Icon(Icons.Default.FastRewind, contentDescription = "Step back $stepFrames frames", tint = MaterialTheme.colorScheme.onSurface)
                 }
             }
             com.reelvault.ui.components.Tooltip(text = "Step back 1 frame") {
@@ -605,7 +605,7 @@ private fun ControlBar(
                     onClick = { player.skipFrames(-1, fps) },
                     enabled = playbackStarted && player.available
                 ) {
-                    Icon(Icons.Default.SkipPrevious, contentDescription = "Step back 1 frame")
+                    Icon(Icons.Default.SkipPrevious, contentDescription = "Step back 1 frame", tint = MaterialTheme.colorScheme.onSurface)
                 }
             }
             com.reelvault.ui.components.Tooltip(
@@ -615,7 +615,8 @@ private fun ControlBar(
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                         contentDescription = if (isPlaying) "Pause" else "Play",
-                        modifier = Modifier.size(40.dp)
+                        modifier = Modifier.size(40.dp),
+                        tint = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
@@ -628,7 +629,8 @@ private fun ControlBar(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Stop,
-                        contentDescription = "Stop"
+                        contentDescription = "Stop",
+                        tint = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
@@ -637,7 +639,7 @@ private fun ControlBar(
                     onClick = { player.stepForwardOneFrame() },
                     enabled = playbackStarted && player.available
                 ) {
-                    Icon(Icons.Default.SkipNext, contentDescription = "Step forward 1 frame")
+                    Icon(Icons.Default.SkipNext, contentDescription = "Step forward 1 frame", tint = MaterialTheme.colorScheme.onSurface)
                 }
             }
             com.reelvault.ui.components.Tooltip(text = "Step forward $stepFrames frames") {
@@ -645,7 +647,7 @@ private fun ControlBar(
                     onClick = { player.skipFrames(stepFrames, fps) },
                     enabled = playbackStarted && player.available
                 ) {
-                    Icon(Icons.Default.FastForward, contentDescription = "Step forward $stepFrames frames")
+                    Icon(Icons.Default.FastForward, contentDescription = "Step forward $stepFrames frames", tint = MaterialTheme.colorScheme.onSurface)
                 }
             }
 
@@ -709,7 +711,7 @@ private fun ControlBar(
                 text = "Full screen (f) — fill the window with just the video and a floating control. Press f again to exit."
             ) {
                 IconButton(onClick = onEnterFullscreen) {
-                    Icon(Icons.Default.Fullscreen, contentDescription = "Full screen")
+                    Icon(Icons.Default.Fullscreen, contentDescription = "Full screen", tint = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
