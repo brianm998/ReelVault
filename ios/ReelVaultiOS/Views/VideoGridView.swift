@@ -273,32 +273,36 @@ struct VideoCardView: View {
 }
 
 /// Long-press context menu for a video card / list row: set the star rating and
-/// the colour label (the iOS counterpart of the macOS right-click menu).
+/// the colour label (the iOS counterpart of the macOS right-click menu). Uses
+/// Pickers so the current value gets a checkmark, and colored emoji for the
+/// labels (menu-item SF Symbols can't be tinted per-item — they'd all take the
+/// menu's accent, which is why the dots were all purple).
 struct VideoCardMenu: View {
     let video: VideoSummary
     var onSetRating: (Int) -> Void
     var onSetColorLabel: (String) -> Void
 
     var body: some View {
-        Menu("Rating") {
+        Picker("Rating", selection: Binding(get: { video.rating }, set: { onSetRating($0) })) {
             ForEach(Array((0...5).reversed()), id: \.self) { n in
-                Button {
-                    onSetRating(n)
-                } label: {
-                    Label(n == 0 ? "None" : String(repeating: "★", count: n),
-                          systemImage: video.rating == n ? "checkmark" : "")
-                }
+                Text(n == 0 ? "None" : String(repeating: "★", count: n)).tag(n)
             }
         }
-        Menu("Color Label") {
+        Picker("Color Label", selection: Binding(get: { video.colorLabel }, set: { onSetColorLabel($0) })) {
             ForEach(ColorLabel.allCases) { label in
-                Button {
-                    onSetColorLabel(label.rawValue)
-                } label: {
-                    Label(label.displayName,
-                          systemImage: video.colorLabel == label.rawValue ? "checkmark" : "circle.fill")
-                }
+                Text("\(Self.dot(label)) \(label.displayName)").tag(label.rawValue)
             }
+        }
+    }
+
+    private static func dot(_ label: ColorLabel) -> String {
+        switch label {
+        case .none: return "⚪️"
+        case .red: return "🔴"
+        case .yellow: return "🟡"
+        case .green: return "🟢"
+        case .blue: return "🔵"
+        case .purple: return "🟣"
         }
     }
 }

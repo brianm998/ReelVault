@@ -185,6 +185,8 @@ struct LibraryFilterSheet: View {
                     attributeRow("Audio", grid.filterHasAudio) { grid.setHasAudioFilter($0) }
                     orientationRow
                 }
+
+                metadataSection
             }
             .navigationTitle("Filters")
             .navigationBarTitleDisplayMode(.inline)
@@ -196,8 +198,53 @@ struct LibraryFilterSheet: View {
                     Button("Done") { dismiss() }
                 }
             }
+            // Load the facet values + available keys for the metadata filters.
+            .task { grid.refreshMetadataFacets() }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    /// Metadata-facet filtering: one or more columns, each a metadata key
+    /// (camera/lens/codec/year/iso/…) with multi-selectable values. Bound to the
+    /// shared GridViewModel's metadataColumns/facetColumns (same as macOS).
+    @ViewBuilder private var metadataSection: some View {
+        Section("Metadata") {
+            ForEach(Array(grid.metadataColumns.enumerated()), id: \.element.id) { index, column in
+                Picker("Field", selection: Binding(
+                    get: { column.key },
+                    set: { grid.setMetadataColumnKey(at: index, key: $0) }
+                )) {
+                    Text("Choose…").tag("")
+                    ForEach(grid.availableMetadataKeys, id: \.key) { info in
+                        Text(info.displayName).tag(info.key)
+                    }
+                }
+                if let facet = grid.facetColumn(at: index), !facet.values.isEmpty {
+                    ForEach(facet.values, id: \.token) { value in
+                        Button {
+                            grid.onMetadataValueClicked(at: index, token: value.token, shift: false, toggle: true)
+                        } label: {
+                            HStack {
+                                Image(systemName: column.values.contains(value.token) ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(column.values.contains(value.token) ? Color.accentColor : .secondary)
+                                Text(value.display).foregroundStyle(.primary)
+                                Spacer()
+                                Text("\(value.count)").font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } else if !column.key.isEmpty {
+                    Text("No values").font(.caption).foregroundStyle(.secondary)
+                }
+                if grid.metadataColumns.count > 1 {
+                    Button("Remove Field", role: .destructive) { grid.removeMetadataColumn(at: index) }
+                }
+            }
+            Button { grid.addMetadataColumn(at: .end) } label: {
+                Label("Add Metadata Filter", systemImage: "plus")
+            }
+        }
     }
 
     private func starName(for n: Int) -> String {
