@@ -409,44 +409,49 @@ async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option
             .clone()
     };
     let guard = lock.lock().await;
-    if master.exists() {
-        // Either already complete, or a session is running and this client joins
-        // it (tails the same growing playlist).
+    let failed = dir.join(".failed");
+    if complete.exists() && master.exists() {
         drop(guard);
         return Some(dir);
     }
-    // A leftover dir with no master is a previous failed/killed attempt — clear it.
-    if dir.exists() {
-        let _ = std::fs::remove_dir_all(&dir);
+    // Join an in-progress session rather than clobbering it. A dir that exists
+    // (or already has a playlist), isn't marked failed, and is making progress
+    // (recent mtime) means another request's ffmpeg is running — *including* the
+    // few-second window before master.m3u8 first appears, when a second request
+    // would otherwise delete the directory out from under the live transcode.
+    // Only (re)start when there's no session, a failed one, or a dead/stale one
+    // (e.g. the daemon was SIGKILLed mid-transcode).
+    let running = (master.exists() || dir.exists()) && !failed.exists() && !dir_is_stale(&dir);
+    if !running {
+        if dir.exists() {
+            let _ = std::fs::remove_dir_all(&dir);
+        }
+        if let Err(e) = std::fs::create_dir_all(&dir) {
+            tracing::warn!("media: hls create dir failed: {e}");
+            drop(guard);
+            return None;
+        }
+        // Cheapest source: a streamable proxy already <= the target height is
+        // copy-muxed (near-instant, complete VOD); a taller proxy or the original
+        // is re-encoded (downscaled) progressively.
+        let (src, copy) = match closest_streamable_proxy(state, id, height) {
+            Some((path, ph)) if ph <= height => (path, true),
+            Some((path, _)) => (path, false),
+            None => match state.db.get_video(id) {
+                Ok(Some(v)) => (v.path, false),
+                _ => {
+                    drop(guard);
+                    return None;
+                }
+            },
+        };
+        evict_old_hls_sessions(&state.cache_dir);
+        spawn_hls_transcode(dir.clone(), src, height, copy);
     }
-    if let Err(e) = std::fs::create_dir_all(&dir) {
-        tracing::warn!("media: hls create dir failed: {e}");
-        drop(guard);
-        return None;
-    }
-
-    // Cheapest source: a streamable proxy already <= the target height is
-    // copy-muxed (near-instant, complete VOD); a taller proxy or the original is
-    // re-encoded (downscaled) progressively.
-    let (src, copy) = match closest_streamable_proxy(state, id, height) {
-        Some((path, ph)) if ph <= height => (path, true),
-        Some((path, _)) => (path, false),
-        None => match state.db.get_video(id) {
-            Ok(Some(v)) => (v.path, false),
-            _ => {
-                drop(guard);
-                return None;
-            }
-        },
-    };
-
-    evict_old_hls_sessions(&state.cache_dir);
-    spawn_hls_transcode(dir.clone(), src, height, copy);
     drop(guard); // release the start/join lock; do NOT hold it during transcode.
 
     // Wait-for-first-segment: AVPlayer fails the asset on a 404 master, so block
     // until master.m3u8 exists, the transcode marks failure, or we time out.
-    let failed = dir.join(".failed");
     for _ in 0..200 {
         if master.exists() {
             return Some(dir);
@@ -539,6 +544,18 @@ fn ensure_endlist(playlist: &Path) {
                 let _ = writeln!(f, "#EXT-X-ENDLIST");
             }
         }
+    }
+}
+
+/// Whether an HLS session dir has made no progress for long enough to be treated
+/// as dead (e.g. the daemon was killed mid-transcode). ffmpeg's `temp_file`
+/// renames bump the dir mtime on every segment, so an actively transcoding
+/// session is never stale; the 90s threshold is well above the per-segment wall
+/// time of a downscale transcode.
+fn dir_is_stale(dir: &Path) -> bool {
+    match std::fs::metadata(dir).and_then(|m| m.modified()) {
+        Ok(t) => t.elapsed().map(|e| e.as_secs() > 90).unwrap_or(false),
+        Err(_) => false,
     }
 }
 
