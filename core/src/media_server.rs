@@ -477,29 +477,26 @@ async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option
             // the closest one keeps it as small as the catalog allows.)
             Some((path, _)) => (path, true),
             None => {
-                // Explain *why* we're re-encoding rather than using a proxy — the
-                // "proxies exist but it still re-encodes?" question: either there
-                // are none, or the ones present aren't a client-decodable codec
-                // (e.g. ProRes proxies), so they can't be copy-muxed.
-                match state.db.list_proxies(id) {
-                    Ok(p) if !p.is_empty() => {
-                        let inv: Vec<String> = p
-                            .iter()
-                            .map(|x| format!("{}p/{}", x.height, if x.codec_video.is_empty() { "?" } else { &x.codec_video }))
-                            .collect();
-                        tracing::info!(
-                            "hls: {id}@{height}p has proxies [{}] but none are streamable (need H.264/HEVC) — re-encoding original",
-                            inv.join(", ")
-                        );
+                // No H.264/HEVC proxy to copy-mux. HLS/MPEG-TS can't carry ProRes,
+                // so we must re-encode to H.264 — but re-encode from the smallest
+                // proxy that still covers the target (e.g. a 2160p ProRes proxy),
+                // NOT the multi-GB 8K original: decoding a proxy is far cheaper, so
+                // the live re-encode keeps up and playback doesn't stall.
+                match closest_proxy_source(state, id, height) {
+                    Some(p) => {
+                        tracing::info!("hls: {id}@{height}p no H.264/HEVC proxy — re-encoding from proxy {p}");
+                        (p, false)
                     }
-                    _ => tracing::info!("hls: {id}@{height}p has no proxies — re-encoding original"),
-                }
-                match state.db.get_video(id) {
-                    Ok(Some(v)) => (v.path, false),
-                    _ => {
-                        drop(guard);
-                        return None;
-                    }
+                    None => match state.db.get_video(id) {
+                        Ok(Some(v)) => {
+                            tracing::info!("hls: {id}@{height}p no proxy — re-encoding original");
+                            (v.path, false)
+                        }
+                        _ => {
+                            drop(guard);
+                            return None;
+                        }
+                    },
                 }
             }
         };
@@ -814,6 +811,27 @@ fn closest_streamable_proxy(state: &MediaState, id: &str, height: i32) -> Option
     } else {
         // Proxy registered but its file is missing (unmounted drive, moved) —
         // fall back to transcoding the original.
+        None
+    }
+}
+
+/// The closest proxy of ANY codec (path), preferring the shortest at least as
+/// tall as `height`, else the tallest. Used only as a cheap re-encode *source*
+/// — decoding a 2160p ProRes proxy beats decoding a multi-GB 8K original — when
+/// no proxy can be copy-muxed into HLS (which can't carry ProRes). The scale
+/// filter caps the output at `min(height, source height)`, so a shorter proxy
+/// won't be upscaled.
+fn closest_proxy_source(state: &MediaState, id: &str, height: i32) -> Option<String> {
+    let proxies = state.db.list_proxies(id).ok()?;
+    let chosen = proxies
+        .iter()
+        .filter(|p| p.height >= height)
+        .min_by_key(|p| p.height)
+        .or_else(|| proxies.iter().max_by_key(|p| p.height))?;
+    let path = chosen.path.clone();
+    if std::path::Path::new(&path).exists() {
+        Some(path)
+    } else {
         None
     }
 }
