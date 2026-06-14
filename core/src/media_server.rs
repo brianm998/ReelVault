@@ -362,11 +362,16 @@ async fn hls_file(
     if !crate::auth::is_authorized(&state.db, authz) {
         return StatusCode::UNAUTHORIZED.into_response();
     }
+    let height = height.clamp(144, 2160);
+    // Progress for the client's readiness gate (does not start a session itself;
+    // the client's playlist load does that).
+    if file == "status" {
+        return hls_status(&state, &id, height);
+    }
     if !is_allowed_hls_file(&file) {
         tracing::warn!("hls: rejected filename {file:?} ({id})");
         return StatusCode::NOT_FOUND.into_response();
     }
-    let height = height.clamp(144, 2160);
     let dir = match ensure_hls_session(&state, &id, height).await {
         Some(d) => d,
         None => {
@@ -383,6 +388,22 @@ async fn hls_file(
     }
     tracing::debug!("hls: {id}@{height}p serving {file}");
     serve_file_range(&path.to_string_lossy(), &headers).await
+}
+
+/// `GET /hls/{id}/{height}/status` — JSON progress for the client's readiness
+/// gate: how many segments are transcoded and whether the session is complete.
+/// The client knows the video duration, so it can estimate the encode rate (by
+/// polling) and decide whether to start now or show an ETA.
+fn hls_status(state: &MediaState, id: &str, height: i32) -> Response {
+    let dir = state.cache_dir.join("hls").join(format!("{id}_{height}"));
+    let segments = count_ts(&dir);
+    let complete = dir.join(".complete").exists();
+    let body = format!("{{\"segments\":{segments},\"complete\":{complete},\"segSeconds\":4}}");
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(body))
+        .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
 }
 
 /// Strict allowlist for the HLS `file` segment — defeats path traversal and
@@ -450,15 +471,37 @@ async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option
         // copy-muxed (near-instant, complete VOD); a taller proxy or the original
         // is re-encoded (downscaled) progressively.
         let (src, copy) = match closest_streamable_proxy(state, id, height) {
-            Some((path, ph)) if ph <= height => (path, true),
-            Some((path, _)) => (path, false),
-            None => match state.db.get_video(id) {
-                Ok(Some(v)) => (v.path, false),
-                _ => {
-                    drop(guard);
-                    return None;
+            // Any streamable (H.264/HEVC) proxy is copy-muxed — instant, complete,
+            // no stalls — even if it's taller than the target: a downscaled proxy
+            // streams fine over the LAN and beats a slow live re-encode. (Picking
+            // the closest one keeps it as small as the catalog allows.)
+            Some((path, _)) => (path, true),
+            None => {
+                // Explain *why* we're re-encoding rather than using a proxy — the
+                // "proxies exist but it still re-encodes?" question: either there
+                // are none, or the ones present aren't a client-decodable codec
+                // (e.g. ProRes proxies), so they can't be copy-muxed.
+                match state.db.list_proxies(id) {
+                    Ok(p) if !p.is_empty() => {
+                        let inv: Vec<String> = p
+                            .iter()
+                            .map(|x| format!("{}p/{}", x.height, if x.codec_video.is_empty() { "?" } else { &x.codec_video }))
+                            .collect();
+                        tracing::info!(
+                            "hls: {id}@{height}p has proxies [{}] but none are streamable (need H.264/HEVC) — re-encoding original",
+                            inv.join(", ")
+                        );
+                    }
+                    _ => tracing::info!("hls: {id}@{height}p has no proxies — re-encoding original"),
                 }
-            },
+                match state.db.get_video(id) {
+                    Ok(Some(v)) => (v.path, false),
+                    _ => {
+                        drop(guard);
+                        return None;
+                    }
+                }
+            }
         };
         evict_old_hls_sessions(&state.cache_dir);
         tracing::info!(
