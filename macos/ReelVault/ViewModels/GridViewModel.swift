@@ -1279,6 +1279,7 @@ class GridViewModel: ObservableObject {
             case "camera": return "Camera"; case "lens": return "Lens"; case "codec": return "Codec"
             case "year": return "Year"; case "iso": return "ISO"; case "exposure": return "Exposure"
             case "fps": return "FPS"; case "resolution": return "Resolution"; case "colorspace": return "Color space"
+            case "aspect": return "Aspect ratio"
             default: return key.prefix(1).uppercased() + key.dropFirst()
             }
         }

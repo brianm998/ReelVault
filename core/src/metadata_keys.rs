@@ -31,6 +31,12 @@ pub enum KeyKind {
     /// the `tags` / `video_tags` tables, so it's handled specially by the query
     /// builders rather than as a `metadata` column.
     Keyword,
+    /// A value computed by an SQL expression over `metadata` columns — used for
+    /// fields derived from more than one column, e.g. resolution ("WxH") or a
+    /// bucketed aspect ratio. `expr` yields the TEXT value (token == display);
+    /// `guard` is the "inputs present" test for faceting. Filtered, faceted, and
+    /// displayed like a TEXT value otherwise.
+    Expr { expr: &'static str, guard: &'static str },
 }
 
 /// Display formatting for a REAL-valued key.
@@ -62,11 +68,38 @@ pub enum SqlVal {
     Real(f64),
 }
 
+/// Width/height presence guard shared by the dimension-derived keys (below).
+const DIM_GUARD: &str =
+    "m.width IS NOT NULL AND m.height IS NOT NULL AND m.width > 0 AND m.height > 0";
+
+/// Buckets a clip's width:height into a common named aspect ratio (NULL for
+/// clips without usable dimensions, so they match no aspect filter). The same
+/// expression powers both the facet value list and the `= ?` filter predicate,
+/// so a faceted value always round-trips. Windows are disjoint, so arm order
+/// doesn't affect classification.
+const ASPECT_RATIO_EXPR: &str = "CASE \
+    WHEN m.width IS NULL OR m.height IS NULL OR m.width <= 0 OR m.height <= 0 THEN NULL \
+    WHEN ABS(CAST(m.width AS REAL) / m.height - 1.0) < 0.02 THEN '1:1' \
+    WHEN ABS(CAST(m.width AS REAL) / m.height - 4.0 / 3.0) < 0.03 THEN '4:3' \
+    WHEN ABS(CAST(m.width AS REAL) / m.height - 3.0 / 2.0) < 0.02 THEN '3:2' \
+    WHEN ABS(CAST(m.width AS REAL) / m.height - 16.0 / 9.0) < 0.04 THEN '16:9' \
+    WHEN CAST(m.width AS REAL) / m.height BETWEEN 2.30 AND 2.45 THEN '21:9' \
+    WHEN ABS(CAST(m.width AS REAL) / m.height - 3.0 / 4.0) < 0.02 THEN '3:4' \
+    WHEN ABS(CAST(m.width AS REAL) / m.height - 2.0 / 3.0) < 0.02 THEN '2:3' \
+    WHEN ABS(CAST(m.width AS REAL) / m.height - 9.0 / 16.0) < 0.02 THEN '9:16' \
+    WHEN m.width >= m.height THEN 'Other (landscape)' \
+    ELSE 'Other (portrait)' \
+END";
+
 /// The registry. Order is the order the clients show keys in the picker.
 pub static KEYS: &[MetaKey] = &[
     MetaKey { token: "camera", display_name: "Camera", is_numeric: false, kind: KeyKind::Text("camera_model") },
     MetaKey { token: "lens", display_name: "Lens", is_numeric: false, kind: KeyKind::Text("lens_model") },
     MetaKey { token: "codec", display_name: "Codec", is_numeric: false, kind: KeyKind::Text("codec_video") },
+    MetaKey { token: "resolution", display_name: "Resolution", is_numeric: false,
+        kind: KeyKind::Expr { expr: "m.width || 'x' || m.height", guard: DIM_GUARD } },
+    MetaKey { token: "aspect", display_name: "Aspect Ratio", is_numeric: false,
+        kind: KeyKind::Expr { expr: ASPECT_RATIO_EXPR, guard: DIM_GUARD } },
     MetaKey { token: "year", display_name: "Year", is_numeric: true, kind: KeyKind::Year },
     MetaKey { token: "keyword", display_name: "Keyword", is_numeric: false, kind: KeyKind::Keyword },
     MetaKey { token: "iso", display_name: "ISO", is_numeric: true, kind: KeyKind::Int("iso") },
@@ -91,6 +124,7 @@ impl MetaKey {
             KeyKind::Year => {
                 Some("CAST(strftime('%Y', m.creation_date / 1000, 'unixepoch') AS INTEGER) = ?".to_string())
             }
+            KeyKind::Expr { expr, .. } => Some(format!("({expr}) = ?")),
             KeyKind::Keyword => None,
         }
     }
@@ -103,6 +137,7 @@ impl MetaKey {
             KeyKind::Text(_) => Some(SqlVal::Text(token.to_string())),
             KeyKind::Int(_) | KeyKind::Year => token.parse::<i64>().ok().map(SqlVal::Int),
             KeyKind::Real { .. } => token.parse::<f64>().ok().map(SqlVal::Real),
+            KeyKind::Expr { .. } => Some(SqlVal::Text(token.to_string())),
             KeyKind::Keyword => None,
         }
     }
@@ -116,6 +151,7 @@ impl MetaKey {
             KeyKind::Year => {
                 Some("CAST(strftime('%Y', m.creation_date / 1000, 'unixepoch') AS INTEGER)".to_string())
             }
+            KeyKind::Expr { expr, .. } => Some((*expr).to_string()),
             KeyKind::Keyword => None,
         }
     }
@@ -128,6 +164,7 @@ impl MetaKey {
             KeyKind::Int(col) => Some(format!("m.{col} IS NOT NULL AND m.{col} > 0")),
             KeyKind::Real { col, .. } => Some(format!("m.{col} IS NOT NULL AND m.{col} > 0")),
             KeyKind::Year => Some("m.creation_date IS NOT NULL AND m.creation_date > 0".to_string()),
+            KeyKind::Expr { guard, .. } => Some((*guard).to_string()),
             KeyKind::Keyword => None,
         }
     }

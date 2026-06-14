@@ -2496,7 +2496,7 @@ class GridViewModel(
         fun label(key: String): String = when (key) {
             "camera" -> "Camera"; "lens" -> "Lens"; "codec" -> "Codec"; "year" -> "Year"
             "iso" -> "ISO"; "exposure" -> "Exposure"; "fps" -> "FPS"
-            "resolution" -> "Resolution"; "colorspace" -> "Color space"
+            "resolution" -> "Resolution"; "colorspace" -> "Color space"; "aspect" -> "Aspect ratio"
             else -> key.replaceFirstChar { it.uppercase() }
         }
         val out = mutableListOf<SmartCriterionRow>()

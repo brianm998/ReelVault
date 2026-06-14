@@ -3657,6 +3657,57 @@ mod tests {
         assert_eq!(kw[0].display.as_deref(), Some("beach"));
     }
 
+    #[test]
+    fn resolution_and_aspect_facets_compute_from_dimensions() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = open_db(&tmp);
+        seed_res(&db, "/l/hd.mov", "hd.mov", 1920, 1080, 10); // 16:9
+        seed_res(&db, "/l/uhd.mov", "uhd.mov", 3840, 2160, 20); // 16:9
+        seed_res(&db, "/l/sd.mov", "sd.mov", 640, 480, 5); // 4:3
+        seed_res(&db, "/l/vert.mov", "vert.mov", 1080, 1920, 8); // 9:16
+        seed_res(&db, "/l/sq.mov", "sq.mov", 1000, 1000, 4); // 1:1
+
+        // Both dimension-derived keys are offered once any clip has dimensions.
+        let keys = db.metadata_keys_with_data(&FilterSpec::default()).unwrap();
+        assert!(keys.contains(&"resolution".to_string()));
+        assert!(keys.contains(&"aspect".to_string()));
+
+        // Resolution facets are exact "WxH" strings.
+        let res: std::collections::HashSet<String> = db
+            .distinct_facet_values("resolution", &FilterSpec::default())
+            .unwrap()
+            .into_iter()
+            .map(|f| f.token)
+            .collect();
+        assert!(res.contains("1920x1080"));
+        assert!(res.contains("3840x2160"));
+        assert!(res.contains("640x480"));
+
+        // Aspect facets bucket by ratio — the two 16:9 clips collapse to one
+        // value with count 2 — which exercises the CASE expression's SQL.
+        let asp: std::collections::HashMap<String, i64> = db
+            .distinct_facet_values("aspect", &FilterSpec::default())
+            .unwrap()
+            .into_iter()
+            .map(|f| (f.token, f.count))
+            .collect();
+        assert_eq!(asp.get("16:9"), Some(&2));
+        assert_eq!(asp.get("4:3"), Some(&1));
+        assert_eq!(asp.get("9:16"), Some(&1));
+        assert_eq!(asp.get("1:1"), Some(&1));
+
+        // A faceted aspect token round-trips as a filter predicate.
+        let spec = FilterSpec {
+            metadata_filters: vec![("aspect".to_string(), "16:9".to_string())],
+            ..Default::default()
+        };
+        let (rows, total) = db
+            .list_videos_grouped(50, 0, "filename", true, &spec)
+            .unwrap();
+        assert_eq!(total, 2, "two 16:9 clips match the aspect filter");
+        assert_eq!(rows.len(), 2);
+    }
+
     /// Seed a video with a metadata row carrying width/height (for the
     /// proxy-attach master-selection tests). Returns its id.
     fn seed_res(db: &Database, path: &str, filename: &str, w: i64, h: i64, size: i64) -> String {
