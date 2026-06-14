@@ -235,9 +235,15 @@ ReelVault/
 │   │   ├── data/
 │   │   └── util/
 │   └── resources/
-├── macos/                # SwiftUI client (post-MVP)
-│   ├── ReelVault.xcodeproj
+├── macos/                # SwiftUI macOS client (SwiftPM; depends on kit/)
+│   ├── Package.swift
 │   └── ReelVault/
+├── ios/                  # SwiftUI iOS client (XcodeGen; remote-only; depends on kit/)
+│   ├── project.yml       #   .xcodeproj is generated, not committed
+│   └── ReelVaultiOS/
+├── kit/                  # ReelVaultKit — shared Swift used by macOS + iOS:
+│   └── Sources/          #   models, view-models, gRPC client, discovery,
+│                         #   pinned TLS, media cache/client
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── DATABASE.md
@@ -250,24 +256,35 @@ ReelVault/
 
 ### UI/UX Consistency
 
-**Default rule:** Unless explicitly stated otherwise, every feature must
-be implemented in both clients (Kotlin Compose desktop and SwiftUI macOS)
-as part of the same change. A feature landing in only one client is
-considered incomplete. The single exception is **client-specific bugs**:
-a fix targeting a Compose-only or SwiftUI-only defect doesn't need a
-mirror in the other client.
+**Default rule:** Unless explicitly stated otherwise, every feature must be
+implemented in **all three clients** — Kotlin Compose desktop, SwiftUI macOS,
+and SwiftUI iOS (iPhone/iPad) — as part of the same change, **where appropriate
+to the platform**. A feature landing in only some clients is incomplete.
 
-If parity is genuinely undesirable for some new feature (e.g. macOS-only
-QuickLook integration, Linux-only inotify tuning), the change must say
-so explicitly in the commit / PR description; otherwise reviewers will
-push back on a missing client.
+Legitimate per-platform deviations (call them out in the commit/PR so reviewers
+don't push back on a "missing" client):
+- **iOS replaces drag-and-drop editor hand-off with the share sheet.**
+- **iOS is remote-only** — it talks to a core daemon over the LAN, has no local
+  filesystem access to originals, and (for now) embeds no daemon; features that
+  assume a shared filesystem differ or don't apply.
+- **Keyboard shortcuts** apply to macOS and iPad-with-a-keyboard, not iPhone.
+- **Layout**: iPhone-portrait uses sheets / compact navigation instead of the
+  desktop's resizable side panels; iPad and macOS share the multi-column layout.
+- Platform-only integrations (macOS QuickLook, Linux inotify tuning, …).
 
-Both clients should share:
-- Grid layout with thumbnail hover preview
-- Identical metadata inspector on the right
+The other exception is **client-specific bugs**: a fix for a defect in one
+client needs no mirror in the others.
+
+Shared Swift code (macOS + iOS) lives in **`kit/` (ReelVaultKit)** — models,
+view-models, the gRPC client, discovery, pinned TLS, and the media cache — so a
+change there serves both Apple clients at once.
+
+All clients should share (platform-appropriate):
+- Grid layout with thumbnail preview
+- Identical metadata inspector
 - Same tag/collection management workflows
-- Consistent keyboard shortcuts
-- Native file dialogs
+- Consistent keyboard shortcuts (macOS + iPad)
+- Native file pickers / share affordances
 
 ### Design Principles
 
