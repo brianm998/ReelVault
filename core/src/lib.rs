@@ -28,4 +28,10 @@ pub mod sensor_cache;
 pub mod xmp;
 pub mod metadata_keys;
 
+/// C-ABI entry point that boots the core in-process inside the iOS app
+/// (docs/IOS_CORE_PORT.md §7.2). Compiled only for iOS; the desktop build never
+/// sees it, so there is zero behavior change off-device.
+#[cfg(target_os = "ios")]
+pub mod ios;
+
 pub use error::Result;

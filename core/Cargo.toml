@@ -10,6 +10,9 @@ readme = "../README.md"
 [lib]
 name = "reelvault_core"
 path = "src/lib.rs"
+# rlib for the desktop bins; staticlib so the iOS embed can link the core as a
+# single `.a` inside an XCFramework (see docs/IOS_CORE_PORT.md §8.1).
+crate-type = ["rlib", "staticlib"]
 
 [dependencies]
 # Async runtime
