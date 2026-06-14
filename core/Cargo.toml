@@ -14,7 +14,7 @@ path = "src/lib.rs"
 [dependencies]
 # Async runtime
 tokio = { version = "1.35", features = ["full"] }
-tokio-util = "0.7"
+tokio-util = { version = "0.7", features = ["io"] }
 tokio-stream = { version = "0.1", features = ["net"] }
 
 # gRPC and serialization. The "tls" feature adds the rustls-backed
@@ -36,6 +36,11 @@ base64 = "0.22"
 # mDNS/Bonjour advertisement so LAN clients (iOS) auto-discover the daemon.
 # Pure-Rust; one code path across macOS/Linux/Windows.
 mdns-sd = "0.11"
+
+# HTTPS media server (range download/stream + upload) for remote clients, on
+# the same self-signed identity cert. axum-server provides the rustls binding.
+axum = "0.7"
+axum-server = { version = "0.7", features = ["tls-rustls"] }
 
 # Database
 rusqlite = { version = "0.31", features = ["bundled", "chrono", "uuid"] }

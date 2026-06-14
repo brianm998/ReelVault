@@ -10,6 +10,7 @@ pub mod config;
 pub mod discovery;
 pub mod error;
 pub mod identity;
+pub mod media_server;
 pub mod service;
 pub mod grouping;
 pub mod concurrency;

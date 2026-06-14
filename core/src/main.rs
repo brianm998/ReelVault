@@ -14,6 +14,7 @@ use reelvault_core::config::Config;
 use reelvault_core::db::Database;
 use reelvault_core::discovery;
 use reelvault_core::identity;
+use reelvault_core::media_server;
 use reelvault_core::service::ReelVaultService;
 
 /// ReelVault backend daemon.
@@ -181,6 +182,8 @@ async fn main() -> Result<()> {
         .current_path()
         .and_then(|p| p.file_stem().map(|s| s.to_string_lossy().into_owned()))
         .unwrap_or_else(|| "ReelVault".to_string());
+    // Keep a handle to the DB for the media server before `db` moves into the service.
+    let media_db = Arc::clone(&db);
 
     let service = ReelVaultService::new(db, config);
 
@@ -287,8 +290,8 @@ async fn main() -> Result<()> {
                 &id.fingerprint_hex,
                 &catalog_name,
                 env!("CARGO_PKG_VERSION"),
-                "none", // auth: pairing is added in a later step
-                "",     // features: media/upload added as those land
+                "none",  // auth: pairing is added in a later step
+                "media", // features: range download/stream available
             ) {
                 Ok(a) => {
                     tracing::info!("Advertising _reelvault._tcp at {} (mDNS)", ip);
@@ -309,7 +312,23 @@ async fn main() -> Result<()> {
             .add_service(service.clone().into_server())
             .serve(lan_addr);
 
-        tokio::try_join!(loopback, tls)?;
+        // HTTPS media server on the same identity cert.
+        let media_addr = SocketAddr::new(lan_ip, args.media_port);
+        tracing::info!("Remote HTTPS media server listening on {}", media_addr);
+        let media = media_server::serve(
+            media_addr,
+            id.cert_pem.clone(),
+            id.key_pem.clone(),
+            media_server::MediaState {
+                db: media_db,
+                fingerprint_hex: id.fingerprint_hex.clone(),
+            },
+        );
+
+        // All three run forever; unify their error types for try_join!.
+        let loopback = async move { loopback.await.map_err(anyhow::Error::from) };
+        let tls = async move { tls.await.map_err(anyhow::Error::from) };
+        tokio::try_join!(loopback, tls, media)?;
     } else {
         tracing::info!("Backend ready");
         loopback.await?;
