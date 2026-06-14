@@ -72,6 +72,12 @@ fun DetailViewScreen(
      */
     stepBackToggle: Int = 0,
     stepForwardToggle: Int = 0,
+    /** When true the loupe is in full-screen mode: the video fills the area and
+     *  the normal bottom control bar is replaced by a semi-transparent floating
+     *  control that auto-hides. Toggled by the 'f' shortcut (see App.kt). */
+    fullscreen: Boolean = false,
+    /** Enter/exit full screen — wired to the floating control's exit button. */
+    onToggleFullscreen: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val selectedVideoId by gridViewModel.selectedVideoId.collectAsState()
@@ -240,6 +246,39 @@ fun DetailViewScreen(
     val awtWindow = LocalAppWindow.current
     val fileDragSource = remember { FileDragSource() }
 
+    // Shared playback callbacks — used by both the normal bottom control bar and
+    // the full-screen floating control, so the two never drift.
+    val startOrTogglePlayback: () -> Unit = {
+        if (!playbackStarted) {
+            playbackStarted = true
+            if (player.available) player.load(effectivePath, playImmediately = true)
+        } else {
+            player.togglePause()
+        }
+    }
+    val stopPlayback: () -> Unit = {
+        player.stop()
+        playbackStarted = false
+    }
+    val volume = gridViewModel.playbackVolume.collectAsState().value
+    val changeVolume: (Int) -> Unit = { v ->
+        gridViewModel.setPlaybackVolume(v)
+        player.setVolume(v)
+    }
+
+    // Full-screen floating-control auto-hide: visible initially and whenever the
+    // mouse moves over the video, then hidden after 2s of stillness.
+    var fsControlsVisible by remember { mutableStateOf(true) }
+    var fsMouseToken by remember { mutableStateOf(0) }
+    LaunchedEffect(fullscreen) { if (!fullscreen) fsControlsVisible = true }
+    LaunchedEffect(fsMouseToken, fullscreen) {
+        if (fullscreen) {
+            fsControlsVisible = true
+            kotlinx.coroutines.delay(2000)
+            fsControlsVisible = false
+        }
+    }
+
     Column(modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Box(
             modifier = Modifier
@@ -248,6 +287,8 @@ fun DetailViewScreen(
                 // Measure the player render area so effectivePath can default to
                 // the proxy whose resolution best matches it.
                 .onSizeChanged { areaSize = it }
+                // Reveal the full-screen floating control whenever the mouse moves.
+                .onPointerEvent(PointerEventType.Move) { if (fullscreen) fsMouseToken++ }
                 .pointerInput(video.openPath) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
@@ -345,42 +386,46 @@ fun DetailViewScreen(
             if (playbackStarted) {
                 VlcUnavailableOverlay(player = player.takeIf { it.available })
             }
+
+            // Full-screen floating control — replaces the bottom bar; semi-
+            // transparent and auto-hiding (see fsControlsVisible).
+            if (fullscreen) {
+                FullscreenControls(
+                    video = video,
+                    player = player,
+                    playbackStarted = playbackStarted,
+                    visible = fsControlsVisible,
+                    volume = volume,
+                    onStartPlayback = startOrTogglePlayback,
+                    onStopPlayback = stopPlayback,
+                    onVolumeChange = changeVolume,
+                    onExitFullscreen = onToggleFullscreen,
+                )
+            }
         }
 
-        ControlBar(
-            video = video,
-            player = player,
-            playbackStarted = playbackStarted,
-            stepFrames = stepFrames,
-            onStartPlayback = {
-                detailLogger.info(
-                    "Detail play button: video={} playbackStarted={} player.available={} initError={}",
-                    video.id, playbackStarted, player.available,
-                    player.initError?.javaClass?.simpleName
-                )
-                if (!playbackStarted) {
-                    playbackStarted = true
-                    if (player.available) {
-                        player.load(effectivePath, playImmediately = true)
-                    }
-                    // If libvlc isn't available, playbackStarted is still set
-                    // so the "VLCJ unavailable" overlay shows; the Stop button
-                    // remains enabled so the user can return to the preview.
-                } else {
-                    player.togglePause()
-                }
-            },
-            onStopPlayback = {
-                player.stop()
-                playbackStarted = false
-            },
-            onStepFramesChange = { stepFrames = it.coerceIn(1, 600) },
-            volume = gridViewModel.playbackVolume.collectAsState().value,
-            onVolumeChange = { v ->
-                gridViewModel.setPlaybackVolume(v)
-                player.setVolume(v)
-            },
-        )
+        // Normal bottom control bar — hidden in full screen (replaced by the
+        // floating control above).
+        if (!fullscreen) {
+            ControlBar(
+                video = video,
+                player = player,
+                playbackStarted = playbackStarted,
+                stepFrames = stepFrames,
+                onStartPlayback = {
+                    detailLogger.info(
+                        "Detail play button: video={} playbackStarted={} player.available={} initError={}",
+                        video.id, playbackStarted, player.available,
+                        player.initError?.javaClass?.simpleName
+                    )
+                    startOrTogglePlayback()
+                },
+                onStopPlayback = stopPlayback,
+                onStepFramesChange = { stepFrames = it.coerceIn(1, 600) },
+                volume = volume,
+                onVolumeChange = changeVolume,
+            )
+        }
     }
 }
 
@@ -652,6 +697,107 @@ private fun ControlBar(
                         contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
                         modifier = Modifier.height(28.dp)
                     ) { Text("+5", style = MaterialTheme.typography.labelSmall) }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Semi-transparent floating playback control shown over the video in full-screen
+ * mode — a shorter [ControlBar]: play/pause, stop, scrubber, volume, and an exit
+ * button. Auto-hides via [visible]; pinned to the bottom centre of the video.
+ */
+@Composable
+private fun BoxScope.FullscreenControls(
+    video: VideoSummary,
+    player: ComposeVideoPlayer,
+    playbackStarted: Boolean,
+    visible: Boolean,
+    volume: Int,
+    onStartPlayback: () -> Unit,
+    onStopPlayback: () -> Unit,
+    onVolumeChange: (Int) -> Unit,
+    onExitFullscreen: () -> Unit,
+) {
+    val isPlaying by player.isPlaying
+    val lengthMs by player.lengthMs
+    val currentMs by player.currentTimeMs
+    val hasAudio = video.codecAudio.isNotEmpty()
+    val maxMs = if (lengthMs > 0) lengthMs else video.durationMs.coerceAtLeast(1L)
+    var dragMs by remember(video.id) { mutableStateOf<Float?>(null) }
+    val displayedMs: Long = dragMs?.toLong() ?: if (lengthMs > 0) currentMs else 0L
+
+    androidx.compose.animation.AnimatedVisibility(
+        visible = visible,
+        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 32.dp),
+        enter = androidx.compose.animation.fadeIn(),
+        exit = androidx.compose.animation.fadeOut(),
+    ) {
+        Surface(
+            color = Color.Black.copy(alpha = 0.55f),
+            contentColor = Color.White,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = ReelVaultSpacing.Medium, vertical = ReelVaultSpacing.Small),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(ReelVaultSpacing.Small),
+            ) {
+                IconButton(onClick = onStartPlayback) {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isPlaying) "Pause" else "Play",
+                        tint = Color.White,
+                        modifier = Modifier.size(32.dp),
+                    )
+                }
+                IconButton(onClick = onStopPlayback, enabled = playbackStarted) {
+                    Icon(Icons.Default.Stop, contentDescription = "Stop", tint = Color.White)
+                }
+                Text(
+                    text = formatTime(displayedMs),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                    modifier = Modifier.width(48.dp),
+                )
+                Slider(
+                    value = displayedMs.toFloat().coerceIn(0f, maxMs.toFloat()),
+                    onValueChange = { v ->
+                        if (playbackStarted && player.available) {
+                            dragMs = v
+                            player.seek(v.toLong())
+                        }
+                    },
+                    onValueChangeFinished = { dragMs = null },
+                    valueRange = 0f..maxMs.toFloat(),
+                    enabled = playbackStarted && player.available,
+                    modifier = Modifier.width(280.dp),
+                )
+                Text(
+                    text = formatTime(maxMs),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                    modifier = Modifier.width(48.dp),
+                )
+                if (hasAudio) {
+                    Icon(
+                        imageVector = if (volume == 0) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+                        contentDescription = "Volume",
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Slider(
+                        value = volume.toFloat(),
+                        onValueChange = { onVolumeChange(it.toInt()) },
+                        valueRange = 0f..100f,
+                        modifier = Modifier.width(80.dp),
+                    )
+                }
+                com.reelvault.ui.components.Tooltip(text = "Exit full screen (f)") {
+                    IconButton(onClick = onExitFullscreen) {
+                        Icon(Icons.Default.FullscreenExit, contentDescription = "Exit full screen", tint = Color.White)
+                    }
                 }
             }
         }

@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.reelvault.data.ReleaseInfo
@@ -305,6 +306,8 @@ fun main() {
         val setDetailModeAction = remember { mutableStateOf<() -> Unit>({}) }
         val setMapModeAction = remember { mutableStateOf<() -> Unit>({}) }
         val cycleInfoOverlayAction = remember { mutableStateOf<() -> Unit>({}) }
+        // 'f' in detail mode: toggle full-screen video playback.
+        val toggleFullscreenAction = remember { mutableStateOf<() -> Unit>({}) }
         // Space bar: toggle inline playback of the selected video.
         val spacebarAction = remember { mutableStateOf<() -> Unit>({}) }
         // Lightroom-style rating shortcut (digits 0..5). Carries the rating
@@ -395,6 +398,7 @@ fun main() {
                         Key.D -> { setDetailModeAction.value(); return@Window true }
                         Key.M -> { setMapModeAction.value(); return@Window true }
                         Key.I -> { cycleInfoOverlayAction.value(); return@Window true }
+                        Key.F -> { toggleFullscreenAction.value(); return@Window true }
                         Key.Spacebar -> { spacebarAction.value(); return@Window true }
                         // Lightroom-style rating shortcuts (number-row digits).
                         Key.Zero  -> { setRatingAction.value(0); return@Window true }
@@ -558,6 +562,13 @@ fun main() {
                         onRegisterSetDetailMode = { setDetailModeAction.value = it },
                         onRegisterSetMapMode = { setMapModeAction.value = it },
                         onRegisterCycleInfoOverlay = { cycleInfoOverlayAction.value = it },
+                        onRegisterToggleFullscreen = { toggleFullscreenAction.value = it },
+                        // Drive the OS window's full-screen placement from the
+                        // detail view's full-screen state.
+                        onFullscreenChanged = { fs ->
+                            windowState.placement =
+                                if (fs) WindowPlacement.Fullscreen else WindowPlacement.Floating
+                        },
                         onRegisterSpacebarAction = { spacebarAction.value = it },
                         onRegisterSetRatingAction = { setRatingAction.value = it },
                         onRegisterSetColorLabelAction = { setColorLabelAction.value = it },
@@ -596,6 +607,11 @@ fun ReelVaultApp(
     onRegisterSetMapMode: (() -> Unit) -> Unit = {},
     /** Called once to register the "cycle info overlay" action for the 'i' shortcut. */
     onRegisterCycleInfoOverlay: (() -> Unit) -> Unit = {},
+    /** Called once to register the "toggle detail full screen" action for the 'f' shortcut. */
+    onRegisterToggleFullscreen: (() -> Unit) -> Unit = {},
+    /** Called when the detail full-screen state changes, so the parent can put
+     *  the OS window into / out of full-screen placement. */
+    onFullscreenChanged: (Boolean) -> Unit = {},
     /** Called once to register the space-bar play/pause action. */
     onRegisterSpacebarAction: (() -> Unit) -> Unit = {},
     /** Called once to register the digit-key rating action (0..5). */
@@ -710,6 +726,23 @@ fun ReelVaultApp(
     // Top-level view mode. GRID is the default catalog view; DETAIL is the
     // single-video loupe with in-app playback.
     var viewMode by remember { mutableStateOf(ViewMode.GRID) }
+    // Detail-mode full screen ('f'): hides all chrome and puts the OS window
+    // full-screen, leaving just the video and a floating, auto-hiding control.
+    var detailFullscreen by remember { mutableStateOf(false) }
+    // When 'f' is pressed from grid/list/map it jumps a full-frame view of the
+    // selected video; this is the view to return to on exit. null = entered from
+    // the loupe itself, so exit just leaves full screen and stays in detail.
+    var preFullscreenMode by remember { mutableStateOf<ViewMode?>(null) }
+    // Drive the OS window placement from the flag, and on exit restore the view
+    // the user came from. Never strand a hidden-chrome state outside the loupe.
+    LaunchedEffect(detailFullscreen) {
+        onFullscreenChanged(detailFullscreen)
+        if (!detailFullscreen) {
+            preFullscreenMode?.let { viewMode = it }
+            preFullscreenMode = null
+        }
+    }
+    LaunchedEffect(viewMode) { if (viewMode != ViewMode.DETAIL && detailFullscreen) detailFullscreen = false }
 
     // Per-view-mode panel state accessors. The 4 maps above store every
     // view-mode's values; these `val`s + helper funcs read/write the
@@ -858,6 +891,20 @@ fun ReelVaultApp(
                 InfoOverlayState.NONE -> InfoOverlayState.CAMERA
                 InfoOverlayState.CAMERA -> InfoOverlayState.FILE
                 InfoOverlayState.FILE -> InfoOverlayState.NONE
+            }
+        }
+        // 'f' toggles full screen. From the loupe it just goes full screen; from
+        // grid/list/map with a selected card it jumps straight to a full-frame
+        // view of that video and remembers where to return on exit.
+        onRegisterToggleFullscreen {
+            when {
+                detailFullscreen -> detailFullscreen = false
+                viewMode == ViewMode.DETAIL -> { preFullscreenMode = null; detailFullscreen = true }
+                gridViewModel.selectedVideoId.value != null -> {
+                    preFullscreenMode = viewMode
+                    viewMode = ViewMode.DETAIL
+                    detailFullscreen = true
+                }
             }
         }
     }
@@ -1053,8 +1100,9 @@ fun ReelVaultApp(
         ) {
             if (connectionState == ConnectionState.Connected) {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // Top bar
+                    // Top bar — hidden in full-screen detail mode.
                     val selectedIds = gridViewModel.selectedVideoIds.collectAsState()
+                    if (!detailFullscreen) {
                     ReelVaultTopBar(
                         gridViewModel = gridViewModel,
                         onGroupSelected = { gridViewModel.groupSelectedVideos() },
@@ -1084,6 +1132,7 @@ fun ReelVaultApp(
                     // below, matching the separator the macOS client draws under
                     // its top bar and the divider above the bottom bar.
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    }
 
                     // Scan status banner (during scan)
                     val scanStatus = gridViewModel.scanStatus.collectAsState()
@@ -1427,7 +1476,10 @@ fun ReelVaultApp(
                         // Left panel — in detail mode the slot shows the
                         // brightness/colour graphs (a per-video view), otherwise
                         // the library navigation panel or its collapsed strip.
-                        if (leftPanelExpanded && viewMode == ViewMode.DETAIL) {
+                        // Hidden entirely in full-screen detail mode.
+                        if (detailFullscreen) {
+                            // no panel in full screen
+                        } else if (leftPanelExpanded && viewMode == ViewMode.DETAIL) {
                             com.reelvault.ui.components.DetailGraphsPanel(
                                 viewModel = gridViewModel,
                                 onCollapse = { setLeftPanelExpanded(false) },
@@ -1614,7 +1666,7 @@ fun ReelVaultApp(
                         // Drag handle on the left panel's inner edge.
                         // Only rendered when the panel is expanded — when
                         // collapsed the strip itself absorbs all clicks.
-                        if (leftPanelExpanded) {
+                        if (leftPanelExpanded && !detailFullscreen) {
                             PanelResizeHandle(isLeftPanel = true) { dragDeltaPx ->
                                 // Read the panel's *current* width from the
                                 // state map fresh on each drag event rather
@@ -1630,11 +1682,13 @@ fun ReelVaultApp(
                             }
                         }
 
-                        Divider(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .width(1.dp)
-                        )
+                        if (!detailFullscreen) {
+                            Divider(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .width(1.dp)
+                            )
+                        }
 
                         // Middle area — grid, list, or single-video loupe.
                         // Shared handler: tapping a card's location badge
@@ -1771,6 +1825,8 @@ fun ReelVaultApp(
                                     playToggle = detailPlayToggle,
                                     stepBackToggle = detailStepBackToggle,
                                     stepForwardToggle = detailStepForwardToggle,
+                                    fullscreen = detailFullscreen,
+                                    onToggleFullscreen = { detailFullscreen = !detailFullscreen },
                                     modifier = Modifier.weight(1f).fillMaxWidth()
                                 )
                                 ViewMode.MAP -> {
@@ -1798,17 +1854,19 @@ fun ReelVaultApp(
                             }
                         }
 
-                        Divider(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .width(1.dp)
-                        )
+                        if (!detailFullscreen) {
+                            Divider(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .width(1.dp)
+                            )
+                        }
 
                         // Drag handle on the right panel's inner edge.
                         // For the right panel, a rightward drag should
                         // shrink the panel — `isLeftPanel = false`
                         // negates the delta sign internally.
-                        if (rightPanelExpanded) {
+                        if (rightPanelExpanded && !detailFullscreen) {
                             PanelResizeHandle(isLeftPanel = false) { dragDeltaPx ->
                                 // See the left-panel handler for the
                                 // explanation — read the current width
@@ -1829,7 +1887,9 @@ fun ReelVaultApp(
                             detailViewModel.loadMetadata(video.id)
                             viewMode = mode
                         }
-                        if (rightPanelExpanded && viewMode == ViewMode.MAP) {
+                        if (detailFullscreen) {
+                            // no panel in full screen
+                        } else if (rightPanelExpanded && viewMode == ViewMode.MAP) {
                             val sel = mapSelectedVideoIds.toSet()
                             val mapPanelVideos = gridViewModel.geotaggedVideos.collectAsState().value
                                 .filter { it.id in sel }
@@ -1915,6 +1975,8 @@ fun ReelVaultApp(
 
                     // Bottom bar — view-mode toggle (left), thumbnail-size slider
                     // (right). The sort controls now live in the Library Filter bar.
+                    // Hidden in full-screen detail mode.
+                    if (!detailFullscreen) {
                     BottomBar(
                         viewMode = viewMode,
                         onViewModeChange = { newMode ->
@@ -1929,6 +1991,7 @@ fun ReelVaultApp(
                             uiPrefs.putFloat("thumbnailWidth", it.value)
                         },
                     )
+                    }
                 }
                 // Help dialog
                 if (showHelpDialog) {
@@ -2436,6 +2499,7 @@ fun HelpDialog(onDismiss: () -> Unit) {
                             "D" to "Detail / Catalog view",
                             "M" to "Map view",
                             "I" to "Cycle info overlay (Detail mode: none → camera → file → …)",
+                            "F" to "Detail view — toggle full screen",
                             "Tab" to "Toggle both side panels",
                             "Space" to "Play / pause selected clip",
                             "0–5" to "Rate the selected clips (0 clears)",

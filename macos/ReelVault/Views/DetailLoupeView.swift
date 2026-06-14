@@ -33,9 +33,19 @@ struct DetailLoupeView: View {
     /// The `.onChange` handlers below translate the increments into frame steps.
     var stepBackToggle: Int = 0
     var stepForwardToggle: Int = 0
+    /// When true the loupe is full screen: the video fills the area and a
+    /// semi-transparent floating control (auto-hiding) replaces the bottom bar.
+    var fullscreen: Bool = false
+    /// Exit full screen — wired to the floating control's exit button.
+    var onExitFullscreen: () -> Void = {}
 
     /// Configurable step size for the ±N-frame buttons. Default 20.
     @State private var stepFrames: Int = 20
+    /// Full-screen floating-control visibility: shown initially and on mouse
+    /// movement over the video, hidden after 2s of stillness.
+    @State private var fsControlsVisible = true
+    /// Work item backing the 2s auto-hide timer; cancelled on each mouse move.
+    @State private var fsHideWork: DispatchWorkItem? = nil
 
     /// AVPlayer is created lazily on the first Play press. We keep it as state
     /// rather than recreating it from URL each render so the existing playback
@@ -232,7 +242,47 @@ struct DetailLoupeView: View {
         // Attached to the player frame only (not the control bar) so dragging
         // the scrub bar still scrubs.
         .onDrag { DragExport.provider(for: video.openPath) }
+        // Full screen: reveal the floating control on mouse movement and host it
+        // as a bottom overlay over the video.
+        .onContinuousHover { phase in
+            if fullscreen, case .active = phase { revealFullscreenControls() }
+        }
+        .overlay(alignment: .bottom) {
+            if fullscreen {
+                FullscreenControlBar(
+                    video: video,
+                    isPlaying: isPlaying,
+                    currentTimeSec: currentTimeSec,
+                    durationSec: durationSec > 0 ? durationSec : Double(video.durationMs) / 1000.0,
+                    playbackStarted: playerVideoId == video.id,
+                    volume: gridViewModel.playbackVolume,
+                    hasAudio: !video.codecAudio.isEmpty,
+                    onVolumeChange: { v in
+                        gridViewModel.playbackVolume = v
+                        player?.volume = Float(v) / 100.0
+                    },
+                    onPlayPause: { onPlayPause(for: video) },
+                    onScrub: { seconds in seek(to: seconds) },
+                    onExitFullscreen: onExitFullscreen
+                )
+                .padding(.bottom, 32)
+                .opacity(fsControlsVisible ? 1 : 0)
+                .allowsHitTesting(fsControlsVisible)
+                .animation(.easeInOut(duration: 0.2), value: fsControlsVisible)
+            }
+        }
+        .onChange(of: fullscreen) { _, fs in
+            if fs {
+                revealFullscreenControls()
+            } else {
+                fsHideWork?.cancel()
+                fsControlsVisible = true
+            }
+        }
 
+        // Normal bottom control bar — hidden in full screen (replaced by the
+        // floating overlay above).
+        if !fullscreen {
         ControlBar(
             video: video,
             isPlaying: isPlaying,
@@ -253,6 +303,16 @@ struct DetailLoupeView: View {
             onStepForwardN: { stepFrames(by: stepFrames, for: video) },
             onScrub: { seconds in seek(to: seconds) }
         )
+        }
+    }
+
+    /// Show the full-screen floating control and (re)arm the 2s auto-hide timer.
+    private func revealFullscreenControls() {
+        fsControlsVisible = true
+        fsHideWork?.cancel()
+        let work = DispatchWorkItem { fsControlsVisible = false }
+        fsHideWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2, execute: work)
     }
 
     // MARK: - Player lifecycle
@@ -598,6 +658,71 @@ private struct ControlBar: View {
                 .foregroundColor(Color(.separatorColor)),
             alignment: .top
         )
+    }
+
+    private func formatTime(_ seconds: Double) -> String {
+        let s = Int(max(0, seconds))
+        let h = s / 3600
+        let m = (s % 3600) / 60
+        let sec = s % 60
+        if h > 0 { return String(format: "%d:%02d:%02d", h, m, sec) }
+        return String(format: "%d:%02d", m, sec)
+    }
+}
+
+/// Semi-transparent floating playback control shown over the video in full
+/// screen — a compact `ControlBar`: play/pause, scrubber, volume, and an exit
+/// button. Its visibility is driven by the loupe (auto-hides after 2s).
+private struct FullscreenControlBar: View {
+    let video: VideoSummary
+    let isPlaying: Bool
+    let currentTimeSec: Double
+    let durationSec: Double
+    let playbackStarted: Bool
+    let volume: Int
+    let hasAudio: Bool
+    let onVolumeChange: (Int) -> Void
+    let onPlayPause: () -> Void
+    let onScrub: (Double) -> Void
+    let onExitFullscreen: () -> Void
+
+    private var maxSeconds: Double { max(durationSec, 0.1) }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Button(action: onPlayPause) {
+                Image(systemName: isPlaying ? "pause.fill" : "play.fill").font(.system(size: 20))
+            }
+            .buttonStyle(.borderless)
+            .help(isPlaying ? "Pause" : "Play")
+
+            Text(formatTime(currentTimeSec))
+                .font(.system(size: 10, design: .monospaced))
+                .frame(width: 52, alignment: .trailing)
+            Slider(value: Binding(get: { min(currentTimeSec, maxSeconds) }, set: { onScrub($0) }), in: 0...maxSeconds)
+                .frame(width: 320)
+                .disabled(!playbackStarted)
+            Text(formatTime(durationSec))
+                .font(.system(size: 10, design: .monospaced))
+                .frame(width: 52, alignment: .leading)
+
+            if hasAudio {
+                Image(systemName: volume == 0 ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                    .font(.system(size: 11))
+                Slider(value: Binding(get: { Double(volume) }, set: { onVolumeChange(Int($0)) }), in: 0...100)
+                    .frame(width: 80)
+            }
+
+            Button(action: onExitFullscreen) {
+                Image(systemName: "arrow.down.right.and.arrow.up.left").font(.system(size: 14))
+            }
+            .buttonStyle(.borderless)
+            .help("Exit full screen (f)")
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
+        .background(Color.black.opacity(0.55), in: Capsule())
+        .foregroundColor(.white)
     }
 
     private func formatTime(_ seconds: Double) -> String {

@@ -71,6 +71,14 @@ struct ContentView: View {
     @State private var viewMode: ViewMode = .grid
     /// 'i'-cycling info overlay state — only meaningful in detail mode.
     @State private var infoOverlay: InfoOverlayState = .none
+    /// True while the loupe is in full screen ('f'): all chrome is hidden and a
+    /// semi-transparent floating control replaces the bottom bar. Kept in sync
+    /// with the window's actual full-screen state via the notifications below.
+    @State private var detailFullscreen = false
+    /// When 'f' is pressed from grid/list/map it jumps to a full-frame view of
+    /// the selected video; this is the view to return to on exit. nil = entered
+    /// from the loupe itself, so exit just leaves full screen and stays in detail.
+    @State private var preFullscreenMode: ViewMode? = nil
     /// Non-nil while the "Remove library location?" confirmation alert is shown.
     @State private var locationToRemove: LibraryLocation? = nil
     @State private var collectionToDelete: Collection? = nil
@@ -157,6 +165,21 @@ struct ContentView: View {
                     }
                 }()
             },
+            onToggleFullScreen: {
+                if detailFullscreen {
+                    // Exit (the didExit observer restores the prior view).
+                    NSApp.keyWindow?.toggleFullScreen(nil)
+                } else if viewMode == .detail {
+                    preFullscreenMode = nil
+                    NSApp.keyWindow?.toggleFullScreen(nil)
+                } else if gridViewModel.selectedVideoId != nil {
+                    // From grid/list/map with a selected card: jump straight to a
+                    // full-frame view of it, remembering where to return.
+                    preFullscreenMode = viewMode
+                    viewMode = .detail
+                    NSApp.keyWindow?.toggleFullScreen(nil)
+                }
+            },
             onSpaceBar: {
                 switch viewMode {
                 case .grid, .list:
@@ -207,6 +230,19 @@ struct ContentView: View {
                 }
             }
         ))
+        // Keep `detailFullscreen` in lockstep with the window's real full-screen
+        // state, so a native exit (Esc / green button) also restores the chrome.
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didEnterFullScreenNotification)) { _ in
+            if viewMode == .detail { detailFullscreen = true }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didExitFullScreenNotification)) { _ in
+            detailFullscreen = false
+            // Return to the view 'f' was pressed from (grid/list/map), if any.
+            if let prev = preFullscreenMode {
+                viewMode = prev
+                preFullscreenMode = nil
+            }
+        }
         .sheet(isPresented: $showAddLibrarySheet) {
             AddLibraryDialog(isPresented: $showAddLibrarySheet) { paths, recursive, autoGroup, dateFormat, datePosition in
                 gridViewModel.addLibraryAndScanMultiple(
@@ -407,14 +443,18 @@ struct ContentView: View {
 
     private var mainUI: some View {
         VStack(spacing: 0) {
-            topBar
-            scanBanner
-            postIndexBanner
-            scanResultBanner
-            updateBanner
-            locationFilterBanner
+            // All chrome is hidden in full-screen detail mode, leaving just the
+            // video and its floating control.
+            if !detailFullscreen {
+                topBar
+                scanBanner
+                postIndexBanner
+                scanResultBanner
+                updateBanner
+                locationFilterBanner
+            }
             mainContent
-            bottomBar
+            if !detailFullscreen { bottomBar }
         }
         // Refresh the map's pins from the current filter whenever the map
         // becomes the active view. Filter edits made while the map is up
@@ -885,8 +925,10 @@ struct ContentView: View {
         HStack(spacing: 0) {
             // Left panel — in detail mode the slot shows the brightness/colour
             // graphs (a per-video view); otherwise the library navigation panel
-            // or its collapsed strip.
-            if leftPanelExpanded {
+            // or its collapsed strip. Hidden entirely in full-screen detail mode.
+            if detailFullscreen {
+                // no panel in full screen
+            } else if leftPanelExpanded {
                 if viewMode == .detail {
                     DetailGraphsPanel(
                         gridViewModel: gridViewModel,
@@ -998,7 +1040,7 @@ struct ContentView: View {
                 )
             }
 
-            Divider()
+            if !detailFullscreen { Divider() }
 
             // Middle column — the Library Filter bar pinned above the grid /
             // list. Living between the two panel dividers makes the bar stop at
@@ -1109,7 +1151,9 @@ struct ContentView: View {
                         infoOverlay: infoOverlay,
                         playToggle: detailPlayToggle,
                         stepBackToggle: detailStepBackToggle,
-                        stepForwardToggle: detailStepForwardToggle
+                        stepForwardToggle: detailStepForwardToggle,
+                        fullscreen: detailFullscreen,
+                        onExitFullscreen: { NSApp.keyWindow?.toggleFullScreen(nil) }
                     )
                     .frame(maxWidth: .infinity)
                 case .map:
@@ -1136,13 +1180,15 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity)
 
-            Divider()
+            if !detailFullscreen { Divider() }
 
             // Right detail panel — its drag handle sits on the LEFT
             // edge (between the divider and the panel body) so drags
             // toward the right narrow the panel, drags toward the
-            // left widen it.
-            if rightPanelExpanded {
+            // left widen it. Hidden entirely in full-screen detail mode.
+            if detailFullscreen {
+                // no panel in full screen
+            } else if rightPanelExpanded {
                 PanelResizeHandle(isLeftPanel: false,
                                   currentWidth: rightPanelWidth) { newWidth in
                     setRightPanelWidth(newWidth)
@@ -1416,6 +1462,8 @@ struct GlobalKeyboardShortcuts: ViewModifier {
     let onSetMapMode: () -> Void
     /// Plain 'i' — cycle the info overlay through none → camera → file → none.
     let onCycleInfoOverlay: () -> Void
+    /// Plain 'f' — toggle full-screen video playback (detail mode only).
+    let onToggleFullScreen: () -> Void
     /// Space bar — toggle inline playback (grid) or play/pause (detail).
     let onSpaceBar: () -> Void
     /// Digits 0..5 — set a star rating on every selected video. 0 clears.
@@ -1543,6 +1591,9 @@ struct GlobalKeyboardShortcuts: ViewModifier {
                     return nil
                 case 34:
                     onCycleInfoOverlay()
+                    return nil
+                case 3:
+                    onToggleFullScreen()
                     return nil
                 // Number-row digits. macOS keyCodes: 1=18, 2=19, 3=20, 4=21,
                 // 5=23, 6=22, 7=26, 8=28, 9=25, 0=29. Yes, 5 and 6 are

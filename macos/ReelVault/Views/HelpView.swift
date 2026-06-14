@@ -227,6 +227,7 @@ struct HelpView: View {
                             ("D",       "Detail / Catalog view"),
                             ("M",       "Map view"),
                             ("I",       "Cycle info overlay (Detail mode: none → camera → file → …)"),
+                            ("F",       "Detail view — toggle full screen"),
                             ("Tab",     "Toggle both side panels"),
                             ("Space",   "Play / pause selected clip"),
                             ("0–5",     "Rate the selected clips (0 clears)"),
