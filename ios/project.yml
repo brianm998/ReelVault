@@ -36,7 +36,7 @@ targets:
         # code free of strict-concurrency churn; ReelVaultKit stays Swift 6.
         SWIFT_VERSION: "5.0"
         CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: $(APPLE_TEAM_ID)
+        DEVELOPMENT_TEAM: G3L75S65V9
 
 schemes:
   ReelVault:
