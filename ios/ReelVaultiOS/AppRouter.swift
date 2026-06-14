@@ -92,12 +92,13 @@ final class AppRouter: ObservableObject {
             return
         }
 
-        // Use a stored token if we have one; otherwise pair if the server asks.
+        // Use a stored token if we have one; otherwise prompt for the pairing
+        // code. Desktop-initiated model: the operator mints the code on a
+        // connected computer (ReelVault ▸ File ▸ Pair a New Device…); this device
+        // only redeems it via POST /pair. So we don't call /pair/start here —
+        // we go straight to the code-entry screen.
         let token = TokenStore.load(for: pin)
         if token == nil && server.requiresPairing {
-            _ = await PairingClient().startPairing(
-                host: server.host, mediaPort: server.mediaPort ?? 50052, fingerprintHex: pin
-            )
             pending = (server, pin)
             phase = .needsPairing(server)
             return

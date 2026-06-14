@@ -36,6 +36,7 @@ struct ContentView: View {
     @AppStorage("accentScheme") private var accentScheme: String = "blue"
     @State private var showAddLibrarySheet = false
     @State private var showHelpSheet = false
+    @State private var showPairDeviceSheet = false
     @State private var showWatchSettingsSheet = false
     @State private var showPlaybackSettingsSheet = false
     @State private var showCameraNamesSheet = false
@@ -434,12 +435,11 @@ struct ContentView: View {
         .onChange(of: appState.clearRecentsRequestToken) { _, _ in
             for path in recents.list() { recents.remove(path) }
         }
-        .onChange(of: appState.showHelpRequestToken) { _, _ in
-            showHelpSheet = true
-        }
-        .sheet(isPresented: $showHelpSheet) {
-            HelpView()
-        }
+        .modifier(AppCommandSheets(
+            appState: appState,
+            showHelp: $showHelpSheet,
+            showPairDevice: $showPairDeviceSheet
+        ))
     }
 
     private var mainUI: some View {
@@ -1655,6 +1655,23 @@ struct GlobalKeyboardShortcuts: ViewModifier {
         if firstResponder.isKind(of: NSTextView.self) { return true }
         if firstResponder.isKind(of: NSTextField.self) { return true }
         return false
+    }
+}
+
+/// Bundles the menu-command-driven sheets (Help, Pair a New Device) into a
+/// single modifier. Folding these out of `ContentView.body` keeps that already
+/// very large view expression under the SwiftUI type-checker's inference limit.
+private struct AppCommandSheets: ViewModifier {
+    @ObservedObject var appState: AppState
+    @Binding var showHelp: Bool
+    @Binding var showPairDevice: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: appState.showHelpRequestToken) { _, _ in showHelp = true }
+            .sheet(isPresented: $showHelp) { HelpView() }
+            .onChange(of: appState.pairDeviceRequestToken) { _, _ in showPairDevice = true }
+            .sheet(isPresented: $showPairDevice) { PairDeviceSheet() }
     }
 }
 

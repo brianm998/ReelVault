@@ -63,9 +63,10 @@ struct PairingCodeView: View {
             Form {
                 Section {
                     Label("Pair with \(server.name)", systemImage: "lock.shield")
-                    Text("A 6-digit code is shown on the computer running ReelVault "
-                         + "(in the desktop app or the daemon log). Enter it to pair "
-                         + "this device — you only do this once.")
+                    Text("On the computer running ReelVault, choose File ▸ Pair a "
+                         + "New Device to show a 6-digit code (a headless server "
+                         + "also logs it). Enter it below to pair this device — you "
+                         + "only do this once.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

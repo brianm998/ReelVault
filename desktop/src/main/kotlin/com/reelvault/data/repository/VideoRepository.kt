@@ -86,6 +86,26 @@ class VideoRepository(
         return@withContext channel != null && !channel!!.isShutdown
     }
 
+    /** A freshly-minted one-time pairing code for authorizing a remote device. */
+    data class PairingCode(val code: String, val expiresAtMs: Long)
+
+    /**
+     * Ask the daemon to mint a one-time 6-digit pairing code (over the loopback
+     * connection). The operator reads it off this client and types it on a new
+     * device (the iOS app), which redeems it at the daemon's pairing endpoint.
+     * Returns `null` if not connected or the call fails.
+     */
+    suspend fun startPairing(): PairingCode? = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext null
+        return@withContext try {
+            val resp = s.startPairing(Reelvault.StartPairingRequest.newBuilder().build())
+            PairingCode(code = resp.code, expiresAtMs = resp.expiresAtMs)
+        } catch (e: Exception) {
+            logger.error("StartPairing failed: ${e.message}", e)
+            null
+        }
+    }
+
     private fun protoToVideoSummary(proto: Reelvault.VideoSummary): VideoSummary {
         return VideoSummary(
             id = proto.id,

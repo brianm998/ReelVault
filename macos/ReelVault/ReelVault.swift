@@ -78,6 +78,14 @@ struct ReelVaultApp: App {
                         }
                     }
                 }
+
+                Divider()
+
+                // Mint a one-time code so a phone/tablet can pair with this
+                // server. The code is shown in a sheet (see ContentView).
+                Button("Pair a New Device…") {
+                    appState.requestPairDevice()
+                }
             }
 
             // Replace the default Help menu so we can launch our own panel.
@@ -110,6 +118,7 @@ final class AppState: ObservableObject {
     @Published private(set) var openRecentRequest: (token: Int, path: String) = (0, "")
     @Published private(set) var clearRecentsRequestToken: Int = 0
     @Published private(set) var showHelpRequestToken: Int = 0
+    @Published private(set) var pairDeviceRequestToken: Int = 0
 
     func requestOpenCatalog() { openCatalogRequestToken += 1 }
     func requestCloseCatalog() { closeCatalogRequestToken += 1 }
@@ -118,6 +127,7 @@ final class AppState: ObservableObject {
     }
     func requestClearRecents() { clearRecentsRequestToken += 1 }
     func requestShowHelp() { showHelpRequestToken += 1 }
+    func requestPairDevice() { pairDeviceRequestToken += 1 }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
