@@ -1,14 +1,45 @@
 # Running the ReelVault Core Directly on iOS
 
-> **Audience:** an engineer/agent who will implement on-device iOS support for
+> **Audience:** the engineer/agent who will implement on-device iOS support for
 > the Rust core (`core/`), reaching **full functional parity** with the desktop
-> daemon. This document is the design + work breakdown. It is grounded in the
-> code as of this writing — file/line references are included so you can verify
-> every claim before acting on it.
+> daemon. This is the design **and** the executable work plan.
 >
-> **Status:** design proposal. Nothing here is built yet. Decisions marked
-> **[DECISION NEEDED]** must be resolved (mostly by the project owner) before or
-> during implementation.
+> **Status:** implementation-ready plan. Nothing here is built yet, but every
+> code reference below was **verified against the tree at commit `3c8bf2f`
+> (2026-06-14)**. Line numbers drift — re-grep the symbol name before editing,
+> but the symbols and signatures are current as of that commit.
+>
+> **Strategic context (decided by the project owner, 2026-06-14):** there is *no
+> rush to ship on the App Store*. The goal is the **long-term answer: full
+> desktop parity on-device**, not the minimal App-Review slice. That single
+> decision unlocks the licensing path (see [§0](#0-decisions-locked) and
+> [§8.4](#84-licensing--distribution)) and makes the linked-decoder hybrid the
+> real target rather than a "maybe later" phase. The lighter, pure-Swift
+> `LocalVideoRepository` alternative is described in
+> [`IOS_REVIEW_LOCAL_MODE.md`](IOS_REVIEW_LOCAL_MODE.md) and is **not** the path
+> being taken.
+
+---
+
+## 0. Decisions locked
+
+These were open `[DECISION NEEDED]` items in the prior draft. Given the "full
+parity, no App-Store deadline" steer, they are now resolved. They can still be
+revisited, but build against them.
+
+| # | Decision | Resolution | Rationale |
+|---|---|---|---|
+| D1 | Native backend strategy (A: linked FFmpeg / B: Apple frameworks / C: hybrid) | **C — hybrid. Build B first as the foundation, then add the A fallback.** | B gets a working, fast, hardware-accelerated app quickly; the linked-`libav` fallback then closes the codec gap for true parity. |
+| D2 | App Store vs. GPL-3 conflict | **Distribute off-store (dev/ad-hoc/TestFlight/enterprise). GPL is fine off-store; the conflict is specifically Apple's App Store ToS, not GPL itself.** | No deadline → no need to neuter the build to be "App-Store-clean." Linking GPL `libav*` is legal when not distributed through the App Store. Revisit only if App Store distribution ever becomes a goal. |
+| D3 | Embedding transport (in-process gRPC vs. UniFFI) | **In-process gRPC.** | Reuses `service.rs`, the whole proto surface, and the existing `VideoRepository` client unchanged. See [§7](#7-how-the-app-embeds-the-core). |
+| D4 | Write metadata back to source files on iOS | **Catalog-only for v1.** | You generally cannot rewrite a Photos-library original in place; the write-tag RPCs become no-ops for Photos sources. See [§6.5](#65-tag-writing-creation-time--gps). |
+| D5 | XMP sidecars in v1 | **Read path: keep (already native). Write path: defer.** | `xmp::read_xmp` is *already* pure-Rust regex (`xmp.rs:233-284`) — iOS-safe today. Only the `exiftool` **write** path (`xmp.rs:681`) is a subprocess, and it's out of scope for v1. |
+| D6 | Schema migration for source identity | **Additive `source_kind` + `source_id` columns on `videos`, via the existing inline migration array.** | `db.rs` migrations are an inline `(label, sql)` array that ignores duplicate-column errors — adding two `ALTER TABLE ADD COLUMN`s is clean and backward-compatible. See [§6.9](#69-ingest--data-model-photos--files). |
+| D7 | Scope of "videos already on device" for v1 | **Photos library first, Files/bookmarks second** (both behind the same `MediaSource` enum). | Photos is the dominant case and has the cleanest API; Files adds security-scoped-bookmark plumbing that can land in a follow-up. |
+
+Still genuinely open (need empirical answers, not opinions): **ProRes RAW decode
+on target iOS devices** (see [§6.2](#62-options-for-the-native-backend) and
+[§11](#11-open-questions-that-still-need-answers)).
 
 ---
 
@@ -17,7 +48,9 @@
 ReelVault wants an iOS client that supports:
 
 1. **Remote mode** — the phone is on the same Wi‑Fi as a machine running the
-   Rust daemon, and browses that catalog over the network.
+   Rust daemon and browses that catalog over the network. **This already exists**
+   (`ios/`, `kit/`): mDNS discovery, pinned TLS, pairing. It is the
+   feature/ios-client work and needs no core port.
 2. **On-device mode** — the phone catalogs and views videos that already live on
    the device (Photos library / Files), with the core running **inside the app**.
 
@@ -25,120 +58,221 @@ This document is about making use case 2 work *with all existing functionality*
 (metadata extraction, still + scrub thumbnails, ProRes RAW frames, proxy
 generation, grouping, proxy detection, tags/collections, search, watching).
 
-Use case 1 needs almost no core change and is covered briefly in
-[§9](#9-use-case-1-remote-mode-ships-independently). **Ship it first** — it is
-days of work, not weeks, and it de-risks the client UI.
-
 ---
 
 ## 2. TL;DR verdict
 
 - **The language/runtime port is not the hard part.** Rust cross-compiles to
   `aarch64-apple-ios` cleanly. `rusqlite` (bundled SQLite), `tokio`, `tonic`,
-  `prost`, `image`, `rayon`, `serde`, `chrono`, `regex`, `walkdir` all build for
-  iOS. Roughly **half the crate is reused as-is**: `db.rs`, `search.rs`,
+  `prost`, `image`, `rayon`, `serde`, `chrono`, `regex`, `walkdir`, `uuid` all
+  build for iOS. Roughly **half the crate is reused as-is**: `db.rs`, `search.rs`,
   `grouping.rs`, `post_index.rs`, `metadata_keys.rs`, `camera_names.rs`,
-  `full_resolution.rs`, `path_templates.rs`, `imagehash.rs`, and the *business
-  logic* in `service.rs`.
+  `full_resolution.rs`, `path_templates.rs`, `imagehash.rs`, and most of the
+  *business logic* in `service.rs`.
 - **The hard part is that the entire media pipeline shells out to external
   command-line binaries, and iOS forbids that.** A sandboxed iOS app cannot
   `fork`/`exec` a separate executable (`ffmpeg`, `ffprobe`, `exiftool`, `curl`,
   `qlmanage`), and cannot stage-and-exec a compiled helper (`rv-frameshot`).
   Every one of those call sites must be replaced with a **linked library or an
-  Apple framework**. See [§4.1](#41-constraint-1-no-subprocesses-the-big-one).
+  Apple framework**. See [§3.2](#32-the-media-pipeline--external-processes) and
+  [§4.1](#41-constraint-1-no-subprocesses-the-big-one).
 - **The deployment model also changes.** There is no long-lived background
   daemon on iOS, and the catalog's "filesystem path + recursive watcher" data
   model doesn't match the Photos/Files sandbox. These are adaptations, not
-  rewrites, but they touch real surface area.
+  rewrites.
 - **Key architectural lever:** keep the gRPC seam and run the server
   **in-process** inside the app. Then *both* use cases collapse to "connect to a
   gRPC endpoint" — remote vs. local is just a different host — and the existing
-  SwiftUI gRPC client and `service.rs`/`into_server()` are reused unchanged. The
-  only genuinely new core work becomes the **media backend**, the **ingest/data
-  model**, and **lifecycle**. See [§7](#7-how-the-app-embeds-the-core).
-- **Distribution risk:** the crate is **GPL‑3.0‑or‑later** (`core/Cargo.toml`),
-  and a GPL binary linked against a GPL FFmpeg build is in long-standing tension
-  with the App Store's terms. This is a real blocker for App Store distribution
-  and must be resolved at the project level. See
-  [§8.4](#84-licensing-gpl-3-vs-the-app-store-decision-needed).
+  `VideoRepository` client and `service.rs`/`into_server()` are reused unchanged.
+  The macOS client already does almost exactly this, except it *spawns a separate
+  process* (`macos/.../ServerLauncher.swift`); iOS does the same thing
+  **in-process** because it can't spawn. See [§7](#7-how-the-app-embeds-the-core).
+- **Distribution:** the crate is **GPL‑3.0‑or‑later** (`core/Cargo.toml:5`).
+  Per [D2](#0-decisions-locked) we distribute off the App Store, where GPL is not
+  a problem. See [§8.4](#84-licensing--distribution).
 
 **Bottom line:** the core does **not** need a ground-up rewrite. It needs (a) a
 media-I/O abstraction with a native iOS implementation, (b) an
 ingest/data-model adaptation for the Photos/Files sandbox, and (c) a change from
-"spawn a daemon" to "embed a library / run the server in-process". Estimate is
+"spawn a daemon" to "embed a library and run the server in-process." Estimate is
 in [§10](#10-phased-plan).
 
 ---
 
-## 3. How the core works today (the parts that matter for porting)
+## 3. How the core works today (verified)
 
-### 3.1 Process shape
+### 3.1 Process shape and the embed seam already exists
 
-`core/src/main.rs` is a daemon: it binds a **TCP** gRPC server on loopback
-(`127.0.0.1:50051` by default, `core/src/main.rs:156`–`184`), opens a SQLite
-catalog, optionally runs as a launchd/systemd/Windows service, and raises the
-file-descriptor `rlimit` via `nix` (`core/src/main.rs:201`, `#[cfg(unix)]`).
+`core` is **already structured as a library plus two binaries** — this is the
+single most important fact for the embed:
 
-The actual API lives in `core/src/service.rs`: `ReelVaultService`
-(`service.rs:34`) is constructed with `ReelVaultService::new(db, config)`
-(`service.rs:74`) and turned into a tonic server with `into_server()`
-(`service.rs:133`). It holds `Arc<Database>`, `Arc<Config>`, a watcher handle, a
-`broadcast` bus for live `CatalogEvent`s, and per-video scrub locks. **The
-service methods are the whole product surface** — ~60 RPCs (`service.rs`, every
-`async fn` from line 1077 onward; mirror of `core/proto/reelvault.proto`).
+```toml
+# core/Cargo.toml
+[lib]                              # line 10
+name = "reelvault_core"
+path = "src/lib.rs"
+
+[[bin]]                            # line 119
+name = "reelvault-core"           # the daemon (src/main.rs)
+[[bin]]                            # line 123
+name = "reelvault-cli"            # src/bin/cli.rs
+```
+
+`core/src/lib.rs` exports `pub mod service` (and the rest). **Anything that can
+construct `ReelVaultService` and call `into_server()` gets the full product** —
+the daemon binary is just one such caller.
+
+`core/src/main.rs` is the daemon: it parses args (`--port`, default `50051`,
+`main.rs:52`; `--host`, default `127.0.0.1`, `main.rs:57`, with the literal
+comment "note: there's no auth!" at `main.rs:56`), builds a multi-threaded tokio
+runtime, opens a SQLite catalog, raises the fd `rlimit` via `nix`
+(`raise_fd_limit()`, `#[cfg(unix)]`, `main.rs:459`, called at `main.rs:180`),
+optionally runs as a launchd/systemd/Windows service, chooses per-OS data dirs
+(`get_data_dir(system_daemon)`, `main.rs:545-571`), constructs the service
+(`main.rs:267`):
+
+```rust
+let service = ReelVaultService::new(db, config, pairing, data_dir);
+```
+
+…and binds a **TCP** gRPC server (`TcpListener::bind`, `main.rs:277`).
+
+The API lives in `core/src/service.rs`:
+
+```rust
+#[derive(Clone)]
+pub struct ReelVaultService {            // service.rs:34
+    db: Arc<Database>,                   // :35
+    config: Arc<Config>,                 // :36
+    // opened_at, scrub_locks (:44), …
+    catalog_events: broadcast::Sender<CatalogChange>,   // :51  (capacity 256, set at :92)
+    watcher: Arc<Mutex<Option<LibraryWatcher>>>,        // :55
+    watch_settings: …,                                  // :60
+    pairing: crate::pairing::PairingState,              // :63
+    data_dir: PathBuf,                                  // :65
+}
+
+pub fn new(db: Arc<Database>, config: Arc<Config>,
+           pairing: PairingState, data_dir: PathBuf) -> Self  // service.rs:79
+pub fn into_server(self) -> ReelVaultServer<Self>              // service.rs:145
+```
+
+> **Drift correction vs. prior draft:** `new()` now takes **four** args
+> (`db, config, pairing, data_dir`), not two. The watcher is **not** passed in —
+> it is booted *inside* `new()` as a `tokio::spawn(restart_watcher())`
+> (`service.rs:114-119`) when `config.watch_enabled` and a catalog is open.
+
+The trait impl (`#[tonic::async_trait] impl ReelVaultTrait for ReelVaultService`,
+`service.rs:1083`) implements **59 RPCs** (mirror of
+`core/proto/reelvault.proto`). Four are streaming, via these associated types
+(`service.rs:1084-1088`):
+
+```rust
+type ScanLibraryStream            = …Stream<Item=Result<ScanProgress,Status>>;
+type GenerateProxyStream          = …Stream<Item=Result<ProxyGenerationProgress,Status>>;
+type GetThumbnailStream           = …Stream<Item=Result<ThumbnailChunk,Status>>;
+type SubscribeCatalogEventsStream = …Stream<Item=Result<CatalogEvent,Status>>;
+```
 
 > **Implication:** anything that can call `ReelVaultService` methods (in-process
 > or over gRPC) gets the full product. The transport is incidental.
 
-### 3.2 The media pipeline = external processes
+There is also a **pairing module** (`crate::pairing::PairingState`) and a
+**separate media server on its own port** (the client models `mediaPort` in
+`DiscoveredServer`). Neither is needed for the on-device case — originals are
+local, so there's nothing to stream over a media port — but the embed must
+construct a `PairingState` to satisfy `new()` (a throwaway/loopback instance is
+fine). See [§7.4](#74-what-to-drop-for-the-embed).
 
-This is the crux. Every media operation runs a CLI tool:
+### 3.2 The media pipeline = external processes (the crux)
 
-| Operation | Tool | Call site(s) |
-|---|---|---|
-| Metadata extraction | `ffprobe -print_format json` | `core/src/metadata.rs:48` |
-| ffprobe availability probe | `ffprobe` | `core/src/metadata.rs:279` |
-| Still thumbnail (frame @ 50%) | `ffmpeg -ss …` | `core/src/thumbnails.rs:106`, resize `:142`, `:166` |
-| Scrub thumbnails (10 frames) | `ffmpeg` | `core/src/thumbnails.rs:297` |
-| On-demand frame at width | `ffmpeg` | `core/src/thumbnails.rs:421` |
-| ProRes RAW frame (timestamped) | `rv-frameshot` (AVFoundation helper) | `core/src/thumbnails.rs:640` |
-| Poster fallback | `qlmanage -t` | `core/src/thumbnails.rs:675` (macOS only) |
-| QuickLook PNG → JPEG | `ffmpeg` | `core/src/thumbnails.rs:693` |
-| Proxy transcode (H.264/AAC) | `ffmpeg … libx264` | `core/src/proxies.rs:766` |
-| Write GPS/location tag | `ffmpeg -metadata` | `core/src/metadata.rs:335` |
-| Write creation-time tag | `ffmpeg -metadata` | `core/src/metadata.rs:418`, `:457` |
-| XMP sidecar read/write | `exiftool` | `core/src/xmp.rs:645`, `:681` |
-| Camera sensor-spec fetch | `curl` | `core/src/sensor_cache.rs:245` |
+Every media operation runs a CLI tool. Binary resolution is centralized in
+`core/src/ffmpeg.rs` — `pub fn ffmpeg_command() -> Command` (`ffmpeg.rs:78`) and
+`pub fn ffprobe_command() -> Command` (`ffmpeg.rs:83`) — and **every ffmpeg/
+ffprobe call site goes through them**. That centralization is the natural seam to
+abstract ([§6.1](#61-the-media-backend-trait-the-core-of-the-port)).
 
-The binary resolution is centralized: `core/src/ffmpeg.rs` resolves `ffmpeg`/
-`ffprobe` to a bundled-next-to-the-daemon copy or `PATH`, and **every call site
-goes through `ffmpeg_command()` / `ffprobe_command()`** (`ffmpeg.rs:79`, `:84`).
-That centralization is a gift — it's the natural seam to abstract (see
-[§6.1](#61-the-media-backend-trait-the-core-of-the-port)).
+| Operation | Tool | Call site | Trait method |
+|---|---|---|---|
+| Metadata extraction | `ffprobe … -of json` | `metadata.rs:48` | `probe` |
+| ffprobe availability probe | `ffprobe` | `metadata.rs:279` | backend capability flag |
+| **Audio loudness** *(missed in prior draft)* | `ffmpeg` | `metadata.rs:1068` | `extract_loudness` |
+| Still thumbnail (frame @ 50%) | `ffmpeg -ss …` | `thumbnails.rs:106`, resize `:142` | `extract_frame` |
+| Scrub thumbnails (×10, 5%→95%) | `ffmpeg` | `thumbnails.rs:297` | `extract_frame` loop |
+| On-demand frame at width | `ffmpeg` | `thumbnails.rs:421` | `extract_frame` |
+| **Color-info probe** *(missed in prior draft)* | `ffprobe` | `thumbnails.rs:480` | `probe_color` |
+| ProRes RAW frame (timestamped) | `rv-frameshot` (AVFoundation) | `thumbnails.rs:640` | `extract_frame` (native) |
+| Poster fallback | `qlmanage -t` | `thumbnails.rs:675` (macOS only) | drop on iOS |
+| QuickLook PNG → JPEG | `ffmpeg` | `thumbnails.rs:693` | native writes JPEG directly |
+| Proxy transcode (H.264/AAC) | `ffmpeg … libx264` | `proxies.rs:734` | `transcode_proxy` |
+| Write GPS/location tag | `ffmpeg -metadata` | `metadata.rs:335` | `write_location` (no-op on iOS, [D4](#0-decisions-locked)) |
+| Write creation-time tag | `ffmpeg -metadata` | `metadata.rs:418` | `write_creation_time` (no-op on iOS) |
+| Camera sensor-spec fetch | `curl` | `sensor_cache.rs:245` (`fetch_via_curl`, `:243`) | replace with `reqwest` (desktop too) |
+| XMP sidecar **write** | `exiftool` | `xmp.rs:681` | defer ([D5](#0-decisions-locked)) |
 
-`rv-frameshot` is special: `core/build.rs` (`emit_frameshot`, line 19) compiles
-`core/macos/rv-frameshot.swift` with `swiftc` **only when the target OS is
-macOS**, embeds the Mach-O bytes, and `core/src/thumbnails.rs:600`–`620` writes
-those bytes to a temp file, `chmod 0755`, and execs it. **None of this works on
-iOS** (no stage-and-exec), but the build guard already emits
-`FRAMESHOT_BIN = None` for non-macOS targets, so an iOS build compiles — it just
-has no frame extractor until we add one.
+> **Correction — XMP read is already native.** `xmp::read_xmp` (the path the
+> metadata merge actually uses, `metadata.rs:115`) is a **pure-Rust regex
+> parser** (`xmp.rs:233-284`). The only `exiftool` subprocesses are the sidecar
+> **write** (`xmp.rs:681`) and a test (`xmp.rs:645`). So the read/merge half is
+> iOS-safe today; only the write half is out of scope.
+
+`rv-frameshot` is special: `core/build.rs` (`emit_frameshot`, `build.rs:21`,
+guarded by `CARGO_CFG_TARGET_OS == "macos"` at `build.rs:28`) compiles
+`core/macos/rv-frameshot.swift` with `swiftc` **only on macOS**, embeds the
+Mach-O bytes as `FRAMESHOT_BIN`, and `thumbnails.rs:630-640` (`frameshot_extract`)
+stages it to `/tmp/reelvault-rv-frameshot` (`frameshot_path()`, `:601`), `chmod
+0755`, and execs it. **None of this works on iOS** (no stage-and-exec), but the
+build guard already emits `FRAMESHOT_BIN = None` for non-macOS targets, so an iOS
+build compiles — it just has no frame extractor until we add one. Note: the
+*logic* of `rv-frameshot.swift` (AVAssetImageGenerator at a timestamp) is exactly
+what the iOS native backend re-implements **in-process** instead of via exec.
 
 Concurrency of these external processes is bounded by a blocking semaphore
-(`core/src/concurrency.rs`, `acquire_ffmpeg_permit()`), default = CPU count.
+(`core/src/concurrency.rs`): `acquire_ffmpeg_permit()` (`:83`), default count
+from `default_max_concurrent_ffmpeg()` (`:67`, = `available_parallelism()` or 4),
+settable via `set_ffmpeg_concurrency_limit(n)` (`:77`). On iOS this same
+semaphore throttles native decode/encode sessions instead of subprocesses.
 
-### 3.3 Data model and watching
+### 3.3 Data model and watching (verified)
 
-- Identity is a **filesystem path**: `videos.path TEXT UNIQUE` (see `CLAUDE.md`
-  schema; `db.rs`). Scanning walks `library_locations` recursively with
-  `walkdir` (`core/src/indexing.rs`).
-- The watcher (`core/src/watcher.rs:37`, `:202`) wraps
-  `notify::RecommendedWatcher` (FSEvents/inotify) with a poll fallback for
-  NFS/SMB, and feeds change events into the `CatalogEvent` broadcast.
-- `post_index.rs` folds auto-grouping and proxy-detection into the scan; the
-  CPU-heavy part is JPEG decode + dHash (`imagehash.rs`, pure Rust — **iOS-safe**).
-- Caches/config paths are chosen per-OS in `core/src/config.rs:225` (a
-  `macos`/`windows`/`else` split) and `core/src/main.rs:301`.
+- Identity is a **filesystem path**. The real `videos` schema
+  (`core/schema.sql:15-28`) is:
+  ```sql
+  CREATE TABLE IF NOT EXISTS videos (
+    id TEXT PRIMARY KEY,          -- UUID string, not the INTEGER in CLAUDE.md's sketch
+    path TEXT UNIQUE NOT NULL,
+    filename TEXT NOT NULL,
+    volume_id TEXT, hash TEXT UNIQUE, file_size_bytes INTEGER,
+    indexed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP, modified_at TIMESTAMP,
+    is_online INTEGER DEFAULT 1, group_id TEXT, group_position INTEGER NOT NULL DEFAULT 0
+  );
+  ```
+- **Migrations are an inline array, not `rusqlite_migration`.** `db.rs`
+  `initialize_conn` (`:310`) runs a `(label, sql)` array (`db.rs:322-438`) with
+  `conn.execute` (`:440`); duplicate-column errors are ignored (`:444-446`), so
+  re-running is idempotent. Adding columns is a one-line append (see
+  [§6.9](#69-ingest--data-model-photos--files)).
+- Scanning: `indexing::scan_directory(db, config, on_progress)`
+  (`indexing.rs:154`) walks `library_locations` recursively with `walkdir`
+  (`:181`), extracts metadata in parallel with rayon (`par_iter`, `:234`), and
+  feeds each video to a `post_index` worker pool (`post_index::spawn`, `:207`).
+  Single-file path: `scan_single_file` (`indexing.rs:445`).
+- The watcher (`watcher.rs`): `notify::recommended_watcher` (`:202`) with a poll
+  fallback (`poll_paths`, `:540`) for NFS/SMB; `sweep_pending` (`:396`) settles
+  changes and publishes the `CatalogChange` enum (`watcher.rs:61`) into the
+  service broadcast.
+- `post_index.rs` folds auto-grouping + proxy-detection + sensor-fetch +
+  timelapse-tagging into the scan (`process_one`, `:653`; worker pool
+  `spawn_with_workers`, `:568`, `DEFAULT_NUM_WORKERS = 3`). It is idempotent
+  (filters on `group_id IS NULL`, `proxy_of IS NULL`, etc.), so a killed scan
+  catches up on the next run. The CPU-heavy part is JPEG decode + image
+  similarity in `imagehash.rs` — **pure Rust** (`image::open` + `resize_exact` +
+  `to_luma8` + mean-absolute-difference; note: **MAD, not dHash** — the prior
+  draft said dHash). **iOS-safe.**
+- Caches/config paths: `config::default_cache_path()` (`config.rs:243-258`) is a
+  `cfg!(target_os)` `macos`/`windows`/`else` split using the `dirs` crate. Needs
+  an iOS arm ([§6.10](#610-config--paths)).
 
 ---
 
@@ -150,77 +284,79 @@ App Store / sandboxed iOS apps cannot launch separate executables. `posix_spawn`
 / `NSTask` are unavailable, there is no `/usr/bin`, and you cannot write a binary
 to a temp dir and exec it (W^X / code-signing / no JIT entitlement). **Every row
 in the table in [§3.2](#32-the-media-pipeline--external-processes) must be
-re-implemented against a linked library or Apple framework.** This is the
-single largest body of work.
+re-implemented against a linked library or Apple framework.** This is the single
+largest body of work.
 
 ### 4.2 Constraint 2 — no daemon, and the app gets suspended
 
 There is no persistent background process. The app is foregrounded, backgrounded,
 and suspended at the OS's discretion. Consequences:
 
-- Don't ship `main.rs` as-is. Embed the core as a **library**.
-- Long scans must cooperate with the app lifecycle (`BGProcessingTaskRequest`
-  for opportunistic background indexing; checkpoint so a killed scan resumes —
-  `post_index.rs` is already idempotent/catch-up by design).
+- Don't ship `main.rs` as-is. Embed the core as a **library** via a small FFI
+  entry point ([§7.2](#72-the-ffi-entry-point)).
+- Long scans must cooperate with the app lifecycle (`BGProcessingTaskRequest` for
+  opportunistic indexing; checkpoint so a killed scan resumes — `post_index.rs`
+  is already idempotent/catch-up).
 - The `notify`-based watcher does not fit (see Constraint 3).
 
 ### 4.3 Constraint 3 — sandboxed storage, no stable paths
 
 "Videos already on the device" almost always means:
 
-- **Photos library** — accessed as `PHAsset` via PhotoKit. A `PHAsset` has a
-  stable **local identifier**, *not* a stable filesystem path. You read frames
-  via `PHImageManager`/`AVAsset`, not by opening a path.
-- **Files / iCloud Drive / external drives** — accessed via document pickers and
-  **security-scoped bookmarks**, which must be resolved and
+- **Photos library** — `PHAsset` via PhotoKit. A `PHAsset` has a stable **local
+  identifier**, *not* a stable filesystem path. Read frames via
+  `PHImageManager`/`AVAsset`, not by opening a path.
+- **Files / iCloud Drive / external drives** — document pickers and
+  **security-scoped bookmarks**, resolved and
   `startAccessingSecurityScopedResource()`'d each session.
 
 The core's `videos.path TEXT UNIQUE` identity and `walkdir` recursion don't map
-to either. This needs an **ingest/identity adaptation** ([§6.9](#69-ingest--data-model-photos--files)).
-`notify` recursive watching also doesn't apply — use PhotoKit change observers
-(`PHPhotoLibraryChangeObserver`) and/or scan-on-foreground instead.
+to either. This needs the **ingest/identity adaptation** in
+[§6.9](#69-ingest--data-model-photos--files). `notify` recursive watching also
+doesn't apply — use `PHPhotoLibraryChangeObserver` and/or scan-on-foreground.
 
 ### 4.4 Constraint 4 — build, link, and codesign
 
-- Build `staticlib`/`cdylib` for `aarch64-apple-ios` (device),
-  `aarch64-apple-ios-sim` + `x86_64-apple-ios-sim` (simulator), packaged as an
-  **XCFramework**.
-- `build.rs` runs on the **host** during cross-compilation: `tonic-build`
-  (needs `protoc`) and the sensor-table codegen are fine; the `swiftc`
-  `rv-frameshot` step is correctly skipped for non-macOS targets.
-- If you link FFmpeg (Option A below), you need iOS-built `libav*` static
-  libraries (e.g. the `ffmpeg-kit`/`mobile-ffmpeg` iOS XCFrameworks, or a custom
-  build), plus `-framework VideoToolbox/CoreMedia/AudioToolbox`.
+- Build `staticlib` for `aarch64-apple-ios` (device), `aarch64-apple-ios-sim` +
+  `x86_64-apple-ios-sim` (simulator), packaged as an **XCFramework**.
+- `build.rs` runs on the **host** during cross-compilation:
+  `tonic_build::compile_protos` (`build.rs:7`, needs `protoc`) and the sensor
+  codegen (`emit_sensor_table`, `build.rs:76`) are fine; the `swiftc`
+  `emit_frameshot` step (`build.rs:21`) is correctly skipped for non-macOS.
+- For the Option-A fallback you need iOS-built `libav*` static libraries (e.g.
+  `ffmpeg-kit` iOS XCFrameworks or a custom build), plus
+  `-framework VideoToolbox/CoreMedia/AudioToolbox`.
 - No JIT, no dynamically-loaded code. Everything statically linked and signed.
 
 ---
 
-## 5. Module-by-module port classification
+## 5. Module-by-module port classification (verified)
 
 Legend: **Reuse** = compiles and runs on iOS unchanged · **Adapt** = small
 platform arm or behavior change · **Replace** = needs a new implementation.
 
 | Module | Verdict | Notes |
 |---|---|---|
-| `db.rs` | **Reuse** | rusqlite bundled SQLite builds for iOS. Path goes to the app container. |
+| `db.rs` | **Reuse** | rusqlite bundled SQLite builds for iOS. Catalog path → app container. Inline migration array makes [§6.9](#69-ingest--data-model-photos--files) trivial. |
 | `search.rs` | **Reuse** | FTS5 is in bundled SQLite. |
-| `grouping.rs` | **Reuse** | Pure logic. |
-| `post_index.rs` | **Reuse** | dHash pipeline is pure Rust (`image` crate). |
-| `imagehash.rs` | **Reuse** | Pure Rust JPEG/PNG decode + dHash. |
-| `metadata_keys.rs`, `camera_names.rs`, `full_resolution.rs`, `path_templates.rs`, `grouping.rs` | **Reuse** | Pure logic / generated tables. |
-| `concurrency.rs` | **Adapt** | Keep the semaphore; retune defaults for mobile thermals; it now throttles native decode/encode, not subprocesses. |
-| `config.rs` | **Adapt** | Add an iOS arm to path resolution (`config.rs:225`). `dirs::cache_dir()` already returns the app-container Caches on iOS — verify. |
-| `service.rs` | **Adapt** | Business logic reused. Watcher boot (`service.rs:104`) and any path assumptions need iOS-aware behavior. Methods call the new media backend via a trait, not `ffmpeg::*` directly. |
+| `grouping.rs` | **Reuse** | Pure string logic, no IO. |
+| `post_index.rs` | **Reuse** | Worker pool + similarity; pure Rust. Retune `DEFAULT_NUM_WORKERS`. |
+| `imagehash.rs` | **Reuse** | Pure-Rust decode + MAD similarity (`image` crate). |
+| `metadata_keys.rs`, `camera_names.rs`, `full_resolution.rs`, `path_templates.rs` | **Reuse** | Pure logic / generated tables. |
+| `concurrency.rs` | **Adapt** | Keep the semaphore; lower the default for mobile thermals; it now throttles native decode/encode, not subprocesses. |
+| `config.rs` | **Adapt** | Add an iOS arm at `config.rs:243` (`default_cache_path`). Verify `dirs` returns the app-container Caches. |
+| `service.rs` | **Adapt** | Business logic reused. Watcher boot (`:114-119`) and path assumptions need iOS-aware behavior. Media methods call the new backend trait, not `ffmpeg::*`. Construct a loopback `PairingState`. |
+| `xmp.rs` | **Adapt** | Read path (`read_xmp`, `:233-284`) is already native → **Reuse**. Write path (`exiftool`, `:681`) → defer ([D5](#0-decisions-locked)). |
 | `error.rs` | **Reuse** | — |
-| `main.rs` | **Replace** | Not used on iOS. Replaced by a library entry point (`start_embedded()` / FFI). No `nix` rlimit, no service manager. |
-| `ffmpeg.rs` | **Replace** | Becomes the CLI implementation of the media-backend trait (desktop only). iOS gets a native impl. |
-| `metadata.rs` (extraction) | **Replace** (extraction path) | ffprobe JSON → native metadata. The *storage/merge* logic (`store_metadata`, XMP merge) is **Reuse** once it's fed equivalent fields. |
-| `thumbnails.rs` | **Replace** | All frame extraction is ffmpeg/`qlmanage`/`rv-frameshot`. Reimplement against AVFoundation/`libav`. Sizing/caching/filename logic is reusable. |
-| `proxies.rs` | **Replace** (encode path) | ffmpeg `libx264` → VideoToolbox/`libav`. Detection (`detect_proxies`, dHash) is reuse. |
-| `xmp.rs` | **Replace** | `exiftool` → a Rust EXIF/XMP crate, or scope out for v1. |
-| `sensor_cache.rs` | **Replace** (trivial) | `curl` → `reqwest`/`hyper` (already have tokio). |
-| `watcher.rs` | **Replace** | `notify` → PhotoKit change observer / foreground rescan. |
-| `indexing.rs` | **Adapt** | Orchestration reused; the "walk a path tree" enumeration is replaced by Photos/Files enumeration. |
+| `lib.rs` | **Adapt** | Add the FFI embed entry point ([§7.2](#72-the-ffi-entry-point)) behind `#[cfg(target_os="ios")]` (or a feature). |
+| `main.rs` | **Skip on iOS** | Not compiled into the lib. No `nix` rlimit, no service manager, no TCP daemon. |
+| `ffmpeg.rs` | **Replace** | Becomes the `CliMediaBackend` impl (desktop only). |
+| `metadata.rs` (extraction) | **Replace** (extraction + loudness) | `ffprobe` JSON + loudness → native. `store_metadata` (`:75`) and the XMP merge (`:115`) are **Reuse** once fed an equivalent `FFProbeOutput`. |
+| `thumbnails.rs` | **Replace** (extraction) | The 4 frame call sites + color probe + PNG→JPEG → native. Sizing/caching/filename logic (`thumbnail_filename`, `:339`; consts `:14-21`) is reuse. |
+| `proxies.rs` | **Replace** (encode path) | `create_proxy` (`:704`, ffmpeg `:734`) → VideoToolbox/`libav`. `detect_proxies` (`:98`, MAD) is reuse. |
+| `sensor_cache.rs` | **Replace** (trivial) | `fetch_via_curl` (`:243`) → `reqwest`. Do this on desktop too. |
+| `watcher.rs` | **Replace** | `notify` → `PHPhotoLibraryChangeObserver` / foreground rescan; reuse the `CatalogChange` broadcast. |
+| `indexing.rs` | **Adapt** | Orchestration reused; the `walkdir` enumeration (`:181`) is replaced by Photos/Files enumeration feeding the same `post_index` pool. |
 
 ---
 
@@ -228,248 +364,268 @@ platform arm or behavior change · **Replace** = needs a new implementation.
 
 ### 6.1 The media-backend trait (the core of the port)
 
-Introduce a trait that captures everything the core currently does by shelling
-out, and make `service.rs`/`thumbnails.rs`/`proxies.rs`/`metadata.rs` depend on
-the trait instead of `crate::ffmpeg::*`. Provide two implementations selected at
-build/runtime:
+Introduce a trait capturing everything the core does by shelling out, and make
+`service.rs`/`thumbnails.rs`/`proxies.rs`/`metadata.rs` depend on the trait
+instead of `crate::ffmpeg::*` / `crate::concurrency::acquire_ffmpeg_permit`.
+Provide two implementations:
 
-- `CliMediaBackend` — wraps the existing `ffmpeg`/`ffprobe` calls. Desktop keeps
-  working with **zero behavior change**.
+- `CliMediaBackend` — wraps the existing `ffmpeg`/`ffprobe`/`curl` calls. Desktop
+  keeps working with **zero behavior change**.
 - `NativeMediaBackend` (iOS) — see [§6.2](#62-options-for-the-native-backend).
 
-Sketch (adjust to match the real signatures in `metadata.rs`/`thumbnails.rs`):
+Wire the chosen backend into `ReelVaultService` as `Arc<dyn MediaBackend>` (add a
+field; thread it to the call sites). Pick the impl in `new()` by `cfg!` /
+constructor argument.
 
 ```rust
 /// Everything the core used to shell out to a CLI tool for.
-/// All methods are blocking and run under `acquire_*_permit()`.
+/// All methods are blocking and run under `acquire_ffmpeg_permit()`.
 pub trait MediaBackend: Send + Sync {
-    /// Replaces `ffprobe -print_format json`. Must populate the same fields
-    /// that `metadata::FFProbeOutput` exposes downstream (duration, codecs,
-    /// width/height, fps, bitrate, color/HDR, audio channels, creation date,
-    /// camera/lens tags, GPS). Return a normalized struct, not raw JSON.
-    fn probe(&self, video: &MediaSource) -> Result<ProbeResult>;
+    /// Replaces `ffprobe … -of json` (metadata.rs:48). Returns the SAME
+    /// `FFProbeOutput` (metadata.rs:649) that `store_metadata` (metadata.rs:75)
+    /// and the XMP merge (metadata.rs:115) consume — so the native backend
+    /// SYNTHESIZES an FFProbeOutput from AVAsset and nothing downstream changes.
+    fn probe(&self, src: &MediaSource) -> Result<FFProbeOutput>;
+
+    /// Replaces the color-info ffprobe (thumbnails.rs:480).
+    fn probe_color(&self, src: &MediaSource) -> Result<ColorInfo>;
+
+    /// Replaces the loudness ffmpeg (metadata.rs:1068).
+    fn extract_loudness(&self, src: &MediaSource) -> Result<LoudnessInfo>;
 
     /// Replaces `ffmpeg -ss <t> -frames:v 1`. Decode one frame at `time_secs`,
-    /// longest side <= `max_px`, write JPEG to `out`.
-    fn extract_frame(&self, video: &MediaSource, time_secs: f64,
+    /// longest side <= `max_px`, write JPEG to `out`. This single primitive
+    /// covers ALL FOUR extraction call sites (still :106, scrub :297,
+    /// on-demand :421, ProRes RAW :640).
+    fn extract_frame(&self, src: &MediaSource, time_secs: f64,
                      max_px: i32, out: &Path) -> Result<()>;
 
-    /// Replaces the proxy transcode. H.264/HEVC + AAC, faststart, target height.
-    fn transcode_proxy(&self, video: &MediaSource, out: &Path,
+    /// Replaces the proxy transcode (proxies.rs:734). H.264/HEVC + AAC,
+    /// faststart, target height. Report progress on the same 0–85% band the
+    /// GenerateProxy stream expects.
+    fn transcode_proxy(&self, src: &MediaSource, out: &Path,
                        target_height: i32, progress: &mut dyn FnMut(f64)) -> Result<()>;
 
-    /// Replaces `ffmpeg -metadata` tag writes. May be a no-op on iOS for
-    /// Photos-library originals (you cannot mutate them in place).
-    fn write_creation_time(&self, video: &MediaSource, ts_ms: i64) -> Result<()>;
-    fn write_location(&self, video: &MediaSource, lat: f64, lon: f64) -> Result<()>;
+    /// Replaces `ffmpeg -metadata` tag writes (metadata.rs:335, :418).
+    /// On iOS these are no-ops for Photos sources ([D4]).
+    fn write_creation_time(&self, src: &MediaSource, ts_ms: i64) -> Result<()>;
+    fn write_location(&self, src: &MediaSource, lat: f64, lon: f64, alt: f64) -> Result<()>;
 }
 
-/// Identity becomes backend-specific: a filesystem path on desktop, a PHAsset
-/// local-identifier or security-scoped bookmark on iOS.
+/// Identity becomes backend-specific.
 pub enum MediaSource {
-    Path(PathBuf),
-    PhotoAsset(String),     // PHAsset.localIdentifier
-    Bookmark(Vec<u8>),      // security-scoped bookmark data
+    Path(PathBuf),          // desktop
+    PhotoAsset(String),     // PHAsset.localIdentifier (iOS)
+    Bookmark(Vec<u8>),      // security-scoped bookmark data (iOS, Files)
 }
 ```
 
 Notes:
 
-- Keep `extract_frame` as the single primitive. Today the still path
-  (`thumbnails.rs:106`), the scrub-frame loop (`:297`), the on-demand width path
-  (`:421`), and the ProRes RAW path (`:640`) are four different invocations of
-  "give me a frame at time T at size S". One trait method covers all four; the
-  caller logic (frame counts, sizes, caching, filenames) stays in `thumbnails.rs`.
-- `ProbeResult` must be field-compatible with what `metadata::store_metadata`
-  consumes so the **XMP merge logic** (`metadata.rs:110`+) keeps working
-  unchanged. Don't reshape the downstream contract; just change its source.
-- The semaphore in `concurrency.rs` still wraps each call.
+- **Return `FFProbeOutput`, don't invent a new struct.** `store_metadata` takes
+  `&FFProbeOutput` (`metadata.rs:75`) and the XMP merge keys off its fields. The
+  native backend builds an `FFProbeOutput` (`metadata.rs:649`: `streams`,
+  `format`) from `AVAssetTrack`/`AVMetadataItem`. Some ffprobe-only fields will
+  be absent — fine; the inspector already hides empty rows. This keeps the blast
+  radius at the *source* of metadata, not the consumer.
+- Keep `extract_frame` as the single primitive (the four call sites differ only
+  in time/size). Frame counts, sizes, caching, filenames, and the per-video
+  scrub locks (`service.rs`) stay in `thumbnails.rs`.
+- The semaphore in `concurrency.rs` still wraps each blocking call.
 
 ### 6.2 Options for the native backend
 
-**[DECISION NEEDED]** Pick one (or the hybrid). This is the most consequential
-technical choice in the port.
-
-**Option A — link FFmpeg (`libavformat`/`libavcodec`/`libavutil`/`libswscale`).**
-Use an FFI crate (`rsmpeg` or `ffmpeg-next`) against iOS-built static `libav*`.
-
-- ➕ True parity: exactly the formats/behaviors the desktop has, including odd
-  codecs and container tags ffprobe reads.
-- ➕ The metadata mapping is closest to the existing `FFProbeOutput` shape.
-- ➖ Heavy: cross-compiling/bundling `libav*` for iOS, big binary, longer builds.
-- ➖ **GPL/App Store distribution tension** (see [§8.4](#84-licensing-gpl-3-vs-the-app-store-decision-needed)).
+**Per [D1](#0-decisions-locked): hybrid (Option C). Build B first, add A later.**
 
 **Option B — Apple frameworks (AVFoundation + VideoToolbox + CoreMedia).**
-A thin Swift/Obj‑C shim, called from Rust over FFI, implements the trait.
+A thin Swift/Obj‑C shim, called from Rust over FFI (or vice-versa), implements
+the trait. This is the *primary* backend.
 
-- ➕ Native, hardware-accelerated, no third-party media libs, App-Store-clean,
-  smaller binary. Proxy encode via VideoToolbox is the *right* iOS path.
-- ➕ This is already the project's trusted path for ProRes RAW frames
-  (`rv-frameshot` is AVFoundation). You're generalizing a pattern that exists.
-- ➖ Codec coverage = what iOS AVFoundation decodes (H.264/HEVC/ProRes, common
-  containers). Footage AVFoundation won't open is a feature gap vs. desktop.
-- ➖ Metadata surface differs from ffprobe's container-tag view; you must map
-  `AVAsset`/`AVMetadataItem` → `ProbeResult` and accept some fields are absent.
+- ➕ Native, hardware-accelerated, smaller binary; VideoToolbox is the right iOS
+  proxy-encode path. Generalizes the `rv-frameshot` pattern the project already
+  trusts (it's literally AVAssetImageGenerator).
+- ➖ Codec coverage = what AVFoundation decodes (H.264/HEVC/ProRes, common
+  containers). Footage AVFoundation won't open is a gap — closed by Option A.
 - ❓ **ProRes RAW decode on iOS** is not guaranteed across OS versions/hardware
-  the way it is on macOS. The `rv-frameshot` precedent proves *macOS*; verify on
-  target iOS versions before promising RAW parity. (Open question in [§11](#11-open-questions--decisions-needed).)
+  the way it is on macOS. `rv-frameshot` proves *macOS*; verify on target iOS
+  devices ([§11](#11-open-questions-that-still-need-answers)).
 
-**Option C — Hybrid (recommended for "all functionality").** Native (Option B)
-as the primary backend; fall back to a linked decoder (Option A, possibly a
-trimmed `libav`) only for sources AVFoundation can't open. This is exactly how
-`thumbnails.rs` is *already* structured (`frameshot_extract` → `quicklook_poster`
-fallback chain) — generalize that fallback idea across the whole backend.
+**Option A — link FFmpeg (`libavformat`/`libavcodec`/`libavutil`/`libswscale`).**
+Via `rsmpeg`/`ffmpeg-next` against iOS-built static `libav*`. This is the
+**fallback** for sources AVFoundation can't open.
 
-> Recommendation: **start with Option B** to get a working app fast and
-> App-Store-clean, measure the real codec gap on the target footage, then add a
-> linked-decoder fallback only if the gap matters. If "literally every format
-> desktop supports" is a hard requirement on day one, you're committing to
-> Option A/C and to resolving the licensing question up front.
+- ➕ True parity, closest to the existing ffprobe field shape.
+- ➖ Heavy: cross-compiling/bundling `libav*` for iOS, big binary, longer builds.
+- GPL is fine off-store ([D2](#0-decisions-locked)).
+
+**Option C — Hybrid (the plan).** `NativeMediaBackend` tries AVFoundation first
+and falls back to the linked decoder when AVFoundation can't open the source —
+exactly how `thumbnails.rs` already chains `frameshot_extract` → `quicklook_poster`
+today. Generalize that fallback across the whole backend, behind a Cargo feature
+(`ios-libav`) so B can ship and be tested before A lands.
 
 ### 6.3 Thumbnails
 
-Reimplement the four extraction call sites in `thumbnails.rs` on top of
-`MediaBackend::extract_frame`. Keep:
-
-- the size constants and `generate_default_sizes` structure (`thumbnails.rs:37`),
-- the 10-frame scrub generation (`SCRUB_FRAME_COUNT`, `:206`),
-- on-demand width generation (`:382`),
-- caching, filenames (`thumbnail_filename`, `:339`), and the per-video scrub
-  locks in `service.rs`.
-
-The QuickLook PNG→JPEG transcode (`:693`) disappears — the native backend
-writes JPEG directly. `qlmanage` (`:675`) is macOS-only and goes away on iOS.
+Reimplement the four extraction call sites + the color probe on top of the trait.
+Keep: size constants (`thumbnails.rs:14-21`), `generate_default_sizes` (`:37`),
+the 10-frame scrub loop (`SCRUB_FRAME_COUNT`, `:20`; `generate_scrub_thumbnails`,
+`:206`), on-demand width (`generate_frame_at_width`, `:382`), caching, filenames
+(`thumbnail_filename`, `:339`), and the per-video scrub locks in `service.rs`.
+The QuickLook PNG→JPEG transcode (`:693`) and `qlmanage` (`:675`) disappear on
+iOS — the native backend writes JPEG directly.
 
 ### 6.4 Proxy generation
 
-`proxies.rs:717`–`766` transcodes to H.264/AAC with `-movflags +faststart` and
-parses `frame=` progress from stdout. On iOS, implement `transcode_proxy` with
-`AVAssetExportSession` or a VideoToolbox compression session, mapping progress to
-the same 0–85% band the streaming RPC expects (`proxies.rs:766`+,
-`GenerateProxy` stream in the proto). `needs_proxy` / `detect_proxies` (dHash)
-are reused unchanged.
+`create_proxy` (`proxies.rs:704`; ffmpeg `:734`) transcodes to H.264/AAC with
+`-movflags +faststart` and parses `frame=` progress, mapping to the **0–85%
+band**. On iOS, implement `transcode_proxy` with `AVAssetExportSession` or a
+VideoToolbox compression session, reporting the same 0–85% band. `needs_proxy`
+(`:712`, legacy) / `detect_proxies` (`:98`, MAD, threshold `0.96` at `:77`) are
+reused unchanged.
 
 ### 6.5 Tag writing (creation time / GPS)
 
-`metadata.rs:296` (`write_location_tag`) and `:386` (`write_creation_time_tag`)
-mutate the *original file* via `ffmpeg -metadata`. On iOS you generally
-**cannot** rewrite a Photos-library original in place. Decide per-source:
+`write_location_tag` (`metadata.rs:296`) and `write_creation_time_tag`
+(`metadata.rs:386`) mutate the original via `ffmpeg -metadata`. Per
+[D4](#0-decisions-locked), the iOS backend implements these as **no-ops for
+Photos sources** (keep the edit in the catalog DB only). Revisit per-source
+PhotoKit change requests later if users ask.
 
-- Photos originals: write through PhotoKit change requests where allowed, or
-  treat these as no-ops and keep the edit only in the catalog DB.
-- Files/bookmarked: possible via export to a new asset; in-place rewrite is
-  usually not worth it.
+### 6.6 XMP sidecars
 
-**[DECISION NEEDED]**: is "write metadata back to the source file" in scope for
-iOS v1, or catalog-only? Recommendation: catalog-only for v1.
-
-### 6.6 XMP sidecars (`exiftool`)
-
-`xmp.rs` shells out to `exiftool` for sidecar read/write and feeds the XMP merge
-in `metadata.rs:110`+. Options: (a) a pure-Rust EXIF/XMP reader
-(`kamadak-exif` + an XMP/RDF parse) for the read path, which is what the merge
-actually needs; (b) scope XMP *out* of iOS v1 (the merge already degrades
-gracefully when the sidecar half is absent). Recommendation: **(b) for v1**,
-revisit if users keep sidecars alongside Files-app footage.
+Read is already native (`read_xmp`, `xmp.rs:233-284`) → keep. The `exiftool`
+write (`xmp.rs:681`) is deferred ([D5](#0-decisions-locked)). The metadata merge
+(`metadata.rs:115`) degrades gracefully when the sidecar is absent.
 
 ### 6.7 Sensor-spec fetch (`curl`)
 
-`sensor_cache.rs:245` calls `curl`. Replace with `reqwest` (or `hyper`, since
-tokio is already present). Trivial, and it removes a subprocess. Do this even on
-desktop — it's a strict improvement.
+`fetch_via_curl` (`sensor_cache.rs:243`, curl at `:245`) → `reqwest` (tokio is
+already present; add `reqwest` to `Cargo.toml` — currently **not** a dependency).
+Do this on desktop too — it removes a subprocess and is a strict improvement.
 
 ### 6.8 Watching / live updates
 
-`watcher.rs` (`notify::RecommendedWatcher`, `:202`) does not map to iOS. Replace
-with:
-
-- `PHPhotoLibraryChangeObserver` for the Photos library → publish into the
-  existing `CatalogChange` broadcast (`service.rs` `catalog_events`) so
-  `SubscribeCatalogEvents` keeps working.
-- Foreground rescan / `BGProcessingTask` opportunistic scans for Files-based
-  libraries.
-
-The broadcast bus and the `SubscribeCatalogEvents` RPC are reused; only the
-*event source* changes.
+`watcher.rs` (`notify::recommended_watcher`, `:202`) does not map to iOS. Replace
+the *event source* with `PHPhotoLibraryChangeObserver` (Photos) and
+foreground/`BGProcessingTask` rescans (Files), publishing into the existing
+`CatalogChange` broadcast (`watcher.rs:61`) so `SubscribeCatalogEvents` keeps
+working unchanged. Only the source changes; the bus and RPC are reused.
 
 ### 6.9 Ingest & data model (Photos / Files)
 
-This is the schema-touching part.
+This is the schema-touching part — but small, thanks to the inline migration
+array.
 
-- Add a notion of **source kind + stable identity** alongside `videos.path`:
-  a `PHAsset.localIdentifier` (Photos) or resolved security-scoped bookmark
-  (Files). Keep `path` for desktop; add columns or a typed identity so iOS rows
-  are addressable without a real filesystem path.
-- The enumerator that today is `walkdir` over `library_locations`
-  (`indexing.rs`) becomes a PhotoKit fetch (`PHAsset` of media type video) and/or
-  a bookmarked-folder enumeration. The rest of the indexing orchestration
-  (`indexing.rs`, `post_index.rs`) is reused.
-- Frame/decode access goes through `MediaSource` ([§6.1](#61-the-media-backend-trait-the-core-of-the-port)).
-
-**[DECISION NEEDED]**: schema migration approach. Adding a `source_kind` +
-`source_id` is backward-compatible (desktop rows are `kind=path`). Confirm with
-`rusqlite_migration` usage in `db.rs`.
+- Add **source kind + stable identity** to `videos`. Append two migrations to the
+  array in `db.rs` (alongside the existing entries around `db.rs:322-438`):
+  ```rust
+  ("videos.source_kind", "ALTER TABLE videos ADD COLUMN source_kind TEXT"),
+  ("videos.source_id",   "ALTER TABLE videos ADD COLUMN source_id TEXT"),
+  ```
+  Desktop rows leave them NULL (implicit `kind=path`, identity = `path`). iOS
+  rows set `source_kind IN ('photo','bookmark')` and `source_id` =
+  `PHAsset.localIdentifier` or base64 bookmark. Keep `path` populated with a
+  synthetic stable string (e.g. `photos://<localIdentifier>`) so the `UNIQUE`
+  constraint and all path-keyed queries keep functioning.
+- Replace the `walkdir` enumeration (`indexing.rs:181`) with a PhotoKit fetch
+  (`PHAsset` of media type video) and/or bookmarked-folder enumeration. The rest
+  of `scan_directory` orchestration (`indexing.rs:154`) and the `post_index` pool
+  are reused — they operate on `video_id`s, not paths.
+- Frame/decode access goes through `MediaSource`.
 
 ### 6.10 Config / paths
 
-Add an iOS arm to `config.rs:225` and the data-dir logic in `main.rs:301` (the
-latter only if you keep any of `main.rs`). On iOS everything lives under the app
-container — `dirs` returns container paths, but verify rather than assume.
+Add an iOS arm to `config::default_cache_path` (`config.rs:243-258`). On iOS
+everything lives under the app container — `dirs::cache_dir()` should return the
+container Caches, but **verify**, and prefer an explicit path passed in from
+Swift via the FFI entry point ([§7.2](#72-the-ffi-entry-point)) rather than
+trusting `dirs`.
 
 ### 6.11 Concurrency tuning
 
-Keep `BlockingSemaphore`, but `default_max_concurrent_ffmpeg()` =
-`available_parallelism()` (`concurrency.rs`) is too aggressive for a phone under
-thermal pressure. Lower the default and/or react to `ProcessInfo`
-thermal state. The semaphore now bounds native decode/encode sessions.
+Keep `BlockingSemaphore`. `default_max_concurrent_ffmpeg()` (`concurrency.rs:67`,
+= `available_parallelism()`) is too aggressive for a phone under thermal
+pressure. Lower the iOS default (e.g. 2) and/or react to `ProcessInfo`
+`thermalState`. The semaphore now bounds native decode/encode sessions.
 
 ---
 
 ## 7. How the app embeds the core
 
-### 7.1 Recommended: keep gRPC, run the server in-process
+### 7.1 Keep gRPC, run the server in-process
 
-Run `ReelVaultService::into_server()` on an **in-process** listener inside the
-app — a `127.0.0.1` TCP port or a Unix-domain socket in the app container — and
-have the SwiftUI client connect to it exactly as it connects to a remote daemon.
+Run `ReelVaultService::into_server()` on an **in-process** loopback listener
+(`127.0.0.1:<ephemeral>`), and have `VideoRepository` connect to it exactly as it
+connects to a remote daemon. This is the macOS model
+(`macos/.../ServerLauncher.swift` spawns the daemon and the client connects to
+`127.0.0.1:50051` plaintext) — minus the subprocess.
 
-Why this is the strong default:
+Why this is the strong default ([D3](#0-decisions-locked)):
 
-- **`service.rs` and the entire proto/RPC surface are reused unchanged.** No new
-  API layer.
-- **The SwiftUI client is written once.** Remote vs. on-device is just a
-  different host/endpoint. Use case 1 and use case 2 share the client.
-- The existing macOS client's generated gRPC stubs and `grpc-swift` stack carry
-  over (note the project's pinned `grpc-swift-protobuf` plugin requirement when
-  regenerating Swift stubs).
+- **`service.rs` and the entire proto/RPC surface are reused unchanged.**
+- **`VideoRepository` is reused unchanged.** It already exposes
+  `connect(host:port:)` (`VideoRepository.swift:41`) and
+  `ServerEndpoint.loopback(port:)` (`ServerEndpoint.swift:42`). Local mode =
+  "connect to `127.0.0.1:<embedded port>` with `.plaintext`," skipping mDNS
+  discovery, TLS pinning, and pairing entirely (those are LAN concerns).
+- The generated gRPC stubs and `grpc-swift` stack carry over (regenerate via
+  `kit/regen-proto.sh`; `grpc-swift-protobuf` is pinned `exact "1.3.1"`).
 
-Costs: you run a tokio runtime and a loopback server inside the app. That's
-cheap and well-trodden. tokio + tonic over loopback/UDS work on iOS.
+Cost: a tokio runtime + loopback server inside the app. Cheap and well-trodden;
+tokio + tonic over loopback work on iOS.
 
-### 7.2 Alternative: direct FFI / UniFFI
+### 7.2 The FFI entry point
 
-Expose `ReelVaultService` methods to Swift via **UniFFI** (or a hand-written C
-ABI), bypassing gRPC entirely for the on-device case.
+Add a tiny C-ABI entry point to `core/src/lib.rs` (or a new `core/src/ios.rs`)
+behind `#[cfg(target_os = "ios")]`. It owns the runtime and returns the port:
 
-- ➕ No in-process socket; slightly lower overhead; "feels" native.
-- ➖ You define and maintain a *second* API surface parallel to the proto, and
-  the client diverges between remote (gRPC) and local (FFI). More code, more
-  drift, more chance of parity bugs.
+```rust
+/// Boots the embedded server. Swift passes the app-container paths explicitly
+/// (don't trust `dirs` on iOS). Returns the bound loopback port, or 0 on error.
+/// The runtime is parked in a static so it survives across the app lifecycle.
+#[no_mangle]
+pub extern "C" fn reelvault_start_embedded(
+    db_path: *const c_char,
+    data_dir: *const c_char,
+    cache_dir: *const c_char,
+) -> u16 {
+    // 1. build a multi-thread tokio runtime, store in a OnceCell static
+    // 2. Database::open(db_path); Config with cache_dir; PairingState::loopback()
+    // 3. let svc = ReelVaultService::new(db, config, pairing, data_dir);  // service.rs:79
+    // 4. bind 127.0.0.1:0; spawn tonic serve(svc.into_server()); return chosen port
+}
 
-Recommendation: **§7.1 for v1.** Consider UniFFI later only if loopback overhead
-or streaming ergonomics prove to be a real problem. Either way you need a small
-FFI entry point (`start_embedded(db_path, …) -> handle`) to boot the runtime and
-server from Swift; the tokio runtime must be owned by the library and survive
-across the app lifecycle, parked when suspended.
+#[no_mangle]
+pub extern "C" fn reelvault_stop_embedded() { /* park/shutdown for suspension */ }
+```
+
+Expose it to Swift via a bridging header in the XCFramework (or a thin
+`ReelVaultCore` SwiftPM target wrapping the C symbols). Swift calls
+`reelvault_start_embedded(...)`, then `VideoRepository.shared.connect(to:
+.loopback(port:))`.
+
+> Note `new()` needs a `PairingState` and a `data_dir` ([§3.1](#31-process-shape-and-the-embed-seam-already-exists)).
+> Construct a loopback/no-op `PairingState` (pairing is a LAN concept) and pass
+> the container path as `data_dir`.
 
 ### 7.3 Lifecycle
 
 - Boot the runtime + server lazily on first foreground; keep the SQLite catalog
   in the app container (WAL mode is fine on a single-process embed).
-- Cooperate with suspension: pause scans, flush WAL, stop the watcher's
-  PhotoKit observer registration as appropriate.
+- Cooperate with suspension: pause scans, flush WAL, deregister the PhotoKit
+  observer; `reelvault_stop_embedded()` parks the runtime.
 - Use `BGProcessingTaskRequest` for opportunistic indexing/thumbnailing of large
   imports; rely on `post_index.rs` idempotent catch-up if killed mid-scan.
+
+### 7.4 What to drop for the embed
+
+- `main.rs` entirely (TCP daemon, `--host`/`--port`, `nix` rlimit, service
+  managers, per-OS data-dir logic).
+- The separate **media server / media port** — originals are local; nothing to
+  stream over LAN. Thumbnails/proxies still flow through the `GetThumbnail` gRPC
+  stream.
+- mDNS discovery, pinned TLS, and pairing on the client side **for local mode**
+  (they remain for remote mode).
 
 ---
 
@@ -479,133 +635,238 @@ across the app lifecycle, parked when suspended.
 
 ```bash
 rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios-sim
-# Build a static lib per target, then assemble an XCFramework
-# (cargo-xcframework or a manual xcodebuild -create-xcframework step).
+# staticlib per target, then assemble an XCFramework
+# (cargo-xcframework, or manual `xcodebuild -create-xcframework`).
 ```
 
-Add an iOS-friendly crate type for the embed (`staticlib`/`cdylib`) alongside the
-existing `lib`/`bin` targets in `core/Cargo.toml`. Keep the two `[[bin]]`s
-desktop-only.
+Add `staticlib` to the lib's `crate-type` (currently none is declared, so it
+defaults to `rlib` only — `core/Cargo.toml:10`):
+
+```toml
+[lib]
+name = "reelvault_core"
+path = "src/lib.rs"
+crate-type = ["rlib", "staticlib"]   # add staticlib for the iOS embed
+```
+
+Keep the two `[[bin]]`s desktop-only (they won't build for iOS, but `cargo build
+-p reelvault_core --lib --target aarch64-apple-ios` builds just the lib).
 
 ### 8.2 build.rs on cross-compile
 
-`tonic-build::compile_protos` and `emit_sensor_table` run on the host and are
-fine. `emit_frameshot` already guards on `CARGO_CFG_TARGET_OS == "macos"`
-(`build.rs:31`), so an iOS build emits `FRAMESHOT_BIN = None` and compiles. No
-change required there, but confirm `protoc` is available in the iOS CI build
-environment.
+`tonic_build::compile_protos` (`build.rs:7`) and `emit_sensor_table`
+(`build.rs:76`) run on the host and are fine. `emit_frameshot` (`build.rs:21`)
+already guards on `CARGO_CFG_TARGET_OS == "macos"` (`build.rs:28`) → iOS emits
+`FRAMESHOT_BIN = None` and compiles. Confirm `protoc` is on PATH in the iOS CI
+build environment.
 
 ### 8.3 Dependency audit for iOS
 
-- `nix` is `#[cfg(unix)]` only and used in `main.rs` (rlimit) — not compiled into
-  the library path you embed. Confirm nothing in the lib path pulls a
-  `nix`/`winapi` feature that fails to build for iOS.
-- `which` (`Cargo.toml`) is only meaningful for CLI resolution; the native
-  backend won't use it.
-- `image`, `rayon`, `rusqlite` (bundled), `tokio`, `tonic`, `prost`, `chrono`,
-  `regex`, `walkdir`, `uuid`, `serde*` — all known-good on iOS.
-- If Option A/C: add the `libav` FFI crate behind a feature flag and link the iOS
-  `libav*` + `-framework VideoToolbox -framework CoreMedia -framework AudioToolbox`.
+- `nix` is `#[cfg(unix)]` and used only in `main.rs` (rlimit) — not in the lib
+  path you embed. Confirm nothing else pulls a `nix`/`winapi` feature.
+- `which` (`Cargo.toml`) is only for CLI resolution; the native backend won't use
+  it. Gate the `ffmpeg.rs`/CLI backend behind `#[cfg(not(target_os="ios"))]`.
+- `image`, `rayon`, `rusqlite` (bundled), `tokio` (full), `tonic` (tls), `prost`,
+  `chrono`, `regex`, `walkdir`, `uuid`, `serde*` — all known-good on iOS.
+- Add `reqwest` (replaces `curl` in `sensor_cache.rs`).
+- Option-A fallback: add the `libav` FFI crate behind a `ios-libav` feature and
+  link the iOS `libav*` + `-framework VideoToolbox -framework CoreMedia
+  -framework AudioToolbox`.
 
-### 8.4 Licensing: GPL‑3 vs. the App Store **[DECISION NEEDED]**
+### 8.4 Licensing / distribution
 
-`core/Cargo.toml` declares `license = "GPL-3.0-or-later"`. Distributing a GPL
-binary through the App Store has a well-known, unresolved conflict with Apple's
-Terms of Service (the usage/DRM restrictions vs. GPL §6/anti-Tivoization; the
-canonical precedent is VLC's removal). Linking a **GPL** FFmpeg build (Option
-A/C) makes the combined work GPL too. This is **not** a coding problem and can
-block release. Resolve one of:
+`core/Cargo.toml:5` declares `license = "GPL-3.0-or-later"`. **Per
+[D2](#0-decisions-locked) we distribute off the App Store** (developer/ad-hoc/
+TestFlight/enterprise), where there is **no GPL conflict** — GPL governs *how you
+distribute source/binaries*, and you can freely distribute GPL binaries; the
+well-known conflict is specifically the **App Store's** ToS (usage/DRM
+restrictions vs. GPL §6 anti-Tivoization, the VLC precedent). Linking GPL
+`libav*` (Option A) is therefore fine here.
 
-1. Distribute outside the App Store (enterprise/ad-hoc/AltStore) — sidesteps the
-   ToS conflict but limits reach.
-2. Have the copyright holders grant an explicit App Store distribution exception
-   (only they can).
-3. Relicense the parts that ship in the iOS binary, and use **Apple frameworks
-   only** (Option B) so no GPL media lib is linked.
-
-Option B + a licensing exception (or a permissive relicense of the shipped code)
-is the cleanest App-Store path. Flag this to the owner early — it may *decide*
-the Option A/B/C choice for you.
+If App Store distribution ever becomes a goal, this reopens: you would then need
+either an Apple-frameworks-only build (Option B, no GPL media lib linked) plus a
+relicense/exception from the copyright holders, or off-store-only. Flag any move
+toward the App Store back to the owner.
 
 ---
 
-## 9. Use case 1 (remote mode) ships independently
+## 9. Remote mode (use case 1) — already shipping
 
-This needs **no media-pipeline work** and almost no core change. Build the
-SwiftUI client against the existing proto and point it at the daemon. Core-side
-hardening to expose the daemon safely on a LAN:
-
-- Bind beyond loopback: the `--host` flag exists (`main.rs:45`); allow `0.0.0.0`.
-- **Add authentication + TLS.** Today there is none — `main.rs:44` literally
-  warns "there's no auth!". Do not expose an unauthenticated catalog on a
-  network. Add a token (tonic interceptor) and TLS (rustls) at minimum.
-- Add **mDNS/Bonjour** advertisement so the phone discovers the Mac.
-- Mind thumbnail/video streaming bandwidth over Wi‑Fi (the `GetThumbnail` stream
-  already chunks; large originals should stream/range-request).
-
-Ship this first. It also gives you the SwiftUI gRPC client you'll reuse for the
-embedded case ([§7.1](#71-recommended-keep-grpc-run-the-server-in-process)).
+Remote mode is the feature/ios-client work and is largely built: mDNS discovery
+(`ServerDiscovery.swift`), pinned TLS / TOFU (`PinnedTLS.swift`), pairing
+(`BearerTokenInterceptor.swift`, `pairing` module). The daemon's LAN exposure
+(`--host 0.0.0.0`, auth, TLS) is handled there. **This port (use case 2) reuses
+that client wholesale** — local mode is just a different endpoint
+([§7.1](#71-keep-grpc-run-the-server-in-process)).
 
 ---
 
-## 10. Phased plan
+## 10. Phased plan (agent-executable)
 
-| Phase | Deliverable | Acceptance |
-|---|---|---|
-| **0. Remote client** | SwiftUI iOS client vs. remote daemon; daemon auth+TLS+mDNS | Phone browses a desktop catalog over Wi‑Fi with auth. |
-| **1. Build green** | Core library cross-compiles to iOS XCFramework; embed boots an in-process gRPC server; SwiftUI talks to it | App opens an (empty) on-device catalog via the same client as Phase 0. |
-| **2. Media abstraction** | `MediaBackend` trait; `CliMediaBackend` extracted; desktop unchanged & green | All desktop tests pass against the trait; no behavior change. |
-| **3. Native backend (Option B)** | AVFoundation/VideoToolbox impl: probe, frame extract, proxy encode | On-device: metadata + still + scrub thumbnails + proxy for H.264/HEVC/ProRes assets. |
-| **4. Ingest/data model** | PhotoKit + Files ingest; `source_kind`/`source_id`; PhotoKit change observer | Import the Photos video library; grid populates; live updates work. |
-| **5. Parity polish** | XMP decision, tag-write decision, thermal tuning, background tasks, sensor-cache `reqwest` | Feature matrix vs. desktop documented; gaps are deliberate. |
-| **6. (If required) full-codec parity** | Linked-decoder fallback (Option A/C) behind a feature flag | Formats AVFoundation can't open still index/thumbnail. Requires §8.4 resolved. |
+Each phase lists **files**, **do**, **acceptance**, and a **verify** command. Do
+them in order; Phases 2→3→4 are the spine.
 
-A realistic estimate: Phase 0 is days; Phases 1–5 are the bulk (multiple weeks)
-with Phase 3 + Phase 4 the riskiest; Phase 6 is a separate, licensing-gated
-project.
+### Phase 0 — Embed scaffold (build green, empty catalog)
+- **Files:** `core/Cargo.toml` (add `staticlib`), `core/src/lib.rs` (FFI entry,
+  [§7.2](#72-the-ffi-entry-point)), `ios/` (link the XCFramework, call
+  `reelvault_start_embedded`, connect via `ServerEndpoint.loopback`).
+- **Do:** cross-compile the lib to iOS; boot an in-process gRPC server over an
+  empty app-container catalog; point `VideoRepository` at it.
+- **Acceptance:** the iOS app, with no daemon on the network, opens an empty
+  on-device catalog through the *same* `VideoRepository` it uses for remote mode.
+- **Verify:** `cargo build -p reelvault_core --lib --target aarch64-apple-ios-sim`
+  succeeds; app launches in the simulator and `GetStatus` returns over loopback.
+
+### Phase 1 — `MediaBackend` trait + `CliMediaBackend` (desktop unchanged)
+- **Files:** new `core/src/media_backend.rs` (trait + `MediaSource`);
+  `ffmpeg.rs` → wrapped by `CliMediaBackend`; thread `Arc<dyn MediaBackend>`
+  through `service.rs`, `metadata.rs`, `thumbnails.rs`, `proxies.rs`.
+- **Do:** extract every call site in
+  [§3.2](#32-the-media-pipeline--external-processes) behind the trait;
+  `CliMediaBackend` reproduces today's behavior exactly.
+- **Acceptance:** desktop behavior is byte-for-byte unchanged.
+- **Verify:** `cargo test -p reelvault_core` is green; a manual scan +
+  thumbnail + proxy on macOS matches pre-refactor output.
+
+### Phase 2 — `NativeMediaBackend` (Option B: AVFoundation/VideoToolbox)
+- **Files:** the Swift/ObjC media shim (in `kit/` or the iOS core wrapper); the
+  Rust `NativeMediaBackend` calling it over FFI.
+- **Do:** implement `probe` (→ synthesize `FFProbeOutput`), `probe_color`,
+  `extract_loudness`, `extract_frame`, `transcode_proxy`. Tags = no-ops ([D4]).
+- **Acceptance:** on-device metadata + still + 10 scrub frames + proxy for
+  H.264/HEVC/ProRes assets, with the inspector populated from real fields.
+- **Verify:** unit-test `extract_frame`/`probe` against bundled sample clips;
+  thumbnails render in the grid; a generated proxy plays.
+
+### Phase 3 — Ingest / data model (Photos + Files)
+- **Files:** `db.rs` (`source_kind`/`source_id` migrations, [§6.9]);
+  `indexing.rs` (enumeration arm); the PhotoKit/Files enumerators (Swift);
+  `watcher.rs` (`PHPhotoLibraryChangeObserver` source).
+- **Do:** enumerate `PHAsset` videos (then bookmarked folders), index through the
+  existing `post_index` pool, wire live updates into the `CatalogChange`
+  broadcast.
+- **Acceptance:** import the Photos video library; the grid populates; adding a
+  video in Photos shows up live via `SubscribeCatalogEvents`.
+- **Verify:** add/remove a clip in the simulator's Photos and watch the grid
+  update without a manual rescan.
+
+### Phase 4 — Parity polish
+- **Files:** `sensor_cache.rs` (`reqwest`), `concurrency.rs` (iOS default +
+  thermal), lifecycle (`BGProcessingTask`, suspend/park), `config.rs` (iOS arm).
+- **Do:** the small replacements; tune for mobile; document the feature matrix
+  vs. desktop with deliberate gaps (XMP write, in-place tag write).
+- **Acceptance:** a documented parity matrix; background indexing of a large
+  import survives suspension.
+- **Verify:** background a long scan, return, confirm it resumed (idempotent
+  catch-up).
+
+### Phase 5 — Full-codec parity (Option A fallback, hybrid)
+- **Files:** `ios-libav` Cargo feature; the linked-decoder fallback inside
+  `NativeMediaBackend`.
+- **Do:** route AVFoundation-unsupported sources to the linked `libav*` decoder.
+- **Acceptance:** formats AVFoundation can't open still index + thumbnail.
+- **Verify:** an exotic-codec sample that fails on Phase 2 now indexes.
+
+Estimate: Phase 0 days; Phases 1–4 the bulk (multiple weeks), Phase 2 + Phase 3
+the riskiest; Phase 5 a self-contained follow-on.
 
 ---
 
-## 11. Open questions / decisions needed
+## 11. Open questions that still need answers
 
-1. **[§6.2 / §8.4]** Native backend strategy: Apple-frameworks-only (B), linked
-   FFmpeg (A), or hybrid (C)? This is gated by the licensing decision.
-2. **[§8.4]** App Store distribution given GPL‑3 — relicense, exception, or
-   distribute off-store?
-3. **[§6.2]** ProRes RAW decode on the target iOS versions/devices — verify
-   before promising parity (macOS `rv-frameshot` does not prove iOS).
-4. **[§6.5]** Write metadata back to source files on iOS, or catalog-only?
-5. **[§6.6]** XMP sidecars in iOS v1, or deferred?
-6. **[§6.9]** Schema: add `source_kind`/`source_id`; confirm migration path in
-   `db.rs`.
-7. **[§7]** Embedding transport: in-process gRPC (recommended) vs. UniFFI.
-8. Scope of "videos already on the device": Photos library only, or also
-   Files/external drives, for v1?
+These are empirical (not owner opinions — D1–D7 are settled):
+
+1. **ProRes RAW decode on the target iOS devices/OS versions.** `rv-frameshot`
+   proves macOS only. Verify before promising RAW parity in Phase 2; it may be
+   the first thing pushed to the Phase 5 `libav` fallback.
+2. **`FFProbeOutput` field coverage from AVFoundation.** Enumerate which fields
+   `store_metadata`/the grid actually require vs. which AVFoundation can supply;
+   confirm the "absent is fine" assumption holds for the inspector and any
+   filters/facets (`GetFilterOptions`, `GetMetadataFacets`).
+3. **Loudness on iOS.** `metadata.rs:1068` extracts audio loudness via ffmpeg;
+   confirm an AVFoundation equivalent (`AVAudioFile`/`AVAssetReader` RMS, or defer
+   loudness on iOS).
+4. **`dirs` behavior on iOS** for cache/data paths — prefer Swift-supplied
+   container paths through the FFI rather than trusting the crate.
 
 ---
 
-## 12. Appendix — subprocess call sites to replace (verify before editing)
+## 12. Appendix — verified ground-truth reference (commit `3c8bf2f`)
 
-| File:line | What it runs | Replace with |
-|---|---|---|
-| `core/src/ffmpeg.rs:79`,`:84` | resolves & builds `ffmpeg`/`ffprobe` `Command` | `MediaBackend` trait; CLI impl keeps this for desktop |
-| `core/src/metadata.rs:48` | `ffprobe -print_format json` | `MediaBackend::probe` |
-| `core/src/metadata.rs:279` | ffprobe availability probe | backend capability check |
-| `core/src/metadata.rs:335`,`:418`,`:457` | `ffmpeg -metadata` tag writes | `write_location` / `write_creation_time` (maybe no-op on iOS) |
-| `core/src/thumbnails.rs:106`,`:142`,`:166` | still frame + resize | `MediaBackend::extract_frame` |
-| `core/src/thumbnails.rs:297` | scrub frames (×10) | `extract_frame` loop |
-| `core/src/thumbnails.rs:421` | on-demand frame at width | `extract_frame` |
-| `core/src/thumbnails.rs:640` | `rv-frameshot` (staged Mach-O exec) | native AVFoundation frame (no exec) |
-| `core/src/thumbnails.rs:675` | `qlmanage -t` | drop on iOS |
-| `core/src/thumbnails.rs:693` | `ffmpeg` PNG→JPEG | native backend writes JPEG directly |
-| `core/src/proxies.rs:766` | `ffmpeg … libx264 … aac` | `transcode_proxy` (VideoToolbox/`libav`) |
-| `core/src/xmp.rs:645`,`:681` | `exiftool` | Rust EXIF/XMP crate or defer |
-| `core/src/sensor_cache.rs:245` | `curl` | `reqwest`/`hyper` |
-| `core/build.rs:19` (`emit_frameshot`) | `swiftc` compile of helper | already no-op for non-macOS targets |
+Symbols are current; line numbers drift — re-grep the symbol before editing.
 
-Also revisit, though not subprocesses:
-`core/src/watcher.rs:202` (`notify` → PhotoKit observer),
-`core/src/main.rs:156`–`184` (TCP daemon → in-process embed),
-`core/src/main.rs:201` (`nix` rlimit → drop),
-`core/src/config.rs:225` (add iOS path arm),
-`core/src/indexing.rs` (`walkdir` enumeration → Photos/Files enumeration).
+**Service / embed**
+- `core/src/lib.rs` — `pub mod service` (+ the rest); lib + 2 bins in
+  `Cargo.toml` (`[lib]` :10, `[[bin]]` :119, :123).
+- `service.rs:34` `pub struct ReelVaultService` `#[derive(Clone)]`; fields
+  `db`(:35) `config`(:36) `catalog_events: broadcast::Sender<CatalogChange>`(:51,
+  channel :92 cap 256) `watcher`(:55) `pairing`(:63) `data_dir`(:65).
+- `service.rs:79` `pub fn new(db, config, pairing, data_dir) -> Self`.
+- `service.rs:114-119` watcher boot (`tokio::spawn(restart_watcher())`).
+- `service.rs:145` `pub fn into_server(self) -> ReelVaultServer<Self>`.
+- `service.rs:1083` `impl ReelVaultTrait`; 59 RPCs; stream assoc types
+  `:1084-1088`.
+- `main.rs` — `--port` :52, `--host` :57, "no auth" comment :56, service
+  construct :267, `TcpListener::bind` :277, `raise_fd_limit` :459 (called :180),
+  `get_data_dir` :545-571.
+- `watcher.rs:61` `enum CatalogChange`; `notify::recommended_watcher` :202;
+  `poll_paths` :540; `sweep_pending` :396.
+
+**Media pipeline (to replace)**
+- `ffmpeg.rs:78` `ffmpeg_command()`, `:83` `ffprobe_command()`.
+- `metadata.rs:48` ffprobe; `:649` `struct FFProbeOutput`; `:75`
+  `store_metadata(db, video_id, video_path, &FFProbeOutput, file_size)`; `:115`
+  XMP merge (`read_xmp`); `:296` `write_location_tag(path, lat, lon, alt)` (ffmpeg
+  :335); `:386` `write_creation_time_tag(path, ts_ms)` (ffmpeg :418); `:1068`
+  loudness (ffmpeg).
+- `thumbnails.rs` — consts :14-21 (`SMALL/MEDIUM/LARGE_WIDTH` 200/400/800,
+  `SCRUB_FRAME_COUNT=10`, `SCRUB_WIDTH=320`); `generate_default_sizes` :37;
+  `extract_frame` :81 (ffmpeg :106, resize :142); `generate_scrub_thumbnails`
+  :206 (ffmpeg :297); `generate_frame_at_width` :382 (ffmpeg :421); color ffprobe
+  :480; `thumbnail_filename` :339; `frameshot_path` :601; `frameshot_extract` :630
+  (exec :640); `quicklook_poster` :662 (qlmanage :675); PNG→JPEG ffmpeg :693.
+- `proxies.rs:98` `detect_proxies(db, thumbnail_cache)`; `:77`
+  `PROXY_SIMILARITY_THRESHOLD=0.96`; `:704` `create_proxy` (ffmpeg :734, libx264 /
+  aac / +faststart / `-progress pipe:1`; `frame=` parse :772; 0–85% band).
+- `sensor_cache.rs:243` `fetch_via_curl` (curl :245, timeout 30s).
+- `xmp.rs:233-284` native `read_xmp`; `:681` `exiftool` write (defer); `:645`
+  exiftool test.
+- `concurrency.rs` — `BlockingSemaphore` :16; `acquire_ffmpeg_permit()` :83;
+  `default_max_concurrent_ffmpeg()` :67; `set_ffmpeg_concurrency_limit(n)` :77.
+- `build.rs:7` `tonic_build::compile_protos`; `:21` `emit_frameshot` (macOS guard
+  :28); `:76` `emit_sensor_table`.
+
+**Data model / reuse**
+- `schema.sql:15-28` `videos` (id TEXT PK, path TEXT UNIQUE NOT NULL, …); 16
+  tables + FTS `video_search` (`schema.sql:199`).
+- `db.rs:310` `initialize_conn`; inline migration array `:322-438` (execute :440,
+  duplicate-column ignored :444-446). Migration-only tables: `proxy_links`,
+  `camera_sensor_cache`, `auto_tag_history`, `paired_devices`.
+- `indexing.rs:154` `scan_directory(db, config, on_progress)`; walkdir :181;
+  `post_index::spawn` :207; rayon `par_iter` :234; `scan_single_file` :445.
+- `post_index.rs:551` `spawn`, `:568` `spawn_with_workers` (`DEFAULT_NUM_WORKERS=3`),
+  `:653` `process_one`.
+- `imagehash.rs` — pure-Rust `image::open` + `resize_exact(Lanczos3)` +
+  `to_luma8` + MAD similarity (not dHash).
+- `config.rs:243-258` `default_cache_path` (macos/windows/else, `dirs`).
+- `Cargo.toml:5` `license = "GPL-3.0-or-later"`; rusqlite bundled :46; tokio full
+  :16; tonic tls :22; `nix` unix-only :101; `which` :93; **no `reqwest`**.
+
+**Apple client (reused for local mode)**
+- `kit/.../VideoRepository.swift:20` `@MainActor public class VideoRepository:
+  ObservableObject`; `.shared` :21; `connect(host:port:)` :41; `connect(to:
+  ServerEndpoint)` :50.
+- `kit/.../ServerEndpoint.swift` — `struct ServerEndpoint { host, port, security,
+  bearerToken }`; `EndpointSecurity` `.plaintext`/`.pinnedTLS(...)`;
+  `.loopback(port:)` :42.
+- `kit/.../Models/Video.swift:27` `VideoSummary` (Sendable), `:252`
+  `VideoMetadata` — plain transport-agnostic structs, populated via
+  `makeSummary`/`makeMetadata`.
+- **No repository protocol seam** — view-models use `VideoRepository.shared`
+  directly. The in-process-gRPC embed needs none.
+- `kit/regen-proto.sh` — `protoc … Visibility=Public`, grpc-swift v2;
+  `grpc-swift-protobuf` pinned `exact "1.3.1"`.
+- `ios/` — XcodeGen (`project.yml`, `.xcodeproj` generated), iOS 18 floor,
+  remote-only, `AppRouter` discovery→connect; mDNS + pinned TLS + pairing.
+- `macos/.../ServerLauncher.swift` — spawns the bundled daemon, connects
+  `.plaintext` to `127.0.0.1:50051` (the model the iOS embed mirrors in-process).
