@@ -2807,7 +2807,7 @@ impl Database {
             .prepare(
                 "SELECT v.id, v.filename, v.path, v.file_size_bytes,
                         COALESCE(m.width, 0), COALESCE(m.height, 0),
-                        pl.confidence, pl.auto_detected
+                        pl.confidence, pl.auto_detected, COALESCE(m.codec_video, '')
                  FROM proxy_links pl
                  JOIN videos v ON pl.proxy_id = v.id
                  LEFT JOIN metadata m ON v.id = m.video_id
@@ -2826,6 +2826,7 @@ impl Database {
                     height: row.get(5)?,
                     proxy_confidence: row.get::<_, Option<f64>>(6)?.unwrap_or(0.0),
                     auto_detected: row.get::<_, i32>(7)? != 0,
+                    codec_video: row.get(8)?,
                 })
             })
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
@@ -2843,7 +2844,7 @@ impl Database {
             .prepare(
                 "SELECT v.id, v.filename, v.path, v.file_size_bytes,
                         COALESCE(m.width, 0), COALESCE(m.height, 0),
-                        pl.confidence, pl.auto_detected
+                        pl.confidence, pl.auto_detected, COALESCE(m.codec_video, '')
                  FROM proxy_links pl
                  JOIN videos v ON pl.master_id = v.id
                  LEFT JOIN metadata m ON v.id = m.video_id
@@ -2862,6 +2863,7 @@ impl Database {
                     height: row.get(5)?,
                     proxy_confidence: row.get::<_, Option<f64>>(6)?.unwrap_or(0.0),
                     auto_detected: row.get::<_, i32>(7)? != 0,
+                    codec_video: row.get(8)?,
                 })
             })
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
@@ -3485,6 +3487,11 @@ pub struct ProxyRecord {
     pub file_size_bytes: Option<i64>,
     pub width: i32,
     pub height: i32,
+    /// The proxy's own video codec (lowercase ffprobe `codec_name`, e.g.
+    /// `h264`, `hevc`, `prores`), or empty if unknown. Lets the media server
+    /// skip a proxy a remote client can't actually decode (e.g. a ProRes proxy
+    /// made by an external tool) and transcode instead.
+    pub codec_video: String,
     /// dHash similarity at detection time (1.0 for user-marked or
     /// ReelVault-generated proxies; ~0.9–1.0 for auto-detected).
     pub proxy_confidence: f64,

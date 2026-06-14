@@ -437,15 +437,26 @@ fn closest_proxy_path(state: &MediaState, id: &str, height: i32) -> Option<Strin
         Ok(p) if !p.is_empty() => p,
         _ => return None,
     };
-    let chosen = proxies
+    // Only consider proxies the client can actually decode (H.264/HEVC). A proxy
+    // in a mastering codec — common when proxies were made by an external tool
+    // (e.g. a ProRes-422 .mov) — would download fine but AVPlayer can't play it,
+    // so we skip it here and let the caller transcode to H.264 instead.
+    let candidates: Vec<_> = proxies
+        .iter()
+        .filter(|p| is_streamable_codec(&p.codec_video))
+        .collect();
+    if candidates.is_empty() {
+        return None;
+    }
+    let chosen = candidates
         .iter()
         .filter(|p| p.height >= height)
         .min_by_key(|p| p.height)
-        .or_else(|| proxies.iter().max_by_key(|p| p.height))?;
+        .or_else(|| candidates.iter().max_by_key(|p| p.height))?;
     if std::path::Path::new(&chosen.path).exists() {
         tracing::info!(
-            "media: serving proxy {} ({}x{}) for {} (requested {}p)",
-            chosen.filename, chosen.width, chosen.height, id, height
+            "media: serving {} proxy {} ({}x{}) for {} (requested {}p)",
+            chosen.codec_video, chosen.filename, chosen.width, chosen.height, id, height
         );
         Some(chosen.path.clone())
     } else {
@@ -453,6 +464,17 @@ fn closest_proxy_path(state: &MediaState, id: &str, height: i32) -> Option<Strin
         // fall back to transcoding the original.
         None
     }
+}
+
+/// Whether a stored codec can be served to an Apple client as-is. Everything
+/// outside this set (ProRes, DNxHD, raw, …) is transcoded to H.264 first.
+/// Conservative on purpose: an unknown/empty codec is treated as *not*
+/// streamable, so we never hand the client a file it can't play.
+fn is_streamable_codec(codec: &str) -> bool {
+    matches!(
+        codec.trim().to_ascii_lowercase().as_str(),
+        "h264" | "avc1" | "x264" | "hevc" | "h265" | "hvc1" | "hev1"
+    )
 }
 
 /// Serve `path` with single-range support (the form AVPlayer issues).
