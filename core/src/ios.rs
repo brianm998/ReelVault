@@ -57,6 +57,21 @@ unsafe fn cpath(p: *const c_char) -> Option<PathBuf> {
     CStr::from_ptr(p).to_str().ok().map(PathBuf::from)
 }
 
+/// Initialize a tracing subscriber writing to stderr, once. On iOS stderr is
+/// captured by `xcrun simctl launch --console` and the device log, so the
+/// embedded core's `tracing` output is visible during simulator/device testing.
+fn init_logging() {
+    use std::sync::Once;
+    static ONCE: Once = Once::new();
+    ONCE.call_once(|| {
+        let _ = tracing_subscriber::fmt()
+            .with_writer(std::io::stderr)
+            .with_ansi(false)
+            .with_target(false)
+            .try_init();
+    });
+}
+
 /// Build the runtime, open the catalog, and spawn the in-process gRPC server.
 /// Returns the runtime (to park in the static) and the bound loopback port.
 fn boot(db_path: PathBuf, data_dir: PathBuf, cache_dir: PathBuf) -> anyhow::Result<(Runtime, u16)> {
@@ -123,6 +138,8 @@ pub extern "C" fn reelvault_start_embedded(
     if let Some(existing) = guard.as_ref() {
         return existing.port; // already booted
     }
+    init_logging();
+    tracing::info!("reelvault_start_embedded: booting embedded core");
     let (db_path, data_dir, cache_dir) =
         match unsafe { (cpath(db_path), cpath(data_dir), cpath(cache_dir)) } {
             (Some(a), Some(b), Some(c)) => (a, b, c),
@@ -130,6 +147,7 @@ pub extern "C" fn reelvault_start_embedded(
         };
     match boot(db_path, data_dir, cache_dir) {
         Ok((rt, port)) => {
+            tracing::info!("reelvault_start_embedded: serving on 127.0.0.1:{port}");
             *guard = Some(Embedded { rt, port });
             port
         }

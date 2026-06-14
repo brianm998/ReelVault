@@ -169,14 +169,18 @@ final class AppRouter: ObservableObject {
             // actor so the UI can show the progress state first.
             let port = await Task.detached { LocalCore.start() }.value
             guard let port else {
+                NSLog("ReelVault local: embedded core failed to start")
                 self.phase = .failed("Could not start the on-device library.")
                 return
             }
+            NSLog("ReelVault local: embedded core on port \(port); connecting…")
             let ok = await VideoRepository.shared.connect(to: .loopback(port: port))
             if ok {
+                NSLog("ReelVault local: connected to embedded core on \(port)")
                 self.connection = nil
                 self.phase = .connected
             } else {
+                NSLog("ReelVault local: connect FAILED on port \(port)")
                 self.phase = .failed("Started the on-device core but couldn't connect on port \(port).")
             }
         }

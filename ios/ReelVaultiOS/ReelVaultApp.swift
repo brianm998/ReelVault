@@ -18,7 +18,17 @@ struct ReelVaultApp: App {
                 .preferredColorScheme(.dark)
                 // ReelVault purple accent (matches the desktop client's default).
                 .tint(Color(red: 0.733, green: 0.525, blue: 0.988))
-                .task { router.start() }
+                // `--autostart-local` (passed by `xcrun simctl launch` in the
+                // simulator test harness) jumps straight into on-device Local
+                // Library mode, skipping LAN discovery so the embedded core can
+                // be exercised without a UI tap or a daemon on the network.
+                .task {
+                    if CommandLine.arguments.contains("--autostart-local") {
+                        router.startLocal()
+                    } else {
+                        router.start()
+                    }
+                }
         }
     }
 }
