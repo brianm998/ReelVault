@@ -11,8 +11,10 @@ import PackageDescription
 let package = Package(
     name: "ReelVaultKit",
     platforms: [
+        // grpc-swift 2.x requires macOS 15 / iOS 18 (its APIs are annotated
+        // @available accordingly), so those are the floor for ReelVaultKit.
         .macOS(.v15),
-        .iOS(.v17),
+        .iOS(.v18),
     ],
     products: [
         .library(name: "ReelVaultKit", targets: ["ReelVaultKit"]),
