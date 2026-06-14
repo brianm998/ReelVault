@@ -13,6 +13,7 @@ struct VideoDetailView: View {
     let video: VideoSummary
     let mediaEndpoint: AppRouter.ConnectionInfo?
     @StateObject private var stream = StreamPlayer()
+    @State private var fullScreen = false
 
     var body: some View {
         ScrollView {
@@ -24,6 +25,21 @@ struct VideoDetailView: View {
         }
         .navigationTitle(video.filename)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            // Full-screen playback — available on iPhone too (not just the iPad
+            // Detail mode), so compact users aren't stuck with the small inline player.
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { fullScreen = true } label: {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                }
+                .help("Full screen")
+            }
+        }
+        .fullScreenCover(isPresented: $fullScreen) {
+            // Shares the SAME StreamPlayer as the inline view → one AVPlayer, no
+            // doubled/offset audio (the K4 fix).
+            FullScreenPlayer(stream: stream, video: video, endpoint: mediaEndpoint)
+        }
     }
 }
 
@@ -173,11 +189,28 @@ struct StreamingPlayerView: View {
     }
 }
 
-/// The read-only metadata list shown in Detail mode and the compact detail screen.
+/// The read-only metadata list shown in the inspector (iPad), Detail mode, and
+/// the compact (iPhone) detail screen: technical details, a named status-badge
+/// list, and the proxy list (fetched per selection).
 struct VideoMetadataSection: View {
     let video: VideoSummary
+    @State private var proxies: [VideoRepository.ProxyInfo] = []
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            detailsGroup
+            StatusBadgeList(video: video)
+            if !proxies.isEmpty { proxiesGroup }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // Proxy details aren't on VideoSummary (only a count) — fetch the list
+        // for the selected video, same as the macOS inspector.
+        .task(id: video.id) {
+            proxies = (try? await VideoRepository.shared.listProxies(videoId: video.id)) ?? []
+        }
+    }
+
+    private var detailsGroup: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Details").font(.headline)
             detailRow("File", video.filename)
@@ -202,7 +235,30 @@ struct VideoMetadataSection: View {
             // The server-side file path is intentionally omitted — it's
             // meaningless on a remote iOS client with no filesystem access.
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var proxiesGroup: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Proxies (\(proxies.count))").font(.headline)
+            ForEach(proxies) { proxy in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(proxy.filename).font(.callout).lineLimit(1)
+                    Text(Self.proxyDetail(proxy)).font(.caption).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    /// "720p • 125 MB • auto-detected" — matches the macOS proxy row.
+    private static func proxyDetail(_ proxy: VideoRepository.ProxyInfo) -> String {
+        var parts: [String] = []
+        if proxy.height > 0 { parts.append("\(proxy.height)p") }
+        if proxy.sizeBytes > 0 {
+            parts.append(ByteCountFormatter.string(fromByteCount: proxy.sizeBytes, countStyle: .file))
+        }
+        if proxy.autoDetected { parts.append("auto-detected") }
+        return parts.joined(separator: " • ")
     }
 
     @ViewBuilder private func detailRow(_ label: String, _ value: String) -> some View {
@@ -214,5 +270,60 @@ struct VideoMetadataSection: View {
             Spacer(minLength: 0)
         }
         .font(.callout)
+    }
+}
+
+/// A named, vertical list of the same status badges shown on grid cards
+/// (keywords / proxies / full-resolution / audio / location) — for the detail
+/// panel, where each badge gets a label instead of just an icon.
+struct StatusBadgeList: View {
+    let video: VideoSummary
+
+    var body: some View {
+        let rows = rows
+        if !rows.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Status").font(.headline)
+                ForEach(rows) { row in
+                    HStack(spacing: 8) {
+                        Image(systemName: row.icon)
+                            .foregroundStyle(row.tint)
+                            .frame(width: 22)
+                        Text(row.label).font(.callout)
+                        Spacer(minLength: 0)
+                    }
+                }
+            }
+        }
+    }
+
+    private struct Row: Identifiable { let id: String; let icon: String; let tint: Color; let label: String }
+
+    private var rows: [Row] {
+        var out: [Row] = []
+        if !video.tags.isEmpty {
+            out.append(Row(id: "tags", icon: "tag.fill", tint: Color(red: 0.39, green: 0.71, blue: 0.96),
+                           label: "\(video.tags.count) keyword\(video.tags.count == 1 ? "" : "s")"))
+        }
+        if video.hasProxies {
+            out.append(Row(id: "proxies", icon: "rectangle.on.rectangle.angled", tint: .primary,
+                           label: "\(video.proxyCount) prox\(video.proxyCount == 1 ? "y" : "ies") available"))
+        }
+        switch video.fullResolution {
+        case .full:
+            out.append(Row(id: "res", icon: "checkmark.seal.fill", tint: Color(red: 0.51, green: 0.78, blue: 0.52),
+                           label: "Full resolution"))
+        case .notFull:
+            out.append(Row(id: "res", icon: "crop", tint: .primary, label: "Not full resolution"))
+        case .unspecified:
+            break
+        }
+        if video.hasAudio {
+            out.append(Row(id: "audio", icon: "waveform", tint: .primary, label: "Has audio"))
+        }
+        if video.hasLocation {
+            out.append(Row(id: "loc", icon: "mappin.circle.fill", tint: .red, label: "Has location"))
+        }
+        return out
     }
 }
