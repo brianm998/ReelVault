@@ -20,6 +20,12 @@ use reelvault_core::identity;
 use reelvault_core::media_server;
 use reelvault_core::service::ReelVaultService;
 
+/// Windows Service Control Manager integration (Stop/Shutdown handling +
+/// status reporting). Only compiled on Windows; the unix daemon path is
+/// handled by launchd/systemd, which signal the process directly.
+#[cfg(windows)]
+mod win_service;
+
 /// ReelVault backend daemon.
 ///
 /// Serves a gRPC API over loopback. By default it binds port 50051 and opens
@@ -110,10 +116,51 @@ struct Args {
     import_dir: Option<PathBuf>,
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     let args = Args::parse();
 
+    // On Windows, when started by the Service Control Manager in system-daemon
+    // mode, hand control to the SCM dispatcher so the daemon answers
+    // Stop/Shutdown and reports its status. If we weren't launched by the SCM
+    // (e.g. run directly from a console), fall through to the foreground path.
+    #[cfg(windows)]
+    {
+        if args.system_daemon {
+            match win_service::try_run_as_service() {
+                Ok(true) => return Ok(()),
+                Ok(false) => {}
+                Err(e) => return Err(e),
+            }
+        }
+    }
+
+    // Foreground / unix path: run until Ctrl-C. (launchd/systemd send SIGTERM,
+    // which terminates the process directly — no in-process handler needed.)
+    run_in_runtime(args, async {
+        let _ = tokio::signal::ctrl_c().await;
+        tracing::info!("Interrupt received; shutting down");
+    })
+}
+
+/// Build the multi-threaded async runtime and drive the daemon until `shutdown`
+/// resolves. Factored out so the foreground path (Ctrl-C) and the Windows
+/// service path (which owns its own Stop/Shutdown signal) share one entry point.
+fn run_in_runtime<F>(args: Args, shutdown: F) -> Result<()>
+where
+    F: std::future::Future<Output = ()>,
+{
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
+    runtime.block_on(run_daemon(args, shutdown))
+}
+
+/// The daemon body: open the catalog, bind the listener(s), and serve until
+/// `shutdown` fires.
+async fn run_daemon<F>(args: Args, shutdown: F) -> Result<()>
+where
+    F: std::future::Future<Output = ()>,
+{
     // Initialize logging before anything else. In system-daemon mode we write
     // to a log file; interactively we write to stderr. The guard must live for
     // the duration of main() to keep the non-blocking writer flushed.
@@ -331,7 +378,10 @@ async fn main() -> Result<()> {
         }
 
         // Gate every LAN gRPC call on a paired-device bearer token. Loopback is
-        // never wrapped, so desktop clients stay exempt.
+        // never wrapped, so desktop clients stay exempt. The Result<_, Status>
+        // shape is fixed by tonic's interceptor signature, so the large-Err
+        // clippy lint (Status is ~176 bytes) doesn't apply here.
+        #[allow(clippy::result_large_err)]
         let interceptor =
             move |req: tonic::Request<()>| -> Result<tonic::Request<()>, tonic::Status> {
                 let authz = req.metadata().get("authorization").and_then(|v| v.to_str().ok());
@@ -363,13 +413,24 @@ async fn main() -> Result<()> {
             ),
         );
 
-        // All three run forever; unify their error types for try_join!.
+        // All three run forever; unify their error types for try_join!. The
+        // whole set races the shutdown signal so a service Stop / Ctrl-C tears
+        // the listeners down cleanly.
         let loopback = async move { loopback.await.map_err(anyhow::Error::from) };
         let tls = async move { tls.await.map_err(anyhow::Error::from) };
-        tokio::try_join!(loopback, tls, media)?;
+        let servers = async move { tokio::try_join!(loopback, tls, media).map(|_| ()) };
+        tokio::pin!(shutdown);
+        tokio::select! {
+            r = servers => r?,
+            _ = &mut shutdown => tracing::info!("Shutdown requested; stopping listeners"),
+        }
     } else {
         tracing::info!("Backend ready");
-        loopback.await?;
+        tokio::pin!(shutdown);
+        tokio::select! {
+            r = loopback => r?,
+            _ = &mut shutdown => tracing::info!("Shutdown requested; stopping listener"),
+        }
     }
 
     if let Some(ref path) = pid_path {

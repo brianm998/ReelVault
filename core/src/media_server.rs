@@ -5,14 +5,18 @@
 //!
 //! Runs on the same self-signed identity certificate as the LAN gRPC bind, so
 //! one fingerprint pins both. Endpoints:
-//!   - `GET /healthz`          liveness
-//!   - `GET /fingerprint`      the cert SHA-256 (unauthenticated, for port-scan
-//!                             TOFU clients that discovered us without mDNS)
-//!   - `GET /video/{id}`       the video file, range-aware (206 / Accept-Ranges)
 //!
-//! `?height=` downscaling and HLS land in A4; this step serves the stored file
-//! (original or a proxy) with byte-range support so AVPlayer can seek/scrub
-//! native-codec content today.
+//! - `GET /healthz` — liveness.
+//! - `GET /fingerprint` — the cert SHA-256, unauthenticated, for port-scan TOFU
+//!   clients that discovered us without mDNS.
+//! - `GET /video/{id}` — the video file, range-aware (206 / `Accept-Ranges`).
+//! - `GET /video/{id}?height=H` — an on-the-fly downscaled rendition (A4).
+//! - `POST /pair/start`, `POST /pair` — one-time device pairing (A5).
+//! - `POST /upload?filename=` — authenticated upload into the import dir (A6).
+//!
+//! Range serving lets AVPlayer seek/scrub native-codec content; everything
+//! except `/healthz` and `/fingerprint` requires a paired bearer token on the
+//! LAN bind (loopback is exempt).
 
 use anyhow::{Context, Result};
 use axum::{

@@ -102,6 +102,9 @@ nix = { version = "0.27", features = ["process", "resource"] }
 
 [target.'cfg(windows)'.dependencies]
 winapi = "0.3"
+# Windows Service Control Manager integration: lets the --system-daemon binary
+# answer Stop/Shutdown controls and report status to the SCM (see win_service.rs).
+windows-service = "0.7"
 
 # Development
 [dev-dependencies]

@@ -22,12 +22,19 @@
     <key>Label</key>
     <string>com.reelvault.core</string>
 
+    <!--
+      `--remote` exposes the daemon to LAN clients (e.g. the iOS app) over TLS +
+      mDNS; loopback stays plaintext for desktop clients. The installer can
+      append `--db-path <catalog>` and `--import-dir <dir>` here via
+      `install-service.sh --catalog … --import-dir …`.
+    -->
     <key>ProgramArguments</key>
     <array>
         <string>/usr/local/bin/reelvault-core</string>
         <string>--system-daemon</string>
         <string>--port</string>
         <string>50051</string>
+        <string>--remote</string>
     </array>
 
     <!-- Start at boot and keep alive if it crashes. -->

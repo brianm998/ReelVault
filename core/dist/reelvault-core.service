@@ -22,7 +22,10 @@ Wants=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/reelvault-core --system-daemon --port 50051
+# `--remote` exposes the daemon to LAN clients (e.g. the iOS app) over TLS +
+# mDNS; loopback stays plaintext for desktop clients. `install-service.sh
+# --catalog <db> --import-dir <dir>` appends those flags to this line.
+ExecStart=/usr/local/bin/reelvault-core --system-daemon --port 50051 --remote
 
 # Restart on failure with a short back-off.
 Restart=on-failure
