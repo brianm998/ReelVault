@@ -14,7 +14,10 @@ struct InspectorPanel: View {
     let video: VideoSummary?
     /// Bumped on catalog change events so the proxy list re-fetches live.
     var refreshTick: Int = 0
-    /// Switch to Detail (player) mode for the selected video.
+    /// Switch to the internal Map mode (the "Show on Map" location action).
+    var onShowOnMap: () -> Void = {}
+    /// Switch to Detail (player) mode for the selected video. Declared LAST so the
+    /// call site's trailing closure binds to it (not onShowOnMap).
     var onPlay: () -> Void = {}
 
     var body: some View {
@@ -40,7 +43,8 @@ struct InspectorPanel: View {
                     CollapsibleSection("Collections") { CollectionsSection(grid: grid, videoId: video.id) }
                     CollapsibleSection("Notes") { NotesSection(videoId: video.id) }
                     CollapsibleSection("Location") {
-                        LocationButtonsSection(grid: grid, videoId: video.id, showHeader: false)
+                        LocationButtonsSection(grid: grid, videoId: video.id, showHeader: false,
+                                               onShowOnMap: onShowOnMap)
                     }
                     CollapsibleSection("Visuals") {
                         DetailGraphsView(grid: grid, videoId: video.id, showHeader: false)

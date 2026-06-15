@@ -5,7 +5,6 @@ import CoreLocation
 import MapKit
 import ReelVaultKit
 import SwiftUI
-import UIKit
 
 /// "Set / Change / Remove location" controls for a video — the iOS counterpart of
 /// the macOS detail panel's location buttons. Shown at the bottom of the detail
@@ -16,6 +15,10 @@ struct LocationButtonsSection: View {
     let videoId: String
     /// Drop the "Location" headline when hosted inside a CollapsibleSection.
     var showHeader: Bool = true
+    /// Host-supplied "switch to the internal Map mode" action. When non-nil a
+    /// "Show on Map" button appears that focuses this video on the in-app map
+    /// (NOT Apple Maps). nil hosts (no way to change view mode) hide the button.
+    var onShowOnMap: (() -> Void)? = nil
     @State private var showPicker = false
 
     private var video: VideoSummary? {
@@ -47,13 +50,19 @@ struct LocationButtonsSection: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
-                    Button {
-                        openInMaps(lat: video.gpsLatitude, lon: video.gpsLongitude, name: video.filename)
-                    } label: {
-                        Label("Show on Map", systemImage: "map")
-                            .frame(maxWidth: .infinity)
+                    if let onShowOnMap {
+                        Button {
+                            // Focus the in-app map on this clip, then ask the host
+                            // to switch to Map mode — no external Apple Maps trip.
+                            grid.mapFocus = GeoFilter(latitude: video.gpsLatitude,
+                                                      longitude: video.gpsLongitude, radiusKm: 1)
+                            onShowOnMap()
+                        } label: {
+                            Label("Show on Map", systemImage: "map")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
                     }
-                    .buttonStyle(.bordered)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -74,12 +83,6 @@ struct LocationButtonsSection: View {
         }
     }
 
-    private func openInMaps(lat: Double, lon: Double, name: String) {
-        let q = name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "Location"
-        if let url = URL(string: "http://maps.apple.com/?ll=\(lat),\(lon)&q=\(q)") {
-            UIApplication.shared.open(url)
-        }
-    }
 }
 
 /// Map-based location picker: drag the map under a fixed centre pin to choose a

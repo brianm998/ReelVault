@@ -10,6 +10,8 @@ import ReelVaultKit
 struct DetailModeView: View {
     @ObservedObject var grid: GridViewModel
     let connection: AppRouter.ConnectionInfo?
+    /// Switch to the internal Map mode (the "Show on Map" location action).
+    var onShowOnMap: () -> Void = {}
     @StateObject private var stream = StreamPlayer()
     @State private var fullScreen = false
 
@@ -27,7 +29,7 @@ struct DetailModeView: View {
                         MetadataEditorSection(grid: grid, videoId: video.id)
                         VideoMetadataSection(video: video, refreshTick: grid.catalogChangeTick)
                         VideoDetailExtras(grid: grid, video: video)
-                        LocationButtonsSection(grid: grid, videoId: video.id)
+                        LocationButtonsSection(grid: grid, videoId: video.id, onShowOnMap: onShowOnMap)
                         DetailGraphsView(grid: grid, videoId: video.id)
                     }
                     .padding()

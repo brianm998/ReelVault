@@ -226,6 +226,12 @@ public class GridViewModel: ObservableObject {
     // on the map and named GPS readouts in the detail panel.
     @Published public var namedLocations: [NamedLocation] = []
 
+    /// One-shot request for the global map to recenter on a coordinate (the
+    /// `radiusKm` sets the zoom). Set by the detail/inspector "Show on Map" action
+    /// so it focuses the *internal* map instead of opening an external maps app;
+    /// the map consumes it (recenters) and clears it back to nil.
+    @Published public var mapFocus: GeoFilter?
+
     // Thumbnails
     @Published public var thumbnails: [String: PlatformImage] = [:]
 
@@ -3181,6 +3187,27 @@ public class GridViewModel: ObservableObject {
         Task {
             let locs = await repository.listVideosWithLocations()
             filterLocationGroups = Self.buildLocationFilterGroups(locs, named: namedLocations)
+        }
+    }
+
+    /// Cluster the map's geotagged videos into named places + ~110 m coordinate
+    /// buckets — the SAME grouping the Library Filter and the macOS/desktop maps
+    /// use — each with a count and a place-name label. The iOS global map renders
+    /// one marker per group (a circle with the count and, when known, the place
+    /// name), instead of one pin per video. Recomputed from the current
+    /// `videoLocations` + `namedLocations`.
+    public func mapLocationClusters() -> [LocationFilterGroup] {
+        Self.buildLocationFilterGroups(videoLocations, named: namedLocations)
+    }
+
+    /// The geotagged videos inside `cluster` (for the map's iPad side panel),
+    /// using the same radius the cluster was built with. Drawn from
+    /// `geotaggedVideos` so the rows are full `VideoSummary`s the panel can open.
+    public func mapClusterMembers(_ cluster: LocationFilterGroup) -> [VideoSummary] {
+        geotaggedVideos.filter { v in
+            v.hasLocation && Self.haversineMeters(
+                lat1: cluster.latitude, lon1: cluster.longitude,
+                lat2: v.gpsLatitude, lon2: v.gpsLongitude) <= cluster.radiusKm * 1000.0
         }
     }
 

@@ -92,7 +92,8 @@ private struct RegularLayout: View {
                 if showInspector {
                     Divider()
                     InspectorPanel(grid: grid, video: visibleSelectedVideo(grid),
-                                   refreshTick: grid.catalogChangeTick) { viewMode = .detail }
+                                   refreshTick: grid.catalogChangeTick,
+                                   onShowOnMap: { viewMode = .map }) { viewMode = .detail }
                         .frame(width: 300)
                 }
             }
@@ -119,9 +120,11 @@ private struct RegularLayout: View {
                               onDoubleTap: { _ in viewMode = .detail }) { _ in }
                 .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
         case .detail:
-            DetailModeView(grid: grid, connection: connection)
+            DetailModeView(grid: grid, connection: connection,
+                           onShowOnMap: { viewMode = .map })
         case .map:
-            LibraryMapView(grid: grid) { _ in }
+            // iPad: tapping a cluster opens a trailing panel of its videos.
+            MapModePad(grid: grid, viewMode: $viewMode)
                 .navigationTitle("Map").navigationBarTitleDisplayMode(.inline)
         }
     }
@@ -150,7 +153,8 @@ private struct CompactLayout: View {
                 .navigationTitle("ReelVault")
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationDestination(item: $pushedVideo) { video in
-                    VideoDetailView(video: video, grid: grid, mediaEndpoint: connection)
+                    VideoDetailView(video: video, grid: grid, mediaEndpoint: connection,
+                                    onShowOnMap: { pushedVideo = nil; viewMode = .map })
                 }
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
@@ -190,8 +194,13 @@ private struct CompactLayout: View {
         case .detail:
             DetailModeView(grid: grid, connection: connection)
         case .map:
-            LibraryMapView(grid: grid) { id in
-                pushedVideo = grid.videos.first(where: { $0.id == id })
+            // iPhone: tapping a cluster switches to Grid mode filtered to that
+            // location (no room for a side panel).
+            LibraryMapView(grid: grid) { cluster in
+                grid.setLocationFilter(latitude: cluster.latitude,
+                                       longitude: cluster.longitude,
+                                       radiusKm: cluster.radiusKm)
+                viewMode = .grid
             }
         }
     }

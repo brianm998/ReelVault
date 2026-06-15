@@ -17,6 +17,9 @@ struct VideoDetailView: View {
     /// keywords (the edits sync to every client).
     @ObservedObject var grid: GridViewModel
     let mediaEndpoint: AppRouter.ConnectionInfo?
+    /// Switch to the internal Map mode focused on this video (the "Show on Map"
+    /// action). On iPhone the host pops this pushed screen and shows Map mode.
+    var onShowOnMap: (() -> Void)? = nil
     @StateObject private var stream = StreamPlayer()
     @State private var fullScreen = false
 
@@ -33,7 +36,7 @@ struct VideoDetailView: View {
                     refreshTick: grid.catalogChangeTick)
                 VideoDetailExtras(grid: grid,
                                   video: grid.videos.first(where: { $0.id == video.id }) ?? video)
-                LocationButtonsSection(grid: grid, videoId: video.id)
+                LocationButtonsSection(grid: grid, videoId: video.id, onShowOnMap: onShowOnMap)
                 DetailGraphsView(grid: grid, videoId: video.id)
             }
             .padding()
