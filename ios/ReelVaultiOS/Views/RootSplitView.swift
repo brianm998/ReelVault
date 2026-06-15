@@ -98,6 +98,20 @@ private struct RegularLayout: View {
                 }
             }
         }
+        // The grid reflows narrower when the inspector opens on a selection, and
+        // wider when the library column is collapsed — either can scroll the
+        // selected card out of view. Re-center it once the layout settles.
+        .onChange(of: showInspector) { _, shown in if shown { scrollToSelection() } }
+        .onChange(of: columnVisibility) { _, _ in scrollToSelection() }
+    }
+
+    /// Ask the grid to re-center the current selection after a layout change.
+    /// Deferred a tick so the reflow finishes before the scroll is issued.
+    private func scrollToSelection() {
+        guard let id = grid.selectedVideoId else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            grid.pendingScrollVideoId = id
+        }
     }
 
     /// Inspector appears only when browsing (grid/list) and the selected video's
