@@ -53,8 +53,19 @@ struct VideoGridView: View {
     var selecting: Bool = false
     /// Activate a card: select it (regular) or push its detail (compact).
     var onActivate: (VideoSummary) -> Void
+    /// Double-tap to open Detail mode (iPad). nil on iPhone, where a single tap
+    /// already pushes detail — so the card attaches no double-tap gesture and the
+    /// single tap stays instant.
+    var onDoubleTap: ((VideoSummary) -> Void)? = nil
 
     private let spacing: CGFloat = 10
+
+    /// The card's double-tap action: select the video, then open detail. nil while
+    /// multi-selecting (taps toggle the checkbox) or when the host wired none.
+    private func doubleTapHandler(for video: VideoSummary) -> (() -> Void)? {
+        guard let onDoubleTap, !selecting else { return nil }
+        return { grid.selectVideo(video); onDoubleTap(video) }
+    }
 
     private var columns: [GridItem] {
         [GridItem(.adaptive(minimum: minCardWidth), spacing: spacing)]
@@ -115,6 +126,7 @@ struct VideoGridView: View {
                                             onActivate(video)
                                         }
                                     },
+                                    onDoubleTap: doubleTapHandler(for: video),
                                     onSetRating: { grid.setRating($0, for: [video.id]) },
                                     onSetColorLabel: { grid.setColorLabel($0, for: [video.id]) },
                                     isStackMember: row.isMember,
@@ -216,6 +228,10 @@ struct VideoCardView: View {
     var showCheck: Bool = false
     var isChecked: Bool = false
     var onActivate: () -> Void = {}
+    /// Double-tap to open Detail mode. nil = no double-tap gesture (so single-tap
+    /// fires immediately, with no disambiguation delay — used where a single tap
+    /// already opens detail, e.g. iPhone).
+    var onDoubleTap: (() -> Void)? = nil
     var onSetRating: (Int) -> Void = { _ in }
     var onSetColorLabel: (String) -> Void = { _ in }
     /// This card is an expanded stack member (rendered after its representative).
@@ -241,7 +257,7 @@ struct VideoCardView: View {
                 photoArea
             }
             .contentShape(Rectangle())
-            .onTapGesture { onActivate() }
+            .modifier(CardTapActions(onActivate: onActivate, onDoubleTap: onDoubleTap))
 
             Rectangle().fill(dividerColor).frame(height: 1)
             ratingBand
@@ -441,6 +457,26 @@ struct VideoCardMenu: View {
         case .green: return "🟢"
         case .blue: return "🔵"
         case .purple: return "🟣"
+        }
+    }
+}
+
+/// Single- and (optional) double-tap actions for a video card or list row.
+/// When `onDoubleTap` is set, a `count: 2` gesture is attached *before* the
+/// single-tap so SwiftUI can disambiguate (double-tap → open detail, single tap →
+/// select); when nil, only the single tap is attached so it fires with no delay.
+/// Shared by the grid card and the list row.
+struct CardTapActions: ViewModifier {
+    let onActivate: () -> Void
+    let onDoubleTap: (() -> Void)?
+
+    func body(content: Content) -> some View {
+        if let onDoubleTap {
+            content
+                .onTapGesture(count: 2) { onDoubleTap() }
+                .onTapGesture(count: 1) { onActivate() }
+        } else {
+            content.onTapGesture { onActivate() }
         }
     }
 }

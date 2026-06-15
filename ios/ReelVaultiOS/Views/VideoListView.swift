@@ -13,6 +13,8 @@ struct VideoListView: View {
     var thumbnailHeight: CGFloat = 64
     var selecting: Bool = false
     var onActivate: (VideoSummary) -> Void
+    /// Double-tap to open Detail mode (iPad); nil on iPhone (single tap pushes detail).
+    var onDoubleTap: ((VideoSummary) -> Void)? = nil
 
     var body: some View {
         if grid.videos.isEmpty {
@@ -43,14 +45,17 @@ struct VideoListView: View {
                     )
                     .listRowBackground(grid.selectedVideoId == video.id ? Color.accentColor.opacity(0.18) : Color.clear)
                     .contentShape(Rectangle())
-                    .onTapGesture {
-                        if selecting {
-                            grid.toggleVideoSelection(video)
-                        } else {
-                            grid.selectVideo(video)
-                            onActivate(video)
-                        }
-                    }
+                    .modifier(CardTapActions(
+                        onActivate: {
+                            if selecting {
+                                grid.toggleVideoSelection(video)
+                            } else {
+                                grid.selectVideo(video)
+                                onActivate(video)
+                            }
+                        },
+                        onDoubleTap: (onDoubleTap != nil && !selecting)
+                            ? { grid.selectVideo(video); onDoubleTap?(video) } : nil))
                     .contextMenu {
                         VideoCardMenu(
                             video: video, selectedCount: grid.selectedVideoIds.count,

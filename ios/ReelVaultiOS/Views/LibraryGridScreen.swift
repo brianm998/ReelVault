@@ -16,8 +16,12 @@ struct LibraryGridScreen: View {
     var listMode: Bool = false
     @Binding var thumbnailWidth: Double
     var keyboardEnabled: Bool = false
+    /// Double-tap a card to open Detail mode (iPad). nil on iPhone, where a single
+    /// tap already opens detail.
+    var onDoubleTap: ((VideoSummary) -> Void)? = nil
     /// Activate a card when not selecting: select into the inspector (regular)
-    /// or push the detail screen (compact).
+    /// or push the detail screen (compact). Declared LAST so the call site's
+    /// trailing closure binds to it (not onDoubleTap).
     var onActivate: (VideoSummary) -> Void
 
     @State private var selecting = false
@@ -92,7 +96,8 @@ struct LibraryGridScreen: View {
                 grid: grid,
                 thumbnailHeight: CGFloat(thumbnailWidth) * 0.4,
                 selecting: selecting,
-                onActivate: onActivate
+                onActivate: onActivate,
+                onDoubleTap: onDoubleTap
             )
         } else {
             VideoGridView(
@@ -100,7 +105,8 @@ struct LibraryGridScreen: View {
                 minCardWidth: CGFloat(thumbnailWidth),
                 keyboardEnabled: keyboardEnabled && !selecting,
                 selecting: selecting,
-                onActivate: onActivate
+                onActivate: onActivate,
+                onDoubleTap: onDoubleTap
             )
         }
     }

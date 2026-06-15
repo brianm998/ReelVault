@@ -108,12 +108,15 @@ private struct RegularLayout: View {
     @ViewBuilder private var center: some View {
         switch viewMode {
         case .grid:
+            // Double-tap a card → Detail mode (single tap selects into the inspector).
             LibraryGridScreen(grid: grid, connection: connection, listMode: false,
-                              thumbnailWidth: $thumbnailWidth, keyboardEnabled: true) { _ in }
+                              thumbnailWidth: $thumbnailWidth, keyboardEnabled: true,
+                              onDoubleTap: { _ in viewMode = .detail }) { _ in }
                 .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
         case .list:
             LibraryGridScreen(grid: grid, connection: connection, listMode: true,
-                              thumbnailWidth: $thumbnailWidth, keyboardEnabled: true) { _ in }
+                              thumbnailWidth: $thumbnailWidth, keyboardEnabled: true,
+                              onDoubleTap: { _ in viewMode = .detail }) { _ in }
                 .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
         case .detail:
             DetailModeView(grid: grid, connection: connection)
