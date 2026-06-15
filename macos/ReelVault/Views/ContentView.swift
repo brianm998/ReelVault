@@ -102,22 +102,52 @@ struct ContentView: View {
     @EnvironmentObject private var appState: AppState
     @ObservedObject private var recents = RecentCatalogs.shared
 
-    enum ConnectionState { case connecting, connected, failed }
+    enum ConnectionState {
+        case discovering
+        case picker([MacServerChoice])
+        case connecting
+        case needsPairing(DiscoveredServer)
+        case connected
+        case failed
+    }
+    // Remote-pairing scratch state: the server awaiting a code, its resolved
+    // pinned fingerprint, and whether to remember it as the default on success.
+    @State private var pairingServer: DiscoveredServer?
+    @State private var pairingFingerprint: String?
+    @State private var pairingMakeDefault = false
     enum ViewMode { case grid, list, detail, map }
 
     var body: some View {
         Group {
             switch connectionState {
+            case .discovering:
+                DiscoveringView()
+            case .picker(let choices):
+                ServerPickerView(choices: choices) { choice, makeDefault in
+                    Task { await chooseServer(choice, makeDefault: makeDefault) }
+                }
             case .connecting:
                 ConnectingView()
+            case .needsPairing(let server):
+                PairingCodeEntryView(
+                    server: server,
+                    onSubmit: { code in submitPairingCode(code) },
+                    onCancel: { Task { await arbitrate() } }
+                )
             case .connected:
                 mainUI
             case .failed:
                 ConnectionErrorView(
                     errorMessage: connectionError.isEmpty
-                        ? "Failed to connect to ReelVault backend on localhost:50051"
+                        ? "Couldn't connect to a ReelVault server."
                         : connectionError,
-                    onRetry: { Task { await setupConnection() } }
+                    onRetry: { Task { await setupConnection() } },
+                    onChooseServer: {
+                        // Clear any saved default so retry can't re-trap on a
+                        // stale/unreachable remote; re-scan and let the user pick.
+                        StoredDefaultServer.clear()
+                        Task { await arbitrate() }
+                    }
                 )
             }
         }
@@ -1362,24 +1392,71 @@ struct ContentView: View {
         PanelPrefs.saveExpanded(side: .right, mode: viewMode, value: open)
     }
 
-    /// Connect to the gRPC daemon. Flow:
-    ///   1. Probe localhost:50051. If something's there, reuse it.
-    ///   2. Otherwise spawn our own daemon via `ServerLauncher`.
-    ///   3. Once connected, ask the daemon what catalog it has open.
-    ///   4. If none, auto-open the most-recent if it still exists, else
-    ///      prompt the user with the OpenCatalog sheet.
+    /// Establish a connection at launch. Honors a remembered default
+    /// (`StoredDefaultServer`) for an instant reconnect; otherwise arbitrates
+    /// between the local loopback daemon and any remote daemons found on the LAN.
     private func setupConnection() async {
+        if let def = StoredDefaultServer.load() {
+            switch def.kind {
+            case .local:
+                await connectLocal()
+                return
+            case .remote:
+                connectionState = .connecting
+                // Try the remembered remote; if it's gone (offline, or its cert was
+                // regenerated so the stored pin no longer matches), forget the stale
+                // default so a Retry can't re-trap on it, then fall back to a scan
+                // (which re-discovers it with a fresh fingerprint over mDNS).
+                if await tryConnectRemote(def.asDiscoveredServer, makeDefault: false) { return }
+                StoredDefaultServer.clear()
+            }
+        }
+        await arbitrate()
+    }
+
+    /// Scan for daemons (mDNS + loopback) and route per the startup policy: both
+    /// local + remote(s) → ask; a single source → connect to it; nothing → start a
+    /// local server. A same-machine `--remote` daemon is de-duped against loopback
+    /// (see `scanForServers`), so we never offer "the same process" twice.
+    private func arbitrate() async {
+        connectionState = .discovering
+        let (loopback, remotes) = await scanForServers()
+        if loopback && !remotes.isEmpty {
+            connectionState = .picker([.local(port: 50051)] + remotes.map { .remote($0) })
+        } else if remotes.count == 1 {
+            await chooseServer(.remote(remotes[0]), makeDefault: false)
+        } else if !remotes.isEmpty {
+            connectionState = .picker(remotes.map { .remote($0) })
+        } else {
+            // Only loopback, or nothing — connectLocal reuses or spawns one.
+            await connectLocal()
+        }
+    }
+
+    /// Act on a user's (or auto) choice, optionally remembering it as the default.
+    private func chooseServer(_ choice: MacServerChoice, makeDefault: Bool) async {
+        switch choice {
+        case .local(let port):
+            if makeDefault { StoredDefaultServer.local(port: port).save() }
+            await connectLocal()
+        case .remote(let server):
+            connectionState = .connecting
+            if !(await tryConnectRemote(server, makeDefault: makeDefault)) {
+                connectionError = "Couldn't reach \(server.catalogName ?? server.name)."
+                connectionState = .failed
+            }
+        }
+    }
+
+    /// Connect to the local loopback daemon (plaintext), spawning it if needed.
+    private func connectLocal() async {
         connectionState = .connecting
         let defaultPort = 50051
         let launcher = ServerLauncher.shared
-
-        // Step 1: probe the default port.
-        let reachable = launcher.isReachable(host: "127.0.0.1", port: defaultPort)
         let port: Int
-        if reachable {
+        if launcher.isReachable(host: "127.0.0.1", port: defaultPort) {
             port = defaultPort
         } else {
-            // Step 2: spawn our own daemon.
             guard let listening = await launcher.launch(preferredPort: defaultPort, dbPath: nil) else {
                 connectionError = "Couldn't start the ReelVault backend. Set REELVAULT_CORE_BIN or build core with `cargo build`."
                 connectionState = .failed
@@ -1387,24 +1464,98 @@ struct ContentView: View {
             }
             port = listening.port
         }
-
         let connected = await VideoRepository.shared.connect(host: "127.0.0.1", port: port)
         guard connected else {
             connectionError = "Connected to port \(port) but the daemon didn't respond"
             connectionState = .failed
             return
         }
-        connectionState = .connected
+        await afterConnected(isRemote: false)
+    }
 
-        // Step 3: ask the daemon what catalog is mounted.
+    /// Connect to a remote daemon over fingerprint-pinned TLS, pairing first if it
+    /// requires it (and we have no stored token). Returns false only when the
+    /// server couldn't be reached at all (caller falls back to a scan); routing to
+    /// the pairing screen counts as "handled" (returns true).
+    private func tryConnectRemote(_ server: DiscoveredServer, makeDefault: Bool) async -> Bool {
+        // Resolve the pin: mDNS advertises it; otherwise fetch the cert (TOFU).
+        var fp = server.fingerprintHex
+        if fp?.isEmpty != false {
+            if let der = await PinnedTLS.fetchServerCertificate(
+                host: server.host, port: server.grpcPort, expectedFingerprintHex: nil) {
+                fp = PinnedTLS.fingerprint(ofDER: der)
+            }
+        }
+        guard let pin = fp, !pin.isEmpty else { return false }
+
+        let token = TokenStore.load(for: pin)
+        if token == nil && server.requiresPairing {
+            // Route to the pairing-code screen; nudge the server to prompt.
+            pairingServer = server
+            pairingFingerprint = pin
+            pairingMakeDefault = makeDefault
+            connectionState = .needsPairing(server)
+            let mediaPort = server.mediaPort ?? 50052
+            Task {
+                await PairingClient().requestPairing(
+                    host: server.host, mediaPort: mediaPort,
+                    fingerprintHex: pin, deviceName: Self.deviceName())
+            }
+            return true
+        }
+
+        let ep = ServerEndpoint(host: server.host, port: server.grpcPort,
+                                security: .pinnedTLS(fingerprintSHA256Hex: pin),
+                                bearerToken: token)
+        guard await VideoRepository.shared.connect(to: ep) else { return false }
+        if makeDefault { StoredDefaultServer.remote(server).save() }
+        await afterConnected(isRemote: true)
+        return true
+    }
+
+    /// Submit the code entered on the pairing screen, mint a token, and connect.
+    private func submitPairingCode(_ code: String) {
+        guard let server = pairingServer, let pin = pairingFingerprint else { return }
+        connectionState = .connecting
+        Task {
+            let mediaPort = server.mediaPort ?? 50052
+            let token = await PairingClient().pair(
+                host: server.host, mediaPort: mediaPort, fingerprintHex: pin,
+                pin: code, deviceName: Self.deviceName())
+            guard let token else {
+                connectionError = "Pairing failed — check the code and try again."
+                connectionState = .failed
+                return
+            }
+            TokenStore.save(token, for: pin)
+            let ep = ServerEndpoint(host: server.host, port: server.grpcPort,
+                                    security: .pinnedTLS(fingerprintSHA256Hex: pin),
+                                    bearerToken: token)
+            if await VideoRepository.shared.connect(to: ep) {
+                if pairingMakeDefault { StoredDefaultServer.remote(server).save() }
+                await afterConnected(isRemote: true)
+            } else {
+                connectionError = "Paired, but couldn't connect to \(server.catalogName ?? server.name)."
+                connectionState = .failed
+            }
+        }
+    }
+
+    /// Post-connect: mount the daemon's catalog and load. For a LOCAL daemon with
+    /// no catalog open, auto-resume the most recent or prompt (local file paths).
+    /// A REMOTE daemon owns its own catalog server-side, so we just load whatever
+    /// it has mounted (no local open-catalog prompt — `recents` are local paths).
+    private func afterConnected(isRemote: Bool) async {
+        connectionState = .connected
         let existing = await VideoRepository.shared.getCurrentCatalog()
         if existing.isOpen {
             currentCatalog = existing
-            recents.touch(existing.path)
+            if !isRemote { recents.touch(existing.path) }
+            loadAfterCatalogOpened()
+        } else if isRemote {
+            currentCatalog = .closed
             loadAfterCatalogOpened()
         } else {
-            // Step 4: nothing open. Auto-resume the most recent if it still
-            // exists, otherwise prompt the user.
             if let head = recents.list().first(where: { FileManager.default.fileExists(atPath: $0) }) {
                 await openCatalog(path: head)
             } else {
@@ -1412,6 +1563,11 @@ struct ContentView: View {
                 showOpenCatalogSheet = true
             }
         }
+    }
+
+    /// This Mac's name, sent to the daemon when pairing.
+    private static func deviceName() -> String {
+        Host.current().localizedName ?? "Mac"
     }
 
     /// Ask the daemon to switch to a new catalog and refresh the UI.
@@ -1467,9 +1623,6 @@ struct ConnectingView: View {
                 .controlSize(.large)
             Text("Connecting to ReelVault…")
                 .font(.body)
-                .foregroundColor(.secondary)
-            Text("Reaching out to the backend on localhost:50051")
-                .font(.caption)
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

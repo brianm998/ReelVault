@@ -8,6 +8,10 @@ import AppKit
 struct ConnectionErrorView: View {
     let errorMessage: String
     var onRetry: () -> Void = {}
+    /// When set, shows a "Choose a different server…" button — clears any saved
+    /// default and re-runs discovery, so a stale/unreachable remote default can't
+    /// trap the user on this screen.
+    var onChooseServer: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 24) {
@@ -55,16 +59,31 @@ struct ConnectionErrorView: View {
             }
             .frame(maxWidth: 400)
 
-            Button {
-                onRetry()
-            } label: {
-                HStack {
-                    Image(systemName: "arrow.clockwise")
-                    Text("Retry")
+            HStack(spacing: 12) {
+                Button {
+                    onRetry()
+                } label: {
+                    HStack {
+                        Image(systemName: "arrow.clockwise")
+                        Text("Retry")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .help("Try connecting to the ReelVault backend daemon again.")
+
+                if let onChooseServer {
+                    Button {
+                        onChooseServer()
+                    } label: {
+                        HStack {
+                            Image(systemName: "rectangle.connected.to.line.below")
+                            Text("Choose a Different Server…")
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .help("Forget the saved default and scan for ReelVault servers again.")
                 }
             }
-            .buttonStyle(.borderedProminent)
-            .help("Try connecting to the ReelVault backend daemon again. Make sure `reelvault-core` is running on localhost:50051.")
 
             Spacer()
         }
