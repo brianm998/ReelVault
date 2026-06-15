@@ -77,6 +77,11 @@ fun DetailGraphsPanel(
         }
     }
     val loudness: List<Float> = selectedId?.let { loudnessMap[it] } ?: emptyList()
+    // Whether the loudness series has finished loading (the map entry exists,
+    // empty or not). Distinguishes "still analysing" (absent) from "loaded, no
+    // audio" (present but empty) so a slow first decode isn't a silent blank.
+    // The daemon caches the decoded series, so later opens are instant.
+    val loudnessLoaded: Boolean = selectedId?.let { loudnessMap.containsKey(it) } ?: false
 
     // Prefer the detail-resolution frames per index, falling back to the base
     // set — more pixels make for steadier averages, and this tracks whatever
@@ -160,10 +165,28 @@ fun DetailGraphsPanel(
                     RgbChart(stats)
                 }
                 // Loudness comes from the daemon (ffmpeg), independent of the
-                // scrub frames, so it can appear before/without the others.
+                // scrub frames, so it can appear before/without the others. Three
+                // states: ready → chart; still decoding → a hint (the first decode
+                // can be slow over a networked library); loaded-but-empty →
+                // nothing (the clip has no audio).
                 if (hasLoudness) {
                     SectionLabel("Loudness")
                     LoudnessChart(loudness)
+                } else if (!loudnessLoaded) {
+                    SectionLabel("Loudness")
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(72.dp)
+                            .background(Color(0xFF1E1E1E), RoundedCornerShape(4.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "Analyzing audio…",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }

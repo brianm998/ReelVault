@@ -444,6 +444,13 @@ impl Database {
             // UNIQUE constraint and all path-keyed queries keep working.
             ("videos.source_kind", "ALTER TABLE videos ADD COLUMN source_kind TEXT"),
             ("videos.source_id",   "ALTER TABLE videos ADD COLUMN source_id TEXT"),
+            // Cached audio loudness-over-time series for the detail view's volume
+            // graph (little-endian f32 samples, 0..1). Computing it is a full-file
+            // audio decode via ffmpeg — far too slow to redo on every detail open
+            // over a networked library — so the first request caches the blob here
+            // and later opens read it back. NULL = not yet computed; an empty blob
+            // = computed and the video has no usable audio (don't recompute).
+            ("metadata.audio_loudness", "ALTER TABLE metadata ADD COLUMN audio_loudness BLOB"),
         ];
         for (label, sql) in migrations {
             match conn.execute(sql, []) {

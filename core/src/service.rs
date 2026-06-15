@@ -184,37 +184,55 @@ impl ReelVaultService {
             Ok(Some(v)) => v,
             _ => return Ok(Vec::new()),
         };
-        // Skip the (potentially slow) decode entirely for videos with no audio.
-        let has_audio = self
+        // Read the cached blob (if computed before) and the audio codec in one go.
+        // A non-NULL blob — even empty — means we already decoded this video, so
+        // return it and skip the (slow, networked) ffmpeg pass. NULL means we've
+        // never tried; empty codec_audio means there's no audio to analyse.
+        let (cached, has_audio): (Option<Vec<u8>>, bool) = self
             .db
             .get_connection()
             .ok()
             .and_then(|c| {
                 c.query_row(
-                    "SELECT codec_audio FROM metadata WHERE video_id = ?",
+                    "SELECT audio_loudness, codec_audio FROM metadata WHERE video_id = ?",
                     [video_id],
-                    |row| row.get::<_, Option<String>>(0),
+                    |row| {
+                        let blob: Option<Vec<u8>> = row.get(0)?;
+                        let codec: Option<String> = row.get(1)?;
+                        Ok((blob, codec.map(|s| !s.is_empty()).unwrap_or(false)))
+                    },
                 )
                 .ok()
             })
-            .flatten()
-            .map(|s| !s.is_empty())
-            .unwrap_or(false);
+            .unwrap_or((None, false));
+        if let Some(blob) = cached {
+            return Ok(blob);
+        }
         if !has_audio {
             return Ok(Vec::new());
         }
 
         let path = video.path.clone();
-        self.run_blocking(move |_svc| {
-            let samples = crate::media_backend::backend()
-                .extract_loudness(&crate::media_backend::MediaSource::Path(path.clone().into()));
-            let mut bytes = Vec::with_capacity(samples.len() * 4);
-            for s in samples {
-                bytes.extend_from_slice(&s.to_le_bytes());
-            }
-            Ok(bytes)
-        })
-        .await
+        let bytes = self
+            .run_blocking(move |_svc| {
+                let samples = crate::media_backend::backend()
+                    .extract_loudness(&crate::media_backend::MediaSource::Path(path.clone().into()));
+                let mut bytes = Vec::with_capacity(samples.len() * 4);
+                for s in samples {
+                    bytes.extend_from_slice(&s.to_le_bytes());
+                }
+                Ok(bytes)
+            })
+            .await?;
+        // Cache the result (even empty — a decode that found no loudness shouldn't
+        // be retried over the network on every detail open). Best-effort.
+        if let Ok(conn) = self.db.get_connection() {
+            let _ = conn.execute(
+                "UPDATE metadata SET audio_loudness = ? WHERE video_id = ?",
+                rusqlite::params![bytes, video_id],
+            );
+        }
+        Ok(bytes)
     }
 
     /// Load the user's custom camera-name overrides from the catalog

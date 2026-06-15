@@ -49,6 +49,12 @@ struct DetailGraphsPanel: View {
     private var loudness: [Float] { selectedId.flatMap { gridViewModel.audioLoudness[$0] } ?? [] }
     private var hasStats: Bool { stats.count >= 2 }
     private var hasLoudness: Bool { loudness.count >= 2 }
+    /// Whether the loudness series has finished loading (the dict entry exists,
+    /// empty or not). Distinguishes "still analysing" (entry absent) from "loaded,
+    /// no audio" (entry present but empty) so a slow first decode isn't a silent
+    /// blank. The first decode is a full-file audio pass over a (possibly slow,
+    /// networked) library; the daemon caches the result so later opens are instant.
+    private var loudnessLoaded: Bool { selectedId.flatMap { gridViewModel.audioLoudness[$0] } != nil }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -86,9 +92,21 @@ struct DetailGraphsPanel: View {
                         }
                         // Loudness comes from the daemon (ffmpeg), independent of
                         // the scrub frames, so it can appear before/without them.
+                        // Three states: ready → chart; still decoding → a hint
+                        // (the first decode can be slow over a networked library);
+                        // loaded-but-empty → nothing (the clip has no audio).
                         if hasLoudness {
                             sectionLabel("Loudness")
                             loudnessChart
+                        } else if !loudnessLoaded {
+                            sectionLabel("Loudness")
+                            HStack(spacing: 6) {
+                                ProgressView().controlSize(.small)
+                                Text("Analyzing audio…").font(.caption).foregroundColor(.secondary)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 40, alignment: .center)
+                            .background(Color(white: 0.12))
+                            .cornerRadius(4)
                         }
                     }
                     .padding(12)
