@@ -17,6 +17,11 @@ struct ConnectedRootView: View {
                 // match what they set on the desktop/macOS clients.
                 grid.loadGridSettings()
                 grid.loadVideos()
+                // Open the long-lived CatalogEvents subscription (parity with the
+                // macOS client) so the grid refreshes as videos are added/changed
+                // — by a remote server's file-watcher/uploads, or by Local mode's
+                // background Photos ingest, which streams in row-by-row.
+                grid.startCatalogEventStream()
             }
     }
 }

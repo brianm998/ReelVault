@@ -184,18 +184,25 @@ final class AppRouter: ObservableObject {
                 return
             }
             NSLog("ReelVault local: connected to embedded core on \(port)")
-            // Ingest the on-device library before showing the grid (a few clips
-            // is fast; large libraries become incremental/background ingest in a
-            // follow-up). `--ingest-container` (sim test harness) ingests the
-            // container's Documents instead, exercising the native backend
-            // without the Photos-permission prompt.
-            if CommandLine.arguments.contains("--ingest-container") {
-                await ContainerIngest.run()
-            } else {
-                await PhotoLibraryIngest.run()
-            }
+            // Show the grid immediately with whatever's already cataloged, then
+            // ingest in the BACKGROUND. Ingest re-probes every Photos asset
+            // (slow on a cold first run or a large library), so awaiting it here
+            // left the user staring at the "Starting…" spinner for minutes with
+            // no library in sight. Each ingested video publishes a `VideoAdded`
+            // event on the same bus the grid's CatalogEvents stream watches (see
+            // ConnectedRootView), so freshly-added rows stream into the grid as
+            // they land. `--ingest-container` (sim/device test harness) ingests
+            // the app's Documents instead of the Photos library, exercising the
+            // native backend without the permission prompt.
             self.connection = nil
             self.phase = .connected
+            Task {
+                if CommandLine.arguments.contains("--ingest-container") {
+                    await ContainerIngest.run()
+                } else {
+                    await PhotoLibraryIngest.run()
+                }
+            }
         }
     }
 
