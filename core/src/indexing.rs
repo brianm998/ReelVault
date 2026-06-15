@@ -438,6 +438,64 @@ impl IndexingEngine {
         Ok(video_id)
     }
 
+    /// Index (or re-index) a non-filesystem source — the iOS on-device path,
+    /// where videos are Photos assets / bookmarks rather than walkable files
+    /// (docs/IOS_CORE_PORT.md §6.9). Mirrors [`Self::index_video`] but probes
+    /// and thumbnails through the given [`MediaSource`] (the native backend) and
+    /// keys the row on a synthetic `display_path` (e.g. `photos://<localId>`),
+    /// recording `source_kind`/`source_id` so later lookups resolve the right
+    /// `MediaSource`. Returns the video_id.
+    #[allow(clippy::too_many_arguments)]
+    pub fn index_media_source(
+        db: &Database,
+        source: &MediaSource,
+        display_path: &str,
+        filename: &str,
+        source_kind: &str,
+        source_id: &str,
+        thumbnail_cache: &Path,
+    ) -> Result<String> {
+        let probe_output = backend().probe(source)?;
+
+        let video_id = if let Ok(Some(existing)) = db.get_video_by_path(display_path) {
+            existing.id
+        } else {
+            db.add_video(display_path, filename, None, None, None)?
+        };
+        db.set_video_source(&video_id, source_kind, source_id)?;
+
+        MetadataExtractor::store_metadata(
+            db,
+            &video_id,
+            Path::new(display_path),
+            &probe_output,
+            0,
+        )?;
+
+        let duration_secs = probe_output.format.duration.unwrap_or(0.0);
+        let thumb_path = thumbnail_cache.join(format!("{}_medium.jpg", video_id));
+        if !thumb_path.exists() {
+            if let Err(e) =
+                ThumbnailGenerator::generate(db, source, &video_id, thumbnail_cache, duration_secs)
+            {
+                tracing::warn!("index_media_source: thumbnail failed for {video_id}: {e}");
+            }
+        }
+        let first_scrub = thumbnail_cache.join(format!("{}_scrub_0.jpg", video_id));
+        if !first_scrub.exists() {
+            if let Err(e) = ThumbnailGenerator::generate_scrub_thumbnails(
+                source,
+                &video_id,
+                thumbnail_cache,
+                duration_secs,
+            ) {
+                tracing::warn!("index_media_source: scrub frames failed for {video_id}: {e}");
+            }
+        }
+
+        Ok(video_id)
+    }
+
     /// Index (or re-index) one specific file. Used by the file watcher when
     /// a single path settles. Returns the video_id and whether the row was
     /// freshly inserted vs. updated in place.

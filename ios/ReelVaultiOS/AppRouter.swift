@@ -165,6 +165,9 @@ final class AppRouter: ObservableObject {
         phase = .startingLocal
         Task { [weak self] in
             guard let self else { return }
+            // Install the native (AVFoundation) media backend before the core
+            // does any media work, so it wins over the default CLI backend.
+            NativeMedia.register()
             // Booting opens SQLite + binds a loopback port; do it off the main
             // actor so the UI can show the progress state first.
             let port = await Task.detached { LocalCore.start() }.value
@@ -175,14 +178,24 @@ final class AppRouter: ObservableObject {
             }
             NSLog("ReelVault local: embedded core on port \(port); connecting…")
             let ok = await VideoRepository.shared.connect(to: .loopback(port: port))
-            if ok {
-                NSLog("ReelVault local: connected to embedded core on \(port)")
-                self.connection = nil
-                self.phase = .connected
-            } else {
+            guard ok else {
                 NSLog("ReelVault local: connect FAILED on port \(port)")
                 self.phase = .failed("Started the on-device core but couldn't connect on port \(port).")
+                return
             }
+            NSLog("ReelVault local: connected to embedded core on \(port)")
+            // Ingest the on-device library before showing the grid (a few clips
+            // is fast; large libraries become incremental/background ingest in a
+            // follow-up). `--ingest-container` (sim test harness) ingests the
+            // container's Documents instead, exercising the native backend
+            // without the Photos-permission prompt.
+            if CommandLine.arguments.contains("--ingest-container") {
+                await ContainerIngest.run()
+            } else {
+                await PhotoLibraryIngest.run()
+            }
+            self.connection = nil
+            self.phase = .connected
         }
     }
 

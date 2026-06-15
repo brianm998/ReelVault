@@ -120,27 +120,52 @@ impl ThumbnailGenerator {
     ) -> Result<()> {
         let output_path = cache_dir.join(format!("{}_{}.jpg", video_id, size_name));
 
-        let output = crate::ffmpeg::ffmpeg_command()
-            .args([
-                "-v",
-                "error",
-                "-i",
-                frame_path.to_str().unwrap_or(""),
-                "-vf",
-                &format!("scale={}:-1", width),
-                "-q:v",
-                "5",
-                output_path.to_str().unwrap_or(""),
-            ])
-            .output()
-            .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to resize thumbnail: {}", e)))?;
-
-        if !output.status.success() {
-            let error_msg = String::from_utf8_lossy(&output.stderr);
-            return Err(ReelVaultError::ThumbnailGenerationFailed(error_msg.to_string()));
+        // Resizing a JPEG is pure image work, not video decode — on iOS (no
+        // ffmpeg subprocess) do it with the `image` crate. Desktop keeps the
+        // ffmpeg path so its thumbnails are byte-for-byte unchanged.
+        #[cfg(target_os = "ios")]
+        {
+            use image::GenericImageView;
+            let img = image::open(frame_path)
+                .map_err(|e| ReelVaultError::ThumbnailGenerationFailed(e.to_string()))?;
+            let (w, h) = img.dimensions();
+            let nw = width.max(1) as u32;
+            // Width-driven, aspect-preserving (mirrors ffmpeg `scale=W:-1`).
+            let nh = if w > 0 {
+                (((h as u64) * (nw as u64) / (w as u64)).max(1)) as u32
+            } else {
+                nw
+            };
+            img.resize_exact(nw, nh, image::imageops::FilterType::Lanczos3)
+                .save_with_format(&output_path, image::ImageFormat::Jpeg)
+                .map_err(|e| ReelVaultError::ThumbnailGenerationFailed(e.to_string()))?;
+            Ok(())
         }
 
-        Ok(())
+        #[cfg(not(target_os = "ios"))]
+        {
+            let output = crate::ffmpeg::ffmpeg_command()
+                .args([
+                    "-v",
+                    "error",
+                    "-i",
+                    frame_path.to_str().unwrap_or(""),
+                    "-vf",
+                    &format!("scale={}:-1", width),
+                    "-q:v",
+                    "5",
+                    output_path.to_str().unwrap_or(""),
+                ])
+                .output()
+                .map_err(|e| ReelVaultError::FfmpegError(format!("Failed to resize thumbnail: {}", e)))?;
+
+            if !output.status.success() {
+                let error_msg = String::from_utf8_lossy(&output.stderr);
+                return Err(ReelVaultError::ThumbnailGenerationFailed(error_msg.to_string()));
+            }
+
+            Ok(())
+        }
     }
 
     pub fn get_thumbnail(

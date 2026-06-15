@@ -645,6 +645,19 @@ impl Database {
         Ok(offlined)
     }
 
+    /// Record the backend source identity on a row (iOS ingest). `kind` is
+    /// `'photo'` / `'bookmark'`; `source_id` is the PHAsset localIdentifier or
+    /// bookmark. Desktop rows leave these NULL (implicit `path`).
+    pub fn set_video_source(&self, video_id: &str, kind: &str, source_id: &str) -> Result<()> {
+        let conn = self.get_connection()?;
+        conn.execute(
+            "UPDATE videos SET source_kind = ?1, source_id = ?2 WHERE id = ?3",
+            params![kind, source_id, video_id],
+        )
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
     /// The [`crate::media_backend::MediaSource`] a video row should be read
     /// through: a Photos asset for iOS-ingested rows (`source_kind = 'photo'`),
     /// otherwise its filesystem path. Lets the on-demand thumbnail/metadata

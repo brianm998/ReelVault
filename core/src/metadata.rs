@@ -674,6 +674,23 @@ where
             Ok(Some(value))
         }
 
+        // A JSON integer is a valid f64. JSONSerialization (the iOS native
+        // backend) emits whole-number durations as integers (5.0 -> `5`), so
+        // accept those too rather than only f64/string.
+        fn visit_i64<E>(self, value: i64) -> std::result::Result<Option<f64>, E>
+        where
+            E: de::Error,
+        {
+            Ok(Some(value as f64))
+        }
+
+        fn visit_u64<E>(self, value: u64) -> std::result::Result<Option<f64>, E>
+        where
+            E: de::Error,
+        {
+            Ok(Some(value as f64))
+        }
+
         fn visit_str<E>(self, value: &str) -> std::result::Result<Option<f64>, E>
         where
             E: de::Error,
