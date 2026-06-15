@@ -21,14 +21,19 @@
 //! RPCs (`GetStatus`, `ListVideos`, …) today; on-device metadata/thumbnail/proxy
 //! generation lands with Phases 1–2.
 
-use std::ffi::{c_char, CStr};
+use std::ffi::{c_char, CStr, CString};
 use std::path::PathBuf;
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use tokio::net::TcpListener;
 use tokio::runtime::{Builder, Runtime};
 use tokio_stream::wrappers::TcpListenerStream;
 use tonic::transport::Server;
+
+use crate::error::{ReelVaultError, Result};
+use crate::media_backend::{set_backend, MediaBackend, MediaSource};
+use crate::metadata::FFProbeOutput;
+use crate::thumbnails::ColorInfo;
 
 use crate::config::Config;
 use crate::db::Database;
@@ -170,4 +175,150 @@ pub extern "C" fn reelvault_stop_embedded() {
             }
         }
     }
+}
+
+// ===========================================================================
+// Phase 2 — native media backend (AVFoundation via Swift callbacks)
+//
+// Rust can't call Swift directly, so the app registers a table of C function
+// pointers (`reelvault_register_media_backend`) that `NativeMediaBackend`
+// invokes for the media work the desktop core shells out to ffmpeg for
+// (docs/IOS_CORE_PORT.md §6.2). Swift implements them with AVFoundation /
+// VideoToolbox.
+// ===========================================================================
+
+/// C-ABI callbacks the Swift side provides. `kind`: 0 = filesystem path,
+/// 1 = Photos asset (PHAsset localIdentifier), 2 = security-scoped bookmark
+/// (hex). All strings are NUL-terminated UTF-8.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct NativeMediaCallbacks {
+    /// Return ffprobe-shaped JSON (a `FFProbeOutput`) as a heap C string, or
+    /// NULL on failure. Rust hands the pointer back to `free_string`.
+    pub probe: extern "C" fn(kind: i32, src_id: *const c_char) -> *mut c_char,
+    /// Decode one frame at `time_secs`, longest side <= `max_px`, and write a
+    /// JPEG to `out_path`. Returns 0 on success.
+    pub extract_frame: extern "C" fn(
+        kind: i32,
+        src_id: *const c_char,
+        time_secs: f64,
+        max_px: i32,
+        out_path: *const c_char,
+    ) -> i32,
+    /// Transcode an H.264/AAC proxy at `target_height` to `out_path`. 0 = ok.
+    pub transcode_proxy:
+        extern "C" fn(kind: i32, src_id: *const c_char, out_path: *const c_char, target_height: i32) -> i32,
+    /// Free a string previously returned by `probe`.
+    pub free_string: extern "C" fn(*mut c_char),
+}
+
+impl MediaSource {
+    /// `(kind, id)` for the FFI callbacks (see [`NativeMediaCallbacks`]).
+    fn ffi_parts(&self) -> (i32, CString) {
+        let (kind, s) = match self {
+            MediaSource::Path(p) => (0, p.to_string_lossy().into_owned()),
+            MediaSource::PhotoAsset(id) => (1, id.clone()),
+            MediaSource::Bookmark(b) => (2, b.iter().map(|x| format!("{x:02x}")).collect()),
+        };
+        (kind, CString::new(s).unwrap_or_default())
+    }
+}
+
+/// `MediaBackend` backed by the Swift AVFoundation callbacks. Function pointers
+/// are `Send + Sync`, so this is safe to share as `Arc<dyn MediaBackend>`.
+struct NativeMediaBackend {
+    cb: NativeMediaCallbacks,
+}
+
+impl MediaBackend for NativeMediaBackend {
+    fn probe(&self, src: &MediaSource) -> Result<FFProbeOutput> {
+        let (kind, id) = src.ffi_parts();
+        let ptr = (self.cb.probe)(kind, id.as_ptr());
+        if ptr.is_null() {
+            return Err(ReelVaultError::MetadataExtractionFailed(
+                "native probe returned null".into(),
+            ));
+        }
+        // SAFETY: Swift returns a valid NUL-terminated string or NULL (checked).
+        let json = unsafe { CStr::from_ptr(ptr) }.to_string_lossy().into_owned();
+        (self.cb.free_string)(ptr);
+        serde_json::from_str(&json)
+            .map_err(|e| ReelVaultError::MetadataExtractionFailed(format!("native probe JSON: {e}")))
+    }
+
+    fn probe_color(&self, _src: &MediaSource) -> ColorInfo {
+        // The native extract_frame handles color/HDR itself, so the CLI-style
+        // ColorInfo (used only to build an ffmpeg -vf chain) isn't needed.
+        ColorInfo::default()
+    }
+
+    fn extract_loudness(&self, _src: &MediaSource) -> Vec<f32> {
+        // Audio-loudness waveform via AVAssetReader is a later refinement
+        // (docs/IOS_CORE_PORT.md §11.3); empty = no waveform for now.
+        Vec::new()
+    }
+
+    fn extract_frame(
+        &self,
+        src: &MediaSource,
+        _color: &ColorInfo,
+        time_secs: f64,
+        max_px: i32,
+        _quality: u8,
+        out: &std::path::Path,
+    ) -> Result<()> {
+        let (kind, id) = src.ffi_parts();
+        let out_c = CString::new(out.to_string_lossy().as_bytes())
+            .map_err(|_| ReelVaultError::InvalidPath("out path has interior NUL".into()))?;
+        let rc = (self.cb.extract_frame)(kind, id.as_ptr(), time_secs, max_px, out_c.as_ptr());
+        if rc == 0 {
+            Ok(())
+        } else {
+            Err(ReelVaultError::ThumbnailGenerationFailed(format!(
+                "native extract_frame rc={rc}"
+            )))
+        }
+    }
+
+    fn transcode_proxy(
+        &self,
+        src: &MediaSource,
+        out: &std::path::Path,
+        target_height: i32,
+        _total_frames: i64,
+        progress: &mut dyn FnMut(f64),
+    ) -> Result<()> {
+        let (kind, id) = src.ffi_parts();
+        let out_c = CString::new(out.to_string_lossy().as_bytes())
+            .map_err(|_| ReelVaultError::InvalidPath("out path has interior NUL".into()))?;
+        let rc = (self.cb.transcode_proxy)(kind, id.as_ptr(), out_c.as_ptr(), target_height);
+        // AVAssetExportSession doesn't surface granular progress here yet; jump
+        // to the top of the encode band on completion.
+        progress(85.0);
+        if rc == 0 {
+            Ok(())
+        } else {
+            Err(ReelVaultError::FfmpegError(format!(
+                "native transcode_proxy rc={rc}"
+            )))
+        }
+    }
+
+    // Catalog-only on iOS (D4): you can't rewrite a Photos original in place.
+    fn write_creation_time(&self, _src: &MediaSource, _timestamp_ms: i64) -> Result<()> {
+        Ok(())
+    }
+    fn write_location(&self, _src: &MediaSource, _lat: f64, _lon: f64, _alt: f64) -> Result<()> {
+        Ok(())
+    }
+}
+
+/// Install the native (AVFoundation) media backend. Swift calls this once at
+/// startup, BEFORE the core does any media work, so it wins the `set_backend`
+/// race over the default CLI backend (which can't run in the iOS sandbox).
+#[no_mangle]
+pub extern "C" fn reelvault_register_media_backend(callbacks: NativeMediaCallbacks) {
+    init_logging();
+    set_backend(Arc::new(NativeMediaBackend { cb: callbacks }));
+    tracing::info!("native media backend registered");
 }
