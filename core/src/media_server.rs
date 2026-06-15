@@ -587,12 +587,27 @@ fn spawn_hls_transcode(state: MediaState, id: String, dir: PathBuf, src: String,
         // deadlock waiting on a slot this closure still holds.
         let ok = run_hls_transcode(&dir, &src, height, copy);
 
-        // Promote a real re-encode at the configured proxy height to a durable
-        // catalog proxy: encode once, copy-mux forever, and surface it in the
-        // inspector. A copy-mux means a streamable proxy already exists, so
-        // there's nothing to persist.
-        if ok && !copy && height == state.proxy_target_height {
-            promote_hls_to_proxy(&state, &id, height, &dir);
+        // Promote a real re-encode to a durable catalog proxy: encode once,
+        // copy-mux forever, and surface it in the inspector. A copy-mux (`copy`)
+        // means a streamable proxy already exists, so there's nothing to persist.
+        //
+        // Promote when the stream is the configured proxy height OR the source
+        // has no durable proxy yet. The height-equality gate alone almost never
+        // matched a device-driven stream height (the client asks for the screen
+        // height, not `proxy_target_height`), so proxies were essentially never
+        // created — and so never appeared in the clients. The "no proxy yet"
+        // clause guarantees a video the user actually plays ends up with exactly
+        // one durable proxy (bounded; once linked, future same-height requests
+        // copy-mux and a different height won't re-promote since one now exists).
+        if ok && !copy {
+            let has_proxy = state
+                .db
+                .list_proxies(&id)
+                .map(|p| !p.is_empty())
+                .unwrap_or(false);
+            if height == state.proxy_target_height || !has_proxy {
+                promote_hls_to_proxy(&state, &id, height, &dir);
+            }
         }
     });
 }
@@ -754,6 +769,14 @@ fn promote_hls_to_proxy(state: &MediaState, id: &str, height: i32, hls_dir: &Pat
             let _ = state.events.send(crate::watcher::CatalogChange::VideoAdded {
                 video_id: proxy_id,
                 path: out.clone(),
+            });
+            // The VideoAdded above is for the proxy row, which ListVideos hides
+            // (proxy_of IS NULL filter). On its own it wouldn't visibly update
+            // the master, so also announce the master changed — that refreshes
+            // its proxy-count badge and any open inspector's proxy list.
+            let _ = state.events.send(crate::watcher::CatalogChange::VideoModified {
+                video_id: id.to_string(),
+                path: std::path::PathBuf::from(&source.path),
             });
             tracing::info!("hls: promoted {id}@{height}p to durable proxy {}", out.display());
         }

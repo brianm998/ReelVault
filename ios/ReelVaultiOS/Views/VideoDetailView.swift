@@ -25,7 +25,11 @@ struct VideoDetailView: View {
             VStack(alignment: .leading, spacing: 16) {
                 StreamingPlayerView(stream: stream, video: video, endpoint: mediaEndpoint)
                 MetadataEditorSection(grid: grid, videoId: video.id)
-                VideoMetadataSection(video: video)
+                // Prefer the live grid row so the proxy-count badge tracks edits
+                // and newly-created proxies; refreshTick re-fetches the list.
+                VideoMetadataSection(
+                    video: grid.videos.first(where: { $0.id == video.id }) ?? video,
+                    refreshTick: grid.catalogChangeTick)
             }
             .padding()
         }
@@ -464,6 +468,10 @@ struct StreamingPlayerView: View {
 /// list, and the proxy list (fetched per selection).
 struct VideoMetadataSection: View {
     let video: VideoSummary
+    /// Bumped on catalog change events; re-fetches the proxy list so a proxy
+    /// created server-side (e.g. promoted from an HLS stream while this video
+    /// played) appears without leaving and reopening the view.
+    var refreshTick: Int = 0
     @State private var proxies: [VideoRepository.ProxyInfo] = []
 
     var body: some View {
@@ -474,8 +482,9 @@ struct VideoMetadataSection: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         // Proxy details aren't on VideoSummary (only a count) — fetch the list
-        // for the selected video, same as the macOS inspector.
-        .task(id: video.id) {
+        // for the selected video, same as the macOS inspector. Re-fetch when the
+        // catalog changes (refreshTick) so newly-created proxies show live.
+        .task(id: "\(video.id)#\(refreshTick)") {
             proxies = (try? await VideoRepository.shared.listProxies(videoId: video.id)) ?? []
         }
     }

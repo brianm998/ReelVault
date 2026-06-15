@@ -102,6 +102,11 @@ public class GridViewModel: ObservableObject {
     @Published public var error: String?
     @Published public var totalCount: Int64 = 0
     @Published public var hasMore = false
+    /// Bumped on every catalog change event (video added/modified/removed, scan
+    /// or post-index completion). A detail/inspector view keys its per-video
+    /// proxy fetch off this so a proxy created server-side (e.g. an HLS stream
+    /// promoted to a durable proxy during playback) shows up without reopening.
+    @Published public var catalogChangeTick = 0
     @Published public var searchQuery = ""
 
     // Playback output volume (0–100), shared across the detail loupe and the
@@ -415,8 +420,10 @@ public class GridViewModel: ObservableObject {
             watcherBanner = "Scanning \(target)…"
         case .scanCompleted:
             watcherBanner = nil
+            catalogChangeTick &+= 1
             scheduleWatcherRefresh()
         case .videoAdded, .videoModified, .videoRemoved:
+            catalogChangeTick &+= 1
             scheduleWatcherRefresh()
         case .postIndexStarted, .postIndexProgress:
             // A background pass is running — cancel any pending clear and

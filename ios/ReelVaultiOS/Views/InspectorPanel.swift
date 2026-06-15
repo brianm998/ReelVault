@@ -9,6 +9,8 @@ import ReelVaultKit
 /// Detail" button switches there).
 struct InspectorPanel: View {
     let video: VideoSummary?
+    /// Bumped on catalog change events so the proxy list re-fetches live.
+    var refreshTick: Int = 0
     /// Switch to Detail (player) mode for the selected video.
     var onPlay: () -> Void = {}
 
@@ -24,7 +26,7 @@ struct InspectorPanel: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
-                    VideoMetadataSection(video: video)
+                    VideoMetadataSection(video: video, refreshTick: refreshTick)
                 }
                 .padding()
             }
