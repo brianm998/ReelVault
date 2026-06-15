@@ -307,26 +307,32 @@ final class StreamPlayer: ObservableObject {
         }
     }
 
-    /// Poll the server's HLS `/status` (which also starts the transcode) until
-    /// it's safe to start playing without stalling: the session is complete, the
-    /// encoder keeps up with playback, or enough is buffered that playback can't
-    /// catch the encoder (buffer ≥ duration × (1 − encodeRate)). Publishes an ETA
-    /// after a short grace. `.failed` → caller falls back to download; a status
-    /// error or the wait cap → `.ready`/`.capped` so we still try to play.
+    /// Poll the server's HLS `/status` (which also starts the transcode) until the
+    /// session is **complete**, then play. A finished playlist (with `ENDLIST`)
+    /// loads as a seekable VOD — so the player gets a scrub bar and can replay;
+    /// an in-progress EVENT playlist plays "live" with NO scrubber, which is what
+    /// users hit on videos that were still transcoding. Copy-muxed renditions
+    /// (the common case) complete in ~a second, so the wait is tiny; a re-encode
+    /// takes longer and shows an ETA. `.failed` → caller falls back to download;
+    /// the wait cap → `.capped` so a very slow transcode still plays (progressively,
+    /// without a scrub bar until it finishes — and it promotes a proxy so the next
+    /// play is an instant, seekable copy-mux).
     private func waitUntilReady(proxy: LoopbackMediaProxy, video: VideoSummary, height: Int) async -> ReadyOutcome {
         let durationSec = max(1, Double(video.durationMs) / 1000.0)
         let statusURL = proxy.statusURL(videoId: video.id, height: height)
         let start = Date()
         let maxWait: TimeInterval = 60
         preparingDetail = "Preparing…"
-        // A short window of samples → a smoothed rate that ignores the 0→1
-        // segment jump (which looked like an infinitely fast encoder).
+        // A short window of samples → a smoothed transcode rate that ignores the
+        // 0→1 segment jump (which looked like an infinitely fast encoder).
         var samples: [(buffered: Double, at: Date)] = []
         while Date().timeIntervalSince(start) < maxWait {
             if Task.isCancelled { return .ready }
             guard let status = await fetchStatus(statusURL) else { return .ready }
             if status.failed { return .failed }
             if status.complete { preparingDetail = nil; return .ready }
+            // Not complete yet — estimate the time until the whole rendition is
+            // transcoded (so the playlist gets its ENDLIST = a seekable VOD).
             let buffered = Double(status.segments * status.segSeconds)
             let now = Date()
             samples.append((buffered, now))
@@ -336,17 +342,9 @@ final class StreamPlayer: ObservableObject {
                 let dt = now.timeIntervalSince(first.at)
                 if dt > 0.5 { rate = max(0, (buffered - first.buffered) / dt) }
             }
-            let target = durationSec * (1.0 - min(rate, 0.95))
-            // Need a real head start (≥2 segments) AND either the encoder keeps up
-            // or there's enough buffer to finish without stalling.
-            if buffered >= 8, rate >= 1.0 || buffered >= target {
-                NSLog("ReelVault: HLS ready \(video.id) — buffered \(Int(buffered))s, rate \(String(format: "%.2f", rate))")
-                preparingDetail = nil
-                return .ready
-            }
             if now.timeIntervalSince(start) >= 2.5 {
-                if buffered >= 4, rate > 0.05 {
-                    let eta = max(0, (target - buffered) / rate)
+                if rate > 0.05 {
+                    let eta = max(0, (durationSec - buffered) / rate)
                     preparingDetail = "Preparing… ready in ~\(Int(eta.rounded()))s"
                 } else {
                     preparingDetail = "Preparing…"
@@ -354,7 +352,7 @@ final class StreamPlayer: ObservableObject {
             }
             try? await Task.sleep(nanoseconds: 1_000_000_000)
         }
-        NSLog("ReelVault: HLS readiness cap reached for \(video.id) — playing anyway")
+        NSLog("ReelVault: HLS not complete within cap for \(video.id) — playing progressively (no scrub bar until it finishes)")
         preparingDetail = nil
         return .capped
     }
