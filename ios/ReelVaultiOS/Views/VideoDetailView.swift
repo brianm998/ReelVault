@@ -119,6 +119,11 @@ final class StreamPlayer: ObservableObject {
     /// request (e.g. the full-screen cover's autoPlay) can flip this on while the
     /// prepare is still waiting on the transcode.
     private var autoPlayWhenReady = true
+    /// When a slow transcode forces a progressive (EVENT-playlist) start, this task
+    /// watches `/status` and — once the server finishes (ENDLIST → seekable VOD) —
+    /// rebuilds the player on the now-VOD playlist at the same playhead, so the
+    /// scrub bar appears. Without it a capped start plays forever with no scrubber.
+    private var vodUpgradeTask: Task<Void, Never>?
 
     /// Prepare the rendition and (optionally) start playing — idempotent and
     /// view-lifecycle-independent. The work runs in `prepareTask`, owned by the
@@ -153,6 +158,7 @@ final class StreamPlayer: ObservableObject {
     private func startPrepare(video: VideoSummary, endpoint: AppRouter.ConnectionInfo?,
                               height: Int, autoPlay: Bool) {
         prepareTask?.cancel()
+        vodUpgradeTask?.cancel()   // a fresh prepare invalidates any pending VOD swap
         preparingVideoId = video.id
         preparingHeight = height
         autoPlayWhenReady = autoPlay
@@ -221,6 +227,12 @@ final class StreamPlayer: ObservableObject {
                     preparedHeight = height
                     if autoPlayWhenReady { p.play() }
                     NSLog("ReelVault: HLS \(autoPlayWhenReady ? "playing" : "ready (paused)") \(video.id) (h\(height), \(outcome))")
+                    // Capped = playing an in-progress EVENT playlist (no scrub bar).
+                    // Watch for the transcode to finish and swap to the seekable VOD
+                    // so the scrubber appears once it's ready.
+                    if outcome == .capped {
+                        scheduleVODUpgrade(proxy: proxy, video: video, height: height)
+                    }
                     return
                 }
                 NSLog("ReelVault: HLS asset not playable for \(video.id) (h\(height)) — falling back to download")
@@ -255,6 +267,48 @@ final class StreamPlayer: ObservableObject {
     private func abandonProxy(_ proxy: LoopbackMediaProxy) {
         proxy.stop()
         if self.proxy === proxy { self.proxy = nil }
+    }
+
+    /// After a progressive (capped) start, watch the server's `/status` until the
+    /// transcode completes, then rebuild the player on the now-finished (ENDLIST =
+    /// seekable VOD) playlist at the same playhead — so the scrub bar appears.
+    private func scheduleVODUpgrade(proxy: LoopbackMediaProxy, video: VideoSummary, height: Int) {
+        vodUpgradeTask?.cancel()
+        vodUpgradeTask = Task { [weak self] in
+            await self?.awaitVODAndUpgrade(proxy: proxy, video: video, height: height)
+        }
+    }
+
+    private func awaitVODAndUpgrade(proxy: LoopbackMediaProxy, video: VideoSummary, height: Int) async {
+        let statusURL = proxy.statusURL(videoId: video.id, height: height)
+        // Poll until the transcode finishes (ENDLIST written) or fails. No cap: a
+        // very slow transcode just keeps the EVENT player going until it lands.
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard let s = await fetchStatus(statusURL) else { continue }
+            if s.failed { return }
+            if s.complete { break }
+        }
+        // Still the same rendition playing, on our proxy, and not torn down?
+        guard !Task.isCancelled, self.proxy === proxy,
+              preparedVideoId == video.id, preparedHeight == height,
+              let old = player else { return }
+        let resumeAt = old.currentTime()
+        let wasPlaying = old.rate > 0
+        let asset = AVURLAsset(url: proxy.hlsURL(videoId: video.id, height: height))
+        guard (try? await asset.load(.isPlayable)) == true, !Task.isCancelled,
+              self.proxy === proxy, preparedVideoId == video.id, preparedHeight == height
+        else { return }
+        old.pause()
+        let item = AVPlayerItem(asset: asset)
+        attachDiagnostics(to: item)
+        let p = AVPlayer(playerItem: item)
+        // Land at the same spot the EVENT player reached, then resume if it was playing.
+        await p.seek(to: resumeAt, toleranceBefore: .zero, toleranceAfter: .zero)
+        guard !Task.isCancelled, preparedVideoId == video.id, preparedHeight == height else { return }
+        player = p
+        if wasPlaying { p.play() }
+        NSLog("ReelVault: HLS upgraded to seekable VOD \(video.id) (h\(height)) at \(Int(CMTimeGetSeconds(resumeAt)))s")
     }
 
     /// On-device playback: resolve the catalog row's source to a local
@@ -346,6 +400,8 @@ final class StreamPlayer: ObservableObject {
         if current == videoId { return }
         prepareTask?.cancel()
         prepareTask = nil
+        vodUpgradeTask?.cancel()
+        vodUpgradeTask = nil
         preparingVideoId = nil
         preparingHeight = nil
         isPreparing = false
@@ -480,6 +536,8 @@ final class StreamPlayer: ObservableObject {
         if player == nil {
             prepareTask?.cancel()
             prepareTask = nil
+            vodUpgradeTask?.cancel()
+            vodUpgradeTask = nil
             preparingVideoId = nil
             preparingHeight = nil
             isPreparing = false
@@ -502,6 +560,8 @@ final class StreamPlayer: ObservableObject {
             // failed so we never clear a freshly-built healthy player.
             Task { @MainActor in
                 guard let self, self.player?.currentItem?.status == .failed else { return }
+                self.vodUpgradeTask?.cancel()
+                self.vodUpgradeTask = nil
                 self.player = nil
                 self.preparedVideoId = nil
                 self.preparedHeight = nil
