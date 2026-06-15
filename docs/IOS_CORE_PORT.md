@@ -910,3 +910,43 @@ iOS Simulator and a real iPhone 16 Pro; Phase 5 not started.
 | Keyboard shortcuts | ✅ | iPad+keyboard | iPad+keyboard | **deliberate**: not iPhone |
 | ProRes RAW thumbnails | ✅ (macOS AVFoundation helper) | server-side | ⚠ unverified | needs RAW footage on device; may go to Phase 5 |
 | Exotic codecs (AVFoundation can't open) | ✅ (ffmpeg) | server-side | ❌ | Phase 5 libav fallback |
+
+---
+
+## 14. Phase 5 — libav fallback: the blocker and the recipe
+
+**Why it isn't done:** Phase 5 routes AVFoundation-unsupported sources to a
+linked `libav*` decoder. That requires FFmpeg **static libraries cross-compiled
+for `aarch64-apple-ios`** (+ the simulator arches). The dev box has only host
+(x86_64 macOS) FFmpeg 8.1 / `libavcodec.a` — useless for iOS linking — so this
+can't be built or verified here without first producing the iOS libs (a
+multi-hour cross-compile, or a vendored prebuilt). Distribution is off-store
+([D2]), so FFmpeg's GPL is acceptable.
+
+**Step 1 — obtain iOS FFmpeg static libs** (one of):
+- *Cross-compile from source* (`ios/build-ffmpeg-ios.sh`, to be written): for
+  each of `arm64`(device), `arm64`+`x86_64`(sim), run FFmpeg `./configure
+  --enable-cross-compile --target-os=darwin --arch=<a> --cc="xcrun -sdk
+  <iphoneos|iphonesimulator> clang" --sysroot=<sdk> --enable-static
+  --disable-programs --disable-doc --enable-pic` (+ `-mios-version-min=18.0` /
+  `-mios-simulator-version-min=18.0` in `--extra-cflags`), `make && make
+  install` into a per-arch prefix, then `lipo` the sim arches and
+  `xcodebuild -create-xcframework` → `FFmpeg.xcframework`.
+- *Vendor a prebuilt* iOS FFmpeg `xcframework` (GPL; verify provenance).
+
+**Step 2 — wire the Rust fallback** (gated, green when off):
+- `core/Cargo.toml`: `ffmpeg-next`/`ffmpeg-sys-next` as an **optional** dep behind
+  an `ios-libav` feature; point its `FFMPEG_DIR`/pkg-config at the libs from
+  step 1. Feature OFF by default → no link attempt → build stays green.
+- New `core/src/libav_fallback.rs` (`#[cfg(feature = "ios-libav")]`): decode one
+  frame → RGB → write JPEG (the `extract_frame` equivalent), and a `probe`
+  shim that fills `FFProbeOutput`.
+- Hook in `NativeMediaBackend::{extract_frame,probe}` (`ios.rs`): on
+  AVFoundation failure, `#[cfg(feature = "ios-libav")]` route to the fallback.
+- Build the xcframework with `--features ios-libav` and link `FFmpeg.xcframework`
+  in `ios/project.yml`.
+
+**Step 3 — verify:** an exotic-codec sample (e.g. a container AVFoundation
+rejects) that fails to thumbnail on Phase 2 now indexes with a frame. Open
+question 1 (ProRes RAW) is the first candidate to route here if it proves
+undecodable by AVFoundation on-device.
