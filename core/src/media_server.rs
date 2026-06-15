@@ -633,23 +633,18 @@ fn spawn_hls_transcode(state: MediaState, id: String, dir: PathBuf, src: String,
         // copy-mux forever, and surface it in the inspector. A copy-mux (`copy`)
         // means a streamable proxy already exists, so there's nothing to persist.
         //
-        // Promote when the stream is the configured proxy height OR the source
-        // has no durable proxy yet. The height-equality gate alone almost never
-        // matched a device-driven stream height (the client asks for the screen
-        // height, not `proxy_target_height`), so proxies were essentially never
-        // created — and so never appeared in the clients. The "no proxy yet"
-        // clause guarantees a video the user actually plays ends up with exactly
-        // one durable proxy (bounded; once linked, future same-height requests
-        // copy-mux and a different height won't re-promote since one now exists).
-        if ok && !copy {
-            let has_proxy = state
-                .db
-                .list_proxies(&id)
-                .map(|p| !p.is_empty())
-                .unwrap_or(false);
-            if height == state.proxy_target_height || !has_proxy {
-                promote_hls_to_proxy(&state, &id, height, &dir);
-            }
+        // Promote whenever the source has no *streamable* (H.264/HEVC) proxy yet.
+        // The old gate keyed on `proxy_target_height` (which a device-driven
+        // stream height almost never equals) OR on "no proxy at all" — so a
+        // re-encode of a video that already had a NON-streamable proxy (e.g. an
+        // external ProRes .mov proxy) was never persisted, leaving a rendition
+        // that played + cached but never appeared as a listed proxy. Keying on
+        // "no streamable proxy" is what makes the HLS-created rendition show up
+        // alongside the others; it's also self-bounding — once this re-encode is
+        // linked, future requests find a streamable proxy and copy-mux it
+        // (`copy == true`), so this path never re-promotes.
+        if ok && !copy && !has_streamable_proxy(&state, &id) {
+            promote_hls_to_proxy(&state, &id, height, &dir);
         }
     });
 }
@@ -1057,6 +1052,23 @@ fn closest_streamable_proxy(state: &MediaState, id: &str, height: i32) -> Option
         return None;
     }
     Some((chosen.path.clone(), chosen.height))
+}
+
+/// Whether the video already has at least one *streamable* (H.264/HEVC) proxy
+/// whose file is present. The HLS-promotion gate keys on this: a re-encode is
+/// persisted only when no copy-muxable proxy exists yet, so every video the user
+/// streams ends up with exactly one durable, listed proxy (and replays copy-mux
+/// it instead of re-encoding). A non-streamable (ProRes/…) proxy does NOT count —
+/// it can't be copy-muxed, so the re-encode is still worth keeping.
+fn has_streamable_proxy(state: &MediaState, id: &str) -> bool {
+    state
+        .db
+        .list_proxies(id)
+        .map(|ps| {
+            ps.iter()
+                .any(|p| codec_streamable(&p.codec_video) && std::path::Path::new(&p.path).exists())
+        })
+        .unwrap_or(false)
 }
 
 /// The closest proxy of ANY codec (path), preferring the shortest at least as

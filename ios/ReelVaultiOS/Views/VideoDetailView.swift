@@ -26,7 +26,8 @@ struct VideoDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                StreamingPlayerView(stream: stream, video: video, endpoint: mediaEndpoint)
+                StreamingPlayerView(stream: stream, video: video, endpoint: mediaEndpoint,
+                                    refreshTick: grid.catalogChangeTick)
                 OfflineDownloadButton(video: video, endpoint: mediaEndpoint)
                 MetadataEditorSection(grid: grid, videoId: video.id)
                 // Prefer the live grid row so the proxy-count badge tracks edits
@@ -442,6 +443,10 @@ struct StreamingPlayerView: View {
     var autoPlay: Bool = false
     /// Fill the available space instead of a 16:9 box (full-screen mode).
     var fill: Bool = false
+    /// Bumped on catalog-change events so the rendition (Quality) menu re-fetches
+    /// its proxy list — a proxy the server just promoted from this HLS stream then
+    /// appears as a quality option live, with no manual refresh.
+    var refreshTick: Int = 0
     /// A poster frame so the idle player shows the video with a play overlay
     /// instead of a black rectangle.
     @State private var poster: PlatformImage?
@@ -455,7 +460,8 @@ struct StreamingPlayerView: View {
             // Rendition chooser — remote mode only (Local plays the original
             // directly), and not in the full-screen cover.
             if !fill, endpoint != nil {
-                RenditionPicker(stream: stream, video: video, endpoint: endpoint)
+                RenditionPicker(stream: stream, video: video, endpoint: endpoint,
+                                refreshTick: refreshTick)
             }
         }
         .task(id: video.id) {
@@ -535,6 +541,9 @@ struct RenditionPicker: View {
     @ObservedObject var stream: StreamPlayer
     let video: VideoSummary
     let endpoint: AppRouter.ConnectionInfo?
+    /// Re-fetch the proxy list when this changes (catalog-change events) so a
+    /// server-promoted proxy becomes a quality option without leaving the view.
+    var refreshTick: Int = 0
     @State private var proxies: [VideoRepository.ProxyInfo] = []
 
     var body: some View {
@@ -561,7 +570,7 @@ struct RenditionPicker: View {
         // Disabled while a prepare/readiness wait runs, so a quality change can't
         // race the in-flight prepare (which would silently no-op).
         .disabled(stream.isPreparing)
-        .task(id: video.id) {
+        .task(id: "\(video.id)#\(refreshTick)") {
             proxies = (try? await VideoRepository.shared.listProxies(videoId: video.id)) ?? []
         }
     }
