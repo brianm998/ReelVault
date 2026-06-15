@@ -459,7 +459,10 @@ fn is_allowed_hls_file(file: &str) -> bool {
 /// never copy-mux HEVC into MPEG-TS HLS. v4: HLS segments are now fMP4 (CMAF), not
 /// MPEG-TS — a v3 TS session's `.ts` segments and TS playlist must NOT be reused
 /// as if fMP4, so the bump forces a re-transcode into fMP4 (which copy-muxes HEVC).
-const MEDIA_CACHE_VERSION: &str = "v4";
+/// v5: a no-proxy original is re-encoded with the `ultrafast` x264 preset (not
+/// `veryfast`) so the live encode keeps up and the first segment appears — a v4
+/// session that stalled at 0 segments shouldn't be treated as reusable.
+const MEDIA_CACHE_VERSION: &str = "v5";
 
 /// A completed, *reusable* HLS session: `index.m3u8` present and `.complete`
 /// written by THIS daemon version. An older/empty marker is treated as not-ready
@@ -531,12 +534,12 @@ async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option
         // fMP4 segments → an H.264 OR HEVC proxy can be copy-muxed (no re-encode);
         // only a mastering codec (ProRes, …) or a non-8-bit-4:2:0 track falls
         // through to re-encode.
-        let (src, copy) = match closest_streamable_proxy(state, id, height) {
+        let (src, copy, from_original) = match closest_streamable_proxy(state, id, height) {
             // Any streamable (H.264/HEVC) proxy is copy-muxed — instant, complete,
             // no stalls — even if it's taller than the target: a downscaled proxy
             // streams fine over the LAN and beats a slow live re-encode. (Picking
             // the closest one keeps it as small as the catalog allows.)
-            Some((path, _)) => (path, true),
+            Some((path, _)) => (path, true, false),
             None => {
                 // No H.264/HEVC proxy to copy-mux. HLS/MPEG-TS can't carry ProRes,
                 // so we must re-encode to H.264 — but re-encode from the smallest
@@ -546,12 +549,12 @@ async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option
                 match closest_proxy_source(state, id, height) {
                     Some(p) => {
                         tracing::info!("hls: {id}@{height}p no H.264/HEVC proxy — re-encoding from proxy {p}");
-                        (p, false)
+                        (p, false, false)
                     }
                     None => match state.db.get_video(id) {
                         Ok(Some(v)) => {
-                            tracing::info!("hls: {id}@{height}p no proxy — re-encoding original");
-                            (v.path, false)
+                            tracing::info!("hls: {id}@{height}p no proxy — re-encoding original (the slow case)");
+                            (v.path, false, true)
                         }
                         _ => {
                             drop(guard);
@@ -566,7 +569,7 @@ async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option
             "hls: start {id}@{height}p — {} from {}",
             if copy { "copy-mux" } else { "re-encode" }, src
         );
-        spawn_hls_transcode(state.clone(), id.to_string(), dir.clone(), src, height, copy);
+        spawn_hls_transcode(state.clone(), id.to_string(), dir.clone(), src, height, copy, from_original);
     } else {
         // Debug, not info: status polling joins every second and would spam.
         tracing::debug!("hls: join in-progress session {id}@{height}p");
@@ -586,17 +589,55 @@ async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option
             return None;
         }
         // Progress every ~5s so a slow-but-working transcode is distinguishable
-        // from a stuck one (the common 8K case: re-encode is just slow).
+        // from a stuck one (the common 8K case: re-encode is just slow). The
+        // ffmpeg speed/fps (from -progress) makes "0 segments" actionable.
         if i > 0 && i % 50 == 0 {
-            tracing::info!("hls: {id}@{height}p still preparing — {}s, {} segment(s)", i / 10, count_ts(&dir));
+            let prog = read_ffmpeg_progress(&dir)
+                .map(|p| format!(" [{p}]"))
+                .unwrap_or_default();
+            tracing::info!("hls: {id}@{height}p still preparing — {}s, {} segment(s){}", i / 10, count_ts(&dir), prog);
         }
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     }
+    let prog = read_ffmpeg_progress(&dir)
+        .map(|p| format!(" [{p}]"))
+        .unwrap_or_default();
     tracing::warn!(
-        "hls: {id}@{height}p no playlist within 20s ({} segment(s) so far — slow transcode of a large source; the detached job keeps running, so a retry will join it)",
-        count_ts(&dir)
+        "hls: {id}@{height}p no playlist within 20s ({} segment(s) so far{} — slow transcode of a large source; the detached job keeps running, so a retry will join it)",
+        count_ts(&dir), prog
     );
     None
+}
+
+/// The latest encode progress ffmpeg wrote to `progress.txt` (via `-progress`), as
+/// a compact "frame=… fps=… speed=… out_time=…" string, or `None` if nothing has
+/// been written yet. Lets the wait-loop log tell a slow-but-working transcode
+/// (`speed=0.04x`) apart from a genuinely stuck one (no progress at all).
+fn read_ffmpeg_progress(dir: &Path) -> Option<String> {
+    let s = std::fs::read_to_string(dir.join("progress.txt")).ok()?;
+    let (mut frame, mut fps, mut speed, mut out_time) = (None, None, None, None);
+    for line in s.lines() {
+        let line = line.trim();
+        if let Some(v) = line.strip_prefix("frame=") {
+            frame = Some(v.to_string());
+        } else if let Some(v) = line.strip_prefix("fps=") {
+            fps = Some(v.to_string());
+        } else if let Some(v) = line.strip_prefix("speed=") {
+            speed = Some(v.to_string());
+        } else if let Some(v) = line.strip_prefix("out_time=") {
+            out_time = Some(v.to_string());
+        }
+    }
+    if frame.is_none() && speed.is_none() {
+        return None;
+    }
+    Some(format!(
+        "frame={} fps={} speed={} out_time={}",
+        frame.as_deref().unwrap_or("?"),
+        fps.as_deref().unwrap_or("?"),
+        speed.as_deref().unwrap_or("?"),
+        out_time.as_deref().unwrap_or("?")
+    ))
 }
 
 /// Count finished media segments in a session dir (fMP4 `.m4s` or legacy `.ts`)
@@ -621,13 +662,13 @@ fn count_ts(dir: &Path) -> usize {
 /// ffmpeg permit for the *whole* transcode (a streaming transcode is long-lived,
 /// unlike the one-shot MP4 cache). Writes `.complete` on success or `.failed` on
 /// error — both consulted by [`ensure_hls_session`].
-fn spawn_hls_transcode(state: MediaState, id: String, dir: PathBuf, src: String, height: i32, copy: bool) {
+fn spawn_hls_transcode(state: MediaState, id: String, dir: PathBuf, src: String, height: i32, copy: bool, from_original: bool) {
     tokio::task::spawn_blocking(move || {
         // Scope the ffmpeg permit to the streaming transcode only. Promotion
         // (below) acquires its own permit for the remux, so the permit must be
         // released first or, with max_concurrent_ffmpeg == 1, promotion would
         // deadlock waiting on a slot this closure still holds.
-        let ok = run_hls_transcode(&dir, &src, height, copy);
+        let ok = run_hls_transcode(&dir, &src, height, copy, from_original);
 
         // Promote a real re-encode to a durable catalog proxy: encode once,
         // copy-mux forever, and surface it in the inspector. A copy-mux (`copy`)
@@ -652,7 +693,7 @@ fn spawn_hls_transcode(state: MediaState, id: String, dir: PathBuf, src: String,
 /// Run the streaming ffmpeg into `dir`, writing `.complete`/`.failed`. Returns
 /// whether it succeeded. Holds one ffmpeg permit for the whole transcode (a
 /// streaming transcode is long-lived, unlike the one-shot MP4 cache).
-fn run_hls_transcode(dir: &Path, src: &str, height: i32, copy: bool) -> bool {
+fn run_hls_transcode(dir: &Path, src: &str, height: i32, copy: bool, from_original: bool) -> bool {
     {
         let _permit = crate::concurrency::acquire_ffmpeg_permit();
         let index = dir.join("index.m3u8");
@@ -660,7 +701,16 @@ fn run_hls_transcode(dir: &Path, src: &str, height: i32, copy: bool) -> bool {
         // HLS can't carry HEVC in TS). The init segment carries the codec config.
         let seg = dir.join("seg_%05d.m4s");
         let mut cmd = crate::ffmpeg::ffmpeg_command();
-        cmd.arg("-y").arg("-i").arg(src);
+        cmd.arg("-y")
+            // Machine-readable progress to the session dir so the wait-loop log can
+            // show encode speed/fps — turning an opaque "0 segments" on a huge
+            // source into "speed=0.04x" (slow but alive) vs no progress (stuck).
+            // Internal only (not in the served-file allowlist).
+            .arg("-progress")
+            .arg(dir.join("progress.txt"))
+            .args(["-stats_period", "5"])
+            .arg("-i")
+            .arg(src);
         if copy {
             // Streamable proxy already <= target height: copy video, but always
             // re-encode audio to AAC — ProRes/proxy sources often carry PCM, which
@@ -682,8 +732,16 @@ fn run_hls_transcode(dir: &Path, src: &str, height: i32, copy: bool) -> bool {
                 let vf = format!("scale=-2:min({height}\\,ih)");
                 cmd.args(["-vf", &vf]);
             }
+            // Re-encoding the ORIGINAL (no usable proxy) is the slow case — a
+            // multi-GB master, often off a slow NAS — where `veryfast` couldn't keep
+            // up and produced 0 segments for minutes (the live stream never started,
+            // and so no proxy was ever promoted). `ultrafast` is ~2-3x faster, so the
+            // first segment appears quickly and the encode keeps up; the resulting
+            // proxy is slightly larger but it's a streaming proxy, an acceptable
+            // trade for "plays at all". Re-encodes from a small proxy stay veryfast.
+            let preset = if from_original { "ultrafast" } else { "veryfast" };
             cmd.args([
-                "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+                "-c:v", "libx264", "-preset", preset, "-crf", "23",
                 "-profile:v", "high", "-level", "4.1", "-pix_fmt", "yuv420p",
                 // Keyframe every 48 frames so -hls_time cuts on GOP boundaries
                 // and independent_segments lets AVPlayer start on any segment.
