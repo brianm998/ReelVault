@@ -352,7 +352,8 @@ async fn video(
     // served raw play as audio with no video. Otherwise transcode to full-res
     // H.264 (ensure_downscaled treats height 0 as "no downscale"). A positive
     // height always transcodes / serves the closest proxy.
-    let needs_transcode = height > 0 || !is_copy_muxable(&record.path);
+    // A direct download is an MP4/MOV, which iOS decodes for HEVC too (allow_hevc).
+    let needs_transcode = height > 0 || !probe_playable(&record.path, true);
     if needs_transcode {
         match ensure_downscaled(&state, &id, &record.path, height).await {
             Some(path) => serve_file_range(&path.to_string_lossy(), &headers).await,
@@ -450,10 +451,11 @@ fn is_allowed_hls_file(file: &str) -> bool {
 
 /// Bump when transcode decisions change so cached renditions (HLS sessions AND
 /// the one-shot MP4s) written by an older daemon are re-transcoded instead of
-/// blindly reused. v2: never copy-mux / emit a non-8-bit-4:2:0 track (older
-/// daemons could, leaving audio-only renditions cached on disk that survived the
-/// daemon upgrade).
-const MEDIA_CACHE_VERSION: &str = "v2";
+/// blindly reused — otherwise an already-cached bad rendition survives the
+/// upgrade and replays audio-only. v2: never emit a non-8-bit-4:2:0 track. v3:
+/// never copy-mux HEVC into MPEG-TS HLS (Apple HLS needs fMP4 for HEVC; HEVC in TS
+/// plays as audio only), so HEVC HLS now re-encodes to H.264.
+const MEDIA_CACHE_VERSION: &str = "v3";
 
 /// A completed, *reusable* HLS session: `index.m3u8` present and `.complete`
 /// written by THIS daemon version. An older/empty marker is treated as not-ready
@@ -522,7 +524,9 @@ async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option
         // Cheapest source: a streamable proxy already <= the target height is
         // copy-muxed (near-instant, complete VOD); a taller proxy or the original
         // is re-encoded (downscaled) progressively.
-        let (src, copy) = match closest_streamable_proxy(state, id, height) {
+        // allow_hevc=false: these segments are MPEG-TS, which Apple HLS can't carry
+        // HEVC in — an HEVC proxy is re-encoded to H.264 rather than copy-muxed.
+        let (src, copy) = match closest_streamable_proxy(state, id, height, false) {
             // Any streamable (H.264/HEVC) proxy is copy-muxed — instant, complete,
             // no stalls — even if it's taller than the target: a downscaled proxy
             // streams fine over the LAN and beats a slow live re-encode. (Picking
@@ -984,7 +988,8 @@ async fn ensure_downscaled(state: &MediaState, id: &str, src: &str, height: i32)
 /// then transcodes the original). This is what makes remote playback cheap —
 /// serving a pre-rendered proxy beats transcoding a multi-GB original per play.
 fn closest_proxy_path(state: &MediaState, id: &str, height: i32) -> Option<String> {
-    let (path, ph) = closest_streamable_proxy(state, id, height)?;
+    // A download is served as a direct MP4/MOV, so HEVC is fine (allow_hevc=true).
+    let (path, ph) = closest_streamable_proxy(state, id, height, true)?;
     tracing::info!("media: serving proxy {path} ({ph}p) for {id} (requested {height}p)");
     Some(path)
 }
@@ -997,14 +1002,19 @@ fn closest_proxy_path(state: &MediaState, id: &str, height: i32) -> Option<Strin
 /// proxy in a mastering codec — common when proxies were made by an external
 /// tool (e.g. a ProRes-422 .mov) — would download fine but AVPlayer can't play
 /// it, so we skip it and let the caller transcode to H.264 instead.
-fn closest_streamable_proxy(state: &MediaState, id: &str, height: i32) -> Option<(String, i32)> {
+fn closest_streamable_proxy(
+    state: &MediaState,
+    id: &str,
+    height: i32,
+    allow_hevc: bool,
+) -> Option<(String, i32)> {
     let proxies = match state.db.list_proxies(id) {
         Ok(p) if !p.is_empty() => p,
         _ => return None,
     };
     let candidates: Vec<_> = proxies
         .iter()
-        .filter(|p| is_streamable_codec(&p.codec_video))
+        .filter(|p| codec_streamable(&p.codec_video, allow_hevc))
         .collect();
     if candidates.is_empty() {
         return None;
@@ -1025,12 +1035,11 @@ fn closest_streamable_proxy(state: &MediaState, id: &str, height: i32) -> Option
         // fall back to transcoding the original.
         return None;
     }
-    // The codec NAME matched, but copy-mux only works on an 8-bit 4:2:0 track. A
-    // 4:2:2 / 10-bit "h264" proxy copies/downloads fine yet plays as audio only
-    // on iOS (the "Q" with waves). Probe the real track; if it's not
-    // copy-muxable, return None so the caller re-encodes (HLS) / transcodes the
-    // original (download) to yuv420p instead.
-    if !is_copy_muxable(&chosen.path) {
+    // The codec NAME matched, but serving as-is only works for an 8-bit 4:2:0
+    // track in a container the client supports. Probe the real track; if it's not
+    // playable in this context (4:2:2/10-bit, or HEVC into TS HLS), return None so
+    // the caller re-encodes (HLS) / transcodes the original (download) to H.264.
+    if !probe_playable(&chosen.path, allow_hevc) {
         return None;
     }
     Some((chosen.path.clone(), chosen.height))
@@ -1084,41 +1093,43 @@ fn probe_video_track(path: &str) -> Option<(String, String)> {
     Some((codec, pix_fmt))
 }
 
-/// Whether a file's video track can be COPY-muxed (no re-encode) to an Apple
-/// client: H.264/HEVC in **8-bit 4:2:0**. The stored `codec_video` *name* isn't
-/// enough — a proxy probed as "h264" can be High 4:2:2 / 10-bit, which copies and
-/// downloads fine yet decodes to AUDIO ONLY on iOS (the big "Q" with waves). Logs
-/// the probe so it's clear from the daemon log what was actually served.
-/// Anything we can't probe, or that isn't 8-bit 4:2:0 H.264/HEVC, returns false →
-/// the caller re-encodes to yuv420p instead.
-fn is_copy_muxable(path: &str) -> bool {
+/// Whether a stored codec name can be served to an Apple client WITHOUT
+/// re-encoding, in the requested context: H.264 always; HEVC only when
+/// `allow_hevc` — a direct MP4/MOV download, which iOS decodes natively. NOT for
+/// MPEG-TS HLS: Apple HLS can't carry HEVC in TS segments (it requires fMP4), so
+/// HEVC there plays as audio only. ProRes/DNxHD/raw/unknown are never streamable.
+fn codec_streamable(codec: &str, allow_hevc: bool) -> bool {
+    let c = codec.trim().to_ascii_lowercase();
+    let h264 = matches!(c.as_str(), "h264" | "avc1" | "x264");
+    let hevc = matches!(c.as_str(), "hevc" | "h265" | "hvc1" | "hev1");
+    h264 || (allow_hevc && hevc)
+}
+
+/// Whether a file's video track can be served to an Apple client WITHOUT
+/// re-encoding, in the requested context. The stored `codec_video` *name* isn't
+/// enough — a proxy probed as "h264" can be High 4:2:2 / 10-bit (decodes to AUDIO
+/// ONLY, the big "Q" with waves), and an 8-bit HEVC plays as a direct MP4 yet is
+/// audio-only when copy-muxed into TS HLS. So PROBE the real codec+pix_fmt and
+/// require 8-bit 4:2:0 plus a context-appropriate codec (`allow_hevc=false` for
+/// TS HLS = H.264 only; `true` for an MP4 download = H.264 or HEVC). Logs the
+/// probe so the daemon log shows what was actually served; unprobeable → false
+/// (re-encode to be safe).
+fn probe_playable(path: &str, allow_hevc: bool) -> bool {
     match probe_video_track(path) {
         Some((codec, pix_fmt)) => {
-            let c = codec.to_ascii_lowercase();
-            let codec_ok = matches!(c.as_str(), "h264" | "avc1" | "hevc" | "h265" | "hvc1" | "hev1");
+            let codec_ok = codec_streamable(&codec, allow_hevc);
             let pix_ok = matches!(pix_fmt.as_str(), "yuv420p" | "yuvj420p" | "nv12");
             tracing::info!(
-                "media: copy-mux probe {path}: codec={codec} pix_fmt={pix_fmt} -> {}",
-                if codec_ok && pix_ok { "copy-muxable" } else { "must re-encode (not 8-bit 4:2:0 H.264/HEVC)" }
+                "media: playable probe {path}: codec={codec} pix_fmt={pix_fmt} allow_hevc={allow_hevc} -> {}",
+                if codec_ok && pix_ok { "serve as-is" } else { "re-encode (HEVC-in-TS / not 8-bit 4:2:0)" }
             );
             codec_ok && pix_ok
         }
         None => {
-            tracing::warn!("media: copy-mux probe failed for {path} — re-encoding to be safe");
+            tracing::warn!("media: probe failed for {path} — re-encoding to be safe");
             false
         }
     }
-}
-
-/// Whether a stored codec can be served to an Apple client as-is. Everything
-/// outside this set (ProRes, DNxHD, raw, …) is transcoded to H.264 first.
-/// Conservative on purpose: an unknown/empty codec is treated as *not*
-/// streamable, so we never hand the client a file it can't play.
-fn is_streamable_codec(codec: &str) -> bool {
-    matches!(
-        codec.trim().to_ascii_lowercase().as_str(),
-        "h264" | "avc1" | "x264" | "hevc" | "h265" | "hvc1" | "hev1"
-    )
 }
 
 /// Serve `path` with single-range support (the form AVPlayer issues).
