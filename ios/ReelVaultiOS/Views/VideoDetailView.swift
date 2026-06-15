@@ -104,13 +104,15 @@ final class StreamPlayer: ObservableObject {
     /// then falls back to download-then-play. No-ops if the same video is already
     /// prepared, so the inline view and the full-screen cover share one player
     /// rather than racing two.
-    func prepare(video: VideoSummary, endpoint: AppRouter.ConnectionInfo?) async {
+    /// `autoPlay` starts playback once prepared; a quality change passes false so
+    /// the new rendition is loaded but stays paused (the user presses play).
+    func prepare(video: VideoSummary, endpoint: AppRouter.ConnectionInfo?, autoPlay: Bool = true) async {
         if isPreparing { return }   // a prepare (incl. the readiness wait) is in flight
         // Effective rendition height: the user's override (0 = original), else a
         // fit-to-device height so big originals don't stream raw over Wi-Fi.
         let height = renditionOverride ?? Self.streamHeight()
         if preparedVideoId == video.id, preparedHeight == height, player != nil {
-            player?.play()
+            if autoPlay { player?.play() }
             return
         }
         // On-device (Local Library) mode: no media server / streaming — the
@@ -147,8 +149,8 @@ final class StreamPlayer: ObservableObject {
                     player = p
                     preparedVideoId = video.id
                     preparedHeight = height
-                    p.play()
-                    NSLog("ReelVault: HLS playing \(video.id) (h\(height), \(outcome))")
+                    if autoPlay { p.play() }
+                    NSLog("ReelVault: HLS \(autoPlay ? "playing" : "ready (paused)") \(video.id) (h\(height), \(outcome))")
                     return
                 }
                 NSLog("ReelVault: HLS asset not playable for \(video.id) (h\(height)) — falling back to download")
@@ -169,7 +171,7 @@ final class StreamPlayer: ObservableObject {
             player = p
             preparedVideoId = video.id
             preparedHeight = height
-            p.play()
+            if autoPlay { p.play() }
         } catch {
             NSLog("ReelVault: playback prepare failed for \(video.id) (h\(height)): \(error)")
             self.error = "Couldn't play this video: \(error.localizedDescription)"
@@ -283,7 +285,9 @@ final class StreamPlayer: ObservableObject {
         player = nil
         teardownProxy()
         clearDiagnostics()
-        await prepare(video: video, endpoint: endpoint)
+        // Load the new rendition but leave it paused — changing quality shouldn't
+        // auto-start playback; the user presses play.
+        await prepare(video: video, endpoint: endpoint, autoPlay: false)
     }
 
     deinit {
