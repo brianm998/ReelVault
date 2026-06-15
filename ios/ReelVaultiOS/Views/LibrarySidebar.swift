@@ -29,6 +29,7 @@ struct LibrarySidebar: View {
     var onSelect: (LibrarySection) -> Void
 
     @EnvironmentObject private var router: AppRouter
+    @State private var showForgetServerConfirm = false
 
     var body: some View {
         List(selection: Binding<LibrarySection?>(
@@ -68,6 +69,29 @@ struct LibrarySidebar: View {
             }
             sourceRow("Server", systemImage: "network", isActive: onServer) {
                 if !onServer { router.useServerLibrary() }
+            }
+            // Forget the pairing token for this server (it lives in the Keychain,
+            // which survives app reinstall) so the next connect re-pairs. Only
+            // meaningful while connected to a server.
+            if onServer {
+                Button(role: .destructive) {
+                    showForgetServerConfirm = true
+                } label: {
+                    Label("Forget This Server…", systemImage: "key.slash")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .confirmationDialog(
+                    "Forget this server?",
+                    isPresented: $showForgetServerConfirm, titleVisibility: .visible
+                ) {
+                    Button("Forget & Re-pair", role: .destructive) {
+                        router.forgetCurrentServer()
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("Clears this device's pairing token. You'll need to enter a new pairing code to reconnect.")
+                }
             }
         }
     }

@@ -353,6 +353,26 @@ final class AppRouter: ObservableObject {
         }
     }
 
+    /// Forget the paired-device bearer token for the connected (or last-stored)
+    /// server, so the NEXT connection to it requires a fresh pairing code again.
+    /// The token lives in the iOS **Keychain** (TokenStore, keyed by the server's
+    /// cert fingerprint), which **survives app deletion/reinstall** — so deleting
+    /// the app does NOT re-prompt for pairing; this is the only in-app way to
+    /// clear it. Also drops the remembered last-server (so launch re-discovers
+    /// instead of reconnecting straight to its IP) and returns to discovery.
+    /// Note: this clears the token on THIS device only — the daemon's
+    /// paired-devices row is left in place (orphaned), which is fine for testing.
+    func forgetCurrentServer() {
+        if let fp = connection?.fingerprintHex { TokenStore.delete(for: fp) }
+        if let s = loadStoredServer() { TokenStore.delete(for: s.fingerprintHex) }
+        UserDefaults.standard.removeObject(forKey: Self.lastServerKey)
+        lastServer = nil
+        pending = nil
+        connection = nil
+        prefersLocalLibrary = false
+        start()
+    }
+
     /// Returning to the foreground in Local mode: re-run the (now incremental,
     /// see `reelvault_is_video_indexed`) on-device ingest so any videos added to
     /// Photos *while the app was suspended* get picked up. This is the idempotent
