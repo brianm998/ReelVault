@@ -23,6 +23,7 @@ struct DetailModeView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         StreamingPlayerView(stream: stream, video: video, endpoint: connection)
+                        MetadataEditorSection(grid: grid, videoId: video.id)
                         VideoMetadataSection(video: video)
                     }
                     .padding()

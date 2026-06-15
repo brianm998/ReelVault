@@ -13,6 +13,9 @@ import ReelVaultKit
 /// card is tapped.
 struct VideoDetailView: View {
     let video: VideoSummary
+    /// Shared view-model — lets the lower editor section change rating / colour /
+    /// keywords (the edits sync to every client).
+    @ObservedObject var grid: GridViewModel
     let mediaEndpoint: AppRouter.ConnectionInfo?
     @StateObject private var stream = StreamPlayer()
     @State private var fullScreen = false
@@ -21,6 +24,7 @@ struct VideoDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 StreamingPlayerView(stream: stream, video: video, endpoint: mediaEndpoint)
+                MetadataEditorSection(grid: grid, videoId: video.id)
                 VideoMetadataSection(video: video)
             }
             .padding()
@@ -536,6 +540,167 @@ struct VideoMetadataSection: View {
             Spacer(minLength: 0)
         }
         .font(.callout)
+    }
+}
+
+/// Editable metadata for the detail view: rating (stars), colour label, and
+/// keywords — the iOS counterpart of the macOS inspector's editing controls.
+/// Reads the *live* row from the shared view-model so optimistic edits repaint
+/// immediately, and the changes sync to every client.
+struct MetadataEditorSection: View {
+    @ObservedObject var grid: GridViewModel
+    let videoId: String
+    @State private var newKeyword: String = ""
+
+    /// The live row (preferring the loaded grid row so optimistic edits show),
+    /// falling back to the current selection.
+    private var video: VideoSummary? {
+        grid.videos.first(where: { $0.id == videoId })
+            ?? (grid.selectedVideo?.id == videoId ? grid.selectedVideo : nil)
+    }
+
+    var body: some View {
+        if let video {
+            VStack(alignment: .leading, spacing: 20) {
+                ratingRow(video)
+                colorRow(video)
+                keywordsBlock(video)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            // Keywords removal resolves a tag name → id from grid.tags, so make
+            // sure the tag list is loaded even if the sidebar hasn't been opened.
+            .onAppear { if grid.tags.isEmpty { grid.loadTags() } }
+        }
+    }
+
+    private func ratingRow(_ video: VideoSummary) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Rating").font(.headline)
+            HStack(spacing: 12) {
+                ForEach(1...5, id: \.self) { position in
+                    Image(systemName: position <= video.rating ? "star.fill" : "star")
+                        .font(.title2)
+                        .foregroundStyle(position <= video.rating ? .yellow : .secondary)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            // Tap a set star again to clear (Lightroom-style).
+                            grid.setRating(video.rating == position ? 0 : position, for: [video.id])
+                        }
+                }
+            }
+        }
+    }
+
+    private func colorRow(_ video: VideoSummary) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Color Label").font(.headline)
+            HStack(spacing: 14) {
+                ForEach(ColorLabel.allCases) { label in
+                    Button {
+                        // Tap the active colour again to clear it.
+                        grid.setColorLabel(video.colorLabel == label.rawValue ? "" : label.rawValue,
+                                           for: [video.id])
+                    } label: {
+                        Circle()
+                            .fill(label == .none ? Color(white: 0.25) : label.swatch)
+                            .frame(width: 28, height: 28)
+                            .overlay {
+                                if label == .none {
+                                    Image(systemName: "slash.circle")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            .overlay {
+                                if video.colorLabel == label.rawValue {
+                                    Circle().strokeBorder(.white, lineWidth: 2.5)
+                                }
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(label.displayName)
+                }
+            }
+        }
+    }
+
+    private func keywordsBlock(_ video: VideoSummary) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Keywords").font(.headline)
+            if !video.tags.isEmpty {
+                FlowLayout(spacing: 8) {
+                    ForEach(video.tags, id: \.self) { tag in
+                        keywordChip(tag, video: video)
+                    }
+                }
+            }
+            HStack {
+                TextField("Add a keyword…", text: $newKeyword)
+                    .textFieldStyle(.roundedBorder)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .onSubmit { addKeyword(video) }
+                Button("Add") { addKeyword(video) }
+                    .disabled(newKeyword.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+    }
+
+    private func keywordChip(_ tag: String, video: VideoSummary) -> some View {
+        HStack(spacing: 4) {
+            Text(tag).font(.caption)
+            Button {
+                if let tagId = grid.tags.first(where: { $0.name == tag })?.id {
+                    grid.removeKeyword(tagId: tagId, from: [video.id])
+                }
+            } label: {
+                Image(systemName: "xmark.circle.fill").font(.caption2)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(Color(white: 0.22), in: Capsule())
+    }
+
+    private func addKeyword(_ video: VideoSummary) {
+        let name = newKeyword.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        grid.applyKeyword(name, to: [video.id])
+        newKeyword = ""
+    }
+}
+
+/// Minimal wrapping (flow) layout for keyword chips — fills each row left-to-right
+/// and wraps when the next subview would overflow the available width.
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0
+        for sub in subviews {
+            let size = sub.sizeThatFits(.unspecified)
+            if x + size.width > maxWidth, x > 0 {
+                x = 0; y += rowHeight + spacing; rowHeight = 0
+            }
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+        return CGSize(width: maxWidth.isFinite ? maxWidth : x, height: y + rowHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) {
+        var x = bounds.minX, y = bounds.minY, rowHeight: CGFloat = 0
+        for sub in subviews {
+            let size = sub.sizeThatFits(.unspecified)
+            if x + size.width > bounds.maxX, x > bounds.minX {
+                x = bounds.minX; y += rowHeight + spacing; rowHeight = 0
+            }
+            sub.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
     }
 }
 

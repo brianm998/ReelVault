@@ -146,7 +146,7 @@ private struct CompactLayout: View {
                 .navigationTitle("ReelVault")
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationDestination(item: $pushedVideo) { video in
-                    VideoDetailView(video: video, mediaEndpoint: connection)
+                    VideoDetailView(video: video, grid: grid, mediaEndpoint: connection)
                 }
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
