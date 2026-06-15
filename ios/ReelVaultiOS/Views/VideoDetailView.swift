@@ -66,7 +66,15 @@ final class StreamPlayer: ObservableObject {
     /// While preparing a sub-realtime HLS re-encode, an ETA like
     /// "Preparing… ready in ~12s" for the spinner; nil when ready/unknown.
     @Published var preparingDetail: String?
+    /// User-chosen playback rendition height: nil = auto (fit the device), 0 = the
+    /// original full-resolution file, else a specific proxy height. Streaming is
+    /// height-based on iOS (remote mode), so the server serves the proxy closest
+    /// to the requested height. Changed via `selectRendition`.
+    @Published var renditionOverride: Int?
     private var preparedVideoId: String?
+    /// The height the current player item was prepared at, so changing the
+    /// rendition forces a re-prepare instead of a no-op.
+    private var preparedHeight: Int?
     /// Security-scoped URL for a Files-imported (`bookmark://`) video; its scope
     /// must stay open while the player reads it, released on teardown/deinit.
     private var scopedPlaybackURL: URL?
@@ -87,7 +95,10 @@ final class StreamPlayer: ObservableObject {
     /// rather than racing two.
     func prepare(video: VideoSummary, endpoint: AppRouter.ConnectionInfo?) async {
         if isPreparing { return }   // a prepare (incl. the readiness wait) is in flight
-        if preparedVideoId == video.id, player != nil {
+        // Effective rendition height: the user's override (0 = original), else a
+        // fit-to-device height so big originals don't stream raw over Wi-Fi.
+        let height = renditionOverride ?? Self.streamHeight()
+        if preparedVideoId == video.id, preparedHeight == height, player != nil {
             player?.play()
             return
         }
@@ -104,10 +115,6 @@ final class StreamPlayer: ObservableObject {
         let mediaEndpoint = MediaClient.Endpoint(
             host: conn.host, mediaPort: conn.mediaPort,
             fingerprintHex: conn.fingerprintHex, bearerToken: conn.bearerToken)
-        // Always request a fit-to-device height (never the raw original): the
-        // server serves/transcodes the closest rendition — so big originals don't
-        // stream raw over Wi-Fi.
-        let height = Self.streamHeight()
 
         // 1) HLS streaming via the loopback proxy. Drive it from /status: wait
         //    (spinner + ETA) until enough is transcoded to play smoothly, THEN
@@ -128,6 +135,7 @@ final class StreamPlayer: ObservableObject {
                     let p = AVPlayer(playerItem: item)
                     player = p
                     preparedVideoId = video.id
+                    preparedHeight = height
                     p.play()
                     NSLog("ReelVault: HLS playing \(video.id) (h\(height), \(outcome))")
                     return
@@ -149,6 +157,7 @@ final class StreamPlayer: ObservableObject {
             let p = AVPlayer(playerItem: item)
             player = p
             preparedVideoId = video.id
+            preparedHeight = height
             p.play()
         } catch {
             NSLog("ReelVault: playback prepare failed for \(video.id) (h\(height)): \(error)")
@@ -234,6 +243,8 @@ final class StreamPlayer: ObservableObject {
             player?.pause()
             player = nil
             preparedVideoId = nil
+            preparedHeight = nil
+            renditionOverride = nil   // a new clip starts at Auto
             scopedPlaybackURL?.stopAccessingSecurityScopedResource()
             scopedPlaybackURL = nil
             error = nil
@@ -241,6 +252,22 @@ final class StreamPlayer: ObservableObject {
             teardownProxy()
             clearDiagnostics()
         }
+    }
+
+    /// Switch the playback rendition (Auto / Original / a specific proxy height)
+    /// and re-stream the current video at that height. No-op in Local mode (the
+    /// on-device original is played directly; there are no renditions).
+    func selectRendition(_ height: Int?, video: VideoSummary, endpoint: AppRouter.ConnectionInfo?) async {
+        guard endpoint != nil else { return }
+        renditionOverride = height
+        // Force a fresh prepare even for the same video.
+        preparedVideoId = nil
+        preparedHeight = nil
+        player?.pause()
+        player = nil
+        teardownProxy()
+        clearDiagnostics()
+        await prepare(video: video, endpoint: endpoint)
     }
 
     deinit {
@@ -396,6 +423,11 @@ struct StreamingPlayerView: View {
             if let error = stream.error {
                 Text(error).font(.footnote).foregroundStyle(.secondary)
             }
+            // Rendition chooser — remote mode only (Local plays the original
+            // directly), and not in the full-screen cover.
+            if !fill, endpoint != nil {
+                RenditionPicker(stream: stream, video: video, endpoint: endpoint)
+            }
         }
         .task(id: video.id) {
             stream.resetIfDifferent(video.id)
@@ -462,6 +494,66 @@ struct StreamingPlayerView: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: fill ? 0 : 10))
+    }
+}
+
+/// Lets the user pick which rendition to play (the iOS counterpart of the
+/// desktop/macOS proxy chooser). iOS streams by height through the media server,
+/// so the options are Auto (fit the device), Original (full resolution), and one
+/// per available proxy — each re-streams at that height. Reflects the current
+/// choice with a checkmark.
+struct RenditionPicker: View {
+    @ObservedObject var stream: StreamPlayer
+    let video: VideoSummary
+    let endpoint: AppRouter.ConnectionInfo?
+    @State private var proxies: [VideoRepository.ProxyInfo] = []
+
+    var body: some View {
+        Menu {
+            choice("Auto", height: nil)
+            choice("Original (full)", height: 0)
+            if !proxies.isEmpty {
+                Divider()
+                // Largest first reads naturally as a quality ladder.
+                ForEach(proxies.sorted { $0.height > $1.height }) { p in
+                    choice(proxyLabel(p), height: p.height)
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "slider.horizontal.3")
+                Text("Quality: \(currentLabel)")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        .task(id: video.id) {
+            proxies = (try? await VideoRepository.shared.listProxies(videoId: video.id)) ?? []
+        }
+    }
+
+    private var currentLabel: String {
+        switch stream.renditionOverride {
+        case nil: return "Auto"
+        case 0: return "Original"
+        case let h?: return "\(h)p"
+        }
+    }
+
+    private func proxyLabel(_ p: VideoRepository.ProxyInfo) -> String {
+        p.height > 0 ? "\(p.height)p" : p.filename
+    }
+
+    @ViewBuilder private func choice(_ title: String, height: Int?) -> some View {
+        Button {
+            Task { await stream.selectRendition(height, video: video, endpoint: endpoint) }
+        } label: {
+            if stream.renditionOverride == height {
+                Label(title, systemImage: "checkmark")
+            } else {
+                Text(title)
+            }
+        }
     }
 }
 
