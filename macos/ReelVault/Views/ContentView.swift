@@ -9,6 +9,8 @@ import CoreLocation
 struct ContentView: View {
     @StateObject private var gridViewModel = GridViewModel()
     @StateObject private var detailViewModel = DetailViewModel()
+    /// Observed so the top-bar library-source control reflects local vs remote.
+    @ObservedObject private var remoteConnection = RemoteConnection.shared
     @State private var connectionState: ConnectionState = .connecting
     @State private var connectionError: String = ""
     // Per-view-mode panel state — width + open/closed flag for each of
@@ -786,6 +788,24 @@ struct ContentView: View {
             // rather than as a tiny chip up here, so users actually notice
             // why the grid is narrowed.)
 
+            // Library source — switch between this computer and a remote daemon
+            // at runtime (the desktop counterpart of the iOS source switcher).
+            Menu {
+                Button {
+                    Task { await switchLibrary() }
+                } label: {
+                    Label("Switch Library…", systemImage: "arrow.left.arrow.right")
+                }
+            } label: {
+                Image(systemName: remoteConnection.mediaEndpoint == nil ? "desktopcomputer" : "network")
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help(remoteConnection.mediaEndpoint == nil
+                  ? "Library is on this computer. Switch to a remote ReelVault server…"
+                  : "Connected to a remote ReelVault server. Switch library…")
+
             // Settings — every preference collapsed into one gear menu so the
             // top bar isn't a row of mystery glyphs. Playback, Library, and
             // Appearance sit at the top level; the name-mapping editors live in
@@ -1431,6 +1451,19 @@ struct ContentView: View {
             // Only loopback, or nothing — connectLocal reuses or spawns one.
             await connectLocal()
         }
+    }
+
+    /// Runtime library switch (M3): forget any saved default and present a picker
+    /// of Local + every discovered remote, so the user can move between local and
+    /// remote catalogs without relaunching. Local is always offered (spawned if
+    /// needed). Mirrors the iOS source switcher.
+    private func switchLibrary() async {
+        StoredDefaultServer.clear()
+        connectionState = .discovering
+        let (_, remotes) = await scanForServers()
+        var choices: [MacServerChoice] = [.local(port: 50051)]
+        choices.append(contentsOf: remotes.map { .remote($0) })
+        connectionState = .picker(choices)
     }
 
     /// Act on a user's (or auto) choice, optionally remembering it as the default.
