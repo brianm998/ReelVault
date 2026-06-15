@@ -693,6 +693,7 @@ public class GridViewModel: ObservableObject {
             // flight; if so, drop the result on the floor so it can't overwrite
             // the fresh selection's data.
             if Task.isCancelled { return }
+            NSLog("[GridViewModel] listVideos returned \(results.count) of \(total) (page \(currentPage), replace=\(replace))")
             if replace {
                 videos = results
             } else {
@@ -726,6 +727,7 @@ public class GridViewModel: ObservableObject {
             scheduleVideoLocationsRefresh()
         } catch {
             if Task.isCancelled { return }
+            NSLog("[GridViewModel] listVideos FAILED: \(error)")
             self.error = "Failed to load videos: \(error.localizedDescription)"
             isLoading = false
         }

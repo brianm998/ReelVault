@@ -68,12 +68,26 @@ struct VideoGridView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     if grid.videos.isEmpty {
-                        ContentUnavailableView(
-                            "No videos",
-                            systemImage: "film",
-                            description: Text("The connected catalog is empty, or no videos match the current filter.")
-                        )
-                        .padding(.top, 80)
+                        if let error = grid.error {
+                            // A failed load must look different from an empty
+                            // catalog — otherwise "couldn't reach the library"
+                            // and "no videos here" are indistinguishable.
+                            ContentUnavailableView {
+                                Label("Couldn’t load videos", systemImage: "exclamationmark.triangle")
+                            } description: {
+                                Text(error)
+                            } actions: {
+                                Button("Retry") { grid.loadVideos() }
+                            }
+                            .padding(.top, 80)
+                        } else {
+                            ContentUnavailableView(
+                                "No videos",
+                                systemImage: "film",
+                                description: Text("The connected catalog is empty, or no videos match the current filter.")
+                            )
+                            .padding(.top, 80)
+                        }
                     } else {
                         LazyVGrid(columns: columns, spacing: spacing) {
                             ForEach(stackRenderedVideos(grid)) { row in

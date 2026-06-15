@@ -23,6 +23,7 @@ build/
 ios/*.xcodeproj/
 ios/build/
 ios/DerivedData/
+ios/DerivedData*/
 # Embedded-core XCFramework is a build artifact (ios/build-core-xcframework.sh).
 ios/Frameworks/
 
