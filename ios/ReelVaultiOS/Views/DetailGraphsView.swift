@@ -49,41 +49,51 @@ struct DetailGraphsView: View {
     private var loudnessLoaded: Bool { grid.audioLoudness[videoId] != nil }
 
     var body: some View {
-        // Only render the section once there's something to show (or something is
-        // still loading) — an all-empty clip just omits it.
-        if hasStats || hasLoudness || !loudnessLoaded {
-            VStack(alignment: .leading, spacing: 12) {
-                if showHeader { Text("Visuals").font(.headline) }
-                if hasStats {
-                    sectionLabel("Brightness"); brightnessChart
-                    sectionLabel("Color over time"); colorTimeline
-                    sectionLabel("RGB channels"); rgbChart
-                }
-                if hasLoudness {
-                    sectionLabel("Loudness"); loudnessChart
-                } else if !loudnessLoaded {
-                    sectionLabel("Loudness")
-                    HStack(spacing: 6) {
-                        ProgressView().controlSize(.small)
-                        Text("Analyzing audio…").font(.caption).foregroundStyle(.secondary)
+        // The lifecycle modifiers live on the always-present Group, NOT on the
+        // conditionally-shown content. If they sat on the inner VStack, the
+        // section would unmount the moment loudness resolved empty before the
+        // scrub-frame stats had computed (the common case: cached/empty loudness
+        // returns instantly, scrub frames take several round-trips) — and once
+        // unmounted, the `onChange(frameSignature)` that turns arriving frames
+        // into stats was gone too, so the brightness/colour/RGB graphs never
+        // appeared at all. Keeping them on the Group means recompute always runs.
+        Group {
+            // Only render the section once there's something to show (or something
+            // is still loading) — an all-empty clip just omits it.
+            if hasStats || hasLoudness || !loudnessLoaded {
+                VStack(alignment: .leading, spacing: 12) {
+                    if showHeader { Text("Visuals").font(.headline) }
+                    if hasStats {
+                        sectionLabel("Brightness"); brightnessChart
+                        sectionLabel("Color over time"); colorTimeline
+                        sectionLabel("RGB channels"); rgbChart
                     }
-                    .frame(maxWidth: .infinity, minHeight: 40)
-                    .background(Color(white: 0.12))
-                    .cornerRadius(4)
+                    if hasLoudness {
+                        sectionLabel("Loudness"); loudnessChart
+                    } else if !loudnessLoaded {
+                        sectionLabel("Loudness")
+                        HStack(spacing: 6) {
+                            ProgressView().controlSize(.small)
+                            Text("Analyzing audio…").font(.caption).foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 40)
+                        .background(Color(white: 0.12))
+                        .cornerRadius(4)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .task(id: videoId) {
-                // Clear the previous clip's stats immediately so a reused instance
-                // (iPad, in-place selection change) doesn't render the old video's
-                // brightness/RGB/colour curves until the new ones compute.
-                stats = []
-                grid.loadScrubFrames(videoId: videoId)
-                grid.loadAudioLoudness(videoId: videoId)
-            }
-            .onChange(of: frameSignature) { _, _ in recompute() }
-            .onAppear { recompute() }
         }
+        .task(id: videoId) {
+            // Clear the previous clip's stats immediately so a reused instance
+            // (iPad, in-place selection change) doesn't render the old video's
+            // brightness/RGB/colour curves until the new ones compute.
+            stats = []
+            grid.loadScrubFrames(videoId: videoId)
+            grid.loadAudioLoudness(videoId: videoId)
+        }
+        .onChange(of: frameSignature) { _, _ in recompute() }
+        .onAppear { recompute() }
     }
 
     private func sectionLabel(_ text: String) -> some View {

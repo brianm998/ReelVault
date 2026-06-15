@@ -900,8 +900,14 @@ pub fn extract_audio_loudness(video_path: &Path) -> Vec<f32> {
             "-i",
             video_path.to_str().unwrap_or(""),
             "-vn", // ignore video — only the audio loudness is wanted
+            // Run the EBU R128 meter and have `ametadata` print each frame's
+            // momentary-loudness reading to STDOUT as `lavfi.r128.M=<db>`. We read
+            // the metadata stream rather than scraping ebur128's human-readable
+            // log: newer ffmpeg (8.x) only emits the per-frame `M:` log lines at
+            // `-loglevel verbose`, so the old stderr scrape parsed *zero* samples
+            // at the default level and the graph silently never appeared.
             "-af",
-            "ebur128=metadata=1",
+            "ebur128=metadata=1,ametadata=mode=print:file=-",
             "-f",
             "null",
             "-",
@@ -912,15 +918,13 @@ pub fn extract_audio_loudness(video_path: &Path) -> Vec<f32> {
         Err(_) => return Vec::new(),
     };
 
-    // ebur128 logs its per-frame readings to stderr, e.g.
-    //   [Parsed_ebur128_0 @ 0x..] t: 0.1 ... M: -23.4 S: -120.7 I: ...
-    // Pull the momentary-loudness (M) value out of each such line.
-    let log = String::from_utf8_lossy(&output.stderr);
+    // `ametadata=print` writes one `lavfi.r128.M=<db>` line per frame (~10/s) to
+    // stdout, independent of log level. Pull the momentary-loudness value out.
+    let log = String::from_utf8_lossy(&output.stdout);
     let mut db_values: Vec<f32> = Vec::new();
     for line in log.lines() {
-        if let Some(idx) = line.find("M:") {
-            let token = line[idx + 2..].split_whitespace().next().unwrap_or("");
-            if let Ok(db) = token.parse::<f32>() {
+        if let Some(rest) = line.trim().strip_prefix("lavfi.r128.M=") {
+            if let Ok(db) = rest.trim().parse::<f32>() {
                 if db.is_finite() {
                     db_values.push(db);
                 }

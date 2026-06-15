@@ -206,7 +206,15 @@ impl ReelVaultService {
             })
             .unwrap_or((None, false));
         if let Some(blob) = cached {
-            return Ok(blob);
+            // A non-empty cached series is authoritative. An *empty* cached blob is
+            // only trusted when the video has no audio track; for a video that does
+            // have audio, an empty cache means an earlier decode produced nothing —
+            // e.g. the ffmpeg log-level bug that suppressed every per-frame reading
+            // (see extract_audio_loudness). Recompute rather than serve a
+            // permanently-blank graph, so existing catalogs self-heal.
+            if !blob.is_empty() || !has_audio {
+                return Ok(blob);
+            }
         }
         if !has_audio {
             return Ok(Vec::new());
