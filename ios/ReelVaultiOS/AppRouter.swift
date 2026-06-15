@@ -55,6 +55,10 @@ final class AppRouter: ObservableObject {
     private var collectTask: Task<Void, Never>?
     /// Server + resolved fingerprint awaiting a pairing code.
     private var pending: (server: DiscoveredServer, fingerprint: String)?
+    /// The last server we successfully connected to this session (set in
+    /// `finishConnect`). Lets `useServerLibrary()` reconnect straight to it on a
+    /// Local→Server switch instead of re-running the discovery window.
+    private var lastServer: (server: DiscoveredServer, fingerprint: String, token: String?)?
 
     /// Begin (or restart) discovery.
     func start() {
@@ -159,6 +163,9 @@ final class AppRouter: ObservableObject {
             // Using a server is now the remembered choice (until the user picks
             // On-Device Library again).
             prefersLocalLibrary = false
+            // Remember it so a later Local→Server switch reconnects instantly
+            // (skips discovery — see useServerLibrary).
+            lastServer = (server, fingerprint, token)
             connection = ConnectionInfo(
                 host: server.host,
                 mediaPort: server.mediaPort ?? 50052,
@@ -255,7 +262,20 @@ final class AppRouter: ObservableObject {
         // whole Photos library in the background after we move to a server.
         IngestCancel.request()
         prefersLocalLibrary = false
-        start()
+        // If we already connected to a server earlier this session, reconnect
+        // straight to it rather than paying the full mDNS discovery window again —
+        // the switch back is then effectively instant. Discovery stays the
+        // fallback (server moved/offline, or none connected yet this session); a
+        // failed direct reconnect lands on the error screen whose Retry rediscovers.
+        if let last = lastServer {
+            phase = .connecting(last.server)
+            Task { [weak self] in
+                await self?.finishConnect(server: last.server,
+                                          fingerprint: last.fingerprint, token: last.token)
+            }
+        } else {
+            start()
+        }
     }
 
     /// Returning to the foreground in Local mode: re-run the (now incremental,
