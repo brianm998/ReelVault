@@ -51,6 +51,15 @@ axum-server = { version = "0.7", features = ["tls-rustls"] }
 # synchronous post_index worker thread, not inside the tokio runtime.
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
 
+# rustls is already in the tree transitively (axum-server, reqwest). We depend on
+# it directly ONLY to install the process-global `CryptoProvider` at startup:
+# rustls 0.23 ends up with *both* providers compiled in — `aws-lc-rs` (axum-server
+# + reqwest) and `ring` — so it can't auto-pick one from crate features and panics
+# the first time anything builds a Server/ClientConfig. We pick `aws-lc-rs`
+# (rustls's own default) explicitly via `install_crypto_provider`. Default
+# features include `aws_lc_rs`, which exposes `rustls::crypto::aws_lc_rs`.
+rustls = "0.23"
+
 # Database
 rusqlite = { version = "0.31", features = ["bundled", "chrono", "uuid"] }
 rusqlite_migration = "1.2"

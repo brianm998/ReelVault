@@ -175,6 +175,11 @@ pub extern "C" fn reelvault_start_embedded(
         return existing.port; // already booted
     }
     init_logging();
+    // Select the rustls crypto provider before any TLS work — the post-index
+    // sensor fetch (reqwest) builds a rustls 0.23 ClientConfig that otherwise
+    // panics (both aws-lc-rs and ring are compiled in). See
+    // `crate::install_crypto_provider`.
+    crate::install_crypto_provider();
     tracing::info!("reelvault_start_embedded: booting embedded core");
     let (db_path, data_dir, cache_dir) =
         match unsafe { (cpath(db_path), cpath(data_dir), cpath(cache_dir)) } {
@@ -355,6 +360,9 @@ impl MediaBackend for NativeMediaBackend {
 #[no_mangle]
 pub extern "C" fn reelvault_register_media_backend(callbacks: NativeMediaCallbacks) {
     init_logging();
+    // Swift may register the backend (and trigger media work) before
+    // `reelvault_start_embedded`; install the rustls provider here too. Idempotent.
+    crate::install_crypto_provider();
     set_backend(Arc::new(NativeMediaBackend { cb: callbacks }));
     tracing::info!("native media backend registered");
 }
