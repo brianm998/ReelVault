@@ -24,7 +24,9 @@ struct LibraryGridScreen: View {
     @State private var showImport = false
     @State private var showLocalImport = false
     @State private var showShareResolution = false
+    @State private var showDownloadResolution = false
     @StateObject private var share = ShareExportModel()
+    @ObservedObject private var offline = OfflineLibrary.shared
 
     var body: some View {
         VStack(spacing: 0) {
@@ -55,9 +57,23 @@ struct LibraryGridScreen: View {
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
             }
         }
+        .overlay(alignment: .bottom) {
+            if !offline.downloading.isEmpty {
+                Label("Downloading \(offline.downloading.count) for offline…", systemImage: "arrow.down.circle")
+                    .font(.caption)
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .background(.regularMaterial, in: Capsule())
+                    .padding(.bottom, 12)
+            }
+        }
         .confirmationDialog("Share resolution", isPresented: $showShareResolution, titleVisibility: .visible) {
             Button("Original") { startShare(height: 0) }
             Button("720p (smaller)") { startShare(height: 720) }
+            Button("Cancel", role: .cancel) {}
+        }
+        .confirmationDialog("Download quality", isPresented: $showDownloadResolution, titleVisibility: .visible) {
+            Button("Original") { startOfflineDownload(height: 0) }
+            Button("720p (smaller)") { startOfflineDownload(height: 720) }
             Button("Cancel", role: .cancel) {}
         }
     }
@@ -90,6 +106,18 @@ struct LibraryGridScreen: View {
                     Label("Share", systemImage: "square.and.arrow.up")
                 }
                 .disabled(grid.selectedVideoIds.isEmpty)
+            }
+            // Offline download only makes sense in remote mode (Local already has
+            // the originals on-device; there's nothing to cache from a server).
+            if connection != nil {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showDownloadResolution = true
+                    } label: {
+                        Label("Download", systemImage: "arrow.down.circle")
+                    }
+                    .disabled(grid.selectedVideoIds.isEmpty)
+                }
             }
             ToolbarItem(placement: .topBarLeading) {
                 Button("Cancel") {
@@ -156,5 +184,18 @@ struct LibraryGridScreen: View {
         selecting = false
         share.prepare(videoIds: ids, height: height, endpoint: connection)
         grid.clearSelection()
+    }
+
+    /// Download the selected videos into the app-private offline library at the
+    /// chosen resolution (each downloads independently in the background).
+    private func startOfflineDownload(height: Int) {
+        guard let connection else { return }
+        let ids = Set(grid.selectedVideoIds)
+        let targets = grid.videos.filter { ids.contains($0.id) }
+        selecting = false
+        grid.clearSelection()
+        for video in targets {
+            offline.download(video, height: height, endpoint: connection)
+        }
     }
 }

@@ -64,6 +64,8 @@ struct RootView: View {
             ConnectedRootView()
         case .failed(let message):
             DiscoveryErrorView(error: message)
+        case .offline:
+            OfflineLibraryView()
         }
     }
 }

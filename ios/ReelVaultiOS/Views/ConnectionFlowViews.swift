@@ -33,6 +33,16 @@ struct DiscoveryErrorView: View {
                         .foregroundStyle(.secondary)
                     Button("Open On-Device Library") { router.startLocal() }
                 }
+                if !OfflineLibrary.shared.entries.isEmpty {
+                    Section("Downloaded") {
+                        Text("Watch videos you downloaded for offline use — no connection needed.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Button("View Downloaded Videos (\(OfflineLibrary.shared.entries.count))") {
+                            router.enterOffline()
+                        }
+                    }
+                }
                 Section("Connect manually") {
                     TextField("Host or IP", text: $host)
                         .textInputAutocapitalization(.never)

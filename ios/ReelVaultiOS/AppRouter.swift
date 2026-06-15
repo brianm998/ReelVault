@@ -20,6 +20,9 @@ final class AppRouter: ObservableObject {
         case startingLocal
         case connected
         case failed(String)
+        /// Browsing the app-private offline downloads (no daemon) — a fallback
+        /// reached from the no-server screen when downloads exist.
+        case offline
     }
 
     /// Everything the media client needs to stream from the connected server.
@@ -259,6 +262,16 @@ final class AppRouter: ObservableObject {
     func foregroundCatchUp() {
         guard case .connected = phase, connection == nil else { return }
         runLocalIngestIfIdle()
+    }
+
+    /// Browse the app-private offline downloads (no daemon needed). Reached from
+    /// the no-server screen as a fallback; leave via "Look for a Server" /
+    /// "Use On-Device Library" in the offline view.
+    func enterOffline() {
+        discoverTask?.cancel()
+        collectTask?.cancel()
+        discovery.stop()
+        phase = .offline
     }
 
     /// Connect to a manually-entered server (from the error screen). Assumes the

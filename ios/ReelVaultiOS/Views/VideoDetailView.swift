@@ -24,6 +24,7 @@ struct VideoDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 StreamingPlayerView(stream: stream, video: video, endpoint: mediaEndpoint)
+                OfflineDownloadButton(video: video, endpoint: mediaEndpoint)
                 MetadataEditorSection(grid: grid, videoId: video.id)
                 // Prefer the live grid row so the proxy-count badge tracks edits
                 // and newly-created proxies; refreshTick re-fetches the list.
