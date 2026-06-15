@@ -875,17 +875,17 @@ Symbols are current; line numbers drift — re-grep the symbol before editing.
 
 ## 13. Implementation status & parity matrix
 
-Status as of 2026-06-14 (`develop`). Phases 0–4 landed and were verified on the
-iOS Simulator and a real iPhone 16 Pro; Phase 5 not started.
+Status as of 2026-06-15 (`develop`). Phases 0–4 are complete and were verified on
+the iOS Simulator and a real iPhone 16 Pro; Phase 5 is dropped (see §14).
 
 | Phase | State | Notes |
 |---|---|---|
 | 0 — Embed scaffold | ✅ done, device-verified | in-process gRPC over loopback |
 | 1 — `MediaBackend` trait + CLI | ✅ done | process-global backend (not a threaded `Arc`); desktop unchanged |
-| 2 — `NativeMediaBackend` | ✅ mostly | probe/probe_color/extract_frame/transcode_proxy done; `extract_loudness` stubbed (see below); ProRes RAW unverified |
-| 3 — Ingest (Photos / Files) | ◑ Photos done; Files pending | Photos enumerate + incremental + live observer + foreground catch-up done; **Files (bookmark) ingest not done**; removals (deleted Photos) need a remove-by-localId FFI |
-| 4 — Parity polish | ◑ mostly | reqwest, iOS concurrency cap, thermal backoff, foreground catch-up, this matrix done; **BGProcessingTask deferred** |
-| 5 — libav fallback | ❌ not started | needs iOS-cross-compiled FFmpeg static libs |
+| 2 — `NativeMediaBackend` | ✅ done | probe/probe_color/extract_frame/transcode_proxy + `extract_loudness` (AVAssetReader RMS envelope); ProRes RAW unverified (no device footage) |
+| 3 — Ingest (Photos / Files) | ✅ done | Photos enumerate (parallel `TaskGroup`) + incremental + live observer + foreground catch-up + **removal reconcile** (`reelvault_prune_photos` prunes deleted Photos); **Files (bookmark) ingest** done |
+| 4 — Parity polish | ✅ done | reqwest, iOS concurrency cap, thermal backoff, foreground catch-up, parallel ingest + a "keep the app open" ingest banner. **No `BGProcessingTask`** — deliberate: foreground-only ingest + catch-up cover it (a `Task`/`TaskGroup` can't run while suspended; bg processing isn't worth the complexity here) |
+| 5 — libav fallback | ⛔ dropped | exotic-codec / ProRes-RAW on-device decode via libav — see §14 |
 
 ### Feature parity matrix (deliberate gaps called out)
 
@@ -898,55 +898,38 @@ iOS Simulator and a real iPhone 16 Pro; Phase 5 not started.
 | Thumbnails (incl. scrub) | ✅ | ✅ | ✅ | local via AVAssetImageGenerator |
 | Playback | native file/proxy | HLS / range stream | direct `AVPlayer` | local: `photos://`→PHImageManager else file URL |
 | Proxy generation | ffmpeg | server-side | AVAssetExportSession | |
+| Offline download / cache | n/a | ✅ app-private | n/a | download a subset for daemon-free playback |
 | Stacking / grouping | ✅ | ✅ | ✅ | |
 | Editor hand-off | drag-and-drop | share sheet | share sheet | **deliberate**: iOS replaces D&D with share |
 | Upload | n/a | resumable PUT → import dir | n/a | local has no server to upload to |
-| Ingest source | filesystem scan | server scans | Photos (+ Files pending) | |
-| Live updates | `notify` watcher | server watcher → CatalogEvents | PHPhotoLibraryChangeObserver + foreground catch-up | |
+| Ingest source | filesystem scan | server scans | Photos + Files | parallel `TaskGroup` ingest |
+| Live updates | `notify` watcher | server watcher → CatalogEvents | PHPhotoLibraryChangeObserver (add **+ remove**) + foreground reconcile | |
 | XMP read | ✅ (native) | ✅ | ✅ | |
 | XMP **write** | ✅ (exiftool) | ❌ | ❌ | **deliberate** (D5): defer |
 | In-place tag write (creation time / GPS → file) | ✅ (exiftool) | ❌ | ❌ | **deliberate** (D4): catalog-only; can't rewrite a Photos original |
-| Audio loudness graph | ✅ (DetailGraphsPanel) | ❌ (no UI) | ❌ (no UI + stub) | iOS has no loudness-graph view yet; native loudness lands with it |
+| Audio loudness graph | ✅ (DetailGraphsPanel) | ✅ | ✅ | iOS detail "Visuals" panel; local via native AVAssetReader RMS |
 | Keyboard shortcuts | ✅ | iPad+keyboard | iPad+keyboard | **deliberate**: not iPhone |
-| ProRes RAW thumbnails | ✅ (macOS AVFoundation helper) | server-side | ⚠ unverified | needs RAW footage on device; may go to Phase 5 |
-| Exotic codecs (AVFoundation can't open) | ✅ (ffmpeg) | server-side | ❌ | Phase 5 libav fallback |
+| ProRes RAW thumbnails | ✅ (macOS AVFoundation helper) | server-side | ⚠ unverified | needs RAW footage on device |
+| Exotic codecs (AVFoundation can't open) | ✅ (ffmpeg) | server-side | ❌ (server transcodes) | Phase 5 dropped; remote viewing transcodes on the server |
 
 ---
 
-## 14. Phase 5 — libav fallback: the blocker and the recipe
+## 14. Phase 5 — libav fallback: DROPPED
 
-**Why it isn't done:** Phase 5 routes AVFoundation-unsupported sources to a
-linked `libav*` decoder. That requires FFmpeg **static libraries cross-compiled
-for `aarch64-apple-ios`** (+ the simulator arches). The dev box has only host
-(x86_64 macOS) FFmpeg 8.1 / `libavcodec.a` — useless for iOS linking — so this
-can't be built or verified here without first producing the iOS libs (a
-multi-hour cross-compile, or a vendored prebuilt). Distribution is off-store
-([D2]), so FFmpeg's GPL is acceptable.
+**Decision (owner, 2026-06-15): not doing it.** Phase 5 would route
+AVFoundation-unsupported sources to a linked `libav*` decoder on-device. We're
+dropping it because:
 
-**Step 1 — obtain iOS FFmpeg static libs** (one of):
-- *Cross-compile from source* (`ios/build-ffmpeg-ios.sh`, to be written): for
-  each of `arm64`(device), `arm64`+`x86_64`(sim), run FFmpeg `./configure
-  --enable-cross-compile --target-os=darwin --arch=<a> --cc="xcrun -sdk
-  <iphoneos|iphonesimulator> clang" --sysroot=<sdk> --enable-static
-  --disable-programs --disable-doc --enable-pic` (+ `-mios-version-min=18.0` /
-  `-mios-simulator-version-min=18.0` in `--extra-cflags`), `make && make
-  install` into a per-arch prefix, then `lipo` the sim arches and
-  `xcodebuild -create-xcframework` → `FFmpeg.xcframework`.
-- *Vendor a prebuilt* iOS FFmpeg `xcframework` (GPL; verify provenance).
+- **Licensing.** Linking FFmpeg (GPL) into the on-device app is a non-starter
+  for distribution we'd actually want, and not worth the friction even off-store.
+- **Not a priority + unlikely input.** Exotic codecs / ProRes (RAW) sitting in a
+  *phone's* Photos library is an edge case; the common path (H.264/HEVC/ProRes
+  that AVFoundation opens) is fully covered by Phase 2's native backend.
+- **The server already covers it.** When such footage lives on a desktop/NAS
+  catalog, the Rust backend transcodes it (HLS / proxy) for remote viewing — so
+  iOS sees a playable rendition without any on-device libav.
 
-**Step 2 — wire the Rust fallback** (gated, green when off):
-- `core/Cargo.toml`: `ffmpeg-next`/`ffmpeg-sys-next` as an **optional** dep behind
-  an `ios-libav` feature; point its `FFMPEG_DIR`/pkg-config at the libs from
-  step 1. Feature OFF by default → no link attempt → build stays green.
-- New `core/src/libav_fallback.rs` (`#[cfg(feature = "ios-libav")]`): decode one
-  frame → RGB → write JPEG (the `extract_frame` equivalent), and a `probe`
-  shim that fills `FFProbeOutput`.
-- Hook in `NativeMediaBackend::{extract_frame,probe}` (`ios.rs`): on
-  AVFoundation failure, `#[cfg(feature = "ios-libav")]` route to the fallback.
-- Build the xcframework with `--features ios-libav` and link `FFmpeg.xcframework`
-  in `ios/project.yml`.
-
-**Step 3 — verify:** an exotic-codec sample (e.g. a container AVFoundation
-rejects) that fails to thumbnail on Phase 2 now indexes with a frame. Open
-question 1 (ProRes RAW) is the first candidate to route here if it proves
-undecodable by AVFoundation on-device.
+So an AVFoundation-undecodable source in **Local** mode simply won't thumbnail
+(rare), and ProRes RAW on-device stays "⚠ unverified" rather than a planned
+fallback. (The original cross-compile recipe is preserved in git history if this
+is ever revisited.)
