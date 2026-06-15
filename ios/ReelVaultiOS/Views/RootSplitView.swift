@@ -36,6 +36,11 @@ struct RootSplitView: View {
     /// Apply a sidebar source to the shared view-model. Lightroom-style: one
     /// active source at a time, so picking one resets the other facet filters.
     private func apply(_ section: LibrarySection) {
+        // Picking a source is a "show me these videos" intent — get out of the
+        // single-video Detail view or the Map (which don't reflect a source
+        // change) and back to the browseable grid. Grid/List already show the
+        // filtered set, so leave the user's choice between them alone.
+        if viewMode == .detail || viewMode == .map { viewMode = .grid }
         switch section {
         case .allVideos:
             grid.setCollectionFilter(nil); grid.setTagFilter(""); grid.setLocationFilter("")
