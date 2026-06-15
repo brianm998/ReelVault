@@ -95,6 +95,21 @@ private struct RegularLayout: View {
                                    refreshTick: grid.catalogChangeTick,
                                    onShowOnMap: { viewMode = .map }) { viewMode = .detail }
                         .frame(width: 300)
+                        .transition(.move(edge: .trailing))
+                        // Swipe right to dismiss the panel (clears the selection so
+                        // it hides). simultaneousGesture so the panel still scrolls
+                        // vertically; we only act on a predominantly-rightward swipe.
+                        .simultaneousGesture(
+                            DragGesture(minimumDistance: 30)
+                                .onEnded { value in
+                                    if value.translation.width > 60,
+                                       value.translation.width > abs(value.translation.height) {
+                                        withAnimation(.easeInOut(duration: 0.2)) {
+                                            grid.clearSelection()
+                                        }
+                                    }
+                                }
+                        )
                 }
             }
         }
