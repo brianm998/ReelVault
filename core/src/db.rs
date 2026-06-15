@@ -786,6 +786,22 @@ impl Database {
         Ok(result)
     }
 
+    /// True if `path` has a video row WITH metadata stored. The iOS incremental
+    /// ingest uses this (not bare row existence) so a row that was inserted but
+    /// never got metadata — e.g. `store_metadata` failed after `add_video` — is
+    /// re-ingested next time rather than skipped and left stranded.
+    pub fn is_fully_indexed(&self, path: &str) -> Result<bool> {
+        let conn = self.get_connection()?;
+        let exists: bool = conn
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM videos v JOIN metadata m ON m.video_id = v.id WHERE v.path = ?1)",
+                [path],
+                |r| r.get(0),
+            )
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(exists)
+    }
+
     pub fn list_videos(&self, limit: i64, offset: i64) -> Result<(Vec<VideoRecord>, i64)> {
         self.list_videos_sorted(limit, offset, "indexed_at", false)
     }

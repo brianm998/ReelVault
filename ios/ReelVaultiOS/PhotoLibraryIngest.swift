@@ -4,6 +4,19 @@
 import Foundation
 import Photos
 
+/// Cooperative cancellation for the on-device ingest loops (Photos enumerate,
+/// container, live observer). Set when the user switches *away* from Local mode
+/// so a long first-run ingest doesn't keep probing the whole library in the
+/// background (battery/heat) after they've moved to a server. Checked each
+/// iteration; cleared right before a fresh ingest starts (AppRouter).
+enum IngestCancel {
+    private static let lock = NSLock()
+    private static var flag = false
+    static func request() { lock.lock(); flag = true; lock.unlock() }
+    static func reset() { lock.lock(); flag = false; lock.unlock() }
+    static var isRequested: Bool { lock.lock(); defer { lock.unlock() }; return flag }
+}
+
 /// Pause briefly when the device is thermally stressed (Phase 4 / docs §6.11) so
 /// a large first-run ingest — serial AVFoundation probe + thumbnail per asset —
 /// doesn't drive the phone into sustained throttling. No-op at nominal/fair
@@ -48,7 +61,9 @@ enum PhotoLibraryIngest {
                 NSLog("ReelVault local: ingesting \(assets.count) Photos video(s)")
                 var ok = 0
                 var skipped = 0
-                assets.enumerateObjects { asset, _, _ in
+                assets.enumerateObjects { asset, _, stop in
+                    // Bail promptly if the user switched away from Local mode.
+                    if IngestCancel.isRequested { stop.pointee = true; return }
                     // Incremental: skip assets already in the catalog so a
                     // relaunch over an unchanged library doesn't re-run the
                     // (expensive) AVFoundation probe + thumbnail for every one.
@@ -145,6 +160,7 @@ final class PhotoLibraryObserver: NSObject, PHPhotoLibraryChangeObserver {
             NSLog("ReelVault local: Photos added \(inserted.count) video(s); ingesting")
             var ok = 0
             for asset in inserted {
+                if IngestCancel.isRequested { break }
                 let displayPath = "photos://\(asset.localIdentifier)"
                 if displayPath.withCString({ reelvault_is_video_indexed($0) }) == 1 { continue }
                 thermalThrottle()
@@ -181,6 +197,7 @@ enum ContainerIngest {
                 var ok = 0
                 var skipped = 0
                 for url in videos {
+                    if IngestCancel.isRequested { break }
                     if url.path.withCString({ reelvault_is_video_indexed($0) }) == 1 {
                         skipped += 1
                         continue

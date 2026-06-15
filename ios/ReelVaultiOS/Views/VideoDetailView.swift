@@ -154,6 +154,11 @@ final class StreamPlayer: ObservableObject {
         isPreparing = true
         defer { isPreparing = false; preparingDetail = nil }
         error = nil
+        // Release any bookmark scope from a prior item first: a rapid switch can
+        // re-enter prepareLocal before resetIfDifferent runs, which would
+        // otherwise orphan the previous security-scoped URL.
+        scopedPlaybackURL?.stopAccessingSecurityScopedResource()
+        scopedPlaybackURL = nil
 
         let path = video.openPath
         let item: AVPlayerItem?

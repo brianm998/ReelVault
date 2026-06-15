@@ -499,9 +499,11 @@ pub extern "C" fn reelvault_is_video_indexed(display_path: *const c_char) -> i32
         Some(s) if !s.is_empty() => s,
         _ => return -2,
     };
-    match ctx.db.get_video_by_path(&path) {
-        Ok(Some(_)) => 1,
-        Ok(None) => 0,
+    // Require metadata, not just a row: a row added by a probe-then-failed
+    // ingest must be re-ingested, not skipped (see Database::is_fully_indexed).
+    match ctx.db.is_fully_indexed(&path) {
+        Ok(true) => 1,
+        Ok(false) => 0,
         Err(_) => -3,
     }
 }

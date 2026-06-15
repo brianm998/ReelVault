@@ -73,10 +73,13 @@ int32_t reelvault_ingest_photo(const char *local_id, const char *filename);
 int32_t reelvault_ingest_path(const char *path, const char *filename);
 
 /*
- * Has `display_path` already been cataloged? Lets the Swift enumerators skip
- * re-probing already-indexed assets so a relaunch over an unchanged library is
- * near-instant. `display_path` is the same string the matching ingest call uses
- * ("photos://<localId>" or a file path). 1 = indexed, 0 = not, negative = error.
+ * Has `display_path` already been fully cataloged (row + metadata)? Lets the
+ * Swift enumerators skip re-probing already-indexed assets so a relaunch over an
+ * unchanged library is near-instant. `display_path` is the same string the
+ * matching ingest call uses ("photos://<localId>" or a file path). A row that
+ * exists but has no metadata yet (probe-then-failed) reports 0 so it re-ingests.
+ * Returns: 1 = fully indexed, 0 = not (re-ingest), -1 = server not initialized,
+ * -2 = invalid path, -3 = database error. Callers treat any non-1 as "ingest".
  */
 int32_t reelvault_is_video_indexed(const char *display_path);
 

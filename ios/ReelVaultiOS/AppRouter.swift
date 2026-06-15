@@ -224,6 +224,9 @@ final class AppRouter: ObservableObject {
     private func runLocalIngestIfIdle() {
         guard !ingestInFlight else { return }
         ingestInFlight = true
+        // Clear any cancellation requested by a previous mode switch before
+        // starting a fresh ingest for this (re-entered) Local session.
+        IngestCancel.reset()
         Task { [weak self] in
             if CommandLine.arguments.contains("--ingest-container") {
                 await ContainerIngest.run()
@@ -239,6 +242,9 @@ final class AppRouter: ObservableObject {
     /// re-entering Local mode later (`startLocal`) is idempotent. (To go the
     /// other way, call `startLocal()`, which sets the preference.)
     func useServerLibrary() {
+        // Stop any in-flight on-device ingest so it doesn't keep probing the
+        // whole Photos library in the background after we move to a server.
+        IngestCancel.request()
         prefersLocalLibrary = false
         start()
     }
