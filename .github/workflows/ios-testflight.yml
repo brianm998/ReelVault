@@ -36,8 +36,26 @@ jobs:
         with:
           xcode-version: latest-stable
 
+      # The app links the embedded Rust core as ReelVaultCore.xcframework
+      # (gitignored build artifact). Build it (release) before archiving — it
+      # needs the iOS Rust targets and protoc (the core's build.rs runs
+      # tonic_build).
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
+
+      - uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Install XcodeGen
         run: brew install xcodegen
+
+      - name: Build embedded-core XCFramework (release)
+        run: make xcframework
+        working-directory: ios
+        env:
+          PROFILE: release
 
       - name: Generate Xcode project
         run: xcodegen generate
