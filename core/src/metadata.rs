@@ -241,7 +241,12 @@ impl MetadataExtractor {
              exposure_mode=excluded.exposure_mode,
              exposure_program=excluded.exposure_program,
              white_balance=excluded.white_balance,
-             metadata_json=excluded.metadata_json",
+             metadata_json=excluded.metadata_json,
+             -- Invalidate the lazily-cached loudness series: the file content may
+             -- have changed (an in-place edit re-runs this UPSERT), so force a
+             -- recompute on next view (NULL = not computed) rather than serving a
+             -- stale curve — or, for a clip that gained audio, a stuck-empty one.
+             audio_loudness=NULL",
             rusqlite::params![
                 video_id,
                 duration_ms,

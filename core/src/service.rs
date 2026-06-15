@@ -497,7 +497,7 @@ impl ReelVaultService {
             gps_longitude: gps_lon.unwrap_or(0.0),
             gps_altitude: gps_alt.unwrap_or(0.0),
             tags,
-            collections: Vec::new(),
+            collections: db.get_video_collections(video_id).unwrap_or_default(),
             notes,
             volume_id: video.volume_id.unwrap_or_default(),
             is_online: video.is_online != 0,

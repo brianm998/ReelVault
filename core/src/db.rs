@@ -1250,6 +1250,21 @@ impl Database {
         Ok(result)
     }
 
+    /// The ids of the (manual) collections this video belongs to. Used to
+    /// populate VideoMetadata.collections so clients can show/edit membership.
+    pub fn get_video_collections(&self, video_id: &str) -> Result<Vec<String>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn
+            .prepare("SELECT collection_id FROM collection_members WHERE video_id = ?")
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let ids = stmt
+            .query_map([video_id], |row| row.get::<_, String>(0))
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
+            .flatten()
+            .collect();
+        Ok(ids)
+    }
+
     // GPS / GEOLOCATION OPERATIONS
 
     /// Write GPS coordinates onto a video's metadata row. Inserts a metadata
