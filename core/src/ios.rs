@@ -429,40 +429,42 @@ pub extern "C" fn reelvault_ingest_photo(
     local_id: *const c_char,
     filename: *const c_char,
 ) -> i32 {
-    let ctx = match INGEST.get() {
-        Some(c) => c,
-        None => return -1, // server not booted yet
-    };
-    let local_id = match unsafe { cstring(local_id) } {
-        Some(s) if !s.is_empty() => s,
-        _ => return -2,
-    };
-    let filename =
-        unsafe { cstring(filename) }.unwrap_or_else(|| format!("{local_id}.mov"));
-    let source = MediaSource::PhotoAsset(local_id.clone());
-    let display_path = format!("photos://{local_id}");
+    ffi_guard("ingest_photo", -99, || {
+        let ctx = match INGEST.get() {
+            Some(c) => c,
+            None => return -1, // server not booted yet
+        };
+        let local_id = match unsafe { cstring(local_id) } {
+            Some(s) if !s.is_empty() => s,
+            _ => return -2,
+        };
+        let filename =
+            unsafe { cstring(filename) }.unwrap_or_else(|| format!("{local_id}.mov"));
+        let source = MediaSource::PhotoAsset(local_id.clone());
+        let display_path = format!("photos://{local_id}");
 
-    match crate::indexing::IndexingEngine::index_media_source(
-        ctx.db.as_ref(),
-        &source,
-        &display_path,
-        &filename,
-        "photo",
-        &local_id,
-        &ctx.cache,
-    ) {
-        Ok(video_id) => {
-            let _ = ctx.events.send(crate::watcher::CatalogChange::VideoAdded {
-                video_id,
-                path: PathBuf::from(display_path),
-            });
-            0
+        match crate::indexing::IndexingEngine::index_media_source(
+            ctx.db.as_ref(),
+            &source,
+            &display_path,
+            &filename,
+            "photo",
+            &local_id,
+            &ctx.cache,
+        ) {
+            Ok(video_id) => {
+                let _ = ctx.events.send(crate::watcher::CatalogChange::VideoAdded {
+                    video_id,
+                    path: PathBuf::from(display_path),
+                });
+                0
+            }
+            Err(e) => {
+                tracing::warn!("reelvault_ingest_photo({local_id}) failed: {e}");
+                -3
+            }
         }
-        Err(e) => {
-            tracing::warn!("reelvault_ingest_photo({local_id}) failed: {e}");
-            -3
-        }
-    }
+    })
 }
 
 /// Ingest one filesystem video into the on-device catalog — the Files-app /
@@ -475,50 +477,52 @@ pub extern "C" fn reelvault_ingest_photo(
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)] // FFI boundary; pointers validated via `cstring`
 pub extern "C" fn reelvault_ingest_path(path: *const c_char, filename: *const c_char) -> i32 {
-    let ctx = match INGEST.get() {
-        Some(c) => c,
-        None => return -1,
-    };
-    let path = match unsafe { cstring(path) } {
-        Some(s) if !s.is_empty() => s,
-        _ => return -2,
-    };
-    let filename = unsafe { cstring(filename) }.unwrap_or_else(|| {
-        std::path::Path::new(&path)
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("video")
-            .to_string()
-    });
-    let source = MediaSource::Path(PathBuf::from(&path));
-    let file_size = std::fs::metadata(&path).map(|m| m.len() as i64).ok();
+    ffi_guard("ingest_path", -99, || {
+        let ctx = match INGEST.get() {
+            Some(c) => c,
+            None => return -1,
+        };
+        let path = match unsafe { cstring(path) } {
+            Some(s) if !s.is_empty() => s,
+            _ => return -2,
+        };
+        let filename = unsafe { cstring(filename) }.unwrap_or_else(|| {
+            std::path::Path::new(&path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("video")
+                .to_string()
+        });
+        let source = MediaSource::Path(PathBuf::from(&path));
+        let file_size = std::fs::metadata(&path).map(|m| m.len() as i64).ok();
 
-    match crate::indexing::IndexingEngine::index_media_source(
-        ctx.db.as_ref(),
-        &source,
-        &path,
-        &filename,
-        "path",
-        &path,
-        &ctx.cache,
-    ) {
-        Ok(video_id) => {
-            // index_media_source doesn't know the on-disk size; record it for
-            // filesystem sources (Photos rows stay NULL — no stable path).
-            if let Some(sz) = file_size {
-                let _ = ctx.db.update_video_file_size(&video_id, sz);
+        match crate::indexing::IndexingEngine::index_media_source(
+            ctx.db.as_ref(),
+            &source,
+            &path,
+            &filename,
+            "path",
+            &path,
+            &ctx.cache,
+        ) {
+            Ok(video_id) => {
+                // index_media_source doesn't know the on-disk size; record it for
+                // filesystem sources (Photos rows stay NULL — no stable path).
+                if let Some(sz) = file_size {
+                    let _ = ctx.db.update_video_file_size(&video_id, sz);
+                }
+                let _ = ctx.events.send(crate::watcher::CatalogChange::VideoAdded {
+                    video_id,
+                    path: PathBuf::from(path),
+                });
+                0
             }
-            let _ = ctx.events.send(crate::watcher::CatalogChange::VideoAdded {
-                video_id,
-                path: PathBuf::from(path),
-            });
-            0
+            Err(e) => {
+                tracing::warn!("reelvault_ingest_path({path}) failed: {e}");
+                -3
+            }
         }
-        Err(e) => {
-            tracing::warn!("reelvault_ingest_path({path}) failed: {e}");
-            -3
-        }
-    }
+    })
 }
 
 /// Has `display_path` already been cataloged? Lets the Swift enumerators skip
@@ -535,21 +539,23 @@ pub extern "C" fn reelvault_ingest_path(path: *const c_char, filename: *const c_
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)] // FFI boundary; pointer validated via `cstring`
 pub extern "C" fn reelvault_is_video_indexed(display_path: *const c_char) -> i32 {
-    let ctx = match INGEST.get() {
-        Some(c) => c,
-        None => return -1,
-    };
-    let path = match unsafe { cstring(display_path) } {
-        Some(s) if !s.is_empty() => s,
-        _ => return -2,
-    };
-    // Require metadata, not just a row: a row added by a probe-then-failed
-    // ingest must be re-ingested, not skipped (see Database::is_fully_indexed).
-    match ctx.db.is_fully_indexed(&path) {
-        Ok(true) => 1,
-        Ok(false) => 0,
-        Err(_) => -3,
-    }
+    ffi_guard("is_video_indexed", -99, || {
+        let ctx = match INGEST.get() {
+            Some(c) => c,
+            None => return -1,
+        };
+        let path = match unsafe { cstring(display_path) } {
+            Some(s) if !s.is_empty() => s,
+            _ => return -2,
+        };
+        // Require metadata, not just a row: a row added by a probe-then-failed
+        // ingest must be re-ingested, not skipped (see Database::is_fully_indexed).
+        match ctx.db.is_fully_indexed(&path) {
+            Ok(true) => 1,
+            Ok(false) => 0,
+            Err(_) => -3,
+        }
+    })
 }
 
 /// Ingest one Files-app video via a security-scoped bookmark (D7 "Files
@@ -574,41 +580,43 @@ pub extern "C" fn reelvault_ingest_bookmark(
     len: usize,
     filename: *const c_char,
 ) -> i32 {
-    let ctx = match INGEST.get() {
-        Some(c) => c,
-        None => return -1,
-    };
-    if bookmark.is_null() || len == 0 {
-        return -2;
-    }
-    // SAFETY: caller guarantees `bookmark` points to `len` readable bytes.
-    let bytes = unsafe { std::slice::from_raw_parts(bookmark, len) }.to_vec();
-    let hex_id: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
-    let display_path = format!("bookmark://{hex_id}");
-    let filename = unsafe { cstring(filename) }.unwrap_or_else(|| "video".to_string());
-    let source = MediaSource::Bookmark(bytes);
+    ffi_guard("ingest_bookmark", -99, || {
+        let ctx = match INGEST.get() {
+            Some(c) => c,
+            None => return -1,
+        };
+        if bookmark.is_null() || len == 0 {
+            return -2;
+        }
+        // SAFETY: caller guarantees `bookmark` points to `len` readable bytes.
+        let bytes = unsafe { std::slice::from_raw_parts(bookmark, len) }.to_vec();
+        let hex_id: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
+        let display_path = format!("bookmark://{hex_id}");
+        let filename = unsafe { cstring(filename) }.unwrap_or_else(|| "video".to_string());
+        let source = MediaSource::Bookmark(bytes);
 
-    match crate::indexing::IndexingEngine::index_media_source(
-        ctx.db.as_ref(),
-        &source,
-        &display_path,
-        &filename,
-        "bookmark",
-        &hex_id,
-        &ctx.cache,
-    ) {
-        Ok(video_id) => {
-            let _ = ctx.events.send(crate::watcher::CatalogChange::VideoAdded {
-                video_id,
-                path: PathBuf::from(display_path),
-            });
-            0
+        match crate::indexing::IndexingEngine::index_media_source(
+            ctx.db.as_ref(),
+            &source,
+            &display_path,
+            &filename,
+            "bookmark",
+            &hex_id,
+            &ctx.cache,
+        ) {
+            Ok(video_id) => {
+                let _ = ctx.events.send(crate::watcher::CatalogChange::VideoAdded {
+                    video_id,
+                    path: PathBuf::from(display_path),
+                });
+                0
+            }
+            Err(e) => {
+                tracing::warn!("reelvault_ingest_bookmark failed: {e}");
+                -3
+            }
         }
-        Err(e) => {
-            tracing::warn!("reelvault_ingest_bookmark failed: {e}");
-            -3
-        }
-    }
+    })
 }
 
 /// Reconcile the on-device catalog against the Photos library: remove every
@@ -629,40 +637,42 @@ pub extern "C" fn reelvault_ingest_bookmark(
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)] // FFI boundary; pointer validated via `cstring`
 pub extern "C" fn reelvault_prune_photos(present_ids_json: *const c_char) -> i32 {
-    let ctx = match INGEST.get() {
-        Some(c) => c,
-        None => return -1,
-    };
-    let json = match unsafe { cstring(present_ids_json) } {
-        Some(s) => s,
-        None => return -2,
-    };
-    let present: std::collections::HashSet<String> = match serde_json::from_str::<Vec<String>>(&json) {
-        Ok(v) => v.into_iter().collect(),
-        Err(_) => return -2,
-    };
-    let rows = match ctx.db.list_videos_by_source_kind("photo") {
-        Ok(r) => r,
-        Err(e) => {
-            tracing::warn!("reelvault_prune_photos: list failed: {e}");
-            return -3;
+    ffi_guard("prune_photos", -1, || {
+        let ctx = match INGEST.get() {
+            Some(c) => c,
+            None => return -1,
+        };
+        let json = match unsafe { cstring(present_ids_json) } {
+            Some(s) => s,
+            None => return -2,
+        };
+        let present: std::collections::HashSet<String> = match serde_json::from_str::<Vec<String>>(&json) {
+            Ok(v) => v.into_iter().collect(),
+            Err(_) => return -2,
+        };
+        let rows = match ctx.db.list_videos_by_source_kind("photo") {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::warn!("reelvault_prune_photos: list failed: {e}");
+                return -3;
+            }
+        };
+        let mut removed = 0;
+        for (video_id, source_id) in rows {
+            if present.contains(&source_id) {
+                continue;
+            }
+            if ctx.db.delete_video(&video_id).is_ok() {
+                let _ = ctx.events.send(crate::watcher::CatalogChange::VideoRemoved {
+                    video_id: Some(video_id),
+                    path: PathBuf::from(format!("photos://{source_id}")),
+                });
+                removed += 1;
+            }
         }
-    };
-    let mut removed = 0;
-    for (video_id, source_id) in rows {
-        if present.contains(&source_id) {
-            continue;
+        if removed > 0 {
+            tracing::info!("reelvault_prune_photos: removed {removed} deleted Photos video(s)");
         }
-        if ctx.db.delete_video(&video_id).is_ok() {
-            let _ = ctx.events.send(crate::watcher::CatalogChange::VideoRemoved {
-                video_id: Some(video_id),
-                path: PathBuf::from(format!("photos://{source_id}")),
-            });
-            removed += 1;
-        }
-    }
-    if removed > 0 {
-        tracing::info!("reelvault_prune_photos: removed {removed} deleted Photos video(s)");
-    }
-    removed
+        removed
+    })
 }
