@@ -346,7 +346,14 @@ async fn video(
         }
     };
     let height = q.height.unwrap_or(0);
-    if height > 0 {
+    // "Original" (height <= 0): serve the file as-is ONLY when the client can
+    // decode it. A mastering codec (ProRes, DNxHD, …) served raw plays as audio
+    // with no video on iOS, so transcode it to full-res H.264 (ensure_downscaled
+    // treats height 0 as "no downscale"). A positive height always transcodes /
+    // serves the closest proxy.
+    let needs_transcode = height > 0
+        || !original_codec(&state, &id).map(|c| is_streamable_codec(&c)).unwrap_or(false);
+    if needs_transcode {
         match ensure_downscaled(&state, &id, &record.path, height).await {
             Some(path) => serve_file_range(&path.to_string_lossy(), &headers).await,
             None => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
@@ -354,6 +361,21 @@ async fn video(
     } else {
         serve_file_range(&record.path, &headers).await
     }
+}
+
+/// The original's stored video codec (from `metadata.codec_video`), used to
+/// decide whether "Original" can be served raw or must be transcoded for the
+/// client. `None` when unknown — treated as not-streamable (transcode), so we
+/// never hand the player a file it can't decode.
+fn original_codec(state: &MediaState, id: &str) -> Option<String> {
+    let conn = state.db.get_connection().ok()?;
+    conn.query_row(
+        "SELECT codec_video FROM metadata WHERE video_id = ?",
+        [id],
+        |row| row.get::<_, Option<String>>(0),
+    )
+    .ok()
+    .flatten()
 }
 
 /// `GET /hls/{id}/{height}/{file}` — serve one file of an on-the-fly HLS stream.
@@ -628,9 +650,12 @@ fn run_hls_transcode(dir: &Path, src: &str, height: i32, copy: bool) -> bool {
             // which mpegts can't deliver to AVPlayer.
             cmd.args(["-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-ac", "2"]);
         } else {
-            let vf = format!("scale=-2:min({height}\\,ih)");
+            // height <= 0 = "Original" → no downscale (encode at source res).
+            if height > 0 {
+                let vf = format!("scale=-2:min({height}\\,ih)");
+                cmd.args(["-vf", &vf]);
+            }
             cmd.args([
-                "-vf", &vf,
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
                 "-profile:v", "high", "-level", "4.1", "-pix_fmt", "yuv420p",
                 // Keyframe every 48 frames so -hls_time cuts on GOP boundaries
@@ -880,17 +905,28 @@ async fn ensure_downscaled(state: &MediaState, id: &str, src: &str, height: i32)
     let res = tokio::task::spawn_blocking(move || {
         // Same global semaphore that bounds all other ffmpeg work.
         let _permit = crate::concurrency::acquire_ffmpeg_permit();
-        let vf = format!("scale=-2:min({height}\\,ih)");
         let out_str = out_tmp_for_job.to_string_lossy().to_string();
-        crate::ffmpeg::ffmpeg_command()
-            .args([
-                "-y", "-i", src.as_str(),
-                "-vf", vf.as_str(),
-                "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
-                "-c:a", "aac", "-b:a", "128k",
-                "-movflags", "+faststart",
-                out_str.as_str(),
-            ])
+        let vf = format!("scale=-2:min({height}\\,ih)");
+        let mut cmd = crate::ffmpeg::ffmpeg_command();
+        cmd.args(["-y", "-i", src.as_str()]);
+        // height <= 0 = "Original" → transcode at the source resolution (no
+        // downscale); a positive height caps it (never upscales).
+        if height > 0 {
+            cmd.args(["-vf", vf.as_str()]);
+        }
+        cmd.args([
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+            // Force 8-bit 4:2:0 High profile so Apple hardware decoders can play
+            // it. Without -pix_fmt, a ProRes 4:2:2/4:4:4 or 10-bit master yields a
+            // High-4:2:2 / 10-bit H.264 that iOS decodes to AUDIO ONLY (the big
+            // "Q" with waves) — matching the HLS re-encode path, which already
+            // pins yuv420p.
+            "-profile:v", "high", "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-b:a", "128k",
+            "-movflags", "+faststart",
+            out_str.as_str(),
+        ]);
+        cmd
             .stdout(std::process::Stdio::null())
             // Capture stderr so a failed transcode tells us *why* (e.g. ProRes
             // RAW, which ffmpeg can't decode — see rv-frameshot). Without this
@@ -962,11 +998,17 @@ fn closest_streamable_proxy(state: &MediaState, id: &str, height: i32) -> Option
     if candidates.is_empty() {
         return None;
     }
-    let chosen = candidates
-        .iter()
-        .filter(|p| p.height >= height)
-        .min_by_key(|p| p.height)
-        .or_else(|| candidates.iter().max_by_key(|p| p.height))?;
+    let chosen = if height <= 0 {
+        // "Original" / best quality → the tallest streamable proxy (NOT the
+        // smallest, which made Original look lower-res than Auto).
+        candidates.iter().max_by_key(|p| p.height)
+    } else {
+        candidates
+            .iter()
+            .filter(|p| p.height >= height)
+            .min_by_key(|p| p.height)
+            .or_else(|| candidates.iter().max_by_key(|p| p.height))
+    }?;
     if std::path::Path::new(&chosen.path).exists() {
         Some((chosen.path.clone(), chosen.height))
     } else {
@@ -984,11 +1026,15 @@ fn closest_streamable_proxy(state: &MediaState, id: &str, height: i32) -> Option
 /// won't be upscaled.
 fn closest_proxy_source(state: &MediaState, id: &str, height: i32) -> Option<String> {
     let proxies = state.db.list_proxies(id).ok()?;
-    let chosen = proxies
-        .iter()
-        .filter(|p| p.height >= height)
-        .min_by_key(|p| p.height)
-        .or_else(|| proxies.iter().max_by_key(|p| p.height))?;
+    let chosen = if height <= 0 {
+        proxies.iter().max_by_key(|p| p.height)
+    } else {
+        proxies
+            .iter()
+            .filter(|p| p.height >= height)
+            .min_by_key(|p| p.height)
+            .or_else(|| proxies.iter().max_by_key(|p| p.height))
+    }?;
     let path = chosen.path.clone();
     if std::path::Path::new(&path).exists() {
         Some(path)
