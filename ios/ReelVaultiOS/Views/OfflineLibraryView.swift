@@ -174,7 +174,7 @@ struct OfflineDownloadButton: View {
                     Label("Available offline", systemImage: "checkmark.circle.fill")
                         .font(.caption).foregroundStyle(.green)
                     Button(role: .destructive) { library.remove(video.id) } label: {
-                        Label("Remove Download", systemImage: "trash").frame(maxWidth: .infinity)
+                        Label("Remove Download", systemImage: "trash")
                     }
                     .buttonStyle(.bordered)
                 } else if library.downloading.contains(video.id) {
@@ -182,10 +182,9 @@ struct OfflineDownloadButton: View {
                         ProgressView().controlSize(.small)
                         Text("Downloading…").font(.caption).foregroundStyle(.secondary)
                     }
-                    .frame(maxWidth: .infinity)
                 } else {
                     Button { showResolution = true } label: {
-                        Label("Download for Offline", systemImage: "arrow.down.circle").frame(maxWidth: .infinity)
+                        Label("Download for Offline", systemImage: "arrow.down.circle")
                     }
                     .buttonStyle(.bordered)
                     .confirmationDialog("Download quality", isPresented: $showResolution, titleVisibility: .visible) {
