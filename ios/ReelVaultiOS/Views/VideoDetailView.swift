@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 ReelVault Contributors
 
+import AVFoundation
 import AVKit
+import Photos
 import SwiftUI
 import UIKit
 import ReelVaultKit
@@ -76,7 +78,13 @@ final class StreamPlayer: ObservableObject {
             player?.play()
             return
         }
-        guard let conn = endpoint else { error = "No media connection available."; return }
+        // On-device (Local Library) mode: no media server / streaming — the
+        // original lives on this device, so play it directly with AVPlayer from
+        // the Photos asset (or file) the catalog row points at.
+        guard let conn = endpoint else {
+            await prepareLocal(video: video)
+            return
+        }
         isPreparing = true
         defer { isPreparing = false; preparingDetail = nil }
         error = nil
@@ -132,6 +140,61 @@ final class StreamPlayer: ObservableObject {
         } catch {
             NSLog("ReelVault: playback prepare failed for \(video.id) (h\(height)): \(error)")
             self.error = "Couldn't play this video: \(error.localizedDescription)"
+        }
+    }
+
+    /// On-device playback: resolve the catalog row's source to a local
+    /// `AVPlayerItem` and play it directly — Photos asset via `PHImageManager`
+    /// (handles iCloud download), or a file path. No transcode/stream.
+    func prepareLocal(video: VideoSummary) async {
+        if preparedVideoId == video.id, player != nil { player?.play(); return }
+        isPreparing = true
+        defer { isPreparing = false; preparingDetail = nil }
+        error = nil
+
+        let path = video.openPath
+        let item: AVPlayerItem?
+        if let localId = Self.photosLocalIdentifier(from: path) {
+            item = await Self.photosPlayerItem(localIdentifier: localId)
+        } else if path.hasPrefix("file://"), let url = URL(string: path) {
+            item = AVPlayerItem(url: url)
+        } else if !path.isEmpty {
+            item = AVPlayerItem(url: URL(fileURLWithPath: path))
+        } else {
+            item = nil
+        }
+
+        guard let item else {
+            error = "Couldn't open this video on-device."
+            NSLog("ReelVault: local playback could not resolve \(video.id) (path \(path))")
+            return
+        }
+        attachDiagnostics(to: item)
+        let p = AVPlayer(playerItem: item)
+        player = p
+        preparedVideoId = video.id
+        p.play()
+        NSLog("ReelVault: local playback \(video.id) (\(path))")
+    }
+
+    /// `photos://<localIdentifier>` → the PHAsset localIdentifier.
+    static func photosLocalIdentifier(from path: String) -> String? {
+        let prefix = "photos://"
+        guard path.hasPrefix(prefix) else { return nil }
+        return String(path.dropFirst(prefix.count))
+    }
+
+    /// An `AVPlayerItem` for a Photos video, downloading from iCloud if needed.
+    static func photosPlayerItem(localIdentifier: String) async -> AVPlayerItem? {
+        let fetch = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil)
+        guard let asset = fetch.firstObject else { return nil }
+        return await withCheckedContinuation { (cont: CheckedContinuation<AVPlayerItem?, Never>) in
+            let opts = PHVideoRequestOptions()
+            opts.isNetworkAccessAllowed = true
+            opts.deliveryMode = .automatic
+            PHImageManager.default().requestPlayerItem(forVideo: asset, options: opts) { item, _ in
+                cont.resume(returning: item)
+            }
         }
     }
 
