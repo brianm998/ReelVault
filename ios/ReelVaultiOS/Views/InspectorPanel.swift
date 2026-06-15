@@ -8,6 +8,7 @@ import ReelVaultKit
 /// mode on iPad. Metadata only; playback lives in Detail mode (the "Play in
 /// Detail" button switches there).
 struct InspectorPanel: View {
+    @ObservedObject var grid: GridViewModel
     let video: VideoSummary?
     /// Bumped on catalog change events so the proxy list re-fetches live.
     var refreshTick: Int = 0
@@ -27,6 +28,7 @@ struct InspectorPanel: View {
                     }
                     .buttonStyle(.borderedProminent)
                     VideoMetadataSection(video: video, refreshTick: refreshTick)
+                    LocationButtonsSection(grid: grid, videoId: video.id)
                 }
                 .padding()
             }

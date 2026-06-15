@@ -91,7 +91,7 @@ private struct RegularLayout: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 if showInspector {
                     Divider()
-                    InspectorPanel(video: visibleSelectedVideo(grid),
+                    InspectorPanel(grid: grid, video: visibleSelectedVideo(grid),
                                    refreshTick: grid.catalogChangeTick) { viewMode = .detail }
                         .frame(width: 300)
                 }
