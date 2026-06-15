@@ -27,6 +27,11 @@ enum PhotoLibraryIngest {
             DispatchQueue.global(qos: .utility).async {
                 let options = PHFetchOptions()
                 options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+                // `--ingest-limit N` (test harness): only ingest the N most-recent
+                // videos so a first run on a large library is fast. Ingest is
+                // currently synchronous-before-grid; lifting the cap waits on
+                // incremental/background ingest (a follow-up).
+                if let limit = ingestLimit() { options.fetchLimit = limit }
                 let assets = PHAsset.fetchAssets(with: .video, options: options)
                 NSLog("ReelVault local: ingesting \(assets.count) Photos video(s)")
                 var ok = 0
@@ -60,6 +65,14 @@ enum PhotoLibraryIngest {
 
     private static func originalFilename(of asset: PHAsset) -> String? {
         PHAssetResource.assetResources(for: asset).first?.originalFilename
+    }
+
+    /// `--ingest-limit N` from the launch arguments, if present and valid.
+    private static func ingestLimit() -> Int? {
+        let args = CommandLine.arguments
+        guard let i = args.firstIndex(of: "--ingest-limit"), i + 1 < args.count,
+              let n = Int(args[i + 1]), n > 0 else { return nil }
+        return n
     }
 }
 
