@@ -34,7 +34,7 @@
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>ReelVault finds and connects to your ReelVault server on this Wi-Fi network.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>ReelVault uploads videos you choose to your server at full resolution.</string>
+	<string>ReelVault catalogs the videos in your library for on-device browsing, and uploads videos you choose to your server at full resolution.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

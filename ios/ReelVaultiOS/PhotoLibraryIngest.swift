@@ -3,6 +3,7 @@
 
 import Foundation
 import Photos
+import UIKit
 
 /// Cooperative cancellation for the on-device ingest loops (Photos enumerate,
 /// container, live observer). Set when the user switches *away* from Local mode
@@ -43,10 +44,24 @@ enum PhotoLibraryIngest {
             NSLog("ReelVault local: Photos access not granted (status \(status.rawValue)); skipping ingest")
             return 0
         }
+        NSLog("ReelVault local: Photos authorization=\(status.rawValue)"
+            + (status == .limited ? " (LIMITED — only user-selected assets are visible)" : ""))
 
         // Two phases: a fast serial enumeration (collect the present-set + the
         // not-yet-indexed work list), then a parallel ingest of the work list.
-        let scan = await enumerate()
+        var scan = await enumerate()
+        // Limited access only exposes the assets the user explicitly selected, so
+        // a user who tapped "Limit Access…" (or selected only photos) ends up with
+        // zero videos visible — an empty grid even though they "granted
+        // permission", which is exactly the reported symptom. Offer the system
+        // limited-library picker once so they can choose which videos ReelVault
+        // sees, then re-enumerate with the expanded selection.
+        if status == .limited, scan.present.isEmpty, ingestLimit() == nil,
+           shouldPromptLimitedOnce() {
+            NSLog("ReelVault local: limited Photos access exposes no videos — presenting the limited-library picker")
+            await PhotoAccess.presentLimitedPicker()
+            scan = await enumerate()
+        }
         let ok = await ingestConcurrently(scan.todo)
         NativeMedia.clearAssetCache()
         // Reconcile removals: prune catalog rows for videos no longer in Photos.
@@ -148,6 +163,18 @@ enum PhotoLibraryIngest {
         if removed > 0 { NSLog("ReelVault local: pruned \(removed) Photos video(s) deleted from the library") }
     }
 
+    private static let promptLock = NSLock()
+    private static var didPromptLimited = false
+    /// Present the limited-library picker at most once per app session, so a user
+    /// who declines to add anything isn't re-prompted on every foreground
+    /// catch-up ingest.
+    private static func shouldPromptLimitedOnce() -> Bool {
+        promptLock.lock(); defer { promptLock.unlock() }
+        if didPromptLimited { return false }
+        didPromptLimited = true
+        return true
+    }
+
     private static func requestAuthorization() async -> PHAuthorizationStatus {
         let current = PHPhotoLibrary.authorizationStatus(for: .readWrite)
         if current != .notDetermined { return current }
@@ -166,6 +193,39 @@ enum PhotoLibraryIngest {
         guard let i = args.firstIndex(of: "--ingest-limit"), i + 1 < args.count,
               let n = Int(args[i + 1]), n > 0 else { return nil }
         return n
+    }
+}
+
+/// Presents the system limited-library picker so a user who chose *Limited*
+/// Photos access can grant ReelVault access to specific videos. Without this, a
+/// limited grant with no videos selected leaves the on-device library empty even
+/// though the user "allowed" access.
+@MainActor
+enum PhotoAccess {
+    /// Show the picker and return when it's dismissed. No-op if there's no window
+    /// to present from.
+    static func presentLimitedPicker() async {
+        guard let presenter = topViewController() else {
+            NSLog("ReelVault local: no view controller available to present the limited-library picker")
+            return
+        }
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            PHPhotoLibrary.shared().presentLimitedLibraryPicker(from: presenter) { _ in
+                cont.resume()
+            }
+        }
+    }
+
+    /// The frontmost view controller of the key window (so the picker presents
+    /// above whatever is on screen).
+    private static func topViewController() -> UIViewController? {
+        let root = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow }?.rootViewController
+        var top = root
+        while let presented = top?.presentedViewController { top = presented }
+        return top
     }
 }
 
