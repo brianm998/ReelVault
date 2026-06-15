@@ -66,6 +66,17 @@ final class OfflineLibrary: ObservableObject {
         return PlatformImage.fromData(data)
     }
 
+    /// Off-main thumbnail load for the offline grid — reads the JPEG bytes off the
+    /// main thread so scrolling a large download list doesn't hitch (the disk read
+    /// is the blocking part). Decode happens on the caller's actor.
+    func loadThumbnailAsync(_ videoId: String) async -> PlatformImage? {
+        guard let e = entries.first(where: { $0.id == videoId }), let t = e.thumbName else { return nil }
+        let url = dir.appendingPathComponent(t)
+        let data = await Task.detached(priority: .utility) { try? Data(contentsOf: url) }.value
+        guard let data else { return nil }
+        return PlatformImage.fromData(data)
+    }
+
     var totalBytes: Int { entries.reduce(0) { $0 + $1.sizeBytes } }
 
     // MARK: Mutations
@@ -80,7 +91,11 @@ final class OfflineLibrary: ObservableObject {
             host: endpoint.host, mediaPort: endpoint.mediaPort,
             fingerprintHex: endpoint.fingerprintHex, bearerToken: endpoint.bearerToken)
         let safeId = video.id.replacingOccurrences(of: "/", with: "_")
-        let fileName = "\(safeId)_h\(height).mp4"
+        // Original (height 0) is served in its native container, so keep the real
+        // extension — AVPlayer infers the format from it; a non-MP4 original named
+        // .mp4 won't play. Transcoded renditions (height > 0) are always mp4.
+        let ext = height == 0 ? Self.originalExt(video.filename) : "mp4"
+        let fileName = "\(safeId)_h\(height).\(ext)"
         let thumbName = "\(safeId).jpg"
         let dir = self.dir
 
@@ -88,15 +103,19 @@ final class OfflineLibrary: ObservableObject {
             defer { downloading.remove(video.id) }
             do {
                 // Stream the rendition to the (Caches) media cache, then copy the
-                // file into our persistent offline dir so it can't be purged. The
-                // copy can be large, so run it off the main actor.
-                let cached = try await MediaClient().localURL(
-                    videoId: video.id, height: height, from: mediaEndpoint)
+                // file into our persistent offline dir so it can't be purged.
                 let dest = dir.appendingPathComponent(fileName)
-                try await Task.detached(priority: .utility) {
-                    try? FileManager.default.removeItem(at: dest)
-                    try FileManager.default.copyItem(at: cached, to: dest)
-                }.value
+                do {
+                    let cached = try await MediaClient().localURL(
+                        videoId: video.id, height: height, ext: ext, from: mediaEndpoint)
+                    try await Self.copyOut(cached, to: dest)
+                } catch {
+                    // The cached source may have been LRU-evicted between download
+                    // and copy; re-fetch once and retry before giving up.
+                    let cached = try await MediaClient().localURL(
+                        videoId: video.id, height: height, ext: ext, from: mediaEndpoint)
+                    try await Self.copyOut(cached, to: dest)
+                }
                 let size = ((try? FileManager.default.attributesOfItem(atPath: dest.path))?[.size] as? NSNumber)?.intValue ?? video.sizeBytes
 
                 // Poster thumbnail for the offline grid (best-effort).
@@ -123,6 +142,20 @@ final class OfflineLibrary: ObservableObject {
                 NSLog("ReelVault offline: download failed for \(video.id): \(error)")
             }
         }
+    }
+
+    /// The source file's container extension (lowercased), defaulting to "mov".
+    private static func originalExt(_ filename: String) -> String {
+        let e = (filename as NSString).pathExtension.lowercased()
+        return e.isEmpty ? "mov" : e
+    }
+
+    /// Copy a (possibly large) file off the main actor.
+    private static func copyOut(_ src: URL, to dest: URL) async throws {
+        try await Task.detached(priority: .utility) {
+            try? FileManager.default.removeItem(at: dest)
+            try FileManager.default.copyItem(at: src, to: dest)
+        }.value
     }
 
     func remove(_ videoId: String) {

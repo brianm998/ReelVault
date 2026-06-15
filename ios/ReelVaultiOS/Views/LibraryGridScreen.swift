@@ -76,6 +76,14 @@ struct LibraryGridScreen: View {
             Button("720p (smaller)") { startOfflineDownload(height: 720) }
             Button("Cancel", role: .cancel) {}
         }
+        .alert("Download failed", isPresented: Binding(
+            get: { offline.lastError != nil },
+            set: { if !$0 { offline.lastError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(offline.lastError ?? "")
+        }
     }
 
     @ViewBuilder private var content: some View {
@@ -191,7 +199,13 @@ struct LibraryGridScreen: View {
     private func startOfflineDownload(height: Int) {
         guard let connection else { return }
         let ids = Set(grid.selectedVideoIds)
-        let targets = grid.videos.filter { ids.contains($0.id) }
+        // Resolve ids against both representatives and expanded stack members —
+        // a checked member id lives only in expandedGroupMembers, so filtering
+        // grid.videos alone would silently drop it.
+        var byId: [String: VideoSummary] = [:]
+        for v in grid.videos { byId[v.id] = v }
+        for members in grid.expandedGroupMembers.values { for m in members { byId[m.id] = m } }
+        let targets = ids.compactMap { byId[$0] }
         selecting = false
         grid.clearSelection()
         for video in targets {

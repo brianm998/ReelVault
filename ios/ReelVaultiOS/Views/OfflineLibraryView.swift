@@ -60,19 +60,23 @@ private struct OfflineCard: View {
     let entry: OfflineLibrary.Entry
     var onTap: () -> Void
     @ObservedObject private var library = OfflineLibrary.shared
+    @State private var image: PlatformImage?
 
     var body: some View {
         VStack(spacing: 0) {
             ZStack {
                 Color(white: 0.15)
-                if let img = library.thumbnail(entry.id) {
-                    Image(uiImage: img).resizable().scaledToFit()
+                if let image {
+                    Image(uiImage: image).resizable().scaledToFit()
                 } else {
                     Image(systemName: "film").font(.title2).foregroundStyle(.secondary)
                 }
             }
             .aspectRatio(1, contentMode: .fit)
             .clipped()
+            // Load the thumbnail off-main once per entry (not synchronously in
+            // body on every scroll/redraw).
+            .task(id: entry.id) { image = await library.loadThumbnailAsync(entry.id) }
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.filename).font(.caption).lineLimit(1)
                 Text(secondary).font(.caption2).foregroundStyle(.secondary).lineLimit(1)

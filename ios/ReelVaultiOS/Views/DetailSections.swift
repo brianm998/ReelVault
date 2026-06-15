@@ -105,29 +105,35 @@ struct CollectionsSection: View {
 
     var body: some View {
         let manual = grid.collections.filter { !$0.isSmart }
-        if manual.isEmpty {
-            Text("No collections yet.").font(.callout).foregroundStyle(.secondary)
-        } else {
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(manual) { col in
-                    Button { toggle(col) } label: {
-                        HStack {
-                            Image(systemName: memberIds.contains(col.id) ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(memberIds.contains(col.id) ? Color.accentColor : .secondary)
-                            Text(col.name).lineLimit(1)
-                            Spacer(minLength: 0)
+        // The load must run regardless of whether `manual` is currently empty —
+        // attaching it only to the non-empty branch meant collections never
+        // loaded on iPhone (where the sidebar that populates them may never be
+        // opened before the detail screen), leaving "No collections yet." stuck.
+        Group {
+            if manual.isEmpty {
+                Text("No collections yet.").font(.callout).foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(manual) { col in
+                        Button { toggle(col) } label: {
+                            HStack {
+                                Image(systemName: memberIds.contains(col.id) ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(memberIds.contains(col.id) ? Color.accentColor : .secondary)
+                                Text(col.name).lineLimit(1)
+                                Spacer(minLength: 0)
+                            }
+                            .contentShape(Rectangle())
                         }
-                        .contentShape(Rectangle())
+                        .buttonStyle(.plain)
+                        .font(.callout)
                     }
-                    .buttonStyle(.plain)
-                    .font(.callout)
                 }
             }
-            .task(id: videoId) {
-                grid.loadCollections()
-                if let m = try? await VideoRepository.shared.getVideoMetadata(videoId: videoId) {
-                    memberIds = Set(m.collections)
-                }
+        }
+        .task(id: videoId) {
+            grid.loadCollections()
+            if let m = try? await VideoRepository.shared.getVideoMetadata(videoId: videoId) {
+                memberIds = Set(m.collections)
             }
         }
     }
@@ -149,6 +155,7 @@ struct NotesSection: View {
     let videoId: String
     @State private var notes: String = ""
     @State private var savedNotes: String = ""
+    @State private var loadedVideoId: String?
     @State private var loaded = false
 
     var body: some View {
@@ -162,21 +169,31 @@ struct NotesSection: View {
                 .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
                 .disabled(!loaded)
             if notes != savedNotes {
-                Button("Save Notes") { save() }
+                Button("Save Notes") { save(videoId: videoId) }
                     .font(.caption)
             }
         }
         .task(id: videoId) {
+            // On iPad the panel is reused across selections (the instance isn't
+            // recreated), so flush the *previous* video's unsaved edits before
+            // overwriting with the new one — otherwise switching selection loses
+            // them silently.
+            if let prev = loadedVideoId, prev != videoId, notes != savedNotes {
+                let n = notes
+                _ = try? await VideoRepository.shared.updateVideoNotes(videoId: prev, notes: n)
+            }
             loaded = false
             let fetched = (try? await VideoRepository.shared.getVideoMetadata(videoId: videoId))?.notes ?? ""
             notes = fetched
             savedNotes = fetched
+            loadedVideoId = videoId
             loaded = true
         }
-        .onDisappear { if loaded { save() } }
+        // Fires on an iPhone detail pop; the .task flush covers the iPad reuse case.
+        .onDisappear { save(videoId: videoId) }
     }
 
-    private func save() {
+    private func save(videoId: String) {
         guard loaded, notes != savedNotes else { return }
         let n = notes
         savedNotes = n

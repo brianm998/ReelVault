@@ -10,6 +10,7 @@ import ReelVaultKit
 struct DiscoveryErrorView: View {
     let error: String?
     @EnvironmentObject private var router: AppRouter
+    @ObservedObject private var offline = OfflineLibrary.shared
     @State private var host = ""
     @State private var port = "50051"
     @State private var fingerprint = ""
@@ -33,12 +34,12 @@ struct DiscoveryErrorView: View {
                         .foregroundStyle(.secondary)
                     Button("Open On-Device Library") { router.startLocal() }
                 }
-                if !OfflineLibrary.shared.entries.isEmpty {
+                if !offline.entries.isEmpty {
                     Section("Downloaded") {
                         Text("Watch videos you downloaded for offline use — no connection needed.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
-                        Button("View Downloaded Videos (\(OfflineLibrary.shared.entries.count))") {
+                        Button("View Downloaded Videos (\(offline.entries.count))") {
                             router.enterOffline()
                         }
                     }

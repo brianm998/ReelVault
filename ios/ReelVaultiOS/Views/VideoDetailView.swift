@@ -262,6 +262,11 @@ final class StreamPlayer: ObservableObject {
     /// on-device original is played directly; there are no renditions).
     func selectRendition(_ height: Int?, video: VideoSummary, endpoint: AppRouter.ConnectionInfo?) async {
         guard endpoint != nil else { return }
+        // Don't switch while a prepare is in flight: prepare() would no-op on its
+        // isPreparing guard, leaving the torn-down player stuck and the label out
+        // of sync. The picker is also disabled during preparation; this is the
+        // belt-and-suspenders guard.
+        if isPreparing { return }
         renditionOverride = height
         // Force a fresh prepare even for the same video.
         preparedVideoId = nil
@@ -530,6 +535,9 @@ struct RenditionPicker: View {
             .font(.caption)
             .foregroundStyle(.secondary)
         }
+        // Disabled while a prepare/readiness wait runs, so a quality change can't
+        // race the in-flight prepare (which would silently no-op).
+        .disabled(stream.isPreparing)
         .task(id: video.id) {
             proxies = (try? await VideoRepository.shared.listProxies(videoId: video.id)) ?? []
         }

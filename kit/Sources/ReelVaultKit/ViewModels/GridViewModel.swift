@@ -420,11 +420,9 @@ public class GridViewModel: ObservableObject {
             watcherBanner = "Scanning \(target)…"
         case .scanCompleted:
             watcherBanner = nil
-            catalogChangeTick &+= 1
-            scheduleWatcherRefresh()
+            scheduleWatcherRefresh()  // also bumps catalogChangeTick (coalesced)
         case .videoAdded, .videoModified, .videoRemoved:
-            catalogChangeTick &+= 1
-            scheduleWatcherRefresh()
+            scheduleWatcherRefresh()  // also bumps catalogChangeTick (coalesced)
         case .postIndexStarted, .postIndexProgress:
             // A background pass is running — cancel any pending clear and
             // show the latest snapshot. The backend now coalesces overlapping
@@ -597,6 +595,11 @@ public class GridViewModel: ObservableObject {
         let work = DispatchWorkItem { [weak self] in
             self?.loadVideos()
             self?.loadLibraryLocations()
+            // Bump the per-video proxy-refresh tick here (coalesced) rather than
+            // per event — during a big ingest/scan that fires one VideoAdded per
+            // asset, an un-debounced tick would storm listProxies for any open
+            // detail/inspector. One bump per quiet window is enough.
+            self?.catalogChangeTick &+= 1
         }
         watcherRefreshWorkItem = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)

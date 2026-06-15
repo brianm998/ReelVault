@@ -74,6 +74,10 @@ struct DetailGraphsView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .task(id: videoId) {
+                // Clear the previous clip's stats immediately so a reused instance
+                // (iPad, in-place selection change) doesn't render the old video's
+                // brightness/RGB/colour curves until the new ones compute.
+                stats = []
                 grid.loadScrubFrames(videoId: videoId)
                 grid.loadAudioLoudness(videoId: videoId)
             }
