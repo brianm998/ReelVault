@@ -20,17 +20,48 @@ struct RootSplitView: View {
     @State private var selection: LibrarySection = .allVideos
     @State private var viewMode: LibraryViewMode = .grid
     @AppStorage("ios.thumbnailWidth") private var thumbnailWidth: Double = 170
+    /// Browser-style back/forward across the session's browse locations.
+    @StateObject private var history = NavigationHistory()
 
     var body: some View {
-        if sizeClass == .compact {
-            CompactLayout(grid: grid, connection: connection,
-                          selection: $selection, viewMode: $viewMode,
-                          thumbnailWidth: $thumbnailWidth, apply: apply)
-        } else {
-            RegularLayout(grid: grid, connection: connection,
-                          selection: $selection, viewMode: $viewMode,
-                          thumbnailWidth: $thumbnailWidth, apply: apply)
+        Group {
+            if sizeClass == .compact {
+                CompactLayout(grid: grid, connection: connection,
+                              selection: $selection, viewMode: $viewMode,
+                              thumbnailWidth: $thumbnailWidth, apply: apply,
+                              history: history, goBack: goBack, goForward: goForward)
+            } else {
+                RegularLayout(grid: grid, connection: connection,
+                              selection: $selection, viewMode: $viewMode,
+                              thumbnailWidth: $thumbnailWidth, apply: apply,
+                              history: history, goBack: goBack, goForward: goForward)
+            }
         }
+        // Record each distinct browse location (source + view mode + selected
+        // video). A back/forward restore re-applies the same state, which dedups
+        // (no new entry); navigating somewhere new *after* a back truncates the
+        // forward path and starts a fresh branch.
+        .onChange(of: currentNav) { _, new in history.record(new) }
+        .onAppear { history.record(currentNav) }
+    }
+
+    /// The current browse location, as recorded in history.
+    private var currentNav: NavState {
+        NavState(section: selection, viewMode: viewMode, selectedVideoId: grid.selectedVideoId)
+    }
+
+    private func goBack() { if let s = history.goBack() { restore(s) } }
+    private func goForward() { if let s = history.goForward() { restore(s) } }
+
+    /// Re-apply a history entry. Unlike `apply()` it does NOT force the view mode
+    /// back to grid — it restores the entry's exact mode/selection. Set everything
+    /// synchronously so the single resulting `currentNav` change dedups against the
+    /// entry we just moved to (rather than recording a new one).
+    private func restore(_ s: NavState) {
+        selection = s.section
+        applyFilters(s.section)
+        viewMode = s.viewMode
+        grid.selectedVideoId = s.selectedVideoId
     }
 
     /// Apply a sidebar source to the shared view-model. Lightroom-style: one
@@ -41,6 +72,12 @@ struct RootSplitView: View {
         // change) and back to the browseable grid. Grid/List already show the
         // filtered set, so leave the user's choice between them alone.
         if viewMode == .detail || viewMode == .map { viewMode = .grid }
+        applyFilters(section)
+    }
+
+    /// Just the facet-filter writes for a source (no view-mode change), shared by
+    /// `apply()` and history `restore()`.
+    private func applyFilters(_ section: LibrarySection) {
         switch section {
         case .allVideos:
             grid.setCollectionFilter(nil); grid.setTagFilter(""); grid.setLocationFilter("")
@@ -51,6 +88,67 @@ struct RootSplitView: View {
         case .tag(let id):
             grid.setCollectionFilter(nil); grid.setLocationFilter(""); grid.setTagFilter(id)
         }
+    }
+}
+
+/// One browse location for the back/forward history: the active source, the view
+/// mode, and the selected video. (Internal, not private, so the internal
+/// `NavigationHistory` methods can take/return it.)
+struct NavState: Equatable {
+    var section: LibrarySection
+    var viewMode: LibraryViewMode
+    var selectedVideoId: String?
+}
+
+/// Browser-style session navigation history. `record` pushes a new location
+/// (truncating any forward entries — diverging after a back starts a new branch);
+/// `goBack`/`goForward` move the cursor and return the entry to restore. Recording
+/// the state a restore produces is a no-op (it equals the cursor), so back/forward
+/// don't pollute the history.
+@MainActor
+final class NavigationHistory: ObservableObject {
+    @Published private(set) var canGoBack = false
+    @Published private(set) var canGoForward = false
+    private var stack: [NavState] = []
+    private var index = -1
+
+    func record(_ s: NavState) {
+        if index >= 0, stack[index] == s { return }            // dedup (absorbs restores)
+        if index < stack.count - 1 { stack.removeSubrange((index + 1)...) }  // truncate forward
+        stack.append(s)
+        index = stack.count - 1
+        refresh()
+    }
+
+    func goBack() -> NavState? {
+        guard index > 0 else { return nil }
+        index -= 1; refresh(); return stack[index]
+    }
+
+    func goForward() -> NavState? {
+        guard index < stack.count - 1 else { return nil }
+        index += 1; refresh(); return stack[index]
+    }
+
+    private func refresh() {
+        canGoBack = index > 0
+        canGoForward = index < stack.count - 1
+    }
+}
+
+/// Back/forward toolbar buttons, disabled at the ends of the history.
+private struct NavHistoryButtons: View {
+    @ObservedObject var history: NavigationHistory
+    let goBack: () -> Void
+    let goForward: () -> Void
+
+    var body: some View {
+        Button(action: goBack) { Image(systemName: "chevron.backward") }
+            .disabled(!history.canGoBack)
+            .help("Back")
+        Button(action: goForward) { Image(systemName: "chevron.forward") }
+            .disabled(!history.canGoForward)
+            .help("Forward")
     }
 }
 
@@ -73,6 +171,9 @@ private struct RegularLayout: View {
     @Binding var viewMode: LibraryViewMode
     @Binding var thumbnailWidth: Double
     let apply: (LibrarySection) -> Void
+    @ObservedObject var history: NavigationHistory
+    let goBack: () -> Void
+    let goForward: () -> Void
 
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
@@ -110,6 +211,11 @@ private struct RegularLayout: View {
                                     }
                                 }
                         )
+                }
+            }
+            .toolbar {
+                ToolbarItemGroup(placement: .topBarLeading) {
+                    NavHistoryButtons(history: history, goBack: goBack, goForward: goForward)
                 }
             }
         }
@@ -172,6 +278,9 @@ private struct CompactLayout: View {
     @Binding var viewMode: LibraryViewMode
     @Binding var thumbnailWidth: Double
     let apply: (LibrarySection) -> Void
+    @ObservedObject var history: NavigationHistory
+    let goBack: () -> Void
+    let goForward: () -> Void
 
     @State private var pushedVideo: VideoSummary?
     @State private var showLibrary = false
@@ -190,6 +299,9 @@ private struct CompactLayout: View {
                         Button { showLibrary = true } label: {
                             Label("Library", systemImage: "sidebar.left")
                         }
+                    }
+                    ToolbarItemGroup(placement: .topBarLeading) {
+                        NavHistoryButtons(history: history, goBack: goBack, goForward: goForward)
                     }
                 }
         }
