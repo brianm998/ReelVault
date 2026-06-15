@@ -1044,6 +1044,10 @@ fun ReelVaultApp(
             if (!isRemote) recents.touch(existing.path)
             loadAfterCatalogOpened()
         } else if (isRemote) {
+            // Nothing to show, and we can't pick a remote catalog with a local file
+            // dialog. Drop the endpoint so we're not left "remote" while on the
+            // error screen; Retry re-discovers cleanly.
+            RemoteConnection.endpoint = null
             errorMessage = "The remote server has no catalog open. Open a catalog " +
                 "on the server, then reconnect."
             connectionState = ConnectionState.Failed

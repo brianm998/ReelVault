@@ -28,10 +28,15 @@ class LoopbackMediaProxy(private val endpoint: RemoteConnection.Endpoint) {
     private val client = PinnedTls.pinnedHttpClient(endpoint.fingerprintHex)
     private var server: HttpServer? = null
     @Volatile private var port: Int = 0
+    // Once stopped, never rebind: a still-cancelling prepare() coroutine can reach
+    // start() after the view's onDispose already called stop(), which would leak a
+    // fresh listener nobody owns.
+    @Volatile private var stopped = false
 
     /** Start the loopback listener (idempotent); returns the bound port. */
     @Synchronized
     fun start(): Int {
+        if (stopped) return port
         server?.let { return port }
         val s = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         // A pool so libVLC's concurrent playlist + segment fetches don't serialize.
@@ -48,6 +53,7 @@ class LoopbackMediaProxy(private val endpoint: RemoteConnection.Endpoint) {
 
     @Synchronized
     fun stop() {
+        stopped = true
         server?.let { try { it.stop(0) } catch (_: Exception) {} }
         server = null
         port = 0
@@ -68,8 +74,17 @@ class LoopbackMediaProxy(private val endpoint: RemoteConnection.Endpoint) {
             start()
             val statusUrl = "https://${endpoint.host}:${endpoint.mediaPort}/hls/$videoId/$height/status"
             val deadline = System.currentTimeMillis() + maxWaitMs
-            while (System.currentTimeMillis() < deadline) {
-                val st = fetchStatus(statusUrl) ?: break
+            var misses = 0
+            while (System.currentTimeMillis() < deadline && !stopped) {
+                val st = fetchStatus(statusUrl)
+                if (st == null) {
+                    // A transient blip (slow NAS warming up) shouldn't end the wait
+                    // prematurely; only give up after a few consecutive failures.
+                    if (++misses >= 3) break
+                    delay(1000)
+                    continue
+                }
+                misses = 0
                 if (st.failed || st.complete) break
                 delay(1000)
             }

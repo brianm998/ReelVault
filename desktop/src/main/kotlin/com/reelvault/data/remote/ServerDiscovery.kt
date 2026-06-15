@@ -53,8 +53,14 @@ class ServerDiscovery {
 
     private fun toServer(info: ServiceInfo?): DiscoveredServer? {
         if (info == null) return null
-        val ip = info.inet4Addresses.firstOrNull()?.hostAddress
-        val host = ip ?: info.server?.removeSuffix(".")?.takeIf { it.isNotBlank() } ?: return null
+        // Prefer the literal LAN IP the daemon publishes in TXT (matches the Swift
+        // client) over jmdns A-record resolution / the `<name>.local` SRV target,
+        // which depends on OS-level .local resolution that can be flaky.
+        val host = info.getPropertyString("ip")?.takeIf { it.isNotBlank() }
+            ?: info.getPropertyString("host")?.takeIf { it.isNotBlank() }
+            ?: info.inet4Addresses.firstOrNull()?.hostAddress
+            ?: info.server?.removeSuffix(".")?.takeIf { it.isNotBlank() }
+            ?: return null
         val grpc = info.getPropertyString("grpc")?.toIntOrNull() ?: info.port.takeIf { it > 0 } ?: return null
         val media = info.getPropertyString("media")?.toIntOrNull() ?: 50052
         val cat = info.getPropertyString("cat")
