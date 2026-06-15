@@ -20,6 +20,10 @@ struct LocationButtonsSection: View {
     /// (NOT Apple Maps). nil hosts (no way to change view mode) hide the button.
     var onShowOnMap: (() -> Void)? = nil
     @State private var showPicker = false
+    /// The width of the widest location button, measured so they all render at
+    /// that size — uniform and left-pinned, never stretched full-width (which
+    /// truncated labels on iPad) nor sized-to-content (which left them ragged).
+    @State private var buttonWidth: CGFloat?
 
     private var video: VideoSummary? {
         grid.videos.first(where: { $0.id == videoId })
@@ -34,36 +38,30 @@ struct LocationButtonsSection: View {
                     Text(String(format: "%.5f, %.5f", video.gpsLatitude, video.gpsLongitude))
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                Button {
-                    showPicker = true
-                } label: {
-                    Label(video.hasLocation ? "Change location…" : "Set location…",
-                          systemImage: "mappin.and.ellipse")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
+                locationButton(
+                    title: video.hasLocation ? "Change location…" : "Set location…",
+                    systemImage: "mappin.and.ellipse"
+                ) { showPicker = true }
                 if video.hasLocation {
-                    Button(role: .destructive) {
+                    locationButton(title: "Remove location", systemImage: "mappin.slash",
+                                   role: .destructive) {
                         grid.clearVideoLocations(videoIds: [video.id])
-                    } label: {
-                        Label("Remove location", systemImage: "mappin.slash")
-                            .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
                     if let onShowOnMap {
-                        Button {
+                        locationButton(title: "Show on Map", systemImage: "map") {
                             // Focus the in-app map on this clip, then ask the host
                             // to switch to Map mode — no external Apple Maps trip.
                             grid.mapFocus = GeoFilter(latitude: video.gpsLatitude,
                                                       longitude: video.gpsLongitude, radiusKm: 1)
                             onShowOnMap()
-                        } label: {
-                            Label("Show on Map", systemImage: "map")
-                                .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.bordered)
                     }
                 }
+            }
+            // Each button reports its natural width; the widest wins and is applied
+            // to all (see buttonWidth). The group hugs the left of its container.
+            .onPreferenceChange(LocationButtonWidthKey.self) { w in
+                if w > 0 { buttonWidth = w }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .sheet(isPresented: $showPicker) {
@@ -83,6 +81,34 @@ struct LocationButtonsSection: View {
         }
     }
 
+    /// One location button, left-aligned and rendered at the shared `buttonWidth`
+    /// (the widest button's natural size) so all three match and nothing truncates.
+    /// Reports its natural width up via a preference while `buttonWidth` is unset.
+    @ViewBuilder
+    private func locationButton(
+        title: String, systemImage: String, role: ButtonRole? = nil, action: @escaping () -> Void
+    ) -> some View {
+        Button(role: role, action: action) {
+            Label(title, systemImage: systemImage)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .frame(width: buttonWidth, alignment: .leading)
+        }
+        .buttonStyle(.bordered)
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(key: LocationButtonWidthKey.self, value: proxy.size.width)
+            }
+        )
+    }
+}
+
+/// Tracks the widest location button so they can all adopt that width.
+private struct LocationButtonWidthKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
 }
 
 /// Map-based location picker: drag the map under a fixed centre pin to choose a
