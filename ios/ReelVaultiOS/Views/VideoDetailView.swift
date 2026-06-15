@@ -376,6 +376,9 @@ struct StreamingPlayerView: View {
     var autoPlay: Bool = false
     /// Fill the available space instead of a 16:9 box (full-screen mode).
     var fill: Bool = false
+    /// A poster frame so the idle player shows the video with a play overlay
+    /// instead of a black rectangle.
+    @State private var poster: PlatformImage?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -388,29 +391,48 @@ struct StreamingPlayerView: View {
             stream.resetIfDifferent(video.id)
             if autoPlay { await stream.prepare(video: video, endpoint: endpoint) }
         }
+        .task(id: video.id) {
+            // Poster frame for the pre-play state. Prefer a hi-res frame; fall
+            // back to the medium thumbnail the grid already caches.
+            poster = nil
+            if let img = await VideoRepository.shared.getThumbnailHiRes(
+                videoId: video.id, size: "large", maxWidth: 1280) {
+                poster = img
+            } else {
+                poster = try? await VideoRepository.shared.getThumbnail(videoId: video.id)
+            }
+        }
         .onDisappear { if !fill { stream.pause() } }
     }
 
     @ViewBuilder private var playerBox: some View {
         let box = ZStack {
-            if !fill { RoundedRectangle(cornerRadius: 10).fill(.black) }
             if let player = stream.player {
                 VideoPlayer(player: player)
                     .clipShape(RoundedRectangle(cornerRadius: fill ? 0 : 10))
-            } else if stream.isPreparing {
-                VStack(spacing: 8) {
-                    ProgressView().tint(.white)
-                    if let detail = stream.preparingDetail {
-                        Text(detail).font(.caption).foregroundStyle(.white.opacity(0.85))
-                    }
-                }
             } else {
-                Button {
-                    Task { await stream.prepare(video: video, endpoint: endpoint) }
-                } label: {
-                    Label("Play", systemImage: "play.fill")
+                // Idle / preparing: show the poster frame (or black) behind the
+                // controls so the user sees the clip, not a black box.
+                posterBackground
+                if stream.isPreparing {
+                    VStack(spacing: 8) {
+                        ProgressView().tint(.white)
+                        if let detail = stream.preparingDetail {
+                            Text(detail).font(.caption).foregroundStyle(.white.opacity(0.85))
+                        }
+                    }
+                } else {
+                    Button {
+                        Task { await stream.prepare(video: video, endpoint: endpoint) }
+                    } label: {
+                        Image(systemName: "play.circle.fill")
+                            .font(.system(size: 54))
+                            .symbolRenderingMode(.palette)
+                            .foregroundStyle(.white, .black.opacity(0.35))
+                            .shadow(radius: 6)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.borderedProminent)
             }
         }
         if fill {
@@ -418,6 +440,18 @@ struct StreamingPlayerView: View {
         } else {
             box.aspectRatio(16.0 / 9.0, contentMode: .fit)
         }
+    }
+
+    @ViewBuilder private var posterBackground: some View {
+        ZStack {
+            Color.black
+            if let poster {
+                Image(uiImage: poster)
+                    .resizable()
+                    .scaledToFit()
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: fill ? 0 : 10))
     }
 }
 
