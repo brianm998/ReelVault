@@ -54,9 +54,10 @@ struct ListView: View {
 
     @ViewBuilder
     private var content: some View {
-        if viewModel.videos.isEmpty && !viewModel.isLoading {
+        // See GridView: only show "No videos" after a completed load, else a spinner.
+        if viewModel.videos.isEmpty && viewModel.hasLoadedOnce && !viewModel.isLoading {
             emptyState
-        } else if viewModel.isLoading && viewModel.videos.isEmpty {
+        } else if viewModel.videos.isEmpty {
             ProgressView()
         } else {
             videoList

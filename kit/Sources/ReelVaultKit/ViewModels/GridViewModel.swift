@@ -99,6 +99,14 @@ public class GridViewModel: ObservableObject {
     /// one picked from the map, whose full geotagged set is loaded separately.
     @Published public var selectedVideo: VideoSummary?
     @Published public var isLoading = false
+    /// True once the first video-list load has *completed* (success or failure).
+    /// Until then the grid is in an unknown state — the catalog might be empty,
+    /// or the first page might still be in flight — so the UI must show a loading
+    /// view, NOT "No videos". Only after a completed load that returned zero is an
+    /// empty grid genuinely empty. (The initial `loadVideos()` uses
+    /// `showSpinner:false`, so `isLoading` alone can't carry this — see
+    /// `loadCurrentPage`.) Shared by the iOS + macOS grids.
+    @Published public private(set) var hasLoadedOnce = false
     @Published public var error: String?
     @Published public var totalCount: Int64 = 0
     @Published public var hasMore = false
@@ -712,6 +720,7 @@ public class GridViewModel: ObservableObject {
             totalCount = total
             hasMore = Int64(videos.count) < total
             isLoading = false
+            hasLoadedOnce = true
 
             // An empty result means nothing is selectable. Drop any lingering
             // selection — even one pinned by detail mode, which
@@ -740,6 +749,7 @@ public class GridViewModel: ObservableObject {
             NSLog("[GridViewModel] listVideos FAILED: \(error)")
             self.error = "Failed to load videos: \(error.localizedDescription)"
             isLoading = false
+            hasLoadedOnce = true
         }
     }
 

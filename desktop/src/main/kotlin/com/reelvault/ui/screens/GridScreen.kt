@@ -56,6 +56,7 @@ fun GridScreen(
     val selectedVideoIds = viewModel.selectedVideoIds.collectAsState()
     val anchorVideoId = viewModel.anchorVideoId.collectAsState()
     val isLoading = viewModel.isLoading.collectAsState()
+    val hasLoadedOnce = viewModel.hasLoadedOnce.collectAsState()
     val hasMore = viewModel.hasMore.collectAsState()
     val error = viewModel.error.collectAsState()
     val thumbnails = viewModel.thumbnails.collectAsState()
@@ -261,7 +262,10 @@ fun GridScreen(
             val selectedIdSet = selectedVideoIds.value.toSet()
             fun selectedAt(i: Int): Boolean =
                 i in rendered.indices && rendered[i].video.id in selectedIdSet
-            if (videos.value.isEmpty() && !isLoading.value) {
+            if (videos.value.isEmpty() && hasLoadedOnce.value && !isLoading.value) {
+                // Only "No videos" after a completed load (hasLoadedOnce) — the
+                // initial load runs with showSpinner=false, so without this the
+                // empty state would flash before the first page arrives.
                 // Observe collection selection so the message updates when the
                 // user navigates between collections / the library.
                 viewModel.selectedCollectionId.collectAsState().value
@@ -559,7 +563,7 @@ fun GridScreen(
             }
 
             // Loading overlay
-            if (isLoading.value && videos.value.isEmpty()) {
+            if (videos.value.isEmpty() && (!hasLoadedOnce.value || isLoading.value)) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()

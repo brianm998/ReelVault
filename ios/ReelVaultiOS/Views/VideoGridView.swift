@@ -80,6 +80,13 @@ struct VideoGridView: View {
                                 Button("Retry") { grid.loadVideos() }
                             }
                             .padding(.top, 80)
+                        } else if !grid.hasLoadedOnce || grid.isLoading {
+                            // Don't flash "No videos" before the first page lands:
+                            // an empty grid is only genuinely empty once a load has
+                            // completed (hasLoadedOnce) and none is in flight.
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                                .padding(.top, 80)
                         } else {
                             ContentUnavailableView(
                                 "No videos",

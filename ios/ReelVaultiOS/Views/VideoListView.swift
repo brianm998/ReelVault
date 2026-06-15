@@ -16,10 +16,15 @@ struct VideoListView: View {
 
     var body: some View {
         if grid.videos.isEmpty {
-            ContentUnavailableView(
-                "No videos", systemImage: "list.bullet",
-                description: Text("The connected catalog is empty, or no videos match the current filter.")
-            )
+            if !grid.hasLoadedOnce || grid.isLoading {
+                // Loading, not empty — see VideoGridView / GridViewModel.hasLoadedOnce.
+                ProgressView().frame(maxWidth: .infinity).padding(.top, 80)
+            } else {
+                ContentUnavailableView(
+                    "No videos", systemImage: "list.bullet",
+                    description: Text("The connected catalog is empty, or no videos match the current filter.")
+                )
+            }
         } else {
             let rows = stackRenderedVideos(grid)
             List {

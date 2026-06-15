@@ -148,6 +148,14 @@ class GridViewModel(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    // True once the first video-list load has completed (success or failure).
+    // Until then the grid is in an unknown state, so the UI shows a loading view
+    // rather than "No videos" — an empty grid is only genuinely empty after a
+    // completed load. (The initial loadVideos() uses showSpinner=false, so
+    // isLoading alone can't carry this distinction.)
+    private val _hasLoadedOnce = MutableStateFlow(false)
+    val hasLoadedOnce: StateFlow<Boolean> = _hasLoadedOnce.asStateFlow()
+
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
@@ -876,6 +884,7 @@ class GridViewModel(
                 _totalCount.value = totalCount
                 _hasMore.value = videosList.size < totalCount
                 _isLoading.value = false
+                _hasLoadedOnce.value = true
 
                 // An empty result means nothing is selectable. Drop any
                 // lingering selection — even one pinned by detail mode, which
@@ -904,6 +913,7 @@ class GridViewModel(
             } catch (e: Exception) {
                 _error.value = "Failed to load videos: ${e.message}"
                 _isLoading.value = false
+                _hasLoadedOnce.value = true
                 logger.error("Failed to load videos", e)
             }
         }

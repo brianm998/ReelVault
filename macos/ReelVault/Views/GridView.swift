@@ -71,9 +71,13 @@ struct GridView: View {
 
     @ViewBuilder
     private var content: some View {
-        if viewModel.videos.isEmpty && !viewModel.isLoading {
+        // "No videos" only once a load has actually completed (hasLoadedOnce) and
+        // none is in flight — otherwise show a spinner. The initial load runs with
+        // showSpinner:false, so isLoading alone would let the empty state flash
+        // before the first page arrives.
+        if viewModel.videos.isEmpty && viewModel.hasLoadedOnce && !viewModel.isLoading {
             emptyState
-        } else if viewModel.isLoading && viewModel.videos.isEmpty {
+        } else if viewModel.videos.isEmpty {
             ProgressView()
         } else {
             videoGrid
