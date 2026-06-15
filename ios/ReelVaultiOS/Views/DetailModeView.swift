@@ -25,7 +25,8 @@ struct DetailModeView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         StreamingPlayerView(stream: stream, video: video, endpoint: connection,
-                                            refreshTick: grid.catalogChangeTick)
+                                            refreshTick: grid.catalogChangeTick,
+                                            isFullScreenActive: fullScreen)
                         OfflineDownloadButton(video: video, endpoint: connection)
                         MetadataEditorSection(grid: grid, videoId: video.id)
                         VideoMetadataSection(video: video, refreshTick: grid.catalogChangeTick)

@@ -27,7 +27,8 @@ struct VideoDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 StreamingPlayerView(stream: stream, video: video, endpoint: mediaEndpoint,
-                                    refreshTick: grid.catalogChangeTick)
+                                    refreshTick: grid.catalogChangeTick,
+                                    isFullScreenActive: fullScreen)
                 OfflineDownloadButton(video: video, endpoint: mediaEndpoint)
                 MetadataEditorSection(grid: grid, videoId: video.id)
                 // Prefer the live grid row so the proxy-count badge tracks edits
@@ -99,33 +100,93 @@ final class StreamPlayer: ObservableObject {
     private var diagObservers: [NSObjectProtocol] = []
     private var statusObservation: NSKeyValueObservation?
     private var presentationObservation: NSKeyValueObservation?
+    /// The in-flight prepare, owned by the player (NOT a transient SwiftUI view
+    /// `.task`), so presenting or dismissing the full-screen cover — which mounts
+    /// and cancels view tasks — can never cancel a transcode wait mid-flight and
+    /// strand a half-built player item (the "unplayable" glyph that never
+    /// recovered). Cancelled only by a new rendition / video, never by a view.
+    private var prepareTask: Task<Void, Never>?
+    /// The (id, height) the in-flight prepare targets, so a duplicate `prepare`
+    /// for the same rendition joins it instead of starting a second.
+    private var preparingVideoId: String?
+    private var preparingHeight: Int?
+    /// The video the player is bound to (preparing OR prepared). `resetIfDifferent`
+    /// keys teardown off THIS, not `preparedVideoId` (which is nil mid-prepare) —
+    /// otherwise the full-screen cover re-running `resetIfDifferent` for the SAME
+    /// video would tear down the in-flight loopback proxy + transcode wait.
+    private var currentVideoId: String?
+    /// Whether to start playback once the in-flight prepare lands. A later play
+    /// request (e.g. the full-screen cover's autoPlay) can flip this on while the
+    /// prepare is still waiting on the transcode.
+    private var autoPlayWhenReady = true
 
-    /// Prepare the rendition and start playing. Tries HLS streaming first (begins
-    /// playing before the whole file transcodes, via a pinned loopback proxy),
-    /// then falls back to download-then-play. No-ops if the same video is already
-    /// prepared, so the inline view and the full-screen cover share one player
-    /// rather than racing two.
-    /// `autoPlay` starts playback once prepared; a quality change passes false so
-    /// the new rendition is loaded but stays paused (the user presses play).
-    func prepare(video: VideoSummary, endpoint: AppRouter.ConnectionInfo?, autoPlay: Bool = true) async {
-        if isPreparing { return }   // a prepare (incl. the readiness wait) is in flight
+    /// Prepare the rendition and (optionally) start playing — idempotent and
+    /// view-lifecycle-independent. The work runs in `prepareTask`, owned by the
+    /// player, so presenting/dismissing the full-screen cover can't cancel it.
+    /// A healthy, already-prepared player just (re)plays; a duplicate call for the
+    /// same rendition joins the in-flight prepare (and can upgrade it to autoplay);
+    /// otherwise a fresh prepare starts. `autoPlay == false` (a quality change)
+    /// loads the rendition but stays paused.
+    func prepare(video: VideoSummary, endpoint: AppRouter.ConnectionInfo?, autoPlay: Bool = true) {
+        currentVideoId = video.id
         // Effective rendition height: the user's override (0 = original), else a
         // fit-to-device height so big originals don't stream raw over Wi-Fi.
         let height = renditionOverride ?? Self.streamHeight()
-        if preparedVideoId == video.id, preparedHeight == height, player != nil {
-            if autoPlay { player?.play() }
+        // Already have a *healthy* player at this rendition → just (re)play. A
+        // failed item is NOT healthy, so it falls through to a fresh prepare
+        // (otherwise the user stayed stuck on the "unplayable" glyph forever).
+        if preparedVideoId == video.id, preparedHeight == height,
+           let p = player, p.currentItem?.status != .failed {
+            if autoPlay { p.play() }
             return
         }
+        // A prepare for this exact rendition is already running → join it rather
+        // than starting a second (which would race two transcodes / two players).
+        if prepareTask != nil, preparingVideoId == video.id, preparingHeight == height {
+            if autoPlay { autoPlayWhenReady = true }
+            return
+        }
+        startPrepare(video: video, endpoint: endpoint, height: height, autoPlay: autoPlay)
+    }
+
+    /// Launch (or relaunch) the owned prepare task, cancelling any in-flight one.
+    private func startPrepare(video: VideoSummary, endpoint: AppRouter.ConnectionInfo?,
+                              height: Int, autoPlay: Bool) {
+        prepareTask?.cancel()
+        preparingVideoId = video.id
+        preparingHeight = height
+        autoPlayWhenReady = autoPlay
+        isPreparing = true
+        prepareTask = Task { [weak self] in
+            await self?.runPrepare(video: video, endpoint: endpoint, height: height)
+        }
+    }
+
+    /// The actual prepare pipeline — HLS-first, download fallback, or local —
+    /// running inside `prepareTask`. Bails WITHOUT building a player if superseded
+    /// (`Task.isCancelled`), so a torn-down/superseded prepare never strands a
+    /// half-built item on an incomplete transcode.
+    private func runPrepare(video: VideoSummary, endpoint: AppRouter.ConnectionInfo?, height: Int) async {
+        defer {
+            // Clear in-flight state only if THIS run is still the active one — a
+            // newer startPrepare may have superseded us and overwritten the
+            // targets (then it owns isPreparing / prepareTask, not us).
+            if preparingVideoId == video.id, preparingHeight == height {
+                isPreparing = false
+                preparingDetail = nil
+                preparingVideoId = nil
+                preparingHeight = nil
+                prepareTask = nil
+            }
+        }
+        error = nil
         // On-device (Local Library) mode: no media server / streaming — the
         // original lives on this device, so play it directly with AVPlayer from
         // the Photos asset (or file) the catalog row points at.
         guard let conn = endpoint else {
-            await prepareLocal(video: video)
+            await playLocal(video: video)
             return
         }
-        isPreparing = true
-        defer { isPreparing = false; preparingDetail = nil }
-        error = nil
         let mediaEndpoint = MediaClient.Endpoint(
             host: conn.host, mediaPort: conn.mediaPort,
             fingerprintHex: conn.fingerprintHex, bearerToken: conn.bearerToken)
@@ -139,19 +200,27 @@ final class StreamPlayer: ObservableObject {
         let proxy = LoopbackMediaProxy(endpoint: mediaEndpoint)
         do {
             _ = try await proxy.start()
+            // Superseded during startup → don't install our proxy over a newer
+            // run's (which already ran teardownProxy + set its own).
+            if Task.isCancelled { proxy.stop(); return }
             self.proxy = proxy
             let outcome = await waitUntilReady(proxy: proxy, video: video, height: height)
+            // Superseded while we waited (new video / rendition) → abandon without
+            // building a player; the newer prepare owns the UI now. Tear down only
+            // OUR proxy (===), never a newer run's.
+            if Task.isCancelled { abandonProxy(proxy); return }
             if outcome != .failed {
                 let asset = AVURLAsset(url: proxy.hlsURL(videoId: video.id, height: height))
                 if (try? await asset.load(.isPlayable)) == true {
+                    if Task.isCancelled { abandonProxy(proxy); return }
                     let item = AVPlayerItem(asset: asset)
                     attachDiagnostics(to: item)
                     let p = AVPlayer(playerItem: item)
                     player = p
                     preparedVideoId = video.id
                     preparedHeight = height
-                    if autoPlay { p.play() }
-                    NSLog("ReelVault: HLS \(autoPlay ? "playing" : "ready (paused)") \(video.id) (h\(height), \(outcome))")
+                    if autoPlayWhenReady { p.play() }
+                    NSLog("ReelVault: HLS \(autoPlayWhenReady ? "playing" : "ready (paused)") \(video.id) (h\(height), \(outcome))")
                     return
                 }
                 NSLog("ReelVault: HLS asset not playable for \(video.id) (h\(height)) — falling back to download")
@@ -161,35 +230,46 @@ final class StreamPlayer: ObservableObject {
         } catch {
             NSLog("ReelVault: HLS proxy start failed for \(video.id): \(error) — falling back to download")
         }
-        teardownProxy()
+        abandonProxy(proxy)
+        if Task.isCancelled { return }
 
         // 2) Fallback: download-then-play (pin-verified, correct but not progressive).
         do {
             let item = try await MediaClient().playerItem(
                 videoId: video.id, height: height, ext: "mp4", from: mediaEndpoint)
+            if Task.isCancelled { return }
             attachDiagnostics(to: item)
             let p = AVPlayer(playerItem: item)
             player = p
             preparedVideoId = video.id
             preparedHeight = height
-            if autoPlay { p.play() }
+            if autoPlayWhenReady { p.play() }
         } catch {
             NSLog("ReelVault: playback prepare failed for \(video.id) (h\(height)): \(error)")
             self.error = "Couldn't play this video: \(error.localizedDescription)"
         }
     }
 
+    /// Stop a loopback proxy this run started, clearing the shared reference only
+    /// if it's still ours — a newer prepare may already have installed its own.
+    private func abandonProxy(_ proxy: LoopbackMediaProxy) {
+        proxy.stop()
+        if self.proxy === proxy { self.proxy = nil }
+    }
+
     /// On-device playback: resolve the catalog row's source to a local
     /// `AVPlayerItem` and play it directly — Photos asset via `PHImageManager`
-    /// (handles iCloud download), or a file path. No transcode/stream.
-    func prepareLocal(video: VideoSummary) async {
-        if preparedVideoId == video.id, player != nil { player?.play(); return }
-        isPreparing = true
-        defer { isPreparing = false; preparingDetail = nil }
-        error = nil
+    /// (handles iCloud download), or a file path. No transcode/stream. Runs inside
+    /// `runPrepare` (which owns `isPreparing` / cancellation), so it just builds
+    /// and starts the item.
+    private func playLocal(video: VideoSummary) async {
+        if preparedVideoId == video.id, let p = player, p.currentItem?.status != .failed {
+            if autoPlayWhenReady { p.play() }
+            return
+        }
         // Release any bookmark scope from a prior item first: a rapid switch can
-        // re-enter prepareLocal before resetIfDifferent runs, which would
-        // otherwise orphan the previous security-scoped URL.
+        // re-enter before resetIfDifferent runs, which would otherwise orphan the
+        // previous security-scoped URL.
         scopedPlaybackURL?.stopAccessingSecurityScopedResource()
         scopedPlaybackURL = nil
 
@@ -216,6 +296,12 @@ final class StreamPlayer: ObservableObject {
             item = nil
         }
 
+        // Superseded (new selection) while resolving the asset → abandon.
+        if Task.isCancelled {
+            scopedPlaybackURL?.stopAccessingSecurityScopedResource()
+            scopedPlaybackURL = nil
+            return
+        }
         guard let item else {
             error = "Couldn't open this video on-device."
             NSLog("ReelVault: local playback could not resolve \(video.id) (path \(path))")
@@ -225,7 +311,7 @@ final class StreamPlayer: ObservableObject {
         let p = AVPlayer(playerItem: item)
         player = p
         preparedVideoId = video.id
-        p.play()
+        if autoPlayWhenReady { p.play() }
         NSLog("ReelVault: local playback \(video.id) (\(path))")
     }
 
@@ -251,35 +337,41 @@ final class StreamPlayer: ObservableObject {
     }
 
     /// Tear down when the view's video changes, so a new selection doesn't keep
-    /// playing the previous one.
+    /// playing the previous one. Keys off the bound video (preparing OR prepared),
+    /// NOT `preparedVideoId` (nil mid-prepare): re-running this for the SAME video
+    /// — e.g. when the full-screen cover mounts and runs its own `.task` — must
+    /// not tear down an in-flight prepare (its loopback proxy + transcode wait).
     func resetIfDifferent(_ videoId: String) {
-        if preparedVideoId != videoId {
-            player?.pause()
-            player = nil
-            preparedVideoId = nil
-            preparedHeight = nil
-            renditionOverride = nil   // a new clip starts at Auto
-            scopedPlaybackURL?.stopAccessingSecurityScopedResource()
-            scopedPlaybackURL = nil
-            error = nil
-            preparingDetail = nil
-            teardownProxy()
-            clearDiagnostics()
-        }
+        guard let current = currentVideoId else { currentVideoId = videoId; return }
+        if current == videoId { return }
+        prepareTask?.cancel()
+        prepareTask = nil
+        preparingVideoId = nil
+        preparingHeight = nil
+        isPreparing = false
+        player?.pause()
+        player = nil
+        preparedVideoId = nil
+        preparedHeight = nil
+        renditionOverride = nil   // a new clip starts at Auto
+        scopedPlaybackURL?.stopAccessingSecurityScopedResource()
+        scopedPlaybackURL = nil
+        error = nil
+        preparingDetail = nil
+        teardownProxy()
+        clearDiagnostics()
+        currentVideoId = videoId
     }
 
     /// Switch the playback rendition (Auto / Original / a specific proxy height)
     /// and re-stream the current video at that height. No-op in Local mode (the
     /// on-device original is played directly; there are no renditions).
-    func selectRendition(_ height: Int?, video: VideoSummary, endpoint: AppRouter.ConnectionInfo?) async {
+    func selectRendition(_ height: Int?, video: VideoSummary, endpoint: AppRouter.ConnectionInfo?) {
         guard endpoint != nil else { return }
-        // Don't switch while a prepare is in flight: prepare() would no-op on its
-        // isPreparing guard, leaving the torn-down player stuck and the label out
-        // of sync. The picker is also disabled during preparation; this is the
-        // belt-and-suspenders guard.
-        if isPreparing { return }
+        currentVideoId = video.id
         renditionOverride = height
-        // Force a fresh prepare even for the same video.
+        // Force a fresh prepare even for the same video; startPrepare cancels any
+        // in-flight one, so switching rendition mid-prepare supersedes cleanly.
         preparedVideoId = nil
         preparedHeight = nil
         player?.pause()
@@ -288,7 +380,8 @@ final class StreamPlayer: ObservableObject {
         clearDiagnostics()
         // Load the new rendition but leave it paused — changing quality shouldn't
         // auto-start playback; the user presses play.
-        await prepare(video: video, endpoint: endpoint, autoPlay: false)
+        startPrepare(video: video, endpoint: endpoint,
+                     height: height ?? Self.streamHeight(), autoPlay: false)
     }
 
     deinit {
@@ -376,23 +469,59 @@ final class StreamPlayer: ObservableObject {
         proxy = nil
     }
 
+    /// The detail screen is going away (popped / view-mode switched) — NOT just
+    /// covered by the full-screen player. Pause playback; if we're still preparing
+    /// (no player built yet), also cancel the owned transcode wait + loopback proxy
+    /// so we don't strand a server-side transcode for a screen the user left. A
+    /// built player is kept (paused) for instant resume, and its proxy must stay
+    /// alive (the HLS segments 502 if it deallocs mid-playback).
+    func leaveScreen() {
+        player?.pause()
+        if player == nil {
+            prepareTask?.cancel()
+            prepareTask = nil
+            preparingVideoId = nil
+            preparingHeight = nil
+            isPreparing = false
+            preparingDetail = nil
+            teardownProxy()
+        }
+    }
+
     /// Log a playback failure (the silent "unable to play" triangle) with the
     /// AVPlayer error log — which records the failing segment URI + HTTP status —
     /// plus stalls and the item's terminal error.
     private func attachDiagnostics(to item: AVPlayerItem) {
         clearDiagnostics()
-        statusObservation = item.observe(\.status, options: [.new]) { item, _ in
-            if item.status == .failed {
-                NSLog("ReelVault player: item FAILED — \(item.error?.localizedDescription ?? "unknown error")")
+        statusObservation = item.observe(\.status, options: [.new]) { [weak self] obsItem, _ in
+            guard obsItem.status == .failed else { return }
+            NSLog("ReelVault player: item FAILED — \(obsItem.error?.localizedDescription ?? "unknown error")")
+            // Drop the dead player so the poster + play button return and a tap (or
+            // a re-prepare) can recover — instead of leaving the user staring at the
+            // "unplayable" glyph forever. Guard on the *live* item still being
+            // failed so we never clear a freshly-built healthy player.
+            Task { @MainActor in
+                guard let self, self.player?.currentItem?.status == .failed else { return }
+                self.player = nil
+                self.preparedVideoId = nil
+                self.preparedHeight = nil
+                self.error = "Couldn't play this video. Tap play to try again."
             }
         }
         // The decoded video size becomes known once the track loads; surface its
         // height so the picker can show the resolved quality ("Auto (720p)").
         playingHeight = nil
-        presentationObservation = item.observe(\.presentationSize, options: [.new, .initial]) { item, _ in
-            let h = Int(item.presentationSize.height.rounded())
+        presentationObservation = item.observe(\.presentationSize, options: [.new, .initial]) { [weak self] obsItem, _ in
+            let h = Int(obsItem.presentationSize.height.rounded())
             guard h > 0 else { return }
-            Task { @MainActor [weak self] in self?.playingHeight = h }
+            // Capture the item identity (Sendable) so a write enqueued before a
+            // supersede can't stamp a stale height onto the new clip's label.
+            let itemID = ObjectIdentifier(obsItem)
+            Task { @MainActor [weak self] in
+                guard let self, let current = self.player?.currentItem,
+                      ObjectIdentifier(current) == itemID else { return }
+                self.playingHeight = h
+            }
         }
         let nc = NotificationCenter.default
         diagObservers.append(nc.addObserver(
@@ -447,6 +576,11 @@ struct StreamingPlayerView: View {
     /// its proxy list — a proxy the server just promoted from this HLS stream then
     /// appears as a quality option live, with no manual refresh.
     var refreshTick: Int = 0
+    /// True while the full-screen cover is presented over this inline player. The
+    /// cover shares this view's `StreamPlayer`, so when presenting it makes the
+    /// inline view disappear — we must NOT treat that as "left the screen" (which
+    /// would pause / tear down the playback the cover just took over).
+    var isFullScreenActive: Bool = false
     /// A poster frame so the idle player shows the video with a play overlay
     /// instead of a black rectangle.
     @State private var poster: PlatformImage?
@@ -466,7 +600,7 @@ struct StreamingPlayerView: View {
         }
         .task(id: video.id) {
             stream.resetIfDifferent(video.id)
-            if autoPlay { await stream.prepare(video: video, endpoint: endpoint) }
+            if autoPlay { stream.prepare(video: video, endpoint: endpoint) }
         }
         .task(id: video.id) {
             // Poster frame for the pre-play state. Prefer a hi-res frame; fall
@@ -479,7 +613,10 @@ struct StreamingPlayerView: View {
                 poster = try? await VideoRepository.shared.getThumbnail(videoId: video.id)
             }
         }
-        .onDisappear { if !fill { stream.pause() } }
+        // Leaving the screen (pop / view-mode switch) pauses + frees an in-flight
+        // transcode. Skip when the full-screen cover is presented (it shares this
+        // player and is taking over) or in the cover itself (fill).
+        .onDisappear { if !fill && !isFullScreenActive { stream.leaveScreen() } }
     }
 
     @ViewBuilder private var playerBox: some View {
@@ -500,7 +637,7 @@ struct StreamingPlayerView: View {
                     }
                 } else {
                     Button {
-                        Task { await stream.prepare(video: video, endpoint: endpoint) }
+                        stream.prepare(video: video, endpoint: endpoint)
                     } label: {
                         Image(systemName: "play.circle.fill")
                             .font(.system(size: 54))
@@ -604,7 +741,7 @@ struct RenditionPicker: View {
 
     @ViewBuilder private func choice(_ title: String, height: Int?) -> some View {
         Button {
-            Task { await stream.selectRendition(height, video: video, endpoint: endpoint) }
+            stream.selectRendition(height, video: video, endpoint: endpoint)
         } label: {
             if stream.renditionOverride == height {
                 Label(title, systemImage: "checkmark")
