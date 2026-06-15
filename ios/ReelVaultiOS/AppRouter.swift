@@ -50,6 +50,29 @@ final class AppRouter: ObservableObject {
         set { UserDefaults.standard.set(newValue, forKey: "ios.prefersLocalLibrary") }
     }
 
+    /// The last server we connected to, persisted across launches so the next
+    /// launch reconnects DIRECTLY to its IP (no mDNS) — falling back to discovery
+    /// only if that IP is unreachable / not the same server. The bearer token
+    /// lives in the Keychain (TokenStore, keyed by fingerprint), so only the
+    /// address + pinned fingerprint are stored here.
+    private struct StoredServer: Codable {
+        var host: String
+        var grpcPort: Int
+        var mediaPort: Int
+        var fingerprintHex: String
+    }
+    private static let lastServerKey = "ios.lastServer"
+
+    private func saveLastServer(_ s: StoredServer) {
+        if let data = try? JSONEncoder().encode(s) {
+            UserDefaults.standard.set(data, forKey: Self.lastServerKey)
+        }
+    }
+    private func loadStoredServer() -> StoredServer? {
+        guard let data = UserDefaults.standard.data(forKey: Self.lastServerKey) else { return nil }
+        return try? JSONDecoder().decode(StoredServer.self, from: data)
+    }
+
     private let discovery = ServerDiscovery()
     private var discoverTask: Task<Void, Never>?
     private var collectTask: Task<Void, Never>?
@@ -152,7 +175,13 @@ final class AppRouter: ObservableObject {
         start()
     }
 
-    private func finishConnect(server: DiscoveredServer, fingerprint: String, token: String?) async {
+    /// `fallbackToDiscovery`: on a failed connect, rediscover via mDNS instead of
+    /// landing on the error screen (used by the direct-reconnect paths — launch
+    /// and Local→Server — where discovery is a sensible silent fallback).
+    private func finishConnect(
+        server: DiscoveredServer, fingerprint: String, token: String?,
+        fallbackToDiscovery: Bool = false
+    ) async {
         let endpoint = ServerEndpoint(
             host: server.host, port: server.grpcPort,
             security: .pinnedTLS(fingerprintSHA256Hex: fingerprint),
@@ -163,12 +192,16 @@ final class AppRouter: ObservableObject {
             // Using a server is now the remembered choice (until the user picks
             // On-Device Library again).
             prefersLocalLibrary = false
-            // Remember it so a later Local→Server switch reconnects instantly
-            // (skips discovery — see useServerLibrary).
+            let mediaPort = server.mediaPort ?? 50052
+            // Remember it for an instant Local→Server switch this session, and
+            // persist the address so the NEXT launch reconnects directly (no mDNS).
             lastServer = (server, fingerprint, token)
+            saveLastServer(StoredServer(
+                host: server.host, grpcPort: server.grpcPort,
+                mediaPort: mediaPort, fingerprintHex: fingerprint))
             connection = ConnectionInfo(
                 host: server.host,
-                mediaPort: server.mediaPort ?? 50052,
+                mediaPort: mediaPort,
                 fingerprintHex: fingerprint,
                 bearerToken: token
             )
@@ -176,7 +209,41 @@ final class AppRouter: ObservableObject {
         } else {
             // A stale/revoked token will fail auth — drop it so we re-pair next time.
             if token != nil { TokenStore.delete(for: fingerprint) }
-            phase = .failed("Could not connect to \(server.host):\(server.grpcPort).")
+            if fallbackToDiscovery {
+                start()
+            } else {
+                phase = .failed("Could not connect to \(server.host):\(server.grpcPort).")
+            }
+        }
+    }
+
+    /// Launch entry point for server mode: reconnect DIRECTLY to the last server's
+    /// IP (no mDNS) when we have one paired, falling back to discovery only if that
+    /// IP is unreachable, on the wrong port, or now answering with a different
+    /// (non-matching) certificate. A `fetchServerCertificate` probe (≤5s) is both
+    /// the reachability check and the identity check (its fingerprint must match
+    /// the pinned one). No stored server/token → straight to discovery.
+    func startPreferringLastServer() {
+        guard let s = loadStoredServer(), let token = TokenStore.load(for: s.fingerprintHex) else {
+            start()
+            return
+        }
+        let server = DiscoveredServer(
+            name: s.host, host: s.host, grpcPort: s.grpcPort, mediaPort: s.mediaPort,
+            fingerprintHex: s.fingerprintHex, requiresPairing: true, source: .manual)
+        phase = .connecting(server)
+        Task { [weak self] in
+            guard let self else { return }
+            let der = await PinnedTLS.fetchServerCertificate(
+                host: s.host, port: s.grpcPort, expectedFingerprintHex: s.fingerprintHex)
+            guard der != nil else {
+                NSLog("ReelVault: cached server \(s.host):\(s.grpcPort) unreachable or changed — falling back to mDNS")
+                self.start()
+                return
+            }
+            NSLog("ReelVault: reconnecting directly to cached server \(s.host):\(s.grpcPort)")
+            await self.finishConnect(server: server, fingerprint: s.fingerprintHex,
+                                     token: token, fallbackToDiscovery: true)
         }
     }
 
@@ -270,8 +337,8 @@ final class AppRouter: ObservableObject {
         if let last = lastServer {
             phase = .connecting(last.server)
             Task { [weak self] in
-                await self?.finishConnect(server: last.server,
-                                          fingerprint: last.fingerprint, token: last.token)
+                await self?.finishConnect(server: last.server, fingerprint: last.fingerprint,
+                                          token: last.token, fallbackToDiscovery: true)
             }
         } else {
             start()

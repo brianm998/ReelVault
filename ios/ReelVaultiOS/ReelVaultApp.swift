@@ -35,7 +35,9 @@ struct ReelVaultApp: App {
                     if CommandLine.arguments.contains("--autostart-local") || router.prefersLocalLibrary {
                         router.startLocal()
                     } else {
-                        router.start()
+                        // Reconnect straight to the last server's IP (no mDNS) when
+                        // we have one; falls back to discovery if it's unreachable.
+                        router.startPreferringLastServer()
                     }
                 }
         }
