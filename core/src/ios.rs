@@ -97,6 +97,28 @@ fn init_logging() {
     });
 }
 
+/// Run an FFI entry-point body, catching any Rust panic so it never unwinds
+/// across the `extern "C"` boundary — a panic that reaches C is an immediate
+/// process abort (the `panic_cannot_unwind` crash). Logs the panic message to
+/// `tracing` AND stderr (so it's visible in the Xcode console / device log even
+/// if logging isn't set up yet) and returns `fallback`. iOS builds use
+/// `panic = "unwind"`, so this actually catches.
+fn ffi_guard<T>(name: &str, fallback: T, body: impl FnOnce() -> T) -> T {
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(body)) {
+        Ok(value) => value,
+        Err(payload) => {
+            let msg = payload
+                .downcast_ref::<&str>()
+                .map(|s| (*s).to_string())
+                .or_else(|| payload.downcast_ref::<String>().cloned())
+                .unwrap_or_else(|| "panic with non-string payload".to_string());
+            tracing::error!("ffi: {name} panicked (caught — app NOT aborted): {msg}");
+            eprintln!("ReelVault FFI: {name} panicked (caught): {msg}");
+            fallback
+        }
+    }
+}
+
 /// Build the runtime, open the catalog, and spawn the in-process gRPC server.
 /// Returns the runtime (to park in the static) and the bound loopback port.
 fn boot(db_path: PathBuf, data_dir: PathBuf, cache_dir: PathBuf) -> anyhow::Result<(Runtime, u16)> {
@@ -166,37 +188,39 @@ pub extern "C" fn reelvault_start_embedded(
     data_dir: *const c_char,
     cache_dir: *const c_char,
 ) -> u16 {
-    let cell = EMBEDDED.get_or_init(|| Mutex::new(None));
-    let mut guard = match cell.lock() {
-        Ok(g) => g,
-        Err(_) => return 0,
-    };
-    if let Some(existing) = guard.as_ref() {
-        return existing.port; // already booted
-    }
-    init_logging();
-    // Select the rustls crypto provider before any TLS work — the post-index
-    // sensor fetch (reqwest) builds a rustls 0.23 ClientConfig that otherwise
-    // panics (both aws-lc-rs and ring are compiled in). See
-    // `crate::install_crypto_provider`.
-    crate::install_crypto_provider();
-    tracing::info!("reelvault_start_embedded: booting embedded core");
-    let (db_path, data_dir, cache_dir) =
-        match unsafe { (cpath(db_path), cpath(data_dir), cpath(cache_dir)) } {
-            (Some(a), Some(b), Some(c)) => (a, b, c),
-            _ => return 0,
+    ffi_guard("start_embedded", 0, || {
+        let cell = EMBEDDED.get_or_init(|| Mutex::new(None));
+        let mut guard = match cell.lock() {
+            Ok(g) => g,
+            Err(_) => return 0,
         };
-    match boot(db_path, data_dir, cache_dir) {
-        Ok((rt, port)) => {
-            tracing::info!("reelvault_start_embedded: serving on 127.0.0.1:{port}");
-            *guard = Some(Embedded { rt, port });
-            port
+        if let Some(existing) = guard.as_ref() {
+            return existing.port; // already booted
         }
-        Err(e) => {
-            tracing::error!("reelvault_start_embedded failed: {e}");
-            0
+        init_logging();
+        // Select the rustls crypto provider before any TLS work — the post-index
+        // sensor fetch (reqwest) builds a rustls 0.23 ClientConfig that otherwise
+        // panics (both aws-lc-rs and ring are compiled in). See
+        // `crate::install_crypto_provider`.
+        crate::install_crypto_provider();
+        tracing::info!("reelvault_start_embedded: booting embedded core");
+        let (db_path, data_dir, cache_dir) =
+            match unsafe { (cpath(db_path), cpath(data_dir), cpath(cache_dir)) } {
+                (Some(a), Some(b), Some(c)) => (a, b, c),
+                _ => return 0,
+            };
+        match boot(db_path, data_dir, cache_dir) {
+            Ok((rt, port)) => {
+                tracing::info!("reelvault_start_embedded: serving on 127.0.0.1:{port}");
+                *guard = Some(Embedded { rt, port });
+                port
+            }
+            Err(e) => {
+                tracing::error!("reelvault_start_embedded failed: {e}");
+                0
+            }
         }
-    }
+    })
 }
 
 /// Park the embedded server when the app is suspended. Shuts the runtime down in
@@ -204,13 +228,15 @@ pub extern "C" fn reelvault_start_embedded(
 /// boots a fresh one. Safe to call when nothing is running.
 #[no_mangle]
 pub extern "C" fn reelvault_stop_embedded() {
-    if let Some(cell) = EMBEDDED.get() {
-        if let Ok(mut guard) = cell.lock() {
-            if let Some(embedded) = guard.take() {
-                embedded.rt.shutdown_background();
+    ffi_guard("stop_embedded", (), || {
+        if let Some(cell) = EMBEDDED.get() {
+            if let Ok(mut guard) = cell.lock() {
+                if let Some(embedded) = guard.take() {
+                    embedded.rt.shutdown_background();
+                }
             }
         }
-    }
+    })
 }
 
 // ===========================================================================
@@ -375,12 +401,14 @@ impl MediaBackend for NativeMediaBackend {
 /// race over the default CLI backend (which can't run in the iOS sandbox).
 #[no_mangle]
 pub extern "C" fn reelvault_register_media_backend(callbacks: NativeMediaCallbacks) {
-    init_logging();
-    // Swift may register the backend (and trigger media work) before
-    // `reelvault_start_embedded`; install the rustls provider here too. Idempotent.
-    crate::install_crypto_provider();
-    set_backend(Arc::new(NativeMediaBackend { cb: callbacks }));
-    tracing::info!("native media backend registered");
+    ffi_guard("register_media_backend", (), || {
+        init_logging();
+        // Swift may register the backend (and trigger media work) before
+        // `reelvault_start_embedded`; install the rustls provider here too. Idempotent.
+        crate::install_crypto_provider();
+        set_backend(Arc::new(NativeMediaBackend { cb: callbacks }));
+        tracing::info!("native media backend registered");
+    })
 }
 
 /// Ingest one Photos video into the on-device catalog (docs/IOS_CORE_PORT.md
