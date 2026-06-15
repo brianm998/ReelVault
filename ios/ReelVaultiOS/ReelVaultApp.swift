@@ -7,11 +7,18 @@ import ReelVaultKit
 @main
 struct ReelVaultApp: App {
     @StateObject private var router = AppRouter()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(router)
+                // Returning to the foreground re-runs the incremental on-device
+                // ingest so videos added to Photos while suspended get caught up
+                // (no-op outside Local mode). Pairs with the live observer.
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active { router.foregroundCatchUp() }
+                }
                 // Always dark, like the macOS + desktop clients: black/near-black
                 // backgrounds and white text. `.dark` makes the system
                 // background/label colors resolve to their dark variants.

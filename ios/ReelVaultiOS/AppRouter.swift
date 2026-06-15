@@ -206,6 +206,24 @@ final class AppRouter: ObservableObject {
         }
     }
 
+    /// Returning to the foreground in Local mode: re-run the (now incremental,
+    /// see `reelvault_is_video_indexed`) on-device ingest so any videos added to
+    /// Photos *while the app was suspended* get picked up. This is the idempotent
+    /// catch-up that pairs with the live `PHPhotoLibraryChangeObserver`, which
+    /// only fires while we're running. Cheap when nothing changed (every already-
+    /// indexed asset is skipped). No-op outside Local mode (a remote server's own
+    /// watcher + the CatalogEvents stream handle freshness there).
+    func foregroundCatchUp() {
+        guard case .connected = phase, connection == nil else { return }
+        Task {
+            if CommandLine.arguments.contains("--ingest-container") {
+                await ContainerIngest.run()
+            } else {
+                await PhotoLibraryIngest.run()
+            }
+        }
+    }
+
     /// Connect to a manually-entered server (from the error screen). Assumes the
     /// server requires pairing (the daemon's LAN bind is auth=pin by default).
     func connectManually(host: String, port: Int, fingerprintHex: String?) {

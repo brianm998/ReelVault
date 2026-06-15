@@ -476,3 +476,32 @@ pub extern "C" fn reelvault_ingest_path(path: *const c_char, filename: *const c_
         }
     }
 }
+
+/// Has `display_path` already been cataloged? Lets the Swift enumerators skip
+/// re-probing assets that are already indexed, so a relaunch over an unchanged
+/// library is near-instant instead of re-running the (expensive) AVFoundation
+/// probe + thumbnail for every asset. `display_path` is the same string the
+/// matching `reelvault_ingest_*` would use (`photos://<localId>` or a file
+/// path). Returns 1 if a row exists, 0 if not, negative on error. A missing
+/// thumbnail for an already-indexed row is regenerated on demand by
+/// `GetThumbnail`, so skipping here can't strand a row without a preview.
+///
+/// # Safety
+/// `display_path` must be a NUL-terminated C string.
+#[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)] // FFI boundary; pointer validated via `cstring`
+pub extern "C" fn reelvault_is_video_indexed(display_path: *const c_char) -> i32 {
+    let ctx = match INGEST.get() {
+        Some(c) => c,
+        None => return -1,
+    };
+    let path = match unsafe { cstring(display_path) } {
+        Some(s) if !s.is_empty() => s,
+        _ => return -2,
+    };
+    match ctx.db.get_video_by_path(&path) {
+        Ok(Some(_)) => 1,
+        Ok(None) => 0,
+        Err(_) => -3,
+    }
+}
