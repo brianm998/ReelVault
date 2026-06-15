@@ -35,8 +35,20 @@ import com.reelvault.data.ReleaseInfo
 import com.reelvault.data.UpdateChecker
 import com.reelvault.data.models.CatalogInfo
 import com.reelvault.data.repository.VideoRepository
+import com.reelvault.data.remote.DefaultServerStore
+import com.reelvault.data.remote.DiscoveredServer
+import com.reelvault.data.remote.PairingClient
+import com.reelvault.data.remote.RemoteConnection
+import com.reelvault.data.remote.ServerChoice
+import com.reelvault.data.remote.ServerDiscovery
+import com.reelvault.data.remote.TokenStore
+import com.reelvault.data.remote.hostIsLocalMachine
+import com.reelvault.data.remote.localIpv4Addresses
 import com.reelvault.data.server.RecentCatalogs
 import com.reelvault.data.server.ServerLauncher
+import com.reelvault.ui.screens.DiscoveringScreen
+import com.reelvault.ui.screens.PairingCodeEntryScreen
+import com.reelvault.ui.screens.ServerPickerScreen
 import com.reelvault.ui.screens.GridScreen
 import com.reelvault.ui.screens.DetailScreen
 import com.reelvault.ui.screens.DetailViewScreen
@@ -928,6 +940,19 @@ fun ReelVaultApp(
     val scope = rememberCoroutineScope()
     var connectionState by remember { mutableStateOf(ConnectionState.Connecting) }
 
+    // Remote-mode startup state: discovery + picker + pairing. Local mode is the
+    // historical default; these only come into play when a remote daemon is the
+    // chosen source (or saved as the default).
+    val discovery = remember { ServerDiscovery() }
+    val pairingClient = remember { PairingClient() }
+    val tokenStore = remember { TokenStore() }
+    val defaultStore = remember { DefaultServerStore() }
+    var pickerChoices by remember { mutableStateOf<List<ServerChoice>>(emptyList()) }
+    var pairingServer by remember { mutableStateOf<DiscoveredServer?>(null) }
+    var pairingError by remember { mutableStateOf<String?>(null) }
+    var pairingBusy by remember { mutableStateOf(false) }
+    var pendingMakeDefault by remember { mutableStateOf(false) }
+
     // Open the location picker on a set of videos, framed on `initial` (the
     // current location for an "update", or null to frame on all data for an
     // "add"). Awaits the location loads first so the picker's bbox framing sees
@@ -1005,65 +1030,208 @@ fun ReelVaultApp(
         onRegisterShowHelp { showHelpDialog = true }
     }
 
+    // ─── Connection arbitration (local loopback vs. remote LAN daemon) ──────
+    //
+    // After a successful connect, settle the catalog. A remote daemon owns its
+    // catalog server-side; a local one with nothing open falls back to the
+    // recents head or the open-catalog prompt (the historical behavior).
+    suspend fun afterConnected(isRemote: Boolean) {
+        val existing = repository.getCurrentCatalog()
+        if (existing.isOpen) {
+            currentCatalog = existing
+            // Recents are local file paths — a remote daemon's catalog path
+            // isn't openable here, so don't pollute the local recents with it.
+            if (!isRemote) recents.touch(existing.path)
+            loadAfterCatalogOpened()
+        } else if (isRemote) {
+            errorMessage = "The remote server has no catalog open. Open a catalog " +
+                "on the server, then reconnect."
+            connectionState = ConnectionState.Failed
+        } else {
+            val head = recents.list().firstOrNull { java.io.File(it).exists() }
+            if (head != null) openCatalog(head)
+            else { openDialogIsStartup = true; showOpenCatalogDialog = true }
+        }
+    }
+
+    // Connect to the loopback daemon on [port] (plaintext, no token).
+    suspend fun connectLocal(port: Int) {
+        connectionState = ConnectionState.Connecting
+        val ok = repository.connect(overridePort = port)
+        if (!ok) {
+            errorMessage = "Connected to port $port but the daemon didn't respond"
+            connectionState = ConnectionState.Failed
+            return
+        }
+        RemoteConnection.endpoint = null
+        connectionState = ConnectionState.Connected
+        afterConnected(isRemote = false)
+    }
+
+    // Spawn a local daemon and connect to it (the no-server-found fallback).
+    suspend fun startLocalDaemon() {
+        connectionState = ConnectionState.Connecting
+        val listening = withContext(Dispatchers.IO) {
+            launcher.launch(preferredPort = 50051, dbPath = null)
+        }
+        if (listening == null) {
+            errorMessage = "Couldn't start the ReelVault backend. " +
+                "Set REELVAULT_CORE_BIN or build core with `cargo build`."
+            connectionState = ConnectionState.Failed
+            return
+        }
+        connectLocal(listening.port)
+    }
+
+    // Connect to a remote daemon with a known token. Persists token (+ default if
+    // asked) on success; on failure drops the stored token/default so the next
+    // attempt re-pairs instead of looping on a revoked credential.
+    suspend fun connectRemoteWith(server: DiscoveredServer, token: String, makeDefault: Boolean) {
+        val fp = server.fingerprintHex
+        if (fp == null) {
+            errorMessage = "Couldn't verify the server's identity (no certificate fingerprint)."
+            connectionState = ConnectionState.Failed
+            return
+        }
+        connectionState = ConnectionState.Connecting
+        val ok = repository.connectRemote(server.host, server.grpcPort, fp, token)
+        if (!ok) {
+            tokenStore.clear(fp)
+            defaultStore.clear()
+            errorMessage = "Couldn't connect to ${server.displayName}. The pairing may " +
+                "have been revoked — choose the server again to re-pair."
+            connectionState = ConnectionState.Failed
+            return
+        }
+        tokenStore.set(fp, token)
+        RemoteConnection.endpoint = RemoteConnection.Endpoint(server.host, server.mediaPort, fp, token)
+        if (makeDefault) defaultStore.saveRemote(server)
+        connectionState = ConnectionState.Connected
+        afterConnected(isRemote = true)
+    }
+
+    // Choose a remote server: reuse a stored token, else fetch the fingerprint
+    // (TOFU for a manual host) and enter the pairing-code flow.
+    suspend fun chooseRemote(server: DiscoveredServer, makeDefault: Boolean) {
+        connectionState = ConnectionState.Connecting
+        val fp = server.fingerprintHex
+            ?: pairingClient.fetchFingerprint(server.host, server.mediaPort)
+        if (fp == null) {
+            errorMessage = "Couldn't reach ${server.displayName} to verify its identity."
+            connectionState = ConnectionState.Failed
+            return
+        }
+        val resolved = server.copy(fingerprintHex = fp)
+        val existing = tokenStore.get(fp)
+        if (existing != null) {
+            connectRemoteWith(resolved, existing, makeDefault)
+            return
+        }
+        // Need to pair: show the code-entry screen and nudge the operator's
+        // desktop to reveal a code via /pair/request.
+        pairingServer = resolved
+        pairingError = null
+        pendingMakeDefault = makeDefault
+        connectionState = ConnectionState.NeedsPairing
+        scope.launch { pairingClient.requestPairing(resolved.host, resolved.mediaPort, fp) }
+    }
+
+    // Redeem the entered 6-digit code for a token, then connect.
+    fun submitPairingCode(code: String) {
+        val server = pairingServer ?: return
+        val fp = server.fingerprintHex ?: return
+        scope.launch {
+            pairingBusy = true
+            pairingError = null
+            val token = pairingClient.pair(server.host, server.mediaPort, fp, code)
+            pairingBusy = false
+            if (token == null) {
+                pairingError = "Incorrect or expired code. Ask the server to show a new one."
+                return@launch
+            }
+            connectRemoteWith(server, token, pendingMakeDefault)
+        }
+    }
+
+    // The startup picker's selection handler.
+    fun onPickerChoice(choice: ServerChoice, makeDefault: Boolean) {
+        scope.launch {
+            when (choice) {
+                is ServerChoice.Local -> {
+                    if (makeDefault) defaultStore.saveLocal(choice.port)
+                    connectLocal(choice.port)
+                }
+                is ServerChoice.Remote -> chooseRemote(choice.server, makeDefault)
+            }
+        }
+    }
+
     /**
-     * Try to connect to the backend. The flow:
-     *   1. If a daemon is already listening on the default port, reuse it.
-     *   2. Otherwise spawn one with no catalog mounted yet.
-     *   3. Then ask the daemon what catalog it has open. If none, prompt.
-     *   4. If the daemon's existing catalog matches our recents-head, just go.
+     * Decide what to connect to at startup (mirrors the macOS arbitration):
+     *   • A saved default → connect straight to it (re-pair if the token is gone).
+     *   • Otherwise scan BOTH Wi-Fi (mDNS) and loopback:
+     *       – both a local daemon AND a distinct remote → ask (picker).
+     *       – exactly one source → connect to it.
+     *       – none → spawn a local daemon.
      */
     fun attemptConnect() {
         scope.launch {
             connectionState = ConnectionState.Connecting
 
-            // Step 1: probe the default port.
-            val defaultPort = 50051
-            val reachable = withContext(Dispatchers.IO) {
-                launcher.isReachable("127.0.0.1", defaultPort)
-            }
-
-            // Step 2: if not reachable, spawn our own daemon.
-            val port = if (reachable) {
-                defaultPort
-            } else {
-                val listening = withContext(Dispatchers.IO) {
-                    launcher.launch(preferredPort = defaultPort, dbPath = null)
+            // A remembered default short-circuits arbitration.
+            val def = defaultStore.load()
+            if (def != null) {
+                if (!def.isRemote) {
+                    val port = def.grpcPort
+                    val reachable = withContext(Dispatchers.IO) { launcher.isReachable("127.0.0.1", port) }
+                    if (reachable) connectLocal(port) else startLocalDaemon()
+                } else {
+                    val fp = def.fingerprintHex
+                    val token = fp?.let { tokenStore.get(it) }
+                    if (fp != null && token != null) {
+                        connectRemoteWith(def.asDiscoveredServer(), token, makeDefault = false)
+                    } else {
+                        // Default points at a remote but the token's gone (or we
+                        // never had a pin) — re-pair against it.
+                        chooseRemote(def.asDiscoveredServer(), makeDefault = false)
+                    }
                 }
-                if (listening == null) {
-                    errorMessage = "Couldn't start the ReelVault backend. " +
-                        "Set REELVAULT_CORE_BIN or build core with `cargo build`."
-                    connectionState = ConnectionState.Failed
-                    return@launch
-                }
-                listening.port
-            }
-
-            val ok = repository.connect(overridePort = port)
-            if (!ok) {
-                errorMessage = "Connected to port $port but the daemon didn't respond"
-                connectionState = ConnectionState.Failed
                 return@launch
             }
-            connectionState = ConnectionState.Connected
 
-            // Step 3: discover what catalog (if any) the daemon already has open.
-            val existing = repository.getCurrentCatalog()
-            if (existing.isOpen) {
-                currentCatalog = existing
-                recents.touch(existing.path)
-                loadAfterCatalogOpened()
-            } else {
-                // Step 4: nothing open — pick one. Use the most-recent if it
-                // still exists for one-click "resume", otherwise prompt.
-                val head = recents.list().firstOrNull { java.io.File(it).exists() }
-                if (head != null) {
-                    openCatalog(head)
-                } else {
-                    openDialogIsStartup = true
-                    showOpenCatalogDialog = true
+            // No default: scan Wi-Fi + loopback and arbitrate.
+            connectionState = ConnectionState.Discovering
+            val loopback = withContext(Dispatchers.IO) { launcher.isReachable("127.0.0.1", 50051) }
+            val localIps = withContext(Dispatchers.IO) { localIpv4Addresses() }
+            val discovered = discovery.discover(timeoutMs = if (loopback) 2000 else 3000)
+            // Drop a same-machine `--remote` daemon (advertised on a local IP) —
+            // it's the loopback process, not a separate server. Blocking DNS, so
+            // off the main thread.
+            val remotes = withContext(Dispatchers.IO) {
+                discovered.filter { !hostIsLocalMachine(it.host, localIps) }
+            }
+
+            when {
+                loopback && remotes.isNotEmpty() -> {
+                    pickerChoices = listOf(ServerChoice.Local(50051)) + remotes.map { ServerChoice.Remote(it) }
+                    connectionState = ConnectionState.Picker
                 }
+                loopback -> connectLocal(50051)
+                remotes.size == 1 -> chooseRemote(remotes.first(), makeDefault = false)
+                remotes.size > 1 -> {
+                    pickerChoices = remotes.map { ServerChoice.Remote(it) }
+                    connectionState = ConnectionState.Picker
+                }
+                else -> startLocalDaemon()
             }
         }
+    }
+
+    // Drop any saved default and return to a fresh scan (offered on the error
+    // screen, and reused by the runtime switcher).
+    fun rescanForServers() {
+        defaultStore.clear()
+        attemptConnect()
     }
 
     LaunchedEffect(Unit) { attemptConnect() }
@@ -2247,22 +2415,44 @@ fun ReelVaultApp(
                         recents = recents,
                     )
                 }
-            } else if (connectionState == ConnectionState.Connecting) {
-                // Friendly loading screen while we attempt to reach the backend.
-                ConnectingScreen()
-            } else {
-                // Connection failed — error screen with retry.
-                ConnectionErrorScreen(
-                    errorMessage = errorMessage,
-                    onRetry = { attemptConnect() }
-                )
+            } else when (connectionState) {
+                ConnectionState.Connecting ->
+                    // Friendly loading screen while we attempt to reach the backend.
+                    ConnectingScreen()
+                ConnectionState.Discovering ->
+                    DiscoveringScreen()
+                ConnectionState.Picker ->
+                    ServerPickerScreen(
+                        choices = pickerChoices,
+                        onChoose = { choice, makeDefault -> onPickerChoice(choice, makeDefault) },
+                    )
+                ConnectionState.NeedsPairing -> {
+                    val server = pairingServer
+                    if (server != null) {
+                        PairingCodeEntryScreen(
+                            server = server,
+                            errorText = pairingError,
+                            busy = pairingBusy,
+                            onSubmit = { submitPairingCode(it) },
+                            onCancel = { rescanForServers() },
+                        )
+                    } else ConnectingScreen()
+                }
+                else ->
+                    // Connection failed — error screen with retry / pick-another.
+                    ConnectionErrorScreen(
+                        errorMessage = errorMessage,
+                        onRetry = { attemptConnect() },
+                        onChooseDifferentServer = { rescanForServers() },
+                    )
             }
         }
     }
 }
 
-/** Three-state connection lifecycle for the startup flow. */
-private enum class ConnectionState { Connecting, Connected, Failed }
+/** Connection lifecycle for the startup flow. [Discovering]/[Picker]/[NeedsPairing]
+ *  drive the remote-mode arbitration; the rest are the original local flow. */
+private enum class ConnectionState { Connecting, Discovering, Picker, NeedsPairing, Connected, Failed }
 
 @Composable
 fun ConnectingScreen() {
@@ -3681,7 +3871,8 @@ fun AddLibraryDialog(
 @Composable
 fun ConnectionErrorScreen(
     errorMessage: String,
-    onRetry: () -> Unit = {}
+    onRetry: () -> Unit = {},
+    onChooseDifferentServer: (() -> Unit)? = null,
 ) {
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -3743,6 +3934,15 @@ fun ConnectionErrorScreen(
                     )
                     Spacer(modifier = Modifier.width(ReelVaultSpacing.Small))
                     Text("Retry")
+                }
+            }
+
+            // Clears any saved default and re-scans Wi-Fi + loopback — the escape
+            // hatch when a saved remote server is gone or its pairing was revoked.
+            if (onChooseDifferentServer != null) {
+                Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
+                TextButton(onClick = onChooseDifferentServer) {
+                    Text("Choose a Different Server…")
                 }
             }
         }

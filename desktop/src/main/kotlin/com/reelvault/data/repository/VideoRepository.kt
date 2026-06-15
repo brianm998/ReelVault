@@ -5,8 +5,18 @@ package com.reelvault.data.repository
 
 import com.reelvault.data.models.*
 import com.reelvault.data.models.Collection as VideoCollection
+import com.reelvault.data.remote.PinnedTls
+import io.grpc.CallOptions
+import io.grpc.Channel
+import io.grpc.ClientCall
+import io.grpc.ClientInterceptor
+import io.grpc.ClientInterceptors
+import io.grpc.ForwardingClientCall
 import io.grpc.ManagedChannel
 import io.grpc.ManagedChannelBuilder
+import io.grpc.Metadata
+import io.grpc.MethodDescriptor
+import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -29,7 +39,9 @@ private fun AttributeFilterState.toProto(): Reelvault.AttributeFilter = when (th
  * Repository for communicating with the ReelVault Rust backend via gRPC.
  */
 class VideoRepository(
-    private val host: String = "localhost",
+    /** Host the repository talks to; mutable so it can flip between the local
+     *  loopback daemon and a remote LAN daemon at runtime. */
+    private var host: String = "localhost",
     /** Initial port; mutable so [connect] can target a freshly-spawned daemon. */
     private var port: Int = 50051
 ) {
@@ -41,6 +53,12 @@ class VideoRepository(
     /** Port the repository is currently configured to talk to. */
     val currentPort: Int get() = port
 
+    /** True when connected to a remote (TLS-pinned, token-authed) daemon over the
+     *  LAN rather than the loopback plaintext daemon. */
+    @Volatile
+    var isRemote: Boolean = false
+        private set
+
     /**
      * Try to connect to the daemon at the configured (or supplied) port.
      * Returns `true` if the GetStatus probe succeeds; on failure the
@@ -51,6 +69,10 @@ class VideoRepository(
      */
     suspend fun connect(overridePort: Int? = null): Boolean = withContext(Dispatchers.IO) {
         overridePort?.let { port = it }
+        // Local mode is always the loopback daemon, plaintext, no token. Reset the
+        // host in case we were previously pointed at a remote LAN daemon.
+        host = "localhost"
+        isRemote = false
         // Tear down any stale channel before reconnecting.
         try { channel?.shutdownNow() } catch (_: Exception) {}
         channel = null
@@ -71,6 +93,46 @@ class VideoRepository(
             channel?.shutdown()
             channel = null
             stub = null
+            false
+        }
+    }
+
+    /**
+     * Connect to a REMOTE daemon over the LAN: TLS pinned to [fingerprintHex]
+     * (the cert's SHA-256), with every gRPC call carrying `authorization: Bearer
+     * <token>`. The authority is overridden to `localhost` (always a cert SAN)
+     * so the shaded-Netty hostname check passes even when dialing a bare LAN IP —
+     * we pin by fingerprint, so the name is irrelevant. Returns `true` if the
+     * GetStatus probe (which exercises the token) succeeds.
+     */
+    suspend fun connectRemote(
+        host: String, grpcPort: Int, fingerprintHex: String, token: String
+    ): Boolean = withContext(Dispatchers.IO) {
+        this@VideoRepository.host = host
+        this@VideoRepository.port = grpcPort
+        try { channel?.shutdownNow() } catch (_: Exception) {}
+        channel = null
+        stub = null
+        isRemote = false
+        return@withContext try {
+            val mc = NettyChannelBuilder.forAddress(host, grpcPort)
+                .overrideAuthority("localhost")
+                .sslContext(PinnedTls.grpcSslContext(fingerprintHex))
+                .build()
+            channel = mc
+            val authed: Channel = ClientInterceptors.intercept(mc, BearerTokenInterceptor(token))
+            stub = ReelVaultGrpcKt.ReelVaultCoroutineStub(authed)
+
+            stub!!.getStatus(Reelvault.GetStatusRequest.newBuilder().build())
+            isRemote = true
+            logger.info("Connected to REMOTE ReelVault backend at $host:$grpcPort (pinned)")
+            true
+        } catch (e: Exception) {
+            logger.error("Failed to connect to remote backend $host:$grpcPort: ${e.message}")
+            channel?.shutdown()
+            channel = null
+            stub = null
+            isRemote = false
             false
         }
     }
@@ -1579,3 +1641,24 @@ data class ScanProgress(
     val currentFile: String,
     val progressPercent: Double
 )
+
+/** Attaches `authorization: Bearer <token>` to every outgoing gRPC call — the
+ *  credential a remote (non-loopback) daemon requires after pairing. */
+private class BearerTokenInterceptor(token: String) : ClientInterceptor {
+    private val header = "Bearer $token"
+    private val key = Metadata.Key.of("authorization", Metadata.ASCII_STRING_MARSHALLER)
+
+    override fun <ReqT, RespT> interceptCall(
+        method: MethodDescriptor<ReqT, RespT>,
+        callOptions: CallOptions,
+        next: Channel,
+    ): ClientCall<ReqT, RespT> =
+        object : ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(
+            next.newCall(method, callOptions)
+        ) {
+            override fun start(responseListener: Listener<RespT>, headers: Metadata) {
+                headers.put(key, header)
+                super.start(responseListener, headers)
+            }
+        }
+}

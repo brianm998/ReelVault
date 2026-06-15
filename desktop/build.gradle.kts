@@ -38,6 +38,14 @@ dependencies {
     implementation("com.google.protobuf:protobuf-kotlin:3.24.0")
     implementation("com.google.protobuf:protobuf-java:3.24.0")
 
+    // Remote (LAN) connection mode. mDNS discovery of `_reelvault._tcp`
+    // daemons (pure-Java, no native code), and a fingerprint-pinned HTTPS
+    // client for pairing + the loopback HLS proxy that feeds libVLC. OkHttp is
+    // used (not the shaded gRPC Netty stack) because it lets us pin a
+    // self-signed cert by fingerprint and bypass name-based hostname checks.
+    implementation("org.jmdns:jmdns:3.5.9")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
     // Logging
     implementation("org.slf4j:slf4j-api:2.0.7")
     implementation("ch.qos.logback:logback-classic:1.4.11")
