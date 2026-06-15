@@ -870,3 +870,43 @@ Symbols are current; line numbers drift — re-grep the symbol before editing.
   remote-only, `AppRouter` discovery→connect; mDNS + pinned TLS + pairing.
 - `macos/.../ServerLauncher.swift` — spawns the bundled daemon, connects
   `.plaintext` to `127.0.0.1:50051` (the model the iOS embed mirrors in-process).
+
+---
+
+## 13. Implementation status & parity matrix
+
+Status as of 2026-06-14 (`develop`). Phases 0–4 landed and were verified on the
+iOS Simulator and a real iPhone 16 Pro; Phase 5 not started.
+
+| Phase | State | Notes |
+|---|---|---|
+| 0 — Embed scaffold | ✅ done, device-verified | in-process gRPC over loopback |
+| 1 — `MediaBackend` trait + CLI | ✅ done | process-global backend (not a threaded `Arc`); desktop unchanged |
+| 2 — `NativeMediaBackend` | ✅ mostly | probe/probe_color/extract_frame/transcode_proxy done; `extract_loudness` stubbed (see below); ProRes RAW unverified |
+| 3 — Ingest (Photos / Files) | ◑ Photos done; Files pending | Photos enumerate + incremental + live observer + foreground catch-up done; **Files (bookmark) ingest not done**; removals (deleted Photos) need a remove-by-localId FFI |
+| 4 — Parity polish | ◑ mostly | reqwest, iOS concurrency cap, thermal backoff, foreground catch-up, this matrix done; **BGProcessingTask deferred** |
+| 5 — libav fallback | ❌ not started | needs iOS-cross-compiled FFmpeg static libs |
+
+### Feature parity matrix (deliberate gaps called out)
+
+| Feature | Desktop / macOS | iOS remote | iOS local | Notes |
+|---|---|---|---|---|
+| Grid / list / detail / map | ✅ | ✅ | ✅ | |
+| Metadata inspector | ✅ | ✅ | ✅ | |
+| Tags / ratings / color labels / collections / smart collections | ✅ | ✅ | ✅ | catalog-only writes |
+| Search / filter / facets | ✅ | ✅ | ✅ | |
+| Thumbnails (incl. scrub) | ✅ | ✅ | ✅ | local via AVAssetImageGenerator |
+| Playback | native file/proxy | HLS / range stream | direct `AVPlayer` | local: `photos://`→PHImageManager else file URL |
+| Proxy generation | ffmpeg | server-side | AVAssetExportSession | |
+| Stacking / grouping | ✅ | ✅ | ✅ | |
+| Editor hand-off | drag-and-drop | share sheet | share sheet | **deliberate**: iOS replaces D&D with share |
+| Upload | n/a | resumable PUT → import dir | n/a | local has no server to upload to |
+| Ingest source | filesystem scan | server scans | Photos (+ Files pending) | |
+| Live updates | `notify` watcher | server watcher → CatalogEvents | PHPhotoLibraryChangeObserver + foreground catch-up | |
+| XMP read | ✅ (native) | ✅ | ✅ | |
+| XMP **write** | ✅ (exiftool) | ❌ | ❌ | **deliberate** (D5): defer |
+| In-place tag write (creation time / GPS → file) | ✅ (exiftool) | ❌ | ❌ | **deliberate** (D4): catalog-only; can't rewrite a Photos original |
+| Audio loudness graph | ✅ (DetailGraphsPanel) | ❌ (no UI) | ❌ (no UI + stub) | iOS has no loudness-graph view yet; native loudness lands with it |
+| Keyboard shortcuts | ✅ | iPad+keyboard | iPad+keyboard | **deliberate**: not iPhone |
+| ProRes RAW thumbnails | ✅ (macOS AVFoundation helper) | server-side | ⚠ unverified | needs RAW footage on device; may go to Phase 5 |
+| Exotic codecs (AVFoundation can't open) | ✅ (ffmpeg) | server-side | ❌ | Phase 5 libav fallback |
