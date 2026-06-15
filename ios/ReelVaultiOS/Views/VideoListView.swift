@@ -21,8 +21,9 @@ struct VideoListView: View {
                 description: Text("The connected catalog is empty, or no videos match the current filter.")
             )
         } else {
+            let rows = stackRenderedVideos(grid)
             List {
-                ForEach(stackRenderedVideos(grid)) { row in
+                ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
                     let video = row.video
                     VideoListRow(
                         video: video,
@@ -55,7 +56,23 @@ struct VideoListView: View {
                             onRemoveFromStack: { grid.removeFromStack(videoId: video.id, groupId: video.groupId) },
                             onUnstack: { grid.unstackGroup(groupId: video.groupId) })
                     }
-                    .onAppear { grid.loadThumbnail(videoId: video.id) }
+                    .onAppear {
+                        grid.loadThumbnail(videoId: video.id)
+                        // Page in the next batch as the user nears the end (see
+                        // VideoGridView) — otherwise list mode is capped at the
+                        // first page of a large catalog.
+                        if index >= rows.count - 8 && grid.hasMore {
+                            grid.loadMore()
+                        }
+                    }
+                }
+                if grid.hasMore {
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                        Spacer()
+                    }
+                    .listRowSeparator(.hidden)
                 }
             }
             .listStyle(.plain)

@@ -89,8 +89,9 @@ struct VideoGridView: View {
                             .padding(.top, 80)
                         }
                     } else {
+                        let rows = stackRenderedVideos(grid)
                         LazyVGrid(columns: columns, spacing: spacing) {
-                            ForEach(stackRenderedVideos(grid)) { row in
+                            ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
                                 let video = row.video
                                 VideoCardView(
                                     video: video,
@@ -117,8 +118,25 @@ struct VideoGridView: View {
                                     onRemoveFromStack: { grid.removeFromStack(videoId: video.id, groupId: video.groupId) },
                                     onUnstack: { grid.unstackGroup(groupId: video.groupId) }
                                 )
-                                .onAppear { grid.loadThumbnail(videoId: video.id) }
+                                .onAppear {
+                                    grid.loadThumbnail(videoId: video.id)
+                                    // Page in the next batch as the user nears the
+                                    // end — without this the grid is stuck at the
+                                    // first page (pageSize) of a large catalog.
+                                    // Counts rendered rows (incl. expanded stack
+                                    // members), which only over-estimates, so we
+                                    // page slightly early — harmless.
+                                    if index >= rows.count - 8 && grid.hasMore {
+                                        grid.loadMore()
+                                    }
+                                }
                                 .id(row.id)
+                            }
+                            if grid.hasMore {
+                                ProgressView()
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .gridCellColumns(max(1, cols))
                             }
                         }
                         .padding(spacing)
