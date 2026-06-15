@@ -448,6 +448,23 @@ fn is_allowed_hls_file(file: &str) -> bool {
     }
 }
 
+/// Bump when transcode decisions change so cached renditions (HLS sessions AND
+/// the one-shot MP4s) written by an older daemon are re-transcoded instead of
+/// blindly reused. v2: never copy-mux / emit a non-8-bit-4:2:0 track (older
+/// daemons could, leaving audio-only renditions cached on disk that survived the
+/// daemon upgrade).
+const MEDIA_CACHE_VERSION: &str = "v2";
+
+/// A completed, *reusable* HLS session: `index.m3u8` present and `.complete`
+/// written by THIS daemon version. An older/empty marker is treated as not-ready
+/// so the session is rebuilt with the current logic.
+fn hls_session_ready(dir: &Path) -> bool {
+    dir.join("index.m3u8").exists()
+        && std::fs::read(dir.join(".complete"))
+            .map(|c| c == MEDIA_CACHE_VERSION.as_bytes())
+            .unwrap_or(false)
+}
+
 /// Ensure an HLS session dir for `(id, height)` exists and return it, blocking
 /// the *first* request only until the media playlist `index.m3u8` appears (or
 /// the transcode fails / times out). We gate on `index.m3u8` (which always has
@@ -460,7 +477,7 @@ async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option
     let dir = state.cache_dir.join("hls").join(format!("{id}_{height}"));
     let index = dir.join("index.m3u8");
     let complete = dir.join(".complete");
-    if complete.exists() && index.exists() {
+    if hls_session_ready(&dir) {
         return Some(dir);
     }
 
@@ -475,7 +492,7 @@ async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option
     };
     let guard = lock.lock().await;
     let failed = dir.join(".failed");
-    if complete.exists() && index.exists() {
+    if hls_session_ready(&dir) {
         drop(guard);
         return Some(dir);
     }
@@ -484,9 +501,15 @@ async fn ensure_hls_session(state: &MediaState, id: &str, height: i32) -> Option
     // (recent mtime) means another request's ffmpeg is running — *including* the
     // few-second window before master.m3u8 first appears, when a second request
     // would otherwise delete the directory out from under the live transcode.
-    // Only (re)start when there's no session, a failed one, or a dead/stale one
-    // (e.g. the daemon was SIGKILLed mid-transcode).
-    let running = (index.exists() || dir.exists()) && !failed.exists() && !dir_is_stale(&dir);
+    // Only (re)start when there's no session, a failed one, a dead/stale one
+    // (e.g. the daemon was SIGKILLed mid-transcode), or a COMPLETED one of the
+    // wrong version (a fresh same-version complete session already returned
+    // above; a `.complete` here means a stale-version session that must be
+    // rebuilt, not "joined" as if a live transcode were running).
+    let running = !complete.exists()
+        && (index.exists() || dir.exists())
+        && !failed.exists()
+        && !dir_is_stale(&dir);
     if !running {
         if dir.exists() {
             let _ = std::fs::remove_dir_all(&dir);
@@ -668,7 +691,7 @@ fn run_hls_transcode(dir: &Path, src: &str, height: i32, copy: bool) -> bool {
         match cmd.output() {
             Ok(o) if o.status.success() => {
                 ensure_endlist(&index);
-                let _ = std::fs::write(dir.join(".complete"), b"");
+                let _ = std::fs::write(dir.join(".complete"), MEDIA_CACHE_VERSION);
                 tracing::info!(
                     "hls: complete {} ({} segments)",
                     dir.file_name().and_then(|n| n.to_str()).unwrap_or("?"),
@@ -864,7 +887,9 @@ async fn ensure_downscaled(state: &MediaState, id: &str, src: &str, height: i32)
         return Some(PathBuf::from(proxy));
     }
     let dir = state.cache_dir.join("stream");
-    let out = dir.join(format!("{id}_{height}.mp4"));
+    // Versioned filename so a stale MP4 transcoded by an older daemon (e.g. before
+    // the yuv420p fix — a non-4:2:0 H.264 that plays audio-only) isn't reused.
+    let out = dir.join(format!("{id}_{height}.{MEDIA_CACHE_VERSION}.mp4"));
     if out.exists() {
         return Some(out);
     }
@@ -885,7 +910,7 @@ async fn ensure_downscaled(state: &MediaState, id: &str, src: &str, height: i32)
         return None;
     }
 
-    let out_tmp = dir.join(format!(".{id}_{height}.tmp.mp4"));
+    let out_tmp = dir.join(format!(".{id}_{height}.{MEDIA_CACHE_VERSION}.tmp.mp4"));
     let out_tmp_for_job = out_tmp.clone();
     let src = src.to_string();
     let res = tokio::task::spawn_blocking(move || {
