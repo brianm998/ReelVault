@@ -427,14 +427,18 @@ class ComposeVideoPlayer(
         frame.value = null
         renderingHealthy.value = false
         frameCount = 0L
-        val file = java.io.File(path)
-        val exists = file.exists()
+        // A remote stream is an http(s) MRL (the loopback HLS proxy), not a local
+        // file — skip the filesystem existence probe so it isn't flagged "missing".
+        val isUrl = path.startsWith("http://", ignoreCase = true) ||
+            path.startsWith("https://", ignoreCase = true)
+        val file = if (isUrl) null else java.io.File(path)
+        val exists = isUrl || (file?.exists() == true)
         // Record up-front whether the file is even there so the unavailable
         // overlay can distinguish a moved/unmounted file from a missing libvlc.
         mediaMissing.value = !exists
-        logger.info("load(path={}, playImmediately={}): exists={} readable={} size={}",
-            path, playImmediately, exists, file.canRead(),
-            if (exists) file.length() else -1)
+        logger.info("load(path={}, playImmediately={}): url={} exists={} readable={} size={}",
+            path, playImmediately, isUrl, exists, file?.canRead() ?: false,
+            if (!isUrl && exists) file?.length() ?: -1 else -1)
         // Per-media input options. With preciseSeek, disable libvlc's default
         // fast (keyframe) seeking so setTime/setPosition land on the exact
         // requested frame rather than snapping to the nearest keyframe — this

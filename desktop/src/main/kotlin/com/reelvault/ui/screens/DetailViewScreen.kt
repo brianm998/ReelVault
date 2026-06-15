@@ -29,11 +29,15 @@ import com.reelvault.LocalAppWindow
 import com.reelvault.util.FileDragSource
 import com.reelvault.data.models.VideoMetadata
 import com.reelvault.data.models.VideoSummary
+import com.reelvault.data.remote.LoopbackMediaProxy
+import com.reelvault.data.remote.RemoteConnection
 import com.reelvault.ui.components.ComposeVideoPlayer
 import com.reelvault.ui.components.VlcUnavailableOverlay
 import com.reelvault.ui.theme.ReelVaultSpacing
 import com.reelvault.viewmodel.DetailViewModel
 import com.reelvault.viewmodel.GridViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.jetbrains.skia.Image as SkiaImage
 import org.slf4j.LoggerFactory
 
@@ -142,9 +146,22 @@ fun DetailViewScreen(
     // Player lifecycle: one player per selected video. Releasing on key change
     // ensures we don't leak libvlc handles when the user pages through videos.
     val player = remember(video.id) { ComposeVideoPlayer(preciseSeek = true) }
+
+    // Remote mode: there's no shared filesystem, so the player streams over HLS
+    // via a fingerprint-pinned loopback proxy (libVLC can't pin a self-signed
+    // cert itself). In local mode these stay null and nothing changes.
+    val remoteEndpoint = RemoteConnection.endpoint
+    val isRemote = remoteEndpoint != null
+    val streamProxy = remember(video.id) {
+        remoteEndpoint?.let { LoopbackMediaProxy(it) }
+    }
+    var remoteUrl by remember(video.id) { mutableStateOf<String?>(null) }
+    var preparingRemote by remember(video.id) { mutableStateOf(false) }
+
     DisposableEffect(video.id) {
         onDispose {
             player.release()
+            streamProxy?.stop()
             // Leaving this video (or the detail view) cancels any in-flight
             // hi-res thumbnail generation; returning resumes it.
             gridViewModel.cancelHiResDetail(video.id)
@@ -179,6 +196,23 @@ fun DetailViewScreen(
         detailViewModel.playbackPathFor(video, areaSize.height) ?: video.path
     }
 
+    // For remote playback, the target rendition height handed to the daemon's HLS
+    // endpoint: an explicitly-picked proxy's height, else the render area snapped to
+    // a standard rung. Snapping (vs. the raw pixel height) means routine window
+    // resizes don't keep re-triggering a transcode at a slightly different height.
+    val remoteHeight: Int = run {
+        val picked = proxies.firstOrNull { it.id == selectedProxyId }
+        if (picked != null) picked.height
+        else when (val h = areaSize.height) {
+            in 1..480 -> 480
+            in 481..720 -> 720
+            in 721..1080 -> 1080
+            in 1081..1440 -> 1440
+            in 1441..Int.MAX_VALUE -> 2160
+            else -> 720 // not yet measured
+        }
+    }
+
     // After a 2 s dwell on this video's detail view, upgrade its thumbnails to
     // the render resolution so scrubbing shows higher-res frames. The delay is
     // cancelled if the user leaves (key change), so a quick glance never
@@ -193,8 +227,29 @@ fun DetailViewScreen(
     // a video is already playing, swap the URL in place. Skip when the
     // player isn't active so we don't auto-start playback on selection.
     LaunchedEffect(effectivePath, playbackStarted) {
+        // Remote playback is driven by the dedicated effect below (it streams via
+        // the loopback proxy at remoteUrl, not from a local file path).
+        if (isRemote) return@LaunchedEffect
         if (playbackStarted && player.available) {
             player.load(effectivePath, playImmediately = true)
+        }
+    }
+
+    // Remote: when playback starts — or the target height changes because the user
+    // picked a different proxy — start the loopback proxy, wait until the stream is
+    // a seekable VOD (or we hit the cap), then load it into libVLC.
+    LaunchedEffect(isRemote, playbackStarted, remoteHeight, video.id) {
+        if (!isRemote || !playbackStarted) return@LaunchedEffect
+        val proxy = streamProxy ?: return@LaunchedEffect
+        preparingRemote = true
+        remoteUrl = null
+        val url = withContext(Dispatchers.IO) {
+            runCatching { proxy.prepare(video.id, remoteHeight) }.getOrNull()
+        }
+        preparingRemote = false
+        if (url != null) {
+            remoteUrl = url
+            if (player.available) player.load(url, playImmediately = true)
         }
     }
 
@@ -212,7 +267,9 @@ fun DetailViewScreen(
         if (playbackStarted) {
             player.togglePause()
         } else {
-            player.load(effectivePath, playImmediately = true)
+            // Remote: just flag playback; the remote prepare effect loads the
+            // stream once the proxy is ready. Local: load the file path now.
+            if (!isRemote) player.load(effectivePath, playImmediately = true)
             playbackStarted = true
         }
     }
@@ -251,7 +308,9 @@ fun DetailViewScreen(
     val startOrTogglePlayback: () -> Unit = {
         if (!playbackStarted) {
             playbackStarted = true
-            if (player.available) player.load(effectivePath, playImmediately = true)
+            // Remote streams load via the remote prepare effect once the proxy is
+            // ready; local plays the file path immediately.
+            if (!isRemote && player.available) player.load(effectivePath, playImmediately = true)
         } else {
             player.togglePause()
         }
@@ -337,6 +396,24 @@ fun DetailViewScreen(
                     hiResPosterBytes = hiResPosterMap[video.id],
                     modifier = Modifier.fillMaxSize().background(Color.Black)
                 )
+            }
+
+            // Remote stream warm-up: the daemon is transcoding/segmenting the
+            // requested rendition; show a spinner over the (black) surface until
+            // the playlist is a seekable VOD and libVLC can start.
+            if (isRemote && preparingRemote) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    CircularProgressIndicator(color = Color.White)
+                    Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
+                    Text(
+                        text = "Preparing stream…",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White,
+                    )
+                }
             }
 
             // Cycling info overlay (top-left).

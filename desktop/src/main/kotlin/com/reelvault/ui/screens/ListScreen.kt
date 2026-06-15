@@ -114,6 +114,9 @@ fun ListScreen(
         val path = playingVideoPath.value
             ?: videos.value.find { it.id == id }?.openPath
             ?: return@LaunchedEffect
+        // Remote mode streams in the detail view (loopback HLS proxy); inline card
+        // playback needs a local file path that doesn't exist here.
+        if (com.reelvault.data.remote.RemoteConnection.isRemote) return@LaunchedEffect
         inlinePlayer.load(path, playImmediately = true)
     }
     // libvlc forces each new media's volume to 100; reapply the user's level

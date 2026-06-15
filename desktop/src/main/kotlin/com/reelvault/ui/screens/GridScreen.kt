@@ -112,6 +112,11 @@ fun GridScreen(
                 gridScreenLogger.warn("playingVideoId={} but no openPath in video list", id)
                 return@LaunchedEffect
             }
+        if (com.reelvault.data.remote.RemoteConnection.isRemote) {
+            // Remote mode streams in the detail view (via the loopback HLS proxy);
+            // inline card playback would need a local file path that isn't here.
+            return@LaunchedEffect
+        }
         gridScreenLogger.info("Grid playback: loading {} into shared player", path)
         inlinePlayer.load(path, playImmediately = true)
     }
