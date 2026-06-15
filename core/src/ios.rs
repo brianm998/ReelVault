@@ -505,3 +505,62 @@ pub extern "C" fn reelvault_is_video_indexed(display_path: *const c_char) -> i32
         Err(_) => -3,
     }
 }
+
+/// Ingest one Files-app video via a security-scoped bookmark (D7 "Files
+/// second"). Swift resolves the document-picker URL, captures a bookmark
+/// (`bookmark`/`len` raw bytes) and the display `filename` (may be NULL). The
+/// row is keyed on `bookmark://<hex>` (mirrors `photos://<id>`: the filename is
+/// what the grid shows, while the path carries the bookmark so the native
+/// backend and on-device playback can both re-resolve the scoped URL).
+/// source_kind="bookmark", source_id=hex(bookmark). 0 on success, negative on
+/// error.
+///
+/// Note: bookmark bytes aren't stable for a given file, so re-importing the
+/// same file makes a new row (no path-based dedup) — acceptable for v1.
+///
+/// # Safety
+/// `bookmark` points to `len` readable bytes; `filename` is a NUL-terminated C
+/// string or NULL.
+#[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)] // FFI boundary; pointers validated below
+pub extern "C" fn reelvault_ingest_bookmark(
+    bookmark: *const u8,
+    len: usize,
+    filename: *const c_char,
+) -> i32 {
+    let ctx = match INGEST.get() {
+        Some(c) => c,
+        None => return -1,
+    };
+    if bookmark.is_null() || len == 0 {
+        return -2;
+    }
+    // SAFETY: caller guarantees `bookmark` points to `len` readable bytes.
+    let bytes = unsafe { std::slice::from_raw_parts(bookmark, len) }.to_vec();
+    let hex_id: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
+    let display_path = format!("bookmark://{hex_id}");
+    let filename = unsafe { cstring(filename) }.unwrap_or_else(|| "video".to_string());
+    let source = MediaSource::Bookmark(bytes);
+
+    match crate::indexing::IndexingEngine::index_media_source(
+        ctx.db.as_ref(),
+        &source,
+        &display_path,
+        &filename,
+        "bookmark",
+        &hex_id,
+        &ctx.cache,
+    ) {
+        Ok(video_id) => {
+            let _ = ctx.events.send(crate::watcher::CatalogChange::VideoAdded {
+                video_id,
+                path: PathBuf::from(display_path),
+            });
+            0
+        }
+        Err(e) => {
+            tracing::warn!("reelvault_ingest_bookmark failed: {e}");
+            -3
+        }
+    }
+}

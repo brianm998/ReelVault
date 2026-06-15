@@ -57,6 +57,9 @@ final class StreamPlayer: ObservableObject {
     /// "Preparing… ready in ~12s" for the spinner; nil when ready/unknown.
     @Published var preparingDetail: String?
     private var preparedVideoId: String?
+    /// Security-scoped URL for a Files-imported (`bookmark://`) video; its scope
+    /// must stay open while the player reads it, released on teardown/deinit.
+    private var scopedPlaybackURL: URL?
     /// Live loopback proxy backing an HLS stream; retained for the player's
     /// lifetime (segments 502 if it deallocs mid-playback).
     private var proxy: LoopbackMediaProxy?
@@ -156,6 +159,17 @@ final class StreamPlayer: ObservableObject {
         let item: AVPlayerItem?
         if let localId = Self.photosLocalIdentifier(from: path) {
             item = await Self.photosPlayerItem(localIdentifier: localId)
+        } else if path.hasPrefix("bookmark://") {
+            // Files-imported video: re-resolve the security-scoped bookmark and
+            // hold the scope open for the player's lifetime (released in
+            // resetIfDifferent / deinit).
+            let hex = String(path.dropFirst("bookmark://".count))
+            if let url = NativeMedia.resolveBookmark(hex: hex) {
+                if url.startAccessingSecurityScopedResource() { scopedPlaybackURL = url }
+                item = AVPlayerItem(url: url)
+            } else {
+                item = nil
+            }
         } else if path.hasPrefix("file://"), let url = URL(string: path) {
             item = AVPlayerItem(url: url)
         } else if !path.isEmpty {
@@ -205,11 +219,19 @@ final class StreamPlayer: ObservableObject {
             player?.pause()
             player = nil
             preparedVideoId = nil
+            scopedPlaybackURL?.stopAccessingSecurityScopedResource()
+            scopedPlaybackURL = nil
             error = nil
             preparingDetail = nil
             teardownProxy()
             clearDiagnostics()
         }
+    }
+
+    deinit {
+        // Release a held Files bookmark scope if the player is torn down without
+        // a resetIfDifferent (e.g. the detail view simply disappears).
+        scopedPlaybackURL?.stopAccessingSecurityScopedResource()
     }
 
     enum ReadyOutcome: Equatable, CustomStringConvertible {

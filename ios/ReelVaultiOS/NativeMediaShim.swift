@@ -39,15 +39,34 @@ enum NativeMedia {
     // `clearAssetCache()` is called when enumeration finishes.
     private static let cacheLock = NSLock()
     private static var assetCache: [String: AVAsset] = [:]
+    /// Security-scoped URLs opened for kind-2 (bookmark) sources. Their scope
+    /// must stay open while the cached AVAsset is read; released together with
+    /// the asset cache at the end of an ingest pass.
+    private static var scopedURLs: [URL] = []
 
     static func clearAssetCache() {
         cacheLock.lock()
         assetCache.removeAll()
+        let urls = scopedURLs
+        scopedURLs.removeAll()
         cacheLock.unlock()
+        for url in urls { url.stopAccessingSecurityScopedResource() }
+    }
+
+    /// Decode a hex bookmark blob and resolve it to a (security-scoped) file
+    /// URL. Shared by ingest/thumbnail (`resolveAsset`) and on-device playback.
+    /// The caller must `startAccessingSecurityScopedResource()` before reading.
+    static func resolveBookmark(hex: String) -> URL? {
+        guard let data = Data(hexString: hex) else { return nil }
+        var stale = false
+        let url = try? URL(resolvingBookmarkData: data, options: [],
+                           relativeTo: nil, bookmarkDataIsStale: &stale)
+        if stale { NSLog("ReelVault native: bookmark is stale (file may have moved)") }
+        return url
     }
 
     /// Resolve a backend source descriptor to an AVAsset (cached). kind 0 = file
-    /// path, 1 = Photos localIdentifier.
+    /// path, 1 = Photos localIdentifier, 2 = security-scoped bookmark (hex).
     static func resolveAsset(kind: Int32, srcId: String) async -> AVAsset? {
         let key = "\(kind):\(srcId)"
         cacheLock.lock()
@@ -70,6 +89,15 @@ enum NativeMedia {
                         cont.resume(returning: avAsset)
                     }
                 }
+            } else {
+                resolved = nil
+            }
+        case 2:
+            if let url = NativeMedia.resolveBookmark(hex: srcId) {
+                if url.startAccessingSecurityScopedResource() {
+                    cacheLock.lock(); scopedURLs.append(url); cacheLock.unlock()
+                }
+                resolved = AVURLAsset(url: url)
             } else {
                 resolved = nil
             }
@@ -303,4 +331,21 @@ private func rvTranscodeProxy(
 
 private func rvFreeString(_ p: UnsafeMutablePointer<CChar>?) {
     free(p)
+}
+
+extension Data {
+    /// Decode a lowercase/uppercase hex string into bytes (the inverse of the
+    /// core's `bookmark://<hex>` encoding). Returns nil on odd length / non-hex.
+    init?(hexString: String) {
+        let chars = Array(hexString)
+        guard chars.count % 2 == 0 else { return nil }
+        var bytes = [UInt8](); bytes.reserveCapacity(chars.count / 2)
+        var i = 0
+        while i < chars.count {
+            guard let hi = chars[i].hexDigitValue, let lo = chars[i + 1].hexDigitValue else { return nil }
+            bytes.append(UInt8(hi << 4 | lo))
+            i += 2
+        }
+        self.init(bytes)
+    }
 }

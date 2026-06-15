@@ -3,6 +3,7 @@
 
 import SwiftUI
 import ReelVaultKit
+import UniformTypeIdentifiers
 
 /// The browse surface for Grid and List view modes: the filter/search/sort +
 /// thumbnail-size top bar, the grid or list itself, and the action affordances
@@ -21,6 +22,7 @@ struct LibraryGridScreen: View {
 
     @State private var selecting = false
     @State private var showImport = false
+    @State private var showLocalImport = false
     @State private var showShareResolution = false
     @StateObject private var share = ShareExportModel()
 
@@ -36,6 +38,13 @@ struct LibraryGridScreen: View {
                 ImportSheet(endpoint: connection) { grid.loadVideos() }
             }
         }
+        // Local mode (no server): import videos from the Files app via a
+        // security-scoped bookmark (D7). Remote mode uses ImportSheet (upload).
+        .fileImporter(
+            isPresented: $showLocalImport,
+            allowedContentTypes: [.movie, .video, .quickTimeMovie, .mpeg4Movie],
+            allowsMultipleSelection: true
+        ) { result in handleLocalImport(result) }
         .sheet(item: $share.preparedURLs) { prepared in
             ActivityView(items: prepared.urls)
         }
@@ -91,11 +100,12 @@ struct LibraryGridScreen: View {
         } else {
             ToolbarItem(placement: .primaryAction) {
                 Button {
-                    showImport = true
+                    // Remote: upload to the server's import dir. Local: pull a
+                    // video in from the Files app (no server to upload to).
+                    if connection != nil { showImport = true } else { showLocalImport = true }
                 } label: {
                     Label("Add", systemImage: "plus")
                 }
-                .disabled(connection == nil)
             }
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -105,6 +115,38 @@ struct LibraryGridScreen: View {
                     Label("Select", systemImage: "checkmark.circle")
                 }
             }
+        }
+    }
+
+    /// Files-app import for Local mode: capture a security-scoped bookmark for
+    /// each picked video (the picker URLs are scoped on this callback), then
+    /// ingest off-main — `reelvault_ingest_bookmark` blocks and re-enters the
+    /// native media shim, which re-resolves the bookmark to probe + thumbnail.
+    private func handleLocalImport(_ result: Result<[URL], Error>) {
+        guard case .success(let urls) = result, !urls.isEmpty else { return }
+        var bookmarks: [(Data, String)] = []
+        for url in urls {
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            if let bm = try? url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil) {
+                bookmarks.append((bm, url.lastPathComponent))
+            }
+        }
+        guard !bookmarks.isEmpty else { return }
+        DispatchQueue.global(qos: .userInitiated).async {
+            var ok = 0
+            for (bm, name) in bookmarks {
+                let rc = bm.withUnsafeBytes { (raw: UnsafeRawBufferPointer) -> Int32 in
+                    guard let base = raw.bindMemory(to: UInt8.self).baseAddress else { return -9 }
+                    return name.withCString { reelvault_ingest_bookmark(base, UInt(bm.count), $0) }
+                }
+                if rc == 0 { ok += 1 } else {
+                    NSLog("ReelVault local: ingest_bookmark rc=\(rc) for \(name)")
+                }
+            }
+            NativeMedia.clearAssetCache()
+            NSLog("ReelVault local: imported \(ok)/\(bookmarks.count) Files video(s)")
+            Task { @MainActor in grid.loadVideos() }
         }
     }
 

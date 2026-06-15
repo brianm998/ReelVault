@@ -681,6 +681,15 @@ impl Database {
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         match row {
             Some((_, Some(kind), Some(sid))) if kind == "photo" => Ok(MediaSource::PhotoAsset(sid)),
+            // Files-app / security-scoped bookmark rows store the bookmark blob
+            // hex-encoded in source_id; decode it back to bytes so the native
+            // backend can re-resolve the scoped URL (Files ingest, D7).
+            Some((_, Some(kind), Some(sid))) if kind == "bookmark" => {
+                let bytes = hex::decode(&sid).map_err(|e| {
+                    ReelVaultError::DatabaseError(format!("bad bookmark hex for {video_id}: {e}"))
+                })?;
+                Ok(MediaSource::Bookmark(bytes))
+            }
             Some((path, _, _)) => Ok(MediaSource::Path(std::path::PathBuf::from(path))),
             None => Err(ReelVaultError::InternalError(format!("video {video_id} not found"))),
         }

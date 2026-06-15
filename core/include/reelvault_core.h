@@ -80,6 +80,15 @@ int32_t reelvault_ingest_path(const char *path, const char *filename);
  */
 int32_t reelvault_is_video_indexed(const char *display_path);
 
+/*
+ * Ingest one Files-app video via a security-scoped bookmark (D7). `bookmark`
+ * points to `len` raw bookmark bytes captured by Swift from the document
+ * picker; `filename` is the display name (may be NULL). The row is keyed on
+ * "bookmark://<hex>". Returns 0 on success, negative on error.
+ */
+int32_t reelvault_ingest_bookmark(const uint8_t *bookmark, uintptr_t len,
+                                  const char *filename);
+
 #ifdef __cplusplus
 }
 #endif
