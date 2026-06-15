@@ -346,13 +346,13 @@ async fn video(
         }
     };
     let height = q.height.unwrap_or(0);
-    // "Original" (height <= 0): serve the file as-is ONLY when the client can
-    // decode it. A mastering codec (ProRes, DNxHD, …) served raw plays as audio
-    // with no video on iOS, so transcode it to full-res H.264 (ensure_downscaled
-    // treats height 0 as "no downscale"). A positive height always transcodes /
-    // serves the closest proxy.
-    let needs_transcode = height > 0
-        || !original_codec(&state, &id).map(|c| is_streamable_codec(&c)).unwrap_or(false);
+    // "Original" (height <= 0): serve the file as-is ONLY when its actual video
+    // track is iOS-decodable (8-bit 4:2:0 H.264/HEVC) — probed, because a stored
+    // codec name of "h264" can still be a 4:2:2/10-bit variant, and ProRes/DNxHD
+    // served raw play as audio with no video. Otherwise transcode to full-res
+    // H.264 (ensure_downscaled treats height 0 as "no downscale"). A positive
+    // height always transcodes / serves the closest proxy.
+    let needs_transcode = height > 0 || !is_copy_muxable(&record.path);
     if needs_transcode {
         match ensure_downscaled(&state, &id, &record.path, height).await {
             Some(path) => serve_file_range(&path.to_string_lossy(), &headers).await,
@@ -363,20 +363,6 @@ async fn video(
     }
 }
 
-/// The original's stored video codec (from `metadata.codec_video`), used to
-/// decide whether "Original" can be served raw or must be transcoded for the
-/// client. `None` when unknown — treated as not-streamable (transcode), so we
-/// never hand the player a file it can't decode.
-fn original_codec(state: &MediaState, id: &str) -> Option<String> {
-    let conn = state.db.get_connection().ok()?;
-    conn.query_row(
-        "SELECT codec_video FROM metadata WHERE video_id = ?",
-        [id],
-        |row| row.get::<_, Option<String>>(0),
-    )
-    .ok()
-    .flatten()
-}
 
 /// `GET /hls/{id}/{height}/{file}` — serve one file of an on-the-fly HLS stream.
 ///
@@ -1009,13 +995,20 @@ fn closest_streamable_proxy(state: &MediaState, id: &str, height: i32) -> Option
             .min_by_key(|p| p.height)
             .or_else(|| candidates.iter().max_by_key(|p| p.height))
     }?;
-    if std::path::Path::new(&chosen.path).exists() {
-        Some((chosen.path.clone(), chosen.height))
-    } else {
+    if !std::path::Path::new(&chosen.path).exists() {
         // Proxy registered but its file is missing (unmounted drive, moved) —
         // fall back to transcoding the original.
-        None
+        return None;
     }
+    // The codec NAME matched, but copy-mux only works on an 8-bit 4:2:0 track. A
+    // 4:2:2 / 10-bit "h264" proxy copies/downloads fine yet plays as audio only
+    // on iOS (the "Q" with waves). Probe the real track; if it's not
+    // copy-muxable, return None so the caller re-encodes (HLS) / transcodes the
+    // original (download) to yuv420p instead.
+    if !is_copy_muxable(&chosen.path) {
+        return None;
+    }
+    Some((chosen.path.clone(), chosen.height))
 }
 
 /// The closest proxy of ANY codec (path), preferring the shortest at least as
@@ -1040,6 +1033,55 @@ fn closest_proxy_source(state: &MediaState, id: &str, height: i32) -> Option<Str
         Some(path)
     } else {
         None
+    }
+}
+
+/// Probe a file's first video track for `(codec_name, pix_fmt)` via ffprobe.
+/// `None` if ffprobe can't be run or the file has no video stream.
+fn probe_video_track(path: &str) -> Option<(String, String)> {
+    let out = crate::ffmpeg::ffprobe_command()
+        .args([
+            "-v", "error",
+            "-select_streams", "v:0",
+            "-show_entries", "stream=codec_name,pix_fmt",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            path,
+        ])
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let s = String::from_utf8_lossy(&out.stdout);
+    let mut lines = s.lines().map(str::trim).filter(|l| !l.is_empty());
+    let codec = lines.next()?.to_string();
+    let pix_fmt = lines.next().unwrap_or("").to_string();
+    Some((codec, pix_fmt))
+}
+
+/// Whether a file's video track can be COPY-muxed (no re-encode) to an Apple
+/// client: H.264/HEVC in **8-bit 4:2:0**. The stored `codec_video` *name* isn't
+/// enough — a proxy probed as "h264" can be High 4:2:2 / 10-bit, which copies and
+/// downloads fine yet decodes to AUDIO ONLY on iOS (the big "Q" with waves). Logs
+/// the probe so it's clear from the daemon log what was actually served.
+/// Anything we can't probe, or that isn't 8-bit 4:2:0 H.264/HEVC, returns false →
+/// the caller re-encodes to yuv420p instead.
+fn is_copy_muxable(path: &str) -> bool {
+    match probe_video_track(path) {
+        Some((codec, pix_fmt)) => {
+            let c = codec.to_ascii_lowercase();
+            let codec_ok = matches!(c.as_str(), "h264" | "avc1" | "hevc" | "h265" | "hvc1" | "hev1");
+            let pix_ok = matches!(pix_fmt.as_str(), "yuv420p" | "yuvj420p" | "nv12");
+            tracing::info!(
+                "media: copy-mux probe {path}: codec={codec} pix_fmt={pix_fmt} -> {}",
+                if codec_ok && pix_ok { "copy-muxable" } else { "must re-encode (not 8-bit 4:2:0 H.264/HEVC)" }
+            );
+            codec_ok && pix_ok
+        }
+        None => {
+            tracing::warn!("media: copy-mux probe failed for {path} — re-encoding to be safe");
+            false
+        }
     }
 }
 
