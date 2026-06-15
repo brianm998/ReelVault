@@ -58,6 +58,12 @@ struct DetailLoupeView: View {
     @State private var isPlaying: Bool = false
     @State private var currentTimeSec: Double = 0
     @State private var durationSec: Double = 0
+    /// REMOTE mode only: the loopback proxy backing the HLS stream (retained for
+    /// the player's lifetime; segments 502 if it deallocs mid-playback), the
+    /// async prepare task, and whether we're waiting on the transcode.
+    @State private var streamProxy: LoopbackMediaProxy? = nil
+    @State private var prepareTask: Task<Void, Never>? = nil
+    @State private var preparingRemote = false
     /// Time-observer token; we drop it when the player goes away.
     @State private var timeObserver: Any? = nil
     /// Measured pixel size of the player render area. Height defaults the proxy
@@ -209,6 +215,14 @@ struct DetailLoupeView: View {
                 }
             }
 
+            // Remote HLS stream warming up — a spinner over the still thumbnail
+            // while the server transcodes enough to start (only in remote mode).
+            if preparingRemote {
+                ProgressView()
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+
             // Cycling info overlay (top-left).
             if infoOverlay != .none {
                 InfoOverlayView(state: infoOverlay, video: video, metadata: metadata)
@@ -323,18 +337,8 @@ struct DetailLoupeView: View {
 
     private func onPlayPause(for video: VideoSummary) {
         if playerVideoId != video.id {
-            // First play for this video: build a fresh AVPlayer pointing
-            // at whichever file is selected (master, picked proxy, or
-            // the unplayable-master fallback).
-            teardownPlayer()
-            let url = URL(fileURLWithPath: effectivePath(for: video))
-            let p = AVPlayer(url: url)
-            p.volume = Float(gridViewModel.playbackVolume) / 100.0
-            attachObservers(to: p)
-            player = p
-            playerVideoId = video.id
-            p.play()
-            isPlaying = true
+            // First play for this video — mount the player (remote HLS or local file).
+            mountPlayer(for: video, autoPlay: true)
         } else if let p = player {
             if p.timeControlStatus == .playing {
                 p.pause()
@@ -346,19 +350,61 @@ struct DetailLoupeView: View {
         }
     }
 
-    private func stepFrames(by frames: Int, for video: VideoSummary) {
-        let fps = video.fps > 0 ? video.fps : 30.0
-        // Make sure playback has been mounted — without it stepping has
-        // nothing to step against. We start paused at the very beginning so
-        // the user can step before they ever press play.
-        if playerVideoId != video.id {
-            teardownPlayer()
+    /// Build the AVPlayer for `video`. In REMOTE mode this streams over HLS via the
+    /// kit's pinned loopback proxy (async — shows a brief "preparing" state while
+    /// the transcode warms up); in local mode it opens the on-disk file directly
+    /// (master / picked proxy / fallback per `effectivePath`).
+    private func mountPlayer(for video: VideoSummary, autoPlay: Bool) {
+        teardownPlayer()
+        if let endpoint = RemoteConnection.shared.mediaEndpoint {
+            preparingRemote = true
+            let height = remoteStreamHeight()
+            let volume = Float(gridViewModel.playbackVolume) / 100.0
+            prepareTask = Task {
+                let prepared = await RemoteHLSPlayback.prepare(
+                    endpoint: endpoint, videoId: video.id, height: height, autoPlay: autoPlay)
+                preparingRemote = false
+                // Bail if superseded (selection changed / torn down) or it failed.
+                guard !Task.isCancelled, let prepared,
+                      gridViewModel.selectedVideoId == video.id else {
+                    prepared?.player.pause()
+                    prepared?.proxy?.stop()
+                    return
+                }
+                prepared.player.volume = volume
+                attachObservers(to: prepared.player)
+                streamProxy = prepared.proxy
+                player = prepared.player
+                playerVideoId = video.id
+                isPlaying = autoPlay
+            }
+        } else {
             let url = URL(fileURLWithPath: effectivePath(for: video))
             let p = AVPlayer(url: url)
             p.volume = Float(gridViewModel.playbackVolume) / 100.0
             attachObservers(to: p)
             player = p
             playerVideoId = video.id
+            if autoPlay { p.play() }
+            isPlaying = autoPlay
+        }
+    }
+
+    /// Target stream height for remote playback: the player area's pixel height
+    /// (points × 2 for Retina), clamped to a sane range. 0/unknown → 1080p.
+    private func remoteStreamHeight() -> Int {
+        let px = playerAreaHeight > 0 ? Int(playerAreaHeight * 2) : 1080
+        return min(max(px, 480), 2160)
+    }
+
+    private func stepFrames(by frames: Int, for video: VideoSummary) {
+        let fps = video.fps > 0 ? video.fps : 30.0
+        // Make sure playback has been mounted — without it stepping has
+        // nothing to step against. We start paused at the very beginning so
+        // the user can step before they ever press play. (Remote mounts
+        // asynchronously, so the first step press may just warm it up.)
+        if playerVideoId != video.id {
+            mountPlayer(for: video, autoPlay: false)
         }
         guard let p = player else { return }
         // Pause while stepping so successive presses don't fight the playhead.
@@ -404,12 +450,17 @@ struct DetailLoupeView: View {
     }
 
     private func teardownPlayer() {
+        prepareTask?.cancel()
+        prepareTask = nil
+        preparingRemote = false
         if let token = timeObserver, let p = player {
             p.removeTimeObserver(token)
         }
         timeObserver = nil
         player?.pause()
         player = nil
+        streamProxy?.stop()
+        streamProxy = nil
         playerVideoId = nil
         isPlaying = false
         currentTimeSec = 0

@@ -1470,6 +1470,7 @@ struct ContentView: View {
             connectionState = .failed
             return
         }
+        RemoteConnection.shared.mediaEndpoint = nil   // local: play files directly
         await afterConnected(isRemote: false)
     }
 
@@ -1509,6 +1510,9 @@ struct ContentView: View {
                                 bearerToken: token)
         guard await VideoRepository.shared.connect(to: ep) else { return false }
         if makeDefault { StoredDefaultServer.remote(server).save() }
+        RemoteConnection.shared.mediaEndpoint = MediaClient.Endpoint(
+            host: server.host, mediaPort: server.mediaPort ?? 50052,
+            fingerprintHex: pin, bearerToken: token)
         await afterConnected(isRemote: true)
         return true
     }
@@ -1533,6 +1537,9 @@ struct ContentView: View {
                                     bearerToken: token)
             if await VideoRepository.shared.connect(to: ep) {
                 if pairingMakeDefault { StoredDefaultServer.remote(server).save() }
+                RemoteConnection.shared.mediaEndpoint = MediaClient.Endpoint(
+                    host: server.host, mediaPort: server.mediaPort ?? 50052,
+                    fingerprintHex: pin, bearerToken: token)
                 await afterConnected(isRemote: true)
             } else {
                 connectionError = "Paired, but couldn't connect to \(server.catalogName ?? server.name)."

@@ -4,6 +4,16 @@
 import SwiftUI
 import ReelVaultKit
 
+/// The media endpoint of the currently-connected REMOTE daemon, or `nil` in local
+/// mode. The detail player reads this: when set, it streams video over HLS (via the
+/// kit's pinned loopback proxy) instead of opening a local file path (which only
+/// exists for a daemon on this machine). Set by `ContentView` on every connect.
+@MainActor
+final class RemoteConnection: ObservableObject {
+    static let shared = RemoteConnection()
+    @Published var mediaEndpoint: MediaClient.Endpoint?
+}
+
 // MARK: - Startup arbitration model
 
 /// A connection option offered at startup when more than one daemon is reachable
