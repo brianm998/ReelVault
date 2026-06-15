@@ -23,5 +23,10 @@ struct ConnectedRootView: View {
                 // background Photos ingest, which streams in row-by-row.
                 grid.startCatalogEventStream()
             }
+            // Switching library mode tears this view down. Stop the long-lived
+            // stream so it (a) doesn't keep the connection's runConnections()
+            // alive — which would hang the disconnect/mode-switch — and (b)
+            // releases its strong `self`, letting the view-model dealloc.
+            .onDisappear { grid.stopCatalogEventStream() }
     }
 }

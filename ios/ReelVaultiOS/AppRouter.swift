@@ -34,6 +34,15 @@ final class AppRouter: ObservableObject {
     @Published var discovered: [DiscoveredServer] = []
     @Published var connection: ConnectionInfo?
 
+    /// Remembers the user's last library choice so a relaunch returns to it
+    /// instead of always auto-discovering a LAN server. Set when On-Device
+    /// (Local) mode is entered, cleared on a successful server connect. Read at
+    /// launch (see ReelVaultApp) and by the sidebar's source switcher.
+    var prefersLocalLibrary: Bool {
+        get { UserDefaults.standard.bool(forKey: "ios.prefersLocalLibrary") }
+        set { UserDefaults.standard.set(newValue, forKey: "ios.prefersLocalLibrary") }
+    }
+
     private let discovery = ServerDiscovery()
     private var discoverTask: Task<Void, Never>?
     private var collectTask: Task<Void, Never>?
@@ -140,6 +149,9 @@ final class AppRouter: ObservableObject {
         )
         let ok = await VideoRepository.shared.connect(to: endpoint)
         if ok {
+            // Using a server is now the remembered choice (until the user picks
+            // On-Device Library again).
+            prefersLocalLibrary = false
             connection = ConnectionInfo(
                 host: server.host,
                 mediaPort: server.mediaPort ?? 50052,
@@ -162,6 +174,9 @@ final class AppRouter: ObservableObject {
         discoverTask?.cancel()
         collectTask?.cancel()
         discovery.stop()
+        // Remember this choice so the next launch returns here instead of
+        // auto-connecting to a LAN server.
+        prefersLocalLibrary = true
         phase = .startingLocal
         Task { [weak self] in
             guard let self else { return }
@@ -196,14 +211,36 @@ final class AppRouter: ObservableObject {
             // native backend without the permission prompt.
             self.connection = nil
             self.phase = .connected
-            Task {
-                if CommandLine.arguments.contains("--ingest-container") {
-                    await ContainerIngest.run()
-                } else {
-                    await PhotoLibraryIngest.run()
-                }
-            }
+            self.runLocalIngestIfIdle()
         }
+    }
+
+    /// One on-device ingest at a time. Both the post-connect kickoff and the
+    /// foreground catch-up funnel through here so they can't double-ingest the
+    /// whole Photos library concurrently (the launch path fires both nearly at
+    /// once — startLocal and the initial scenePhase `.active`). Guard runs on the
+    /// main actor (AppRouter is @MainActor), so the check/set can't race.
+    private var ingestInFlight = false
+    private func runLocalIngestIfIdle() {
+        guard !ingestInFlight else { return }
+        ingestInFlight = true
+        Task { [weak self] in
+            if CommandLine.arguments.contains("--ingest-container") {
+                await ContainerIngest.run()
+            } else {
+                await PhotoLibraryIngest.run()
+            }
+            self?.ingestInFlight = false
+        }
+    }
+
+    /// Switch from On-Device Library back to a LAN server: forget the local
+    /// preference and rediscover. The embedded core keeps running idle;
+    /// re-entering Local mode later (`startLocal`) is idempotent. (To go the
+    /// other way, call `startLocal()`, which sets the preference.)
+    func useServerLibrary() {
+        prefersLocalLibrary = false
+        start()
     }
 
     /// Returning to the foreground in Local mode: re-run the (now incremental,
@@ -215,13 +252,7 @@ final class AppRouter: ObservableObject {
     /// watcher + the CatalogEvents stream handle freshness there).
     func foregroundCatchUp() {
         guard case .connected = phase, connection == nil else { return }
-        Task {
-            if CommandLine.arguments.contains("--ingest-container") {
-                await ContainerIngest.run()
-            } else {
-                await PhotoLibraryIngest.run()
-            }
-        }
+        runLocalIngestIfIdle()
     }
 
     /// Connect to a manually-entered server (from the error screen). Assumes the

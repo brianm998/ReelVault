@@ -128,7 +128,15 @@ public class VideoRepository: ObservableObject {
     }
 
     public func disconnect() async {
+        // Force the connection down rather than only requesting graceful
+        // shutdown: a long-lived server stream (e.g. SubscribeCatalogEvents)
+        // keeps runConnections() alive indefinitely, which would hang a
+        // disconnect — and thus a library-mode switch — until the stream ends.
+        // Cancelling the run task tears the transport down promptly. Clients
+        // should still stop their own streams first (see the iOS grid), but this
+        // guarantees teardown can't block.
         grpcClient?.beginGracefulShutdown()
+        runTask?.cancel()
         await runTask?.value
         runTask = nil
         grpcClient = nil

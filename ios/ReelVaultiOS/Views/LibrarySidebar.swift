@@ -27,6 +27,8 @@ struct LibrarySidebar: View {
     /// Apply the chosen source to the shared view-model (parent owns the logic).
     var onSelect: (LibrarySection) -> Void
 
+    @EnvironmentObject private var router: AppRouter
+
     var body: some View {
         List(selection: Binding<LibrarySection?>(
             get: { selection },
@@ -34,6 +36,7 @@ struct LibrarySidebar: View {
                 if let newValue { selection = newValue; onSelect(newValue) }
             }
         )) {
+            librarySourceSection
             viewSection
             sourcesSection
             if !grid.libraryLocations.isEmpty { locationsSection }
@@ -46,6 +49,31 @@ struct LibrarySidebar: View {
             grid.loadLibraryLocations()
             grid.loadCollections()
             grid.loadTags()
+        }
+    }
+
+    /// Where videos come from: the on-device Local Library or a LAN server.
+    /// `connection == nil` means we're in Local mode. The switch re-routes the
+    /// whole app (AppRouter.phase) and is remembered for next launch.
+    private var librarySourceSection: some View {
+        Section("Library") {
+            if router.connection == nil {
+                Label("On This iPhone", systemImage: "iphone").foregroundStyle(.secondary)
+                Button {
+                    router.useServerLibrary()
+                } label: {
+                    Label("Connect to a Server…", systemImage: "network")
+                }
+                .buttonStyle(.plain)
+            } else {
+                Label("Server", systemImage: "network").foregroundStyle(.secondary)
+                Button {
+                    router.startLocal()
+                } label: {
+                    Label("Use On-Device Library", systemImage: "iphone")
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 

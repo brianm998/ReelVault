@@ -30,7 +30,9 @@ struct ReelVaultApp: App {
                 // Library mode, skipping LAN discovery so the embedded core can
                 // be exercised without a UI tap or a daemon on the network.
                 .task {
-                    if CommandLine.arguments.contains("--autostart-local") {
+                    // Return to the last-used library: On-Device if the user
+                    // chose it (or the test flag forces it), else LAN discovery.
+                    if CommandLine.arguments.contains("--autostart-local") || router.prefersLocalLibrary {
                         router.startLocal()
                     } else {
                         router.start()
