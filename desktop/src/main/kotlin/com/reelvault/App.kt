@@ -1153,13 +1153,16 @@ fun ReelVaultApp(
         }
     }
 
-    // The startup picker's selection handler.
+    // The picker's selection handler (startup arbitration + runtime switcher).
     fun onPickerChoice(choice: ServerChoice, makeDefault: Boolean) {
         scope.launch {
             when (choice) {
                 is ServerChoice.Local -> {
                     if (makeDefault) defaultStore.saveLocal(choice.port)
-                    connectLocal(choice.port)
+                    val reachable = withContext(Dispatchers.IO) {
+                        launcher.isReachable("127.0.0.1", choice.port)
+                    }
+                    if (reachable) connectLocal(choice.port) else startLocalDaemon()
                 }
                 is ServerChoice.Remote -> chooseRemote(choice.server, makeDefault)
             }
@@ -1234,6 +1237,25 @@ fun ReelVaultApp(
         attemptConnect()
     }
 
+    // Runtime local/remote switcher: tear down the current connection's event
+    // stream, forget the saved default, scan, and present a picker of Local +
+    // discovered remotes so the user can move libraries without relaunching.
+    fun switchLibrary() {
+        scope.launch {
+            gridViewModel.stopCatalogEventStream()
+            defaultStore.clear()
+            connectionState = ConnectionState.Discovering
+            val localIps = withContext(Dispatchers.IO) { localIpv4Addresses() }
+            val discovered = discovery.discover(timeoutMs = 2000)
+            val remotes = withContext(Dispatchers.IO) {
+                discovered.filter { !hostIsLocalMachine(it.host, localIps) }
+            }
+            // Local is always offered (spawned on demand); plus every remote found.
+            pickerChoices = listOf(ServerChoice.Local(50051)) + remotes.map { ServerChoice.Remote(it) }
+            connectionState = ConnectionState.Picker
+        }
+    }
+
     LaunchedEffect(Unit) { attemptConnect() }
 
     // Check for updates at startup and every 24 h. A null result (network
@@ -1289,6 +1311,8 @@ fun ReelVaultApp(
                         onCloseCatalog = { closeCatalog() },
                         onOpenRecent = { path -> openCatalog(path) },
                         onPairDevice = { showPairDeviceDialog = true },
+                        onSwitchLibrary = { switchLibrary() },
+                        isRemoteSource = RemoteConnection.isRemote,
                         catalogIsOpen = currentCatalog.isOpen,
                         catalogName = currentCatalog.name,
                         recents = recents.list(),
@@ -2940,6 +2964,12 @@ fun ReelVaultTopBar(
     onOpenRecent: (String) -> Unit = {},
     /** Mints a one-time pairing code and shows it for a new device to enter. */
     onPairDevice: () -> Unit = {},
+    /** Re-scans Wi-Fi + loopback and lets the user move between the local and a
+     *  remote library at runtime (mirrors macOS "Switch Library…"). */
+    onSwitchLibrary: () -> Unit = {},
+    /** Whether the current catalog is served by a remote daemon (drives the
+     *  library-source icon: network vs. this-computer). */
+    isRemoteSource: Boolean = false,
     catalogIsOpen: Boolean = false,
     catalogName: String = "",
     recents: List<String> = emptyList(),
@@ -3039,7 +3069,21 @@ fun ReelVaultTopBar(
                         DropdownMenuItem(
                             text = { Text("Pair a New Device…") },
                             onClick = { onPairDevice(); showFileMenu = false },
+                            enabled = !isRemoteSource,
                             leadingIcon = { Icon(Icons.Default.PhoneIphone, contentDescription = null) }
+                        )
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = {
+                                Text(if (isRemoteSource) "Switch Library… (remote)" else "Switch Library… (local)")
+                            },
+                            onClick = { onSwitchLibrary(); showFileMenu = false },
+                            leadingIcon = {
+                                Icon(
+                                    if (isRemoteSource) Icons.Default.Wifi else Icons.Default.Computer,
+                                    contentDescription = null,
+                                )
+                            }
                         )
                         if (recents.isNotEmpty()) {
                             HorizontalDivider()
