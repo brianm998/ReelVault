@@ -31,6 +31,11 @@ public class VideoRepository: ObservableObject {
     /// Used by the launcher flow to decide whether a reconnect is needed.
     public private(set) var currentHost: String = "localhost"
     public private(set) var currentPort: Int = 50051
+    /// Bearer token baked into the active client's auth interceptor (nil = none).
+    /// The reuse guard compares against this so a *changed* token — e.g. after a
+    /// re-pair to the same host:port — forces a rebuild instead of silently
+    /// reusing a client that still presents the old (now-revoked) credential.
+    private var currentToken: String?
 
     private init() {}
 
@@ -51,9 +56,15 @@ public class VideoRepository: ObservableObject {
     public func connect(to endpoint: ServerEndpoint) async -> Bool {
         let host = endpoint.host
         let port = endpoint.port
-        // Re-use the existing connection if we're already pointed at the same
-        // endpoint.
-        if grpcClient != nil && isConnected && currentHost == host && currentPort == port {
+        // Normalize an empty token to nil — the build path below treats "" as "no
+        // interceptor", so the reuse guard must too.
+        let newToken = (endpoint.bearerToken?.isEmpty == false) ? endpoint.bearerToken : nil
+        // Re-use the existing connection only if it's pointed at the same endpoint
+        // AND carries the same token. A token change (re-pair → fresh token) must
+        // rebuild the client; the token is baked into the interceptor at build
+        // time, so reusing a stale-token client fails auth ("device not paired").
+        if grpcClient != nil && isConnected && currentHost == host && currentPort == port
+            && currentToken == newToken {
             return true
         }
         // Otherwise drop the previous connection.
@@ -98,6 +109,7 @@ public class VideoRepository: ObservableObject {
             self.serviceClient = Reelvault_ReelVault.Client(wrapping: client)
             self.currentHost = host
             self.currentPort = port
+            self.currentToken = newToken
 
             runTask = Task {
                 try? await client.runConnections()
@@ -114,6 +126,7 @@ public class VideoRepository: ObservableObject {
                 runTask = nil
                 grpcClient = nil
                 serviceClient = nil
+                currentToken = nil
                 isConnected = false
                 return false
             }
@@ -141,6 +154,7 @@ public class VideoRepository: ObservableObject {
         runTask = nil
         grpcClient = nil
         serviceClient = nil
+        currentToken = nil
         isConnected = false
     }
 

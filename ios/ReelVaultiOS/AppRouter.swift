@@ -390,6 +390,11 @@ final class AppRouter: ObservableObject {
         pending = nil
         connection = nil
         prefersLocalLibrary = false
+        // Tear down the live (now-unauthorized) gRPC connection + its catalog-events
+        // stream — we're abandoning this server. Without this the stale client lingers;
+        // re-pairing the same server would otherwise reuse it (a token change forces a
+        // rebuild in VideoRepository.connect, but dropping it now is the right hygiene).
+        Task { await VideoRepository.shared.disconnect() }
         start()
     }
 
