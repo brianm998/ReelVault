@@ -51,28 +51,50 @@ struct DetailModeView: View {
     }
 }
 
-/// A black, edge-to-edge full-screen player with a close button. Reuses the
-/// SAME `StreamPlayer` as the inline detail player (one AVPlayer → no doubled,
-/// offset audio), just rendered full-bleed and auto-playing.
+/// A black, edge-to-edge full-screen player dismissed by swiping down (no close
+/// button — matching the system video full-screen gesture). Reuses the SAME
+/// `StreamPlayer` as the inline detail player (one AVPlayer → no doubled, offset
+/// audio), just rendered full-bleed and auto-playing.
 struct FullScreenPlayer: View {
     @ObservedObject var stream: StreamPlayer
     let video: VideoSummary
     let endpoint: AppRouter.ConnectionInfo?
     @Environment(\.dismiss) private var dismiss
+    /// Live downward drag distance — moves the player with the finger and fades
+    /// the backdrop so the swipe reads as an interactive dismissal.
+    @State private var dragOffset: CGFloat = 0
+
+    private let dismissThreshold: CGFloat = 120
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
+        ZStack {
             Color.black.ignoresSafeArea()
+                .opacity(1 - min(Double(dragOffset) / 500, 0.7))
             StreamingPlayerView(stream: stream, video: video, endpoint: endpoint,
                                 autoPlay: true, fill: true)
                 .ignoresSafeArea()
-            Button { dismiss() } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title)
-                    .foregroundStyle(.white, .black.opacity(0.5))
-                    .padding()
-            }
+                .offset(y: dragOffset)
         }
         .statusBarHidden(true)
+        // simultaneousGesture so the player's own transport controls keep
+        // working; we only react to predominantly-downward drags.
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 20)
+                .onChanged { value in
+                    if value.translation.height > 0,
+                       value.translation.height > abs(value.translation.width) {
+                        dragOffset = value.translation.height
+                    }
+                }
+                .onEnded { value in
+                    if value.translation.height > dismissThreshold {
+                        dismiss()
+                    } else {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            dragOffset = 0
+                        }
+                    }
+                }
+        )
     }
 }
