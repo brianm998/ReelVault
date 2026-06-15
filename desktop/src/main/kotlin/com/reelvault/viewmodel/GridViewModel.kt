@@ -360,6 +360,15 @@ class GridViewModel(
     private val _watcherBanner = MutableStateFlow<String?>(null)
     val watcherBanner: StateFlow<String?> = _watcherBanner.asStateFlow()
 
+    /** Non-null when an unpaired LAN device asked to pair (the daemon pushed a
+     *  PairingRequested event); the value is the device name. App.kt shows an
+     *  allow/dismiss banner; "Allow" opens the pairing-code dialog. */
+    private val _incomingPairingDevice = MutableStateFlow<String?>(null)
+    val incomingPairingDevice: StateFlow<String?> = _incomingPairingDevice.asStateFlow()
+
+    /** Clear the incoming-pairing banner (after Allow or Dismiss). */
+    fun dismissIncomingPairing() { _incomingPairingDevice.value = null }
+
     /**
      * Live progress for the daemon's background post-index pass (proxy
      * detection / auto-grouping / camera-sensor lookups). Null when no pass
@@ -515,6 +524,8 @@ class GridViewModel(
                     _postIndexProgress.value = null
                 }
             }
+            com.reelvault.data.models.CatalogEventKind.PairingRequested ->
+                _incomingPairingDevice.value = event.message.ifBlank { "A device" }
             com.reelvault.data.models.CatalogEventKind.Unknown -> { /* future kinds */ }
         }
     }

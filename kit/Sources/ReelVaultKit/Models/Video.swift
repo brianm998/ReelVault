@@ -705,6 +705,8 @@ public enum CatalogEventKind: Sendable {
     case postIndexProgress
     /// The post-index pass drained; clients clear the activity panel.
     case postIndexCompleted
+    /// An unpaired LAN device asked to pair; desktop/macOS shows an allow banner.
+    case pairingRequested
 }
 
 public struct CatalogEvent: Equatable, Sendable {

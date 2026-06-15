@@ -90,6 +90,11 @@ pub enum CatalogChange {
     },
     /// The post-index pass drained. Clients clear the activity panel.
     PostIndexCompleted { processed: u64 },
+    /// An unpaired LAN device asked to pair (hit `POST /pair/request` on the
+    /// media server). Desktop/macOS clients subscribed to the event stream pop
+    /// an "allow this device?" banner; `device_name` is what they show. Not a
+    /// catalog change per se, but it rides the same client push channel.
+    PairingRequested { device_name: String },
 }
 
 /// Per-path settle state. The watcher only triggers a scan once

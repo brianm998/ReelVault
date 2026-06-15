@@ -1137,6 +1137,41 @@ fun ReelVaultApp(
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     }
 
+                    // Incoming-device pairing banner: an unpaired device on the
+                    // LAN asked to connect. "Allow" opens the pairing-code dialog
+                    // (mints + shows the code); "Dismiss" ignores the request.
+                    val incomingPairing = gridViewModel.incomingPairingDevice.collectAsState()
+                    incomingPairing.value?.let { deviceName ->
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.tertiaryContainer
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(ReelVaultSpacing.Small),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "$deviceName is trying to connect",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+                                TextButton(onClick = { gridViewModel.dismissIncomingPairing() }) {
+                                    Text("Dismiss")
+                                }
+                                Spacer(modifier = Modifier.width(ReelVaultSpacing.Small))
+                                Button(onClick = {
+                                    gridViewModel.dismissIncomingPairing()
+                                    showPairDeviceDialog = true
+                                }) {
+                                    Text("Allow")
+                                }
+                            }
+                        }
+                    }
+
                     // Scan status banner (during scan)
                     val scanStatus = gridViewModel.scanStatus.collectAsState()
                     val watcherBanner = gridViewModel.watcherBanner.collectAsState()

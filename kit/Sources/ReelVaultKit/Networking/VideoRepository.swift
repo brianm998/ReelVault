@@ -1183,7 +1183,13 @@ public class VideoRepository: ObservableObject {
                             case .postIndexStarted: kind = .postIndexStarted
                             case .postIndexProgress: kind = .postIndexProgress
                             case .postIndexCompleted: kind = .postIndexCompleted
-                            default: kind = .unknown
+                            default:
+                                // PAIRING_REQUESTED = 11 in the proto. The generated
+                                // Swift enum may not carry a named case yet (a new
+                                // enum value needs no stub regen), so match the wire
+                                // number — it decodes as .UNRECOGNIZED(11) whose
+                                // rawValue is 11.
+                                kind = proto.kind.rawValue == 11 ? .pairingRequested : .unknown
                             }
                             let postIndex: PostIndexProgress? = proto.hasPostIndex
                                 ? PostIndexProgress(

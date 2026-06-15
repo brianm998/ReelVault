@@ -448,6 +448,7 @@ struct ContentView: View {
             // video and its floating control.
             if !detailFullscreen {
                 topBar
+                pairingBanner
                 scanBanner
                 postIndexBanner
                 scanResultBanner
@@ -488,6 +489,49 @@ struct ContentView: View {
             locationPickerInitial = initial.map {
                 CLLocationCoordinate2D(latitude: $0.0, longitude: $0.1)
             }
+        }
+    }
+
+    /// Strip across the top when an unpaired device on the LAN asks to connect
+    /// (the daemon pushed a `.pairingRequested` event). "Allow" opens the
+    /// pairing-code sheet (which mints + shows the 6-digit code to type into the
+    /// device); the ✕ dismisses without pairing.
+    @ViewBuilder
+    private var pairingBanner: some View {
+        if let device = gridViewModel.incomingPairingDevice {
+            HStack(spacing: 8) {
+                Image(systemName: "ipad.and.iphone")
+                    .foregroundColor(.accentColor)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("\(device) is trying to connect")
+                        .font(.callout)
+                    Text("Allow it to pair with this library?")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                Button {
+                    gridViewModel.clearIncomingPairing()
+                    showPairDeviceSheet = true
+                } label: {
+                    Label("Allow", systemImage: "checkmark.circle")
+                        .font(.caption)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .help("Show a pairing code for this device")
+
+                Button {
+                    gridViewModel.clearIncomingPairing()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Dismiss — don't pair this device")
+            }
+            .padding(8)
+            .background(Color.accentColor.opacity(0.12))
         }
     }
 

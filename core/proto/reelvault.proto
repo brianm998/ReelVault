@@ -1057,6 +1057,11 @@ message CatalogEvent {
     POST_INDEX_STARTED = 8;    // A non-trivial post-index pass began.
     POST_INDEX_PROGRESS = 9;   // Periodic progress while it runs (~1/sec).
     POST_INDEX_COMPLETED = 10; // The pass drained; clients clear the panel.
+    // An UNPAIRED device on the LAN asked to pair (hit POST /pair/request).
+    // Desktop/macOS clients pop an "allow this device?" banner; `message`
+    // carries the device name. Lets the daemon prompt the user instead of the
+    // user having to pre-emptively open "Pair a New Device".
+    PAIRING_REQUESTED = 11;
   }
   Kind kind = 1;
   string video_id = 2;       // Empty for watcher-lifecycle events.

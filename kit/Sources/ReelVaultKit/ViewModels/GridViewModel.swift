@@ -296,6 +296,12 @@ public class GridViewModel: ObservableObject {
     /// reporter.
     @Published public var watcherBanner: String?
 
+    /// Non-nil (the device name) when an unpaired LAN device asked to pair — the
+    /// daemon pushed a `.pairingRequested` event. The macOS app shows an
+    /// allow/dismiss banner; "Allow" opens the pairing-code sheet. Harmless on
+    /// iOS (it doesn't render a banner from this). Cleared via `clearIncomingPairing()`.
+    @Published public var incomingPairingDevice: String?
+
     /// Live progress for the daemon's background post-index pass (proxy
     /// detection / auto-grouping / camera-sensor lookups). `nil` when no
     /// pass is active. Driven by the `.postIndex*` catalog events and
@@ -459,10 +465,17 @@ public class GridViewModel: ObservableObject {
             }
             postIndexClearWorkItem = work
             DispatchQueue.main.asyncAfter(deadline: .now() + Self.postIndexLingerSeconds, execute: work)
+        case .pairingRequested:
+            // An unpaired LAN device wants in. The macOS app shows an
+            // allow/dismiss banner off this; iOS ignores it.
+            incomingPairingDevice = event.message.isEmpty ? "A device" : event.message
         case .unknown:
             break
         }
     }
+
+    /// Clear the incoming-pairing banner (after the user clicks Allow or Dismiss).
+    public func clearIncomingPairing() { incomingPairingDevice = nil }
 
     /// How long the post-index panel lingers after a pass completes before
     /// clearing — see `postIndexClearWorkItem`.

@@ -943,6 +943,7 @@ class VideoRepository(
                     Reelvault.CatalogEvent.Kind.POST_INDEX_STARTED -> CatalogEventKind.PostIndexStarted
                     Reelvault.CatalogEvent.Kind.POST_INDEX_PROGRESS -> CatalogEventKind.PostIndexProgress
                     Reelvault.CatalogEvent.Kind.POST_INDEX_COMPLETED -> CatalogEventKind.PostIndexCompleted
+                    Reelvault.CatalogEvent.Kind.PAIRING_REQUESTED -> CatalogEventKind.PairingRequested
                     else -> CatalogEventKind.Unknown
                 },
                 videoId = proto.videoId,

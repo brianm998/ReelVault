@@ -3710,5 +3710,14 @@ fn change_to_event(change: &CatalogChange) -> reelvault::CatalogEvent {
                 detail: String::new(),
             }),
         },
+        CatalogChange::PairingRequested { device_name } => reelvault::CatalogEvent {
+            kind: Kind::PairingRequested as i32,
+            video_id: String::new(),
+            path: String::new(),
+            at_ms,
+            // The device name rides in `message` (no new proto field needed).
+            message: device_name.clone(),
+            post_index: None,
+        },
     }
 }

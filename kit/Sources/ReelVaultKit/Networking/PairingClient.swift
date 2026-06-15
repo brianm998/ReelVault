@@ -26,6 +26,29 @@ public struct PairingClient {
         }
     }
 
+    /// Tell the daemon this (unpaired) device wants to connect, so it pops an
+    /// "allow this device?" banner on the desktop/macOS clients. Fire-and-forget:
+    /// the user then clicks Allow there, which shows the code to type back in.
+    /// Returns true on 2xx (best-effort — pairing still works manually if it fails).
+    @discardableResult
+    public func requestPairing(host: String, mediaPort: Int, fingerprintHex: String, deviceName: String) async -> Bool {
+        guard let url = URL(string: "https://\(host):\(mediaPort)/pair/request") else { return false }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.timeoutInterval = 10
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: ["device_name": deviceName])
+        let session = pinnedSession(fingerprintHex)
+        defer { session.finishTasksAndInvalidate() }
+        do {
+            let (_, resp) = try await session.data(for: req)
+            return (resp as? HTTPURLResponse).map { (200..<300).contains($0.statusCode) } ?? false
+        } catch {
+            NSLog("ReelVault pair: /pair/request to https://\(host):\(mediaPort) failed: \(error)")
+            return false
+        }
+    }
+
     /// Exchange the entered code for a bearer token, or nil if it was rejected.
     public func pair(
         host: String, mediaPort: Int, fingerprintHex: String,

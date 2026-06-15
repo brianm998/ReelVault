@@ -574,6 +574,8 @@ enum class CatalogEventKind {
     PostIndexProgress,
     /** The post-index pass drained; clients clear the activity panel. */
     PostIndexCompleted,
+    /** An unpaired LAN device asked to pair; show an allow/dismiss banner. */
+    PairingRequested,
 }
 
 data class CatalogEvent(

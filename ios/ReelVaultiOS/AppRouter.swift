@@ -137,14 +137,22 @@ final class AppRouter: ObservableObject {
         }
 
         // Use a stored token if we have one; otherwise prompt for the pairing
-        // code. Desktop-initiated model: the operator mints the code on a
-        // connected computer (ReelVault ▸ File ▸ Pair a New Device…); this device
-        // only redeems it via POST /pair. So we don't call /pair/start here —
-        // we go straight to the code-entry screen.
+        // code. The operator approves on a connected computer; this device
+        // redeems the code via POST /pair. We don't call /pair/start here — but
+        // we DO ping /pair/request so the daemon pops an "allow this device?"
+        // banner on the desktop/macOS clients (the operator clicks Allow, which
+        // shows the code). Best-effort; the manual "Pair a New Device" flow still
+        // works if the request is missed.
         let token = TokenStore.load(for: pin)
         if token == nil && server.requiresPairing {
             pending = (server, pin)
             phase = .needsPairing(server)
+            let mediaPort = server.mediaPort ?? 50052
+            Task {
+                await PairingClient().requestPairing(
+                    host: server.host, mediaPort: mediaPort,
+                    fingerprintHex: pin, deviceName: Self.deviceName())
+            }
             return
         }
         await finishConnect(server: server, fingerprint: pin, token: token)

@@ -115,6 +115,7 @@ pub async fn serve(
         .route("/healthz", get(|| async { "ok" }))
         .route("/fingerprint", get(fingerprint))
         .route("/pair/start", post(pair_start))
+        .route("/pair/request", post(pair_request))
         .route("/pair", post(pair))
         .route("/upload", post(upload).layer(DefaultBodyLimit::disable()))
         .route("/video/:id", get(video))
@@ -141,6 +142,30 @@ async fn fingerprint(State(state): State<MediaState>) -> String {
 /// mint one via the `StartPairing` gRPC RPC — both share the same pending cell.
 async fn pair_start(State(state): State<MediaState>) -> StatusCode {
     crate::pairing::issue_code(&state.pairing, &state.data_dir).await;
+    StatusCode::OK
+}
+
+#[derive(serde::Deserialize)]
+struct PairRequestNotify {
+    device_name: Option<String>,
+}
+
+/// An unpaired device asking to be let in: publish a `PairingRequested` event so
+/// the desktop/macOS clients (subscribed to the catalog-event stream over
+/// loopback) pop an "allow this device?" banner. This does NOT mint a code — the
+/// user clicks Allow on the desktop, which calls `StartPairing` and shows the
+/// code to type back into the device. Unauthenticated by design (the device has
+/// no token yet); it only emits a UI prompt, grants nothing.
+async fn pair_request(State(state): State<MediaState>, Json(req): Json<PairRequestNotify>) -> StatusCode {
+    let name = req
+        .device_name
+        .map(|n| n.trim().to_string())
+        .filter(|n| !n.is_empty())
+        .unwrap_or_else(|| "A device".to_string());
+    tracing::info!("pair: {name} requested pairing (notifying desktop clients)");
+    let _ = state
+        .events
+        .send(crate::watcher::CatalogChange::PairingRequested { device_name: name });
     StatusCode::OK
 }
 
