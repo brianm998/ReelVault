@@ -54,10 +54,14 @@ struct RootSplitView: View {
     }
 }
 
-/// The selected video (preferring the live row, falling back to the cached one).
+/// The selected video *only if its card is in the currently-loaded grid*. The
+/// inspector keys off this (not the cached `grid.selectedVideo`) so that after a
+/// source/filter change strands the previous selection off-screen, the right
+/// info panel hides instead of showing details for a video no longer in view.
 @MainActor
-private func selectedVideo(_ grid: GridViewModel) -> VideoSummary? {
-    grid.videos.first(where: { $0.id == grid.selectedVideoId }) ?? grid.selectedVideo
+private func visibleSelectedVideo(_ grid: GridViewModel) -> VideoSummary? {
+    guard let id = grid.selectedVideoId else { return nil }
+    return grid.videos.first(where: { $0.id == id })
 }
 
 // MARK: - Regular (iPad): 3-column split
@@ -87,16 +91,17 @@ private struct RegularLayout: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 if showInspector {
                     Divider()
-                    InspectorPanel(video: selectedVideo(grid)) { viewMode = .detail }
+                    InspectorPanel(video: visibleSelectedVideo(grid)) { viewMode = .detail }
                         .frame(width: 300)
                 }
             }
         }
     }
 
-    /// Inspector appears only when browsing (grid/list) with a selection.
+    /// Inspector appears only when browsing (grid/list) and the selected video's
+    /// card is actually in view (so a stranded selection hides the panel).
     private var showInspector: Bool {
-        (viewMode == .grid || viewMode == .list) && selectedVideo(grid) != nil
+        (viewMode == .grid || viewMode == .list) && visibleSelectedVideo(grid) != nil
     }
 
     @ViewBuilder private var center: some View {
