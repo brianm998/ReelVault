@@ -77,6 +77,10 @@ final class StreamPlayer: ObservableObject {
     /// height-based on iOS (remote mode), so the server serves the proxy closest
     /// to the requested height. Changed via `selectRendition`.
     @Published var renditionOverride: Int?
+    /// The vertical resolution actually being played, read from the player item's
+    /// `presentationSize` once the video track loads — so the picker can show the
+    /// resolved quality (e.g. "Auto (720p)") rather than just "Auto".
+    @Published var playingHeight: Int?
     private var preparedVideoId: String?
     /// The height the current player item was prepared at, so changing the
     /// rendition forces a re-prepare instead of a no-op.
@@ -93,6 +97,7 @@ final class StreamPlayer: ObservableObject {
     /// intermittent failures.
     private var diagObservers: [NSObjectProtocol] = []
     private var statusObservation: NSKeyValueObservation?
+    private var presentationObservation: NSKeyValueObservation?
 
     /// Prepare the rendition and start playing. Tries HLS streaming first (begins
     /// playing before the whole file transcodes, via a pinned loopback proxy),
@@ -378,6 +383,14 @@ final class StreamPlayer: ObservableObject {
                 NSLog("ReelVault player: item FAILED — \(item.error?.localizedDescription ?? "unknown error")")
             }
         }
+        // The decoded video size becomes known once the track loads; surface its
+        // height so the picker can show the resolved quality ("Auto (720p)").
+        playingHeight = nil
+        presentationObservation = item.observe(\.presentationSize, options: [.new, .initial]) { item, _ in
+            let h = Int(item.presentationSize.height.rounded())
+            guard h > 0 else { return }
+            Task { @MainActor [weak self] in self?.playingHeight = h }
+        }
         let nc = NotificationCenter.default
         diagObservers.append(nc.addObserver(
             forName: .AVPlayerItemNewErrorLogEntry, object: item, queue: .main
@@ -401,6 +414,9 @@ final class StreamPlayer: ObservableObject {
     private func clearDiagnostics() {
         statusObservation?.invalidate()
         statusObservation = nil
+        presentationObservation?.invalidate()
+        presentationObservation = nil
+        playingHeight = nil
         diagObservers.forEach { NotificationCenter.default.removeObserver($0) }
         diagObservers.removeAll()
     }
@@ -521,11 +537,13 @@ struct RenditionPicker: View {
 
     var body: some View {
         Menu {
-            choice("Auto", height: nil)
-            choice("Original (full)", height: 0)
+            // Auto first, annotated with the resolution it resolved to (when
+            // playing); then Original at the source resolution; then every proxy,
+            // largest first (a quality ladder).
+            choice(autoMenuLabel, height: nil)
+            choice(originalLabel, height: 0)
             if !proxies.isEmpty {
                 Divider()
-                // Largest first reads naturally as a quality ladder.
                 ForEach(proxies.sorted { $0.height > $1.height }) { p in
                     choice(proxyLabel(p), height: p.height)
                 }
@@ -546,12 +564,27 @@ struct RenditionPicker: View {
         }
     }
 
+    /// The label on the picker button — shows the *actual* resolution playing so
+    /// the user knows what "Auto"/"Original" resolved to (issue: Auto gave no hint).
     private var currentLabel: String {
         switch stream.renditionOverride {
-        case nil: return "Auto"
-        case 0: return "Original"
+        case nil: return stream.playingHeight.map { "Auto (\($0)p)" } ?? "Auto"
+        case 0: return stream.playingHeight.map { "Original (\($0)p)" } ?? originalLabel
         case let h?: return "\(h)p"
         }
+    }
+
+    /// Auto menu row: annotate with the resolved height only while Auto is the
+    /// active choice (that's when `playingHeight` reflects Auto's pick).
+    private var autoMenuLabel: String {
+        if stream.renditionOverride == nil, let h = stream.playingHeight { return "Auto (\(h)p)" }
+        return "Auto"
+    }
+
+    /// "Original (2160p)" using the source's own resolution (so the menu names the
+    /// full quality), or just "Original" when the height is unknown.
+    private var originalLabel: String {
+        video.height > 0 ? "Original (\(video.height)p)" : "Original (full)"
     }
 
     private func proxyLabel(_ p: VideoRepository.ProxyInfo) -> String {
