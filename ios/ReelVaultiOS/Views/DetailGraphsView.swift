@@ -25,6 +25,8 @@ private struct GraphFrameStat {
 struct DetailGraphsView: View {
     @ObservedObject var grid: GridViewModel
     let videoId: String
+    /// Drop the "Visuals" headline when hosted inside a CollapsibleSection.
+    var showHeader: Bool = true
 
     @State private var stats: [GraphFrameStat] = []
 
@@ -51,7 +53,7 @@ struct DetailGraphsView: View {
         // still loading) — an all-empty clip just omits it.
         if hasStats || hasLoudness || !loudnessLoaded {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Visuals").font(.headline)
+                if showHeader { Text("Visuals").font(.headline) }
                 if hasStats {
                     sectionLabel("Brightness"); brightnessChart
                     sectionLabel("Color over time"); colorTimeline

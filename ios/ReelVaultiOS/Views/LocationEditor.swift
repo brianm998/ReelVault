@@ -14,6 +14,8 @@ import UIKit
 struct LocationButtonsSection: View {
     @ObservedObject var grid: GridViewModel
     let videoId: String
+    /// Drop the "Location" headline when hosted inside a CollapsibleSection.
+    var showHeader: Bool = true
     @State private var showPicker = false
 
     private var video: VideoSummary? {
@@ -24,7 +26,7 @@ struct LocationButtonsSection: View {
     var body: some View {
         if let video {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Location").font(.headline)
+                if showHeader { Text("Location").font(.headline) }
                 if video.hasLocation {
                     Text(String(format: "%.5f, %.5f", video.gpsLatitude, video.gpsLongitude))
                         .font(.caption).foregroundStyle(.secondary)

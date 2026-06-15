@@ -25,6 +25,7 @@ struct DetailModeView: View {
                         StreamingPlayerView(stream: stream, video: video, endpoint: connection)
                         MetadataEditorSection(grid: grid, videoId: video.id)
                         VideoMetadataSection(video: video, refreshTick: grid.catalogChangeTick)
+                        VideoDetailExtras(grid: grid, video: video)
                         LocationButtonsSection(grid: grid, videoId: video.id)
                         DetailGraphsView(grid: grid, videoId: video.id)
                     }

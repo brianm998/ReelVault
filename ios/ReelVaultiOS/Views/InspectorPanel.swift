@@ -4,9 +4,11 @@
 import SwiftUI
 import ReelVaultKit
 
-/// The metadata inspector — a small fixed-width trailing panel in Grid/List
-/// mode on iPad. Metadata only; playback lives in Detail mode (the "Play in
-/// Detail" button switches there).
+/// The metadata inspector — the fixed-width trailing panel in Grid/List mode on
+/// iPad. Now mirrors the macOS detail panel's section set (marks, technical
+/// details, EXIF, collections, notes, location, visuals) with each section
+/// collapsible. Playback lives in Detail mode (the "Play in Detail" button
+/// switches there).
 struct InspectorPanel: View {
     @ObservedObject var grid: GridViewModel
     let video: VideoSummary?
@@ -27,8 +29,22 @@ struct InspectorPanel: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
-                    VideoMetadataSection(video: video, refreshTick: refreshTick)
-                    LocationButtonsSection(grid: grid, videoId: video.id)
+
+                    CollapsibleSection("Marks & Keywords") {
+                        MetadataEditorSection(grid: grid, videoId: video.id)
+                    }
+                    CollapsibleSection("Details") {
+                        VideoMetadataSection(video: video, refreshTick: refreshTick, showHeader: false)
+                    }
+                    CollapsibleSection("EXIF") { ExifSection(video: video) }
+                    CollapsibleSection("Collections") { CollectionsSection(grid: grid, videoId: video.id) }
+                    CollapsibleSection("Notes") { NotesSection(videoId: video.id) }
+                    CollapsibleSection("Location") {
+                        LocationButtonsSection(grid: grid, videoId: video.id, showHeader: false)
+                    }
+                    CollapsibleSection("Visuals") {
+                        DetailGraphsView(grid: grid, videoId: video.id, showHeader: false)
+                    }
                 }
                 .padding()
             }

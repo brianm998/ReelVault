@@ -30,6 +30,8 @@ struct VideoDetailView: View {
                 VideoMetadataSection(
                     video: grid.videos.first(where: { $0.id == video.id }) ?? video,
                     refreshTick: grid.catalogChangeTick)
+                VideoDetailExtras(grid: grid,
+                                  video: grid.videos.first(where: { $0.id == video.id }) ?? video)
                 LocationButtonsSection(grid: grid, videoId: video.id)
                 DetailGraphsView(grid: grid, videoId: video.id)
             }
@@ -566,6 +568,9 @@ struct VideoMetadataSection: View {
     /// created server-side (e.g. promoted from an HLS stream while this video
     /// played) appears without leaving and reopening the view.
     var refreshTick: Int = 0
+    /// Drop the "Details" headline when hosted inside a CollapsibleSection (which
+    /// supplies its own header) — the inspector does this.
+    var showHeader: Bool = true
     @State private var proxies: [VideoRepository.ProxyInfo] = []
 
     var body: some View {
@@ -585,7 +590,7 @@ struct VideoMetadataSection: View {
 
     private var detailsGroup: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Details").font(.headline)
+            if showHeader { Text("Details").font(.headline) }
             detailRow("File", video.filename)
             if video.width > 0 && video.height > 0 {
                 detailRow("Resolution", video.resolution)
