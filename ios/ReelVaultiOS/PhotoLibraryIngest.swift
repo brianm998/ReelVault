@@ -44,6 +44,7 @@ enum PhotoLibraryIngest {
                     }
                 }
                 NSLog("ReelVault local: ingested \(ok)/\(assets.count) Photos video(s)")
+                NativeMedia.clearAssetCache()
                 cont.resume(returning: ok)
             }
         }
@@ -91,6 +92,7 @@ enum ContainerIngest {
                     }
                 }
                 NSLog("ReelVault local: ingested \(ok)/\(videos.count) container video(s)")
+                NativeMedia.clearAssetCache()
                 cont.resume(returning: ok)
             }
         }

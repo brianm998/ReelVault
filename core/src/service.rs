@@ -2373,12 +2373,21 @@ impl ReelVaultTrait for ReelVaultService {
         }
         .clamp(144, 4320) as u32;
 
-        let output_path = if req.output_path.is_empty() {
-            crate::proxies::proxy_path_beside(std::path::Path::new(&video.path), target_height)
-        } else {
+        // Resolve the backend source the same way the thumbnail paths do, so
+        // proxy generation works for Photos-backed rows (whose `path` is a
+        // synthetic `photos://…`, not a real file) — not just filesystem rows.
+        let source = self.db.media_source_for(&req.video_id).map_err(Status::from)?;
+        let output_path = if !req.output_path.is_empty() {
             std::path::PathBuf::from(req.output_path)
+        } else if let crate::media_backend::MediaSource::Path(p) = &source {
+            crate::proxies::proxy_path_beside(p, target_height)
+        } else {
+            // Non-filesystem source (Photos/bookmark): there's no source dir to
+            // write beside, so put the proxy in the thumbnail cache, keyed by id.
+            self.config
+                .thumbnail_cache_path
+                .join(format!("{}_proxy_{}p.mp4", video.id, target_height))
         };
-        let source = std::path::PathBuf::from(video.path.clone());
         let source_id = video.id.clone();
         let db = Arc::clone(&self.db);
         let cache = self.config.thumbnail_cache_path.clone();

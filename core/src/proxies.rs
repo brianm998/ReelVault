@@ -787,7 +787,7 @@ pub(crate) fn ffmpeg_transcode_proxy(
 pub fn create_proxy(
     db: &Database,
     source_id: &str,
-    source: &Path,
+    source: &crate::media_backend::MediaSource,
     output_path: &Path,
     target_height: u32,
     thumbnail_cache: &Path,
@@ -808,7 +808,7 @@ pub fn create_proxy(
     // Progress arrives on the 0–85% band; "indexing"/"complete" cover 90–100%
     // afterward. The backend acquires its own ffmpeg permit for the encode.
     crate::media_backend::backend().transcode_proxy(
-        &crate::media_backend::MediaSource::Path(source.to_path_buf()),
+        source,
         output_path,
         target_height as i32,
         total_frames,

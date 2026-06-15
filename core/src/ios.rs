@@ -264,6 +264,9 @@ struct NativeMediaBackend {
 impl MediaBackend for NativeMediaBackend {
     fn probe(&self, src: &MediaSource) -> Result<FFProbeOutput> {
         let (kind, id) = src.ffi_parts();
+        // Share the global throttle with the CLI backend so concurrent native
+        // decode/encode sessions stay within the (mobile-tuned) cap (§6.11).
+        let _permit = crate::concurrency::acquire_ffmpeg_permit();
         let ptr = (self.cb.probe)(kind, id.as_ptr());
         if ptr.is_null() {
             return Err(ReelVaultError::MetadataExtractionFailed(
@@ -301,6 +304,7 @@ impl MediaBackend for NativeMediaBackend {
         let (kind, id) = src.ffi_parts();
         let out_c = CString::new(out.to_string_lossy().as_bytes())
             .map_err(|_| ReelVaultError::InvalidPath("out path has interior NUL".into()))?;
+        let _permit = crate::concurrency::acquire_ffmpeg_permit();
         let rc = (self.cb.extract_frame)(kind, id.as_ptr(), time_secs, max_px, out_c.as_ptr());
         if rc == 0 {
             Ok(())
@@ -322,6 +326,7 @@ impl MediaBackend for NativeMediaBackend {
         let (kind, id) = src.ffi_parts();
         let out_c = CString::new(out.to_string_lossy().as_bytes())
             .map_err(|_| ReelVaultError::InvalidPath("out path has interior NUL".into()))?;
+        let _permit = crate::concurrency::acquire_ffmpeg_permit();
         let rc = (self.cb.transcode_proxy)(kind, id.as_ptr(), out_c.as_ptr(), target_height);
         // AVAssetExportSession doesn't surface granular progress here yet; jump
         // to the top of the encode band on completion.
@@ -434,6 +439,7 @@ pub extern "C" fn reelvault_ingest_path(path: *const c_char, filename: *const c_
             .to_string()
     });
     let source = MediaSource::Path(PathBuf::from(&path));
+    let file_size = std::fs::metadata(&path).map(|m| m.len() as i64).ok();
 
     match crate::indexing::IndexingEngine::index_media_source(
         ctx.db.as_ref(),
@@ -445,6 +451,11 @@ pub extern "C" fn reelvault_ingest_path(path: *const c_char, filename: *const c_
         &ctx.cache,
     ) {
         Ok(video_id) => {
+            // index_media_source doesn't know the on-disk size; record it for
+            // filesystem sources (Photos rows stay NULL — no stable path).
+            if let Some(sz) = file_size {
+                let _ = ctx.db.update_video_file_size(&video_id, sz);
+            }
             let _ = ctx.events.send(crate::watcher::CatalogChange::VideoAdded {
                 video_id,
                 path: PathBuf::from(path),

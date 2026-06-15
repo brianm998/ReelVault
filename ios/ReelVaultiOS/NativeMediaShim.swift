@@ -31,26 +31,58 @@ enum NativeMedia {
 
     // MARK: - Source resolution
 
-    /// Resolve a backend source descriptor to an AVAsset. kind 0 = file path,
-    /// 1 = Photos localIdentifier.
+    // The Rust core re-enters the backend ~12× per video during ingest (probe +
+    // still + 10 scrub frames), each calling resolveAsset. For a Photos source
+    // that would be 12 separate `requestAVAsset` calls — and with iCloud
+    // "Optimize Storage" each can re-download the full-quality original. Cache
+    // the resolved AVAsset per source for the duration of an ingest pass;
+    // `clearAssetCache()` is called when enumeration finishes.
+    private static let cacheLock = NSLock()
+    private static var assetCache: [String: AVAsset] = [:]
+
+    static func clearAssetCache() {
+        cacheLock.lock()
+        assetCache.removeAll()
+        cacheLock.unlock()
+    }
+
+    /// Resolve a backend source descriptor to an AVAsset (cached). kind 0 = file
+    /// path, 1 = Photos localIdentifier.
     static func resolveAsset(kind: Int32, srcId: String) async -> AVAsset? {
+        let key = "\(kind):\(srcId)"
+        cacheLock.lock()
+        let cached = assetCache[key]
+        cacheLock.unlock()
+        if let cached { return cached }
+
+        let resolved: AVAsset?
         switch kind {
         case 0:
-            return AVURLAsset(url: URL(fileURLWithPath: srcId))
+            resolved = AVURLAsset(url: URL(fileURLWithPath: srcId))
         case 1:
             let fetch = PHAsset.fetchAssets(withLocalIdentifiers: [srcId], options: nil)
-            guard let asset = fetch.firstObject else { return nil }
-            return await withCheckedContinuation { cont in
-                let opts = PHVideoRequestOptions()
-                opts.isNetworkAccessAllowed = true
-                opts.deliveryMode = .highQualityFormat
-                PHImageManager.default().requestAVAsset(forVideo: asset, options: opts) { avAsset, _, _ in
-                    cont.resume(returning: avAsset)
+            if let asset = fetch.firstObject {
+                resolved = await withCheckedContinuation { cont in
+                    let opts = PHVideoRequestOptions()
+                    opts.isNetworkAccessAllowed = true
+                    opts.deliveryMode = .highQualityFormat
+                    PHImageManager.default().requestAVAsset(forVideo: asset, options: opts) { avAsset, _, _ in
+                        cont.resume(returning: avAsset)
+                    }
                 }
+            } else {
+                resolved = nil
             }
         default:
-            return nil
+            resolved = nil
         }
+
+        if let resolved {
+            cacheLock.lock()
+            assetCache[key] = resolved
+            cacheLock.unlock()
+        }
+        return resolved
     }
 
     /// Run an async body to completion on a detached task, blocking the caller
@@ -58,21 +90,30 @@ enum NativeMedia {
     /// because callbacks run off the main thread (the cooperative pool runs the
     /// detached task; the blocked thread is a plain background/DispatchQueue
     /// thread, so the pool isn't starved).
-    static func blocking<T>(_ body: @escaping @Sendable () async -> T) -> T {
+    static func blocking<T>(
+        timeout: DispatchTimeInterval = .seconds(120),
+        fallback: T,
+        _ body: @escaping @Sendable () async -> T
+    ) -> T {
         let sem = DispatchSemaphore(value: 0)
         let box = ResultBox<T>()
         Task.detached {
             box.value = await body()
             sem.signal()
         }
-        sem.wait()
-        return box.value!
+        // Bound the wait: a stuck iCloud `requestAVAsset` (no local copy, no
+        // network) must not pin a worker thread forever.
+        if sem.wait(timeout: .now() + timeout) == .timedOut {
+            NSLog("ReelVault native: media operation timed out after \(timeout)")
+            return fallback
+        }
+        return box.value ?? fallback
     }
 
     // MARK: - probe → ffprobe-shaped JSON
 
     static func probeJSON(kind: Int32, srcId: String) -> String? {
-        blocking {
+        blocking(fallback: nil) {
             guard let asset = await resolveAsset(kind: kind, srcId: srcId) else { return nil }
             do {
                 let duration = try await asset.load(.duration)
@@ -87,7 +128,9 @@ enum NativeMedia {
                         "codec_type": "video",
                         "width": Int(abs(size.width).rounded()),
                         "height": Int(abs(size.height).rounded()),
-                        "r_frame_rate": "\(Int(fps.rounded()))/1",
+                        // Millihertz rational so fractional NTSC rates survive
+                        // (29.97 → 29970/1000), not rounded to an integer.
+                        "r_frame_rate": "\(Int((Double(fps) * 1000).rounded()))/1000",
                     ]
                     if let codec = try? await codecName(of: v) { s["codec_name"] = codec }
                     streams.append(s)
@@ -138,13 +181,16 @@ enum NativeMedia {
     // MARK: - extract_frame
 
     static func extractFrame(kind: Int32, srcId: String, timeSecs: Double, maxPx: Int, outPath: String) -> Bool {
-        blocking {
+        blocking(fallback: false) {
             guard let asset = await resolveAsset(kind: kind, srcId: srcId) else { return false }
             let gen = AVAssetImageGenerator(asset: asset)
             gen.appliesPreferredTrackTransform = true
             gen.maximumSize = CGSize(width: maxPx, height: maxPx) // fit longest side
-            gen.requestedTimeToleranceBefore = CMTime(seconds: 0.5, preferredTimescale: 600)
-            gen.requestedTimeToleranceAfter = CMTime(seconds: 0.5, preferredTimescale: 600)
+            // Exact seek (like the desktop ffmpeg path): a ±tolerance would
+            // collapse adjacent scrub positions to the same keyframe on short
+            // clips, yielding duplicate scrub frames.
+            gen.requestedTimeToleranceBefore = .zero
+            gen.requestedTimeToleranceAfter = .zero
             let time = CMTime(seconds: max(0, timeSecs), preferredTimescale: 600)
             do {
                 let cg = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<CGImage, Error>) in
@@ -162,18 +208,39 @@ enum NativeMedia {
     }
 
     static func writeJPEG(_ cg: CGImage, to path: String) -> Bool {
-        let url = URL(fileURLWithPath: path)
+        // Encode to a sibling temp file and atomically move into place on
+        // success — a failed/partial Finalize must never leave a corrupt JPEG at
+        // `path` (the cache treats "file exists" as "thumbnail ready").
+        let finalURL = URL(fileURLWithPath: path)
+        let tmpURL = finalURL.deletingLastPathComponent()
+            .appendingPathComponent(".\(UUID().uuidString).jpg")
         guard let dest = CGImageDestinationCreateWithURL(
-            url as CFURL, UTType.jpeg.identifier as CFString, 1, nil
+            tmpURL as CFURL, UTType.jpeg.identifier as CFString, 1, nil
         ) else { return false }
         CGImageDestinationAddImage(dest, cg, [kCGImageDestinationLossyCompressionQuality: 0.8] as CFDictionary)
-        return CGImageDestinationFinalize(dest)
+        guard CGImageDestinationFinalize(dest) else {
+            try? FileManager.default.removeItem(at: tmpURL)
+            return false
+        }
+        do {
+            // `replaceItemAt` only works if the destination exists; for the
+            // common (new file) case, move; on collision, replace.
+            if FileManager.default.fileExists(atPath: finalURL.path) {
+                _ = try FileManager.default.replaceItemAt(finalURL, withItemAt: tmpURL)
+            } else {
+                try FileManager.default.moveItem(at: tmpURL, to: finalURL)
+            }
+            return true
+        } catch {
+            try? FileManager.default.removeItem(at: tmpURL)
+            return false
+        }
     }
 
     // MARK: - transcode_proxy
 
     static func transcodeProxy(kind: Int32, srcId: String, outPath: String, targetHeight: Int) -> Bool {
-        blocking {
+        blocking(fallback: false) {
             guard let asset = await resolveAsset(kind: kind, srcId: srcId) else { return false }
             // Closest standard export preset at/under the target height. (Exact
             // arbitrary heights would need an AVAssetWriter pipeline; a later
