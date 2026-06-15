@@ -116,6 +116,7 @@ pub async fn serve(
         .route("/fingerprint", get(fingerprint))
         .route("/pair/start", post(pair_start))
         .route("/pair/request", post(pair_request))
+        .route("/pair/revoke", post(pair_revoke))
         .route("/pair", post(pair))
         .route("/upload", post(upload).layer(DefaultBodyLimit::disable()))
         .route("/video/:id", get(video))
@@ -167,6 +168,36 @@ async fn pair_request(State(state): State<MediaState>, Json(req): Json<PairReque
         .events
         .send(crate::watcher::CatalogChange::PairingRequested { device_name: name });
     StatusCode::OK
+}
+
+/// Self-revoke: a paired device drops its OWN `paired_devices` row, so a
+/// "Forget this server" on the device also removes the server-side record (not
+/// just the local Keychain token). Authenticated by the very bearer token being
+/// revoked — you can only revoke a token you hold (its hash must match a row).
+/// Idempotent: revoking an already-absent token still returns 200. Deliberately
+/// does NOT gate on `is_authorized` so a token whose row was already removed can
+/// still "revoke" cleanly.
+async fn pair_revoke(State(state): State<MediaState>, headers: HeaderMap) -> StatusCode {
+    let token = match headers
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.strip_prefix("Bearer "))
+    {
+        Some(t) if !t.is_empty() => t,
+        _ => return StatusCode::UNAUTHORIZED,
+    };
+    let hash = crate::auth::token_hash(token);
+    match state.db.revoke_paired_device(&hash) {
+        Ok(true) => {
+            tracing::info!("pair: device self-revoked its token");
+            StatusCode::OK
+        }
+        Ok(false) => StatusCode::OK, // already gone — idempotent
+        Err(e) => {
+            tracing::warn!("pair: revoke failed: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
+    }
 }
 
 #[derive(serde::Deserialize)]

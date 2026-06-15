@@ -360,9 +360,29 @@ final class AppRouter: ObservableObject {
     /// the app does NOT re-prompt for pairing; this is the only in-app way to
     /// clear it. Also drops the remembered last-server (so launch re-discovers
     /// instead of reconnecting straight to its IP) and returns to discovery.
-    /// Note: this clears the token on THIS device only — the daemon's
-    /// paired-devices row is left in place (orphaned), which is fine for testing.
+    /// Best-effort tells the daemon to revoke the token too (POST /pair/revoke →
+    /// deletes the server's paired-devices row), so the record isn't left orphaned.
     func forgetCurrentServer() {
+        // Capture host/port/fingerprint/token BEFORE clearing locally, so the
+        // async server-side revoke still has the credentials it needs.
+        var targets: [(host: String, mediaPort: Int, fp: String, token: String)] = []
+        if let c = connection, let t = c.bearerToken {
+            targets.append((c.host, c.mediaPort, c.fingerprintHex, t))
+        }
+        if let s = loadStoredServer(), let t = TokenStore.load(for: s.fingerprintHex),
+           !targets.contains(where: { $0.fp == s.fingerprintHex }) {
+            targets.append((s.host, s.mediaPort, s.fingerprintHex, t))
+        }
+        if !targets.isEmpty {
+            Task {
+                for t in targets {
+                    await PairingClient().revoke(
+                        host: t.host, mediaPort: t.mediaPort,
+                        fingerprintHex: t.fp, token: t.token)
+                }
+            }
+        }
+        // Clear the local Keychain token(s) + remembered server, then re-discover.
         if let fp = connection?.fingerprintHex { TokenStore.delete(for: fp) }
         if let s = loadStoredServer() { TokenStore.delete(for: s.fingerprintHex) }
         UserDefaults.standard.removeObject(forKey: Self.lastServerKey)

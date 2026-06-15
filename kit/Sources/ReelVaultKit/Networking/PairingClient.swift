@@ -49,6 +49,27 @@ public struct PairingClient {
         }
     }
 
+    /// Self-revoke: ask the daemon to drop this device's `paired_devices` row,
+    /// presenting the bearer token it was issued. Best-effort — the local Keychain
+    /// token is cleared by the caller regardless. Returns true on 2xx.
+    @discardableResult
+    public func revoke(host: String, mediaPort: Int, fingerprintHex: String, token: String) async -> Bool {
+        guard let url = URL(string: "https://\(host):\(mediaPort)/pair/revoke") else { return false }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.timeoutInterval = 10
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let session = pinnedSession(fingerprintHex)
+        defer { session.finishTasksAndInvalidate() }
+        do {
+            let (_, resp) = try await session.data(for: req)
+            return (resp as? HTTPURLResponse).map { (200..<300).contains($0.statusCode) } ?? false
+        } catch {
+            NSLog("ReelVault pair: /pair/revoke to https://\(host):\(mediaPort) failed: \(error)")
+            return false
+        }
+    }
+
     /// Exchange the entered code for a bearer token, or nil if it was rejected.
     public func pair(
         host: String, mediaPort: Int, fingerprintHex: String,
