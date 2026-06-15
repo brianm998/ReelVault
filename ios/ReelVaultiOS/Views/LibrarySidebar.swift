@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import SwiftUI
+import UIKit
 import ReelVaultKit
 
 /// One selectable *source* in the library sidebar — which videos to show.
@@ -53,28 +54,54 @@ struct LibrarySidebar: View {
     }
 
     /// Where videos come from: the on-device Local Library or a LAN server.
-    /// `connection == nil` means we're in Local mode. The switch re-routes the
-    /// whole app (AppRouter.phase) and is remembered for next launch.
+    /// `connection == nil` means we're in Local mode. Both sources are always
+    /// listed (like the View switcher above) so the active one reads as
+    /// *selected* — prominent + a trailing checkmark — while the other is a muted,
+    /// tappable row that switches to it. The switch re-routes the whole app
+    /// (AppRouter.phase) and is remembered for next launch.
     private var librarySourceSection: some View {
-        Section("Library") {
-            if router.connection == nil {
-                Label("On This iPhone", systemImage: "iphone").foregroundStyle(.secondary)
-                Button {
-                    router.useServerLibrary()
-                } label: {
-                    Label("Connect to a Server…", systemImage: "network")
-                }
-                .buttonStyle(.plain)
-            } else {
-                Label("Server", systemImage: "network").foregroundStyle(.secondary)
-                Button {
-                    router.startLocal()
-                } label: {
-                    Label("Use On-Device Library", systemImage: "iphone")
-                }
-                .buttonStyle(.plain)
+        let onServer = router.connection != nil
+        return Section("Library") {
+            sourceRow(Self.thisDeviceLabel, systemImage: Self.thisDeviceIcon,
+                      isActive: !onServer) {
+                if onServer { router.startLocal() }
+            }
+            sourceRow("Server", systemImage: "network", isActive: onServer) {
+                if !onServer { router.useServerLibrary() }
             }
         }
+    }
+
+    /// One library-source row, styled like the View-mode rows: the active source
+    /// is shown in the prominent (white-in-dark) text colour with a trailing
+    /// checkmark; the inactive source is muted and switches to itself on tap. The
+    /// active row's `switchTo` is a no-op (guarded by the caller), so it isn't
+    /// `.disabled` — disabling a `.plain` button would dim the very row we want to
+    /// look prominent.
+    @ViewBuilder private func sourceRow(
+        _ title: String, systemImage: String, isActive: Bool, switchTo: @escaping () -> Void
+    ) -> some View {
+        Button(action: switchTo) {
+            HStack {
+                Label(title, systemImage: systemImage)
+                Spacer()
+                if isActive {
+                    Image(systemName: "checkmark").foregroundStyle(.tint)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(isActive ? .primary : .secondary)
+    }
+
+    /// "On This iPad" on an iPad, "On This iPhone" otherwise.
+    private static var thisDeviceLabel: String {
+        UIDevice.current.userInterfaceIdiom == .pad ? "On This iPad" : "On This iPhone"
+    }
+
+    private static var thisDeviceIcon: String {
+        UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone"
     }
 
     private var viewSection: some View {
