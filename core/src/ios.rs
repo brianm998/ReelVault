@@ -244,6 +244,12 @@ pub struct NativeMediaCallbacks {
     /// Transcode an H.264/AAC proxy at `target_height` to `out_path`. 0 = ok.
     pub transcode_proxy:
         extern "C" fn(kind: i32, src_id: *const c_char, out_path: *const c_char, target_height: i32) -> i32,
+    /// Compute an audio loudness-over-time envelope (one normalized 0..1 value
+    /// per time slice). Writes up to `max_samples` little-endian f32 into `out`
+    /// and returns the count written, or -1 on failure / no audio track. `out`
+    /// has capacity `max_samples`.
+    pub extract_loudness:
+        extern "C" fn(kind: i32, src_id: *const c_char, out: *mut f32, max_samples: i32) -> i32,
     /// Free a string previously returned by `probe`.
     pub free_string: extern "C" fn(*mut c_char),
 }
@@ -291,10 +297,20 @@ impl MediaBackend for NativeMediaBackend {
         ColorInfo::default()
     }
 
-    fn extract_loudness(&self, _src: &MediaSource) -> Vec<f32> {
-        // Audio-loudness waveform via AVAssetReader is a later refinement
-        // (docs/IOS_CORE_PORT.md §11.3); empty = no waveform for now.
-        Vec::new()
+    fn extract_loudness(&self, src: &MediaSource) -> Vec<f32> {
+        // Native loudness via AVAssetReader (the Swift side reads the audio
+        // track's PCM, computes a per-window RMS envelope, normalizes to 0..1 —
+        // the same shape the desktop ffmpeg path produces for the detail graph).
+        const MAX: usize = 480;
+        let (kind, id) = src.ffi_parts();
+        let _permit = crate::concurrency::acquire_ffmpeg_permit();
+        let mut buf = vec![0f32; MAX];
+        let n = (self.cb.extract_loudness)(kind, id.as_ptr(), buf.as_mut_ptr(), MAX as i32);
+        if n <= 0 {
+            return Vec::new();
+        }
+        buf.truncate((n as usize).min(MAX));
+        buf
     }
 
     fn extract_frame(
@@ -565,4 +581,60 @@ pub extern "C" fn reelvault_ingest_bookmark(
             -3
         }
     }
+}
+
+/// Reconcile the on-device catalog against the Photos library: remove every
+/// `source_kind = 'photo'` row whose `source_id` (PHAsset.localIdentifier) is NOT
+/// in `present_ids_json` (a JSON array of the localIdentifiers currently in
+/// Photos). This prunes videos the user deleted from Photos — the additions side
+/// is handled by `reelvault_ingest_photo` + the live observer; this is the
+/// removal side (docs/IOS_CORE_PORT.md §6.9). Each removed row publishes a
+/// `VideoRemoved` event so the grid refreshes.
+///
+/// The caller MUST pass a COMPLETE present-set (a full Photos enumeration) — a
+/// partial/limited set would delete everything outside it. Only photo-source
+/// rows are touched, so Files (`bookmark`) rows are never pruned. Returns the
+/// number removed, or negative on error.
+///
+/// # Safety
+/// `present_ids_json` must be a NUL-terminated UTF-8 C string (a JSON array).
+#[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)] // FFI boundary; pointer validated via `cstring`
+pub extern "C" fn reelvault_prune_photos(present_ids_json: *const c_char) -> i32 {
+    let ctx = match INGEST.get() {
+        Some(c) => c,
+        None => return -1,
+    };
+    let json = match unsafe { cstring(present_ids_json) } {
+        Some(s) => s,
+        None => return -2,
+    };
+    let present: std::collections::HashSet<String> = match serde_json::from_str::<Vec<String>>(&json) {
+        Ok(v) => v.into_iter().collect(),
+        Err(_) => return -2,
+    };
+    let rows = match ctx.db.list_videos_by_source_kind("photo") {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::warn!("reelvault_prune_photos: list failed: {e}");
+            return -3;
+        }
+    };
+    let mut removed = 0;
+    for (video_id, source_id) in rows {
+        if present.contains(&source_id) {
+            continue;
+        }
+        if ctx.db.delete_video(&video_id).is_ok() {
+            let _ = ctx.events.send(crate::watcher::CatalogChange::VideoRemoved {
+                video_id: Some(video_id),
+                path: PathBuf::from(format!("photos://{source_id}")),
+            });
+            removed += 1;
+        }
+    }
+    if removed > 0 {
+        tracing::info!("reelvault_prune_photos: removed {removed} deleted Photos video(s)");
+    }
+    removed
 }

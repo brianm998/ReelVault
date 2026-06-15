@@ -24,6 +24,7 @@ enum NativeMedia {
         cb.probe = rvProbe
         cb.extract_frame = rvExtractFrame
         cb.transcode_proxy = rvTranscodeProxy
+        cb.extract_loudness = rvExtractLoudness
         cb.free_string = rvFreeString
         reelvault_register_media_backend(cb)
         NSLog("ReelVault native: media backend registered")
@@ -289,6 +290,78 @@ enum NativeMedia {
             return export.status == .completed
         }
     }
+
+    // MARK: - extract_loudness (RMS envelope via AVAssetReader)
+
+    /// Compute a normalized (0..1) loudness-over-time envelope for the audio
+    /// track: read the PCM down-mixed to mono 8 kHz float, accumulate per-window
+    /// RMS, convert to dBFS, and map a −60..0 dB window to 0..1 — the same shape
+    /// the desktop ffmpeg/EBU-R128 path feeds the detail graph. Returns [] when
+    /// there's no audio or the read fails.
+    static func loudness(kind: Int32, srcId: String, maxSamples: Int) -> [Float] {
+        blocking(fallback: []) {
+            guard let asset = await resolveAsset(kind: kind, srcId: srcId) else { return [] }
+            do {
+                guard let track = try await asset.loadTracks(withMediaType: .audio).first else { return [] }
+                let durationSecs = max(0.001, CMTimeGetSeconds(try await asset.load(.duration)))
+                let reader = try AVAssetReader(asset: asset)
+                let sampleRate = 8000.0
+                let settings: [String: Any] = [
+                    AVFormatIDKey: kAudioFormatLinearPCM,
+                    AVLinearPCMBitDepthKey: 32,
+                    AVLinearPCMIsFloatKey: true,
+                    AVLinearPCMIsBigEndianKey: false,
+                    AVLinearPCMIsNonInterleaved: false,
+                    AVNumberOfChannelsKey: 1,
+                    AVSampleRateKey: sampleRate,
+                ]
+                let output = AVAssetReaderTrackOutput(track: track, outputSettings: settings)
+                output.alwaysCopiesSampleData = false
+                guard reader.canAdd(output) else { return [] }
+                reader.add(output)
+                guard reader.startReading() else { return [] }
+
+                let bins = max(2, min(maxSamples, 480))
+                var sumsq = [Double](repeating: 0, count: bins)
+                var counts = [Int](repeating: 0, count: bins)
+                var frameIndex = 0
+
+                while reader.status == .reading, let sbuf = output.copyNextSampleBuffer() {
+                    guard let block = CMSampleBufferGetDataBuffer(sbuf) else { continue }
+                    var lengthAtOffset = 0, totalLength = 0
+                    var dataPtr: UnsafeMutablePointer<CChar>?
+                    guard CMBlockBufferGetDataPointer(
+                        block, atOffset: 0, lengthAtOffsetOut: &lengthAtOffset,
+                        totalLengthOut: &totalLength, dataPointerOut: &dataPtr) == kCMBlockBufferNoErr,
+                        let dataPtr else { continue }
+                    let n = totalLength / MemoryLayout<Float>.size
+                    dataPtr.withMemoryRebound(to: Float.self, capacity: n) { fptr in
+                        for i in 0..<n {
+                            let t = Double(frameIndex + i) / sampleRate
+                            var b = Int(t / durationSecs * Double(bins))
+                            if b < 0 { b = 0 } else if b >= bins { b = bins - 1 }
+                            let v = Double(fptr[i])
+                            sumsq[b] += v * v
+                            counts[b] += 1
+                        }
+                    }
+                    frameIndex += n
+                }
+                if reader.status == .failed { return [] }
+
+                var out = [Float](repeating: 0, count: bins)
+                for i in 0..<bins {
+                    let rms = counts[i] > 0 ? (sumsq[i] / Double(counts[i])).squareRoot() : 0
+                    let db = rms > 1e-9 ? 20 * log10(rms) : -60.0
+                    out[i] = Float(max(0.0, min(1.0, (db + 60.0) / 60.0)))
+                }
+                return out
+            } catch {
+                NSLog("ReelVault native: loudness failed for \(srcId): \(error.localizedDescription)")
+                return []
+            }
+        }
+    }
 }
 
 enum NativeMediaError: Error { case noFrame }
@@ -327,6 +400,18 @@ private func rvTranscodeProxy(
         kind: kind, srcId: String(cString: srcId), outPath: String(cString: outPath), targetHeight: Int(targetHeight)
     )
     return ok ? 0 : -2
+}
+
+private func rvExtractLoudness(
+    _ kind: Int32, _ srcId: UnsafePointer<CChar>?, _ out: UnsafeMutablePointer<Float>?, _ maxSamples: Int32
+) -> Int32 {
+    guard let srcId, let out, maxSamples > 0 else { return -1 }
+    let samples = NativeMedia.loudness(
+        kind: kind, srcId: String(cString: srcId), maxSamples: Int(maxSamples))
+    guard !samples.isEmpty else { return -1 }
+    let n = min(samples.count, Int(maxSamples))
+    for i in 0..<n { out[i] = samples[i] }
+    return Int32(n)
 }
 
 private func rvFreeString(_ p: UnsafeMutablePointer<CChar>?) {

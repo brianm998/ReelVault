@@ -44,55 +44,108 @@ enum PhotoLibraryIngest {
             return 0
         }
 
-        // Enumerate + ingest on a plain background queue (not the Swift
-        // concurrency pool): `reelvault_ingest_photo` blocks the calling thread
-        // while it re-enters the native media callbacks, and we don't want to
-        // tie up cooperative-pool threads.
-        return await withCheckedContinuation { (cont: CheckedContinuation<Int, Never>) in
+        // Two phases: a fast serial enumeration (collect the present-set + the
+        // not-yet-indexed work list), then a parallel ingest of the work list.
+        let scan = await enumerate()
+        let ok = await ingestConcurrently(scan.todo)
+        NativeMedia.clearAssetCache()
+        // Reconcile removals: prune catalog rows for videos no longer in Photos.
+        // Only on a COMPLETE enumeration — a cancelled or `--ingest-limit`-capped
+        // pass would wrongly delete the rest.
+        if !scan.cancelled && ingestLimit() == nil {
+            pruneMissingPhotos(present: scan.present)
+        }
+        // Now that we have access + a baseline, watch for videos added/removed in
+        // Photos and reconcile live (Phase 3 acceptance).
+        PhotoLibraryObserver.shared.start()
+        return ok
+    }
+
+    /// Serial enumeration on a background queue: every video asset's localId (the
+    /// complete present-set for pruning), plus the (id, filename) of those not yet
+    /// fully indexed (the parallel-ingest work list). The per-asset is-indexed
+    /// check is a cheap SQLite EXISTS, so this stays serial; the expensive
+    /// AVFoundation probe/thumbnail work is parallelized in `ingestConcurrently`.
+    private static func enumerate() async -> (todo: [(id: String, name: String)], present: [String], cancelled: Bool) {
+        await withCheckedContinuation { (cont: CheckedContinuation<(todo: [(id: String, name: String)], present: [String], cancelled: Bool), Never>) in
             DispatchQueue.global(qos: .utility).async {
                 let options = PHFetchOptions()
                 options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-                // `--ingest-limit N` (test harness): only ingest the N most-recent
-                // videos so a first run on a large library is fast. Ingest is
-                // currently synchronous-before-grid; lifting the cap waits on
-                // incremental/background ingest (a follow-up).
+                // `--ingest-limit N` (test harness): only scan the N most-recent.
                 if let limit = ingestLimit() { options.fetchLimit = limit }
                 let assets = PHAsset.fetchAssets(with: .video, options: options)
-                NSLog("ReelVault local: ingesting \(assets.count) Photos video(s)")
-                var ok = 0
+                var todo: [(id: String, name: String)] = []
+                var present: [String] = []
+                var cancelled = false
                 var skipped = 0
                 assets.enumerateObjects { asset, _, stop in
-                    // Bail promptly if the user switched away from Local mode.
-                    if IngestCancel.isRequested { stop.pointee = true; return }
-                    // Incremental: skip assets already in the catalog so a
-                    // relaunch over an unchanged library doesn't re-run the
-                    // (expensive) AVFoundation probe + thumbnail for every one.
+                    if IngestCancel.isRequested { stop.pointee = true; cancelled = true; return }
+                    present.append(asset.localIdentifier)
                     let displayPath = "photos://\(asset.localIdentifier)"
                     if displayPath.withCString({ reelvault_is_video_indexed($0) }) == 1 {
                         skipped += 1
                         return
                     }
-                    thermalThrottle()
                     let filename = originalFilename(of: asset) ?? "\(asset.localIdentifier).mov"
-                    let rc = asset.localIdentifier.withCString { idC in
-                        filename.withCString { fnC in
-                            reelvault_ingest_photo(idC, fnC)
-                        }
-                    }
-                    if rc == 0 {
-                        ok += 1
-                    } else {
-                        NSLog("ReelVault local: ingest rc=\(rc) for \(asset.localIdentifier)")
-                    }
+                    todo.append((asset.localIdentifier, filename))
                 }
-                NSLog("ReelVault local: ingested \(ok) new, skipped \(skipped) already-indexed of \(assets.count) Photos video(s)")
-                NativeMedia.clearAssetCache()
-                // Now that we have access + a baseline, watch for videos added to
-                // Photos and ingest them live (Phase 3 acceptance).
-                PhotoLibraryObserver.shared.start()
-                cont.resume(returning: ok)
+                NSLog("ReelVault local: \(todo.count) Photos video(s) to ingest, \(skipped) already-indexed of \(assets.count)")
+                cont.resume(returning: (todo, present, cancelled))
             }
         }
+    }
+
+    /// Ingest the work list through a bounded `TaskGroup` so independent assets'
+    /// probe/thumbnail work overlaps. The core already caps native decode via its
+    /// own ffmpeg permit (≈2 on iOS); a small window keeps that pipeline full —
+    /// overlapping (possibly iCloud) asset resolution with decode — without
+    /// over-launching. Returns the count successfully ingested.
+    private static func ingestConcurrently(_ todo: [(id: String, name: String)]) async -> Int {
+        guard !todo.isEmpty else { return 0 }
+        let maxConcurrent = max(2, min(4, ProcessInfo.processInfo.activeProcessorCount - 1))
+        var ok = 0
+        var next = 0
+        await withTaskGroup(of: Bool.self) { group in
+            func addNext() {
+                guard next < todo.count, !IngestCancel.isRequested else { return }
+                let item = todo[next]; next += 1
+                group.addTask { await ingestOne(id: item.id, filename: item.name) }
+            }
+            for _ in 0..<maxConcurrent { addNext() }
+            for await success in group {
+                if success { ok += 1 }
+                addNext()
+            }
+        }
+        NSLog("ReelVault local: ingested \(ok) new of \(todo.count) Photos video(s)")
+        return ok
+    }
+
+    /// Ingest one asset. Runs the blocking `reelvault_ingest_photo` (it re-enters
+    /// the native media callbacks synchronously) off the cooperative pool via a
+    /// DispatchQueue, so a TaskGroup of these doesn't starve Swift concurrency.
+    private static func ingestOne(id: String, filename: String) async -> Bool {
+        await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
+            DispatchQueue.global(qos: .utility).async {
+                thermalThrottle()
+                let rc = id.withCString { idC in
+                    filename.withCString { fnC in reelvault_ingest_photo(idC, fnC) }
+                }
+                if rc != 0 { NSLog("ReelVault local: ingest rc=\(rc) for \(id)") }
+                cont.resume(returning: rc == 0)
+            }
+        }
+    }
+
+    /// Prune catalog rows for Photos videos no longer present. `present` must be
+    /// a complete set of current video localIdentifiers (see the core's
+    /// `reelvault_prune_photos` safety note). Runs on the caller's background
+    /// thread (the FFI is synchronous).
+    static func pruneMissingPhotos(present: [String]) {
+        guard let data = try? JSONSerialization.data(withJSONObject: present),
+              let json = String(data: data, encoding: .utf8) else { return }
+        let removed = json.withCString { reelvault_prune_photos($0) }
+        if removed > 0 { NSLog("ReelVault local: pruned \(removed) Photos video(s) deleted from the library") }
     }
 
     private static func requestAuthorization() async -> PHAuthorizationStatus {
@@ -117,11 +170,10 @@ enum PhotoLibraryIngest {
 }
 
 /// Live Photos updates (Phase 3): once the initial ingest has run, watch the
-/// Photos library and ingest newly-added videos as they appear, so the grid
-/// updates without a relaunch. **Additions only** for now — removals need a
-/// core remove-by-localId FFI (a deleted asset's row stays until the next full
-/// reconcile). Held as a singleton so PHPhotoLibrary's *weak* observer
-/// reference stays alive for the app's lifetime.
+/// Photos library and reconcile as it changes — ingest newly-added videos and
+/// prune rows for videos deleted from Photos (via `reelvault_prune_photos`) — so
+/// the grid stays in sync without a relaunch. Held as a singleton so
+/// PHPhotoLibrary's *weak* observer reference stays alive for the app's lifetime.
 final class PhotoLibraryObserver: NSObject, PHPhotoLibraryChangeObserver {
     static let shared = PhotoLibraryObserver()
     private var fetchResult: PHFetchResult<PHAsset>?
@@ -155,6 +207,14 @@ final class PhotoLibraryObserver: NSObject, PHPhotoLibraryChangeObserver {
             guard let current = self.fetchResult,
                   let details = changeInstance.changeDetails(for: current) else { return }
             self.fetchResult = details.fetchResultAfterChanges
+            // Live removals: when videos are deleted from Photos, reconcile the
+            // catalog against the now-current set so their rows disappear without
+            // waiting for the next foreground full-ingest.
+            if !details.removedObjects.isEmpty, let current = self.fetchResult {
+                var present: [String] = []
+                current.enumerateObjects { asset, _, _ in present.append(asset.localIdentifier) }
+                PhotoLibraryIngest.pruneMissingPhotos(present: present)
+            }
             let inserted = details.insertedObjects
             guard !inserted.isEmpty else { return }
             NSLog("ReelVault local: Photos added \(inserted.count) video(s); ingesting")

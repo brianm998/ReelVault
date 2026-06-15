@@ -1250,6 +1250,22 @@ impl Database {
         Ok(result)
     }
 
+    /// `(video_id, source_id)` for every row with the given backend
+    /// `source_kind` ('photo' | 'bookmark' | 'path'). The iOS ingest uses this to
+    /// reconcile the catalog against the Photos library (prune deleted assets).
+    pub fn list_videos_by_source_kind(&self, kind: &str) -> Result<Vec<(String, String)>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn
+            .prepare("SELECT id, source_id FROM videos WHERE source_kind = ?1 AND source_id IS NOT NULL")
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let rows = stmt
+            .query_map([kind], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
+            .flatten()
+            .collect();
+        Ok(rows)
+    }
+
     /// The ids of the (manual) collections this video belongs to. Used to
     /// populate VideoMetadata.collections so clients can show/edit membership.
     pub fn get_video_collections(&self, video_id: &str) -> Result<Vec<String>> {

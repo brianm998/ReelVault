@@ -36,6 +36,10 @@ final class AppRouter: ObservableObject {
     @Published var phase: Phase = .discovering
     @Published var discovered: [DiscoveredServer] = []
     @Published var connection: ConnectionInfo?
+    /// True while an on-device (Local) ingest pass is running. Drives the
+    /// "keep the app open" banner — on-device ingest only progresses in the
+    /// foreground (no background task), so the user shouldn't leave mid-pass.
+    @Published var isIngesting = false
 
     /// Remembers the user's last library choice so a relaunch returns to it
     /// instead of always auto-discovering a LAN server. Set when On-Device
@@ -227,6 +231,7 @@ final class AppRouter: ObservableObject {
     private func runLocalIngestIfIdle() {
         guard !ingestInFlight else { return }
         ingestInFlight = true
+        isIngesting = true
         // Clear any cancellation requested by a previous mode switch before
         // starting a fresh ingest for this (re-entered) Local session.
         IngestCancel.reset()
@@ -237,6 +242,7 @@ final class AppRouter: ObservableObject {
                 await PhotoLibraryIngest.run()
             }
             self?.ingestInFlight = false
+            self?.isIngesting = false
         }
     }
 

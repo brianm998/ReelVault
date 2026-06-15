@@ -49,6 +49,11 @@ typedef struct {
     /* Transcode an H.264/AAC proxy at target_height to out_path. 0 = ok. */
     int32_t (*transcode_proxy)(int32_t kind, const char *src_id,
                                const char *out_path, int32_t target_height);
+    /* Compute an audio loudness-over-time envelope (one normalized 0..1 value
+       per time slice). Writes up to max_samples little-endian f32 into `out` and
+       returns the count written, or -1 on failure / no audio track. */
+    int32_t (*extract_loudness)(int32_t kind, const char *src_id, float *out,
+                                int32_t max_samples);
     /* Free a string returned by probe. */
     void (*free_string)(char *s);
 } ReelVaultMediaCallbacks;
@@ -91,6 +96,16 @@ int32_t reelvault_is_video_indexed(const char *display_path);
  */
 int32_t reelvault_ingest_bookmark(const uint8_t *bookmark, uintptr_t len,
                                   const char *filename);
+
+/*
+ * Reconcile the catalog against the Photos library: remove every photo-source
+ * row whose PHAsset.localIdentifier is NOT in `present_ids_json` (a JSON array
+ * of the localIdentifiers currently in Photos), pruning videos the user deleted
+ * from Photos. The caller MUST pass a COMPLETE Photos enumeration — a partial
+ * set would delete everything outside it. Files (bookmark) rows are never
+ * touched. Returns the number removed, negative on error.
+ */
+int32_t reelvault_prune_photos(const char *present_ids_json);
 
 #ifdef __cplusplus
 }
