@@ -117,6 +117,12 @@ struct Args {
 }
 
 fn main() -> Result<()> {
+    // Select the rustls crypto provider before any TLS work. With both
+    // `aws-lc-rs` and `ring` compiled into the rustls 0.23 tree, auto-selection
+    // panics on first use (axum-server HTTPS media listener, reqwest sensor
+    // fetch). Must run before the runtime binds the TLS listeners.
+    reelvault_core::install_crypto_provider();
+
     let args = Args::parse();
 
     // On Windows, when started by the Service Control Manager in system-daemon

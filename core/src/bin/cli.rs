@@ -149,6 +149,12 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Select the rustls crypto provider before any TLS work. A scan's
+    // post-index sensor fetch (reqwest) builds a rustls 0.23 ClientConfig, which
+    // panics unless a provider is installed (both aws-lc-rs and ring are in the
+    // tree, so auto-selection can't pick one). See `install_crypto_provider`.
+    reelvault_core::install_crypto_provider();
+
     // Initialize logging
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)

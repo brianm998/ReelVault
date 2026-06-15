@@ -36,3 +36,26 @@ pub mod metadata_keys;
 pub mod ios;
 
 pub use error::Result;
+
+/// Install the process-global rustls [`CryptoProvider`] exactly once.
+///
+/// rustls 0.23 ends up with *both* crypto providers compiled into our dependency
+/// tree — `aws-lc-rs` (via `axum-server` and `reqwest`) and `ring` — so rustls
+/// can't select one from crate features and **panics** the first time anything
+/// builds a `ServerConfig`/`ClientConfig`: the `axum-server` HTTPS media listener
+/// ([`media_server`]) and the `reqwest` Wikidata sensor fetch ([`sensor_cache`]).
+/// Pick `aws-lc-rs` (rustls's own default) explicitly, before any TLS work.
+///
+/// Idempotent and thread-safe, so every entry point — the daemon, the CLI, and
+/// the iOS in-process embed (`ios`) — can call it unconditionally.
+///
+/// [`CryptoProvider`]: rustls::crypto::CryptoProvider
+pub fn install_crypto_provider() {
+    use std::sync::Once;
+    static ONCE: Once = Once::new();
+    ONCE.call_once(|| {
+        // `install_default` errors only when a provider is already installed,
+        // which the `Once` prevents — ignore the result so this never panics.
+        let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+    });
+}
