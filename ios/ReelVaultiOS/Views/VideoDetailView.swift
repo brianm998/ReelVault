@@ -30,6 +30,7 @@ struct VideoDetailView: View {
                 VideoMetadataSection(
                     video: grid.videos.first(where: { $0.id == video.id }) ?? video,
                     refreshTick: grid.catalogChangeTick)
+                DetailGraphsView(grid: grid, videoId: video.id)
             }
             .padding()
         }
