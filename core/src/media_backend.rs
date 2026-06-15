@@ -136,6 +136,13 @@ pub trait MediaBackend: Send + Sync {
         longitude: f64,
         altitude: f64,
     ) -> Result<()>;
+
+    /// Whether the backend can do media work at all. On desktop this probes for
+    /// ffmpeg on PATH (the thumbnail generators gate on it for a clear error);
+    /// the native backend is always available. Defaults to true.
+    fn is_available(&self) -> bool {
+        true
+    }
 }
 
 /// The desktop backend: every method delegates to the existing CLI code, so
@@ -209,6 +216,14 @@ impl MediaBackend for CliMediaBackend {
             ReelVaultError::InvalidPath("source path is not valid UTF-8".to_string())
         })?;
         MetadataExtractor::write_location_tag(path, latitude, longitude, altitude)
+    }
+
+    fn is_available(&self) -> bool {
+        crate::ffmpeg::ffmpeg_command()
+            .arg("-version")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
     }
 }
 

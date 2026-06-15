@@ -23,12 +23,12 @@ impl ThumbnailGenerator {
 
     pub fn generate(
         _db: &Database,
-        video_path: &Path,
+        source: &MediaSource,
         video_id: &str,
         cache_dir: &Path,
         duration_secs: f64,
     ) -> Result<()> {
-        Self::generate_default_sizes(video_path, video_id, cache_dir, duration_secs)
+        Self::generate_default_sizes(source, video_id, cache_dir, duration_secs)
     }
 
     /// Generate the standard still thumbnails (small/medium/large) for a video.
@@ -36,19 +36,19 @@ impl ThumbnailGenerator {
     /// unused) so the service can regenerate a missing still on demand without a
     /// `Database` handle, mirroring the on-demand scrub-frame path.
     pub fn generate_default_sizes(
-        video_path: &Path,
+        source: &MediaSource,
         video_id: &str,
         cache_dir: &Path,
         duration_secs: f64,
     ) -> Result<()> {
-        if !Self::ffmpeg_available() {
+        if !backend().is_available() {
             return Err(ReelVaultError::FfmpegError(
-                "ffmpeg not found in PATH. Please install FFmpeg.".to_string(),
+                "media backend unavailable (ffmpeg not found in PATH?)".to_string(),
             ));
         }
 
         // Extract one frame from middle of video
-        let thumbnail_frame = Self::extract_frame(video_path, cache_dir, video_id, duration_secs)?;
+        let thumbnail_frame = Self::extract_frame(source, cache_dir, video_id, duration_secs)?;
 
         // Generate different sizes
         Self::generate_size(
@@ -79,7 +79,7 @@ impl ThumbnailGenerator {
         Ok(())
     }
 
-    fn extract_frame(video_path: &Path, cache_dir: &Path, video_id: &str, duration_secs: f64) -> Result<PathBuf> {
+    fn extract_frame(source: &MediaSource, cache_dir: &Path, video_id: &str, duration_secs: f64) -> Result<PathBuf> {
         // Extract frame at 50% through the video
         let temp_path = cache_dir.join(format!("{}_temp.jpg", video_id));
 
@@ -90,21 +90,23 @@ impl ThumbnailGenerator {
             0.0
         };
 
-        let src = MediaSource::path(video_path);
-        let color_info = backend().probe_color(&src);
+        let color_info = backend().probe_color(source);
 
         // ProRes RAW on macOS: ffmpeg can't develop it, so source the frame from
         // QuickLook (the OS decoder) at a size big enough for the largest cached
-        // thumbnail. The resize steps downstream are unchanged.
-        if use_quicklook(&color_info)
-            && quicklook_poster(video_path, &temp_path, Self::LARGE_WIDTH).is_ok()
-        {
-            return Ok(temp_path);
+        // thumbnail. Only applies to local-file sources (Photos/Bookmark sources
+        // are iOS, where the native backend handles ProRes itself).
+        if let Some(p) = source.as_path() {
+            if use_quicklook(&color_info)
+                && quicklook_poster(p, &temp_path, Self::LARGE_WIDTH).is_ok()
+            {
+                return Ok(temp_path);
+            }
         }
 
         // Frame at 400px wide, JPEG quality 5 — the source still that
         // `generate_size` then downscales into the small/medium/large variants.
-        backend().extract_frame(&src, &color_info, seek_pos, 400, 5, &temp_path)?;
+        backend().extract_frame(source, &color_info, seek_pos, 400, 5, &temp_path)?;
 
         Ok(temp_path)
     }
@@ -141,14 +143,6 @@ impl ThumbnailGenerator {
         Ok(())
     }
 
-    fn ffmpeg_available() -> bool {
-        crate::ffmpeg::ffmpeg_command()
-            .arg("-version")
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
-    }
-
     pub fn get_thumbnail(
         cache_dir: &Path,
         video_id: &str,
@@ -183,14 +177,14 @@ impl ThumbnailGenerator {
     /// Frames are stored as `{video_id}_scrub_{0..N-1}.jpg` and served via the
     /// same `get_thumbnail` endpoint using size = "scrub_N".
     pub fn generate_scrub_thumbnails(
-        video_path: &Path,
+        source: &MediaSource,
         video_id: &str,
         cache_dir: &Path,
         duration_secs: f64,
     ) -> Result<()> {
-        if !Self::ffmpeg_available() {
+        if !backend().is_available() {
             return Err(ReelVaultError::FfmpegError(
-                "ffmpeg not found in PATH".to_string(),
+                "media backend unavailable (ffmpeg not found in PATH?)".to_string(),
             ));
         }
         if duration_secs <= 0.5 {
@@ -199,15 +193,16 @@ impl ThumbnailGenerator {
         }
 
         // Probe color info once — applied to every scrub frame from this video.
-        let src = MediaSource::path(video_path);
-        let color_info = backend().probe_color(&src);
+        let color_info = backend().probe_color(source);
 
         // ProRes RAW on macOS: ffmpeg can't develop it. Prefer real per-position
         // frames via the embedded AVFoundation helper (the OS decoder seeks to a
         // timestamp); only if that's unavailable do we fall back to a single
         // QuickLook poster reused for every position (`qlmanage` is poster-only,
         // so every frame would be identical — the bug this avoids). A correct
-        // still still beats ffmpeg's dark/flat ProRes RAW frames.
+        // still still beats ffmpeg's dark/flat ProRes RAW frames. Local-file
+        // sources only (Photos/Bookmark are iOS, handled by the native backend).
+        if let Some(video_path) = source.as_path() {
         if use_quicklook(&color_info) {
             let count = Self::SCRUB_FRAME_COUNT;
             // Try real frames first (only when the helper is actually embedded).
@@ -249,6 +244,7 @@ impl ThumbnailGenerator {
             }
             // QuickLook failed too — fall through to the ffmpeg path below.
         }
+        } // end: local-file ProRes-RAW fast path
 
         let count = Self::SCRUB_FRAME_COUNT;
         for i in 0..count {
@@ -270,7 +266,7 @@ impl ThumbnailGenerator {
             // acquires/releases an ffmpeg permit per call, so a slot frees for
             // another concurrent run between iterations.
             if let Err(e) =
-                backend().extract_frame(&src, &color_info, seek_pos, Self::SCRUB_WIDTH, 6, &output)
+                backend().extract_frame(source, &color_info, seek_pos, Self::SCRUB_WIDTH, 6, &output)
             {
                 tracing::warn!(
                     "Scrub frame {} for {} (t={:.3}s) failed: {}",
@@ -331,7 +327,7 @@ impl ThumbnailGenerator {
     /// Used by the detail view to fetch display-resolution scrub frames on
     /// demand without baking full-resolution stills for high-resolution videos.
     pub fn generate_frame_at_width(
-        video_path: &Path,
+        source: &MediaSource,
         video_id: &str,
         cache_dir: &Path,
         duration_secs: f64,
@@ -341,9 +337,9 @@ impl ThumbnailGenerator {
         if max_width <= 0 || duration_secs <= 0.0 {
             return Ok(());
         }
-        if !Self::ffmpeg_available() {
+        if !backend().is_available() {
             return Err(ReelVaultError::FfmpegError(
-                "ffmpeg not found in PATH".to_string(),
+                "media backend unavailable (ffmpeg not found in PATH?)".to_string(),
             ));
         }
         let output = cache_dir.join(Self::thumbnail_filename(video_id, size, max_width));
@@ -351,24 +347,26 @@ impl ThumbnailGenerator {
             return Ok(());
         }
         let seek_pos = Self::frame_seek_pos(size, duration_secs);
-        let src = MediaSource::path(video_path);
-        let color_info = backend().probe_color(&src);
+        let color_info = backend().probe_color(source);
 
         // ProRes RAW on macOS: a real frame at the requested position via the
         // AVFoundation helper (so hi-res scrub_N frames differ), falling back to
-        // the QuickLook poster when the helper isn't available.
-        if use_quicklook(&color_info) {
-            if frameshot_extract(video_path, &output, seek_pos, max_width).is_ok() {
-                return Ok(());
-            }
-            if quicklook_poster(video_path, &output, max_width).is_ok() {
-                return Ok(());
+        // the QuickLook poster when the helper isn't available. Local-file
+        // sources only (Photos/Bookmark are iOS, handled by the native backend).
+        if let Some(video_path) = source.as_path() {
+            if use_quicklook(&color_info) {
+                if frameshot_extract(video_path, &output, seek_pos, max_width).is_ok() {
+                    return Ok(());
+                }
+                if quicklook_poster(video_path, &output, max_width).is_ok() {
+                    return Ok(());
+                }
             }
         }
 
         // One frame at the requested width, JPEG quality 3 (the detail view
         // wants a crisper still than the grid).
-        backend().extract_frame(&src, &color_info, seek_pos, max_width, 3, &output)
+        backend().extract_frame(source, &color_info, seek_pos, max_width, 3, &output)
     }
 }
 

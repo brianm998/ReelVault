@@ -356,7 +356,8 @@ impl IndexingEngine {
 
         // Extract metadata (through the media backend: ffprobe on desktop,
         // AVFoundation on iOS).
-        let probe_output = backend().probe(&MediaSource::Path(video_path.to_path_buf()))?;
+        let source = MediaSource::Path(video_path.to_path_buf());
+        let probe_output = backend().probe(&source)?;
 
         // Check if already indexed — if so, reuse the existing ID and just refresh metadata.
         let video_id = if let Ok(Some(existing)) = db.get_video_by_path(video_path.to_str().unwrap_or("")) {
@@ -408,7 +409,7 @@ impl IndexingEngine {
         // Generate thumbnail (skip if already exists, ffmpeg overwrite would be redundant)
         let thumb_path = thumbnail_cache.join(format!("{}_medium.jpg", video_id));
         if !thumb_path.exists() {
-            match ThumbnailGenerator::generate(db, video_path, &video_id, thumbnail_cache, duration_secs) {
+            match ThumbnailGenerator::generate(db, &source, &video_id, thumbnail_cache, duration_secs) {
                 Ok(_) => {
                     tracing::debug!("Generated thumbnail for {}", video_id);
                 }
@@ -424,7 +425,7 @@ impl IndexingEngine {
         let first_scrub = thumbnail_cache.join(format!("{}_scrub_0.jpg", video_id));
         if !first_scrub.exists() {
             match ThumbnailGenerator::generate_scrub_thumbnails(
-                video_path,
+                &source,
                 &video_id,
                 thumbnail_cache,
                 duration_secs,

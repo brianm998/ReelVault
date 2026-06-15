@@ -435,6 +435,15 @@ impl Database {
                 paired_at INTEGER NOT NULL,
                 last_seen INTEGER NOT NULL
             )"),
+            // Backend-specific source identity (docs/IOS_CORE_PORT.md D6). NULL
+            // on desktop rows, which are implicitly `kind=path` with identity =
+            // the `path` column. On iOS, on-device rows set
+            // source_kind IN ('photo','bookmark') and source_id to the
+            // PHAsset.localIdentifier / base64 bookmark; `path` still holds a
+            // synthetic unique string (e.g. `photos://<localIdentifier>`) so the
+            // UNIQUE constraint and all path-keyed queries keep working.
+            ("videos.source_kind", "ALTER TABLE videos ADD COLUMN source_kind TEXT"),
+            ("videos.source_id",   "ALTER TABLE videos ADD COLUMN source_id TEXT"),
         ];
         for (label, sql) in migrations {
             match conn.execute(sql, []) {
@@ -634,6 +643,34 @@ impl Database {
         }
 
         Ok(offlined)
+    }
+
+    /// The [`crate::media_backend::MediaSource`] a video row should be read
+    /// through: a Photos asset for iOS-ingested rows (`source_kind = 'photo'`),
+    /// otherwise its filesystem path. Lets the on-demand thumbnail/metadata
+    /// paths work for Photos-backed videos without a real file path.
+    pub fn media_source_for(&self, video_id: &str) -> Result<crate::media_backend::MediaSource> {
+        use crate::media_backend::MediaSource;
+        let conn = self.get_connection()?;
+        let row = conn
+            .query_row(
+                "SELECT path, source_kind, source_id FROM videos WHERE id = ?1",
+                [video_id],
+                |r| {
+                    Ok((
+                        r.get::<_, String>(0)?,
+                        r.get::<_, Option<String>>(1)?,
+                        r.get::<_, Option<String>>(2)?,
+                    ))
+                },
+            )
+            .optional()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        match row {
+            Some((_, Some(kind), Some(sid))) if kind == "photo" => Ok(MediaSource::PhotoAsset(sid)),
+            Some((path, _, _)) => Ok(MediaSource::Path(std::path::PathBuf::from(path))),
+            None => Err(ReelVaultError::InternalError(format!("video {video_id} not found"))),
+        }
     }
 
     pub fn get_video(&self, video_id: &str) -> Result<Option<VideoRecord>> {

@@ -539,22 +539,26 @@ impl ReelVaultService {
         {
             return Ok(Some(data));
         }
-        if let Ok(Some(video)) = self.db.get_video(video_id) {
+        if let Ok(Some(_video)) = self.db.get_video(video_id) {
             let duration = self.video_duration_secs(video_id);
             if duration > 0.0 {
                 let cache2 = cache.clone();
-                let path = video.path.clone();
                 let vid = video_id.to_string();
                 let size_s = size.to_string();
+                let db = std::sync::Arc::clone(&self.db);
                 let _ = tokio::task::spawn_blocking(move || {
-                    ThumbnailGenerator::generate_frame_at_width(
-                        std::path::Path::new(&path),
+                    let source = match db.media_source_for(&vid) {
+                        Ok(s) => s,
+                        Err(_) => return,
+                    };
+                    let _ = ThumbnailGenerator::generate_frame_at_width(
+                        &source,
                         &vid,
                         &cache2,
                         duration,
                         &size_s,
                         max_width,
-                    )
+                    );
                 })
                 .await;
             }
@@ -1327,7 +1331,7 @@ impl ReelVaultTrait for ReelVaultService {
             .await?;
 
             if thumbnail_data.is_none() {
-                if let Ok(Some(video)) = self.db.get_video(&req.video_id) {
+                if let Ok(Some(_video)) = self.db.get_video(&req.video_id) {
                     let duration_secs = self
                         .db
                         .get_connection()
@@ -1345,15 +1349,19 @@ impl ReelVaultTrait for ReelVaultService {
 
                     if duration_secs > 0.0 {
                         let cache = self.config.thumbnail_cache_path.clone();
-                        let path = video.path.clone();
                         let video_id = req.video_id.clone();
+                        let db = Arc::clone(&self.db);
                         let _ = tokio::task::spawn_blocking(move || {
-                            ThumbnailGenerator::generate_default_sizes(
-                                std::path::Path::new(&path),
+                            let source = match db.media_source_for(&video_id) {
+                                Ok(s) => s,
+                                Err(_) => return,
+                            };
+                            let _ = ThumbnailGenerator::generate_default_sizes(
+                                &source,
                                 &video_id,
                                 &cache,
                                 duration_secs,
-                            )
+                            );
                         })
                         .await;
 
@@ -1401,7 +1409,7 @@ impl ReelVaultTrait for ReelVaultService {
             .await?;
 
             if thumbnail_data.is_none() {
-                if let Ok(Some(video)) = self.db.get_video(&req.video_id) {
+                if let Ok(Some(_video)) = self.db.get_video(&req.video_id) {
                     let duration_secs = self
                         .db
                         .get_connection()
@@ -1419,17 +1427,21 @@ impl ReelVaultTrait for ReelVaultService {
 
                     if duration_secs > 0.0 {
                         let cache = self.config.thumbnail_cache_path.clone();
-                        let path = video.path.clone();
                         let video_id = req.video_id.clone();
+                        let db = Arc::clone(&self.db);
                         // Generate ALL scrub frames in one shot (next requests
                         // for sibling indices hit the cache).
                         let _ = tokio::task::spawn_blocking(move || {
-                            ThumbnailGenerator::generate_scrub_thumbnails(
-                                std::path::Path::new(&path),
+                            let source = match db.media_source_for(&video_id) {
+                                Ok(s) => s,
+                                Err(_) => return,
+                            };
+                            let _ = ThumbnailGenerator::generate_scrub_thumbnails(
+                                &source,
                                 &video_id,
                                 &cache,
                                 duration_secs,
-                            )
+                            );
                         })
                         .await;
 
