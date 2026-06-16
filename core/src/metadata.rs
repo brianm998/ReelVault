@@ -83,8 +83,25 @@ impl MetadataExtractor {
 
         // Extract technical metadata
         let duration_ms = (format.duration.unwrap_or(0.0) * 1000.0) as i64;
-        let width = video_stream.width.unwrap_or(0);
-        let height = video_stream.height.unwrap_or(0);
+        let raw_w = video_stream.width.unwrap_or(0);
+        let raw_h = video_stream.height.unwrap_or(0);
+        // iPhones (and some Android cameras) record portrait clips as landscape
+        // sensor frames and include a `rotate` tag (90 or 270) in the video
+        // stream to indicate the display rotation. Swap the stored dimensions so
+        // every downstream consumer — card aspect-ratio, black border drawing,
+        // the iOS portrait-badge logic — sees the correct display dimensions
+        // rather than the raw sensor dimensions.
+        let rotate_deg = video_stream.tags
+            .as_ref()
+            .and_then(|t| t.get("rotate"))
+            .and_then(|v| v.trim().parse::<i32>().ok())
+            .unwrap_or(0)
+            .abs();
+        let (width, height) = if rotate_deg == 90 || rotate_deg == 270 {
+            (raw_h, raw_w)
+        } else {
+            (raw_w, raw_h)
+        };
         let fps = Self::parse_fps(&video_stream.r_frame_rate);
         let bitrate = format.bit_rate.unwrap_or(0);
         let codec_video = video_stream.codec_name.clone();
