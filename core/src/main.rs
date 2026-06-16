@@ -236,6 +236,41 @@ where
         tracing::info!("Import directory: {}", dir.display());
     }
 
+    // Make the upload/import directory a first-class library location, so uploaded
+    // videos appear in the clients' sidebar and the "Go to Folder in Library"
+    // action (gated on a video sitting under a registered location) works for
+    // them. Skipped when the dir is already a registered location or sits inside a
+    // recursive one, to avoid a duplicate/overlapping top-level row. No rescan is
+    // needed — uploaded videos are already indexed with paths under this dir, so
+    // the path-prefix location filter and the sidebar's video count pick them up
+    // immediately; this only adds the row (and lets the watcher monitor it).
+    if let Some(ref dir) = config.import_dir {
+        let dir_str = dir.to_string_lossy().to_string();
+        match db.list_library_locations() {
+            Ok(existing) => {
+                let covered = existing.iter().any(|l| {
+                    let root = l.path.trim_end_matches('/');
+                    dir_str == root || (l.recursive && dir_str.starts_with(&format!("{root}/")))
+                });
+                if !covered {
+                    if let Err(e) = std::fs::create_dir_all(dir) {
+                        tracing::warn!("Could not create import dir {}: {}", dir.display(), e);
+                    }
+                    match db.add_library_location(&dir_str, true) {
+                        Ok(_) => tracing::info!(
+                            "Registered import directory as a library location: {}",
+                            dir.display()
+                        ),
+                        Err(e) => {
+                            tracing::warn!("Could not register import dir as a library location: {}", e)
+                        }
+                    }
+                }
+            }
+            Err(e) => tracing::warn!("Could not list library locations: {}", e),
+        }
+    }
+
     reelvault_core::concurrency::set_ffmpeg_concurrency_limit(
         config.max_concurrent_ffmpeg.max(0) as usize,
     );
