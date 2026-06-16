@@ -176,6 +176,12 @@ private struct RegularLayout: View {
     let goForward: () -> Void
 
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    /// The user swiped the inspector away. Kept *separate* from the selection so a
+    /// dismissed panel stays hidden across selections — it only reappears when the
+    /// user swipes back in from the right edge (`revealInspectorGesture`).
+    @State private var inspectorHidden = false
+    /// Width of the detail column, so the reveal gesture can require a right-edge start.
+    @State private var detailAreaWidth: CGFloat = 0
 
     var body: some View {
         // Two-column split (library | main). The metadata inspector is a small
@@ -197,22 +203,49 @@ private struct RegularLayout: View {
                                    onShowOnMap: { viewMode = .map }) { viewMode = .detail }
                         .frame(width: 300)
                         .transition(.move(edge: .trailing))
-                        // Swipe right to dismiss the panel (clears the selection so
-                        // it hides). simultaneousGesture so the panel still scrolls
-                        // vertically; we only act on a predominantly-rightward swipe.
+                        // Swipe right to *hide* the panel — the selection is kept, so
+                        // selecting another card leaves the panel hidden until the user
+                        // swipes back in from the right edge (revealInspectorGesture).
+                        // simultaneousGesture so the panel still scrolls vertically; we
+                        // only act on a predominantly-rightward swipe.
                         .simultaneousGesture(
                             DragGesture(minimumDistance: 30)
                                 .onEnded { value in
                                     if value.translation.width > 60,
                                        value.translation.width > abs(value.translation.height) {
                                         withAnimation(.easeInOut(duration: 0.2)) {
-                                            grid.clearSelection()
+                                            inspectorHidden = true
                                         }
                                     }
                                 }
                         )
                 }
             }
+            // Measure the detail column so the reveal gesture can tell a swipe that
+            // begins at the right edge from one that begins mid-grid.
+            .background(
+                GeometryReader { geo in
+                    Color.clear
+                        .onAppear { detailAreaWidth = geo.size.width }
+                        .onChange(of: geo.size.width) { _, w in detailAreaWidth = w }
+                }
+            )
+            // Swipe in from the right edge (leftward) to bring a dismissed inspector
+            // back — only meaningful when a video is selected. simultaneousGesture so
+            // the grid still scrolls and cards still tap.
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 30)
+                    .onEnded { value in
+                        guard inspectorHidden, visibleSelectedVideo(grid) != nil else { return }
+                        let fromRightEdge = detailAreaWidth > 0
+                            && value.startLocation.x > detailAreaWidth - 48
+                        if fromRightEdge,
+                           value.translation.width < -60,
+                           abs(value.translation.width) > abs(value.translation.height) {
+                            withAnimation(.easeInOut(duration: 0.2)) { inspectorHidden = false }
+                        }
+                    }
+            )
             .toolbar {
                 ToolbarItemGroup(placement: .topBarLeading) {
                     NavHistoryButtons(history: history, goBack: goBack, goForward: goForward)
@@ -235,10 +268,11 @@ private struct RegularLayout: View {
         }
     }
 
-    /// Inspector appears only when browsing (grid/list) and the selected video's
-    /// card is actually in view (so a stranded selection hides the panel).
+    /// Inspector appears only when browsing (grid/list), the selected video's card
+    /// is actually in view (so a stranded selection hides the panel), and the user
+    /// hasn't swiped it away (`inspectorHidden`, reset by the reveal gesture).
     private var showInspector: Bool {
-        (viewMode == .grid || viewMode == .list) && visibleSelectedVideo(grid) != nil
+        !inspectorHidden && (viewMode == .grid || viewMode == .list) && visibleSelectedVideo(grid) != nil
     }
 
     @ViewBuilder private var center: some View {
