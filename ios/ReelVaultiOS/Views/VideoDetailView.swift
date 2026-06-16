@@ -1034,14 +1034,29 @@ struct MetadataEditorSection: View {
 
 /// Minimal wrapping (flow) layout for keyword chips — fills each row left-to-right
 /// and wraps when the next subview would overflow the available width.
+///
+/// Subview sizes are measured ONCE into the layout cache (`makeCache`) and reused
+/// by both `sizeThatFits` and `placeSubviews`. The earlier version re-ran
+/// `sub.sizeThatFits(.unspecified)` on every chip on every layout pass; inside a
+/// ScrollView's multi-pass content sizing — multiplied during a NavigationStack
+/// push transition's animating width — that re-measured each chip's text
+/// (`NSAttributedString` metrics) so many times it hung the main thread on any
+/// video that had keywords. Caching makes each pass O(n) integer math.
 struct FlowLayout: Layout {
     var spacing: CGFloat = 8
 
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
+    func makeCache(subviews: Subviews) -> [CGSize] {
+        subviews.map { $0.sizeThatFits(.unspecified) }
+    }
+
+    func updateCache(_ cache: inout [CGSize], subviews: Subviews) {
+        cache = subviews.map { $0.sizeThatFits(.unspecified) }
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout [CGSize]) -> CGSize {
         let maxWidth = proposal.width ?? .infinity
         var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0
-        for sub in subviews {
-            let size = sub.sizeThatFits(.unspecified)
+        for size in cache {
             if x + size.width > maxWidth, x > 0 {
                 x = 0; y += rowHeight + spacing; rowHeight = 0
             }
@@ -1051,10 +1066,10 @@ struct FlowLayout: Layout {
         return CGSize(width: maxWidth.isFinite ? maxWidth : x, height: y + rowHeight)
     }
 
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) {
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout [CGSize]) {
         var x = bounds.minX, y = bounds.minY, rowHeight: CGFloat = 0
-        for sub in subviews {
-            let size = sub.sizeThatFits(.unspecified)
+        for (i, sub) in subviews.enumerated() {
+            let size = cache[i]
             if x + size.width > bounds.maxX, x > bounds.minX {
                 x = bounds.minX; y += rowHeight + spacing; rowHeight = 0
             }
