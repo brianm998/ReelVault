@@ -116,8 +116,8 @@ struct ImportSheet: View {
     }
 }
 
-/// One row in the upload progress list.
-private struct UploadRow: View {
+/// One row in the upload progress list. Shared with UploadToServerSheet.
+struct UploadRow: View {
     let job: UploadManager.Job
 
     var body: some View {

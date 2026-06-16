@@ -31,6 +31,12 @@ struct LibraryGridScreen: View {
     @State private var showDownloadResolution = false
     @StateObject private var share = ShareExportModel()
     @ObservedObject private var offline = OfflineLibrary.shared
+    @EnvironmentObject private var router: AppRouter
+    /// Local→server upload (Local mode only): targets + the resolved last-paired
+    /// endpoint, captured when the user taps Upload so the sheet has a stable value.
+    @State private var showUploadToServer = false
+    @State private var uploadTargets: [VideoSummary] = []
+    @State private var uploadEndpoint: MediaClient.Endpoint?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -42,6 +48,13 @@ struct LibraryGridScreen: View {
         .sheet(isPresented: $showImport) {
             if let connection {
                 ImportSheet(endpoint: connection) { grid.loadVideos() }
+            }
+        }
+        .sheet(isPresented: $showUploadToServer) {
+            if let endpoint = uploadEndpoint {
+                UploadToServerSheet(endpoint: endpoint,
+                                    serverName: router.pairedServerHost ?? "the server",
+                                    videos: uploadTargets)
             }
         }
         // Local mode (no server): import videos from the Files app via a
@@ -133,6 +146,18 @@ struct LibraryGridScreen: View {
                     .disabled(grid.selectedVideoIds.isEmpty)
                 }
             }
+            // The inverse, in Local mode: push the selected on-device originals up
+            // to the last-paired server (shown only once a server has been paired).
+            if connection == nil, router.pairedServerHost != nil {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        startUploadToServer()
+                    } label: {
+                        Label("Upload", systemImage: "arrow.up.circle")
+                    }
+                    .disabled(grid.selectedVideoIds.isEmpty)
+                }
+            }
             ToolbarItem(placement: .topBarLeading) {
                 Button("Cancel") {
                     selecting = false
@@ -217,5 +242,23 @@ struct LibraryGridScreen: View {
         for video in targets {
             offline.download(video, height: height, endpoint: connection)
         }
+    }
+
+    /// Upload the selected on-device videos to the last-paired server (Local mode).
+    /// Resolves ids against representatives + expanded stack members (same as the
+    /// offline download) and hands them to the upload sheet, which materializes each
+    /// to a temp file and streams it up.
+    private func startUploadToServer() {
+        guard let endpoint = router.lastPairedUploadEndpoint() else { return }
+        let ids = Set(grid.selectedVideoIds)
+        var byId: [String: VideoSummary] = [:]
+        for v in grid.videos { byId[v.id] = v }
+        for members in grid.expandedGroupMembers.values { for m in members { byId[m.id] = m } }
+        uploadTargets = ids.compactMap { byId[$0] }
+        guard !uploadTargets.isEmpty else { return }
+        uploadEndpoint = endpoint
+        selecting = false
+        grid.clearSelection()
+        showUploadToServer = true
     }
 }

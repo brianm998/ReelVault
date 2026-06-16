@@ -73,6 +73,21 @@ final class AppRouter: ObservableObject {
         return try? JSONDecoder().decode(StoredServer.self, from: data)
     }
 
+    /// Host of the last-paired server, if one is remembered (UserDefaults only —
+    /// cheap to read per render). Used to decide whether to offer "Upload to
+    /// server" while browsing the on-device (Local) library.
+    var pairedServerHost: String? { loadStoredServer()?.host }
+
+    /// Reconstruct the last-paired server's media endpoint — address from
+    /// UserDefaults, bearer token from the Keychain — so a Local-mode video can be
+    /// uploaded to it without first switching to that server. nil if no server is
+    /// remembered or its token was cleared ("Forget This Server").
+    func lastPairedUploadEndpoint() -> MediaClient.Endpoint? {
+        guard let s = loadStoredServer(), let token = TokenStore.load(for: s.fingerprintHex) else { return nil }
+        return MediaClient.Endpoint(host: s.host, mediaPort: s.mediaPort,
+                                    fingerprintHex: s.fingerprintHex, bearerToken: token)
+    }
+
     private let discovery = ServerDiscovery()
     private var discoverTask: Task<Void, Never>?
     private var collectTask: Task<Void, Never>?
