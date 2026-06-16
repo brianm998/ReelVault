@@ -2035,6 +2035,7 @@ fun ReelVaultApp(
                                     onLocationClick = onCardLocationClick,
                                     onEditLocation = openLocationPicker,
                                     onClearLocation = { gridViewModel.clearVideoLocations(it) },
+                                    onOpenDetail = { viewMode = ViewMode.DETAIL },
                                     modifier = Modifier.weight(1f).fillMaxWidth()
                                 )
                                 ViewMode.LIST -> ListScreen(
@@ -2050,6 +2051,7 @@ fun ReelVaultApp(
                                     onLocationClick = onCardLocationClick,
                                     onEditLocation = openLocationPicker,
                                     onClearLocation = { gridViewModel.clearVideoLocations(it) },
+                                    onOpenDetail = { viewMode = ViewMode.DETAIL },
                                     modifier = Modifier.weight(1f).fillMaxWidth()
                                 )
                                 ViewMode.DETAIL -> DetailViewScreen(

@@ -49,6 +49,8 @@ fun GridScreen(
     onEditLocation: ((List<String>, Pair<Double, Double>?) -> Unit)? = null,
     /** Clear the location on a set of videos (right-click "Remove Location"). */
     onClearLocation: ((List<String>) -> Unit)? = null,
+    /** Double-clicking any card opens Detail mode. Wired by the host. */
+    onOpenDetail: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val videos = viewModel.videos.collectAsState()
@@ -513,7 +515,10 @@ fun GridScreen(
                                     }
                                     onVideoSelect(video)
                                 },
-                                onDoubleClick = { viewModel.openVideoInExternal(video.openPath) },
+                                onDoubleClick = {
+                                    viewModel.selectVideo(video)
+                                    onOpenDetail?.invoke()
+                                },
                                 onStackBadgeClick = {
                                     viewModel.toggleStackExpansion(video.groupId)
                                 },

@@ -72,6 +72,8 @@ fun ListScreen(
     onEditLocation: ((List<String>, Pair<Double, Double>?) -> Unit)? = null,
     /** Clear the location on a set of videos (right-click "Remove Location"). */
     onClearLocation: ((List<String>) -> Unit)? = null,
+    /** Double-clicking any row opens Detail mode. Wired by the host. */
+    onOpenDetail: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val videos = viewModel.videos.collectAsState()
@@ -453,7 +455,10 @@ fun ListScreen(
                                             }
                                             onVideoSelect(video)
                                         },
-                                        onDoubleClick = { viewModel.openVideoInExternal(video.openPath) },
+                                        onDoubleClick = {
+                                            viewModel.selectVideo(video)
+                                            onOpenDetail?.invoke()
+                                        },
                                         onSetRating = { rating -> viewModel.setRating(rating, listOf(video.id)) },
                                         dragPaths = run {
                                             val multi = selectedVideoIds.value
@@ -621,7 +626,8 @@ fun ListScreen(
                                                     onVideoSelect(video)
                                                 },
                                                 onDoubleClick = {
-                                                    viewModel.openVideoInExternal(video.openPath)
+                                                    viewModel.selectVideo(video)
+                                                    onOpenDetail?.invoke()
                                                 },
                                                 onSetRating = { rating ->
                                                     viewModel.setRating(rating, listOf(video.id))

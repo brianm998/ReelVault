@@ -31,6 +31,7 @@ import com.reelvault.LocalAppWindow
 import com.reelvault.util.FileDragSource
 import com.reelvault.ViewMode
 import com.reelvault.trackTextEntryFocus
+import com.reelvault.data.models.ColorLabel
 import com.reelvault.data.models.FullResolutionStatus
 import com.reelvault.data.models.GridStatKey
 import com.reelvault.ui.theme.ReelVaultSpacing
@@ -229,9 +230,19 @@ fun DetailScreen(
 
                 Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
 
-                // (Drag the filename above — or any video card — into an external
-                // editor; the arrow opens it in the default player.)
+                // Rating + color label — quick-access edits without right-clicking.
+                val selectedVideo = gridViewModel.selectedVideo.value
+                if (selectedVideo != null && selectedVideoId != null) {
+                    DetailRatingAndLabel(
+                        rating = selectedVideo.rating,
+                        colorLabel = ColorLabel.from(selectedVideo.colorLabel),
+                        onSetRating = { gridViewModel.setRating(it, listOf(selectedVideoId!!)) },
+                        onSetColorLabel = { gridViewModel.setColorLabel(it.raw, listOf(selectedVideoId!!)) }
+                    )
+                    Spacer(modifier = Modifier.height(ReelVaultSpacing.Small))
+                }
 
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Spacer(modifier = Modifier.height(ReelVaultSpacing.Medium))
 
                 // Technical metadata
@@ -1813,5 +1824,76 @@ private fun SmartCollectionCriteria(
                 TextButton(onClick = { pending = null }) { Text("Cancel") }
             },
         )
+    }
+}
+
+// MARK: - Rating + Color-Label row for the detail panel
+
+/**
+ * Compact 5-star rating row + color-label swatch row, shown above the Video
+ * Details section. Matches the macOS DetailView counterpart.
+ */
+@Composable
+private fun DetailRatingAndLabel(
+    rating: Int,
+    colorLabel: ColorLabel,
+    onSetRating: (Int) -> Unit,
+    onSetColorLabel: (ColorLabel) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        // 5-star rating — tap the current star to clear (set to 0).
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            for (position in 1..5) {
+                val filled = position <= rating
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clickable { onSetRating(if (rating == position) 0 else position) }
+                ) {
+                    Icon(
+                        imageVector = if (filled) Icons.Default.Star else Icons.Default.StarBorder,
+                        contentDescription = "$position star${if (position == 1) "" else "s"}",
+                        tint = if (filled) MaterialTheme.colorScheme.onSurface
+                               else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
+
+        // Color label swatches (None + Red, Yellow, Green, Blue, Purple)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (label in ColorLabel.values()) {
+                val isCurrent = label == colorLabel
+                Box(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .background(
+                            color = if (label == ColorLabel.None)
+                                MaterialTheme.colorScheme.surfaceVariant
+                            else
+                                label.swatch,
+                            shape = androidx.compose.foundation.shape.CircleShape
+                        )
+                        .border(
+                            width = if (isCurrent) 2.dp else 1.dp,
+                            color = if (isCurrent) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.outline,
+                            shape = androidx.compose.foundation.shape.CircleShape
+                        )
+                        .clickable { onSetColorLabel(label) }
+                ) {
+                    if (label == ColorLabel.None) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "No label",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(10.dp).align(Alignment.Center)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
