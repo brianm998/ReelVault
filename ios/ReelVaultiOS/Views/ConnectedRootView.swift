@@ -46,8 +46,13 @@ struct IngestBanner: View {
             Text("Importing local videos — keep ReelVault open")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.white)
+                // NB: no .minimumScaleFactor here — scale-to-fit text inside a
+                // safeAreaInset feeds the inset size back into the text layout, and
+                // during a nav-bar transition that loop never converges (infinite
+                // ResolvedStyledText interpolation → main-thread hang). lineLimit(1)
+                // alone is deterministic; the string fits at caption2 on every device.
                 .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .truncationMode(.tail)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 12)

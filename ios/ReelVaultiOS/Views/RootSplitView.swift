@@ -173,12 +173,17 @@ private struct IngestBannerInset: ViewModifier {
     func body(content: Content) -> some View {
         content
             .safeAreaInset(edge: .top, spacing: 0) {
-                if isIngesting {
-                    IngestBanner()
-                        .transition(.move(edge: .top).combined(with: .opacity))
+                // Keep the `.animation` *inside* the inset (scoped to the banner),
+                // not wrapping `content` — an implicit animation around the nav
+                // content entangles with push/pop transitions.
+                ZStack {
+                    if isIngesting {
+                        IngestBanner()
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
                 }
+                .animation(.easeInOut(duration: 0.25), value: isIngesting)
             }
-            .animation(.easeInOut(duration: 0.25), value: isIngesting)
     }
 }
 
