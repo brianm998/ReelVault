@@ -85,18 +85,30 @@ impl MetadataExtractor {
         let duration_ms = (format.duration.unwrap_or(0.0) * 1000.0) as i64;
         let raw_w = video_stream.width.unwrap_or(0);
         let raw_h = video_stream.height.unwrap_or(0);
-        // iPhones (and some Android cameras) record portrait clips as landscape
-        // sensor frames and include a `rotate` tag (90 or 270) in the video
-        // stream to indicate the display rotation. Swap the stored dimensions so
-        // every downstream consumer — card aspect-ratio, black border drawing,
-        // the iOS portrait-badge logic — sees the correct display dimensions
-        // rather than the raw sensor dimensions.
-        let rotate_deg = video_stream.tags
+        // iPhones (and some cameras) record portrait clips as landscape sensor
+        // frames and store the display rotation in one of two places:
+        //   1. Stream tag "rotate" — older H.264 MOVs (tags["rotate"] = "90")
+        //   2. Display-matrix side data — modern HEVC MOVs (iOS 11+, 4K clips).
+        //      FFProbe surfaces this as side_data_list[].rotation (integer, e.g. -90).
+        //      IMG_4718-style 4K HEVC clips have NO "rotate" tag at all.
+        // Check both; prefer the tag to preserve existing behaviour for older clips.
+        // Swap width↔height for 90°/270° so every consumer (card aspect-ratio,
+        // border drawing, iOS portrait-badge) sees correct display dimensions.
+        let rotate_from_tag = video_stream.tags
             .as_ref()
             .and_then(|t| t.get("rotate"))
-            .and_then(|v| v.trim().parse::<i32>().ok())
-            .unwrap_or(0)
-            .abs();
+            .and_then(|v| v.trim().parse::<i32>().ok());
+
+        let rotate_from_matrix = video_stream.side_data_list
+            .as_ref()
+            .and_then(|sds| {
+                sds.iter()
+                    .find(|sd| sd.side_data_type.as_deref() == Some("Display Matrix"))
+                    .and_then(|sd| sd.rotation)
+            });
+
+        let rotate_deg = rotate_from_tag.or(rotate_from_matrix).unwrap_or(0).abs();
+
         let (width, height) = if rotate_deg == 90 || rotate_deg == 270 {
             (raw_h, raw_w)
         } else {
@@ -800,6 +812,20 @@ pub struct FFProbeStream {
     pub tags: Option<FFProbeTagMap>,
     #[serde(default, deserialize_with = "deserialize_i64_from_str")]
     pub nb_frames: Option<i64>,
+    /// Modern iPhones (HEVC, iOS 11+) encode rotation in a display matrix
+    /// rather than the `rotate` stream tag. FFProbe surfaces this as a list
+    /// of side-data entries, one of which has `side_data_type = "Display Matrix"`
+    /// and a `rotation` integer (-180..180).
+    #[serde(default)]
+    pub side_data_list: Option<Vec<FFProbeSideData>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct FFProbeSideData {
+    pub side_data_type: Option<String>,
+    /// Rotation in degrees derived from the display matrix. Present only for
+    /// `side_data_type = "Display Matrix"` entries.
+    pub rotation: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
