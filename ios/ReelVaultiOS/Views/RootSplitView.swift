@@ -15,8 +15,6 @@ import ReelVaultKit
 struct RootSplitView: View {
     @ObservedObject var grid: GridViewModel
     let connection: AppRouter.ConnectionInfo?
-    /// Drives the thin "importing" strip while an on-device ingest pass runs.
-    var isIngesting: Bool = false
 
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var selection: LibrarySection = .allVideos
@@ -28,12 +26,12 @@ struct RootSplitView: View {
     var body: some View {
         Group {
             if sizeClass == .compact {
-                CompactLayout(grid: grid, connection: connection, isIngesting: isIngesting,
+                CompactLayout(grid: grid, connection: connection,
                               selection: $selection, viewMode: $viewMode,
                               thumbnailWidth: $thumbnailWidth, apply: apply,
                               history: history, goBack: goBack, goForward: goForward)
             } else {
-                RegularLayout(grid: grid, connection: connection, isIngesting: isIngesting,
+                RegularLayout(grid: grid, connection: connection,
                               selection: $selection, viewMode: $viewMode,
                               thumbnailWidth: $thumbnailWidth, apply: apply,
                               history: history, goBack: goBack, goForward: goForward)
@@ -164,35 +162,11 @@ private func visibleSelectedVideo(_ grid: GridViewModel) -> VideoSummary? {
     return grid.videos.first(where: { $0.id == id })
 }
 
-/// Pushes the navigation *content* down by a thin "importing" strip while an
-/// on-device ingest runs. Applied below the toolbar (inside the nav container)
-/// so it never covers the top-bar buttons — the old whole-window `safeAreaInset`
-/// floated over the UIKit nav bar and hid them.
-private struct IngestBannerInset: ViewModifier {
-    let isIngesting: Bool
-    func body(content: Content) -> some View {
-        content
-            .safeAreaInset(edge: .top, spacing: 0) {
-                // Keep the `.animation` *inside* the inset (scoped to the banner),
-                // not wrapping `content` — an implicit animation around the nav
-                // content entangles with push/pop transitions.
-                ZStack {
-                    if isIngesting {
-                        IngestBanner()
-                            .transition(.move(edge: .top).combined(with: .opacity))
-                    }
-                }
-                .animation(.easeInOut(duration: 0.25), value: isIngesting)
-            }
-    }
-}
-
 // MARK: - Regular (iPad): 3-column split
 
 private struct RegularLayout: View {
     @ObservedObject var grid: GridViewModel
     let connection: AppRouter.ConnectionInfo?
-    let isIngesting: Bool
     @Binding var selection: LibrarySection
     @Binding var viewMode: LibraryViewMode
     @Binding var thumbnailWidth: Double
@@ -272,8 +246,6 @@ private struct RegularLayout: View {
                         }
                     }
             )
-            // Thin "importing" strip below the toolbar (not overlaying it).
-            .modifier(IngestBannerInset(isIngesting: isIngesting))
             .toolbar {
                 ToolbarItemGroup(placement: .topBarLeading) {
                     NavHistoryButtons(history: history, goBack: goBack, goForward: goForward)
@@ -336,7 +308,6 @@ private struct RegularLayout: View {
 private struct CompactLayout: View {
     @ObservedObject var grid: GridViewModel
     let connection: AppRouter.ConnectionInfo?
-    let isIngesting: Bool
     @Binding var selection: LibrarySection
     @Binding var viewMode: LibraryViewMode
     @Binding var thumbnailWidth: Double
@@ -351,8 +322,6 @@ private struct CompactLayout: View {
     var body: some View {
         NavigationStack {
             center
-                // Thin "importing" strip below the nav bar (not overlaying it).
-                .modifier(IngestBannerInset(isIngesting: isIngesting))
                 .navigationTitle("ReelVault")
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationDestination(item: $pushedVideo) { video in

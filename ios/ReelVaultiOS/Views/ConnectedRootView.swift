@@ -12,27 +12,37 @@ struct ConnectedRootView: View {
 
     var body: some View {
         // On-device ingest only runs in the foreground, so a thin banner tells the
-        // user to keep the app open while it works. RootSplitView insets it *below*
-        // the nav bar (per layout) so it never covers the top toolbar buttons, and
-        // it auto-hides when the pass completes.
-        RootSplitView(grid: grid, connection: router.connection,
-                      isIngesting: router.isIngesting)
-            .task {
-                // Load the user's configured top-of-card stat slots so iOS cards
-                // match what they set on the desktop/macOS clients.
-                grid.loadGridSettings()
-                grid.loadVideos()
-                // Open the long-lived CatalogEvents subscription (parity with the
-                // macOS client) so the grid refreshes as videos are added/changed
-                // — by a remote server's file-watcher/uploads, or by Local mode's
-                // background Photos ingest, which streams in row-by-row.
-                grid.startCatalogEventStream()
+        // user to keep the app open while it works. It's a plain sibling ABOVE the
+        // whole nav container (a VStack), NOT a `safeAreaInset` around the grid's
+        // ScrollView — that inset drove an exponential `sizeThatFits` layout loop
+        // (and, during nav transitions, a `ResolvedStyledText` interpolation loop)
+        // that froze the app on every local-catalog load. As a sibling it just
+        // pushes the UI down, never overlays the toolbar, and can't perturb the
+        // grid's sizing. Auto-hides when the pass completes.
+        VStack(spacing: 0) {
+            if router.isIngesting {
+                IngestBanner()
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
-            // Switching library mode tears this view down. Stop the long-lived
-            // stream so it (a) doesn't keep the connection's runConnections()
-            // alive — which would hang the disconnect/mode-switch — and (b)
-            // releases its strong `self`, letting the view-model dealloc.
-            .onDisappear { grid.stopCatalogEventStream() }
+            RootSplitView(grid: grid, connection: router.connection)
+        }
+        .animation(.easeInOut(duration: 0.25), value: router.isIngesting)
+        .task {
+            // Load the user's configured top-of-card stat slots so iOS cards
+            // match what they set on the desktop/macOS clients.
+            grid.loadGridSettings()
+            grid.loadVideos()
+            // Open the long-lived CatalogEvents subscription (parity with the
+            // macOS client) so the grid refreshes as videos are added/changed
+            // — by a remote server's file-watcher/uploads, or by Local mode's
+            // background Photos ingest, which streams in row-by-row.
+            grid.startCatalogEventStream()
+        }
+        // Switching library mode tears this view down. Stop the long-lived
+        // stream so it (a) doesn't keep the connection's runConnections()
+        // alive — which would hang the disconnect/mode-switch — and (b)
+        // releases its strong `self`, letting the view-model dealloc.
+        .onDisappear { grid.stopCatalogEventStream() }
     }
 }
 
