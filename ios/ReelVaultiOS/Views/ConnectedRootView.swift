@@ -11,16 +11,12 @@ struct ConnectedRootView: View {
     @StateObject private var grid = GridViewModel()
 
     var body: some View {
-        RootSplitView(grid: grid, connection: router.connection)
-            // On-device ingest only runs in the foreground, so tell the user to
-            // keep the app open while it works; the banner auto-hides when done.
-            .safeAreaInset(edge: .top, spacing: 0) {
-                if router.isIngesting {
-                    IngestBanner()
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                }
-            }
-            .animation(.easeInOut(duration: 0.25), value: router.isIngesting)
+        // On-device ingest only runs in the foreground, so a thin banner tells the
+        // user to keep the app open while it works. RootSplitView insets it *below*
+        // the nav bar (per layout) so it never covers the top toolbar buttons, and
+        // it auto-hides when the pass completes.
+        RootSplitView(grid: grid, connection: router.connection,
+                      isIngesting: router.isIngesting)
             .task {
                 // Load the user's configured top-of-card stat slots so iOS cards
                 // match what they set on the desktop/macOS clients.
@@ -45,15 +41,17 @@ struct ConnectedRootView: View {
 /// app must stay foregrounded for it to finish.
 struct IngestBanner: View {
     var body: some View {
-        HStack(spacing: 8) {
-            ProgressView().controlSize(.small).tint(.white)
+        HStack(spacing: 6) {
+            ProgressView().controlSize(.mini).tint(.white)
             Text("Importing local videos — keep ReelVault open")
-                .font(.footnote.weight(.medium))
+                .font(.caption2.weight(.semibold))
                 .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 4)
         .frame(maxWidth: .infinity)
         .background(Color.accentColor.opacity(0.92))
     }
