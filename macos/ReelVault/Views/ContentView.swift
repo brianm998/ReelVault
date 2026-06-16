@@ -1200,7 +1200,8 @@ struct ContentView: View {
                                 globalMapFocusCoord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
                                 withAnimation(.easeInOut(duration: 0.2)) { viewMode = .map }
                             }
-                        }
+                        },
+                        onOpenDetail: { withAnimation(.easeInOut(duration: 0.2)) { viewMode = .detail } }
                     )
                     // Always claim the full height (not just width) so the
                     // centre column never collapses to the spinner's intrinsic
@@ -1234,7 +1235,8 @@ struct ContentView: View {
                                 globalMapFocusCoord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
                                 withAnimation(.easeInOut(duration: 0.2)) { viewMode = .map }
                             }
-                        }
+                        },
+                        onOpenDetail: { withAnimation(.easeInOut(duration: 0.2)) { viewMode = .detail } }
                     )
                     // Same full-height claim as grid mode (see above) so the
                     // filter bar stays pinned while the list reloads.

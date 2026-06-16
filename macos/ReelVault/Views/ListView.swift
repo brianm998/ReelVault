@@ -16,6 +16,8 @@ struct ListView: View {
     /// call-site argument order (memberwise init) matches.
     var onEditLocation: ((_ videoIds: [String], _ initial: (Double, Double)?) -> Void)? = nil
     var onLocationClick: ((Double, Double) -> Void)? = nil
+    /// Double-clicking any row opens Detail mode. Wired by the host.
+    var onOpenDetail: (() -> Void)? = nil
 
     var body: some View {
         ZStack {
@@ -106,9 +108,7 @@ struct ListView: View {
                             onClick: { shift, toggle in
                                 handleClick(item: item, rendered: rendered, shift: shift, toggle: toggle)
                             },
-                            onDoubleClick: {
-                                viewModel.openVideoInExternal(path: item.video.openPath)
-                            },
+                            onDoubleClick: { onOpenDetail?() },
                             onStackBadgeClick: {
                                 viewModel.toggleStackExpansion(item.video.groupId)
                             },
@@ -180,9 +180,7 @@ struct ListView: View {
                                         onClick: { shift, toggle in
                                             handleClick(item: stackItem, rendered: rendered, shift: shift, toggle: toggle)
                                         },
-                                        onDoubleClick: {
-                                            viewModel.openVideoInExternal(path: stackItem.video.openPath)
-                                        },
+                                        onDoubleClick: { onOpenDetail?() },
                                         onSetRating: { rating in
                                             viewModel.setRating(rating, for: [stackItem.video.id])
                                         },

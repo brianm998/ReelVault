@@ -176,6 +176,17 @@ struct DetailView: View {
 
             Divider()
 
+            // Rating + color label — quick-access edits without right-clicking.
+            if let videoId = gridViewModel.selectedVideoId,
+               let video = gridViewModel.selectedVideo {
+                DetailRatingAndLabel(
+                    video: video,
+                    onSetRating: { gridViewModel.setRating($0, for: [videoId]) },
+                    onSetColorLabel: { gridViewModel.setColorLabel($0.rawValue, for: [videoId]) }
+                )
+                Divider()
+            }
+
             // Technical metadata
             CollapsibleSection(title: "Video Details", expanded: $detailsExpanded) {
             VStack(alignment: .leading, spacing: 12) {
@@ -1218,5 +1229,70 @@ struct CollectionsSection: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: - Rating + Color-Label row in the detail panel
+
+/// Compact rating (5 stars) + color-label swatch row shown in the detail panel
+/// above the Video Details section, so the user doesn't need to right-click a
+/// card just to rate or label a clip they're inspecting.
+private struct DetailRatingAndLabel: View {
+    let video: VideoSummary
+    let onSetRating: (Int) -> Void
+    let onSetColorLabel: (ColorLabel) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // 5-star rating — same semantics as the card bottom band:
+            // tap the current rating's star to clear it (set to 0).
+            HStack(spacing: 0) {
+                ForEach(1...5, id: \.self) { position in
+                    ZStack {
+                        if position <= video.rating {
+                            ZStack {
+                                Image(systemName: "star.fill")
+                                    .font(.system(size: 15))
+                                    .foregroundColor(Color(white: 0.2))
+                                Image(systemName: "star.fill")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.white)
+                            }
+                        } else {
+                            Image(systemName: "star")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .frame(width: 26, height: 24)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        onSetRating(video.rating == position ? 0 : position)
+                    }
+                }
+            }
+
+            // Color label swatches (none + red, yellow, green, blue, purple)
+            HStack(spacing: 6) {
+                ForEach(ColorLabel.allCases) { label in
+                    let isCurrent = ColorLabel(video.colorLabel) == label
+                    Circle()
+                        .fill(label == .none ? Color(NSColor.controlColor) : label.swatch)
+                        .frame(width: 18, height: 18)
+                        .overlay(
+                            Circle()
+                                .strokeBorder(isCurrent ? Color.accentColor : Color(NSColor.separatorColor),
+                                              lineWidth: isCurrent ? 2 : 1)
+                        )
+                        .overlay(
+                            label == .none
+                            ? AnyView(Image(systemName: "xmark").font(.system(size: 8)).foregroundColor(.secondary))
+                            : AnyView(EmptyView())
+                        )
+                        .onTapGesture { onSetColorLabel(label) }
+                        .help(label == .none ? "No label" : label.rawValue.capitalized)
+                }
+            }
+        }
     }
 }

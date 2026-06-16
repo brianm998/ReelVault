@@ -28,6 +28,8 @@ struct GridView: View {
     /// call-site argument order (memberwise init) matches.
     var onEditLocation: ((_ videoIds: [String], _ initial: (Double, Double)?) -> Void)? = nil
     var onLocationClick: ((Double, Double) -> Void)? = nil
+    /// Double-clicking any card switches to Detail mode. Wired by the host.
+    var onOpenDetail: (() -> Void)? = nil
 
     /// Live column count, derived from the grid's width (matches the adaptive
     /// `GridItem` with zero spacing). Reported to the view-model so arrow-key
@@ -169,6 +171,7 @@ struct GridView: View {
                         dragPaths: cardDragPaths,
                         proxyCreationState: viewModel.activeProxyCreations[item.video.id],
                         onLocationClick: onLocationClick,
+                        onOpenDetail: onOpenDetail,
                         inlineVolume: viewModel.playbackVolume,
                         onInlineVolumeChange: { v in viewModel.playbackVolume = v }
                     )
@@ -604,6 +607,8 @@ struct VideoCardView: View {
     /// coordinates. Receives (latitude, longitude). Callers should open the
     /// global map focused on that coordinate.
     var onLocationClick: ((Double, Double) -> Void)? = nil
+    /// Double-clicking the card opens Detail mode. nil = no double-click routing.
+    var onOpenDetail: (() -> Void)? = nil
     /// Current inline-playback volume (0..100), shared with the detail loupe.
     /// Surfaced as a compact slider only while this card plays a clip with audio.
     var inlineVolume: Int = 100
@@ -1074,7 +1079,12 @@ struct VideoCardView: View {
             let mods = ModifierSnapshot.lastMouseDownModifiers
             let shift = mods.contains(.shift)
             let toggle = mods.contains(.command) || mods.contains(.control)
-            onClick(shift, toggle)
+            if ModifierSnapshot.lastMouseDownClickCount == 2 && !shift && !toggle {
+                onClick(false, false)  // ensure the card is selected first
+                onOpenDetail?()
+            } else {
+                onClick(shift, toggle)
+            }
         }
         // File drag-out: lets users drag video files directly from the grid
         // into DaVinci Resolve, Premiere Pro, Final Cut Pro, Finder, etc.
