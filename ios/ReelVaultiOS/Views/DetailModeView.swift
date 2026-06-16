@@ -26,7 +26,8 @@ struct DetailModeView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         StreamingPlayerView(stream: stream, video: video, endpoint: connection,
                                             refreshTick: grid.catalogChangeTick,
-                                            isFullScreenActive: fullScreen)
+                                            isFullScreenActive: fullScreen,
+                                            onDoubleTap: { fullScreen = true })
                         OfflineDownloadButton(video: video, endpoint: connection)
                         MetadataEditorSection(grid: grid, videoId: video.id)
                         VideoMetadataSection(video: video, refreshTick: grid.catalogChangeTick)
@@ -80,7 +81,8 @@ struct FullScreenPlayer: View {
             Color.black.ignoresSafeArea()
                 .opacity(1 - min(Double(dragOffset) / 500, 0.7))
             StreamingPlayerView(stream: stream, video: video, endpoint: endpoint,
-                                autoPlay: true, fill: true)
+                                autoPlay: true, fill: true,
+                                onDoubleTap: { dismiss() })
                 .ignoresSafeArea()
                 .offset(y: dragOffset)
         }

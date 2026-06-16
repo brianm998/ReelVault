@@ -28,7 +28,8 @@ struct VideoDetailView: View {
             VStack(alignment: .leading, spacing: 16) {
                 StreamingPlayerView(stream: stream, video: video, endpoint: mediaEndpoint,
                                     refreshTick: grid.catalogChangeTick,
-                                    isFullScreenActive: fullScreen)
+                                    isFullScreenActive: fullScreen,
+                                    onDoubleTap: { fullScreen = true })
                 OfflineDownloadButton(video: video, endpoint: mediaEndpoint)
                 MetadataEditorSection(grid: grid, videoId: video.id)
                 // Prefer the live grid row so the proxy-count badge tracks edits
@@ -641,6 +642,9 @@ struct StreamingPlayerView: View {
     /// inline view disappear — we must NOT treat that as "left the screen" (which
     /// would pause / tear down the playback the cover just took over).
     var isFullScreenActive: Bool = false
+    /// Called when the user double-taps the player area. Typically used to toggle
+    /// full-screen. nil = no double-tap gesture (single-tap fires without delay).
+    var onDoubleTap: (() -> Void)? = nil
     /// A poster frame so the idle player shows the video with a play overlay
     /// instead of a black rectangle.
     @State private var poster: PlatformImage?
@@ -711,8 +715,10 @@ struct StreamingPlayerView: View {
         }
         if fill {
             box.frame(maxWidth: .infinity, maxHeight: .infinity)
+                .onTapGesture(count: 2) { onDoubleTap?() }
         } else {
             box.aspectRatio(16.0 / 9.0, contentMode: .fit)
+                .onTapGesture(count: 2) { onDoubleTap?() }
         }
     }
 

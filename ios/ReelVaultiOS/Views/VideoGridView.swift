@@ -246,6 +246,10 @@ struct VideoCardView: View {
 
     private let bandColor = Color(white: 0.11)   // card chrome (dark)
     private let dividerColor = Color.black.opacity(0.6)
+    /// True when the video's display dimensions are taller than wide — iPhone
+    /// portrait clips stored with a rotation tag swap their stored w/h in the
+    /// database, so width < height means it renders as a tall frame.
+    private var isPortrait: Bool { video.width > 0 && video.height > 0 && video.width < video.height }
 
     private var colorLabel: ColorLabel { ColorLabel(video.colorLabel) }
 
@@ -335,15 +339,18 @@ struct VideoCardView: View {
             }
             .clipped()
             .overlay(alignment: .bottomTrailing) {
-                CardStatusBadges(video: video).padding(4)
+                CardStatusBadges(video: video, portrait: isPortrait).padding(4)
             }
-            .overlay(alignment: .topLeading) {
+            // Bottom-left: green location pin — matches macOS (was top-left red pin).
+            .overlay(alignment: .bottomLeading) {
                 if video.hasLocation {
-                    Image(systemName: "mappin.circle.fill")
+                    Image(systemName: "location.fill")
                         .font(.system(size: 11))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color(red: 0.51, green: 0.78, blue: 0.52))
+                        .frame(width: 18, height: 18)
+                        .background(Color.black.opacity(0.55))
+                        .clipShape(Circle())
                         .padding(4)
-                        .shadow(radius: 1)
                 }
             }
             .overlay(alignment: .topTrailing) {
@@ -357,7 +364,8 @@ struct VideoCardView: View {
                     stackBadge
                 }
             }
-            .overlay(alignment: .bottomLeading) {
+            // Top-left: stack-member indent indicator (moved from bottom-left to match macOS).
+            .overlay(alignment: .topLeading) {
                 if isStackMember {
                     Image(systemName: "arrow.turn.down.right")
                         .font(.system(size: 9))

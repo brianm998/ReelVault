@@ -19,6 +19,7 @@ struct LibraryMapView: View {
     var onSelectCluster: (LocationFilterGroup) -> Void
 
     @State private var camera: MapCameraPosition = .automatic
+    @AppStorage("ios.mapUseSatellite") private var useSatellite = false
 
     var body: some View {
         let clusters = grid.mapLocationClusters()
@@ -36,6 +37,7 @@ struct LibraryMapView: View {
                 }
             }
         }
+        .mapStyle(useSatellite ? .hybrid : .standard)
         .overlay(alignment: .center) {
             if grid.isLoadingVideoLocations && grid.videoLocations.isEmpty {
                 ProgressView()
@@ -46,6 +48,15 @@ struct LibraryMapView: View {
                     description: Text("Videos with GPS metadata appear here on the map.")
                 )
             }
+        }
+        .overlay(alignment: .topTrailing) {
+            Button { useSatellite.toggle() } label: {
+                Image(systemName: useSatellite ? "map.fill" : "map")
+                    .padding(8)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+            }
+            .buttonStyle(.plain)
+            .padding(12)
         }
         // Filtered load populates both `videoLocations` (the pins) and
         // `geotaggedVideos` (full rows the iPad panel opens), honouring the active
@@ -136,13 +147,16 @@ struct MapModePad: View {
     }
 }
 
-/// The trailing panel for a tapped map cluster: the place name (or "Location"),
-/// the video count, and a tappable list of the videos there.
+/// The trailing panel for a tapped map cluster on iPad: the place name (or
+/// "Location") plus a grid of full video cards, matching the macOS
+/// `MapVideoListPanel`. iPhone routes through the grid instead of this panel.
 struct MapLocationPanel: View {
     @ObservedObject var grid: GridViewModel
     let cluster: LocationFilterGroup
     var onOpen: (VideoSummary) -> Void
     var onClose: () -> Void
+
+    private let columns = [GridItem(.adaptive(minimum: 120), spacing: 8)]
 
     var body: some View {
         let members = grid.mapClusterMembers(cluster)
@@ -161,33 +175,25 @@ struct MapLocationPanel: View {
             }
             .padding()
             Divider()
-            List(members) { video in
-                Button { onOpen(video) } label: {
-                    HStack(spacing: 10) {
-                        thumbnail(video)
-                        Text(video.filename).font(.callout).lineLimit(1)
-                        Spacer(minLength: 0)
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 8) {
+                    ForEach(members) { video in
+                        VideoCardView(
+                            video: video,
+                            image: grid.thumbnails[video.id],
+                            topSlots: grid.topSlots,
+                            isSelected: grid.selectedVideoId == video.id,
+                            onActivate: {
+                                grid.selectVideo(video)
+                                onOpen(video)
+                            }
+                        )
+                        .onAppear { grid.loadThumbnail(videoId: video.id) }
                     }
-                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .onAppear { grid.loadThumbnail(videoId: video.id) }
+                .padding(8)
             }
-            .listStyle(.plain)
         }
         .background(.bar)
-    }
-
-    @ViewBuilder private func thumbnail(_ video: VideoSummary) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 4).fill(Color(white: 0.18))
-            if let img = grid.thumbnails[video.id] {
-                Image(uiImage: img).resizable().scaledToFill()
-            } else {
-                Image(systemName: "film").foregroundStyle(.secondary)
-            }
-        }
-        .frame(width: 64, height: 36)
-        .clipShape(RoundedRectangle(cornerRadius: 4))
     }
 }

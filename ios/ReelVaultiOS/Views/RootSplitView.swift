@@ -159,10 +159,16 @@ private struct NavHistoryButtons: View {
 /// inspector keys off this (not the cached `grid.selectedVideo`) so that after a
 /// source/filter change strands the previous selection off-screen, the right
 /// info panel hides instead of showing details for a video no longer in view.
+/// Also searches expanded stack members so selecting a non-leading member keeps
+/// the inspector visible (those cards live in `expandedGroupMembers`, not `videos`).
 @MainActor
 private func visibleSelectedVideo(_ grid: GridViewModel) -> VideoSummary? {
     guard let id = grid.selectedVideoId else { return nil }
-    return grid.videos.first(where: { $0.id == id })
+    if let v = grid.videos.first(where: { $0.id == id }) { return v }
+    for members in grid.expandedGroupMembers.values {
+        if let v = members.first(where: { $0.id == id }) { return v }
+    }
+    return nil
 }
 
 /// Inset a thin "importing" strip at the top of the navigation *content* (below
@@ -203,10 +209,8 @@ private struct RegularLayout: View {
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     /// The user swiped the inspector away. Kept *separate* from the selection so a
     /// dismissed panel stays hidden across selections — it only reappears when the
-    /// user swipes back in from the right edge (`revealInspectorGesture`).
+    /// user swipes back in from the right edge.
     @State private var inspectorHidden = false
-    /// Width of the detail column, so the reveal gesture can require a right-edge start.
-    @State private var detailAreaWidth: CGFloat = 0
 
     var body: some View {
         // Two-column split (library | main). The metadata inspector is a small
@@ -217,10 +221,70 @@ private struct RegularLayout: View {
             LibrarySidebar(
                 grid: grid, viewMode: $viewMode, selection: $selection,
                 hasSelection: grid.selectedVideoId != nil, onSelect: apply)
+                // Trailing-edge overlay: swipe LEFT on the sidebar to dismiss it,
+                // mirroring the inspector's swipe-right-to-dismiss pattern.
+                .overlay(alignment: .trailing) {
+                    Color.clear
+                        .frame(width: 20)
+                        .contentShape(Rectangle())
+                        .gesture(
+                            DragGesture(minimumDistance: 20)
+                                .onEnded { v in
+                                    guard v.translation.width < -40,
+                                          abs(v.translation.width) > abs(v.translation.height)
+                                    else { return }
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        columnVisibility = .detailOnly
+                                    }
+                                }
+                        )
+                }
         } detail: {
             HStack(spacing: 0) {
                 center
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    // Leading-edge overlay: swipe RIGHT from the left edge to reveal
+                    // the sidebar. Only shown when the sidebar is hidden.
+                    .overlay(alignment: .leading) {
+                        if columnVisibility != .all {
+                            Color.clear
+                                .frame(width: 20)
+                                .contentShape(Rectangle())
+                                .gesture(
+                                    DragGesture(minimumDistance: 20)
+                                        .onEnded { v in
+                                            guard v.translation.width > 40,
+                                                  abs(v.translation.width) > abs(v.translation.height)
+                                            else { return }
+                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                columnVisibility = .all
+                                            }
+                                        }
+                                )
+                        }
+                    }
+                    // Trailing-edge overlay: swipe LEFT from the right edge to reveal
+                    // the hidden inspector. An overlay on just this 20pt strip sits on
+                    // top of the ScrollView and reliably intercepts horizontal swipes
+                    // that the vertical ScrollView would otherwise consume.
+                    .overlay(alignment: .trailing) {
+                        if inspectorHidden && visibleSelectedVideo(grid) != nil {
+                            Color.clear
+                                .frame(width: 20)
+                                .contentShape(Rectangle())
+                                .gesture(
+                                    DragGesture(minimumDistance: 20)
+                                        .onEnded { v in
+                                            guard v.translation.width < -40,
+                                                  abs(v.translation.width) > abs(v.translation.height)
+                                            else { return }
+                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                inspectorHidden = false
+                                            }
+                                        }
+                                )
+                        }
+                    }
                 if showInspector {
                     Divider()
                     InspectorPanel(grid: grid, video: visibleSelectedVideo(grid),
@@ -230,7 +294,7 @@ private struct RegularLayout: View {
                         .transition(.move(edge: .trailing))
                         // Swipe right to *hide* the panel — the selection is kept, so
                         // selecting another card leaves the panel hidden until the user
-                        // swipes back in from the right edge (revealInspectorGesture).
+                        // swipes back in from the right edge.
                         // simultaneousGesture so the panel still scrolls vertically; we
                         // only act on a predominantly-rightward swipe.
                         .simultaneousGesture(
@@ -246,31 +310,6 @@ private struct RegularLayout: View {
                         )
                 }
             }
-            // Measure the detail column so the reveal gesture can tell a swipe that
-            // begins at the right edge from one that begins mid-grid.
-            .background(
-                GeometryReader { geo in
-                    Color.clear
-                        .onAppear { detailAreaWidth = geo.size.width }
-                        .onChange(of: geo.size.width) { _, w in detailAreaWidth = w }
-                }
-            )
-            // Swipe in from the right edge (leftward) to bring a dismissed inspector
-            // back — only meaningful when a video is selected. simultaneousGesture so
-            // the grid still scrolls and cards still tap.
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 30)
-                    .onEnded { value in
-                        guard inspectorHidden, visibleSelectedVideo(grid) != nil else { return }
-                        let fromRightEdge = detailAreaWidth > 0
-                            && value.startLocation.x > detailAreaWidth - 48
-                        if fromRightEdge,
-                           value.translation.width < -60,
-                           abs(value.translation.width) > abs(value.translation.height) {
-                            withAnimation(.easeInOut(duration: 0.2)) { inspectorHidden = false }
-                        }
-                    }
-            )
             // "Importing" strip below the toolbar (not overlaying it).
             .modifier(IngestBannerInset(isIngesting: isIngesting))
             .toolbar {
@@ -279,11 +318,13 @@ private struct RegularLayout: View {
                 }
             }
         }
-        // The grid reflows narrower when the inspector opens on a selection, and
+        // The grid reflows narrower when the inspector opens on a selection, or
         // wider when the library column is collapsed — either can scroll the
         // selected card out of view. Re-center it once the layout settles.
         .onChange(of: showInspector) { _, shown in if shown { scrollToSelection() } }
         .onChange(of: columnVisibility) { _, _ in scrollToSelection() }
+        // Returning to grid/list (from detail or map) should also re-center the selection.
+        .onChange(of: viewMode) { _, mode in if mode == .grid || mode == .list { scrollToSelection() } }
     }
 
     /// Ask the grid to re-center the current selection after a layout change.
@@ -368,6 +409,14 @@ private struct CompactLayout: View {
                         NavHistoryButtons(history: history, goBack: goBack, goForward: goForward)
                     }
                 }
+        }
+        // When the detail view is popped (pushedVideo → nil), scroll the grid back
+        // to the selected card so it's visible after returning.
+        .onChange(of: pushedVideo) { _, video in
+            guard video == nil, let id = grid.selectedVideoId else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                grid.pendingScrollVideoId = id
+            }
         }
         .sheet(isPresented: $showLibrary) {
             NavigationStack {
