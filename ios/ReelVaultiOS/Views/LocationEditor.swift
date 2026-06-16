@@ -92,14 +92,21 @@ struct LocationButtonsSection: View {
             Label(title, systemImage: systemImage)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
+                // Measure the label's NATURAL width here — before the equalizing
+                // `.frame(width:)` and outside the bordered button's padding — so the
+                // reported value is independent of `buttonWidth`. The previous version
+                // measured the whole padded button AFTER the frame was applied, so
+                // `buttonWidth` fed back into its own measurement and grew by the button
+                // padding on every layout pass → an unbounded layout loop that hung the
+                // detail view on push (it's rendered on every card tap).
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear.preference(key: LocationButtonWidthKey.self, value: proxy.size.width)
+                    }
+                )
                 .frame(width: buttonWidth, alignment: .leading)
         }
         .buttonStyle(.bordered)
-        .background(
-            GeometryReader { proxy in
-                Color.clear.preference(key: LocationButtonWidthKey.self, value: proxy.size.width)
-            }
-        )
     }
 }
 
