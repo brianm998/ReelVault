@@ -34,13 +34,13 @@ release:
 	cargo build --release
 
 run:
-	cargo run --bin reelvault-core -- --remote $(ARGS)
+	cargo run --bin reelvault-core -- --remote --import-dir /mammoth/video_archive/imports $(ARGS)
 
 run-release:
-	cargo run --release --bin reelvault-core -- --remote $(ARGS)
+	cargo run --release --bin reelvault-core -- --remote --import-dir /mammoth/video_archive/imports $(ARGS)
 
 dev:
-	RUST_LOG=debug cargo run --bin reelvault-core -- --remote $(ARGS)
+	RUST_LOG=debug cargo run --bin reelvault-core -- --remote --import-dir /mammoth/video_archive/imports $(ARGS)
 
 cli:
 	cargo run --bin reelvault-cli -- $(ARGS)
