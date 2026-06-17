@@ -298,13 +298,17 @@ impl IndexingEngine {
         // Found files were re-asserted online by index_video's size refresh.
         let present: std::collections::HashSet<std::path::PathBuf> =
             video_paths.iter().cloned().collect();
-        match db.mark_missing_offline(path, recursive, &present) {
-            Ok(offlined) if !offlined.is_empty() => tracing::info!(
-                "Scan: marked {} missing video(s) offline under {}",
-                offlined.len(),
-                path.display()
-            ),
-            Ok(_) => {}
+        match db.mark_missing_locations_offline(path, recursive, &present) {
+            Ok(results) => {
+                let fully_offline = results.iter().filter(|(_, f)| *f).count();
+                let location_only = results.iter().filter(|(_, f)| !*f).count();
+                if fully_offline > 0 || location_only > 0 {
+                    tracing::info!(
+                        "Scan: {} video(s) offline, {} lost a location under {}",
+                        fully_offline, location_only, path.display()
+                    );
+                }
+            }
             Err(e) => tracing::warn!("Scan: offline sweep failed: {}", e),
         }
 
@@ -359,46 +363,48 @@ impl IndexingEngine {
         let source = MediaSource::Path(video_path.to_path_buf());
         let probe_output = backend().probe(&source)?;
 
-        // Check if already indexed — if so, reuse the existing ID and just refresh metadata.
-        let video_id = if let Ok(Some(existing)) = db.get_video_by_path(video_path.to_str().unwrap_or("")) {
-            // Keep the cached size on the `videos` row in sync with disk.
-            // The watcher's poll-fallback re-queues any file whose stored
-            // `file_size_bytes` differs from the on-disk size; without this
-            // update a re-index (which only refreshes `metadata`) leaves the
-            // old size in place, so the file is re-detected as "changed"
-            // every poll cycle — an endless re-index loop after any
-            // off-FSEvents write (e.g. embedding XMP).
+        // Check if already indexed — if so, reuse the existing location row and
+        // just refresh metadata. We now key on video_locations, not videos.path.
+        let video_id = if let Some(loc) = db.get_location_by_path(video_path.to_str().unwrap_or(""))? {
+            // Already a known location — sync file size on both the location and
+            // the master videos row.
             if let Some(sz) = file_size {
-                db.update_video_file_size(&existing.id, sz)?;
+                db.update_location_size(&loc.id, sz)?;
+                db.update_video_file_size(&loc.video_id, sz)?;
             }
-            existing.id
+            loc.video_id
         } else {
-            // Before creating a new row, check if this looks like a file that
-            // was moved between watched directories. A match on (file_size,
-            // duration_ms) against an offline row is almost certainly the same
-            // clip — update its path to preserve tags, collections, and all
-            // other catalog data instead of creating a duplicate entry.
-            let duration_ms = (probe_output.format.duration.unwrap_or(0.0) * 1000.0) as i64;
-            let moved_id = if let (Some(sz), true) = (file_size, duration_ms > 0) {
-                db.find_offline_by_fingerprint(sz, duration_ms).ok().flatten()
+            // New path. Check if this is a copy/move of an existing video:
+            // same filename + same file size → same content.
+            let copy_id = if let Some(sz) = file_size {
+                db.find_location_by_filename_size(filename, sz, video_path.to_str().unwrap_or(""))
+                    .ok()
+                    .flatten()
             } else {
                 None
             };
-            if let Some(id) = moved_id {
+
+            if let Some(existing_id) = copy_id {
                 tracing::info!(
-                    "move detected: preserving catalog entry for {}",
-                    video_path.display()
+                    "location added: {} is a copy of video {}",
+                    video_path.display(),
+                    existing_id
                 );
-                db.update_video_path(&id, video_path.to_str().unwrap_or(""), filename)?;
-                id
+                db.add_video_location(&existing_id, video_path.to_str().unwrap_or(""), filename, file_size)?;
+                // Ensure videos.is_online reflects the new active location.
+                db.update_video_file_size(&existing_id, file_size.unwrap_or(0))?;
+                existing_id
             } else {
-                db.add_video(
+                // Genuinely new video — create the master row and its first location.
+                let new_id = db.add_video(
                     video_path.to_str().unwrap_or(""),
                     filename,
                     None,
                     None,
                     file_size,
-                )?
+                )?;
+                db.add_video_location(&new_id, video_path.to_str().unwrap_or(""), filename, file_size)?;
+                new_id
             }
         };
 
@@ -546,51 +552,67 @@ impl IndexingEngine {
         // Detect new-vs-update *before* we touch the DB. After
         // `index_video` runs, the row exists no matter what — and we want
         // the caller to know which gRPC event to publish.
-        let existed = db
-            .get_video_by_path(video_path.to_str().unwrap_or(""))
+        let location_existed = db
+            .get_location_by_path(video_path.to_str().unwrap_or(""))
             .ok()
             .flatten()
             .is_some();
 
         let video_id = Self::index_video(db, video_path, thumbnail_cache, filename_date)?;
-        let outcome = if existed {
+
+        // Copy detection: if this path was new but the video already had
+        // other locations, it's a copy — the logical video isn't new.
+        // Emit Modified so clients don't add a duplicate grid entry.
+        let outcome = if location_existed {
             ScanFileOutcome::Modified
         } else {
-            ScanFileOutcome::Added
+            let is_copy = db
+                .get_connection()
+                .and_then(|conn| {
+                    conn.query_row(
+                        "SELECT COUNT(*) FROM video_locations WHERE video_id = ?",
+                        rusqlite::params![&video_id],
+                        |r| r.get::<_, i64>(0),
+                    )
+                    .map_err(|e| crate::error::ReelVaultError::DatabaseError(e.to_string()))
+                })
+                .map(|n| n > 1)
+                .unwrap_or(false);
+            if is_copy {
+                ScanFileOutcome::Modified
+            } else {
+                ScanFileOutcome::Added
+            }
         };
         Ok((video_id, outcome))
     }
 
-    /// Mark a path as removed from disk. Soft-delete: we set
-    /// `is_online = false` rather than deleting the video row, so tags,
-    /// notes, collection memberships, and the user's catalog history
-    /// survive a temporarily-unplugged drive.
+    /// Mark a path as removed from disk. Delegates to the location-aware
+    /// `db.mark_location_offline` which handles multi-location videos:
+    /// if another location is still online the video stays alive and only
+    /// the canonical path is updated; if all locations are gone the
+    /// `videos.is_online` flag is cleared too.
     ///
-    /// Returns the video_id if a matching row existed (so the watcher can
-    /// publish a `VideoRemoved` event), or None if the path wasn't in the
-    /// catalog (a delete for a file we never indexed — silently ignored).
-    pub fn mark_offline(db: &Database, video_path: &Path) -> Result<Option<String>> {
-        if let Ok(Some(video)) = db.get_video_by_path(video_path.to_str().unwrap_or("")) {
-            let conn = db.get_connection()?;
-            conn.execute(
-                "UPDATE videos SET is_online = 0 WHERE id = ?",
-                rusqlite::params![&video.id],
-            )
-            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
-            Ok(Some(video.id))
-        } else {
-            Ok(None)
-        }
+    /// Returns `Some((video_id, fully_offline))` if the path was a known
+    /// location, or `None` if it wasn't in the catalog (silently ignored).
+    pub fn mark_offline(db: &Database, video_path: &Path) -> Result<Option<(String, bool)>> {
+        db.mark_location_offline(video_path.to_str().unwrap_or(""))
     }
 
+    #[allow(dead_code)]
     pub fn update_online_status(db: &Database, path: &Path, is_online: bool) -> Result<()> {
-        if let Ok(Some(video)) = db.get_video_by_path(path.to_str().unwrap_or("")) {
+        if let Ok(Some(loc)) = db.get_location_by_path(path.to_str().unwrap_or("")) {
             let conn = db.get_connection()?;
             conn.execute(
-                "UPDATE videos SET is_online = ? WHERE id = ?",
-                rusqlite::params![is_online as i32, video.id],
+                "UPDATE video_locations SET is_online = ? WHERE id = ?",
+                rusqlite::params![is_online as i32, loc.id],
             )
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            if !is_online {
+                db.mark_location_offline(path.to_str().unwrap_or(""))?;
+            } else {
+                db.update_video_file_size(&loc.video_id, loc.file_size_bytes.unwrap_or(0))?;
+            }
         }
         Ok(())
     }

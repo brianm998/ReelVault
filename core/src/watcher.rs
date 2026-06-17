@@ -351,11 +351,20 @@ fn handle_notify_event(
                 // Pull from pending if it's there — no point scanning a
                 // file that just vanished.
                 pending.lock().ok().map(|mut p| p.remove(&path));
-                let result = IndexingEngine::mark_offline(db.as_ref(), &path).ok().flatten();
-                let _ = events.send(CatalogChange::VideoRemoved {
-                    video_id: result,
-                    path,
-                });
+                match IndexingEngine::mark_offline(db.as_ref(), &path).ok().flatten() {
+                    Some((video_id, true)) => {
+                        // No remaining online locations — video is gone.
+                        let _ = events.send(CatalogChange::VideoRemoved {
+                            video_id: Some(video_id),
+                            path,
+                        });
+                    }
+                    Some((video_id, false)) => {
+                        // Video still alive at another location — notify of path change.
+                        let _ = events.send(CatalogChange::VideoModified { video_id, path });
+                    }
+                    None => {}
+                }
             }
             // Access/AnyOther events don't tell us anything actionable.
             _ => {}
@@ -483,8 +492,15 @@ fn sweep_pending(
         // Final stat check: if the file no longer exists (deleted between
         // settling and now), publish a removal instead of scanning.
         if !path.exists() {
-            let video_id = IndexingEngine::mark_offline(db.as_ref(), &path).ok().flatten();
-            let _ = events.send(CatalogChange::VideoRemoved { video_id, path });
+            match IndexingEngine::mark_offline(db.as_ref(), &path).ok().flatten() {
+                Some((video_id, true)) => {
+                    let _ = events.send(CatalogChange::VideoRemoved { video_id: Some(video_id), path });
+                }
+                Some((video_id, false)) => {
+                    let _ = events.send(CatalogChange::VideoModified { video_id, path });
+                }
+                None => {}
+            }
             continue;
         }
 

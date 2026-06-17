@@ -451,6 +451,29 @@ impl Database {
             // and later opens read it back. NULL = not yet computed; an empty blob
             // = computed and the video has no usable audio (don't recompute).
             ("metadata.audio_loudness", "ALTER TABLE metadata ADD COLUMN audio_loudness BLOB"),
+            // Multi-location tracking: one logical video may exist as copies in
+            // multiple watched directories. `video_locations` records every
+            // filesystem path for a video_id; tags/metadata/collections are
+            // preserved when a file is added at a new location or removed from one.
+            ("video_locations table", "CREATE TABLE IF NOT EXISTS video_locations (
+                id TEXT PRIMARY KEY,
+                video_id TEXT NOT NULL,
+                path TEXT UNIQUE NOT NULL,
+                filename TEXT NOT NULL,
+                file_size_bytes INTEGER,
+                is_online INTEGER NOT NULL DEFAULT 1,
+                indexed_at INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY(video_id) REFERENCES videos(id) ON DELETE CASCADE
+            )"),
+            ("idx_video_locations_video_id", "CREATE INDEX IF NOT EXISTS idx_video_locations_video_id ON video_locations(video_id)"),
+            ("idx_video_locations_filename_size", "CREATE INDEX IF NOT EXISTS idx_video_locations_filename_size ON video_locations(filename, file_size_bytes)"),
+            // Backfill: mirror every existing videos row into video_locations so
+            // the new lookup path works for pre-existing catalog entries. The
+            // synthetic id (`<video_id>_p`) is stable across re-runs thanks to
+            // INSERT OR IGNORE.
+            ("video_locations backfill", "INSERT OR IGNORE INTO video_locations (id, video_id, path, filename, file_size_bytes, is_online, indexed_at)
+                SELECT id || '_p', id, path, filename, COALESCE(file_size_bytes, 0), COALESCE(is_online, 1), COALESCE(indexed_at, 0)
+                FROM videos"),
         ];
         for (label, sql) in migrations {
             match conn.execute(sql, []) {
@@ -584,40 +607,279 @@ impl Database {
         Ok(())
     }
 
-    /// Update the filesystem path for an existing video row and mark it online.
-    /// Called when move detection finds an offline entry matching a newly-seen
-    /// file at a different location.
-    pub fn update_video_path(&self, video_id: &str, new_path: &str, new_filename: &str) -> Result<()> {
+    // ----- Multi-location tracking -----
+
+    /// Look up a `video_locations` row by its exact filesystem path.
+    /// Returns `None` when this path has never been recorded as a location.
+    pub fn get_location_by_path(&self, path: &str) -> Result<Option<VideoLocation>> {
+        let conn = self.get_connection()?;
+        let result = conn
+            .query_row(
+                "SELECT id, video_id, path, filename, file_size_bytes, is_online, indexed_at \
+                 FROM video_locations WHERE path = ?",
+                [path],
+                |row| {
+                    Ok(VideoLocation {
+                        id: row.get(0)?,
+                        video_id: row.get(1)?,
+                        path: row.get(2)?,
+                        filename: row.get(3)?,
+                        file_size_bytes: row.get(4)?,
+                        is_online: row.get::<_, i64>(5)? != 0,
+                        indexed_at: row.get(6)?,
+                    })
+                },
+            )
+            .optional()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(result)
+    }
+
+    /// Record a new filesystem location for an existing video. Generates a UUID
+    /// for the location row. Uses `INSERT OR IGNORE` so calling it twice for the
+    /// same path is safe (idempotent). Returns the location id.
+    pub fn add_video_location(
+        &self,
+        video_id: &str,
+        path: &str,
+        filename: &str,
+        file_size: Option<i64>,
+    ) -> Result<String> {
+        let conn = self.get_connection()?;
+        let loc_id = Uuid::new_v4().to_string();
+        let now = Utc::now().timestamp_millis();
+        conn.execute(
+            "INSERT OR IGNORE INTO video_locations (id, video_id, path, filename, file_size_bytes, is_online, indexed_at) \
+             VALUES (?1, ?2, ?3, ?4, ?5, 1, ?6)",
+            params![loc_id, video_id, path, filename, file_size, now],
+        )
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        // If the INSERT was ignored (row already existed), return its actual id.
+        let actual_id: String = conn
+            .query_row(
+                "SELECT id FROM video_locations WHERE path = ?",
+                [path],
+                |row| row.get(0),
+            )
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(actual_id)
+    }
+
+    /// Update the recorded file size for a location row and mark it online.
+    pub fn update_location_size(&self, location_id: &str, file_size: i64) -> Result<()> {
         let conn = self.get_connection()?;
         conn.execute(
-            "UPDATE videos SET path = ?, filename = ?, is_online = 1 WHERE id = ?",
-            params![new_path, new_filename, video_id],
+            "UPDATE video_locations SET file_size_bytes = ?, is_online = 1 WHERE id = ?",
+            params![file_size, location_id],
         )
         .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(())
     }
 
-    /// Find an offline video whose recorded size and duration match the given
-    /// values. Returns the video_id of the first match, or None. Used by
-    /// `index_video` to detect files moved between watched directories:
-    /// a file with identical size + duration is almost certainly the same clip,
-    /// so we update its path rather than duplicating the catalog entry.
-    pub fn find_offline_by_fingerprint(&self, file_size: i64, duration_ms: i64) -> Result<Option<String>> {
+    /// Find the `video_id` of an existing catalog entry that has a location with
+    /// `filename` and `file_size_bytes` equal to the given values, excluding
+    /// `exclude_path`. Prefers online locations. Returns the first match or None.
+    ///
+    /// Used to detect copies: a new file whose name + size match an already-
+    /// catalogued location is almost certainly the same content, so we record
+    /// it as a second location for that video rather than a new one.
+    pub fn find_location_by_filename_size(
+        &self,
+        filename: &str,
+        file_size: i64,
+        exclude_path: &str,
+    ) -> Result<Option<String>> {
         let conn = self.get_connection()?;
         let result = conn
             .query_row(
-                "SELECT v.id FROM videos v
-                  JOIN metadata m ON m.video_id = v.id
-                 WHERE v.is_online = 0
-                   AND v.file_size_bytes = ?1
-                   AND m.duration_ms = ?2
+                "SELECT video_id FROM video_locations \
+                 WHERE filename = ?1 AND file_size_bytes = ?2 AND path != ?3 \
+                 ORDER BY is_online DESC \
                  LIMIT 1",
-                params![file_size, duration_ms],
+                params![filename, file_size, exclude_path],
                 |row| row.get(0),
             )
             .optional()
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(result)
+    }
+
+    /// Mark the location at `path` offline, then update `videos.is_online` and
+    /// the canonical path accordingly.
+    ///
+    /// Returns `Ok(Some((video_id, fully_offline)))` where `fully_offline` is
+    /// `true` when no other location for the same video is still online.
+    /// Returns `Ok(None)` if `path` wasn't recorded as a location.
+    pub fn mark_location_offline(&self, path: &str) -> Result<Option<(String, bool)>> {
+        let conn = self.get_connection()?;
+        // Find the location row.
+        let loc: Option<(String, String)> = conn
+            .query_row(
+                "SELECT id, video_id FROM video_locations WHERE path = ?",
+                [path],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .optional()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+
+        let Some((loc_id, video_id)) = loc else {
+            return Ok(None);
+        };
+
+        // Mark this location offline.
+        conn.execute(
+            "UPDATE video_locations SET is_online = 0 WHERE id = ?",
+            params![loc_id],
+        )
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+
+        // Check whether any other location for this video is still online.
+        let still_online: bool = conn
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM video_locations WHERE video_id = ? AND is_online = 1)",
+                [&video_id],
+                |row| row.get::<_, bool>(0),
+            )
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+
+        if still_online {
+            self.refresh_canonical_path(&video_id)?;
+        } else {
+            conn.execute(
+                "UPDATE videos SET is_online = 0 WHERE id = ?",
+                params![video_id],
+            )
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        }
+
+        Ok(Some((video_id, !still_online)))
+    }
+
+    /// Update `videos.path` and `videos.filename` to reflect the most-recently-
+    /// indexed online location for the given video. Called when one location goes
+    /// offline but others survive, so the canonical path always points to a
+    /// reachable file.
+    pub fn refresh_canonical_path(&self, video_id: &str) -> Result<()> {
+        let conn = self.get_connection()?;
+        let best: Option<String> = conn
+            .query_row(
+                "SELECT path FROM video_locations \
+                 WHERE video_id = ?1 AND is_online = 1 \
+                 ORDER BY indexed_at DESC \
+                 LIMIT 1",
+                [video_id],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+
+        if let Some(path) = best {
+            let filename = std::path::Path::new(&path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("")
+                .to_string();
+            conn.execute(
+                "UPDATE videos SET path = ?1, filename = ?2, is_online = 1 WHERE id = ?3",
+                params![path, filename, video_id],
+            )
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        }
+        Ok(())
+    }
+
+    /// Location-aware offline sweep. Marks `video_locations` rows offline when
+    /// their path is under `dir`, was online, and is not in `present`. When a
+    /// video loses its last online location the `videos` row is also marked
+    /// offline; when some locations remain the canonical path is refreshed.
+    ///
+    /// Returns `(video_id, fully_offline)` pairs for every location that
+    /// transitioned offline. Keeps the old [`mark_missing_offline`] function
+    /// alongside this one for backward compatibility with callers that don't
+    /// need location-awareness.
+    pub fn mark_missing_locations_offline(
+        &self,
+        dir: &std::path::Path,
+        recursive: bool,
+        present: &std::collections::HashSet<std::path::PathBuf>,
+    ) -> Result<Vec<(String, bool)>> {
+        let conn = self.get_connection()?;
+
+        // Build the LIKE pattern for the directory (same escaping as mark_missing_offline).
+        let mut prefix = dir.to_string_lossy().to_string();
+        if !prefix.ends_with(std::path::MAIN_SEPARATOR) {
+            prefix.push(std::path::MAIN_SEPARATOR);
+        }
+        let mut like = String::with_capacity(prefix.len() + 1);
+        for ch in prefix.chars() {
+            if matches!(ch, '\\' | '%' | '_') {
+                like.push('\\');
+            }
+            like.push(ch);
+        }
+        like.push('%');
+
+        // Collect candidates: online locations under this directory.
+        let candidates: Vec<(String, String, String)> = {
+            let mut stmt = conn
+                .prepare(
+                    "SELECT id, video_id, path FROM video_locations \
+                     WHERE is_online = 1 AND path LIKE ?1 ESCAPE '\\'",
+                )
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            let rows = stmt
+                .query_map(params![like], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, String>(1)?,
+                        row.get::<_, String>(2)?,
+                    ))
+                })
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            rows.filter_map(|r| r.ok()).collect()
+        };
+
+        let mut results: Vec<(String, bool)> = Vec::new();
+        for (loc_id, video_id, path) in candidates {
+            let p = std::path::PathBuf::from(&path);
+            let in_scope = if recursive {
+                true
+            } else {
+                p.parent().map(|par| par == dir).unwrap_or(false)
+            };
+            if !in_scope || present.contains(&p) {
+                continue;
+            }
+            // Mark this location offline.
+            conn.execute(
+                "UPDATE video_locations SET is_online = 0 WHERE id = ?",
+                params![loc_id],
+            )
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+
+            // Check whether any other location for this video is still online.
+            let still_online: bool = conn
+                .query_row(
+                    "SELECT EXISTS(SELECT 1 FROM video_locations WHERE video_id = ? AND is_online = 1)",
+                    [&video_id],
+                    |row| row.get::<_, bool>(0),
+                )
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+
+            if still_online {
+                self.refresh_canonical_path(&video_id)?;
+            } else {
+                conn.execute(
+                    "UPDATE videos SET is_online = 0 WHERE id = ?",
+                    params![video_id],
+                )
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            }
+
+            results.push((video_id, !still_online));
+        }
+
+        Ok(results)
     }
 
     /// Soft-delete (`is_online = 0`) every currently-online video under `dir`
@@ -3623,6 +3885,21 @@ pub struct VideoGroupRecord {
     pub name: Option<String>,
     pub base_name: Option<String>,
     pub preferred_video_id: Option<String>,
+}
+
+/// One row from the `video_locations` table. A single logical video may have
+/// multiple locations (copies in different watched directories). Tags, metadata,
+/// and collections are keyed on `video_id` and survive any individual location
+/// going offline.
+#[derive(Debug, Clone)]
+pub struct VideoLocation {
+    pub id: String,
+    pub video_id: String,
+    pub path: String,
+    pub filename: String,
+    pub file_size_bytes: Option<i64>,
+    pub is_online: bool,
+    pub indexed_at: i64,
 }
 
 /// One row returned by [`Database::list_proxies`]. Bundles enough info
