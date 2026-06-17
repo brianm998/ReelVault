@@ -2,7 +2,7 @@
 name = "reelvault-core"
 version = "0.1.0"
 edition = "2021"
-license = "GPL-3.0-or-later"
+license = "LGPL-2.1-or-later"
 description = "Backend daemon for ReelVault — a cross-platform video cataloging application."
 repository = "https://github.com/reelvault/reelvault"
 readme = "../README.md"

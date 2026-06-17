@@ -215,7 +215,7 @@ compose.desktop {
             packageVersion = "0.1.0"
             description = "Video library manager and cataloging tool"
             vendor = "ReelVault"
-            copyright = "2024 ReelVault Contributors"
+            copyright = "2024 Brian Martin"
 
             // App-icon files for jpackage. Compose Desktop expects one
             // platform-specific file per target OS — picked up at packaging
