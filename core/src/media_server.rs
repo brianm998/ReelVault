@@ -783,10 +783,22 @@ fn run_hls_transcode(dir: &Path, src: &str, height: i32, copy: bool, from_origin
                 cmd.args(["-tag:v", "hvc1"]);
             }
         } else {
-            // height <= 0 = "Original" → no downscale (encode at source res).
-            if height > 0 {
-                let vf = format!("scale=-2:min({height}\\,ih)");
-                cmd.args(["-vf", &vf]);
+            // ProRes RAW: ffmpeg's decoder emits scene-referred linear floats
+            // that display flat/dark without explicit tonemapping (same root
+            // cause as the filmstrip gamma issue). Apply the same Hable curve
+            // used for thumbnails so HLS playback gamma matches the grid view.
+            let prores_raw = probe_video_track(src)
+                .map(|(c, _)| c == "prores_raw")
+                .unwrap_or(false);
+            let tonemap = "format=gbrpf32le,tonemap=tonemap=hable:desat=0,format=yuv420p";
+            let vf: Option<String> = match (prores_raw, height > 0) {
+                (true, true) => Some(format!("{tonemap},scale=-2:min({height}\\,ih)")),
+                (true, false) => Some(tonemap.to_string()),
+                (false, true) => Some(format!("scale=-2:min({height}\\,ih)")),
+                (false, false) => None,
+            };
+            if let Some(vf) = &vf {
+                cmd.args(["-vf", vf]);
             }
             // Re-encoding the ORIGINAL (no usable proxy) is the slow case — a
             // multi-GB master, often off a slow NAS — where `veryfast` couldn't keep
