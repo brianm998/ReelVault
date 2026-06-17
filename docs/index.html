@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Download ReelVault</title>
+  <meta name="description" content="Download ReelVault — a fast, native video library manager for your desktop.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:             #0d0d0d;
+      --surface:        #181818;
+      --surface-2:      #202020;
+      --border:         #2c2c2c;
+      --border-hover:   #3a3a3a;
+      --border-sel:     #f09020;
+      --text:           #ebebeb;
+      --text-muted:     #888;
+      --text-dim:       #484848;
+      --accent:         #f09020;
+      --accent-hover:   #f4a035;
+      --accent-bg:      rgba(240,144,32,0.08);
+      --accent-border:  rgba(240,144,32,0.25);
+      --radius:         14px;
+      --radius-sm:      8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 20px 80px;
+      line-height: 1.4;
+    }
+
+    /* ── Logo ──────────────────────────────────────────────────────────── */
+    .logo-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .logo-icon {
+      width: 42px;
+      height: 42px;
+    }
+
+    .logo-text {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text);
+    }
+
+    .tagline {
+      color: var(--text-muted);
+      font-size: 15px;
+      margin-bottom: 44px;
+    }
+
+    /* ── Main card ─────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      max-width: 700px;
+      width: 100%;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    /* ── Platform row ──────────────────────────────────────────────────── */
+    .platform-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .platform-icon { font-size: 18px; }
+
+    .platform-name {
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .platform-change {
+      font-size: 12px;
+      color: var(--accent);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      margin-left: 2px;
+    }
+    .platform-change:hover { background: var(--accent-bg); }
+
+    /* ── Platform picker ───────────────────────────────────────────────── */
+    .platform-picker {
+      display: none;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .platform-picker.open { display: flex; }
+
+    .os-btn {
+      flex: 1;
+      padding: 10px 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface-2);
+      color: var(--text-muted);
+      font-size: 14px;
+      cursor: pointer;
+      text-align: center;
+      transition: border-color 0.12s, color 0.12s;
+    }
+    .os-btn:hover { border-color: var(--border-hover); color: var(--text); }
+    .os-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+
+    .divider { height: 1px; background: var(--border); margin: 28px 0; }
+
+    /* ── Mode question ─────────────────────────────────────────────────── */
+    .question {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .question-sub {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .choice-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 540px) { .choice-grid { grid-template-columns: 1fr; } }
+
+    .choice {
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 20px;
+      cursor: pointer;
+      transition: border-color 0.13s, background 0.13s;
+      user-select: none;
+    }
+    .choice:hover { border-color: var(--border-hover); }
+    .choice.selected { border-color: var(--accent); background: var(--accent-bg); }
+
+    .choice-icon { font-size: 26px; margin-bottom: 12px; }
+
+    .choice-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .choice.selected .choice-title { color: var(--accent); }
+
+    .choice-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.55;
+      margin-bottom: 12px;
+    }
+
+    .choice-bullets {
+      list-style: none;
+      padding: 0;
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+    }
+    .choice-bullets li {
+      font-size: 12px;
+      color: var(--text-muted);
+      padding: 3px 0;
+    }
+    .choice-bullets li::before { content: '✓  '; color: var(--text-dim); }
+    .choice.selected .choice-bullets { border-color: var(--accent-border); }
+    .choice.selected .choice-bullets li::before { color: var(--accent); opacity: 0.6; }
+
+    /* ── Download area ─────────────────────────────────────────────────── */
+    .download-area { margin-top: 28px; }
+
+    .download-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 17px 24px;
+      background: var(--accent);
+      color: #0d0d0d;
+      font-size: 15px;
+      font-weight: 700;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.13s, transform 0.1s;
+    }
+    .download-btn:hover { background: var(--accent-hover); transform: translateY(-1px); }
+    .download-btn:active { transform: translateY(0); }
+
+    .download-btn.ghost {
+      background: var(--surface-2);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      font-weight: 500;
+    }
+    .download-btn.ghost:hover { border-color: var(--border-hover); color: var(--text); transform: none; }
+
+    .download-meta {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 8px;
+    }
+
+    /* ── iOS card ──────────────────────────────────────────────────────── */
+    .ios-card {
+      margin-top: 16px;
+      padding: 18px 20px;
+      background: var(--surface-2);
+      border: 1px solid var(--accent-border);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .ios-card-icon { font-size: 28px; flex-shrink: 0; line-height: 1; }
+    .ios-card-body { font-size: 13px; color: var(--text-muted); line-height: 1.55; }
+    .ios-card-body strong { color: var(--text); }
+    .ios-store-link {
+      display: inline-block;
+      margin-top: 8px;
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: none;
+      font-size: 13px;
+    }
+    .ios-store-link:hover { text-decoration: underline; }
+
+    /* ── Server setup note ─────────────────────────────────────────────── */
+    .setup-note {
+      margin-top: 14px;
+      padding: 15px 18px;
+      background: var(--accent-bg);
+      border: 1px solid var(--accent-border);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+    .setup-note strong { color: var(--text); }
+    .setup-note code {
+      font-family: 'SF Mono', Consolas, 'Courier New', monospace;
+      font-size: 12px;
+      background: rgba(0,0,0,0.3);
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: var(--text);
+    }
+
+    /* ── Standalone sysreq note ────────────────────────────────────────── */
+    .sysreq {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 10px;
+    }
+
+    /* ── Loading / error ───────────────────────────────────────────────── */
+    .status-msg {
+      text-align: center;
+      font-size: 14px;
+      color: var(--text-dim);
+      padding: 20px;
+    }
+
+    /* ── iOS-only screen ───────────────────────────────────────────────── */
+    #ios-screen { display: none; }
+    #ios-screen .ios-hero {
+      text-align: center;
+      padding: 20px 0 28px;
+    }
+    #ios-screen .ios-hero .phone-icon { font-size: 48px; margin-bottom: 14px; }
+    #ios-screen .ios-hero h2 { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+    #ios-screen .ios-hero p { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.55; }
+
+    .appstore-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 28px;
+      background: var(--text);
+      color: var(--bg);
+      font-size: 15px;
+      font-weight: 700;
+      border-radius: var(--radius);
+      text-decoration: none;
+      transition: opacity 0.13s;
+    }
+    .appstore-btn:hover { opacity: 0.88; }
+
+    /* ── Footer ─────────────────────────────────────────────────────────── */
+    footer {
+      margin-top: 44px;
+      font-size: 12px;
+      color: var(--text-dim);
+      text-align: center;
+    }
+    footer a { color: var(--text-muted); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    footer .sep { margin: 0 6px; }
+  </style>
+</head>
+<body>
+
+  <div class="logo-wrap">
+    <!-- Film reel icon -->
+    <svg class="logo-icon" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="21" cy="21" r="19" stroke="#f09020" stroke-width="2"/>
+      <circle cx="21" cy="21" r="6.5" stroke="#f09020" stroke-width="2"/>
+      <!-- 6 sprocket holes -->
+      <circle cx="21" cy="7"  r="3" fill="#f09020"/>
+      <circle cx="21" cy="35" r="3" fill="#f09020"/>
+      <circle cx="7"  cy="21" r="3" fill="#f09020"/>
+      <circle cx="35" cy="21" r="3" fill="#f09020"/>
+      <circle cx="11.3" cy="11.3" r="3" fill="#f09020"/>
+      <circle cx="30.7" cy="30.7" r="3" fill="#f09020"/>
+    </svg>
+    <span class="logo-text">ReelVault</span>
+  </div>
+  <div class="tagline">Browse massive video libraries — fast.</div>
+
+  <!-- iOS-only screen -->
+  <div class="card" id="ios-screen">
+    <div class="ios-hero">
+      <div class="phone-icon">📱</div>
+      <h2>You're on iPhone or iPad</h2>
+      <p>
+        ReelVault for iOS connects to your Mac, PC, or Linux library server over WiFi
+        so you can browse and play your full video collection from anywhere in your home.
+      </p>
+      <a class="appstore-btn" href="APPSTORE_URL_PLACEHOLDER" target="_blank">
+        Get ReelVault on the App Store
+      </a>
+    </div>
+    <div style="text-align:center; font-size:13px; color:var(--text-muted); margin-top:8px;">
+      Need to set up the server?
+      <button class="platform-change" style="font-size:13px;" onclick="showDesktopFlow()">Get the desktop app →</button>
+    </div>
+  </div>
+
+  <!-- Desktop download flow -->
+  <div class="card" id="desktop-screen">
+
+    <!-- Platform detection -->
+    <div class="section-label">Your platform</div>
+    <div class="platform-row" id="platform-row">
+      <span class="platform-icon" id="os-icon">💻</span>
+      <span class="platform-name" id="os-label">Detecting…</span>
+      <button class="platform-change" onclick="togglePlatformPicker()">Change</button>
+    </div>
+    <div class="platform-picker" id="platform-picker">
+      <button class="os-btn" data-os="mac"     onclick="pickOS(this)">macOS</button>
+      <button class="os-btn" data-os="windows" onclick="pickOS(this)">Windows</button>
+      <button class="os-btn" data-os="linux"   onclick="pickOS(this)">Linux</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Mode question -->
+    <div class="question">How will you use ReelVault?</div>
+    <div class="question-sub">Choose the setup that matches your workflow.</div>
+
+    <div class="choice-grid">
+
+      <div class="choice" id="choice-local" onclick="pickMode('local')">
+        <div class="choice-icon">💻</div>
+        <div class="choice-title">Just on this computer</div>
+        <div class="choice-desc">
+          ReelVault runs as a self-contained app. Your video library stays on
+          your computer — no network configuration, no servers to maintain.
+        </div>
+        <ul class="choice-bullets">
+          <li>Works offline, always</li>
+          <li>Single-computer setup</li>
+          <li>No ports or firewall rules</li>
+          <li>Zero network configuration</li>
+        </ul>
+      </div>
+
+      <div class="choice" id="choice-wifi" onclick="pickMode('wifi')">
+        <div class="choice-icon">📡</div>
+        <div class="choice-title">+ iPhone &amp; iPad over WiFi</div>
+        <div class="choice-desc">
+          Install a lightweight background service that streams your library to
+          any iPhone or iPad on the same WiFi. No cloud, no subscriptions —
+          direct local network streaming.
+        </div>
+        <ul class="choice-bullets">
+          <li>Browse &amp; play from iOS devices</li>
+          <li>Auto-discovered on your WiFi</li>
+          <li>Upload footage from iPhone</li>
+          <li>Pairs once with a 6-digit code</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- Download area — populated by JS -->
+    <div class="download-area" id="download-area">
+      <div class="status-msg" id="release-status">Loading latest release…</div>
+    </div>
+
+  </div><!-- /desktop-screen -->
+
+  <footer>
+    <a href="https://github.com/brianm998/ReelVault" target="_blank">GitHub</a>
+    <span class="sep">·</span>
+    <a href="https://github.com/brianm998/ReelVault/releases" target="_blank">All releases</a>
+    <span class="sep">·</span>
+    <a href="https://github.com/brianm998/ReelVault/blob/main/CLAUDE.md" target="_blank">Documentation</a>
+  </footer>
+
+  <script>
+  (function () {
+    'use strict';
+
+    // ── Config ──────────────────────────────────────────────────────────────
+    const REPO         = 'brianm998/ReelVault';
+    const API_URL      = `https://api.github.com/repos/${REPO}/releases/latest`;
+    // TODO: replace with real App Store URL when published
+    const APPSTORE_URL = 'https://apps.apple.com/app/reelvault/id0000000000';
+
+    const OS_META = {
+      mac:     { label: 'macOS',   icon: '🍎', req: 'Requires macOS 13 Ventura or later' },
+      windows: { label: 'Windows', icon: '🪟', req: 'Requires Windows 10 (64-bit) or later' },
+      linux:   { label: 'Linux',   icon: '🐧', req: 'Requires Ubuntu 22.04+ or equivalent' },
+    };
+
+    // ── State ────────────────────────────────────────────────────────────────
+    let os      = null;   // 'mac' | 'windows' | 'linux'
+    let mode    = null;   // 'local' | 'wifi'
+    let release = null;   // GitHub releases API response
+
+    // ── Detect platform ──────────────────────────────────────────────────────
+    function detect() {
+      const ua = navigator.userAgent;
+      const pf = (navigator.userAgentData
+                  ? navigator.userAgentData.platform
+                  : navigator.platform) || '';
+
+      // iOS check first (iPad in desktop mode reports Mac)
+      if (/iPhone|iPod/.test(ua)) return 'ios';
+      if (/iPad/.test(ua))        return 'ios';
+      // iPadOS 13+ reports as MacIntel; distinguish by touch points
+      if (/Mac/.test(pf) && navigator.maxTouchPoints > 1) return 'ios';
+
+      if (/Win/.test(pf) || /Windows/.test(ua)) return 'windows';
+      if (/Linux/.test(pf) || /Linux/.test(ua)) return 'linux';
+      if (/Mac/.test(pf) || /Macintosh/.test(ua)) return 'mac';
+      return 'mac'; // sensible default
+    }
+
+    // ── Asset matching ────────────────────────────────────────────────────────
+    // Release assets are renamed by the release workflow to these patterns:
+    //   Standalone (local):  ReelVault-{VERSION}-macOS.pkg
+    //                        ReelVault-{VERSION}-Linux.deb
+    //                        ReelVault-{VERSION}-Windows.exe
+    //   Server (wifi):       ReelVault-{VERSION}-macOS-Server.pkg
+    //                        ReelVault-{VERSION}-Linux-x64-Server.deb
+    //                        ReelVault-{VERSION}-Linux-arm64-Server.deb
+    //                        ReelVault-{VERSION}-Windows-Server.exe
+    function findAsset(assets, forOS, forMode) {
+      if (!assets) return null;
+      const patterns = {
+        local: {
+          mac:     a => /macOS\.pkg$/.test(a.name) && !a.name.includes('Server'),
+          linux:   a => /Linux\.deb$/.test(a.name)  && !a.name.includes('Server'),
+          windows: a => /Windows\.exe$/.test(a.name) && !a.name.includes('Server'),
+        },
+        wifi: {
+          mac:     a => /macOS-Server\.pkg$/.test(a.name),
+          linux:   a => /Linux-x64-Server\.deb$/.test(a.name) || /Linux-arm64-Server\.deb$/.test(a.name),
+          windows: a => /Windows-Server\.exe$/.test(a.name),
+        },
+      };
+      const test = patterns[forMode]?.[forOS];
+      return test ? assets.find(test) : null;
+    }
+
+    // ── UI helpers ────────────────────────────────────────────────────────────
+    function setOSUI(newOS) {
+      os = newOS;
+      const meta = OS_META[newOS] || OS_META.mac;
+      document.getElementById('os-icon').textContent  = meta.icon;
+      document.getElementById('os-label').textContent = meta.label;
+      document.querySelectorAll('.os-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.os === newOS));
+      closePlatformPicker();
+      render();
+    }
+
+    function togglePlatformPicker() {
+      document.getElementById('platform-picker').classList.toggle('open');
+    }
+
+    function closePlatformPicker() {
+      document.getElementById('platform-picker').classList.remove('open');
+    }
+
+    function pickOS(btn) {
+      setOSUI(btn.dataset.os);
+    }
+
+    function pickMode(m) {
+      mode = m;
+      document.getElementById('choice-local').classList.toggle('selected', m === 'local');
+      document.getElementById('choice-wifi').classList.toggle('selected',  m === 'wifi');
+      render();
+    }
+
+    // ── Render download area ──────────────────────────────────────────────────
+    function render() {
+      const area = document.getElementById('download-area');
+      if (!os || !mode) { area.innerHTML = ''; return; }
+
+      if (!release) {
+        area.innerHTML = '<div class="status-msg" id="release-status">Loading latest release…</div>';
+        return;
+      }
+
+      if (release.error) {
+        area.innerHTML = `
+          <a class="download-btn ghost"
+             href="https://github.com/${REPO}/releases/latest" target="_blank">
+            View all downloads on GitHub ↗
+          </a>
+          <div class="download-meta">Could not load release data — click to see all packages.</div>`;
+        return;
+      }
+
+      const version  = release.tag_name.replace(/^v/, '');
+      const asset    = findAsset(release.assets, os, mode);
+      const meta     = OS_META[os] || OS_META.mac;
+
+      let html = '';
+
+      if (asset) {
+        const mb = asset.size ? ` · ${(asset.size / 1024 / 1024).toFixed(1)} MB` : '';
+        html += `
+          <a class="download-btn" href="${asset.browser_download_url}">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
+              <path d="M9 12.5l-5-5h3V2h4v5.5h3L9 12.5z"/>
+              <rect x="2" y="14" width="14" height="2" rx="1"/>
+            </svg>
+            Download ReelVault ${version}
+          </a>
+          <div class="download-meta">${asset.name}${mb}</div>`;
+      } else {
+        html += `
+          <a class="download-btn ghost"
+             href="https://github.com/${REPO}/releases/latest" target="_blank">
+            View all downloads on GitHub ↗
+          </a>
+          <div class="download-meta">
+            No pre-built package found for ${meta.label} in v${version}.
+          </div>`;
+      }
+
+      if (mode === 'wifi') {
+        html += `
+          <div class="ios-card">
+            <div class="ios-card-icon">📱</div>
+            <div class="ios-card-body">
+              <strong>Also install the iOS app</strong><br>
+              The server you're downloading above advertises itself on your local
+              WiFi via mDNS. Open the ReelVault iOS app on the same network
+              and it will find your library automatically — no IP addresses to type.
+              <br>
+              <a class="ios-store-link" href="${APPSTORE_URL}" target="_blank">
+                Get ReelVault on the App Store →
+              </a>
+            </div>
+          </div>
+          <div class="setup-note">
+            <strong>Setup takes about 2 minutes:</strong>
+            After installing this package, open a Terminal and run
+            <code>sudo install-service.sh</code> — the daemon starts on boot and
+            logs a 6-digit pairing code to
+            <code>/Library/Logs/ReelVault/reelvault-core.log</code>.
+            Enter that code in the iOS app to pair.
+          </div>`;
+      } else {
+        if (meta.req) {
+          html += `<div class="sysreq">${meta.req}</div>`;
+        }
+      }
+
+      area.innerHTML = html;
+    }
+
+    // ── Show/hide iOS vs desktop screen ───────────────────────────────────────
+    function showDesktopFlow() {
+      document.getElementById('ios-screen').style.display     = 'none';
+      document.getElementById('desktop-screen').style.display = '';
+    }
+
+    // ── Expose handlers for inline onclick attrs ──────────────────────────────
+    window.pickOS              = pickOS;
+    window.pickMode            = pickMode;
+    window.togglePlatformPicker = togglePlatformPicker;
+    window.showDesktopFlow     = showDesktopFlow;
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    // Replace the App Store URL placeholder in the iOS screen
+    document.querySelectorAll('a[href="APPSTORE_URL_PLACEHOLDER"]').forEach(a => {
+      a.href = APPSTORE_URL;
+    });
+
+    const detected = detect();
+
+    if (detected === 'ios') {
+      document.getElementById('ios-screen').style.display     = 'block';
+      document.getElementById('desktop-screen').style.display = 'none';
+    } else {
+      document.getElementById('ios-screen').style.display     = 'none';
+      document.getElementById('desktop-screen').style.display = '';
+      setOSUI(detected);
+    }
+
+    // Fetch release in background; re-render when it arrives
+    fetch(API_URL, { headers: { Accept: 'application/vnd.github+json' } })
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(data => { release = data; render(); })
+      .catch(() => { release = { error: true }; render(); });
+
+  }());
+  </script>
+</body>
+</html>
