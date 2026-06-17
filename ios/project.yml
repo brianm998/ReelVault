@@ -47,6 +47,16 @@ targets:
         SWIFT_VERSION: "5.0"
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: G3L75S65V9
+      configs:
+        Release:
+          # Manual signing for Release/App Store only. Keeping Automatic in base
+          # so local device builds stay frictionless. The profile specifier is
+          # passed at build time via IOS_PROVISION_PROFILE_SPECIFIER so it isn't
+          # hardcoded here, and the variable is only expanded for this target
+          # (not SwiftPM dependency targets, which stay on Automatic).
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: Apple Distribution
+          PROVISIONING_PROFILE_SPECIFIER: $(IOS_PROVISION_PROFILE_SPECIFIER)
 
 schemes:
   ReelVault:
