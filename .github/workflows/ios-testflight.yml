@@ -20,7 +20,7 @@ on:
       - 'ios-v*'
 
 env:
-  BUNDLE_ID: com.preffect.reelvault.ios
+  BUNDLE_ID: com.reelvault.ios
   SCHEME: ReelVault
 
 jobs:
