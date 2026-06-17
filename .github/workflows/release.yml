@@ -551,6 +551,105 @@ jobs:
           name: app-macos
           path: release-artifacts/
 
+      # Rename all installer artifacts to a consistent scheme so the download
+      # page (docs/index.html) can reliably pattern-match them:
+      #
+      #   Standalone (no WiFi):
+      #     ReelVault-{VERSION}-macOS.pkg            SwiftUI macOS app
+      #     ReelVault-{VERSION}-Linux.deb            Kotlin Compose Linux app
+      #     ReelVault-{VERSION}-Windows.exe          Kotlin Compose Windows app
+      #
+      #   Server / WiFi (core daemon):
+      #     ReelVault-{VERSION}-macOS-Server.pkg
+      #     ReelVault-{VERSION}-Linux-x64-Server.deb
+      #     ReelVault-{VERSION}-Linux-arm64-Server.deb
+      #     ReelVault-{VERSION}-Windows-Server.exe
+      #
+      # Also renames the Kotlin macOS build to avoid confusion with the SwiftUI
+      # .pkg and removes raw binary archives (inter-job handoff only).
+      - name: Normalize asset names for download page
+        shell: bash
+        run: |
+          set -eo pipefail
+          V="${{ needs.version.outputs.version }}"
+          cd release-artifacts
+
+          # ── Standalone: SwiftUI macOS app ────────────────────────────────────
+          # release-macos.sh produces: {AppName}-v{VERSION}-macOS.pkg
+          # Drop the leading app-name prefix and the 'v' to get a clean name.
+          for f in *-v*-macOS.pkg; do
+            [[ -f "$f" ]] || continue
+            [[ "$f" == *Server* ]] && continue
+            mv "$f" "ReelVault-${V}-macOS.pkg"
+            echo "  renamed $f → ReelVault-${V}-macOS.pkg"
+            break   # only one SwiftUI pkg expected
+          done
+
+          # ── Standalone: Kotlin Compose Linux (jpackage .deb) ─────────────────
+          for f in *.deb; do
+            [[ -f "$f" ]] || continue
+            [[ "$f" == *core* ]] && continue   # skip server debs
+            mv "$f" "ReelVault-${V}-Linux.deb"
+            echo "  renamed $f → ReelVault-${V}-Linux.deb"
+            break
+          done
+
+          # ── Standalone: Kotlin Compose Windows (jpackage .exe) ───────────────
+          for f in *.exe; do
+            [[ -f "$f" ]] || continue
+            [[ "$f" == *core* ]]  && continue   # skip server exe
+            [[ "$f" == *Setup* ]] && continue   # skip NSIS Setup.exe
+            mv "$f" "ReelVault-${V}-Windows.exe"
+            echo "  renamed $f → ReelVault-${V}-Windows.exe"
+            break
+          done
+
+          # ── Server: core daemon macOS ─────────────────────────────────────────
+          for f in reelvault-core-v*-macos-*.pkg; do
+            [[ -f "$f" ]] || continue
+            mv "$f" "ReelVault-${V}-macOS-Server.pkg"
+            echo "  renamed $f → ReelVault-${V}-macOS-Server.pkg"
+            break
+          done
+
+          # ── Server: core daemon Linux x64 ─────────────────────────────────────
+          for f in reelvault-core_*_amd64.deb; do
+            [[ -f "$f" ]] || continue
+            mv "$f" "ReelVault-${V}-Linux-x64-Server.deb"
+            echo "  renamed $f → ReelVault-${V}-Linux-x64-Server.deb"
+            break
+          done
+
+          # ── Server: core daemon Linux arm64 ───────────────────────────────────
+          for f in reelvault-core_*_arm64.deb; do
+            [[ -f "$f" ]] || continue
+            mv "$f" "ReelVault-${V}-Linux-arm64-Server.deb"
+            echo "  renamed $f → ReelVault-${V}-Linux-arm64-Server.deb"
+            break
+          done
+
+          # ── Server: core daemon Windows ────────────────────────────────────────
+          for f in reelvault-core-v*-windows-*-Setup.exe; do
+            [[ -f "$f" ]] || continue
+            mv "$f" "ReelVault-${V}-Windows-Server.exe"
+            echo "  renamed $f → ReelVault-${V}-Windows-Server.exe"
+            break
+          done
+
+          # ── Kotlin macOS build (secondary; keep but disambiguate) ─────────────
+          # Catches any remaining .pkg not yet renamed (desktop-macos-arm64 build).
+          for f in *.pkg; do
+            [[ -f "$f" ]] || continue
+            [[ "$f" == "ReelVault-${V}-macOS.pkg" ]]        && continue
+            [[ "$f" == "ReelVault-${V}-macOS-Server.pkg" ]] && continue
+            mv "$f" "ReelVault-${V}-macOS-Desktop.pkg"
+            echo "  renamed $f → ReelVault-${V}-macOS-Desktop.pkg"
+            break
+          done
+
+          # Remove raw binary archives (inter-job handoff only, not for users).
+          rm -f ./*.tar.gz ./*.zip
+
       - name: List release artifacts
         run: find release-artifacts -type f | sort
 
