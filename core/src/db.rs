@@ -584,6 +584,42 @@ impl Database {
         Ok(())
     }
 
+    /// Update the filesystem path for an existing video row and mark it online.
+    /// Called when move detection finds an offline entry matching a newly-seen
+    /// file at a different location.
+    pub fn update_video_path(&self, video_id: &str, new_path: &str, new_filename: &str) -> Result<()> {
+        let conn = self.get_connection()?;
+        conn.execute(
+            "UPDATE videos SET path = ?, filename = ?, is_online = 1 WHERE id = ?",
+            params![new_path, new_filename, video_id],
+        )
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
+    /// Find an offline video whose recorded size and duration match the given
+    /// values. Returns the video_id of the first match, or None. Used by
+    /// `index_video` to detect files moved between watched directories:
+    /// a file with identical size + duration is almost certainly the same clip,
+    /// so we update its path rather than duplicating the catalog entry.
+    pub fn find_offline_by_fingerprint(&self, file_size: i64, duration_ms: i64) -> Result<Option<String>> {
+        let conn = self.get_connection()?;
+        let result = conn
+            .query_row(
+                "SELECT v.id FROM videos v
+                  JOIN metadata m ON m.video_id = v.id
+                 WHERE v.is_online = 0
+                   AND v.file_size_bytes = ?1
+                   AND m.duration_ms = ?2
+                 LIMIT 1",
+                params![file_size, duration_ms],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(result)
+    }
+
     /// Soft-delete (`is_online = 0`) every currently-online video under `dir`
     /// whose path was NOT seen in `present`. With `recursive == false` only
     /// direct children of `dir` are considered, matching a non-recursive scan.

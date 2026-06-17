@@ -373,14 +373,33 @@ impl IndexingEngine {
             }
             existing.id
         } else {
-            // Create video record
-            db.add_video(
-                video_path.to_str().unwrap_or(""),
-                filename,
-                None,
-                None,
-                file_size,
-            )?
+            // Before creating a new row, check if this looks like a file that
+            // was moved between watched directories. A match on (file_size,
+            // duration_ms) against an offline row is almost certainly the same
+            // clip — update its path to preserve tags, collections, and all
+            // other catalog data instead of creating a duplicate entry.
+            let duration_ms = (probe_output.format.duration.unwrap_or(0.0) * 1000.0) as i64;
+            let moved_id = if let (Some(sz), true) = (file_size, duration_ms > 0) {
+                db.find_offline_by_fingerprint(sz, duration_ms).ok().flatten()
+            } else {
+                None
+            };
+            if let Some(id) = moved_id {
+                tracing::info!(
+                    "move detected: preserving catalog entry for {}",
+                    video_path.display()
+                );
+                db.update_video_path(&id, video_path.to_str().unwrap_or(""), filename)?;
+                id
+            } else {
+                db.add_video(
+                    video_path.to_str().unwrap_or(""),
+                    filename,
+                    None,
+                    None,
+                    file_size,
+                )?
+            }
         };
 
         // (Re-)store metadata (UPSERT)
