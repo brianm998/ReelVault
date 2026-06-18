@@ -248,7 +248,7 @@ struct PairingCodeEntryView: View {
             Image(systemName: "lock.shield").font(.system(size: 40)).foregroundStyle(.tint)
             Text("Pair with \(server.catalogName ?? server.name)").font(.title2).bold()
             Text("Enter the 6-digit code shown on the server. Reveal it there with "
-                 + "“Pair a New Device”, the daemon log, or `reelvault-core pairing-code`.")
+                 + "\"Pair a New Device\", the daemon log, or `reelvault-core pairing-code`.")
                 .font(.callout).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center).frame(maxWidth: 420)
             TextField("000000", text: $code)

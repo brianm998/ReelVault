@@ -1153,8 +1153,8 @@ struct ContentView: View {
                             Image(systemName: "sparkles")
                                 .font(.system(size: 11))
                             Text(diverged
-                                 ? "You changed the filter for smart collection “\(smart.name)”. Update it to match these criteria, or reset to its saved rules."
-                                 : "Viewing smart collection “\(smart.name)”.")
+                                 ? "You changed the filter for smart collection \"\(smart.name)\". Update it to match these criteria, or reset to its saved rules."
+                                 : "Viewing smart collection \"\(smart.name)\".")
                                 .font(.caption)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             if diverged {
