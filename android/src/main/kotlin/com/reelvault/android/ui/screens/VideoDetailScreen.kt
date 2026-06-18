@@ -383,7 +383,7 @@ private fun VideoPlayerSection(
         // Server route: /hls/:id/:height/*file — height must be a separate path segment.
         // Cap at 1080 for mobile; server clamps to [144,2160] and picks the nearest proxy.
         val h = if (metadata.height > 0) metadata.height.coerceAtMost(1080) else 1080
-        "https://${ep.host}:${ep.mediaPort}/hls/$videoId/$h/master.m3u8"
+        "https://${ep.host}:${ep.mediaPort}/hls/$videoId/$h/index.m3u8"
     }
 
     VideoPlayer(
@@ -414,7 +414,7 @@ private fun proxiesToRenditions(
         val h = if (proxy.height > 0) proxy.height else 2160
         ProxyRendition(
             label = if (proxy.height == 0) "Original" else "${proxy.height}p",
-            hlsUrl = "https://${remoteEndpoint.host}:${remoteEndpoint.mediaPort}/hls/$videoId/$h/master.m3u8",
+            hlsUrl = "https://${remoteEndpoint.host}:${remoteEndpoint.mediaPort}/hls/$videoId/$h/index.m3u8",
             heightPx = proxy.height,
         )
     }
