@@ -13,7 +13,6 @@ plugins {
 
 rootProject.name = "reelvault-desktop"
 
-// Allow `./gradlew run` from inside desktop/ — wire in the shared module
-// the same way the root settings.gradle.kts does.
-include(":shared")
-project(":shared").projectDir = file("../shared")
+// Allow `./gradlew run` from inside desktop/ — shared as a composite build
+// keeps its Kotlin classpath isolated from the desktop JVM classpath.
+includeBuild("../shared")

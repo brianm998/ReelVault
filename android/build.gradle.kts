@@ -88,7 +88,11 @@ repositories {
 }
 
 dependencies {
-    implementation(project(":shared"))
+    // When building from android/ standalone (includeBuild), shared is a
+    // composite build referenced by its Maven coordinates.
+    // When building from the repo root (include), Gradle substitutes this
+    // automatically via the root settings.gradle.kts project reference.
+    implementation("com.reelvault:shared")
 
     // Compose BOM
     val composeBom = platform("androidx.compose:compose-bom:2024.02.01")

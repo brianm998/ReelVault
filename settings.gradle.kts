@@ -12,6 +12,8 @@ plugins {
 }
 
 rootProject.name = "reelvault"
-include(":shared")
+// shared is a composite build so each client's Kotlin plugin classpath stays
+// isolated — avoids kotlin-jvm vs kotlin-android classpath conflicts.
+includeBuild("shared")
 include(":desktop")
 include(":android")
