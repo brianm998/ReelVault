@@ -8,7 +8,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.reelvault.android.ui.screens.*
-import com.reelvault.data.remote.DiscoveredServer
 
 sealed class Screen(val route: String) {
     object Connection : Screen("connection")
@@ -18,6 +17,7 @@ sealed class Screen(val route: String) {
     }
     object Settings : Screen("settings")
     object Map : Screen("map")
+    object LocalMedia : Screen("local_media")
 }
 
 @Composable
@@ -40,7 +40,12 @@ fun AppRouter() {
                     navController.navigate(Screen.Grid.route) {
                         popUpTo(Screen.Connection.route) { inclusive = true }
                     }
-                }
+                },
+                onBrowseLocalMedia = {
+                    navController.navigate(Screen.LocalMedia.route) {
+                        popUpTo(Screen.Connection.route) { inclusive = false }
+                    }
+                },
             )
         }
         composable(Screen.Grid.route) {
@@ -80,6 +85,11 @@ fun AppRouter() {
                 onVideoSelected = { videoId ->
                     navController.navigate(Screen.Detail.createRoute(videoId))
                 },
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.LocalMedia.route) {
+            LocalMediaScreen(
                 onBack = { navController.popBackStack() }
             )
         }
