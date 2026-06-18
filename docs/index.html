@@ -38,17 +38,27 @@
       line-height: 1.4;
     }
 
+    /* ── Page header (logo + lang picker) ──────────────────────────────── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 700px;
+      margin-bottom: 10px;
+    }
+
     /* ── Logo ──────────────────────────────────────────────────────────── */
     .logo-wrap {
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 10px;
     }
 
     .logo-icon {
       width: 42px;
       height: 42px;
+      flex-shrink: 0;
     }
 
     .logo-text {
@@ -57,6 +67,21 @@
       letter-spacing: -0.5px;
       color: var(--text);
     }
+
+    /* ── Language selector ─────────────────────────────────────────────── */
+    .lang-sel {
+      background: var(--surface-2);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 6px 10px;
+      font-size: 13px;
+      cursor: pointer;
+      outline: none;
+      flex-shrink: 0;
+    }
+    .lang-sel:hover { border-color: var(--border-hover); color: var(--text); }
+    .lang-sel:focus { border-color: var(--accent); }
 
     .tagline {
       color: var(--text-muted);
@@ -333,39 +358,64 @@
 </head>
 <body>
 
-  <div class="logo-wrap">
-    <!-- Film reel icon -->
-    <svg class="logo-icon" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="21" cy="21" r="19" stroke="#f09020" stroke-width="2"/>
-      <circle cx="21" cy="21" r="6.5" stroke="#f09020" stroke-width="2"/>
-      <!-- 6 sprocket holes -->
-      <circle cx="21" cy="7"  r="3" fill="#f09020"/>
-      <circle cx="21" cy="35" r="3" fill="#f09020"/>
-      <circle cx="7"  cy="21" r="3" fill="#f09020"/>
-      <circle cx="35" cy="21" r="3" fill="#f09020"/>
-      <circle cx="11.3" cy="11.3" r="3" fill="#f09020"/>
-      <circle cx="30.7" cy="30.7" r="3" fill="#f09020"/>
-    </svg>
-    <span class="logo-text">ReelVault</span>
+  <div class="page-header">
+    <div class="logo-wrap">
+      <!-- Film reel icon -->
+      <svg class="logo-icon" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="21" cy="21" r="19" stroke="#f09020" stroke-width="2"/>
+        <circle cx="21" cy="21" r="6.5" stroke="#f09020" stroke-width="2"/>
+        <!-- 6 sprocket holes -->
+        <circle cx="21" cy="7"  r="3" fill="#f09020"/>
+        <circle cx="21" cy="35" r="3" fill="#f09020"/>
+        <circle cx="7"  cy="21" r="3" fill="#f09020"/>
+        <circle cx="35" cy="21" r="3" fill="#f09020"/>
+        <circle cx="11.3" cy="11.3" r="3" fill="#f09020"/>
+        <circle cx="30.7" cy="30.7" r="3" fill="#f09020"/>
+      </svg>
+      <span class="logo-text">ReelVault</span>
+    </div>
+    <select id="lang-sel" class="lang-sel" onchange="setLang(this.value)">
+      <option value="en">English</option>
+      <option value="zh">中文（简体）</option>
+      <option value="es">Español</option>
+      <option value="de">Deutsch</option>
+      <option value="ja">日本語</option>
+      <option value="fr">Français</option>
+      <option value="pt-br">Português (BR)</option>
+      <option value="ko">한국어</option>
+      <option value="it">Italiano</option>
+      <option value="ru">Русский</option>
+      <option value="pl">Polski</option>
+      <option value="nl">Nederlands</option>
+      <option value="tr">Türkçe</option>
+      <option value="ar">العربية</option>
+      <option value="hi">हिन्दी</option>
+      <option value="id">Bahasa Indonesia</option>
+      <option value="vi">Tiếng Việt</option>
+      <option value="th">ภาษาไทย</option>
+      <option value="uk">Українська</option>
+      <option value="cs">Čeština</option>
+    </select>
   </div>
-  <div class="tagline">Browse massive video libraries — fast.</div>
+
+  <div class="tagline" data-i18n="tagline">Browse massive video libraries — fast.</div>
 
   <!-- iOS-only screen -->
   <div class="card" id="ios-screen">
     <div class="ios-hero">
       <div class="phone-icon">📱</div>
-      <h2>You're on iPhone or iPad</h2>
-      <p>
+      <h2 data-i18n="iosHeroTitle">You're on iPhone or iPad</h2>
+      <p data-i18n="iosHeroDesc">
         ReelVault for iOS connects to your Mac, PC, or Linux library server over WiFi
         so you can browse and play your full video collection from anywhere in your home.
       </p>
-      <a class="appstore-btn" href="APPSTORE_URL_PLACEHOLDER" target="_blank">
+      <a class="appstore-btn" href="APPSTORE_URL_PLACEHOLDER" target="_blank" data-i18n="appStoreBtn">
         Get ReelVault on the App Store
       </a>
     </div>
     <div style="text-align:center; font-size:13px; color:var(--text-muted); margin-top:8px;">
-      Need to set up the server?
-      <button class="platform-change" style="font-size:13px;" onclick="showDesktopFlow()">Get the desktop app →</button>
+      <span data-i18n="needServer">Need to set up the server?</span>
+      <button class="platform-change" style="font-size:13px;" onclick="showDesktopFlow()" data-i18n="getDesktop">Get the desktop app →</button>
     </div>
   </div>
 
@@ -373,11 +423,11 @@
   <div class="card" id="desktop-screen">
 
     <!-- Platform detection -->
-    <div class="section-label">Your platform</div>
+    <div class="section-label" data-i18n="platformLabel">YOUR PLATFORM</div>
     <div class="platform-row" id="platform-row">
       <span class="platform-icon" id="os-icon">💻</span>
       <span class="platform-name" id="os-label">Detecting…</span>
-      <button class="platform-change" onclick="togglePlatformPicker()">Change</button>
+      <button class="platform-change" onclick="togglePlatformPicker()" data-i18n="changeBtn">Change</button>
     </div>
     <div class="platform-picker" id="platform-picker">
       <button class="os-btn" data-os="mac"     onclick="pickOS(this)">macOS</button>
@@ -388,57 +438,55 @@
     <div class="divider"></div>
 
     <!-- Mode question -->
-    <div class="question">How will you use ReelVault?</div>
-    <div class="question-sub">Choose the setup that matches your workflow.</div>
+    <div class="question" data-i18n="question">How will you use ReelVault?</div>
+    <div class="question-sub" data-i18n="questionSub">Choose the setup that matches your workflow.</div>
 
     <div class="choice-grid">
 
       <div class="choice" id="choice-local" onclick="pickMode('local')">
         <div class="choice-icon">💻</div>
-        <div class="choice-title">Just on this computer</div>
-        <div class="choice-desc">
+        <div class="choice-title" data-i18n="localTitle">Just on this computer</div>
+        <div class="choice-desc" data-i18n="localDesc">
           ReelVault runs as a self-contained app. Your video library stays on
           your computer — no network configuration, no servers to maintain.
         </div>
         <ul class="choice-bullets">
-          <li>Works offline, always</li>
-          <li>Single-computer setup</li>
-          <li>No ports or firewall rules</li>
-          <li>Zero network configuration</li>
+          <li data-i18n="localB1">Works offline, always</li>
+          <li data-i18n="localB2">Single-computer setup</li>
+          <li data-i18n="localB3">No ports or firewall rules</li>
+          <li data-i18n="localB4">Zero network configuration</li>
         </ul>
       </div>
 
       <div class="choice" id="choice-wifi" onclick="pickMode('wifi')">
         <div class="choice-icon">📡</div>
-        <div class="choice-title">+ iPhone &amp; iPad over WiFi</div>
-        <div class="choice-desc">
+        <div class="choice-title" data-i18n="wifiTitle">+ iPhone &amp; iPad over WiFi</div>
+        <div class="choice-desc" data-i18n="wifiDesc">
           Install a lightweight background service that streams your library to
           any iPhone or iPad on the same WiFi. No cloud, no subscriptions —
           direct local network streaming.
         </div>
         <ul class="choice-bullets">
-          <li>Browse &amp; play from iOS devices</li>
-          <li>Auto-discovered on your WiFi</li>
-          <li>Upload footage from iPhone</li>
-          <li>Pairs once with a 6-digit code</li>
+          <li data-i18n="wifiB1">Browse &amp; play from iOS devices</li>
+          <li data-i18n="wifiB2">Auto-discovered on your WiFi</li>
+          <li data-i18n="wifiB3">Upload footage from iPhone</li>
+          <li data-i18n="wifiB4">Pairs once with a 6-digit code</li>
         </ul>
       </div>
 
     </div>
 
     <!-- Download area — populated by JS -->
-    <div class="download-area" id="download-area">
-      <div class="status-msg" id="release-status">Loading latest release…</div>
-    </div>
+    <div class="download-area" id="download-area"></div>
 
   </div><!-- /desktop-screen -->
 
   <footer>
-    <a href="https://github.com/brianm998/ReelVault" target="_blank">GitHub</a>
+    <a href="https://github.com/brianm998/ReelVault" target="_blank" data-i18n="footerGH">GitHub</a>
     <span class="sep">·</span>
-    <a href="https://github.com/brianm998/ReelVault/releases" target="_blank">All releases</a>
+    <a href="https://github.com/brianm998/ReelVault/releases" target="_blank" data-i18n="footerReleases">All releases</a>
     <span class="sep">·</span>
-    <a href="https://github.com/brianm998/ReelVault/blob/main/CLAUDE.md" target="_blank">Documentation</a>
+    <a href="https://github.com/brianm998/ReelVault/blob/main/CLAUDE.md" target="_blank" data-i18n="footerDocs">Documentation</a>
   </footer>
 
   <script>
@@ -452,17 +500,863 @@
     const APPSTORE_URL = 'https://apps.apple.com/app/reelvault/id0000000000';
 
     const OS_META = {
-      mac:     { label: 'macOS',   icon: '🍎', req: 'Requires macOS 13 Ventura or later' },
-      windows: { label: 'Windows', icon: '🪟', req: 'Requires Windows 10 (64-bit) or later' },
-      linux:   { label: 'Linux',   icon: '🐧', req: 'Requires Ubuntu 22.04+ or equivalent' },
+      mac:     { label: 'macOS',   icon: '🍎' },
+      windows: { label: 'Windows', icon: '🪟' },
+      linux:   { label: 'Linux',   icon: '🐧' },
     };
 
-    // ── State ────────────────────────────────────────────────────────────────
-    let os      = null;   // 'mac' | 'windows' | 'linux'
-    let mode    = null;   // 'local' | 'wifi'
-    let release = null;   // GitHub releases API response
+    // ── Translations ─────────────────────────────────────────────────────────
+    const T = {
+      en: {
+        pageTitle: "Download ReelVault",
+        tagline: "Browse massive video libraries — fast.",
+        platformLabel: "YOUR PLATFORM",
+        changeBtn: "Change",
+        question: "How will you use ReelVault?",
+        questionSub: "Choose the setup that matches your workflow.",
+        localTitle: "Just on this computer",
+        localDesc: "ReelVault runs as a self-contained app. Your video library stays on your computer — no network configuration, no servers to maintain.",
+        localB1: "Works offline, always",
+        localB2: "Single-computer setup",
+        localB3: "No ports or firewall rules",
+        localB4: "Zero network configuration",
+        wifiTitle: "+ iPhone & iPad over WiFi",
+        wifiDesc: "Install a lightweight background service that streams your library to any iPhone or iPad on the same WiFi. No cloud, no subscriptions — direct local network streaming.",
+        wifiB1: "Browse & play from iOS devices",
+        wifiB2: "Auto-discovered on your WiFi",
+        wifiB3: "Upload footage from iPhone",
+        wifiB4: "Pairs once with a 6-digit code",
+        downloadBtn: "Download ReelVault {version}",
+        viewAllBtn: "View all downloads on GitHub ↗",
+        noPackage: "No pre-built package found for {os} in v{version}.",
+        macReq: "Requires macOS 13 Ventura or later",
+        linuxReq: "Requires Ubuntu 22.04+ or equivalent",
+        winReq: "Requires Windows 10 (64-bit) or later",
+        iosHeroTitle: "You're on iPhone or iPad",
+        iosHeroDesc: "ReelVault for iOS connects to your Mac, PC, or Linux library server over WiFi so you can browse and play your full video collection from anywhere in your home.",
+        appStoreBtn: "Get ReelVault on the App Store",
+        needServer: "Need to set up the server?",
+        getDesktop: "Get the desktop app →",
+        iosCardTitle: "Also install the iOS app",
+        iosCardDesc: "The server you're downloading above advertises itself on your local WiFi via mDNS. Open the ReelVault iOS app on the same network and it will find your library automatically — no IP addresses to type.",
+        appStoreLink: "Get ReelVault on the App Store →",
+        setupNoteTitle: "Setup takes about 2 minutes:",
+        setupNoteBody: "After installing this package, open a Terminal and run {cmd} — the daemon starts on boot and logs a 6-digit pairing code to {logPath}. Enter that code in the iOS app to pair.",
+        footerGH: "GitHub",
+        footerReleases: "All releases",
+        footerDocs: "Documentation",
+        loading: "Loading latest release…",
+      },
+      zh: {
+        pageTitle: "下载 ReelVault",
+        tagline: "快速浏览海量视频库。",
+        platformLabel: "您的平台",
+        changeBtn: "更改",
+        question: "您将如何使用 ReelVault？",
+        questionSub: "选择最适合您工作流程的配置。",
+        localTitle: "仅在此电脑上使用",
+        localDesc: "ReelVault 作为独立应用运行。您的视频库保存在本地电脑上——无需网络配置，无需维护服务器。",
+        localB1: "始终可离线使用",
+        localB2: "单机配置",
+        localB3: "无需开放端口或防火墙规则",
+        localB4: "零网络配置",
+        wifiTitle: "+ 通过 WiFi 连接 iPhone 和 iPad",
+        wifiDesc: "安装一个轻量级后台服务，将您的视频库串流到同一 WiFi 下的任意 iPhone 或 iPad。无需云端，无需订阅——直接本地网络串流。",
+        wifiB1: "从 iOS 设备浏览和播放",
+        wifiB2: "在 WiFi 上自动发现",
+        wifiB3: "从 iPhone 上传素材",
+        wifiB4: "使用 6 位数字码完成一次性配对",
+        downloadBtn: "下载 ReelVault {version}",
+        viewAllBtn: "在 GitHub 上查看所有下载 ↗",
+        noPackage: "在 v{version} 中未找到适用于 {os} 的预构建包。",
+        macReq: "需要 macOS 13 Ventura 或更高版本",
+        linuxReq: "需要 Ubuntu 22.04+ 或同等系统",
+        winReq: "需要 Windows 10（64 位）或更高版本",
+        iosHeroTitle: "您正在使用 iPhone 或 iPad",
+        iosHeroDesc: "iOS 版 ReelVault 通过 WiFi 连接您的 Mac、PC 或 Linux 媒体库服务器，让您在家中任何地方都能浏览和播放完整的视频收藏。",
+        appStoreBtn: "在 App Store 下载 ReelVault",
+        needServer: "需要设置服务器？",
+        getDesktop: "获取桌面版 →",
+        iosCardTitle: "同时安装 iOS 应用",
+        iosCardDesc: "您正在下载的服务器会通过 mDNS 在本地 WiFi 上广播自身。在同一网络上打开 ReelVault iOS 应用，它会自动找到您的视频库——无需输入任何 IP 地址。",
+        appStoreLink: "在 App Store 下载 ReelVault →",
+        setupNoteTitle: "设置大约需要 2 分钟：",
+        setupNoteBody: "安装此软件包后，打开终端并运行 {cmd}——守护进程将在启动时自动运行，并将 6 位配对码记录到 {logPath}。在 iOS 应用中输入该码即可完成配对。",
+        footerGH: "GitHub",
+        footerReleases: "所有版本",
+        footerDocs: "文档",
+        loading: "正在加载最新版本…",
+      },
+      es: {
+        pageTitle: "Descargar ReelVault",
+        tagline: "Explora enormes bibliotecas de vídeo — rápido.",
+        platformLabel: "TU PLATAFORMA",
+        changeBtn: "Cambiar",
+        question: "¿Cómo usarás ReelVault?",
+        questionSub: "Elige la configuración que se adapte a tu flujo de trabajo.",
+        localTitle: "Solo en este ordenador",
+        localDesc: "ReelVault se ejecuta como una aplicación independiente. Tu biblioteca de vídeos permanece en tu ordenador — sin configuración de red, sin servidores que mantener.",
+        localB1: "Funciona sin conexión, siempre",
+        localB2: "Configuración para un solo equipo",
+        localB3: "Sin puertos ni reglas de cortafuegos",
+        localB4: "Cero configuración de red",
+        wifiTitle: "+ iPhone y iPad por WiFi",
+        wifiDesc: "Instala un servicio en segundo plano ligero que transmite tu biblioteca a cualquier iPhone o iPad en la misma WiFi. Sin nube, sin suscripciones — transmisión directa por red local.",
+        wifiB1: "Explorar y reproducir desde dispositivos iOS",
+        wifiB2: "Descubierto automáticamente en tu WiFi",
+        wifiB3: "Sube material desde iPhone",
+        wifiB4: "Se empareja una vez con un código de 6 dígitos",
+        downloadBtn: "Descargar ReelVault {version}",
+        viewAllBtn: "Ver todas las descargas en GitHub ↗",
+        noPackage: "No se encontró un paquete precompilado para {os} en v{version}.",
+        macReq: "Requiere macOS 13 Ventura o posterior",
+        linuxReq: "Requiere Ubuntu 22.04+ o equivalente",
+        winReq: "Requiere Windows 10 (64 bits) o posterior",
+        iosHeroTitle: "Estás en iPhone o iPad",
+        iosHeroDesc: "ReelVault para iOS se conecta a tu servidor de biblioteca en Mac, PC o Linux a través de WiFi para que puedas explorar y reproducir tu colección completa de vídeos desde cualquier lugar de tu hogar.",
+        appStoreBtn: "Obtener ReelVault en el App Store",
+        needServer: "¿Necesitas configurar el servidor?",
+        getDesktop: "Obtener la app de escritorio →",
+        iosCardTitle: "Instala también la app para iOS",
+        iosCardDesc: "El servidor que estás descargando se anuncia en tu WiFi local mediante mDNS. Abre la app ReelVault para iOS en la misma red y encontrará tu biblioteca automáticamente — sin necesidad de escribir direcciones IP.",
+        appStoreLink: "Obtener ReelVault en el App Store →",
+        setupNoteTitle: "La configuración tarda unos 2 minutos:",
+        setupNoteBody: "Después de instalar este paquete, abre una Terminal y ejecuta {cmd} — el daemon se inicia al arrancar y registra un código de emparejamiento de 6 dígitos en {logPath}. Introduce ese código en la app de iOS para emparejar.",
+        footerGH: "GitHub",
+        footerReleases: "Todas las versiones",
+        footerDocs: "Documentación",
+        loading: "Cargando la última versión…",
+      },
+      de: {
+        pageTitle: "ReelVault herunterladen",
+        tagline: "Riesige Videobibliotheken durchsuchen — schnell.",
+        platformLabel: "DEINE PLATTFORM",
+        changeBtn: "Ändern",
+        question: "Wie möchtest du ReelVault verwenden?",
+        questionSub: "Wähle die Einrichtung, die zu deinem Workflow passt.",
+        localTitle: "Nur auf diesem Computer",
+        localDesc: "ReelVault läuft als eigenständige App. Deine Videobibliothek bleibt auf deinem Computer — keine Netzwerkkonfiguration, keine Server zu warten.",
+        localB1: "Funktioniert immer offline",
+        localB2: "Einrichtung für einen einzelnen Computer",
+        localB3: "Keine Ports oder Firewall-Regeln",
+        localB4: "Null Netzwerkkonfiguration",
+        wifiTitle: "+ iPhone & iPad über WiFi",
+        wifiDesc: "Installiere einen schlanken Hintergrunddienst, der deine Bibliothek auf jedes iPhone oder iPad im selben WiFi überträgt. Keine Cloud, keine Abonnements — direktes lokales Netzwerk-Streaming.",
+        wifiB1: "Von iOS-Geräten durchsuchen & abspielen",
+        wifiB2: "Automatisch im WiFi erkannt",
+        wifiB3: "Aufnahmen vom iPhone hochladen",
+        wifiB4: "Einmalige Kopplung mit einem 6-stelligen Code",
+        downloadBtn: "ReelVault {version} herunterladen",
+        viewAllBtn: "Alle Downloads auf GitHub ansehen ↗",
+        noPackage: "Kein vorgefertigtes Paket für {os} in v{version} gefunden.",
+        macReq: "Erfordert macOS 13 Ventura oder neuer",
+        linuxReq: "Erfordert Ubuntu 22.04+ oder gleichwertig",
+        winReq: "Erfordert Windows 10 (64-Bit) oder neuer",
+        iosHeroTitle: "Du verwendest iPhone oder iPad",
+        iosHeroDesc: "ReelVault für iOS verbindet sich über WiFi mit deinem Mac-, PC- oder Linux-Bibliotheksserver, damit du deine gesamte Videosammlung von überall in deinem Zuhause durchsuchen und abspielen kannst.",
+        appStoreBtn: "ReelVault im App Store holen",
+        needServer: "Server einrichten?",
+        getDesktop: "Desktop-App holen →",
+        iosCardTitle: "Installiere auch die iOS-App",
+        iosCardDesc: "Der Server, den du gerade herunterlädst, kündigt sich über mDNS in deinem lokalen WiFi an. Öffne die ReelVault iOS-App im selben Netzwerk und sie findet deine Bibliothek automatisch — keine IP-Adressen eintippen.",
+        appStoreLink: "ReelVault im App Store holen →",
+        setupNoteTitle: "Die Einrichtung dauert etwa 2 Minuten:",
+        setupNoteBody: "Nach der Installation dieses Pakets öffne ein Terminal und führe {cmd} aus — der Daemon startet beim Hochfahren und protokolliert einen 6-stelligen Kopplungscode in {logPath}. Gib diesen Code in der iOS-App ein, um zu koppeln.",
+        footerGH: "GitHub",
+        footerReleases: "Alle Releases",
+        footerDocs: "Dokumentation",
+        loading: "Neueste Version wird geladen…",
+      },
+      ja: {
+        pageTitle: "ReelVault をダウンロード",
+        tagline: "大規模なビデオライブラリを素早く閲覧。",
+        platformLabel: "お使いのプラットフォーム",
+        changeBtn: "変更",
+        question: "ReelVault をどのように使いますか？",
+        questionSub: "ワークフローに合ったセットアップを選んでください。",
+        localTitle: "このコンピューターだけで使う",
+        localDesc: "ReelVault はスタンドアロンアプリとして動作します。ビデオライブラリはお使いのコンピューターに保存され、ネットワーク設定やサーバーの管理は不要です。",
+        localB1: "常にオフラインで動作",
+        localB2: "シングルコンピューター構成",
+        localB3: "ポートやファイアウォールルール不要",
+        localB4: "ネットワーク設定ゼロ",
+        wifiTitle: "+ WiFi 経由で iPhone と iPad に対応",
+        wifiDesc: "同じ WiFi に接続された任意の iPhone または iPad にライブラリをストリーミングする軽量バックグラウンドサービスをインストールします。クラウドや定期購読なし — ローカルネットワークで直接ストリーミング。",
+        wifiB1: "iOS デバイスから閲覧・再生",
+        wifiB2: "WiFi 上で自動検出",
+        wifiB3: "iPhone から映像をアップロード",
+        wifiB4: "6 桁のコードで一度だけペアリング",
+        downloadBtn: "ReelVault {version} をダウンロード",
+        viewAllBtn: "GitHub ですべてのダウンロードを見る ↗",
+        noPackage: "v{version} に {os} 向けのビルド済みパッケージが見つかりません。",
+        macReq: "macOS 13 Ventura 以降が必要です",
+        linuxReq: "Ubuntu 22.04+ またはそれと同等のものが必要です",
+        winReq: "Windows 10（64 ビット）以降が必要です",
+        iosHeroTitle: "iPhone または iPad をお使いです",
+        iosHeroDesc: "iOS 版 ReelVault は WiFi 経由で Mac、PC、または Linux のライブラリサーバーに接続し、自宅のどこからでも全ビデオコレクションを閲覧・再生できます。",
+        appStoreBtn: "App Store で ReelVault を入手",
+        needServer: "サーバーのセットアップが必要ですか？",
+        getDesktop: "デスクトップアプリを入手 →",
+        iosCardTitle: "iOS アプリもインストールする",
+        iosCardDesc: "ダウンロードするサーバーは mDNS を使ってローカル WiFi 上に自身を通知します。同じネットワーク上で ReelVault iOS アプリを開くと、ライブラリが自動的に見つかります — IP アドレスの入力不要。",
+        appStoreLink: "App Store で ReelVault を入手 →",
+        setupNoteTitle: "セットアップは約 2 分で完了します：",
+        setupNoteBody: "このパッケージをインストールしたら、ターミナルを開いて {cmd} を実行してください — デーモンが起動時に開始し、6 桁のペアリングコードを {logPath} に記録します。iOS アプリにそのコードを入力してペアリングします。",
+        footerGH: "GitHub",
+        footerReleases: "全リリース",
+        footerDocs: "ドキュメント",
+        loading: "最新リリースを読み込み中…",
+      },
+      fr: {
+        pageTitle: "Télécharger ReelVault",
+        tagline: "Parcourez d'immenses bibliothèques vidéo — rapidement.",
+        platformLabel: "VOTRE PLATEFORME",
+        changeBtn: "Modifier",
+        question: "Comment allez-vous utiliser ReelVault ?",
+        questionSub: "Choisissez la configuration qui correspond à votre flux de travail.",
+        localTitle: "Uniquement sur cet ordinateur",
+        localDesc: "ReelVault fonctionne comme une application autonome. Votre bibliothèque vidéo reste sur votre ordinateur — aucune configuration réseau, aucun serveur à maintenir.",
+        localB1: "Fonctionne hors ligne, toujours",
+        localB2: "Configuration sur un seul ordinateur",
+        localB3: "Aucun port ni règle de pare-feu",
+        localB4: "Zéro configuration réseau",
+        wifiTitle: "+ iPhone et iPad via WiFi",
+        wifiDesc: "Installez un service d'arrière-plan léger qui diffuse votre bibliothèque vers n'importe quel iPhone ou iPad sur le même WiFi. Pas de cloud, pas d'abonnements — diffusion directe en réseau local.",
+        wifiB1: "Parcourir et lire depuis les appareils iOS",
+        wifiB2: "Découvert automatiquement sur votre WiFi",
+        wifiB3: "Importer des séquences depuis iPhone",
+        wifiB4: "Associé une seule fois avec un code à 6 chiffres",
+        downloadBtn: "Télécharger ReelVault {version}",
+        viewAllBtn: "Voir tous les téléchargements sur GitHub ↗",
+        noPackage: "Aucun package préconstruit trouvé pour {os} dans v{version}.",
+        macReq: "Nécessite macOS 13 Ventura ou ultérieur",
+        linuxReq: "Nécessite Ubuntu 22.04+ ou équivalent",
+        winReq: "Nécessite Windows 10 (64 bits) ou ultérieur",
+        iosHeroTitle: "Vous êtes sur iPhone ou iPad",
+        iosHeroDesc: "ReelVault pour iOS se connecte à votre serveur de bibliothèque Mac, PC ou Linux via WiFi afin que vous puissiez parcourir et lire votre collection vidéo complète depuis n'importe où chez vous.",
+        appStoreBtn: "Obtenir ReelVault sur l'App Store",
+        needServer: "Besoin de configurer le serveur ?",
+        getDesktop: "Obtenir l'application de bureau →",
+        iosCardTitle: "Installez aussi l'application iOS",
+        iosCardDesc: "Le serveur que vous téléchargez s'annonce sur votre WiFi local via mDNS. Ouvrez l'application ReelVault iOS sur le même réseau et elle trouvera votre bibliothèque automatiquement — sans saisir d'adresses IP.",
+        appStoreLink: "Obtenir ReelVault sur l'App Store →",
+        setupNoteTitle: "La configuration prend environ 2 minutes :",
+        setupNoteBody: "Après avoir installé ce package, ouvrez un Terminal et exécutez {cmd} — le daemon démarre au démarrage et enregistre un code d'association à 6 chiffres dans {logPath}. Saisissez ce code dans l'application iOS pour associer.",
+        footerGH: "GitHub",
+        footerReleases: "Toutes les versions",
+        footerDocs: "Documentation",
+        loading: "Chargement de la dernière version…",
+      },
+      "pt-br": {
+        pageTitle: "Baixar ReelVault",
+        tagline: "Navegue por enormes bibliotecas de vídeo — rápido.",
+        platformLabel: "SUA PLATAFORMA",
+        changeBtn: "Alterar",
+        question: "Como você usará o ReelVault?",
+        questionSub: "Escolha a configuração que corresponde ao seu fluxo de trabalho.",
+        localTitle: "Somente neste computador",
+        localDesc: "O ReelVault funciona como um aplicativo autônomo. Sua biblioteca de vídeos fica no seu computador — sem configuração de rede, sem servidores para manter.",
+        localB1: "Funciona offline, sempre",
+        localB2: "Configuração para um único computador",
+        localB3: "Sem portas ou regras de firewall",
+        localB4: "Zero configuração de rede",
+        wifiTitle: "+ iPhone e iPad via WiFi",
+        wifiDesc: "Instale um serviço em segundo plano leve que transmite sua biblioteca para qualquer iPhone ou iPad na mesma WiFi. Sem nuvem, sem assinaturas — streaming direto pela rede local.",
+        wifiB1: "Navegar e reproduzir de dispositivos iOS",
+        wifiB2: "Descoberto automaticamente no seu WiFi",
+        wifiB3: "Enviar filmagens do iPhone",
+        wifiB4: "Pareado uma vez com um código de 6 dígitos",
+        downloadBtn: "Baixar ReelVault {version}",
+        viewAllBtn: "Ver todos os downloads no GitHub ↗",
+        noPackage: "Nenhum pacote pré-compilado encontrado para {os} na v{version}.",
+        macReq: "Requer macOS 13 Ventura ou posterior",
+        linuxReq: "Requer Ubuntu 22.04+ ou equivalente",
+        winReq: "Requer Windows 10 (64 bits) ou posterior",
+        iosHeroTitle: "Você está no iPhone ou iPad",
+        iosHeroDesc: "O ReelVault para iOS conecta-se ao seu servidor de biblioteca no Mac, PC ou Linux via WiFi para que você possa navegar e reproduzir toda a sua coleção de vídeos de qualquer lugar da sua casa.",
+        appStoreBtn: "Obter ReelVault na App Store",
+        needServer: "Precisa configurar o servidor?",
+        getDesktop: "Obter o aplicativo desktop →",
+        iosCardTitle: "Instale também o aplicativo iOS",
+        iosCardDesc: "O servidor que você está baixando se anuncia no seu WiFi local via mDNS. Abra o aplicativo ReelVault iOS na mesma rede e ele encontrará sua biblioteca automaticamente — sem precisar digitar endereços IP.",
+        appStoreLink: "Obter ReelVault na App Store →",
+        setupNoteTitle: "A configuração leva cerca de 2 minutos:",
+        setupNoteBody: "Após instalar este pacote, abra um Terminal e execute {cmd} — o daemon inicia na inicialização e registra um código de pareamento de 6 dígitos em {logPath}. Digite esse código no aplicativo iOS para parear.",
+        footerGH: "GitHub",
+        footerReleases: "Todas as versões",
+        footerDocs: "Documentação",
+        loading: "Carregando a versão mais recente…",
+      },
+      ko: {
+        pageTitle: "ReelVault 다운로드",
+        tagline: "방대한 비디오 라이브러리를 빠르게 탐색하세요.",
+        platformLabel: "내 플랫폼",
+        changeBtn: "변경",
+        question: "ReelVault를 어떻게 사용하실 건가요?",
+        questionSub: "워크플로에 맞는 설정을 선택하세요.",
+        localTitle: "이 컴퓨터에서만 사용",
+        localDesc: "ReelVault는 독립 실행형 앱으로 실행됩니다. 비디오 라이브러리는 컴퓨터에 보관되며 네트워크 구성이나 서버 관리가 필요하지 않습니다.",
+        localB1: "항상 오프라인에서 작동",
+        localB2: "단일 컴퓨터 설정",
+        localB3: "포트나 방화벽 규칙 불필요",
+        localB4: "네트워크 구성 제로",
+        wifiTitle: "+ WiFi로 iPhone 및 iPad 연결",
+        wifiDesc: "동일한 WiFi에 있는 모든 iPhone 또는 iPad로 라이브러리를 스트리밍하는 경량 백그라운드 서비스를 설치하세요. 클라우드 없음, 구독 없음 — 로컬 네트워크 직접 스트리밍.",
+        wifiB1: "iOS 기기에서 탐색 및 재생",
+        wifiB2: "WiFi에서 자동 검색",
+        wifiB3: "iPhone에서 영상 업로드",
+        wifiB4: "6자리 코드로 한 번만 페어링",
+        downloadBtn: "ReelVault {version} 다운로드",
+        viewAllBtn: "GitHub에서 모든 다운로드 보기 ↗",
+        noPackage: "v{version}에서 {os}용 사전 빌드 패키지를 찾을 수 없습니다.",
+        macReq: "macOS 13 Ventura 이상 필요",
+        linuxReq: "Ubuntu 22.04+ 또는 동등한 환경 필요",
+        winReq: "Windows 10(64비트) 이상 필요",
+        iosHeroTitle: "iPhone 또는 iPad를 사용 중이시군요",
+        iosHeroDesc: "iOS용 ReelVault는 WiFi를 통해 Mac, PC 또는 Linux 라이브러리 서버에 연결하여 집 어디서나 전체 비디오 컬렉션을 탐색하고 재생할 수 있습니다.",
+        appStoreBtn: "App Store에서 ReelVault 받기",
+        needServer: "서버를 설정해야 하나요?",
+        getDesktop: "데스크탑 앱 받기 →",
+        iosCardTitle: "iOS 앱도 설치하세요",
+        iosCardDesc: "다운로드하는 서버는 mDNS를 통해 로컬 WiFi에서 자신을 광고합니다. 같은 네트워크에서 ReelVault iOS 앱을 열면 라이브러리를 자동으로 찾습니다 — IP 주소를 입력할 필요가 없습니다.",
+        appStoreLink: "App Store에서 ReelVault 받기 →",
+        setupNoteTitle: "설정은 약 2분 정도 걸립니다:",
+        setupNoteBody: "이 패키지를 설치한 후 터미널을 열고 {cmd}를 실행하세요 — 데몬이 부팅 시 시작되고 6자리 페어링 코드를 {logPath}에 기록합니다. iOS 앱에 해당 코드를 입력하여 페어링하세요.",
+        footerGH: "GitHub",
+        footerReleases: "모든 릴리스",
+        footerDocs: "문서",
+        loading: "최신 릴리스 로드 중…",
+      },
+      it: {
+        pageTitle: "Scarica ReelVault",
+        tagline: "Sfoglia enormi librerie video — velocemente.",
+        platformLabel: "LA TUA PIATTAFORMA",
+        changeBtn: "Cambia",
+        question: "Come userai ReelVault?",
+        questionSub: "Scegli la configurazione che si adatta al tuo flusso di lavoro.",
+        localTitle: "Solo su questo computer",
+        localDesc: "ReelVault funziona come un'app autonoma. La tua libreria video rimane sul tuo computer — nessuna configurazione di rete, nessun server da mantenere.",
+        localB1: "Funziona sempre offline",
+        localB2: "Configurazione per un singolo computer",
+        localB3: "Nessuna porta o regola del firewall",
+        localB4: "Zero configurazione di rete",
+        wifiTitle: "+ iPhone e iPad via WiFi",
+        wifiDesc: "Installa un servizio in background leggero che trasmette in streaming la tua libreria a qualsiasi iPhone o iPad sulla stessa WiFi. Niente cloud, niente abbonamenti — streaming diretto sulla rete locale.",
+        wifiB1: "Sfoglia e riproduci dai dispositivi iOS",
+        wifiB2: "Rilevato automaticamente sulla tua WiFi",
+        wifiB3: "Carica filmati da iPhone",
+        wifiB4: "Si associa una volta con un codice a 6 cifre",
+        downloadBtn: "Scarica ReelVault {version}",
+        viewAllBtn: "Vedi tutti i download su GitHub ↗",
+        noPackage: "Nessun pacchetto precompilato trovato per {os} nella v{version}.",
+        macReq: "Richiede macOS 13 Ventura o successivo",
+        linuxReq: "Richiede Ubuntu 22.04+ o equivalente",
+        winReq: "Richiede Windows 10 (64 bit) o successivo",
+        iosHeroTitle: "Sei su iPhone o iPad",
+        iosHeroDesc: "ReelVault per iOS si connette al tuo server di libreria Mac, PC o Linux tramite WiFi in modo che tu possa sfogliare e riprodurre l'intera collezione video da qualsiasi punto della tua casa.",
+        appStoreBtn: "Ottieni ReelVault sull'App Store",
+        needServer: "Hai bisogno di configurare il server?",
+        getDesktop: "Scarica l'app desktop →",
+        iosCardTitle: "Installa anche l'app iOS",
+        iosCardDesc: "Il server che stai scaricando si annuncia sulla tua WiFi locale tramite mDNS. Apri l'app ReelVault iOS sulla stessa rete e troverà automaticamente la tua libreria — senza digitare indirizzi IP.",
+        appStoreLink: "Ottieni ReelVault sull'App Store →",
+        setupNoteTitle: "La configurazione richiede circa 2 minuti:",
+        setupNoteBody: "Dopo aver installato questo pacchetto, apri un Terminale ed esegui {cmd} — il daemon si avvia all'avvio e registra un codice di associazione a 6 cifre in {logPath}. Inserisci quel codice nell'app iOS per associare.",
+        footerGH: "GitHub",
+        footerReleases: "Tutte le versioni",
+        footerDocs: "Documentazione",
+        loading: "Caricamento dell'ultima versione…",
+      },
+      ru: {
+        pageTitle: "Скачать ReelVault",
+        tagline: "Просматривайте огромные видеотеки — быстро.",
+        platformLabel: "ВАША ПЛАТФОРМА",
+        changeBtn: "Изменить",
+        question: "Как вы будете использовать ReelVault?",
+        questionSub: "Выберите конфигурацию, соответствующую вашему рабочему процессу.",
+        localTitle: "Только на этом компьютере",
+        localDesc: "ReelVault работает как автономное приложение. Ваша видеотека остаётся на компьютере — никакой настройки сети, никаких серверов для обслуживания.",
+        localB1: "Всегда работает офлайн",
+        localB2: "Установка на один компьютер",
+        localB3: "Без открытых портов и правил брандмауэра",
+        localB4: "Нулевая настройка сети",
+        wifiTitle: "+ iPhone и iPad по WiFi",
+        wifiDesc: "Установите лёгкий фоновый сервис, который транслирует вашу библиотеку на любой iPhone или iPad в той же WiFi-сети. Без облака, без подписок — прямая потоковая передача по локальной сети.",
+        wifiB1: "Просмотр и воспроизведение с iOS-устройств",
+        wifiB2: "Автоматически обнаруживается в WiFi",
+        wifiB3: "Загрузка материалов с iPhone",
+        wifiB4: "Одноразовое сопряжение с 6-значным кодом",
+        downloadBtn: "Скачать ReelVault {version}",
+        viewAllBtn: "Посмотреть все загрузки на GitHub ↗",
+        noPackage: "Предсобранный пакет для {os} в v{version} не найден.",
+        macReq: "Требуется macOS 13 Ventura или новее",
+        linuxReq: "Требуется Ubuntu 22.04+ или аналогичный дистрибутив",
+        winReq: "Требуется Windows 10 (64-разрядная) или новее",
+        iosHeroTitle: "Вы используете iPhone или iPad",
+        iosHeroDesc: "ReelVault для iOS подключается к вашему серверу библиотеки на Mac, PC или Linux по WiFi, чтобы вы могли просматривать и воспроизводить полную коллекцию видео из любой точки дома.",
+        appStoreBtn: "Получить ReelVault в App Store",
+        needServer: "Нужно настроить сервер?",
+        getDesktop: "Получить приложение для рабочего стола →",
+        iosCardTitle: "Также установите iOS-приложение",
+        iosCardDesc: "Сервер, который вы загружаете, объявляет о себе в локальной WiFi-сети через mDNS. Откройте приложение ReelVault для iOS в той же сети, и оно автоматически найдёт вашу библиотеку — без ввода IP-адресов.",
+        appStoreLink: "Получить ReelVault в App Store →",
+        setupNoteTitle: "Настройка займёт около 2 минут:",
+        setupNoteBody: "После установки этого пакета откройте терминал и выполните {cmd} — демон запустится при загрузке системы и запишет 6-значный код сопряжения в {logPath}. Введите этот код в iOS-приложении для сопряжения.",
+        footerGH: "GitHub",
+        footerReleases: "Все релизы",
+        footerDocs: "Документация",
+        loading: "Загрузка последней версии…",
+      },
+      pl: {
+        pageTitle: "Pobierz ReelVault",
+        tagline: "Przeglądaj ogromne biblioteki wideo — szybko.",
+        platformLabel: "TWOJA PLATFORMA",
+        changeBtn: "Zmień",
+        question: "Jak będziesz używać ReelVault?",
+        questionSub: "Wybierz konfigurację pasującą do Twojego przepływu pracy.",
+        localTitle: "Tylko na tym komputerze",
+        localDesc: "ReelVault działa jako samodzielna aplikacja. Twoja biblioteka wideo pozostaje na Twoim komputerze — bez konfiguracji sieci, bez serwerów do utrzymania.",
+        localB1: "Działa offline, zawsze",
+        localB2: "Konfiguracja na jednym komputerze",
+        localB3: "Żadnych portów ani reguł zapory",
+        localB4: "Zerowa konfiguracja sieci",
+        wifiTitle: "+ iPhone i iPad przez WiFi",
+        wifiDesc: "Zainstaluj lekką usługę działającą w tle, która strumieniuje Twoją bibliotekę na dowolny iPhone lub iPad w tej samej sieci WiFi. Bez chmury, bez subskrypcji — bezpośrednie strumieniowanie przez sieć lokalną.",
+        wifiB1: "Przeglądaj i odtwarzaj z urządzeń iOS",
+        wifiB2: "Automatycznie wykrywane w sieci WiFi",
+        wifiB3: "Przesyłaj nagrania z iPhone",
+        wifiB4: "Paruje raz za pomocą 6-cyfrowego kodu",
+        downloadBtn: "Pobierz ReelVault {version}",
+        viewAllBtn: "Zobacz wszystkie pliki do pobrania na GitHub ↗",
+        noPackage: "Nie znaleziono gotowego pakietu dla {os} w v{version}.",
+        macReq: "Wymaga macOS 13 Ventura lub nowszego",
+        linuxReq: "Wymaga Ubuntu 22.04+ lub odpowiednika",
+        winReq: "Wymaga Windows 10 (64-bit) lub nowszego",
+        iosHeroTitle: "Korzystasz z iPhone lub iPad",
+        iosHeroDesc: "ReelVault dla iOS łączy się z serwerem biblioteki na komputerze Mac, PC lub Linux przez WiFi, dzięki czemu możesz przeglądać i odtwarzać całą kolekcję wideo z dowolnego miejsca w domu.",
+        appStoreBtn: "Pobierz ReelVault z App Store",
+        needServer: "Chcesz skonfigurować serwer?",
+        getDesktop: "Pobierz aplikację desktopową →",
+        iosCardTitle: "Zainstaluj też aplikację iOS",
+        iosCardDesc: "Pobierany serwer ogłasza się w lokalnej sieci WiFi przez mDNS. Otwórz aplikację ReelVault dla iOS w tej samej sieci, a automatycznie znajdzie Twoją bibliotekę — bez wpisywania adresów IP.",
+        appStoreLink: "Pobierz ReelVault z App Store →",
+        setupNoteTitle: "Konfiguracja zajmuje około 2 minut:",
+        setupNoteBody: "Po zainstalowaniu tego pakietu otwórz terminal i uruchom {cmd} — demon uruchamia się podczas startu systemu i zapisuje 6-cyfrowy kod parowania do {logPath}. Wpisz ten kod w aplikacji iOS, aby sparować.",
+        footerGH: "GitHub",
+        footerReleases: "Wszystkie wydania",
+        footerDocs: "Dokumentacja",
+        loading: "Ładowanie najnowszej wersji…",
+      },
+      nl: {
+        pageTitle: "ReelVault downloaden",
+        tagline: "Blader door enorme videobibliotheken — snel.",
+        platformLabel: "JOUW PLATFORM",
+        changeBtn: "Wijzigen",
+        question: "Hoe ga je ReelVault gebruiken?",
+        questionSub: "Kies de configuratie die bij jouw werkwijze past.",
+        localTitle: "Alleen op deze computer",
+        localDesc: "ReelVault werkt als een zelfstandige app. Je videobibliotheek blijft op je computer — geen netwerkconfiguratie, geen servers om te onderhouden.",
+        localB1: "Werkt altijd offline",
+        localB2: "Installatie voor één computer",
+        localB3: "Geen poorten of firewallregels",
+        localB4: "Nul netwerkconfiguratie",
+        wifiTitle: "+ iPhone en iPad via WiFi",
+        wifiDesc: "Installeer een lichte achtergrondservice die je bibliotheek streamt naar elke iPhone of iPad op hetzelfde WiFi-netwerk. Geen cloud, geen abonnementen — directe streaming via het lokale netwerk.",
+        wifiB1: "Bladeren en afspelen vanaf iOS-apparaten",
+        wifiB2: "Automatisch gevonden op je WiFi",
+        wifiB3: "Opnamen uploaden van iPhone",
+        wifiB4: "Eénmalig koppelen met een 6-cijferige code",
+        downloadBtn: "ReelVault {version} downloaden",
+        viewAllBtn: "Alle downloads bekijken op GitHub ↗",
+        noPackage: "Geen voorgebouwd pakket gevonden voor {os} in v{version}.",
+        macReq: "Vereist macOS 13 Ventura of later",
+        linuxReq: "Vereist Ubuntu 22.04+ of gelijkwaardig",
+        winReq: "Vereist Windows 10 (64-bit) of later",
+        iosHeroTitle: "Je gebruikt iPhone of iPad",
+        iosHeroDesc: "ReelVault voor iOS maakt verbinding met je bibliotheekserver op Mac, PC of Linux via WiFi, zodat je je volledige videoverzameling overal in huis kunt bekijken en afspelen.",
+        appStoreBtn: "ReelVault halen in de App Store",
+        needServer: "Wil je de server instellen?",
+        getDesktop: "De desktopapp ophalen →",
+        iosCardTitle: "Installeer ook de iOS-app",
+        iosCardDesc: "De server die je downloadt kondigt zichzelf aan op je lokale WiFi via mDNS. Open de ReelVault iOS-app op hetzelfde netwerk en hij vindt je bibliotheek automatisch — geen IP-adressen nodig.",
+        appStoreLink: "ReelVault halen in de App Store →",
+        setupNoteTitle: "Installatie duurt ongeveer 2 minuten:",
+        setupNoteBody: "Na het installeren van dit pakket, open een Terminal en voer {cmd} uit — de daemon start bij het opstarten en registreert een 6-cijferige koppelcode naar {logPath}. Voer die code in de iOS-app in om te koppelen.",
+        footerGH: "GitHub",
+        footerReleases: "Alle releases",
+        footerDocs: "Documentatie",
+        loading: "Laatste versie laden…",
+      },
+      tr: {
+        pageTitle: "ReelVault'u İndir",
+        tagline: "Devasa video kütüphanelerine göz atın — hızlıca.",
+        platformLabel: "PLATFORMUNUZ",
+        changeBtn: "Değiştir",
+        question: "ReelVault'u nasıl kullanacaksınız?",
+        questionSub: "İş akışınıza uygun kurulumu seçin.",
+        localTitle: "Yalnızca bu bilgisayarda",
+        localDesc: "ReelVault bağımsız bir uygulama olarak çalışır. Video kütüphaneniz bilgisayarınızda kalır — ağ yapılandırması yok, bakım yapılacak sunucu yok.",
+        localB1: "Her zaman çevrimdışı çalışır",
+        localB2: "Tek bilgisayar kurulumu",
+        localB3: "Port veya güvenlik duvarı kuralı yok",
+        localB4: "Sıfır ağ yapılandırması",
+        wifiTitle: "+ WiFi üzerinden iPhone ve iPad",
+        wifiDesc: "Aynı WiFi'daki herhangi bir iPhone veya iPad'e kütüphanenizi akışla aktaran hafif bir arka plan servisi kurun. Bulut yok, abonelik yok — doğrudan yerel ağ akışı.",
+        wifiB1: "iOS cihazlardan göz at ve oynat",
+        wifiB2: "WiFi'nızda otomatik keşfedilir",
+        wifiB3: "iPhone'dan görüntü yükle",
+        wifiB4: "6 haneli kodla bir kez eşleşir",
+        downloadBtn: "ReelVault {version} İndir",
+        viewAllBtn: "GitHub'daki tüm indirmeleri görüntüle ↗",
+        noPackage: "{os} için v{version}'da önceden derlenmiş paket bulunamadı.",
+        macReq: "macOS 13 Ventura veya üzeri gerektirir",
+        linuxReq: "Ubuntu 22.04+ veya eşdeğeri gerektirir",
+        winReq: "Windows 10 (64-bit) veya üzeri gerektirir",
+        iosHeroTitle: "iPhone veya iPad kullanıyorsunuz",
+        iosHeroDesc: "iOS için ReelVault, WiFi üzerinden Mac, PC veya Linux kütüphane sunucunuza bağlanır; böylece evinizin herhangi bir yerinden tüm video koleksiyonunuza göz atabilir ve oynatabilirsiniz.",
+        appStoreBtn: "ReelVault'u App Store'dan Edinin",
+        needServer: "Sunucu kurmanız mı gerekiyor?",
+        getDesktop: "Masaüstü uygulamasını edinin →",
+        iosCardTitle: "iOS uygulamasını da yükleyin",
+        iosCardDesc: "İndirdiğiniz sunucu, mDNS aracılığıyla yerel WiFi'nızda kendini duyurur. Aynı ağda ReelVault iOS uygulamasını açın ve kütüphanenizi otomatik olarak bulsun — IP adresi girmenize gerek yok.",
+        appStoreLink: "ReelVault'u App Store'dan Edinin →",
+        setupNoteTitle: "Kurulum yaklaşık 2 dakika sürer:",
+        setupNoteBody: "Bu paketi yükledikten sonra Terminal'i açın ve {cmd} komutunu çalıştırın — daemon başlangıçta başlar ve {logPath} konumuna 6 haneli bir eşleşme kodu kaydeder. Eşleştirmek için iOS uygulamasına o kodu girin.",
+        footerGH: "GitHub",
+        footerReleases: "Tüm sürümler",
+        footerDocs: "Belgeler",
+        loading: "En son sürüm yükleniyor…",
+      },
+      ar: {
+        pageTitle: "تنزيل ReelVault",
+        tagline: "تصفّح مكتبات الفيديو الضخمة — بسرعة.",
+        platformLabel: "منصّتك",
+        changeBtn: "تغيير",
+        question: "كيف ستستخدم ReelVault؟",
+        questionSub: "اختر الإعداد الذي يناسب سير عملك.",
+        localTitle: "على هذا الكمبيوتر فقط",
+        localDesc: "يعمل ReelVault كتطبيق مستقل. تبقى مكتبة الفيديو الخاصة بك على جهاز الكمبيوتر — دون تهيئة للشبكة، ودون خوادم للصيانة.",
+        localB1: "يعمل دائمًا بدون اتصال",
+        localB2: "إعداد لجهاز كمبيوتر واحد",
+        localB3: "لا منافذ ولا قواعد جدار حماية",
+        localB4: "لا تهيئة للشبكة على الإطلاق",
+        wifiTitle: "+ iPhone وiPad عبر WiFi",
+        wifiDesc: "ثبِّت خدمة خلفية خفيفة تبثّ مكتبتك إلى أي iPhone أو iPad على نفس شبكة WiFi. بلا سحابة، بلا اشتراكات — بثّ مباشر عبر الشبكة المحلية.",
+        wifiB1: "التصفح والتشغيل من أجهزة iOS",
+        wifiB2: "يُكتشف تلقائيًا على شبكة WiFi",
+        wifiB3: "رفع اللقطات من iPhone",
+        wifiB4: "يُقرن مرة واحدة برمز مكوّن من 6 أرقام",
+        downloadBtn: "تنزيل ReelVault {version}",
+        viewAllBtn: "عرض جميع التنزيلات على GitHub ↗",
+        noPackage: "لم يُعثر على حزمة مُجمَّعة مسبقًا لـ {os} في الإصدار v{version}.",
+        macReq: "يتطلب macOS 13 Ventura أو أحدث",
+        linuxReq: "يتطلب Ubuntu 22.04+ أو ما يعادله",
+        winReq: "يتطلب Windows 10 (64 بت) أو أحدث",
+        iosHeroTitle: "أنت على iPhone أو iPad",
+        iosHeroDesc: "يتصل ReelVault لنظام iOS بخادم مكتبتك على Mac أو PC أو Linux عبر WiFi حتى تتمكن من تصفح مجموعة الفيديو الكاملة وتشغيلها من أي مكان في منزلك.",
+        appStoreBtn: "احصل على ReelVault من App Store",
+        needServer: "هل تحتاج إلى إعداد الخادم؟",
+        getDesktop: "احصل على تطبيق سطح المكتب ←",
+        iosCardTitle: "ثبِّت تطبيق iOS أيضًا",
+        iosCardDesc: "الخادم الذي تقوم بتنزيله يُعلن عن نفسه على شبكة WiFi المحلية عبر mDNS. افتح تطبيق ReelVault لنظام iOS على نفس الشبكة وسيجد مكتبتك تلقائيًا — دون الحاجة إلى كتابة عناوين IP.",
+        appStoreLink: "احصل على ReelVault من App Store ←",
+        setupNoteTitle: "يستغرق الإعداد حوالي دقيقتين:",
+        setupNoteBody: "بعد تثبيت هذه الحزمة، افتح الطرفية ونفِّذ {cmd} — يبدأ الخادم الخلفي عند التشغيل ويسجّل رمز اقتران مكوّنًا من 6 أرقام في {logPath}. أدخل هذا الرمز في تطبيق iOS للإقران.",
+        footerGH: "GitHub",
+        footerReleases: "جميع الإصدارات",
+        footerDocs: "التوثيق",
+        loading: "جارٍ تحميل الإصدار الأحدث…",
+      },
+      hi: {
+        pageTitle: "ReelVault डाउनलोड करें",
+        tagline: "विशाल वीडियो लाइब्रेरी ब्राउज़ करें — तेज़ी से।",
+        platformLabel: "आपका प्लेटफ़ॉर्म",
+        changeBtn: "बदलें",
+        question: "आप ReelVault का उपयोग कैसे करेंगे?",
+        questionSub: "वह सेटअप चुनें जो आपके वर्कफ़्लो से मेल खाए।",
+        localTitle: "केवल इस कंप्यूटर पर",
+        localDesc: "ReelVault एक स्वतंत्र ऐप के रूप में चलता है। आपकी वीडियो लाइब्रेरी आपके कंप्यूटर पर रहती है — कोई नेटवर्क कॉन्फ़िगरेशन नहीं, बनाए रखने के लिए कोई सर्वर नहीं।",
+        localB1: "हमेशा ऑफ़लाइन काम करता है",
+        localB2: "सिंगल-कंप्यूटर सेटअप",
+        localB3: "कोई पोर्ट या फ़ायरवॉल नियम नहीं",
+        localB4: "शून्य नेटवर्क कॉन्फ़िगरेशन",
+        wifiTitle: "+ WiFi पर iPhone और iPad",
+        wifiDesc: "एक हल्की बैकग्राउंड सर्विस इंस्टॉल करें जो उसी WiFi पर किसी भी iPhone या iPad पर आपकी लाइब्रेरी स्ट्रीम करती है। कोई क्लाउड नहीं, कोई सब्सक्रिप्शन नहीं — सीधा लोकल नेटवर्क स्ट्रीमिंग।",
+        wifiB1: "iOS डिवाइस से ब्राउज़ करें और चलाएं",
+        wifiB2: "आपके WiFi पर स्वचालित रूप से खोजा जाता है",
+        wifiB3: "iPhone से फुटेज अपलोड करें",
+        wifiB4: "6 अंकों के कोड से एक बार पेयर होता है",
+        downloadBtn: "ReelVault {version} डाउनलोड करें",
+        viewAllBtn: "GitHub पर सभी डाउनलोड देखें ↗",
+        noPackage: "v{version} में {os} के लिए कोई प्री-बिल्ट पैकेज नहीं मिला।",
+        macReq: "macOS 13 Ventura या बाद का संस्करण आवश्यक है",
+        linuxReq: "Ubuntu 22.04+ या समकक्ष आवश्यक है",
+        winReq: "Windows 10 (64-बिट) या बाद का संस्करण आवश्यक है",
+        iosHeroTitle: "आप iPhone या iPad पर हैं",
+        iosHeroDesc: "iOS के लिए ReelVault WiFi पर आपके Mac, PC, या Linux लाइब्रेरी सर्वर से जुड़ता है ताकि आप घर में कहीं से भी अपना पूरा वीडियो संग्रह ब्राउज़ और चला सकें।",
+        appStoreBtn: "App Store पर ReelVault प्राप्त करें",
+        needServer: "सर्वर सेट अप करना है?",
+        getDesktop: "डेस्कटॉप ऐप प्राप्त करें →",
+        iosCardTitle: "iOS ऐप भी इंस्टॉल करें",
+        iosCardDesc: "आप जो सर्वर डाउनलोड कर रहे हैं वह mDNS के ज़रिए आपके लोकल WiFi पर खुद को प्रचारित करता है। उसी नेटवर्क पर ReelVault iOS ऐप खोलें और यह आपकी लाइब्रेरी स्वचालित रूप से ढूंढ लेगा — कोई IP पता टाइप करने की ज़रूरत नहीं।",
+        appStoreLink: "App Store पर ReelVault प्राप्त करें →",
+        setupNoteTitle: "सेटअप में लगभग 2 मिनट लगते हैं:",
+        setupNoteBody: "यह पैकेज इंस्टॉल करने के बाद, Terminal खोलें और {cmd} चलाएं — डेमन बूट पर शुरू होता है और {logPath} पर 6 अंकों का पेयरिंग कोड लॉग करता है। पेयर करने के लिए iOS ऐप में वह कोड दर्ज करें।",
+        footerGH: "GitHub",
+        footerReleases: "सभी रिलीज़",
+        footerDocs: "प्रलेखन",
+        loading: "नवीनतम रिलीज़ लोड हो रही है…",
+      },
+      id: {
+        pageTitle: "Unduh ReelVault",
+        tagline: "Jelajahi perpustakaan video besar — cepat.",
+        platformLabel: "PLATFORM ANDA",
+        changeBtn: "Ubah",
+        question: "Bagaimana Anda akan menggunakan ReelVault?",
+        questionSub: "Pilih pengaturan yang sesuai dengan alur kerja Anda.",
+        localTitle: "Hanya di komputer ini",
+        localDesc: "ReelVault berjalan sebagai aplikasi mandiri. Perpustakaan video Anda tetap ada di komputer — tanpa konfigurasi jaringan, tanpa server yang perlu dikelola.",
+        localB1: "Selalu bekerja secara offline",
+        localB2: "Pengaturan satu komputer",
+        localB3: "Tanpa port atau aturan firewall",
+        localB4: "Konfigurasi jaringan nol",
+        wifiTitle: "+ iPhone & iPad melalui WiFi",
+        wifiDesc: "Pasang layanan latar belakang ringan yang melakukan streaming perpustakaan Anda ke iPhone atau iPad mana pun di WiFi yang sama. Tanpa cloud, tanpa langganan — streaming langsung melalui jaringan lokal.",
+        wifiB1: "Jelajahi & putar dari perangkat iOS",
+        wifiB2: "Ditemukan otomatis di WiFi Anda",
+        wifiB3: "Unggah rekaman dari iPhone",
+        wifiB4: "Dipasangkan sekali dengan kode 6 digit",
+        downloadBtn: "Unduh ReelVault {version}",
+        viewAllBtn: "Lihat semua unduhan di GitHub ↗",
+        noPackage: "Tidak ditemukan paket bawaan untuk {os} di v{version}.",
+        macReq: "Membutuhkan macOS 13 Ventura atau lebih baru",
+        linuxReq: "Membutuhkan Ubuntu 22.04+ atau setara",
+        winReq: "Membutuhkan Windows 10 (64-bit) atau lebih baru",
+        iosHeroTitle: "Anda menggunakan iPhone atau iPad",
+        iosHeroDesc: "ReelVault untuk iOS terhubung ke server perpustakaan Mac, PC, atau Linux Anda melalui WiFi sehingga Anda dapat menjelajahi dan memutar seluruh koleksi video dari mana saja di rumah.",
+        appStoreBtn: "Dapatkan ReelVault di App Store",
+        needServer: "Perlu menyiapkan server?",
+        getDesktop: "Dapatkan aplikasi desktop →",
+        iosCardTitle: "Pasang juga aplikasi iOS",
+        iosCardDesc: "Server yang Anda unduh mengiklankan dirinya di WiFi lokal melalui mDNS. Buka aplikasi ReelVault iOS di jaringan yang sama dan aplikasi akan menemukan perpustakaan Anda secara otomatis — tidak perlu mengetik alamat IP.",
+        appStoreLink: "Dapatkan ReelVault di App Store →",
+        setupNoteTitle: "Pengaturan membutuhkan sekitar 2 menit:",
+        setupNoteBody: "Setelah menginstal paket ini, buka Terminal dan jalankan {cmd} — daemon akan mulai saat boot dan mencatat kode pasangan 6 digit ke {logPath}. Masukkan kode tersebut di aplikasi iOS untuk memasangkan.",
+        footerGH: "GitHub",
+        footerReleases: "Semua rilis",
+        footerDocs: "Dokumentasi",
+        loading: "Memuat rilis terbaru…",
+      },
+      vi: {
+        pageTitle: "Tải ReelVault",
+        tagline: "Duyệt các thư viện video khổng lồ — nhanh chóng.",
+        platformLabel: "NỀN TẢNG CỦA BẠN",
+        changeBtn: "Thay đổi",
+        question: "Bạn sẽ sử dụng ReelVault như thế nào?",
+        questionSub: "Chọn cài đặt phù hợp với quy trình làm việc của bạn.",
+        localTitle: "Chỉ trên máy tính này",
+        localDesc: "ReelVault chạy như một ứng dụng độc lập. Thư viện video của bạn ở lại trên máy tính — không cần cấu hình mạng, không có máy chủ cần bảo trì.",
+        localB1: "Luôn hoạt động ngoại tuyến",
+        localB2: "Cài đặt một máy tính",
+        localB3: "Không cần cổng hay quy tắc tường lửa",
+        localB4: "Không cần cấu hình mạng",
+        wifiTitle: "+ iPhone và iPad qua WiFi",
+        wifiDesc: "Cài đặt dịch vụ nền nhẹ phát trực tiếp thư viện của bạn đến bất kỳ iPhone hoặc iPad nào trên cùng WiFi. Không có đám mây, không có gói đăng ký — phát trực tiếp qua mạng cục bộ.",
+        wifiB1: "Duyệt và phát từ thiết bị iOS",
+        wifiB2: "Tự động phát hiện trên WiFi của bạn",
+        wifiB3: "Tải video quay từ iPhone lên",
+        wifiB4: "Ghép đôi một lần bằng mã 6 chữ số",
+        downloadBtn: "Tải ReelVault {version}",
+        viewAllBtn: "Xem tất cả tải xuống trên GitHub ↗",
+        noPackage: "Không tìm thấy gói dựng sẵn cho {os} trong v{version}.",
+        macReq: "Yêu cầu macOS 13 Ventura trở lên",
+        linuxReq: "Yêu cầu Ubuntu 22.04+ hoặc tương đương",
+        winReq: "Yêu cầu Windows 10 (64-bit) trở lên",
+        iosHeroTitle: "Bạn đang dùng iPhone hoặc iPad",
+        iosHeroDesc: "ReelVault cho iOS kết nối với máy chủ thư viện Mac, PC hoặc Linux của bạn qua WiFi để bạn có thể duyệt và phát toàn bộ bộ sưu tập video từ bất cứ đâu trong nhà.",
+        appStoreBtn: "Tải ReelVault trên App Store",
+        needServer: "Cần thiết lập máy chủ?",
+        getDesktop: "Tải ứng dụng máy tính để bàn →",
+        iosCardTitle: "Cũng cài ứng dụng iOS",
+        iosCardDesc: "Máy chủ bạn đang tải xuống tự quảng bá trên WiFi cục bộ của bạn qua mDNS. Mở ứng dụng ReelVault iOS trên cùng mạng và nó sẽ tự động tìm thư viện của bạn — không cần nhập địa chỉ IP.",
+        appStoreLink: "Tải ReelVault trên App Store →",
+        setupNoteTitle: "Cài đặt mất khoảng 2 phút:",
+        setupNoteBody: "Sau khi cài đặt gói này, mở Terminal và chạy {cmd} — daemon khởi động khi boot và ghi mã ghép đôi 6 chữ số vào {logPath}. Nhập mã đó vào ứng dụng iOS để ghép đôi.",
+        footerGH: "GitHub",
+        footerReleases: "Tất cả bản phát hành",
+        footerDocs: "Tài liệu",
+        loading: "Đang tải bản phát hành mới nhất…",
+      },
+      th: {
+        pageTitle: "ดาวน์โหลด ReelVault",
+        tagline: "เรียกดูคลังวิดีโอขนาดใหญ่ — รวดเร็ว",
+        platformLabel: "แพลตฟอร์มของคุณ",
+        changeBtn: "เปลี่ยน",
+        question: "คุณจะใช้ ReelVault อย่างไร?",
+        questionSub: "เลือกการตั้งค่าที่เหมาะกับขั้นตอนการทำงานของคุณ",
+        localTitle: "ใช้งานบนคอมพิวเตอร์เครื่องนี้เท่านั้น",
+        localDesc: "ReelVault ทำงานเป็นแอปแบบสแตนด์อโลน คลังวิดีโอของคุณอยู่บนคอมพิวเตอร์ — ไม่ต้องกำหนดค่าเครือข่าย ไม่มีเซิร์ฟเวอร์ที่ต้องดูแล",
+        localB1: "ทำงานแบบออฟไลน์ตลอดเวลา",
+        localB2: "ตั้งค่าสำหรับคอมพิวเตอร์เครื่องเดียว",
+        localB3: "ไม่มีพอร์ตหรือกฎไฟร์วอลล์",
+        localB4: "ไม่ต้องกำหนดค่าเครือข่ายเลย",
+        wifiTitle: "+ iPhone และ iPad ผ่าน WiFi",
+        wifiDesc: "ติดตั้งบริการพื้นหลังขนาดเบาที่สตรีมคลังของคุณไปยัง iPhone หรือ iPad ทุกเครื่องบน WiFi เดียวกัน ไม่มีคลาวด์ ไม่มีการสมัครสมาชิก — สตรีมโดยตรงผ่านเครือข่ายท้องถิ่น",
+        wifiB1: "เรียกดูและเล่นจากอุปกรณ์ iOS",
+        wifiB2: "ค้นพบอัตโนมัติบน WiFi ของคุณ",
+        wifiB3: "อัปโหลดฟุตเทจจาก iPhone",
+        wifiB4: "จับคู่ครั้งเดียวด้วยรหัส 6 หลัก",
+        downloadBtn: "ดาวน์โหลด ReelVault {version}",
+        viewAllBtn: "ดูการดาวน์โหลดทั้งหมดบน GitHub ↗",
+        noPackage: "ไม่พบแพ็กเกจที่สร้างไว้ล่วงหน้าสำหรับ {os} ใน v{version}",
+        macReq: "ต้องใช้ macOS 13 Ventura หรือใหม่กว่า",
+        linuxReq: "ต้องใช้ Ubuntu 22.04+ หรือเทียบเท่า",
+        winReq: "ต้องใช้ Windows 10 (64 บิต) หรือใหม่กว่า",
+        iosHeroTitle: "คุณกำลังใช้ iPhone หรือ iPad",
+        iosHeroDesc: "ReelVault สำหรับ iOS เชื่อมต่อกับเซิร์ฟเวอร์คลัง Mac, PC หรือ Linux ของคุณผ่าน WiFi เพื่อให้คุณเรียกดูและเล่นคอลเลกชันวิดีโอทั้งหมดได้จากทุกที่ในบ้าน",
+        appStoreBtn: "รับ ReelVault บน App Store",
+        needServer: "ต้องการตั้งค่าเซิร์ฟเวอร์?",
+        getDesktop: "รับแอปเดสก์ท็อป →",
+        iosCardTitle: "ติดตั้งแอป iOS ด้วย",
+        iosCardDesc: "เซิร์ฟเวอร์ที่คุณกำลังดาวน์โหลดประกาศตัวเองบน WiFi ท้องถิ่นของคุณผ่าน mDNS เปิดแอป ReelVault iOS บนเครือข่ายเดียวกันและแอปจะค้นหาคลังของคุณโดยอัตโนมัติ — ไม่ต้องพิมพ์ที่อยู่ IP",
+        appStoreLink: "รับ ReelVault บน App Store →",
+        setupNoteTitle: "การตั้งค่าใช้เวลาประมาณ 2 นาที:",
+        setupNoteBody: "หลังจากติดตั้งแพ็กเกจนี้ เปิด Terminal แล้วรัน {cmd} — daemon จะเริ่มต้นเมื่อบูตและบันทึกรหัสจับคู่ 6 หลักไปยัง {logPath} ป้อนรหัสนั้นในแอป iOS เพื่อจับคู่",
+        footerGH: "GitHub",
+        footerReleases: "ทุกเวอร์ชัน",
+        footerDocs: "เอกสาร",
+        loading: "กำลังโหลดเวอร์ชันล่าสุด…",
+      },
+      uk: {
+        pageTitle: "Завантажити ReelVault",
+        tagline: "Переглядайте величезні відеобібліотеки — швидко.",
+        platformLabel: "ВАША ПЛАТФОРМА",
+        changeBtn: "Змінити",
+        question: "Як ви будете використовувати ReelVault?",
+        questionSub: "Виберіть налаштування, що відповідає вашому робочому процесу.",
+        localTitle: "Лише на цьому комп'ютері",
+        localDesc: "ReelVault працює як автономний застосунок. Ваша відеобібліотека залишається на комп'ютері — без налаштування мережі, без серверів для обслуговування.",
+        localB1: "Завжди працює офлайн",
+        localB2: "Встановлення на один комп'ютер",
+        localB3: "Без відкритих портів і правил брандмауера",
+        localB4: "Нульове налаштування мережі",
+        wifiTitle: "+ iPhone і iPad через WiFi",
+        wifiDesc: "Встановіть легку фонову службу, яка транслює вашу бібліотеку на будь-який iPhone або iPad у тій самій мережі WiFi. Без хмари, без підписок — пряме потокове передавання через локальну мережу.",
+        wifiB1: "Переглядайте та відтворюйте з iOS-пристроїв",
+        wifiB2: "Автоматично виявляється у WiFi",
+        wifiB3: "Завантажуйте матеріали з iPhone",
+        wifiB4: "Одноразове сполучення за 6-значним кодом",
+        downloadBtn: "Завантажити ReelVault {version}",
+        viewAllBtn: "Переглянути всі завантаження на GitHub ↗",
+        noPackage: "Попередньо зібраний пакет для {os} у v{version} не знайдено.",
+        macReq: "Потрібна macOS 13 Ventura або новіша",
+        linuxReq: "Потрібна Ubuntu 22.04+ або еквівалентна",
+        winReq: "Потрібна Windows 10 (64-розрядна) або новіша",
+        iosHeroTitle: "Ви користуєтесь iPhone або iPad",
+        iosHeroDesc: "ReelVault для iOS підключається до вашого сервера бібліотеки на Mac, PC або Linux через WiFi, щоб ви могли переглядати та відтворювати повну колекцію відео з будь-якого місця вдома.",
+        appStoreBtn: "Отримати ReelVault в App Store",
+        needServer: "Потрібно налаштувати сервер?",
+        getDesktop: "Отримати настільний застосунок →",
+        iosCardTitle: "Також встановіть iOS-застосунок",
+        iosCardDesc: "Сервер, який ви завантажуєте, оголошує себе у локальній мережі WiFi через mDNS. Відкрийте застосунок ReelVault для iOS у тій самій мережі, і він автоматично знайде вашу бібліотеку — без введення IP-адрес.",
+        appStoreLink: "Отримати ReelVault в App Store →",
+        setupNoteTitle: "Налаштування займає близько 2 хвилин:",
+        setupNoteBody: "Після встановлення цього пакета відкрийте термінал і виконайте {cmd} — демон запускається під час завантаження системи та записує 6-значний код сполучення у {logPath}. Введіть цей код у iOS-застосунку для сполучення.",
+        footerGH: "GitHub",
+        footerReleases: "Усі релізи",
+        footerDocs: "Документація",
+        loading: "Завантаження останнього релізу…",
+      },
+      cs: {
+        pageTitle: "Stáhnout ReelVault",
+        tagline: "Procházejte obrovské videoknihovny — rychle.",
+        platformLabel: "VAŠE PLATFORMA",
+        changeBtn: "Změnit",
+        question: "Jak budete ReelVault používat?",
+        questionSub: "Vyberte nastavení, které odpovídá vašemu pracovnímu postupu.",
+        localTitle: "Pouze na tomto počítači",
+        localDesc: "ReelVault běží jako samostatná aplikace. Vaše videoknihovní zůstává na vašem počítači — žádná síťová konfigurace, žádné servery k údržbě.",
+        localB1: "Vždy funguje offline",
+        localB2: "Nastavení pro jeden počítač",
+        localB3: "Žádné porty ani pravidla brány firewall",
+        localB4: "Nulová síťová konfigurace",
+        wifiTitle: "+ iPhone a iPad přes WiFi",
+        wifiDesc: "Nainstalujte lehkou službu na pozadí, která streamuje vaši knihovnu na jakýkoli iPhone nebo iPad ve stejné síti WiFi. Žádný cloud, žádná předplatná — přímé streamování přes místní síť.",
+        wifiB1: "Procházejte a přehrávejte ze zařízení iOS",
+        wifiB2: "Automaticky objeveno ve vaší WiFi",
+        wifiB3: "Nahrávejte záběry z iPhone",
+        wifiB4: "Spáruje se jednou pomocí 6místného kódu",
+        downloadBtn: "Stáhnout ReelVault {version}",
+        viewAllBtn: "Zobrazit všechna stažení na GitHub ↗",
+        noPackage: "Pro {os} v v{version} nebyl nalezen předem sestavený balíček.",
+        macReq: "Vyžaduje macOS 13 Ventura nebo novější",
+        linuxReq: "Vyžaduje Ubuntu 22.04+ nebo ekvivalent",
+        winReq: "Vyžaduje Windows 10 (64bitový) nebo novější",
+        iosHeroTitle: "Jste na iPhone nebo iPad",
+        iosHeroDesc: "ReelVault pro iOS se připojuje k vašemu serveru knihovny na Macu, PC nebo Linuxu přes WiFi, abyste mohli procházet a přehrávat celou sbírku videí odkudkoli v domě.",
+        appStoreBtn: "Získat ReelVault v App Store",
+        needServer: "Potřebujete nastavit server?",
+        getDesktop: "Získat desktopovou aplikaci →",
+        iosCardTitle: "Nainstalujte také aplikaci iOS",
+        iosCardDesc: "Server, který stahujete, se oznamuje v místní síti WiFi prostřednictvím mDNS. Otevřete aplikaci ReelVault pro iOS ve stejné síti a automaticky najde vaši knihovnu — bez zadávání IP adres.",
+        appStoreLink: "Získat ReelVault v App Store →",
+        setupNoteTitle: "Nastavení trvá přibližně 2 minuty:",
+        setupNoteBody: "Po instalaci tohoto balíčku otevřete Terminál a spusťte {cmd} — démon se spustí při startu a zapíše 6místný párovací kód do {logPath}. Zadejte tento kód v aplikaci iOS pro spárování.",
+        footerGH: "GitHub",
+        footerReleases: "Všechna vydání",
+        footerDocs: "Dokumentace",
+        loading: "Načítání nejnovější verze…",
+      },
+    };
 
-    // ── Detect platform ──────────────────────────────────────────────────────
+    // ── Language state ────────────────────────────────────────────────────────
+    let curLang = 'en';
+
+    function detectLang() {
+      try {
+        const saved = localStorage.getItem('rv_lang');
+        if (saved && T[saved]) return saved;
+      } catch(e) {}
+
+      const nav = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+      // Special prefix cases
+      if (nav.startsWith('zh')) return 'zh';
+      if (nav.startsWith('pt')) return 'pt-br';
+      const code = nav.split('-')[0];
+      const supported = ['en','es','de','ja','fr','ko','it','ru','pl','nl','tr','ar','hi','id','vi','th','uk','cs'];
+      return supported.includes(code) ? code : 'en';
+    }
+
+    function setLang(lang) {
+      if (!T[lang]) lang = 'en';
+      curLang = lang;
+      const t = T[lang];
+
+      // Page title
+      document.title = t.pageTitle;
+
+      // Text direction (RTL for Arabic)
+      document.documentElement.lang = lang === 'pt-br' ? 'pt' : lang;
+      document.documentElement.dir  = (lang === 'ar') ? 'rtl' : 'ltr';
+
+      // Update language selector
+      const sel = document.getElementById('lang-sel');
+      if (sel) sel.value = lang;
+
+      // Update all static data-i18n elements
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.dataset.i18n;
+        if (t[key] !== undefined) el.textContent = t[key];
+      });
+
+      // Persist preference
+      try { localStorage.setItem('rv_lang', lang); } catch(e) {}
+
+      // Re-render dynamic download area
+      render();
+    }
+
+    // ── Platform detection ────────────────────────────────────────────────────
     function detect() {
       const ua = navigator.userAgent;
       const pf = (navigator.userAgentData
@@ -482,14 +1376,6 @@
     }
 
     // ── Asset matching ────────────────────────────────────────────────────────
-    // Release assets are renamed by the release workflow to these patterns:
-    //   Standalone (local):  ReelVault-{VERSION}-macOS.pkg
-    //                        ReelVault-{VERSION}-Linux.deb
-    //                        ReelVault-{VERSION}-Windows.exe
-    //   Server (wifi):       ReelVault-{VERSION}-macOS-Server.pkg
-    //                        ReelVault-{VERSION}-Linux-x64-Server.deb
-    //                        ReelVault-{VERSION}-Linux-arm64-Server.deb
-    //                        ReelVault-{VERSION}-Windows-Server.exe
     function findAsset(assets, forOS, forMode) {
       if (!assets) return null;
       const patterns = {
@@ -507,6 +1393,11 @@
       const test = patterns[forMode]?.[forOS];
       return test ? assets.find(test) : null;
     }
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    let os      = null;
+    let mode    = null;
+    let release = null;
 
     // ── UI helpers ────────────────────────────────────────────────────────────
     function setOSUI(newOS) {
@@ -541,11 +1432,12 @@
 
     // ── Render download area ──────────────────────────────────────────────────
     function render() {
+      const t    = T[curLang] || T.en;
       const area = document.getElementById('download-area');
       if (!os || !mode) { area.innerHTML = ''; return; }
 
       if (!release) {
-        area.innerHTML = '<div class="status-msg" id="release-status">Loading latest release…</div>';
+        area.innerHTML = `<div class="status-msg">${t.loading}</div>`;
         return;
       }
 
@@ -553,15 +1445,21 @@
         area.innerHTML = `
           <a class="download-btn ghost"
              href="https://github.com/${REPO}/releases/latest" target="_blank">
-            View all downloads on GitHub ↗
+            ${t.viewAllBtn}
           </a>
           <div class="download-meta">Could not load release data — click to see all packages.</div>`;
         return;
       }
 
-      const version  = release.tag_name.replace(/^v/, '');
-      const asset    = findAsset(release.assets, os, mode);
-      const meta     = OS_META[os] || OS_META.mac;
+      const version = release.tag_name.replace(/^v/, '');
+      const asset   = findAsset(release.assets, os, mode);
+      const meta    = OS_META[os] || OS_META.mac;
+      const sysreq  = { mac: t.macReq, windows: t.winReq, linux: t.linuxReq }[os] || t.macReq;
+      const logPath = {
+        mac:     '/Library/Logs/ReelVault/reelvault-core.log',
+        linux:   '/var/log/reelvault/reelvault-core.log',
+        windows: 'C:\\ProgramData\\ReelVault\\logs\\reelvault-core.log',
+      }[os] || '/Library/Logs/ReelVault/reelvault-core.log';
 
       let html = '';
 
@@ -573,47 +1471,41 @@
               <path d="M9 12.5l-5-5h3V2h4v5.5h3L9 12.5z"/>
               <rect x="2" y="14" width="14" height="2" rx="1"/>
             </svg>
-            Download ReelVault ${version}
+            ${t.downloadBtn.replace('{version}', version)}
           </a>
           <div class="download-meta">${asset.name}${mb}</div>`;
       } else {
         html += `
           <a class="download-btn ghost"
              href="https://github.com/${REPO}/releases/latest" target="_blank">
-            View all downloads on GitHub ↗
+            ${t.viewAllBtn}
           </a>
           <div class="download-meta">
-            No pre-built package found for ${meta.label} in v${version}.
+            ${t.noPackage.replace('{os}', meta.label).replace('{version}', version)}
           </div>`;
       }
 
       if (mode === 'wifi') {
+        const setupBody = t.setupNoteBody
+          .replace('{cmd}',     '<code>sudo install-service.sh</code>')
+          .replace('{logPath}', `<code>${logPath}</code>`);
         html += `
           <div class="ios-card">
             <div class="ios-card-icon">📱</div>
             <div class="ios-card-body">
-              <strong>Also install the iOS app</strong><br>
-              The server you're downloading above advertises itself on your local
-              WiFi via mDNS. Open the ReelVault iOS app on the same network
-              and it will find your library automatically — no IP addresses to type.
+              <strong>${t.iosCardTitle}</strong><br>
+              ${t.iosCardDesc}
               <br>
               <a class="ios-store-link" href="${APPSTORE_URL}" target="_blank">
-                Get ReelVault on the App Store →
+                ${t.appStoreLink}
               </a>
             </div>
           </div>
           <div class="setup-note">
-            <strong>Setup takes about 2 minutes:</strong>
-            After installing this package, open a Terminal and run
-            <code>sudo install-service.sh</code> — the daemon starts on boot and
-            logs a 6-digit pairing code to
-            <code>/Library/Logs/ReelVault/reelvault-core.log</code>.
-            Enter that code in the iOS app to pair.
+            <strong>${t.setupNoteTitle}</strong> ${setupBody}
           </div>`;
       } else {
-        if (meta.req) {
-          html += `<div class="sysreq">${meta.req}</div>`;
-        }
+        html += `<div class="sysreq">${sysreq}</div>`;
       }
 
       area.innerHTML = html;
@@ -625,14 +1517,18 @@
       document.getElementById('desktop-screen').style.display = '';
     }
 
-    // ── Expose handlers for inline onclick attrs ──────────────────────────────
-    window.pickOS              = pickOS;
-    window.pickMode            = pickMode;
+    // ── Expose handlers for inline onclick / onchange attrs ───────────────────
+    window.setLang              = setLang;
+    window.pickOS               = pickOS;
+    window.pickMode             = pickMode;
     window.togglePlatformPicker = togglePlatformPicker;
-    window.showDesktopFlow     = showDesktopFlow;
+    window.showDesktopFlow      = showDesktopFlow;
 
     // ── Init ──────────────────────────────────────────────────────────────────
-    // Replace the App Store URL placeholder in the iOS screen
+    // Apply language (also updates data-i18n elements and calls render())
+    setLang(detectLang());
+
+    // Replace App Store URL placeholder
     document.querySelectorAll('a[href="APPSTORE_URL_PLACEHOLDER"]').forEach(a => {
       a.href = APPSTORE_URL;
     });
