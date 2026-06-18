@@ -113,6 +113,95 @@ public nonisolated enum Reelvault_FullResolutionStatus: SwiftProtobuf.Enum, Swif
 
 }
 
+/// Structured error codes.  Field 0 (ERROR_UNKNOWN) is the proto3 default,
+/// meaning "no error" or "error type not specified".  Codes are intentionally
+/// stable — never renumber or reuse a value.
+public nonisolated enum Reelvault_ErrorCode: SwiftProtobuf.Enum, Swift.CaseIterable {
+  public typealias RawValue = Int
+  case errorUnknown // = 0
+  case errorDatabase // = 1
+  case errorVideoNotFound // = 2
+  case errorTagNotFound // = 3
+  case errorCollectionNotFound // = 4
+  case errorMetadataExtractionFailed // = 5
+  case errorThumbnailGenerationFailed // = 6
+  case errorFileNotFound // = 7
+  case errorInvalidPath // = 8
+  case errorDuplicateEntry // = 9
+  case errorIo // = 10
+  case errorConfig // = 11
+  case errorFfmpeg // = 12
+  case errorInvalidRequest // = 13
+  case errorInternal // = 14
+  case UNRECOGNIZED(Int)
+
+  public init() {
+    self = .errorUnknown
+  }
+
+  public init?(rawValue: Int) {
+    switch rawValue {
+    case 0: self = .errorUnknown
+    case 1: self = .errorDatabase
+    case 2: self = .errorVideoNotFound
+    case 3: self = .errorTagNotFound
+    case 4: self = .errorCollectionNotFound
+    case 5: self = .errorMetadataExtractionFailed
+    case 6: self = .errorThumbnailGenerationFailed
+    case 7: self = .errorFileNotFound
+    case 8: self = .errorInvalidPath
+    case 9: self = .errorDuplicateEntry
+    case 10: self = .errorIo
+    case 11: self = .errorConfig
+    case 12: self = .errorFfmpeg
+    case 13: self = .errorInvalidRequest
+    case 14: self = .errorInternal
+    default: self = .UNRECOGNIZED(rawValue)
+    }
+  }
+
+  public var rawValue: Int {
+    switch self {
+    case .errorUnknown: return 0
+    case .errorDatabase: return 1
+    case .errorVideoNotFound: return 2
+    case .errorTagNotFound: return 3
+    case .errorCollectionNotFound: return 4
+    case .errorMetadataExtractionFailed: return 5
+    case .errorThumbnailGenerationFailed: return 6
+    case .errorFileNotFound: return 7
+    case .errorInvalidPath: return 8
+    case .errorDuplicateEntry: return 9
+    case .errorIo: return 10
+    case .errorConfig: return 11
+    case .errorFfmpeg: return 12
+    case .errorInvalidRequest: return 13
+    case .errorInternal: return 14
+    case .UNRECOGNIZED(let i): return i
+    }
+  }
+
+  // The compiler won't synthesize support with the UNRECOGNIZED case.
+  public static let allCases: [Reelvault_ErrorCode] = [
+    .errorUnknown,
+    .errorDatabase,
+    .errorVideoNotFound,
+    .errorTagNotFound,
+    .errorCollectionNotFound,
+    .errorMetadataExtractionFailed,
+    .errorThumbnailGenerationFailed,
+    .errorFileNotFound,
+    .errorInvalidPath,
+    .errorDuplicateEntry,
+    .errorIo,
+    .errorConfig,
+    .errorFfmpeg,
+    .errorInvalidRequest,
+    .errorInternal,
+  ]
+
+}
+
 /// A single generic metadata filter. `key` is a canonical metadata token
 /// recognized by the daemon's metadata-key registry (see
 /// core/src/metadata_keys.rs) — one of `camera`, `lens`, `codec`, `year`,
@@ -2289,6 +2378,12 @@ public nonisolated struct Reelvault_CatalogEvent: Sendable {
 
     /// The pass drained; clients clear the panel.
     case postIndexCompleted // = 10
+
+    /// An UNPAIRED device on the LAN asked to pair (hit POST /pair/request).
+    /// Desktop/macOS clients pop an "allow this device?" banner; `message`
+    /// carries the device name. Lets the daemon prompt the user instead of the
+    /// user having to pre-emptively open "Pair a New Device".
+    case pairingRequested // = 11
     case UNRECOGNIZED(Int)
 
     public init() {
@@ -2308,6 +2403,7 @@ public nonisolated struct Reelvault_CatalogEvent: Sendable {
       case 8: self = .postIndexStarted
       case 9: self = .postIndexProgress
       case 10: self = .postIndexCompleted
+      case 11: self = .pairingRequested
       default: self = .UNRECOGNIZED(rawValue)
       }
     }
@@ -2325,6 +2421,7 @@ public nonisolated struct Reelvault_CatalogEvent: Sendable {
       case .postIndexStarted: return 8
       case .postIndexProgress: return 9
       case .postIndexCompleted: return 10
+      case .pairingRequested: return 11
       case .UNRECOGNIZED(let i): return i
       }
     }
@@ -2342,6 +2439,7 @@ public nonisolated struct Reelvault_CatalogEvent: Sendable {
       .postIndexStarted,
       .postIndexProgress,
       .postIndexCompleted,
+      .pairingRequested,
     ]
 
   }
@@ -2634,6 +2732,9 @@ public nonisolated struct Reelvault_Response: Sendable {
 
   public var error: String = String()
 
+  /// Structured error code; ERROR_UNKNOWN (0) when success is true.
+  public var errorCode: Int32 = 0
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -2649,6 +2750,10 @@ nonisolated extension Reelvault_AttributeFilter: SwiftProtobuf._ProtoNameProvidi
 
 nonisolated extension Reelvault_FullResolutionStatus: SwiftProtobuf._ProtoNameProviding {
   public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0FULL_RESOLUTION_STATUS_UNSPECIFIED\0\u{1}FULL_RESOLUTION_STATUS_FULL\0\u{1}FULL_RESOLUTION_STATUS_NOT_FULL\0")
+}
+
+nonisolated extension Reelvault_ErrorCode: SwiftProtobuf._ProtoNameProviding {
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0ERROR_UNKNOWN\0\u{1}ERROR_DATABASE\0\u{1}ERROR_VIDEO_NOT_FOUND\0\u{1}ERROR_TAG_NOT_FOUND\0\u{1}ERROR_COLLECTION_NOT_FOUND\0\u{1}ERROR_METADATA_EXTRACTION_FAILED\0\u{1}ERROR_THUMBNAIL_GENERATION_FAILED\0\u{1}ERROR_FILE_NOT_FOUND\0\u{1}ERROR_INVALID_PATH\0\u{1}ERROR_DUPLICATE_ENTRY\0\u{1}ERROR_IO\0\u{1}ERROR_CONFIG\0\u{1}ERROR_FFMPEG\0\u{1}ERROR_INVALID_REQUEST\0\u{1}ERROR_INTERNAL\0")
 }
 
 nonisolated extension Reelvault_MetadataFilter: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
@@ -6706,7 +6811,7 @@ nonisolated extension Reelvault_CatalogEvent: SwiftProtobuf.Message, SwiftProtob
 }
 
 nonisolated extension Reelvault_CatalogEvent.Kind: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0KIND_UNSPECIFIED\0\u{1}VIDEO_ADDED\0\u{1}VIDEO_MODIFIED\0\u{1}VIDEO_REMOVED\0\u{1}WATCHER_STARTED\0\u{1}WATCHER_DISABLED\0\u{1}SCAN_STARTED\0\u{1}SCAN_COMPLETED\0\u{1}POST_INDEX_STARTED\0\u{1}POST_INDEX_PROGRESS\0\u{1}POST_INDEX_COMPLETED\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0KIND_UNSPECIFIED\0\u{1}VIDEO_ADDED\0\u{1}VIDEO_MODIFIED\0\u{1}VIDEO_REMOVED\0\u{1}WATCHER_STARTED\0\u{1}WATCHER_DISABLED\0\u{1}SCAN_STARTED\0\u{1}SCAN_COMPLETED\0\u{1}POST_INDEX_STARTED\0\u{1}POST_INDEX_PROGRESS\0\u{1}POST_INDEX_COMPLETED\0\u{1}PAIRING_REQUESTED\0")
 }
 
 nonisolated extension Reelvault_PostIndexProgress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
@@ -7202,7 +7307,7 @@ nonisolated extension Reelvault_SetLensNameMappingRequest: SwiftProtobuf.Message
 
 nonisolated extension Reelvault_Response: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Response"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}success\0\u{1}message\0\u{1}error\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}success\0\u{1}message\0\u{1}error\0\u{3}error_code\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -7213,6 +7318,7 @@ nonisolated extension Reelvault_Response: SwiftProtobuf.Message, SwiftProtobuf._
       case 1: try { try decoder.decodeSingularBoolField(value: &self.success) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.message) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.error) }()
+      case 4: try { try decoder.decodeSingularInt32Field(value: &self.errorCode) }()
       default: break
       }
     }
@@ -7228,6 +7334,9 @@ nonisolated extension Reelvault_Response: SwiftProtobuf.Message, SwiftProtobuf._
     if !self.error.isEmpty {
       try visitor.visitSingularStringField(value: self.error, fieldNumber: 3)
     }
+    if self.errorCode != 0 {
+      try visitor.visitSingularInt32Field(value: self.errorCode, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -7235,6 +7344,7 @@ nonisolated extension Reelvault_Response: SwiftProtobuf.Message, SwiftProtobuf._
     if lhs.success != rhs.success {return false}
     if lhs.message != rhs.message {return false}
     if lhs.error != rhs.error {return false}
+    if lhs.errorCode != rhs.errorCode {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

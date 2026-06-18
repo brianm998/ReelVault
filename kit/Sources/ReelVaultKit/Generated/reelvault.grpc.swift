@@ -18,13 +18,13 @@ import GRPCProtobuf
 
 /// Namespace containing generated types for the "reelvault.ReelVault" service.
 @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-public enum Reelvault_ReelVault {
+public enum Reelvault_ReelVault: Sendable {
     /// Service descriptor for the "reelvault.ReelVault" service.
     public static let descriptor = GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault")
     /// Namespace for method metadata.
-    public enum Method {
+    public enum Method: Sendable {
         /// Namespace for "ListVideos" metadata.
-        public enum ListVideos {
+        public enum ListVideos: Sendable {
             /// Request type for "ListVideos".
             public typealias Input = Reelvault_ListVideosRequest
             /// Response type for "ListVideos".
@@ -32,11 +32,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListVideos".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListVideos"
+                method: "ListVideos",
+                type: .unary
             )
         }
         /// Namespace for "SearchVideos" metadata.
-        public enum SearchVideos {
+        public enum SearchVideos: Sendable {
             /// Request type for "SearchVideos".
             public typealias Input = Reelvault_SearchRequest
             /// Response type for "SearchVideos".
@@ -44,11 +45,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "SearchVideos".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "SearchVideos"
+                method: "SearchVideos",
+                type: .unary
             )
         }
         /// Namespace for "GetMetadata" metadata.
-        public enum GetMetadata {
+        public enum GetMetadata: Sendable {
             /// Request type for "GetMetadata".
             public typealias Input = Reelvault_GetMetadataRequest
             /// Response type for "GetMetadata".
@@ -56,11 +58,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetMetadata".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetMetadata"
+                method: "GetMetadata",
+                type: .unary
             )
         }
         /// Namespace for "GetThumbnail" metadata.
-        public enum GetThumbnail {
+        public enum GetThumbnail: Sendable {
             /// Request type for "GetThumbnail".
             public typealias Input = Reelvault_GetThumbnailRequest
             /// Response type for "GetThumbnail".
@@ -68,11 +71,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetThumbnail".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetThumbnail"
+                method: "GetThumbnail",
+                type: .serverStreaming
             )
         }
         /// Namespace for "AddLibraryLocation" metadata.
-        public enum AddLibraryLocation {
+        public enum AddLibraryLocation: Sendable {
             /// Request type for "AddLibraryLocation".
             public typealias Input = Reelvault_AddLocationRequest
             /// Response type for "AddLibraryLocation".
@@ -80,11 +84,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "AddLibraryLocation".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "AddLibraryLocation"
+                method: "AddLibraryLocation",
+                type: .unary
             )
         }
         /// Namespace for "RemoveLibraryLocation" metadata.
-        public enum RemoveLibraryLocation {
+        public enum RemoveLibraryLocation: Sendable {
             /// Request type for "RemoveLibraryLocation".
             public typealias Input = Reelvault_RemoveLocationRequest
             /// Response type for "RemoveLibraryLocation".
@@ -92,11 +97,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "RemoveLibraryLocation".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "RemoveLibraryLocation"
+                method: "RemoveLibraryLocation",
+                type: .unary
             )
         }
         /// Namespace for "ListLibraryLocations" metadata.
-        public enum ListLibraryLocations {
+        public enum ListLibraryLocations: Sendable {
             /// Request type for "ListLibraryLocations".
             public typealias Input = Reelvault_ListLocationsRequest
             /// Response type for "ListLibraryLocations".
@@ -104,11 +110,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListLibraryLocations".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListLibraryLocations"
+                method: "ListLibraryLocations",
+                type: .unary
             )
         }
         /// Namespace for "ListSubdirectories" metadata.
-        public enum ListSubdirectories {
+        public enum ListSubdirectories: Sendable {
             /// Request type for "ListSubdirectories".
             public typealias Input = Reelvault_ListSubdirectoriesRequest
             /// Response type for "ListSubdirectories".
@@ -116,11 +123,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListSubdirectories".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListSubdirectories"
+                method: "ListSubdirectories",
+                type: .unary
             )
         }
         /// Namespace for "ScanLibrary" metadata.
-        public enum ScanLibrary {
+        public enum ScanLibrary: Sendable {
             /// Request type for "ScanLibrary".
             public typealias Input = Reelvault_ScanLibraryRequest
             /// Response type for "ScanLibrary".
@@ -128,11 +136,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ScanLibrary".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ScanLibrary"
+                method: "ScanLibrary",
+                type: .serverStreaming
             )
         }
         /// Namespace for "GetScanStatus" metadata.
-        public enum GetScanStatus {
+        public enum GetScanStatus: Sendable {
             /// Request type for "GetScanStatus".
             public typealias Input = Reelvault_GetScanStatusRequest
             /// Response type for "GetScanStatus".
@@ -140,11 +149,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetScanStatus".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetScanStatus"
+                method: "GetScanStatus",
+                type: .unary
             )
         }
         /// Namespace for "CreateTag" metadata.
-        public enum CreateTag {
+        public enum CreateTag: Sendable {
             /// Request type for "CreateTag".
             public typealias Input = Reelvault_CreateTagRequest
             /// Response type for "CreateTag".
@@ -152,11 +162,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "CreateTag".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "CreateTag"
+                method: "CreateTag",
+                type: .unary
             )
         }
         /// Namespace for "DeleteTag" metadata.
-        public enum DeleteTag {
+        public enum DeleteTag: Sendable {
             /// Request type for "DeleteTag".
             public typealias Input = Reelvault_DeleteTagRequest
             /// Response type for "DeleteTag".
@@ -164,11 +175,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "DeleteTag".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "DeleteTag"
+                method: "DeleteTag",
+                type: .unary
             )
         }
         /// Namespace for "ListTags" metadata.
-        public enum ListTags {
+        public enum ListTags: Sendable {
             /// Request type for "ListTags".
             public typealias Input = Reelvault_ListTagsRequest
             /// Response type for "ListTags".
@@ -176,11 +188,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListTags".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListTags"
+                method: "ListTags",
+                type: .unary
             )
         }
         /// Namespace for "TagVideos" metadata.
-        public enum TagVideos {
+        public enum TagVideos: Sendable {
             /// Request type for "TagVideos".
             public typealias Input = Reelvault_TagVideosRequest
             /// Response type for "TagVideos".
@@ -188,11 +201,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "TagVideos".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "TagVideos"
+                method: "TagVideos",
+                type: .unary
             )
         }
         /// Namespace for "UntagVideos" metadata.
-        public enum UntagVideos {
+        public enum UntagVideos: Sendable {
             /// Request type for "UntagVideos".
             public typealias Input = Reelvault_UntagVideosRequest
             /// Response type for "UntagVideos".
@@ -200,11 +214,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UntagVideos".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UntagVideos"
+                method: "UntagVideos",
+                type: .unary
             )
         }
         /// Namespace for "CreateCollection" metadata.
-        public enum CreateCollection {
+        public enum CreateCollection: Sendable {
             /// Request type for "CreateCollection".
             public typealias Input = Reelvault_CreateCollectionRequest
             /// Response type for "CreateCollection".
@@ -212,11 +227,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "CreateCollection".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "CreateCollection"
+                method: "CreateCollection",
+                type: .unary
             )
         }
         /// Namespace for "DeleteCollection" metadata.
-        public enum DeleteCollection {
+        public enum DeleteCollection: Sendable {
             /// Request type for "DeleteCollection".
             public typealias Input = Reelvault_DeleteCollectionRequest
             /// Response type for "DeleteCollection".
@@ -224,11 +240,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "DeleteCollection".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "DeleteCollection"
+                method: "DeleteCollection",
+                type: .unary
             )
         }
         /// Namespace for "ListCollections" metadata.
-        public enum ListCollections {
+        public enum ListCollections: Sendable {
             /// Request type for "ListCollections".
             public typealias Input = Reelvault_ListCollectionsRequest
             /// Response type for "ListCollections".
@@ -236,11 +253,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListCollections".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListCollections"
+                method: "ListCollections",
+                type: .unary
             )
         }
         /// Namespace for "AddToCollection" metadata.
-        public enum AddToCollection {
+        public enum AddToCollection: Sendable {
             /// Request type for "AddToCollection".
             public typealias Input = Reelvault_AddToCollectionRequest
             /// Response type for "AddToCollection".
@@ -248,11 +266,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "AddToCollection".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "AddToCollection"
+                method: "AddToCollection",
+                type: .unary
             )
         }
         /// Namespace for "RemoveFromCollection" metadata.
-        public enum RemoveFromCollection {
+        public enum RemoveFromCollection: Sendable {
             /// Request type for "RemoveFromCollection".
             public typealias Input = Reelvault_RemoveFromCollectionRequest
             /// Response type for "RemoveFromCollection".
@@ -260,11 +279,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "RemoveFromCollection".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "RemoveFromCollection"
+                method: "RemoveFromCollection",
+                type: .unary
             )
         }
         /// Namespace for "UpdateVideoNotes" metadata.
-        public enum UpdateVideoNotes {
+        public enum UpdateVideoNotes: Sendable {
             /// Request type for "UpdateVideoNotes".
             public typealias Input = Reelvault_UpdateNotesRequest
             /// Response type for "UpdateVideoNotes".
@@ -272,11 +292,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UpdateVideoNotes".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateVideoNotes"
+                method: "UpdateVideoNotes",
+                type: .unary
             )
         }
         /// Namespace for "DeleteVideo" metadata.
-        public enum DeleteVideo {
+        public enum DeleteVideo: Sendable {
             /// Request type for "DeleteVideo".
             public typealias Input = Reelvault_DeleteVideoRequest
             /// Response type for "DeleteVideo".
@@ -284,11 +305,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "DeleteVideo".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "DeleteVideo"
+                method: "DeleteVideo",
+                type: .unary
             )
         }
         /// Namespace for "ListGroupMembers" metadata.
-        public enum ListGroupMembers {
+        public enum ListGroupMembers: Sendable {
             /// Request type for "ListGroupMembers".
             public typealias Input = Reelvault_ListGroupMembersRequest
             /// Response type for "ListGroupMembers".
@@ -296,11 +318,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListGroupMembers".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListGroupMembers"
+                method: "ListGroupMembers",
+                type: .unary
             )
         }
         /// Namespace for "CreateGroup" metadata.
-        public enum CreateGroup {
+        public enum CreateGroup: Sendable {
             /// Request type for "CreateGroup".
             public typealias Input = Reelvault_CreateGroupRequest
             /// Response type for "CreateGroup".
@@ -308,11 +331,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "CreateGroup".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "CreateGroup"
+                method: "CreateGroup",
+                type: .unary
             )
         }
         /// Namespace for "UngroupVideo" metadata.
-        public enum UngroupVideo {
+        public enum UngroupVideo: Sendable {
             /// Request type for "UngroupVideo".
             public typealias Input = Reelvault_UngroupVideoRequest
             /// Response type for "UngroupVideo".
@@ -320,11 +344,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UngroupVideo".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UngroupVideo"
+                method: "UngroupVideo",
+                type: .unary
             )
         }
         /// Namespace for "SetGroupPreferred" metadata.
-        public enum SetGroupPreferred {
+        public enum SetGroupPreferred: Sendable {
             /// Request type for "SetGroupPreferred".
             public typealias Input = Reelvault_SetGroupPreferredRequest
             /// Response type for "SetGroupPreferred".
@@ -332,11 +357,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "SetGroupPreferred".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "SetGroupPreferred"
+                method: "SetGroupPreferred",
+                type: .unary
             )
         }
         /// Namespace for "AutoGroupVideos" metadata.
-        public enum AutoGroupVideos {
+        public enum AutoGroupVideos: Sendable {
             /// Request type for "AutoGroupVideos".
             public typealias Input = Reelvault_AutoGroupRequest
             /// Response type for "AutoGroupVideos".
@@ -344,11 +370,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "AutoGroupVideos".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "AutoGroupVideos"
+                method: "AutoGroupVideos",
+                type: .unary
             )
         }
         /// Namespace for "GenerateProxy" metadata.
-        public enum GenerateProxy {
+        public enum GenerateProxy: Sendable {
             /// Request type for "GenerateProxy".
             public typealias Input = Reelvault_GenerateProxyRequest
             /// Response type for "GenerateProxy".
@@ -356,11 +383,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GenerateProxy".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GenerateProxy"
+                method: "GenerateProxy",
+                type: .serverStreaming
             )
         }
         /// Namespace for "ListProxies" metadata.
-        public enum ListProxies {
+        public enum ListProxies: Sendable {
             /// Request type for "ListProxies".
             public typealias Input = Reelvault_ListProxiesRequest
             /// Response type for "ListProxies".
@@ -368,11 +396,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListProxies".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListProxies"
+                method: "ListProxies",
+                type: .unary
             )
         }
         /// Namespace for "SetProxyOf" metadata.
-        public enum SetProxyOf {
+        public enum SetProxyOf: Sendable {
             /// Request type for "SetProxyOf".
             public typealias Input = Reelvault_SetProxyOfRequest
             /// Response type for "SetProxyOf".
@@ -380,11 +409,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "SetProxyOf".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "SetProxyOf"
+                method: "SetProxyOf",
+                type: .unary
             )
         }
         /// Namespace for "RemoveProxyLink" metadata.
-        public enum RemoveProxyLink {
+        public enum RemoveProxyLink: Sendable {
             /// Request type for "RemoveProxyLink".
             public typealias Input = Reelvault_RemoveProxyLinkRequest
             /// Response type for "RemoveProxyLink".
@@ -392,11 +422,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "RemoveProxyLink".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "RemoveProxyLink"
+                method: "RemoveProxyLink",
+                type: .unary
             )
         }
         /// Namespace for "DetectProxies" metadata.
-        public enum DetectProxies {
+        public enum DetectProxies: Sendable {
             /// Request type for "DetectProxies".
             public typealias Input = Reelvault_DetectProxiesRequest
             /// Response type for "DetectProxies".
@@ -404,11 +435,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "DetectProxies".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "DetectProxies"
+                method: "DetectProxies",
+                type: .unary
             )
         }
         /// Namespace for "AttachProxies" metadata.
-        public enum AttachProxies {
+        public enum AttachProxies: Sendable {
             /// Request type for "AttachProxies".
             public typealias Input = Reelvault_AttachProxiesRequest
             /// Response type for "AttachProxies".
@@ -416,11 +448,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "AttachProxies".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "AttachProxies"
+                method: "AttachProxies",
+                type: .unary
             )
         }
         /// Namespace for "GetFilterOptions" metadata.
-        public enum GetFilterOptions {
+        public enum GetFilterOptions: Sendable {
             /// Request type for "GetFilterOptions".
             public typealias Input = Reelvault_GetFilterOptionsRequest
             /// Response type for "GetFilterOptions".
@@ -428,11 +461,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetFilterOptions".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetFilterOptions"
+                method: "GetFilterOptions",
+                type: .unary
             )
         }
         /// Namespace for "GetMetadataFacets" metadata.
-        public enum GetMetadataFacets {
+        public enum GetMetadataFacets: Sendable {
             /// Request type for "GetMetadataFacets".
             public typealias Input = Reelvault_MetadataFacetsRequest
             /// Response type for "GetMetadataFacets".
@@ -440,11 +474,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetMetadataFacets".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetMetadataFacets"
+                method: "GetMetadataFacets",
+                type: .unary
             )
         }
         /// Namespace for "GetStatus" metadata.
-        public enum GetStatus {
+        public enum GetStatus: Sendable {
             /// Request type for "GetStatus".
             public typealias Input = Reelvault_GetStatusRequest
             /// Response type for "GetStatus".
@@ -452,11 +487,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetStatus".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetStatus"
+                method: "GetStatus",
+                type: .unary
             )
         }
         /// Namespace for "GetConfig" metadata.
-        public enum GetConfig {
+        public enum GetConfig: Sendable {
             /// Request type for "GetConfig".
             public typealias Input = Reelvault_GetConfigRequest
             /// Response type for "GetConfig".
@@ -464,11 +500,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetConfig".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetConfig"
+                method: "GetConfig",
+                type: .unary
             )
         }
         /// Namespace for "UpdateConfig" metadata.
-        public enum UpdateConfig {
+        public enum UpdateConfig: Sendable {
             /// Request type for "UpdateConfig".
             public typealias Input = Reelvault_UpdateConfigRequest
             /// Response type for "UpdateConfig".
@@ -476,11 +513,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UpdateConfig".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateConfig"
+                method: "UpdateConfig",
+                type: .unary
             )
         }
         /// Namespace for "StartPairing" metadata.
-        public enum StartPairing {
+        public enum StartPairing: Sendable {
             /// Request type for "StartPairing".
             public typealias Input = Reelvault_StartPairingRequest
             /// Response type for "StartPairing".
@@ -488,11 +526,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "StartPairing".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "StartPairing"
+                method: "StartPairing",
+                type: .unary
             )
         }
         /// Namespace for "OpenCatalog" metadata.
-        public enum OpenCatalog {
+        public enum OpenCatalog: Sendable {
             /// Request type for "OpenCatalog".
             public typealias Input = Reelvault_OpenCatalogRequest
             /// Response type for "OpenCatalog".
@@ -500,11 +539,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "OpenCatalog".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "OpenCatalog"
+                method: "OpenCatalog",
+                type: .unary
             )
         }
         /// Namespace for "CloseCatalog" metadata.
-        public enum CloseCatalog {
+        public enum CloseCatalog: Sendable {
             /// Request type for "CloseCatalog".
             public typealias Input = Reelvault_CloseCatalogRequest
             /// Response type for "CloseCatalog".
@@ -512,11 +552,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "CloseCatalog".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "CloseCatalog"
+                method: "CloseCatalog",
+                type: .unary
             )
         }
         /// Namespace for "GetCurrentCatalog" metadata.
-        public enum GetCurrentCatalog {
+        public enum GetCurrentCatalog: Sendable {
             /// Request type for "GetCurrentCatalog".
             public typealias Input = Reelvault_GetCurrentCatalogRequest
             /// Response type for "GetCurrentCatalog".
@@ -524,11 +565,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetCurrentCatalog".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetCurrentCatalog"
+                method: "GetCurrentCatalog",
+                type: .unary
             )
         }
         /// Namespace for "UpdateVideoLocation" metadata.
-        public enum UpdateVideoLocation {
+        public enum UpdateVideoLocation: Sendable {
             /// Request type for "UpdateVideoLocation".
             public typealias Input = Reelvault_UpdateVideoLocationRequest
             /// Response type for "UpdateVideoLocation".
@@ -536,11 +578,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UpdateVideoLocation".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateVideoLocation"
+                method: "UpdateVideoLocation",
+                type: .unary
             )
         }
         /// Namespace for "ListVideosWithLocations" metadata.
-        public enum ListVideosWithLocations {
+        public enum ListVideosWithLocations: Sendable {
             /// Request type for "ListVideosWithLocations".
             public typealias Input = Reelvault_ListVideosWithLocationsRequest
             /// Response type for "ListVideosWithLocations".
@@ -548,11 +591,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListVideosWithLocations".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListVideosWithLocations"
+                method: "ListVideosWithLocations",
+                type: .unary
             )
         }
         /// Namespace for "ListNamedLocations" metadata.
-        public enum ListNamedLocations {
+        public enum ListNamedLocations: Sendable {
             /// Request type for "ListNamedLocations".
             public typealias Input = Reelvault_ListNamedLocationsRequest
             /// Response type for "ListNamedLocations".
@@ -560,11 +604,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListNamedLocations".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListNamedLocations"
+                method: "ListNamedLocations",
+                type: .unary
             )
         }
         /// Namespace for "UpsertNamedLocation" metadata.
-        public enum UpsertNamedLocation {
+        public enum UpsertNamedLocation: Sendable {
             /// Request type for "UpsertNamedLocation".
             public typealias Input = Reelvault_UpsertNamedLocationRequest
             /// Response type for "UpsertNamedLocation".
@@ -572,11 +617,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UpsertNamedLocation".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpsertNamedLocation"
+                method: "UpsertNamedLocation",
+                type: .unary
             )
         }
         /// Namespace for "DeleteNamedLocation" metadata.
-        public enum DeleteNamedLocation {
+        public enum DeleteNamedLocation: Sendable {
             /// Request type for "DeleteNamedLocation".
             public typealias Input = Reelvault_DeleteNamedLocationRequest
             /// Response type for "DeleteNamedLocation".
@@ -584,11 +630,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "DeleteNamedLocation".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "DeleteNamedLocation"
+                method: "DeleteNamedLocation",
+                type: .unary
             )
         }
         /// Namespace for "UpdateVideoCaptureDate" metadata.
-        public enum UpdateVideoCaptureDate {
+        public enum UpdateVideoCaptureDate: Sendable {
             /// Request type for "UpdateVideoCaptureDate".
             public typealias Input = Reelvault_UpdateVideoCaptureDateRequest
             /// Response type for "UpdateVideoCaptureDate".
@@ -596,11 +643,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UpdateVideoCaptureDate".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateVideoCaptureDate"
+                method: "UpdateVideoCaptureDate",
+                type: .unary
             )
         }
         /// Namespace for "UpdateVideoRating" metadata.
-        public enum UpdateVideoRating {
+        public enum UpdateVideoRating: Sendable {
             /// Request type for "UpdateVideoRating".
             public typealias Input = Reelvault_UpdateVideoRatingRequest
             /// Response type for "UpdateVideoRating".
@@ -608,11 +656,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UpdateVideoRating".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateVideoRating"
+                method: "UpdateVideoRating",
+                type: .unary
             )
         }
         /// Namespace for "UpdateVideoColorLabel" metadata.
-        public enum UpdateVideoColorLabel {
+        public enum UpdateVideoColorLabel: Sendable {
             /// Request type for "UpdateVideoColorLabel".
             public typealias Input = Reelvault_UpdateVideoColorLabelRequest
             /// Response type for "UpdateVideoColorLabel".
@@ -620,11 +669,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UpdateVideoColorLabel".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateVideoColorLabel"
+                method: "UpdateVideoColorLabel",
+                type: .unary
             )
         }
         /// Namespace for "GetGridSettings" metadata.
-        public enum GetGridSettings {
+        public enum GetGridSettings: Sendable {
             /// Request type for "GetGridSettings".
             public typealias Input = Reelvault_GetGridSettingsRequest
             /// Response type for "GetGridSettings".
@@ -632,11 +682,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetGridSettings".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetGridSettings"
+                method: "GetGridSettings",
+                type: .unary
             )
         }
         /// Namespace for "UpdateGridSettings" metadata.
-        public enum UpdateGridSettings {
+        public enum UpdateGridSettings: Sendable {
             /// Request type for "UpdateGridSettings".
             public typealias Input = Reelvault_GridSettings
             /// Response type for "UpdateGridSettings".
@@ -644,11 +695,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UpdateGridSettings".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateGridSettings"
+                method: "UpdateGridSettings",
+                type: .unary
             )
         }
         /// Namespace for "SubscribeCatalogEvents" metadata.
-        public enum SubscribeCatalogEvents {
+        public enum SubscribeCatalogEvents: Sendable {
             /// Request type for "SubscribeCatalogEvents".
             public typealias Input = Reelvault_SubscribeCatalogEventsRequest
             /// Response type for "SubscribeCatalogEvents".
@@ -656,11 +708,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "SubscribeCatalogEvents".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "SubscribeCatalogEvents"
+                method: "SubscribeCatalogEvents",
+                type: .serverStreaming
             )
         }
         /// Namespace for "GetWatchSettings" metadata.
-        public enum GetWatchSettings {
+        public enum GetWatchSettings: Sendable {
             /// Request type for "GetWatchSettings".
             public typealias Input = Reelvault_GetWatchSettingsRequest
             /// Response type for "GetWatchSettings".
@@ -668,11 +721,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "GetWatchSettings".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetWatchSettings"
+                method: "GetWatchSettings",
+                type: .unary
             )
         }
         /// Namespace for "UpdateWatchSettings" metadata.
-        public enum UpdateWatchSettings {
+        public enum UpdateWatchSettings: Sendable {
             /// Request type for "UpdateWatchSettings".
             public typealias Input = Reelvault_WatchSettings
             /// Response type for "UpdateWatchSettings".
@@ -680,11 +734,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "UpdateWatchSettings".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateWatchSettings"
+                method: "UpdateWatchSettings",
+                type: .unary
             )
         }
         /// Namespace for "ListCameraNameMappings" metadata.
-        public enum ListCameraNameMappings {
+        public enum ListCameraNameMappings: Sendable {
             /// Request type for "ListCameraNameMappings".
             public typealias Input = Reelvault_ListCameraNameMappingsRequest
             /// Response type for "ListCameraNameMappings".
@@ -692,11 +747,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListCameraNameMappings".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListCameraNameMappings"
+                method: "ListCameraNameMappings",
+                type: .unary
             )
         }
         /// Namespace for "SetCameraNameMapping" metadata.
-        public enum SetCameraNameMapping {
+        public enum SetCameraNameMapping: Sendable {
             /// Request type for "SetCameraNameMapping".
             public typealias Input = Reelvault_SetCameraNameMappingRequest
             /// Response type for "SetCameraNameMapping".
@@ -704,11 +760,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "SetCameraNameMapping".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "SetCameraNameMapping"
+                method: "SetCameraNameMapping",
+                type: .unary
             )
         }
         /// Namespace for "ListLensNameMappings" metadata.
-        public enum ListLensNameMappings {
+        public enum ListLensNameMappings: Sendable {
             /// Request type for "ListLensNameMappings".
             public typealias Input = Reelvault_ListLensNameMappingsRequest
             /// Response type for "ListLensNameMappings".
@@ -716,11 +773,12 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "ListLensNameMappings".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListLensNameMappings"
+                method: "ListLensNameMappings",
+                type: .unary
             )
         }
         /// Namespace for "SetLensNameMapping" metadata.
-        public enum SetLensNameMapping {
+        public enum SetLensNameMapping: Sendable {
             /// Request type for "SetLensNameMapping".
             public typealias Input = Reelvault_SetLensNameMappingRequest
             /// Response type for "SetLensNameMapping".
@@ -728,7 +786,8 @@ public enum Reelvault_ReelVault {
             /// Descriptor for "SetLensNameMapping".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "SetLensNameMapping"
+                method: "SetLensNameMapping",
+                type: .unary
             )
         }
         /// Descriptors for all methods in the "reelvault.ReelVault" service.
