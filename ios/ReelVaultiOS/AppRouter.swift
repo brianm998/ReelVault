@@ -184,7 +184,7 @@ final class AppRouter: ObservableObject {
                 fingerprintHex: pin, pin: code, deviceName: Self.deviceName()
             )
             guard let token else {
-                self.phase = .failed("Pairing failed — check the code and try again.")
+                self.phase = .failed(String(localized: "Pairing failed — check the code and try again."))
                 return
             }
             TokenStore.save(token, for: pin)
@@ -292,7 +292,7 @@ final class AppRouter: ObservableObject {
             let port = await Task.detached { LocalCore.start() }.value
             guard let port else {
                 NSLog("ReelVault local: embedded core failed to start")
-                self.phase = .failed("Could not start the on-device library.")
+                self.phase = .failed(String(localized: "Could not start the on-device library."))
                 return
             }
             NSLog("ReelVault local: embedded core on port \(port); connecting…")

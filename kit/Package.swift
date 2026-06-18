@@ -35,7 +35,8 @@ let package = Package(
                 .product(name: "GRPCCore", package: "grpc-swift"),
                 .product(name: "GRPCProtobuf", package: "grpc-swift-protobuf"),
                 .product(name: "GRPCNIOTransportHTTP2", package: "grpc-swift-nio-transport"),
-            ]
+            ],
+            resources: [.process("Resources")]
         ),
         .testTarget(
             name: "ReelVaultKitTests",

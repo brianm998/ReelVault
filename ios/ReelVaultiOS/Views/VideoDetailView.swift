@@ -358,7 +358,7 @@ final class StreamPlayer: ObservableObject {
             return
         }
         guard let item else {
-            error = "Couldn't open this video on-device."
+            error = String(localized: "Couldn't open this video on-device.")
             NSLog("ReelVault: local playback could not resolve \(video.id) (path \(path))")
             return
         }
@@ -473,7 +473,7 @@ final class StreamPlayer: ObservableObject {
         let statusURL = proxy.statusURL(videoId: video.id, height: height)
         let start = Date()
         let maxWait: TimeInterval = 60
-        preparingDetail = "Preparing…"
+        preparingDetail = String(localized: "Preparing…")
         // A short window of samples → a smoothed transcode rate that ignores the
         // 0→1 segment jump (which looked like an infinitely fast encoder).
         var samples: [(buffered: Double, at: Date)] = []
@@ -498,7 +498,7 @@ final class StreamPlayer: ObservableObject {
                     let eta = max(0, (durationSec - buffered) / rate)
                     preparingDetail = "Preparing… ready in ~\(Int(eta.rounded()))s"
                 } else {
-                    preparingDetail = "Preparing…"
+                    preparingDetail = String(localized: "Preparing…")
                 }
             }
             try? await Task.sleep(nanoseconds: 1_000_000_000)
@@ -566,7 +566,7 @@ final class StreamPlayer: ObservableObject {
                 self.player = nil
                 self.preparedVideoId = nil
                 self.preparedHeight = nil
-                self.error = "Couldn't play this video. Tap play to try again."
+                self.error = String(localized: "Couldn't play this video. Tap play to try again.")
             }
         }
         // The decoded video size becomes known once the track loads; surface its
@@ -782,8 +782,8 @@ struct RenditionPicker: View {
     /// the user knows what "Auto"/"Original" resolved to (issue: Auto gave no hint).
     private var currentLabel: String {
         switch stream.renditionOverride {
-        case nil: return stream.playingHeight.map { "Auto (\($0)p)" } ?? "Auto"
-        case 0: return stream.playingHeight.map { "Original (\($0)p)" } ?? originalLabel
+        case nil: return stream.playingHeight.map { String(format: String(localized: "Auto (%ldp)"), $0) } ?? String(localized: "Auto")
+        case 0: return stream.playingHeight.map { String(format: String(localized: "Original (%ldp)"), $0) } ?? originalLabel
         case let h?: return "\(h)p"
         }
     }
@@ -791,14 +791,14 @@ struct RenditionPicker: View {
     /// Auto menu row: annotate with the resolved height only while Auto is the
     /// active choice (that's when `playingHeight` reflects Auto's pick).
     private var autoMenuLabel: String {
-        if stream.renditionOverride == nil, let h = stream.playingHeight { return "Auto (\(h)p)" }
-        return "Auto"
+        if stream.renditionOverride == nil, let h = stream.playingHeight { return String(format: String(localized: "Auto (%ldp)"), h) }
+        return String(localized: "Auto")
     }
 
     /// "Original (2160p)" using the source's own resolution (so the menu names the
     /// full quality), or just "Original" when the height is unknown.
     private var originalLabel: String {
-        video.height > 0 ? "Original (\(video.height)p)" : "Original (full)"
+        video.height > 0 ? String(format: String(localized: "Original (%ldp)"), video.height) : String(localized: "Original (full)")
     }
 
     private func proxyLabel(_ p: VideoRepository.ProxyInfo) -> String {

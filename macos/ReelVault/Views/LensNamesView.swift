@@ -246,7 +246,7 @@ struct LensNamesView: View {
             }
         } catch {
             await MainActor.run {
-                self.errorMessage = "Failed to load lens names: \(error.localizedDescription)"
+                self.errorMessage = String(format: String(localized: "Failed to load lens names: %@"), error.localizedDescription)
                 self.isLoading = false
             }
         }
@@ -265,7 +265,7 @@ struct LensNamesView: View {
             await reload()
         } catch {
             await MainActor.run {
-                self.errorMessage = "Failed to save alias: \(error.localizedDescription)"
+                self.errorMessage = String(format: String(localized: "Failed to save alias: %@"), error.localizedDescription)
             }
         }
     }
@@ -277,7 +277,7 @@ struct LensNamesView: View {
             await reload()
         } catch {
             await MainActor.run {
-                self.errorMessage = "Failed to remove alias: \(error.localizedDescription)"
+                self.errorMessage = String(format: String(localized: "Failed to remove alias: %@"), error.localizedDescription)
             }
         }
     }

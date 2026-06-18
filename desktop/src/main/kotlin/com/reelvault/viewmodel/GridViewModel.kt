@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import org.slf4j.LoggerFactory
+import com.reelvault.util.Strings
 import java.util.prefs.Preferences
 
 /**
@@ -922,7 +923,7 @@ class GridViewModel(
                 // newer load owns isLoading / videos.
                 throw e
             } catch (e: Exception) {
-                _error.value = "Failed to load videos: ${e.message}"
+                _error.value = Strings.format("err_failed_load_videos", e.message ?: "")
                 _isLoading.value = false
                 _hasLoadedOnce.value = true
                 logger.error("Failed to load videos", e)
@@ -982,7 +983,7 @@ class GridViewModel(
                 // newer load owns isLoading / videos.
                 throw e
             } catch (e: Exception) {
-                _error.value = "Failed to load more videos: ${e.message}"
+                _error.value = Strings.format("err_failed_load_more_videos", e.message ?: "")
                 _isLoading.value = false
                 logger.error("Failed to load more videos", e)
             }
@@ -1306,10 +1307,10 @@ class GridViewModel(
                     loadVideos()
                     logger.info("Removed library location: $path")
                 } else {
-                    _error.value = "Failed to remove library location"
+                    _error.value = Strings["err_failed_remove_location"]
                 }
             } catch (e: Exception) {
-                _error.value = "Failed to remove library location: ${e.message}"
+                _error.value = Strings.format("err_failed_remove_location_detail", e.message ?: "")
                 logger.error("Failed to remove library location", e)
             }
         }

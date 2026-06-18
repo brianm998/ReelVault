@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import com.reelvault.util.Strings
 import org.slf4j.LoggerFactory
 
 class DetailViewModel(
@@ -168,10 +169,10 @@ class DetailViewModel(
                     onChanged()
                     logger.info("Removed proxy link $masterId → $proxyId")
                 } else {
-                    _error.value = "Failed to remove proxy link"
+                    _error.value = Strings["err_failed_remove_proxy"]
                 }
             } catch (e: Exception) {
-                _error.value = "Failed to remove proxy link: ${e.message}"
+                _error.value = Strings.format("err_failed_remove_proxy_detail", e.message ?: "")
             }
         }
     }
@@ -183,7 +184,7 @@ class DetailViewModel(
     fun forceProxyLink(proxyId: String, onChanged: () -> Unit = {}) {
         val masterId = currentVideoSummary?.id ?: return
         if (masterId == proxyId) {
-            _error.value = "A video can't be a proxy of itself"
+            _error.value = Strings["err_proxy_of_itself"]
             return
         }
         viewModelScope.launch {
@@ -195,10 +196,10 @@ class DetailViewModel(
                     onChanged()
                     logger.info("Added manual proxy link $masterId → $proxyId")
                 } else {
-                    _error.value = "Failed to add proxy link"
+                    _error.value = Strings["err_failed_add_proxy"]
                 }
             } catch (e: Exception) {
-                _error.value = "Failed to add proxy link: ${e.message}"
+                _error.value = Strings.format("err_failed_add_proxy_detail", e.message ?: "")
             }
         }
     }
@@ -280,7 +281,7 @@ class DetailViewModel(
                 onChanged(gid)
                 logger.info("Reordered stack $gid")
             } catch (e: Exception) {
-                _error.value = "Failed to reorder stack: ${e.message}"
+                _error.value = Strings.format("err_failed_reorder_stack", e.message ?: "")
             }
         }
     }
@@ -294,10 +295,10 @@ class DetailViewModel(
                     _groupPreferredId.value = videoId
                     logger.info("Set preferred video to $videoId")
                 } else {
-                    _error.value = "Failed to set preferred video"
+                    _error.value = Strings["err_failed_set_preferred"]
                 }
             } catch (e: Exception) {
-                _error.value = "Failed to set preferred: ${e.message}"
+                _error.value = Strings.format("err_failed_set_preferred_detail", e.message ?: "")
             }
         }
     }
@@ -320,10 +321,10 @@ class DetailViewModel(
                     logger.info("Ungrouped video $videoId")
                     onComplete(oldGroupId)
                 } else {
-                    _error.value = "Failed to ungroup"
+                    _error.value = Strings["err_failed_ungroup"]
                 }
             } catch (e: Exception) {
-                _error.value = "Failed to ungroup: ${e.message}"
+                _error.value = Strings.format("err_failed_ungroup_detail", e.message ?: "")
             }
         }
     }
@@ -343,11 +344,11 @@ class DetailViewModel(
                     loadThumbnail(videoId)
                     logger.info("Loaded metadata for video: ${metadata.filename}")
                 } else {
-                    _error.value = "Video not found"
+                    _error.value = Strings["err_video_not_found"]
                 }
                 _isLoading.value = false
             } catch (e: Exception) {
-                _error.value = "Failed to load metadata: ${e.message}"
+                _error.value = Strings.format("err_failed_load_metadata", e.message ?: "")
                 _isLoading.value = false
                 logger.error("Failed to load metadata for video: $videoId", e)
             }
@@ -377,13 +378,13 @@ class DetailViewModel(
             try {
                 val success = repository.updateVideoNotes(videoId, newNotes)
                 if (!success) {
-                    _error.value = "Failed to update notes"
+                    _error.value = Strings["err_failed_update_notes"]
                     logger.warn("Failed to update notes for video: $videoId")
                 } else {
                     logger.info("Updated notes for video: $videoId")
                 }
             } catch (e: Exception) {
-                _error.value = "Failed to update notes: ${e.message}"
+                _error.value = Strings.format("err_failed_update_notes_detail", e.message ?: "")
                 logger.error("Failed to update notes for video: $videoId", e)
             }
         }
@@ -400,10 +401,10 @@ class DetailViewModel(
                     loadMetadata(videoId)
                     logger.info("Added tag to video: $videoId")
                 } else {
-                    _error.value = "Failed to add tag"
+                    _error.value = Strings["err_failed_add_tag"]
                 }
             } catch (e: Exception) {
-                _error.value = "Failed to add tag: ${e.message}"
+                _error.value = Strings.format("err_failed_add_tag_detail", e.message ?: "")
                 logger.error("Failed to add tag to video: $videoId", e)
             }
         }
@@ -420,10 +421,10 @@ class DetailViewModel(
                     loadMetadata(videoId)
                     logger.info("Removed tag from video: $videoId")
                 } else {
-                    _error.value = "Failed to remove tag"
+                    _error.value = Strings["err_failed_remove_tag"]
                 }
             } catch (e: Exception) {
-                _error.value = "Failed to remove tag: ${e.message}"
+                _error.value = Strings.format("err_failed_remove_tag_detail", e.message ?: "")
                 logger.error("Failed to remove tag from video: $videoId", e)
             }
         }
@@ -440,10 +441,10 @@ class DetailViewModel(
                     loadMetadata(videoId)
                     logger.info("Added video to collection: $collectionId")
                 } else {
-                    _error.value = "Failed to add to collection"
+                    _error.value = Strings["err_failed_add_collection"]
                 }
             } catch (e: Exception) {
-                _error.value = "Failed to add to collection: ${e.message}"
+                _error.value = Strings.format("err_failed_add_collection_detail", e.message ?: "")
                 logger.error("Failed to add video to collection: $collectionId", e)
             }
         }

@@ -26,6 +26,7 @@ import com.reelvault.data.models.CameraNameMapping
 import com.reelvault.data.repository.VideoRepository
 import com.reelvault.trackTextEntryFocus
 import kotlinx.coroutines.launch
+import com.reelvault.util.Strings
 
 /**
  * Editor for the catalog's camera marketing-name mappings.
@@ -64,7 +65,7 @@ fun CameraNamesDialog(
         try {
             mappings = repository.listCameraNameMappings()
         } catch (e: Exception) {
-            errorMessage = "Failed to load mappings: ${e.message ?: "unknown error"}"
+            errorMessage = Strings.format("err_failed_load_mappings", e.message ?: "")
         } finally {
             loading = false
         }
@@ -211,7 +212,7 @@ fun CameraNamesDialog(
                             newMarketing = ""
                             reload()
                         } catch (e: Exception) {
-                            errorMessage = "Failed to save mapping: ${e.message ?: "unknown error"}"
+                            errorMessage = Strings.format("err_failed_save_mapping", e.message ?: "")
                         }
                     }
                 },
@@ -253,7 +254,7 @@ fun CameraNamesDialog(
                                 )
                                 reload()
                             } catch (e: Exception) {
-                                errorMessage = "Failed to remove mapping: ${e.message ?: "unknown error"}"
+                                errorMessage = Strings.format("err_failed_remove_mapping", e.message ?: "")
                             }
                         }
                     }

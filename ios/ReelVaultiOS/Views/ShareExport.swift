@@ -43,7 +43,7 @@ final class ShareExportModel: ObservableObject {
             }
             self.isPreparing = false
             if urls.isEmpty {
-                self.errorMessage = "Could not download the selected videos."
+                self.errorMessage = String(localized: "Could not download the selected videos.")
             } else {
                 self.preparedURLs = ShareableURLs(urls: urls)
             }

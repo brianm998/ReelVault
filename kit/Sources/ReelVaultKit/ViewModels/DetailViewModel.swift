@@ -152,7 +152,7 @@ public class DetailViewModel: ObservableObject {
                 // grid + left-panel counts catch up.
                 onChanged()
             } else {
-                error = "Failed to remove proxy link"
+                error = String(localized: "Failed to remove proxy link", bundle: .module)
             }
         }
     }
@@ -163,7 +163,7 @@ public class DetailViewModel: ObservableObject {
     public func forceProxyLink(proxyId: String, onChanged: @escaping () -> Void = {}) {
         guard let masterId = currentSummary?.id else { return }
         guard masterId != proxyId else {
-            error = "A video can't be a proxy of itself"
+            error = String(localized: "A video can't be a proxy of itself", bundle: .module)
             return
         }
         Task {
@@ -178,7 +178,7 @@ public class DetailViewModel: ObservableObject {
                 // refresh the grid + left-panel counts.
                 onChanged()
             } else {
-                error = "Failed to add proxy link"
+                error = String(localized: "Failed to add proxy link", bundle: .module)
             }
         }
     }
@@ -254,7 +254,7 @@ public class DetailViewModel: ObservableObject {
                 loadGroupMembers(groupId: gid)
                 onChanged?(gid)
             } catch {
-                self.error = "Failed to reorder stack: \(error.localizedDescription)"
+                self.error = String(format: String(localized: "Failed to reorder stack: %@", bundle: .module), error.localizedDescription)
             }
         }
     }
@@ -266,10 +266,10 @@ public class DetailViewModel: ObservableObject {
                 if try await repository.setGroupPreferred(groupId: groupId, videoId: videoId) {
                     groupPreferredId = videoId
                 } else {
-                    error = "Failed to set preferred video"
+                    error = String(localized: "Failed to set preferred video", bundle: .module)
                 }
             } catch {
-                self.error = "Failed to set preferred: \(error.localizedDescription)"
+                self.error = String(format: String(localized: "Failed to set preferred video", bundle: .module))
             }
         }
     }
@@ -291,10 +291,10 @@ public class DetailViewModel: ObservableObject {
                     groupPreferredId = ""
                     onComplete?(oldGroupId)
                 } else {
-                    error = "Failed to ungroup"
+                    error = String(localized: "Failed to ungroup", bundle: .module)
                 }
             } catch {
-                self.error = "Failed to ungroup: \(error.localizedDescription)"
+                self.error = String(format: String(localized: "Failed to ungroup", bundle: .module))
             }
         }
     }
@@ -311,7 +311,7 @@ public class DetailViewModel: ObservableObject {
                 self.isLoading = false
                 await loadThumbnail(videoId: videoId)
             } catch {
-                self.error = "Failed to load metadata: \(error.localizedDescription)"
+                self.error = String(format: String(localized: "Failed to load metadata: %@", bundle: .module), error.localizedDescription)
                 self.isLoading = false
             }
         }
@@ -331,9 +331,9 @@ public class DetailViewModel: ObservableObject {
         Task {
             do {
                 let ok = try await repository.updateVideoNotes(videoId: videoId, notes: newNotes)
-                if !ok { error = "Failed to update notes" }
+                if !ok { error = String(localized: "Failed to update notes", bundle: .module) }
             } catch {
-                self.error = "Failed to update notes: \(error.localizedDescription)"
+                self.error = String(format: String(localized: "Failed to update notes", bundle: .module))
             }
         }
     }

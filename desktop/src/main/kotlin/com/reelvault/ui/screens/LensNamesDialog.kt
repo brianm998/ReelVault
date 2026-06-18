@@ -26,6 +26,7 @@ import com.reelvault.data.models.LensNameMapping
 import com.reelvault.data.repository.VideoRepository
 import com.reelvault.trackTextEntryFocus
 import kotlinx.coroutines.launch
+import com.reelvault.util.Strings
 
 /**
  * Editor for the catalog's lens display-name aliases.
@@ -66,7 +67,7 @@ fun LensNamesDialog(
         try {
             mappings = repository.listLensNameMappings()
         } catch (e: Exception) {
-            errorMessage = "Failed to load lens names: ${e.message ?: "unknown error"}"
+            errorMessage = Strings.format("err_failed_load_lens_names", e.message ?: "")
         } finally {
             loading = false
         }
@@ -212,7 +213,7 @@ fun LensNamesDialog(
                             newAlias = ""
                             reload()
                         } catch (e: Exception) {
-                            errorMessage = "Failed to save alias: ${e.message ?: "unknown error"}"
+                            errorMessage = Strings.format("err_failed_save_alias", e.message ?: "")
                         }
                     }
                 },
@@ -248,7 +249,7 @@ fun LensNamesDialog(
                                 )
                                 reload()
                             } catch (e: Exception) {
-                                errorMessage = "Failed to remove alias: ${e.message ?: "unknown error"}"
+                                errorMessage = Strings.format("err_failed_remove_alias", e.message ?: "")
                             }
                         }
                     }

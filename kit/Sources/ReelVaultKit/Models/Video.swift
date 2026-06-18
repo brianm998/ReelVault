@@ -346,7 +346,7 @@ public struct VideoMetadata: Identifiable, Sendable {
     /// without a timezone), so we deliberately show no finer granularity than
     /// the day.
     public var creationDateFormatted: String {
-        if creationDate == 0 { return "Unknown" }
+        if creationDate == 0 { return String(localized: "Unknown", bundle: .module) }
         let date = Date(timeIntervalSince1970: TimeInterval(creationDate / 1000))
         return date.formatted(date: .abbreviated, time: .omitted)
     }
@@ -773,12 +773,12 @@ public enum ColorLabel: String, CaseIterable, Identifiable, Hashable, Sendable {
     /// right-click submenu than an empty string.
     public var displayName: String {
         switch self {
-        case .none:   return "None"
-        case .red:    return "Red"
-        case .yellow: return "Yellow"
-        case .green:  return "Green"
-        case .blue:   return "Blue"
-        case .purple: return "Purple"
+        case .none:   return String(localized: "None",   bundle: .module)
+        case .red:    return String(localized: "Red",    bundle: .module)
+        case .yellow: return String(localized: "Yellow", bundle: .module)
+        case .green:  return String(localized: "Green",  bundle: .module)
+        case .blue:   return String(localized: "Blue",   bundle: .module)
+        case .purple: return String(localized: "Purple", bundle: .module)
         }
     }
 
@@ -863,26 +863,26 @@ public enum GridStatKey: String, CaseIterable, Identifiable, Hashable, Sendable 
 
     public var displayName: String {
         switch self {
-        case .none:             return "(empty)"
-        case .filename:         return "Filename"
-        case .fileSize:         return "File size"
-        case .resolutionName:   return "Resolution"
-        case .pixelDimensions:  return "Pixel dimensions"
-        case .duration:         return "Duration"
-        case .videoCodec:       return "Video codec"
-        case .audioCodec:       return "Audio codec"
-        case .fps:              return "FPS"
-        case .frameCount:       return "Frame count"
-        case .bitrate:          return "Bitrate"
-        case .cameraModel:      return "Camera"
-        case .lensModel:        return "Lens"
-        case .captureDate:      return "Capture date"
-        case .captureYear:      return "Capture year"
-        case .iso:              return "ISO"
-        case .aperture:         return "Aperture"
-        case .exposureTime:     return "Exposure"
-        case .focalLength:      return "Focal length"
-        case .location:         return "Location"
+        case .none:             return String(localized: "(empty)",          bundle: .module)
+        case .filename:         return String(localized: "Filename",         bundle: .module)
+        case .fileSize:         return String(localized: "File size",        bundle: .module)
+        case .resolutionName:   return String(localized: "Resolution",       bundle: .module)
+        case .pixelDimensions:  return String(localized: "Pixel dimensions", bundle: .module)
+        case .duration:         return String(localized: "Duration",         bundle: .module)
+        case .videoCodec:       return String(localized: "Video codec",      bundle: .module)
+        case .audioCodec:       return String(localized: "Audio codec",      bundle: .module)
+        case .fps:              return String(localized: "FPS",              bundle: .module)
+        case .frameCount:       return String(localized: "Frame count",      bundle: .module)
+        case .bitrate:          return String(localized: "Bitrate",          bundle: .module)
+        case .cameraModel:      return String(localized: "Camera",           bundle: .module)
+        case .lensModel:        return String(localized: "Lens",             bundle: .module)
+        case .captureDate:      return String(localized: "Capture date",     bundle: .module)
+        case .captureYear:      return String(localized: "Capture year",     bundle: .module)
+        case .iso:              return String(localized: "ISO",              bundle: .module)
+        case .aperture:         return String(localized: "Aperture",         bundle: .module)
+        case .exposureTime:     return String(localized: "Exposure",         bundle: .module)
+        case .focalLength:      return String(localized: "Focal length",     bundle: .module)
+        case .location:         return String(localized: "Location",         bundle: .module)
         }
     }
 
@@ -1024,10 +1024,10 @@ public enum LibraryFilterMode: String, CaseIterable, Identifiable, Hashable, Sen
     public var id: String { rawValue }
     public var displayName: String {
         switch self {
-        case .text:      return "Text"
-        case .attribute: return "Attribute"
-        case .metadata:  return "Metadata"
-        case .clear:     return "Clear"
+        case .text:      return String(localized: "Text",      bundle: .module)
+        case .attribute: return String(localized: "Attribute", bundle: .module)
+        case .metadata:  return String(localized: "Metadata",  bundle: .module)
+        case .clear:     return String(localized: "Clear",     bundle: .module)
         }
     }
 }
@@ -1056,9 +1056,9 @@ public enum AttributeFilterState: String, CaseIterable, Identifiable, Hashable, 
     public var id: String { rawValue }
     public var displayName: String {
         switch self {
-        case .any: return "Any"
-        case .yes: return "Yes"
-        case .no:  return "No"
+        case .any: return String(localized: "Any", bundle: .module)
+        case .yes: return String(localized: "Yes", bundle: .module)
+        case .no:  return String(localized: "No",  bundle: .module)
         }
     }
 }
@@ -1073,9 +1073,9 @@ public enum OrientationFilterState: String, CaseIterable, Identifiable, Hashable
     public var id: String { rawValue }
     public var displayName: String {
         switch self {
-        case .any:       return "Any"
-        case .portrait:  return "Portrait"
-        case .landscape: return "Landscape"
+        case .any:       return String(localized: "Any",       bundle: .module)
+        case .portrait:  return String(localized: "Portrait",  bundle: .module)
+        case .landscape: return String(localized: "Landscape", bundle: .module)
         }
     }
 }
