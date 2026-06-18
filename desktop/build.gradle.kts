@@ -5,7 +5,6 @@ import java.nio.file.Files
 plugins {
     kotlin("jvm") version "1.9.22"
     id("org.jetbrains.compose") version "1.6.1"
-    id("com.google.protobuf") version "0.9.4"
 }
 
 // Standalone build flag — pass -Pstandalone=true (or export STANDALONE_MODE=true) to
@@ -16,7 +15,7 @@ val standaloneMode = project.findProperty("standalone") == "true"
 group = "com.reelvault"
 // Version is read from the root VERSION file — the single source of truth.
 // Use scripts/bump-version.sh to update all components at once.
-version = rootProject.file("../VERSION").readText().trim()
+version = project.file("../VERSION").readText().trim()
 
 repositories {
     mavenCentral()
@@ -25,6 +24,9 @@ repositories {
 }
 
 dependencies {
+    // Shared module — proto stubs, VideoRepository, ChannelFactory, models
+    implementation(project(":shared"))
+
     // Compose Desktop
     implementation(compose.desktop.currentOs)
     implementation(compose.foundation)
@@ -79,37 +81,9 @@ kotlin {
     jvmToolchain(21)
 }
 
-protobuf {
-    protoc {
-        artifact = "com.google.protobuf:protoc:3.24.0"
-    }
-    plugins {
-        create("grpc") {
-            artifact = "io.grpc:protoc-gen-grpc-java:1.59.0"
-        }
-        create("grpckt") {
-            artifact = "io.grpc:protoc-gen-grpc-kotlin:1.4.0:jdk8@jar"
-        }
-    }
-    generateProtoTasks {
-        all().forEach { task ->
-            task.plugins {
-                create("grpc")
-                create("grpckt")
-            }
-        }
-    }
-}
-
 sourceSets {
     main {
-        proto {
-            srcDir("../core/proto")
-        }
         java {
-            srcDirs("build/generated/source/proto/main/java")
-            srcDirs("build/generated/source/proto/main/kotlin")
-            srcDirs("build/generated/source/proto/main/grpckt")
             srcDirs("build/generated/buildconfig")
             srcDirs("build/generated/appversion")
         }
@@ -139,7 +113,7 @@ val generateBuildConfig by tasks.registering {
 }
 
 val generateAppVersion by tasks.registering {
-    val versionFile = rootProject.file("../VERSION")
+    val versionFile = project.file("../VERSION")
     val outputDir = layout.buildDirectory.dir("generated/appversion")
     inputs.file(versionFile)
     outputs.dir(outputDir)

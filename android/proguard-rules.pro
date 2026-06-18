@@ -1,0 +1,7 @@
+-keep class io.grpc.** { *; }
+-keep class com.google.protobuf.** { *; }
+-keep class reelvault.** { *; }
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
+-dontwarn io.grpc.**
+-dontwarn org.slf4j.**
+-dontwarn javax.naming.**

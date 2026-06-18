@@ -32,6 +32,9 @@ import com.reelvault.util.FileDragSource
 import com.reelvault.ViewMode
 import com.reelvault.trackTextEntryFocus
 import com.reelvault.data.models.ColorLabel
+import com.reelvault.ui.theme.dimmed
+import com.reelvault.ui.theme.secondary
+import com.reelvault.ui.theme.swatch
 import com.reelvault.data.models.FullResolutionStatus
 import com.reelvault.data.models.GridStatKey
 import com.reelvault.ui.theme.ReelVaultSpacing

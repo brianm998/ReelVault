@@ -29,7 +29,7 @@ class PairingClient {
     /** A label for this device, shown on the server's Allow banner / paired list. */
     val deviceName: String by lazy {
         val host = try { InetAddress.getLocalHost().hostName } catch (_: Exception) { null }
-        if (host.isNullOrBlank()) "ReelVault Desktop" else "$host (ReelVault Desktop)"
+        if (host.isNullOrBlank()) "ReelVault" else "$host (ReelVault)"
     }
 
     /** TOFU: read a manually-entered server's leaf fingerprint (no pin yet). */

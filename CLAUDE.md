@@ -27,29 +27,31 @@ The core philosophy: **fast, native browsing of massive video collections withou
 ### Three-Tier Design
 
 ```
-┌─────────────────────────────────────┐
-│     Frontend Clients                │
-├────────────────┬────────────────────┤
-│ SwiftUI macOS  │  Kotlin Compose    │
-│                │  (Linux/Win/macOS) │
-└────────┬───────┴────────┬───────────┘
-         │ IPC / gRPC     │
-         └────────┬────────┘
-                  │
-        ┌─────────▼─────────┐
-        │ Rust Core Daemon  │
-        │ ─────────────────  │
-        │ • SQLite Database │
-        │ • Metadata Ext.   │
-        │ • Thumbnails      │
-        │ • File Watching   │
-        │ • Search          │
-        └───────────────────┘
-                  │
-        ┌─────────▼─────────┐
-        │ Filesystem        │
-        │ Video Storage     │
-        └───────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                      Frontend Clients                        │
+├──────────────┬──────────────────┬──────────────┬────────────┤
+│ SwiftUI      │ SwiftUI iOS      │ Kotlin        │ Kotlin     │
+│ macOS        │ (iPhone/iPad)    │ Compose       │ Compose    │
+│              │                  │ (Linux/Win/   │ Android    │
+│              │                  │  macOS)       │            │
+└──────┬───────┴────────┬─────────┴──────┬────────┴─────┬──────┘
+       │ IPC / gRPC     │                │              │
+       └────────────────┴────────┬───────┘──────────────┘
+                                 │
+                       ┌─────────▼─────────┐
+                       │ Rust Core Daemon  │
+                       │ ─────────────────  │
+                       │ • SQLite Database │
+                       │ • Metadata Ext.   │
+                       │ • Thumbnails      │
+                       │ • File Watching   │
+                       │ • Search          │
+                       └───────────────────┘
+                                 │
+                       ┌─────────▼─────────┐
+                       │ Filesystem        │
+                       │ Video Storage     │
+                       └───────────────────┘
 ```
 
 ### Core Components
@@ -71,6 +73,13 @@ The core philosophy: **fast, native browsing of massive video collections withou
 - Kotlin Compose for cross-platform support
 - Works on Linux, Windows, and macOS
 - MVP priority
+
+**Android Client (`android/`)**
+- Kotlin Compose for Android
+- Remote-only — connects to a core daemon over the LAN (no embedded daemon)
+- ExoPlayer for video playback
+- NSD (Network Service Discovery) for daemon discovery
+- Android share intent for editor hand-off
 
 ---
 
@@ -235,6 +244,12 @@ ReelVault/
 │   │   ├── data/
 │   │   └── util/
 │   └── resources/
+├── android/               # Kotlin Compose Android client
+│   ├── build.gradle.kts
+│   └── src/main/kotlin/com/reelvault/android/
+├── shared/                # Shared Kotlin library (desktop + android)
+│   ├── build.gradle.kts
+│   └── src/main/kotlin/com/reelvault/
 ├── macos/                # SwiftUI macOS client (SwiftPM; depends on kit/)
 │   ├── Package.swift
 │   └── ReelVault/
@@ -257,9 +272,10 @@ ReelVault/
 ### UI/UX Consistency
 
 **Default rule:** Unless explicitly stated otherwise, every feature must be
-implemented in **all three clients** — Kotlin Compose desktop, SwiftUI macOS,
-and SwiftUI iOS (iPhone/iPad) — as part of the same change, **where appropriate
-to the platform**. A feature landing in only some clients is incomplete.
+implemented in **all four clients** — Kotlin Compose desktop, Kotlin Compose
+Android, SwiftUI macOS, and SwiftUI iOS (iPhone/iPad) — as part of the same
+change, **where appropriate to the platform**. A feature landing in only some
+clients is incomplete.
 
 Legitimate per-platform deviations (call them out in the commit/PR so reviewers
 don't push back on a "missing" client):
@@ -267,9 +283,17 @@ don't push back on a "missing" client):
 - **iOS is remote-only** — it talks to a core daemon over the LAN, has no local
   filesystem access to originals, and (for now) embeds no daemon; features that
   assume a shared filesystem differ or don't apply.
-- **Keyboard shortcuts** apply to macOS and iPad-with-a-keyboard, not iPhone.
-- **Layout**: iPhone-portrait uses sheets / compact navigation instead of the
-  desktop's resizable side panels; iPad and macOS share the multi-column layout.
+- **Android is remote-only** — like iOS, it connects to a core daemon over the
+  LAN and embeds no daemon; features that assume a shared filesystem differ or
+  don't apply.
+- **Android replaces drag-and-drop editor hand-off with Android's share intent.**
+- **Android uses ExoPlayer** for video playback (not VLCJ).
+- **Android uses NSD** (Network Service Discovery) for daemon discovery (not jmdns).
+- **Keyboard shortcuts** apply to macOS and iPad-with-a-keyboard, not iPhone or
+  Android phones.
+- **Layout**: iPhone-portrait and Android-phone use sheets / compact navigation
+  instead of the desktop's resizable side panels; iPad and macOS share the
+  multi-column layout; Android tablets may use the multi-column layout.
 - Platform-only integrations (macOS QuickLook, Linux inotify tuning, …).
 
 The other exception is **client-specific bugs**: a fix for a defect in one

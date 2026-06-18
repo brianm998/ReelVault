@@ -74,6 +74,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.reelvault.data.models.AttributeFilterState
 import com.reelvault.data.models.ColorLabel
+import com.reelvault.ui.theme.swatch
 import com.reelvault.data.models.FacetColumn
 import com.reelvault.data.models.LibraryFilterMode
 import com.reelvault.data.models.MetadataColumn

@@ -50,6 +50,7 @@ import com.reelvault.ui.components.ComposeVideoPlayer
 import com.reelvault.ui.components.Tooltip
 import com.reelvault.ui.components.cardBottomBadgeInset
 import com.reelvault.ui.components.VlcUnavailableOverlay
+import com.reelvault.ui.theme.dimmed
 import com.reelvault.ui.theme.ReelVaultSpacing
 import com.reelvault.util.FileDragSource
 import com.reelvault.util.openUrl

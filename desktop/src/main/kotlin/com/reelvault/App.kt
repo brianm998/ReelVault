@@ -36,11 +36,12 @@ import com.reelvault.data.UpdateChecker
 import com.reelvault.data.models.CatalogInfo
 import com.reelvault.data.repository.VideoRepository
 import com.reelvault.data.remote.DefaultServerStore
+import com.reelvault.data.remote.NettyChannelFactory
 import com.reelvault.data.remote.DiscoveredServer
 import com.reelvault.data.remote.PairingClient
 import com.reelvault.data.remote.RemoteConnection
 import com.reelvault.data.remote.ServerChoice
-import com.reelvault.data.remote.ServerDiscovery
+import com.reelvault.data.remote.JmdnsServerDiscovery
 import com.reelvault.data.remote.TokenStore
 import com.reelvault.data.remote.hostIsLocalMachine
 import com.reelvault.data.remote.localIpv4Addresses
@@ -647,7 +648,7 @@ fun ReelVaultApp(
      *  update the Window title. */
     onCatalogChanged: (CatalogInfo) -> Unit = {}
 ) {
-    val repository = remember { VideoRepository.getInstance() }
+    val repository = remember { VideoRepository.getInstance(NettyChannelFactory()) }
     val gridViewModel = remember { GridViewModel(repository) }
     val detailViewModel = remember { DetailViewModel(repository) }
     val launcher = remember { ServerLauncher() }
@@ -944,7 +945,7 @@ fun ReelVaultApp(
     // Remote-mode startup state: discovery + picker + pairing. Local mode is the
     // historical default; these only come into play when a remote daemon is the
     // chosen source (or saved as the default).
-    val discovery = remember { ServerDiscovery() }
+    val discovery = remember { JmdnsServerDiscovery() }
     val pairingClient = remember { PairingClient() }
     val tokenStore = remember { TokenStore() }
     val defaultStore = remember { DefaultServerStore() }

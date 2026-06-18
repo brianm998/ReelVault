@@ -3,8 +3,6 @@
 
 package com.reelvault.data.remote
 
-import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts
-import io.grpc.netty.shaded.io.netty.handler.ssl.SslContext
 import okhttp3.OkHttpClient
 import java.security.MessageDigest
 import java.security.cert.CertificateException
@@ -20,11 +18,9 @@ import javax.net.ssl.X509TrustManager
  *
  * The daemon's cert SANs are advisory only (the client pins by fingerprint, not
  * name), so we ignore the system trust chain AND name-based checks:
- *   • The gRPC channel ([grpcSslContext]) pins via a custom trust manager and
- *     overrides the authority to `localhost` (always a cert SAN), so the shaded
- *     Netty stack's hostname verification passes regardless of the LAN IP.
- *   • The OkHttp media/pairing client ([pinnedHttpClient]) pins via the same
+ *   • The OkHttp media/pairing client ([pinnedHttpClient]) pins via a custom
  *     trust manager and disables hostname verification outright.
+ *   • gRPC channel creation is platform-specific (see [ChannelFactory]).
  */
 object PinnedTls {
     /** Lowercase-hex SHA-256 of a certificate's DER encoding. */
@@ -50,17 +46,11 @@ object PinnedTls {
 
     /** Trusts any certificate. ONLY for the one-shot `GET /fingerprint` TOFU read
      *  on a manually-entered host (we have no pin yet); never used for data. */
-    private class TrustAllManager : X509TrustManager {
+    internal class TrustAllManager : X509TrustManager {
         override fun checkClientTrusted(chain: Array<X509Certificate>?, authType: String?) {}
         override fun checkServerTrusted(chain: Array<X509Certificate>?, authType: String?) {}
         override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
     }
-
-    /** A shaded-Netty SSL context for the pinned gRPC channel. */
-    fun grpcSslContext(fingerprintHex: String): SslContext =
-        GrpcSslContexts.forClient()
-            .trustManager(PinningTrustManager(fingerprintHex))
-            .build()
 
     /** An OkHttp client that pins [fingerprintHex] and ignores hostname. */
     fun pinnedHttpClient(fingerprintHex: String): OkHttpClient {

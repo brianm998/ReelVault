@@ -1,0 +1,4 @@
+<resources>
+    <style name="Theme.ReelVault" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.ReelVault.NoActionBar" parent="Theme.ReelVault" />
+</resources>
