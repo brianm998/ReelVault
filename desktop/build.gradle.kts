@@ -24,8 +24,10 @@ repositories {
 }
 
 dependencies {
-    // Shared module — proto stubs, VideoRepository, ChannelFactory, models
-    implementation(project(":shared"))
+    // Shared module — proto stubs, VideoRepository, ChannelFactory, models.
+    // Referenced by Maven coordinates; resolved via includeBuild("shared") in
+    // both desktop/settings.gradle.kts and the root settings.gradle.kts.
+    implementation("com.reelvault:shared")
 
     // Compose Desktop
     implementation(compose.desktop.currentOs)
