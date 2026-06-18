@@ -2,7 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 plugins {
-    id("com.android.application") version "8.2.0"
+    id("com.android.application") version "8.5.2"
     kotlin("android") version "1.9.22"
 }
 
