@@ -59,6 +59,9 @@ import com.reelvault.data.models.FullResolutionStatus
 import com.reelvault.data.models.VideoSummary
 import com.reelvault.ui.theme.ReelVaultCornerRadius
 import com.reelvault.ui.theme.ReelVaultSpacing
+import com.reelvault.ui.theme.dimmed
+import com.reelvault.ui.theme.secondary
+import com.reelvault.ui.theme.swatch
 import com.reelvault.util.FileDragSource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull

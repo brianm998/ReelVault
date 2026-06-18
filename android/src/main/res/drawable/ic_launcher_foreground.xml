@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Film reel symbol -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,28 A26,26 0 1,1 53.9,28 Z" />
+    <path
+        android:fillColor="#C2581A"
+        android:pathData="M54,38 A16,16 0 1,1 53.9,38 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,48 A6,6 0 1,1 53.9,48 Z" />
+</vector>

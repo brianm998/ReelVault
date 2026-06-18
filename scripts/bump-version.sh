@@ -10,6 +10,8 @@
 #   ios/project.yml                — MARKETING_VERSION
 #
 # Kotlin AppVersion.kt is generated at build time from VERSION (no edit needed).
+# Android versionCode is auto-computed from VERSION as MAJOR*10000+MINOR*100+PATCH
+#   (e.g. 1.2.3 → 10203); no manual update is needed for Android.
 # Rust code uses env!("CARGO_PKG_VERSION") which Cargo sets from Cargo.toml.
 set -euo pipefail
 

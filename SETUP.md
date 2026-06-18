@@ -111,9 +111,49 @@ The proto definitions are in `core/proto/reelvault.proto` and should be used to 
 **Build issues on Linux**
 - Install additional dev dependencies: `sudo apt-get install build-essential libssl-dev`
 
+## Building the Desktop Client
+
+**Prerequisites:** JDK 17+ (not Android Studio's JBR), VLC installed for video playback.
+
+```bash
+cd desktop
+./gradlew run
+```
+
+Or from the repo root in the multi-module setup:
+```bash
+./gradlew :desktop:run
+```
+
+## Building the Android Client
+
+**Prerequisites:** Android SDK (API 35), JDK 17+.
+
+```bash
+# Debug APK
+./gradlew :android:assembleDebug
+
+# Release AAB (requires signing env vars; see .github/workflows/android-release.yml)
+./gradlew :android:bundleRelease
+```
+
+**Local macOS note:** If `./gradlew :android:assembleDebug` fails with a `jlink` error, Android
+Studio's JBR is being picked up. Fix it by adding to `~/.gradle/gradle.properties`:
+```
+org.gradle.java.home=/Library/Java/JavaVirtualMachines/jdk-XX.jdk/Contents/Home
+```
+Substitute the path for your installed JDK 17+ (not the JBR).
+
+## Building the Shared Kotlin Library
+
+The `shared/` module contains proto stubs, models, and `VideoRepository`. It is compiled
+automatically when you build `:desktop` or `:android`. To build it alone:
+
+```bash
+./gradlew :shared:compileKotlin
+```
+
 ## Next Steps
 
 1. **macOS Client**: Implement SwiftUI frontend (post-MVP)
-2. **Desktop Client**: Implement Kotlin Compose frontend (MVP priority)
-3. **Testing**: Add integration tests for gRPC API
-4. **CI/CD**: Set up GitHub Actions for builds and releases
+2. **Testing**: Add integration tests for gRPC API

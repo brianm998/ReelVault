@@ -3,13 +3,15 @@ target/
 Cargo.lock
 **/*.rs.bk
 
-# Kotlin
+# Kotlin / Android
 .gradle/
 build/
 .idea/
 *.iml
 *.apk
 *.aar
+*.aab
+local.properties
 
 # macOS
 .DS_Store

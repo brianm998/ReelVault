@@ -5,7 +5,7 @@ package com.reelvault.data.repository
 
 import com.reelvault.data.models.*
 import com.reelvault.data.models.Collection as VideoCollection
-import com.reelvault.data.remote.PinnedTls
+import com.reelvault.data.remote.ChannelFactory
 import io.grpc.CallOptions
 import io.grpc.Channel
 import io.grpc.ClientCall
@@ -13,10 +13,8 @@ import io.grpc.ClientInterceptor
 import io.grpc.ClientInterceptors
 import io.grpc.ForwardingClientCall
 import io.grpc.ManagedChannel
-import io.grpc.ManagedChannelBuilder
 import io.grpc.Metadata
 import io.grpc.MethodDescriptor
-import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -38,14 +36,15 @@ private fun AttributeFilterState.toProto(): Reelvault.AttributeFilter = when (th
 /**
  * Repository for communicating with the ReelVault Rust backend via gRPC.
  */
-class VideoRepository(
+class VideoRepository(private val channelFactory: ChannelFactory) {
+    private val logger = LoggerFactory.getLogger(VideoRepository::class.java)
+
     /** Host the repository talks to; mutable so it can flip between the local
      *  loopback daemon and a remote LAN daemon at runtime. */
-    private var host: String = "localhost",
-    /** Initial port; mutable so [connect] can target a freshly-spawned daemon. */
-    private var port: Int = 50051
-) {
-    private val logger = LoggerFactory.getLogger(VideoRepository::class.java)
+    var host: String = "localhost"
+    /** Port the repository is currently configured to talk to; mutable so
+     *  [connect] can target a freshly-spawned daemon. */
+    var port: Int = 50051
 
     private var channel: ManagedChannel? = null
     private var stub: ReelVaultGrpcKt.ReelVaultCoroutineStub? = null
@@ -78,9 +77,7 @@ class VideoRepository(
         channel = null
         stub = null
         return@withContext try {
-            channel = ManagedChannelBuilder.forAddress(host, port)
-                .usePlaintext()
-                .build()
+            channel = channelFactory.createPlaintext(host, port)
             stub = ReelVaultGrpcKt.ReelVaultCoroutineStub(channel!!)
 
             // Verify connection by calling GetStatus
@@ -115,10 +112,7 @@ class VideoRepository(
         stub = null
         isRemote = false
         return@withContext try {
-            val mc = NettyChannelBuilder.forAddress(host, grpcPort)
-                .overrideAuthority("localhost")
-                .sslContext(PinnedTls.grpcSslContext(fingerprintHex))
-                .build()
+            val mc = channelFactory.createPinned(host, grpcPort, fingerprintHex)
             channel = mc
             val authed: Channel = ClientInterceptors.intercept(mc, BearerTokenInterceptor(token))
             stub = ReelVaultGrpcKt.ReelVaultCoroutineStub(authed)
@@ -146,6 +140,38 @@ class VideoRepository(
 
     suspend fun isConnected(): Boolean = withContext(Dispatchers.IO) {
         return@withContext channel != null && !channel!!.isShutdown
+    }
+
+    /**
+     * Snapshot of the daemon's runtime state — version string, uptime, catalog
+     * size, and thumbnail-cache size. Used by settings / about screens. Returns
+     * `null` when not connected or the RPC fails.
+     */
+    data class DaemonStatus(
+        val version: String,
+        val uptimeSeconds: Long,
+        val totalVideos: Long,
+        val cacheSizeBytes: Long,
+    )
+
+    /**
+     * Fetch a point-in-time [DaemonStatus] from the backend. Returns `null`
+     * on any failure so callers can degrade gracefully (show "Unavailable").
+     */
+    suspend fun getDaemonStatus(): DaemonStatus? = withContext(Dispatchers.IO) {
+        val s = stub ?: return@withContext null
+        return@withContext try {
+            val resp = s.getStatus(Reelvault.GetStatusRequest.newBuilder().build())
+            DaemonStatus(
+                version = resp.version,
+                uptimeSeconds = resp.uptimeSeconds,
+                totalVideos = resp.totalVideos,
+                cacheSizeBytes = resp.cacheSizeBytes,
+            )
+        } catch (e: Exception) {
+            logger.warn("getDaemonStatus failed: ${e.message}")
+            null
+        }
     }
 
     /** A freshly-minted one-time pairing code for authorizing a remote device. */
@@ -1625,9 +1651,9 @@ class VideoRepository(
     companion object {
         private var instance: VideoRepository? = null
 
-        fun getInstance(host: String = "localhost", port: Int = 50051): VideoRepository {
+        fun getInstance(channelFactory: ChannelFactory): VideoRepository {
             if (instance == null) {
-                instance = VideoRepository(host, port)
+                instance = VideoRepository(channelFactory)
             }
             return instance!!
         }

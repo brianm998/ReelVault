@@ -24,8 +24,8 @@ import javax.jmdns.ServiceInfo
  * IPv4 address and merge the results — a single default instance misses servers
  * on secondary interfaces (Wi-Fi vs. wired).
  */
-class ServerDiscovery {
-    private val logger = LoggerFactory.getLogger(ServerDiscovery::class.java)
+class JmdnsServerDiscovery {
+    private val logger = LoggerFactory.getLogger(JmdnsServerDiscovery::class.java)
 
     /** Browse for the given [timeoutMs], then return the de-duped server set.
      *  `JmDNS.list` blocks up to the timeout doing the query + resolution, so we

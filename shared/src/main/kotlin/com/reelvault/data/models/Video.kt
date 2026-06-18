@@ -325,7 +325,7 @@ data class SmartCollectionFilters(
 
     fun toJson(): String = buildString {
         append("{")
-        // Each column is encoded as "key=v1v2" — a flat string so the
+        // Each column is encoded as "key=v1v2" — a flat string so the
         // existing string-array parser round-trips it without a nested-array
         // JSON parser. '=' never appears in a metadata key; values keep their
         // own separator.
@@ -610,7 +610,7 @@ data class PostIndexProgress(
     val etaSeconds: Long,
     /** Dominant activity: "grouping" | "proxies" | "sensors" | "tagging". */
     val phase: String,
-    /** Last human-readable action, e.g. "linked a.mov → b.mov". */
+    /** Last human-readable action, e.g. "linked a.mov -> b.mov". */
     val detail: String,
 )
 
@@ -634,29 +634,23 @@ data class WatchSettings(
 /**
  * Color labels mirror Adobe Lightroom's five-colour palette. Stored on
  * [VideoSummary.colorLabel] as the raw string value; "" means "no label".
- * The card uses [swatch] for the anchor card's band-background and [dimmed]
- * for unselected cards that still carry this label.
+ * The card uses [swatchArgb] for the anchor card's band-background colour.
+ * Platforms add their own extension functions for dimmed/secondary variants.
  */
 enum class ColorLabel(
     val raw: String,
     val displayName: String,
-    /** Saturated background colour used when this card is the anchor. */
-    val swatch: androidx.compose.ui.graphics.Color,
+    /** Saturated background colour as a raw ARGB value packed into a Long. */
+    val swatchArgb: Long,
     /** Keyboard digit that applies this label, or null. Purple has no key. */
     val shortcutDigit: Char? = null,
 ) {
-    None  ("",       "None",   androidx.compose.ui.graphics.Color(0xFF2E2E2E), null),
-    Red   ("red",    "Red",    androidx.compose.ui.graphics.Color(0xFFC75050), '6'),
-    Yellow("yellow", "Yellow", androidx.compose.ui.graphics.Color(0xFFD1B233), '7'),
-    Green ("green",  "Green",  androidx.compose.ui.graphics.Color(0xFF4DA653), '8'),
-    Blue  ("blue",   "Blue",   androidx.compose.ui.graphics.Color(0xFF3873C7), '9'),
-    Purple("purple", "Purple", androidx.compose.ui.graphics.Color(0xFF8C52BD), null);
-
-    /** Toned-down variant used by unselected cards that still carry this label. */
-    val dimmed: androidx.compose.ui.graphics.Color get() = swatch.copy(alpha = 0.45f)
-
-    /** Mid-brightness variant for secondary-selected (non-anchor) cards. */
-    val secondary: androidx.compose.ui.graphics.Color get() = swatch.copy(alpha = 0.72f)
+    None  ("",       "None",   0xFF2E2E2EL, null),
+    Red   ("red",    "Red",    0xFFC75050L, '6'),
+    Yellow("yellow", "Yellow", 0xFFD1B233L, '7'),
+    Green ("green",  "Green",  0xFF4DA653L, '8'),
+    Blue  ("blue",   "Blue",   0xFF3873C7L, '9'),
+    Purple("purple", "Purple", 0xFF8C52BDL, null);
 
     companion object {
         /** Look up by the raw wire-string. Unknown values fall back to [None]. */
@@ -770,7 +764,7 @@ enum class GridStatKey(val raw: String, val displayName: String) {
         /** Format an EXIF exposure time. Sub-second exposures render as
          *  "1/Nth" with N rounded to the nearest standard shutter step
          *  (60/125/250/500/1000/2000/4000), matching how a photographer
-         *  reads them. Anything ≥ 1 s renders as "X.X s". */
+         *  reads them. Anything >= 1 s renders as "X.X s". */
         fun formatExposureTime(seconds: Double): String {
             if (seconds <= 0.0) return ""
             return if (seconds >= 1.0) {
@@ -779,7 +773,7 @@ enum class GridStatKey(val raw: String, val displayName: String) {
                 val denom = (1.0 / seconds).let { d ->
                     // Snap to a tidy nearest integer; for very fast shutters
                     // the floating reconstruction is rarely exact (1/4000
-                    // round-trips through f64 as 4000.000…).
+                    // round-trips through f64 as 4000.000...).
                     d.roundToInt()
                 }
                 "1/$denom"
@@ -852,7 +846,7 @@ data class LocationFilterGroup(
  * those that don't. Maps 1:1 to the proto `AttributeFilter`.
  */
 enum class AttributeFilterState { Any, Yes, No;
-    /** Cycle Any → Yes → No → Any for a single click-through control. */
+    /** Cycle Any -> Yes -> No -> Any for a single click-through control. */
     fun next(): AttributeFilterState = when (this) {
         Any -> Yes
         Yes -> No
@@ -901,7 +895,7 @@ data class FacetColumn(
 data class MetadataKeyInfo(val key: String, val displayName: String, val isNumeric: Boolean)
 
 /** Canonical key of the "Location" metadata field. Unlike the registry-backed
- *  keys (camera, lens, …) this one is synthesised entirely client-side: its
+ *  keys (camera, lens, ...) this one is synthesised entirely client-side: its
  *  facet is the catalog's known places ([LocationFilterGroup]) and selecting a
  *  value applies a geographic proximity filter via `setLocationFilter` rather
  *  than a `MetadataFilter`. The daemon doesn't know this key — it returns an
@@ -941,7 +935,7 @@ fun derivedAttributeMetadataFilters(
  *  single [MetadataFilter.value] over the wire. ASCII Unit Separator (0x1F),
  *  which never appears in real metadata values. Must match the core's
  *  `METADATA_VALUE_SEPARATOR`. */
-const val METADATA_VALUE_SEPARATOR = "\u001F"
+const val METADATA_VALUE_SEPARATOR = ""
 
 /** Leading marker on a [MetadataFilter.value] that flips the column from "is" to
  *  "is not". ASCII Record Separator (0x1E); must match the core's

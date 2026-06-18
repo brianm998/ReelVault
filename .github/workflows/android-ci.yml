@@ -1,0 +1,37 @@
+name: Android CI
+
+# Fast compile checks on every push and pull request to main/develop.
+# Does not produce release artifacts — use android-release.yml for that.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  android:
+    name: Android / compile check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ci-android-gradle-${{ hashFiles('shared/build.gradle.kts', 'android/build.gradle.kts') }}
+          restore-keys: ci-android-gradle-
+
+      - name: Compile shared Kotlin
+        run: ./gradlew :shared:compileKotlin --no-daemon
+
+      - name: Compile Android debug Kotlin
+        run: ./gradlew :android:compileDebugKotlin --no-daemon
