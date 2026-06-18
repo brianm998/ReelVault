@@ -66,6 +66,7 @@ fun LibraryGridScreen(
     onOpenSettings: () -> Unit,
     onOpenMap: () -> Unit,
     onDisconnect: () -> Unit,
+    onOpenLocalMedia: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val vm: GridViewModel = viewModel(
@@ -178,6 +179,10 @@ fun LibraryGridScreen(
                     scope.launch { drawerState.close() }
                 },
                 onClose = { scope.launch { drawerState.close() } },
+                onOpenLocalMedia = {
+                    scope.launch { drawerState.close() }
+                    onOpenLocalMedia()
+                },
             )
         }
     ) {
@@ -523,6 +528,7 @@ private fun LibrarySidebarContent(
     onSelectCollection: (String) -> Unit,
     onClearFilters: () -> Unit,
     onClose: () -> Unit,
+    onOpenLocalMedia: () -> Unit = {},
 ) {
     ModalDrawerSheet(modifier = Modifier.width(300.dp)) {
         Row(
@@ -551,6 +557,43 @@ private fun LibrarySidebarContent(
         HorizontalDivider()
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
+            // ── Catalog switcher ───────────────────────────────────────
+            item {
+                SidebarSectionHeader("Catalog")
+            }
+            item {
+                NavigationDrawerItem(
+                    icon = {
+                        Icon(
+                            Icons.Default.Cloud,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    },
+                    label = { Text("Remote Library") },
+                    selected = true,
+                    onClick = { onClose() },
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                )
+            }
+            item {
+                NavigationDrawerItem(
+                    icon = {
+                        Icon(
+                            Icons.Default.Smartphone,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    },
+                    label = { Text("Local Videos") },
+                    selected = false,
+                    onClick = { onClose(); onOpenLocalMedia() },
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                )
+            }
+            item { HorizontalDivider() }
+
             // ── All Videos ─────────────────────────────────────────────
             item {
                 NavigationDrawerItem(

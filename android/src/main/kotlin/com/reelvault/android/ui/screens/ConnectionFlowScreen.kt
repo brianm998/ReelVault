@@ -91,6 +91,36 @@ fun ConnectionFlowScreen(
     val discovered = remember { mutableStateListOf<DiscoveredServer>() }
 
     var state by remember { mutableStateOf<ConnectionState>(ConnectionState.Discovering) }
+    // True while we are attempting a saved-credential auto-connect; NSD callbacks
+    // skip state transitions until we finish so they don't interrupt the attempt.
+    var autoConnecting by remember { mutableStateOf(false) }
+
+    // ── Auto-connect with saved credentials ───────────────────────────────────
+
+    LaunchedEffect(Unit) {
+        val prefs = DefaultServerPrefs(context)
+        val saved = prefs.load() ?: return@LaunchedEffect
+        val fp = saved.fingerprintHex ?: return@LaunchedEffect
+        val token = tokenStorage.get(fp) ?: return@LaunchedEffect
+
+        autoConnecting = true
+        state = ConnectionState.Connecting("Reconnecting to ${saved.host}…")
+        RemoteConnection.endpoint = RemoteConnection.Endpoint(
+            host = saved.host,
+            mediaPort = saved.mediaPort,
+            fingerprintHex = fp,
+            token = token,
+        )
+        val ok = repository.connectRemote(saved.host, saved.grpcPort, fp, token)
+        if (ok) {
+            onConnected()
+            return@LaunchedEffect
+        }
+        // Auto-connect failed; fall through to normal discovery.
+        RemoteConnection.endpoint = null
+        autoConnecting = false
+        state = ConnectionState.Discovering
+    }
 
     // ── NSD discovery ─────────────────────────────────────────────────────────
 
@@ -98,11 +128,10 @@ fun ConnectionFlowScreen(
         val discovery = AndroidServerDiscovery(context)
         discovery.start(
             onFound = { server ->
+                if (autoConnecting) return@start
                 if (discovered.none { it.id == server.id }) {
                     discovered.add(server)
                 }
-                // If we are still on the Discovering screen, flip to ChooseServer
-                // as soon as the first result arrives.
                 if (state is ConnectionState.Discovering) {
                     state = ConnectionState.ChooseServer(discovered.toList())
                 } else if (state is ConnectionState.ChooseServer) {
@@ -111,7 +140,7 @@ fun ConnectionFlowScreen(
             },
             onLost = { name ->
                 discovered.removeAll { it.name == name }
-                if (state is ConnectionState.ChooseServer) {
+                if (!autoConnecting && state is ConnectionState.ChooseServer) {
                     state = ConnectionState.ChooseServer(discovered.toList())
                 }
             },
@@ -120,7 +149,7 @@ fun ConnectionFlowScreen(
         // so the user can enter a server manually.
         scope.launch {
             kotlinx.coroutines.delay(4_000)
-            if (state is ConnectionState.Discovering) {
+            if (!autoConnecting && state is ConnectionState.Discovering) {
                 state = ConnectionState.ChooseServer(emptyList())
             }
         }

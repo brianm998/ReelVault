@@ -56,6 +56,9 @@ fun AppRouter() {
                 },
                 onOpenSettings = { navController.navigate(Screen.Settings.route) },
                 onOpenMap = { navController.navigate(Screen.Map.route) },
+                onOpenLocalMedia = {
+                    navController.navigate(Screen.LocalMedia.route)
+                },
                 onDisconnect = {
                     app.videoRepository.disconnect()
                     isConnected = false

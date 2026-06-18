@@ -91,6 +91,13 @@ fun VideoDetailScreen(
 
     val context = LocalContext.current
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(error) {
+        val msg = error ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(msg)
+        vm.clearError()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -106,11 +113,11 @@ fun VideoDetailScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onSurface,
                         )
                     }
                 },
                 actions = {
-                    // Share — sends the file path via Android share sheet.
                     if (metadata != null) {
                         IconButton(onClick = { shareVideo(context, metadata!!) }) {
                             Icon(
@@ -120,20 +127,15 @@ fun VideoDetailScreen(
                         }
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSurface,
+                ),
             )
         },
-        snackbarHost = {
-            // Surface transient errors as a snackbar.
-            if (error != null) {
-                Snackbar(
-                    action = {
-                        TextButton(onClick = { vm.clearError() }) { Text("Dismiss") }
-                    },
-                ) {
-                    Text(error!!)
-                }
-            }
-        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         when {
             isLoading -> {
