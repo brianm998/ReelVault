@@ -2,7 +2,7 @@ name: Deploy download page to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [develop]
     paths:
       - 'docs/**'
   workflow_dispatch:   # allow manual re-deploy
