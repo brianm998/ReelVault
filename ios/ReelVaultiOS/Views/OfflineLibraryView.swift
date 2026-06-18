@@ -21,7 +21,7 @@ struct OfflineLibraryView: View {
                     ContentUnavailableView(
                         "No Downloads",
                         systemImage: "arrow.down.circle",
-                        description: Text("While connected to a server, choose “Download for Offline” on a video to watch it here without a connection.")
+                        description: Text("While connected to a server, choose \"Download for Offline\" on a video to watch it here without a connection.")
                     )
                 } else {
                     ScrollView {

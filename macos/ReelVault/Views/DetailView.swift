@@ -843,7 +843,7 @@ struct DetailView: View {
             }
             Button("Cancel", role: .cancel) { pendingCriterionRow = nil }
         } message: { row in
-            Text("Remove “\(row.label): \(row.value)” from smart collection “\(col.name)”? This changes what the collection gathers.")
+            Text("Remove \"\(row.label): \(row.value)\" from smart collection \"\(col.name)\"? This changes what the collection gathers.")
         }
     }
 

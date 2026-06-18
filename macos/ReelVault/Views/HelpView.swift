@@ -184,7 +184,7 @@ struct HelpView: View {
                         HelpParagraph("Clips that carry GPS metadata appear automatically on the **Map** view (press **M**). You can also place, change, or name locations yourself.")
                         HelpBullets([
                             ("mappin", "Right-click clips → **Add Location…** or **Update Location…** to drop or move them on a pick-a-spot map; **Remove Location** clears it"),
-                            ("pencil", "Right-click a map pin to **name** it — “Backyard”, “Studio”, “Reykjavík” — and that name appears wherever the clip's location is shown"),
+                            ("pencil", "Right-click a map pin to **name** it — \"Backyard\", \"Studio\", \"Reykjavík\" — and that name appears wherever the clip's location is shown"),
                             ("line.3.horizontal.decrease.circle", "Click a pin, or use the location filter, to narrow the grid to everything shot within a radius of that spot"),
                             ("info.circle", "Add **Location** as one of a card's info slots to read each clip's place at a glance"),
                         ])
