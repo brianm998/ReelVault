@@ -659,4 +659,12 @@ jobs:
           name:                   ReelVault ${{ needs.version.outputs.version }}
           draft:                  true    # review before publishing
           generate_release_notes: true
+          body: |
+            ## Download
+
+            **[→ Find the right package for your system](https://brianm998.github.io/ReelVault/)**
+
+            The download page auto-detects your OS and asks one question to point you to the correct installer.
+
+            ---
           files:                  release-artifacts/**/*
