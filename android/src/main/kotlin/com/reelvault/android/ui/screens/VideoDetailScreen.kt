@@ -390,7 +390,6 @@ private fun VideoPlayerSection(
         streamUrl = hlsUrl,
         authToken = remoteEndpoint?.token,
         renditions = proxiesToRenditions(proxies, videoId, remoteEndpoint),
-        onFullScreenToggle = null,
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(
@@ -409,15 +408,26 @@ private fun proxiesToRenditions(
     remoteEndpoint: RemoteConnection.Endpoint?,
 ): List<ProxyRendition> {
     if (remoteEndpoint == null) return emptyList()
-    return proxies.map { proxy ->
+    val ep = remoteEndpoint
+    val proxyRenditions = proxies.map { proxy ->
         // height=0 means "original/best" — request 2160 so the server picks the highest proxy.
         val h = if (proxy.height > 0) proxy.height else 2160
         ProxyRendition(
             label = if (proxy.height == 0) "Original" else "${proxy.height}p",
-            hlsUrl = "https://${remoteEndpoint.host}:${remoteEndpoint.mediaPort}/hls/$videoId/$h/index.m3u8",
+            hlsUrl = "https://${ep.host}:${ep.mediaPort}/hls/$videoId/$h/index.m3u8",
             heightPx = proxy.height,
         )
     }
+    // Always include a 480p fallback so the codec auto-fallback in VideoPlayer has a
+    // guaranteed low-res option. The server re-encodes to H.264/yuv420p if no 480p
+    // proxy exists — decodable on any Android device.
+    val has480 = proxyRenditions.any { it.heightPx in 460..520 }
+    return if (has480) proxyRenditions
+    else proxyRenditions + ProxyRendition(
+        label = "480p",
+        hlsUrl = "https://${ep.host}:${ep.mediaPort}/hls/$videoId/480/index.m3u8",
+        heightPx = 480,
+    )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

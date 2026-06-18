@@ -3,6 +3,8 @@
 
 package com.reelvault.android.ui.components
 
+import android.app.Activity
+import android.content.pm.ActivityInfo
 import android.util.Log
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.widget.FrameLayout
@@ -23,7 +25,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -40,19 +47,19 @@ import kotlinx.coroutines.delay
 /**
  * Embeds an ExoPlayer for HLS streaming, with custom overlay controls.
  *
- * Mirrors the iOS StreamPlayer approach:
  * - Accepts a nullable [streamUrl] (null = show placeholder, not an error).
- * - Streams via media3-exoplayer-hls / HlsMediaSource.
- * - Custom controls (play/pause, seek bar, volume, full-screen toggle).
- * - Buffering spinner while ExoPlayer is not ready.
- * - Error state with a retry button.
- * - [onFullScreenToggle] signals the parent to push/pop a full-screen route
- *   (the composable itself does not take over the screen).
+ * - Full-screen toggle: tapping the button in the controls enters a full-screen
+ *   Dialog in landscape orientation with system bars hidden. Back button or the
+ *   exit button returns to the embedded view. The same ExoPlayer instance is
+ *   shared — only the surface (PlayerView) changes, so playback is seamless.
+ * - Codec capability fallback: if ExoPlayer reports
+ *   [PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES] (e.g.,
+ *   a device that can only decode 1080p HEVC receives 4K), the player
+ *   automatically retries with the lowest-resolution rendition in [renditions].
+ *   Always provide a low-res fallback rendition (e.g., 480p) so there is
+ *   something to fall back to.
  * - Quality/rendition picker: pass a list of [ProxyRendition] entries;
  *   selecting one swaps the stream URL and seeks back to the current position.
- *
- * The player is created once per [streamUrl]; [DisposableEffect] releases it.
- * A [LaunchedEffect] on player state drives the auto-hide timer for controls.
  */
 @OptIn(UnstableApi::class)
 @Composable
@@ -60,12 +67,13 @@ fun VideoPlayer(
     streamUrl: String?,
     modifier: Modifier = Modifier,
     renditions: List<ProxyRendition> = emptyList(),
-    onFullScreenToggle: (() -> Unit)? = null,
     authToken: String? = null,
 ) {
     val context = LocalContext.current
 
-    // ── Player instance (recreated when streamUrl changes) ────────────────
+    var isFullscreen by remember { mutableStateOf(false) }
+
+    // ── Player instance (recreated when streamUrl changes) ────────────
     val exoPlayer = remember(streamUrl) {
         ExoPlayer.Builder(context).build().also { player ->
             if (streamUrl != null) {
@@ -83,21 +91,30 @@ fun VideoPlayer(
         onDispose { exoPlayer.release() }
     }
 
-    // ── Playback state observation ────────────────────────────────────────
+    // ── Playback state observation ────────────────────────────────────
     var playbackState by remember { mutableIntStateOf(Player.STATE_IDLE) }
     var isPlaying by remember { mutableStateOf(false) }
     var playerError by remember { mutableStateOf<PlaybackException?>(null) }
+    var selectedRendition by remember { mutableStateOf<ProxyRendition?>(null) }
 
     DisposableEffect(exoPlayer) {
         val listener = object : Player.Listener {
-            override fun onPlaybackStateChanged(state: Int) {
-                playbackState = state
-            }
-            override fun onIsPlayingChanged(playing: Boolean) {
-                isPlaying = playing
-            }
+            override fun onPlaybackStateChanged(state: Int) { playbackState = state }
+            override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
             override fun onPlayerError(error: PlaybackException) {
                 Log.e("VideoPlayer", "Playback error: ${error.message}", error.cause)
+                // Auto-fallback when the device's codec can't handle the resolution
+                // (e.g., a mid-range phone served a 4K HEVC copy-mux it can't decode).
+                if (error.errorCode == PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES) {
+                    val fallback = renditions
+                        .filter { it.heightPx > 0 && it != selectedRendition }
+                        .minByOrNull { it.heightPx }
+                    if (fallback != null) {
+                        Log.i("VideoPlayer", "Codec exceeds capabilities → auto-switching to ${fallback.label}")
+                        selectedRendition = fallback
+                        return
+                    }
+                }
                 playerError = error
             }
         }
@@ -105,12 +122,11 @@ fun VideoPlayer(
         onDispose { exoPlayer.removeListener(listener) }
     }
 
-    // ── Seek position ─────────────────────────────────────────────────────
+    // ── Seek position ─────────────────────────────────────────────────
     var seekPositionMs by remember { mutableLongStateOf(0L) }
     var durationMs by remember { mutableLongStateOf(0L) }
     var isScrubbing by remember { mutableStateOf(false) }
 
-    // Poll position every 500 ms while playing.
     LaunchedEffect(isPlaying) {
         while (isPlaying) {
             if (!isScrubbing) {
@@ -119,35 +135,31 @@ fun VideoPlayer(
             }
             delay(500)
         }
-        // Update once after stopping so the thumb is correct.
         if (!isScrubbing) {
             seekPositionMs = exoPlayer.currentPosition
             durationMs = exoPlayer.duration.coerceAtLeast(0L)
         }
     }
 
-    // ── Volume ────────────────────────────────────────────────────────────
+    // ── Volume ────────────────────────────────────────────────────────
     var volume by remember { mutableFloatStateOf(1f) }
 
-    // ── Controls visibility (auto-hide after 3 s) ─────────────────────────
+    // ── Controls visibility (auto-hide after 3 s) ─────────────────────
     var controlsVisible by remember { mutableStateOf(true) }
     var lastTapTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
     LaunchedEffect(lastTapTimeMs, isPlaying) {
         if (isPlaying) {
             delay(3_000)
-            // Re-check: another tap may have bumped lastTapTimeMs.
             if (System.currentTimeMillis() - lastTapTimeMs >= 3_000) {
                 controlsVisible = false
             }
         }
     }
 
-    // ── Quality picker ────────────────────────────────────────────────────
+    // ── Quality picker ────────────────────────────────────────────────
     var showQualityPicker by remember { mutableStateOf(false) }
-    var selectedRendition by remember { mutableStateOf<ProxyRendition?>(null) }
 
-    // Swap the stream when the user picks a different rendition.
     val activeUrl = selectedRendition?.hlsUrl ?: streamUrl
     LaunchedEffect(activeUrl) {
         if (activeUrl != null && activeUrl != streamUrl) {
@@ -163,9 +175,28 @@ fun VideoPlayer(
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Layout
-    // ─────────────────────────────────────────────────────────────────────
+    // ── Fullscreen: orientation + system bar management ───────────────
+    // Uses DisposableEffect so cleanup is guaranteed when isFullscreen flips back.
+    DisposableEffect(isFullscreen) {
+        if (!isFullscreen) return@DisposableEffect onDispose { }
+        val activity = (context as? Activity)
+            ?: return@DisposableEffect onDispose { }
+        val origOrientation = activity.requestedOrientation
+        activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        val ctrl = WindowInsetsControllerCompat(activity.window, activity.window.decorView)
+        ctrl.hide(WindowInsetsCompat.Type.systemBars())
+        ctrl.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        WindowCompat.setDecorFitsSystemWindows(activity.window, false)
+        onDispose {
+            activity.requestedOrientation = origOrientation
+            ctrl.show(WindowInsetsCompat.Type.systemBars())
+            WindowCompat.setDecorFitsSystemWindows(activity.window, true)
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Inline layout
+    // ─────────────────────────────────────────────────────────────────
 
     Box(
         modifier = modifier
@@ -179,24 +210,21 @@ fun VideoPlayer(
             },
         contentAlignment = Alignment.Center,
     ) {
-
-        // ── PlayerView (always present; invisible until ready) ────────────
         if (streamUrl != null) {
             AndroidView(
                 factory = { ctx ->
                     PlayerView(ctx).apply {
                         layoutParams = FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT)
-                        // Disable PlayerView's own controls; we draw our own overlay.
                         useController = false
                         player = exoPlayer
                     }
                 },
-                update = { view -> view.player = exoPlayer },
+                // Detach the surface while the fullscreen Dialog holds it; reattach on exit.
+                update = { view -> view.player = if (isFullscreen) null else exoPlayer },
                 modifier = Modifier.fillMaxSize(),
             )
         }
 
-        // ── No-URL placeholder ────────────────────────────────────────────
         if (streamUrl == null) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -217,10 +245,7 @@ fun VideoPlayer(
             }
         }
 
-        // ── Buffering spinner ─────────────────────────────────────────────
-        val isBuffering = streamUrl != null &&
-            playerError == null &&
-            playbackState == Player.STATE_BUFFERING
+        val isBuffering = streamUrl != null && playerError == null && playbackState == Player.STATE_BUFFERING
         if (isBuffering) {
             CircularProgressIndicator(
                 modifier = Modifier.size(48.dp),
@@ -229,7 +254,6 @@ fun VideoPlayer(
             )
         }
 
-        // ── Error overlay ─────────────────────────────────────────────────
         if (playerError != null) {
             ErrorOverlay(
                 message = playerError!!.localizedMessage ?: "Playback error",
@@ -241,7 +265,6 @@ fun VideoPlayer(
             )
         }
 
-        // ── Controls overlay ──────────────────────────────────────────────
         AnimatedVisibility(
             visible = controlsVisible && playerError == null && streamUrl != null,
             enter = fadeIn(),
@@ -254,14 +277,13 @@ fun VideoPlayer(
                 durationMs = durationMs,
                 volume = volume,
                 hasRenditions = renditions.isNotEmpty(),
+                isFullscreen = false,
                 onPlayPause = {
                     if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
                     lastTapTimeMs = System.currentTimeMillis()
                 },
                 onScrubStart = { isScrubbing = true },
-                onScrub = { fraction ->
-                    seekPositionMs = (fraction * durationMs).toLong()
-                },
+                onScrub = { fraction -> seekPositionMs = (fraction * durationMs).toLong() },
                 onScrubEnd = { fraction ->
                     isScrubbing = false
                     exoPlayer.seekTo((fraction * durationMs).toLong())
@@ -276,17 +298,15 @@ fun VideoPlayer(
                     showQualityPicker = true
                     lastTapTimeMs = System.currentTimeMillis()
                 },
-                onFullScreen = onFullScreenToggle?.let {
-                    {
-                        it()
-                        lastTapTimeMs = System.currentTimeMillis()
-                    }
+                onFullScreen = {
+                    isFullscreen = true
+                    lastTapTimeMs = System.currentTimeMillis()
                 },
             )
         }
     }
 
-    // ── Quality picker dialog ─────────────────────────────────────────────
+    // ── Quality picker dialog ─────────────────────────────────────────
     if (showQualityPicker) {
         RenditionPickerDialog(
             renditions = renditions,
@@ -298,6 +318,114 @@ fun VideoPlayer(
             onDismiss = { showQualityPicker = false },
         )
     }
+
+    // ── Fullscreen dialog ─────────────────────────────────────────────
+    // Shares `exoPlayer` — the inline AndroidView has already nulled its surface
+    // via the `update` callback above, so only this Dialog's PlayerView is active.
+    if (isFullscreen && streamUrl != null) {
+        var fsControlsVisible by remember { mutableStateOf(true) }
+        var fsLastTapMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
+        var fsShowQuality by remember { mutableStateOf(false) }
+
+        LaunchedEffect(fsLastTapMs, isPlaying) {
+            if (isPlaying) {
+                delay(3_000)
+                if (System.currentTimeMillis() - fsLastTapMs >= 3_000) fsControlsVisible = false
+            }
+        }
+
+        Dialog(
+            onDismissRequest = { isFullscreen = false },
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false,
+                dismissOnBackPress = true,
+            ),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) {
+                        fsControlsVisible = !fsControlsVisible
+                        fsLastTapMs = System.currentTimeMillis()
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                AndroidView(
+                    factory = { ctx ->
+                        PlayerView(ctx).apply {
+                            layoutParams = FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT)
+                            useController = false
+                            player = exoPlayer
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+
+                val fsBuffering = playerError == null && playbackState == Player.STATE_BUFFERING
+                if (fsBuffering) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(48.dp),
+                        color = Color.White,
+                        strokeWidth = 3.dp,
+                    )
+                }
+
+                AnimatedVisibility(
+                    visible = fsControlsVisible && playerError == null,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                ) {
+                    ControlsOverlay(
+                        isPlaying = isPlaying,
+                        positionMs = seekPositionMs,
+                        durationMs = durationMs,
+                        volume = volume,
+                        hasRenditions = renditions.isNotEmpty(),
+                        isFullscreen = true,
+                        onPlayPause = {
+                            if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
+                            fsLastTapMs = System.currentTimeMillis()
+                        },
+                        onScrubStart = { isScrubbing = true },
+                        onScrub = { fraction -> seekPositionMs = (fraction * durationMs).toLong() },
+                        onScrubEnd = { fraction ->
+                            isScrubbing = false
+                            exoPlayer.seekTo((fraction * durationMs).toLong())
+                            fsLastTapMs = System.currentTimeMillis()
+                        },
+                        onVolumeChange = { v ->
+                            volume = v
+                            exoPlayer.volume = v
+                            fsLastTapMs = System.currentTimeMillis()
+                        },
+                        onQualityClick = {
+                            fsShowQuality = true
+                            fsLastTapMs = System.currentTimeMillis()
+                        },
+                        onFullScreen = { isFullscreen = false },
+                    )
+                }
+            }
+
+            if (fsShowQuality) {
+                RenditionPickerDialog(
+                    renditions = renditions,
+                    selectedRendition = selectedRendition,
+                    onSelect = { rendition ->
+                        selectedRendition = rendition
+                        fsShowQuality = false
+                    },
+                    onDismiss = { fsShowQuality = false },
+                )
+            }
+        }
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -308,7 +436,7 @@ fun VideoPlayer(
  * A streamable proxy rendition offered by the server.
  *
  * @param label Human-readable label shown in the picker, e.g. "720p" or "Original".
- * @param hlsUrl Fully-qualified HLS master-playlist URL for this rendition.
+ * @param hlsUrl Fully-qualified HLS playlist URL for this rendition.
  * @param heightPx Pixel height, 0 = unknown / "Original".
  */
 data class ProxyRendition(
@@ -328,13 +456,14 @@ private fun ControlsOverlay(
     durationMs: Long,
     volume: Float,
     hasRenditions: Boolean,
+    isFullscreen: Boolean,
     onPlayPause: () -> Unit,
     onScrubStart: () -> Unit,
     onScrub: (fraction: Float) -> Unit,
     onScrubEnd: (fraction: Float) -> Unit,
     onVolumeChange: (Float) -> Unit,
     onQualityClick: () -> Unit,
-    onFullScreen: (() -> Unit)?,
+    onFullScreen: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -342,7 +471,6 @@ private fun ControlsOverlay(
             .background(Color.Black.copy(alpha = 0.55f))
             .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {
-        // ── Seek bar ──────────────────────────────────────────────────────
         val seekFraction = if (durationMs > 0) positionMs.toFloat() / durationMs else 0f
         Slider(
             value = seekFraction,
@@ -350,9 +478,7 @@ private fun ControlsOverlay(
                 onScrubStart()
                 onScrub(fraction)
             },
-            onValueChangeFinished = {
-                onScrubEnd(seekFraction)
-            },
+            onValueChangeFinished = { onScrubEnd(seekFraction) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(24.dp),
@@ -363,7 +489,6 @@ private fun ControlsOverlay(
             ),
         )
 
-        // ── Time labels ───────────────────────────────────────────────────
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -382,12 +507,10 @@ private fun ControlsOverlay(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // ── Button row ────────────────────────────────────────────────────
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Play / pause
             IconButton(onClick = onPlayPause) {
                 Icon(
                     imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
@@ -397,7 +520,6 @@ private fun ControlsOverlay(
                 )
             }
 
-            // Volume
             Icon(
                 imageVector = if (volume > 0f) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
                 contentDescription = "Volume",
@@ -417,7 +539,6 @@ private fun ControlsOverlay(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Quality picker (only when renditions are provided)
             if (hasRenditions) {
                 IconButton(onClick = onQualityClick) {
                     Icon(
@@ -429,16 +550,13 @@ private fun ControlsOverlay(
                 }
             }
 
-            // Full-screen toggle
-            if (onFullScreen != null) {
-                IconButton(onClick = onFullScreen) {
-                    Icon(
-                        imageVector = Icons.Default.Fullscreen,
-                        contentDescription = "Full screen",
-                        tint = Color.White,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
+            IconButton(onClick = onFullScreen) {
+                Icon(
+                    imageVector = if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                    contentDescription = if (isFullscreen) "Exit full screen" else "Full screen",
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp),
+                )
             }
         }
     }
@@ -515,11 +633,8 @@ private fun RenditionPickerDialog(
                             Text(
                                 text = rendition.label,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = if (isSelected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                },
+                                color = if (isSelected) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.onSurface,
                             )
                             if (isSelected) {
                                 Icon(
@@ -544,14 +659,6 @@ private fun RenditionPickerDialog(
 // HLS data source factory with optional bearer token
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * OkHttp data source factory for ExoPlayer HLS.
- *
- * Injects `Authorization: Bearer <token>` on every segment request and uses
- * the same dynamic fingerprint-pinning trust manager as the Coil image loader
- * so that the daemon's self-signed TLS cert is accepted without hardcoding it
- * at factory-creation time.
- */
 @OptIn(UnstableApi::class)
 private fun HlsTokenDataSourceFactory(token: String?): androidx.media3.datasource.DataSource.Factory {
     val trustManager = HlsDynamicTrustManager()
