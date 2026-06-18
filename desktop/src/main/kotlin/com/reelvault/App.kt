@@ -1185,6 +1185,11 @@ fun ReelVaultApp(
         scope.launch {
             connectionState = ConnectionState.Connecting
 
+            if (BuildConfig.STANDALONE) {
+                startLocalDaemon()
+                return@launch
+            }
+
             // A remembered default short-circuits arbitration.
             val def = defaultStore.load()
             if (def != null) {
@@ -1248,6 +1253,11 @@ fun ReelVaultApp(
         scope.launch {
             gridViewModel.stopCatalogEventStream()
             defaultStore.clear()
+            if (BuildConfig.STANDALONE) {
+                val reachable = withContext(Dispatchers.IO) { launcher.isReachable("127.0.0.1", 50051) }
+                if (reachable) connectLocal(50051) else startLocalDaemon()
+                return@launch
+            }
             connectionState = ConnectionState.Discovering
             val localIps = withContext(Dispatchers.IO) { localIpv4Addresses() }
             val discovered = discovery.discover(timeoutMs = 2000)

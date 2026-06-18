@@ -8,6 +8,11 @@ plugins {
     id("com.google.protobuf") version "0.9.4"
 }
 
+// Standalone build flag — pass -Pstandalone=true (or export STANDALONE_MODE=true) to
+// compile out remote discovery.  release-desktop.sh passes this when --standalone is set.
+val standaloneMode = project.findProperty("standalone") == "true"
+    || System.getenv("STANDALONE_MODE") == "true"
+
 group = "com.reelvault"
 // Version is read from the root VERSION file — the single source of truth.
 // Update that file (and AppVersion.kt + macos/ReelVault/Info.plist) when bumping.
@@ -105,8 +110,35 @@ sourceSets {
             srcDirs("build/generated/source/proto/main/java")
             srcDirs("build/generated/source/proto/main/kotlin")
             srcDirs("build/generated/source/proto/main/grpckt")
+            srcDirs("build/generated/buildconfig")
         }
     }
+}
+
+val generateBuildConfig by tasks.registering {
+    val outputDir = layout.buildDirectory.dir("generated/buildconfig")
+    outputs.dir(outputDir)
+    inputs.property("standalone", standaloneMode)
+    doLast {
+        val dir = outputDir.get().asFile
+        dir.mkdirs()
+        File(dir, "BuildConfig.kt").writeText(
+            """
+            package com.reelvault
+
+            /** Compile-time flags baked in at build time via Gradle properties. */
+            object BuildConfig {
+                /** When true, remote discovery is disabled and the app always starts
+                 *  its own embedded daemon on loopback (standalone package mode). */
+                const val STANDALONE = $standaloneMode
+            }
+            """.trimIndent()
+        )
+    }
+}
+
+tasks.named("compileKotlin") {
+    dependsOn(generateBuildConfig)
 }
 
 // macOS Dock tile says "java" when running an unbundled JVM, because the
