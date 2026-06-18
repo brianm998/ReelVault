@@ -1209,10 +1209,33 @@ message SetLensNameMappingRequest {
   string alias = 2;
 }
 
+// Structured error codes.  Field 0 (ERROR_UNKNOWN) is the proto3 default,
+// meaning "no error" or "error type not specified".  Codes are intentionally
+// stable — never renumber or reuse a value.
+enum ErrorCode {
+  ERROR_UNKNOWN                    = 0;
+  ERROR_DATABASE                   = 1;
+  ERROR_VIDEO_NOT_FOUND            = 2;
+  ERROR_TAG_NOT_FOUND              = 3;
+  ERROR_COLLECTION_NOT_FOUND       = 4;
+  ERROR_METADATA_EXTRACTION_FAILED = 5;
+  ERROR_THUMBNAIL_GENERATION_FAILED = 6;
+  ERROR_FILE_NOT_FOUND             = 7;
+  ERROR_INVALID_PATH               = 8;
+  ERROR_DUPLICATE_ENTRY            = 9;
+  ERROR_IO                         = 10;
+  ERROR_CONFIG                     = 11;
+  ERROR_FFMPEG                     = 12;
+  ERROR_INVALID_REQUEST            = 13;
+  ERROR_INTERNAL                   = 14;
+}
+
 // Generic responses
 
 message Response {
   bool success = 1;
   string message = 2;
   string error = 3;
+  // Structured error code; ERROR_UNKNOWN (0) when success is true.
+  int32 error_code = 4;
 }

@@ -1389,11 +1389,11 @@ public class GridViewModel: ObservableObject {
         }
         if col != nil {
             return (String(localized: "This collection is empty", bundle: .module),
-                    String(localized: "Add videos by selecting them in the grid and choosing “Add to Collection”.", bundle: .module))
+                    String(localized: "Add videos by selecting them in the grid and choosing \u{201C}Add to Collection\u{201D}.", bundle: .module))
         }
         if hasActiveLibraryFilter() {
-            return (String(localized: “No videos match the current filter”, bundle: .module),
-                    String(localized: “Choose “Clear” in the filter bar to show all videos again.”, bundle: .module))
+            return (String(localized: "No videos match the current filter", bundle: .module),
+                    String(localized: "Choose \u{201C}Clear\u{201D} in the filter bar to show all videos again.", bundle: .module))
         }
         if libraryLocations.isEmpty {
             return (String(localized: "Your library is empty", bundle: .module),
