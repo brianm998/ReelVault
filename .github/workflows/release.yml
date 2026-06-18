@@ -39,7 +39,7 @@ jobs:
           elif [[ -n "${{ inputs.version }}" ]]; then
             V="${{ inputs.version }}"
           else
-            V="$(grep '^version' core/Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')"
+            V="$(cat VERSION)"
           fi
           echo "version=$V"  >> "$GITHUB_OUTPUT"
           echo "tag=v$V"     >> "$GITHUB_OUTPUT"

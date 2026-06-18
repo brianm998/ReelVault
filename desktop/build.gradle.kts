@@ -15,7 +15,7 @@ val standaloneMode = project.findProperty("standalone") == "true"
 
 group = "com.reelvault"
 // Version is read from the root VERSION file — the single source of truth.
-// Update that file (and AppVersion.kt + macos/ReelVault/Info.plist) when bumping.
+// Use scripts/bump-version.sh to update all components at once.
 version = rootProject.file("../VERSION").readText().trim()
 
 repositories {
@@ -111,6 +111,7 @@ sourceSets {
             srcDirs("build/generated/source/proto/main/kotlin")
             srcDirs("build/generated/source/proto/main/grpckt")
             srcDirs("build/generated/buildconfig")
+            srcDirs("build/generated/appversion")
         }
     }
 }
@@ -137,8 +138,32 @@ val generateBuildConfig by tasks.registering {
     }
 }
 
+val generateAppVersion by tasks.registering {
+    val versionFile = rootProject.file("../VERSION")
+    val outputDir = layout.buildDirectory.dir("generated/appversion")
+    inputs.file(versionFile)
+    outputs.dir(outputDir)
+    doLast {
+        val v = versionFile.readText().trim()
+        val dir = outputDir.get().asFile
+        dir.mkdirs()
+        File(dir, "AppVersion.kt").writeText(
+            """
+            package com.reelvault
+
+            internal object AppVersion {
+                const val CURRENT      = "$v"
+                const val GITHUB_OWNER = "reelvault"
+                const val GITHUB_REPO  = "reelvault"
+            }
+            """.trimIndent() + "\n"
+        )
+    }
+}
+
 tasks.named("compileKotlin") {
     dependsOn(generateBuildConfig)
+    dependsOn(generateAppVersion)
 }
 
 // macOS Dock tile says "java" when running an unbundled JVM, because the
@@ -244,7 +269,7 @@ compose.desktop {
             targetFormats(TargetFormat.Pkg, TargetFormat.Deb, TargetFormat.Exe)
 
             packageName = "ReelVault"
-            packageVersion = "0.1.0"
+            packageVersion = version.toString()
             description = "Video library manager and cataloging tool"
             vendor = "ReelVault"
             copyright = "2024 Brian Martin"
