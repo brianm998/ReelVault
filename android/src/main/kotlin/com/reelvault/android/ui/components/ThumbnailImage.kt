@@ -22,40 +22,24 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
-import com.reelvault.data.remote.RemoteConnection
 import com.reelvault.data.repository.VideoRepository
-import kotlinx.coroutines.launch
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public composable
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Loads and displays a video thumbnail, with a loading spinner and a
- * fallback icon when no image is available.
+ * Loads and displays a video thumbnail via gRPC ([VideoRepository.getThumbnailOrNull]),
+ * showing a spinner while loading and a film-reel icon when none is available.
  *
- * Loading strategy (in priority order):
- *
- * 1. **Remote HTTP endpoint** — when a remote daemon is connected
- *    ([RemoteConnection.endpoint] is non-null), the thumbnail is fetched from
- *    `https://<host>:<mediaPort>/thumbnail/<videoId>?size=<size>&token=<token>`.
- *    This avoids the gRPC streaming call and lets Coil handle caching natively.
- *
- * 2. **gRPC stream** — in local mode (no remote endpoint), [repository] is used
- *    to fetch thumbnail bytes via `GetThumbnail`. The resulting [ByteArray] is
- *    fed directly to Coil as an in-memory model. This path is cached in memory
- *    only; the thumbnails are cheap to re-fetch from the local daemon.
- *
- * The `reelvault://thumbnail/<videoId>` URL scheme used in the grid cards
- * requires a custom Coil fetcher registered globally in the app's
- * [coil.ImageLoader]; callers may continue to use that scheme for the grid,
- * but [ThumbnailImage] resolves images itself so it works without the
- * registered fetcher.
+ * Works identically in local mode (loopback daemon) and remote mode (LAN daemon)
+ * because [VideoRepository] holds the connected gRPC channel regardless of which
+ * mode is active. There is no HTTP `/thumbnail` endpoint on the media server —
+ * gRPC is the only thumbnail transport.
  *
  * @param videoId         Stable video identifier.
- * @param repository      Used only in local mode for the gRPC thumbnail call.
- * @param size            Thumbnail size hint passed to the server ("small",
- *                        "medium", "large"). Defaults to "medium".
+ * @param repository      Provides the gRPC thumbnail call.
+ * @param size            Size hint passed to the server ("small", "medium", "large").
  * @param contentScale    How the image fills its bounds.
  * @param contentDescription Accessibility description.
  * @param modifier        Layout modifier applied to the outer [Box].
@@ -70,38 +54,18 @@ fun ThumbnailImage(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
-    // ── Resolve the image model ───────────────────────────────────────────
-
-    // Use a sealed-ish Either: null = loading, ByteArray = bytes, String = URL.
-    // We hold both possibilities in a single `Any?` to avoid a sealed class.
     var imageModel: Any? by remember(videoId, size) { mutableStateOf(LOADING_SENTINEL) }
 
-    val remoteEndpoint = RemoteConnection.endpoint
-
-    LaunchedEffect(videoId, size, remoteEndpoint) {
+    LaunchedEffect(videoId, size) {
         imageModel = LOADING_SENTINEL
-        if (remoteEndpoint != null) {
-            // Remote mode: construct an HTTPS URL Coil can fetch directly.
-            val url = buildRemoteThumbnailUrl(remoteEndpoint, videoId, size)
-            Log.i("ThumbnailImage", "remote url for $videoId: $url")
-            imageModel = url
-        } else {
-            // Local mode: gRPC stream -> ByteArray.
-            Log.i("ThumbnailImage", "local gRPC path for $videoId (endpoint=null)")
-            scope.launch {
-                imageModel = try {
-                    repository.getThumbnailOrNull(videoId, size) ?: NO_THUMBNAIL_SENTINEL
-                } catch (e: Exception) {
-                    Log.e("ThumbnailImage", "gRPC thumbnail failed for $videoId", e)
-                    NO_THUMBNAIL_SENTINEL
-                }
-            }
+        imageModel = try {
+            repository.getThumbnailOrNull(videoId, size) ?: NO_THUMBNAIL_SENTINEL
+        } catch (e: Exception) {
+            Log.e("ThumbnailImage", "gRPC thumbnail failed for $videoId", e)
+            NO_THUMBNAIL_SENTINEL
         }
     }
-
-    // ── Render ────────────────────────────────────────────────────────────
 
     Box(
         modifier = modifier.background(Color.Transparent),
@@ -116,16 +80,6 @@ fun ThumbnailImage(
                 )
             }
 
-            NO_THUMBNAIL_SENTINEL -> {
-                // No thumbnail available: show a generic video icon placeholder.
-                Icon(
-                    imageVector = Icons.Default.VideoFile,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.35f),
-                    modifier = Modifier.size(40.dp),
-                )
-            }
-
             is ByteArray -> {
                 AsyncImage(
                     model = ImageRequest.Builder(context)
@@ -137,26 +91,7 @@ fun ThumbnailImage(
                     modifier = Modifier.fillMaxSize(),
                     onState = { state ->
                         if (state is AsyncImagePainter.State.Error) {
-                            Log.e("ThumbnailImage", "Coil bytes error for $videoId", state.result.throwable)
-                            imageModel = NO_THUMBNAIL_SENTINEL
-                        }
-                    },
-                )
-            }
-
-            is String -> {
-                // Remote HTTPS URL — Coil fetches and caches it.
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(model as String)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = contentDescription,
-                    contentScale = contentScale,
-                    modifier = Modifier.fillMaxSize(),
-                    onState = { state ->
-                        if (state is AsyncImagePainter.State.Error) {
-                            Log.e("ThumbnailImage", "Coil HTTPS error for $videoId: ${state.result.throwable}")
+                            Log.e("ThumbnailImage", "Coil error for $videoId", state.result.throwable)
                             imageModel = NO_THUMBNAIL_SENTINEL
                         }
                     },
@@ -179,28 +114,5 @@ fun ThumbnailImage(
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Sentinels stored in the `imageModel` state slot to distinguish "still
- * loading" from "definitively no thumbnail". Using object identity avoids
- * collisions with real ByteArray / String values.
- */
 private val LOADING_SENTINEL: Any = object {}
 private val NO_THUMBNAIL_SENTINEL: Any = object {}
-
-/**
- * Builds the media-server thumbnail URL for a remote connection.
- *
- * The daemon's media server exposes:
- *   GET /thumbnail/<videoId>?size=<size>
- * with `Authorization: Bearer <token>` or `?token=<token>` accepted.
- * We use the query-parameter form so Coil's [okhttp3.OkHttpClient] needs
- * no extra interceptor for thumbnail fetches.
- */
-private fun buildRemoteThumbnailUrl(
-    endpoint: RemoteConnection.Endpoint,
-    videoId: String,
-    size: String,
-): String {
-    val encoded = java.net.URLEncoder.encode(endpoint.token, "UTF-8")
-    return "https://${endpoint.host}:${endpoint.mediaPort}/thumbnail/$videoId?size=$size&token=$encoded"
-}
