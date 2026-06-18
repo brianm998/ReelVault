@@ -27,6 +27,9 @@
 #                     Requires --sign and APPLE_API_KEY_PATH, APPLE_API_KEY_ID,
 #                     APPLE_API_ISSUER_ID env vars (CI) or a "ReelVault-Notarize"
 #                     keychain profile (local).
+#   --standalone      Compile out remote discovery; the app always starts its own
+#                     embedded daemon on loopback.  Use for the "standalone" package
+#                     that bundles the core daemon and needs no server setup.
 #   --out DIR         Output directory (default: dist/desktop)
 #   --help            Show this message
 #
@@ -49,6 +52,7 @@ CORE_DIR="${SCRIPT_DIR}/core"
 CORE_BIN=""
 SIGN_IDENTITY=""
 NOTARIZE=0
+STANDALONE=0
 OUT_DIR="${SCRIPT_DIR}/dist/desktop"
 
 # ---------------------------------------------------------------------------
@@ -56,10 +60,11 @@ OUT_DIR="${SCRIPT_DIR}/dist/desktop"
 # ---------------------------------------------------------------------------
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --core-bin) CORE_BIN="$2"; shift 2 ;;
-        --sign)     SIGN_IDENTITY="$2"; shift 2 ;;
-        --notarize) NOTARIZE=1; shift ;;
-        --out)      OUT_DIR="$2"; shift 2 ;;
+        --core-bin)   CORE_BIN="$2"; shift 2 ;;
+        --sign)       SIGN_IDENTITY="$2"; shift 2 ;;
+        --notarize)   NOTARIZE=1; shift ;;
+        --standalone) STANDALONE=1; shift ;;
+        --out)        OUT_DIR="$2"; shift 2 ;;
         --help|-h)
             sed -n '2,/^set -/p' "$0" | head -n 50
             exit 0
@@ -97,6 +102,12 @@ locate_core_bin() {
 
 echo "==> ReelVault Desktop release build"
 echo "    Platform: ${OS}"
+
+GRADLE_STANDALONE_FLAG=""
+if [[ "$STANDALONE" -eq 1 ]]; then
+    GRADLE_STANDALONE_FLAG="-Pstandalone=true"
+    echo "    Mode: standalone (remote discovery disabled)"
+fi
 
 # ---------------------------------------------------------------------------
 # Bundle the core daemon binary into desktop/release-bin/
@@ -170,7 +181,7 @@ if [[ "$OS" == "Darwin" ]]; then
     echo "==> Building distributable app bundle…"
     (cd "$DESKTOP_DIR" && \
         CARGO_TERM_COLOR=always \
-        ./gradlew createDistributable --no-daemon 2>&1)
+        ./gradlew createDistributable --no-daemon $GRADLE_STANDALONE_FLAG 2>&1)
 
     APP_BUNDLE="${BUILD_MAIN}/app/ReelVault.app"
     if [[ ! -d "$APP_BUNDLE" ]]; then
@@ -296,7 +307,7 @@ else
     # -----------------------------------------------------------------------
     (cd "$DESKTOP_DIR" && \
         CARGO_TERM_COLOR=always \
-        ./gradlew packageDistributionForCurrentOS --no-daemon 2>&1)
+        ./gradlew packageDistributionForCurrentOS --no-daemon $GRADLE_STANDALONE_FLAG 2>&1)
 
     case "$OS" in
         Linux)

@@ -18,6 +18,9 @@
 #                            CI:    APPLE_API_KEY_PATH, APPLE_API_KEY_ID,
 #                                   APPLE_API_ISSUER_ID env vars
 #                            Local: a "ReelVault-Notarize" keychain profile
+#   --standalone           Compile out remote discovery; the app always starts its
+#                          own embedded daemon on loopback.  Use for the "standalone"
+#                          package that bundles the core daemon and needs no server setup.
 #   --version X.Y.Z        Override the bundle version (default: Package.swift).
 #   --out DIR              Output directory (default: dist/macos)
 #   --help                 Show this message
@@ -38,6 +41,7 @@ CORE_DIR="${SCRIPT_DIR}/core"
 CORE_BIN=""
 SIGN_IDENTITY=""
 NOTARIZE=0
+STANDALONE=0
 VERSION=""
 OUT_DIR="${SCRIPT_DIR}/dist/macos"
 
@@ -46,11 +50,12 @@ OUT_DIR="${SCRIPT_DIR}/dist/macos"
 # ---------------------------------------------------------------------------
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --core-bin)  CORE_BIN="$2"; shift 2 ;;
-        --sign)      SIGN_IDENTITY="$2"; shift 2 ;;
-        --notarize)  NOTARIZE=1; shift ;;
-        --version)   VERSION="$2"; shift 2 ;;
-        --out)       OUT_DIR="$2"; shift 2 ;;
+        --core-bin)   CORE_BIN="$2"; shift 2 ;;
+        --sign)       SIGN_IDENTITY="$2"; shift 2 ;;
+        --notarize)   NOTARIZE=1; shift ;;
+        --standalone) STANDALONE=1; shift ;;
+        --version)    VERSION="$2"; shift 2 ;;
+        --out)        OUT_DIR="$2"; shift 2 ;;
         --help|-h)
             sed -n '2,/^set -/p' "$0" | head -n 40
             exit 0
@@ -83,6 +88,12 @@ if [[ -z "$VERSION" ]]; then
         | head -1 | sed 's/.*"\([0-9][^"]*\)".*/\1/' 2>/dev/null || echo "0.1.0")"
 fi
 echo "==> ReelVault macOS v${VERSION}"
+
+SWIFT_STANDALONE_FLAGS=""
+if [[ "$STANDALONE" -eq 1 ]]; then
+    SWIFT_STANDALONE_FLAGS="-Xswiftc -DSTANDALONE_MODE"
+    echo "    Mode: standalone (remote discovery disabled)"
+fi
 
 # ---------------------------------------------------------------------------
 # Locate the reelvault-core binary
@@ -120,10 +131,10 @@ fi
 # Build the Swift binary in release mode (universal: arm64 + x86_64)
 # ---------------------------------------------------------------------------
 echo "==> Building ReelVault (release, arm64)…"
-(cd "$MACOS_DIR" && swift build -c release --arch arm64 --product ReelVault 2>&1)
+(cd "$MACOS_DIR" && swift build -c release --arch arm64 --product ReelVault $SWIFT_STANDALONE_FLAGS 2>&1)
 
 echo "==> Building ReelVault (release, x86_64)…"
-(cd "$MACOS_DIR" && swift build -c release --arch x86_64 --product ReelVault 2>&1)
+(cd "$MACOS_DIR" && swift build -c release --arch x86_64 --product ReelVault $SWIFT_STANDALONE_FLAGS 2>&1)
 
 ARM_BIN="${MACOS_DIR}/.build/arm64-apple-macosx/release/ReelVault"
 X86_BIN="${MACOS_DIR}/.build/x86_64-apple-macosx/release/ReelVault"

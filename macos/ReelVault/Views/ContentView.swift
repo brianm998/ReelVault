@@ -1441,6 +1441,9 @@ struct ContentView: View {
     /// local server. A same-machine `--remote` daemon is de-duped against loopback
     /// (see `scanForServers`), so we never offer "the same process" twice.
     private func arbitrate() async {
+        #if STANDALONE_MODE
+        await connectLocal(); return
+        #endif
         connectionState = .discovering
         let (loopback, remotes) = await scanForServers()
         if loopback && !remotes.isEmpty {
@@ -1461,6 +1464,9 @@ struct ContentView: View {
     /// needed). Mirrors the iOS source switcher.
     private func switchLibrary() async {
         StoredDefaultServer.clear()
+        #if STANDALONE_MODE
+        await connectLocal(); return
+        #endif
         connectionState = .discovering
         let (_, remotes) = await scanForServers()
         var choices: [MacServerChoice] = [.local(port: 50051)]
