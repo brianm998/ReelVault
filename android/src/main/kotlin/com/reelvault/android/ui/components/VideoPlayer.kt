@@ -3,6 +3,7 @@
 
 package com.reelvault.android.ui.components
 
+import android.util.Log
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
@@ -68,6 +69,7 @@ fun VideoPlayer(
     val exoPlayer = remember(streamUrl) {
         ExoPlayer.Builder(context).build().also { player ->
             if (streamUrl != null) {
+                Log.i("VideoPlayer", "Starting HLS: $streamUrl (token=${authToken?.take(8)}…)")
                 val dataSourceFactory = HlsTokenDataSourceFactory(authToken)
                 val mediaSource = HlsMediaSource.Factory(dataSourceFactory)
                     .createMediaSource(MediaItem.fromUri(streamUrl))
@@ -95,6 +97,7 @@ fun VideoPlayer(
                 isPlaying = playing
             }
             override fun onPlayerError(error: PlaybackException) {
+                Log.e("VideoPlayer", "Playback error: ${error.message}", error.cause)
                 playerError = error
             }
         }

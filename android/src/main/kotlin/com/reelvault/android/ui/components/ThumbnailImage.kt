@@ -3,6 +3,7 @@
 
 package com.reelvault.android.ui.components
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -83,16 +84,17 @@ fun ThumbnailImage(
         imageModel = LOADING_SENTINEL
         if (remoteEndpoint != null) {
             // Remote mode: construct an HTTPS URL Coil can fetch directly.
-            // The daemon serves thumbnails at /thumbnail/<id>?size=<s> and
-            // validates the token as a query parameter (avoids an extra header
-            // injection step while Coil handles the request).
-            imageModel = buildRemoteThumbnailUrl(remoteEndpoint, videoId, size)
+            val url = buildRemoteThumbnailUrl(remoteEndpoint, videoId, size)
+            Log.i("ThumbnailImage", "remote url for $videoId: $url")
+            imageModel = url
         } else {
             // Local mode: gRPC stream -> ByteArray.
+            Log.i("ThumbnailImage", "local gRPC path for $videoId (endpoint=null)")
             scope.launch {
                 imageModel = try {
                     repository.getThumbnailOrNull(videoId, size) ?: NO_THUMBNAIL_SENTINEL
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    Log.e("ThumbnailImage", "gRPC thumbnail failed for $videoId", e)
                     NO_THUMBNAIL_SENTINEL
                 }
             }
@@ -135,6 +137,7 @@ fun ThumbnailImage(
                     modifier = Modifier.fillMaxSize(),
                     onState = { state ->
                         if (state is AsyncImagePainter.State.Error) {
+                            Log.e("ThumbnailImage", "Coil bytes error for $videoId", state.result.throwable)
                             imageModel = NO_THUMBNAIL_SENTINEL
                         }
                     },
@@ -153,6 +156,7 @@ fun ThumbnailImage(
                     modifier = Modifier.fillMaxSize(),
                     onState = { state ->
                         if (state is AsyncImagePainter.State.Error) {
+                            Log.e("ThumbnailImage", "Coil HTTPS error for $videoId: ${state.result.throwable}")
                             imageModel = NO_THUMBNAIL_SENTINEL
                         }
                     },
