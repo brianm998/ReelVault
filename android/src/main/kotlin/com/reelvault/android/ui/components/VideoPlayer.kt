@@ -542,25 +542,45 @@ private fun RenditionPickerDialog(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Wraps the default OkHttp data source factory and injects an `Authorization:
- * Bearer <token>` header on every segment request if a token is provided.
- * This mirrors how the iOS client injects the session token into its
- * HLS URL requests.
+ * OkHttp data source factory for ExoPlayer HLS.
+ *
+ * Injects `Authorization: Bearer <token>` on every segment request and uses
+ * the same dynamic fingerprint-pinning trust manager as the Coil image loader
+ * so that the daemon's self-signed TLS cert is accepted without hardcoding it
+ * at factory-creation time.
  */
 @OptIn(UnstableApi::class)
 private fun HlsTokenDataSourceFactory(token: String?): androidx.media3.datasource.DataSource.Factory {
-    val okHttpClient = okhttp3.OkHttpClient.Builder().apply {
-        if (token != null) {
-            addInterceptor { chain ->
-                chain.proceed(
-                    chain.request().newBuilder()
-                        .header("Authorization", "Bearer $token")
-                        .build()
-                )
+    val trustManager = HlsDynamicTrustManager()
+    val sslCtx = javax.net.ssl.SSLContext.getInstance("TLS").apply {
+        init(null, arrayOf(trustManager), null)
+    }
+    val okHttpClient = okhttp3.OkHttpClient.Builder()
+        .sslSocketFactory(sslCtx.socketFactory, trustManager)
+        .hostnameVerifier { _, _ -> true }
+        .apply {
+            if (token != null) {
+                addInterceptor { chain ->
+                    chain.proceed(
+                        chain.request().newBuilder()
+                            .header("Authorization", "Bearer $token")
+                            .build()
+                    )
+                }
             }
         }
-    }.build()
+        .build()
     return androidx.media3.datasource.okhttp.OkHttpDataSource.Factory(okHttpClient)
+}
+
+/** Pins to the current [RemoteConnection] fingerprint at handshake time. */
+private class HlsDynamicTrustManager : javax.net.ssl.X509TrustManager {
+    override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>?, authType: String?) {}
+    override fun checkServerTrusted(chain: Array<java.security.cert.X509Certificate>?, authType: String?) {
+        val fp = com.reelvault.data.remote.RemoteConnection.endpoint?.fingerprintHex ?: return
+        com.reelvault.data.remote.PinnedTls.PinningTrustManager(fp).checkServerTrusted(chain, authType)
+    }
+    override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = emptyArray()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

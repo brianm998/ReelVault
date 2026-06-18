@@ -33,8 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import com.reelvault.android.ui.components.ThumbnailImage
 import com.reelvault.android.viewmodel.GridViewModel
 import com.reelvault.data.models.Collection
 import com.reelvault.data.models.LibraryLocation
@@ -116,8 +115,6 @@ fun LibraryGridScreen(
         screenWidthDp >= TABLET_WIDTH_DP -> 3
         else -> 2
     }
-    val isTablet = screenWidthDp >= TABLET_WIDTH_DP
-
     // ── Initial data load + event stream ────────────────────────────────
     LaunchedEffect(Unit) {
         vm.loadVideos()
@@ -554,6 +551,23 @@ private fun LibrarySidebarContent(
         HorizontalDivider()
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
+            // ── All Videos ─────────────────────────────────────────────
+            item {
+                NavigationDrawerItem(
+                    icon = {
+                        Icon(
+                            Icons.Default.VideoLibrary,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    },
+                    label = { Text("All Videos") },
+                    selected = activeTagId.isEmpty() && activeCollectionId == null,
+                    onClick = { onClearFilters() },
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                )
+            }
+
             // ── Library Locations ──────────────────────────────────────
             if (libraryLocations.isNotEmpty()) {
                 item {
@@ -851,15 +865,6 @@ private fun AndroidVideoCard(
     onLongPress: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Thumbnail loaded asynchronously via Coil. We construct a unique URL-style
-    // key so Coil's memory cache identifies each (video, size) pair.
-    val context = LocalContext.current
-    // Thumbnail bytes are fetched via the repository's gRPC call and fed to Coil
-    // through a custom fetcher registered in coil.imageLoader. Here we use a
-    // data-URI-style model key and rely on Coil's default disk-cache.
-    // A real integration would provide a custom ImageFetcher; for now we use a
-    // placeholder icon when the thumbnail is not available.
-
     val borderColor = when {
         isSelected -> MaterialTheme.colorScheme.primary
         isMultiSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
@@ -926,24 +931,14 @@ private fun AndroidVideoCard(
                     .background(photoAreaBackground),
                 contentAlignment = Alignment.Center,
             ) {
-                if (video.hasThumbnail) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data("reelvault://thumbnail/${video.id}")
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = video.filename,
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Movie,
-                        contentDescription = "No thumbnail",
-                        modifier = Modifier.size(36.dp),
-                        tint = Color.White.copy(alpha = 0.4f),
-                    )
-                }
+                ThumbnailImage(
+                    videoId = video.id,
+                    repository = repository,
+                    size = "small",
+                    contentScale = ContentScale.Fit,
+                    contentDescription = video.filename,
+                    modifier = Modifier.fillMaxSize(),
+                )
 
                 // Offline indicator
                 if (!video.isOnline) {
@@ -1055,7 +1050,6 @@ private fun VideoListRow(
     onTap: () -> Unit,
     onLongPress: () -> Unit,
 ) {
-    val context = LocalContext.current
     val background = when {
         isSelected -> MaterialTheme.colorScheme.primaryContainer
         isMultiSelected -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
@@ -1079,24 +1073,13 @@ private fun VideoListRow(
                 .background(Color(0xFF474747)),
             contentAlignment = Alignment.Center,
         ) {
-            if (video.hasThumbnail) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data("reelvault://thumbnail/${video.id}")
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else {
-                Icon(
-                    Icons.Default.Movie,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = Color.White.copy(alpha = 0.4f),
-                )
-            }
+            ThumbnailImage(
+                videoId = video.id,
+                repository = repository,
+                size = "small",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
             if (!video.isOnline) {
                 Box(
                     modifier = Modifier

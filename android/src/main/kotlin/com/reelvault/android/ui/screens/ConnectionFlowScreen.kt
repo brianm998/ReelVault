@@ -10,10 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -83,6 +80,7 @@ fun ConnectionFlowScreen(
     pairingClient: PairingClient,
     tokenStorage: TokenStorage,
     onConnected: () -> Unit,
+    onBrowseLocalMedia: () -> Unit = {},
 ) {
     // We need a Context to build the NSD-backed discovery — pull it from the
     // Compose LocalContext rather than threading it through as a parameter.
@@ -220,6 +218,7 @@ fun ConnectionFlowScreen(
                 discovered.clear()
                 state = ConnectionState.Discovering
             },
+            onBrowseLocalMedia = onBrowseLocalMedia,
         )
 
         is ConnectionState.EnterPin -> EnterPinView(
@@ -302,6 +301,7 @@ private fun ChooseServerView(
     onServerChosen: (DiscoveredServer) -> Unit,
     onEnterManually: () -> Unit,
     onRetry: () -> Unit,
+    onBrowseLocalMedia: () -> Unit = {},
 ) {
     Scaffold(
         topBar = {
@@ -377,6 +377,21 @@ private fun ChooseServerView(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text("Enter address manually")
+                }
+            }
+
+            item {
+                OutlinedButton(
+                    onClick = onBrowseLocalMedia,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(
+                        Icons.Default.Smartphone,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Browse local videos")
                 }
             }
         }
