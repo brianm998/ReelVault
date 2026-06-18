@@ -6,6 +6,8 @@ native browsing of large video libraries.
 **ReelVault is for organizing, discovering, and managing videos. It is NOT a
 video editor.**
 
+**[→ Download ReelVault](https://brianm998.github.io/ReelVault/)**
+
 ## Overview
 
 ReelVault helps you:
