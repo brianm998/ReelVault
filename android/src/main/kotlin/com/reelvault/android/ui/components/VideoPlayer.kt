@@ -577,7 +577,8 @@ private fun HlsTokenDataSourceFactory(token: String?): androidx.media3.datasourc
 private class HlsDynamicTrustManager : javax.net.ssl.X509TrustManager {
     override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>?, authType: String?) {}
     override fun checkServerTrusted(chain: Array<java.security.cert.X509Certificate>?, authType: String?) {
-        val fp = com.reelvault.data.remote.RemoteConnection.endpoint?.fingerprintHex ?: return
+        val fp = com.reelvault.data.remote.RemoteConnection.endpoint?.fingerprintHex
+            ?.takeIf { it.isNotEmpty() } ?: return
         com.reelvault.data.remote.PinnedTls.PinningTrustManager(fp).checkServerTrusted(chain, authType)
     }
     override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = emptyArray()

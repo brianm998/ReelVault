@@ -66,7 +66,7 @@ class ReelVaultApp : Application() {
 private class DynamicPinnedTrustManager : X509TrustManager {
     override fun checkClientTrusted(chain: Array<X509Certificate>?, authType: String?) {}
     override fun checkServerTrusted(chain: Array<X509Certificate>?, authType: String?) {
-        val fp = RemoteConnection.endpoint?.fingerprintHex ?: return
+        val fp = RemoteConnection.endpoint?.fingerprintHex?.takeIf { it.isNotEmpty() } ?: return
         PinnedTls.PinningTrustManager(fp).checkServerTrusted(chain, authType)
     }
     override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
