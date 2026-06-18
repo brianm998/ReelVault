@@ -136,7 +136,7 @@ struct LibraryFilterBar: View {
     }
 
     /// Human-readable label for a sort field key.
-    private func sortFieldLabel(_ key: String) -> String {
+    private func sortFieldLabel(_ key: String) -> LocalizedStringKey {
         switch key {
         case "filename":      return "Filename"
         case "indexed_at":    return "Date Added"
@@ -154,12 +154,12 @@ struct LibraryFilterBar: View {
         case "exposure_time": return "Exposure Time"
         case "focal_length":  return "Focal Length"
         case "keyword":       return "Keyword"
-        default:              return key
+        default:              return LocalizedStringKey(key)
         }
     }
 
     @ViewBuilder
-    private func sortMenuItem(label: String, key: String) -> some View {
+    private func sortMenuItem(label: LocalizedStringKey, key: String) -> some View {
         let selected = vm.sortBy == key
         Button {
             if selected {

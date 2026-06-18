@@ -48,10 +48,34 @@ pub enum ReelVaultError {
     InternalError(String),
 }
 
+impl ReelVaultError {
+    /// Returns the stable numeric error code for this error variant.
+    /// Values mirror the `ErrorCode` enum in reelvault.proto.
+    pub fn error_code(&self) -> i32 {
+        match self {
+            ReelVaultError::DatabaseError(_) => 1,
+            ReelVaultError::VideoNotFound(_) => 2,
+            ReelVaultError::TagNotFound(_) => 3,
+            ReelVaultError::CollectionNotFound(_) => 4,
+            ReelVaultError::MetadataExtractionFailed(_) => 5,
+            ReelVaultError::ThumbnailGenerationFailed(_) => 6,
+            ReelVaultError::FileNotFound(_) => 7,
+            ReelVaultError::InvalidPath(_) => 8,
+            ReelVaultError::DuplicateEntry(_) => 9,
+            ReelVaultError::IoError(_) => 10,
+            ReelVaultError::ConfigError(_) => 11,
+            ReelVaultError::FfmpegError(_) => 12,
+            ReelVaultError::InvalidRequest(_) => 13,
+            ReelVaultError::InternalError(_) => 14,
+        }
+    }
+}
+
 // gRPC conversion
 impl From<ReelVaultError> for tonic::Status {
     fn from(err: ReelVaultError) -> Self {
-        match err {
+        let code = err.error_code();
+        let mut status = match err {
             ReelVaultError::VideoNotFound(_)
             | ReelVaultError::TagNotFound(_)
             | ReelVaultError::CollectionNotFound(_)
@@ -61,7 +85,13 @@ impl From<ReelVaultError> for tonic::Status {
             }
             ReelVaultError::DuplicateEntry(_) => tonic::Status::already_exists(err.to_string()),
             _ => tonic::Status::internal(err.to_string()),
+        };
+        // Embed the numeric error code in trailing metadata so clients can map
+        // it to a localised message without parsing English strings.
+        if let Ok(val) = tonic::metadata::MetadataValue::try_from(code.to_string().as_str()) {
+            status.metadata_mut().insert("rv-error-code", val);
         }
+        status
     }
 }
 

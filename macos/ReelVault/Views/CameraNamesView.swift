@@ -244,7 +244,7 @@ struct CameraNamesView: View {
             }
         } catch {
             await MainActor.run {
-                self.errorMessage = "Failed to load mappings: \(error.localizedDescription)"
+                self.errorMessage = String(format: String(localized: "Failed to load mappings: %@"), error.localizedDescription)
                 self.isLoading = false
             }
         }
@@ -265,7 +265,7 @@ struct CameraNamesView: View {
             await reload()
         } catch {
             await MainActor.run {
-                self.errorMessage = "Failed to save mapping: \(error.localizedDescription)"
+                self.errorMessage = String(format: String(localized: "Failed to save mapping: %@"), error.localizedDescription)
             }
         }
     }
@@ -279,7 +279,7 @@ struct CameraNamesView: View {
             await reload()
         } catch {
             await MainActor.run {
-                self.errorMessage = "Failed to remove mapping: \(error.localizedDescription)"
+                self.errorMessage = String(format: String(localized: "Failed to remove mapping: %@"), error.localizedDescription)
             }
         }
     }

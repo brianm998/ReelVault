@@ -367,7 +367,7 @@ private struct RegularLayout: View {
     }
 
     private var title: String {
-        grid.totalCount > 0 ? "\(grid.totalCount) Videos" : "Videos"
+        grid.totalCount > 0 ? String(format: String(localized: "%ld Videos"), grid.totalCount) : String(localized: "Videos")
     }
 }
 

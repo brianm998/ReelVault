@@ -15,7 +15,7 @@ struct LibraryTopBar: View {
     @State private var showCardStats = false
 
     /// Sort fields offered, matching the macOS picker (label, server key).
-    private static let sortFields: [(String, String)] = [
+    private static let sortFields: [(LocalizedStringKey, String)] = [
         ("Filename", "filename"), ("Date Added", "indexed_at"),
         ("Date Captured", "creation_date"), ("Duration", "duration"),
         ("File Size", "size"), ("Resolution", "resolution"),

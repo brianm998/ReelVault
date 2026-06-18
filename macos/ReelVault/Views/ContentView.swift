@@ -1483,7 +1483,7 @@ struct ContentView: View {
         case .remote(let server):
             connectionState = .connecting
             if !(await tryConnectRemote(server, makeDefault: makeDefault)) {
-                connectionError = "Couldn't reach \(server.catalogName ?? server.name)."
+                connectionError = String(format: String(localized: "Couldn't reach %@."), server.catalogName ?? server.name)
                 connectionState = .failed
             }
         }
@@ -1499,7 +1499,7 @@ struct ContentView: View {
             port = defaultPort
         } else {
             guard let listening = await launcher.launch(preferredPort: defaultPort, dbPath: nil) else {
-                connectionError = "Couldn't start the ReelVault backend. Set REELVAULT_CORE_BIN or build core with `cargo build`."
+                connectionError = String(localized: "Couldn't start the ReelVault backend. Set REELVAULT_CORE_BIN or build core with `cargo build`.")
                 connectionState = .failed
                 return
             }
@@ -1507,7 +1507,7 @@ struct ContentView: View {
         }
         let connected = await VideoRepository.shared.connect(host: "127.0.0.1", port: port)
         guard connected else {
-            connectionError = "Connected to port \(port) but the daemon didn't respond"
+            connectionError = String(format: String(localized: "Connected to port %ld but the daemon didn't respond"), port)
             connectionState = .failed
             return
         }
@@ -1568,7 +1568,7 @@ struct ContentView: View {
                 host: server.host, mediaPort: mediaPort, fingerprintHex: pin,
                 pin: code, deviceName: Self.deviceName())
             guard let token else {
-                connectionError = "Pairing failed — check the code and try again."
+                connectionError = String(localized: "Pairing failed — check the code and try again.")
                 connectionState = .failed
                 return
             }
@@ -1583,7 +1583,7 @@ struct ContentView: View {
                     fingerprintHex: pin, bearerToken: token)
                 await afterConnected(isRemote: true)
             } else {
-                connectionError = "Paired, but couldn't connect to \(server.catalogName ?? server.name)."
+                connectionError = String(format: String(localized: "Paired, but couldn't connect to %@."), server.catalogName ?? server.name)
                 connectionState = .failed
             }
         }
@@ -1621,7 +1621,7 @@ struct ContentView: View {
     /// Ask the daemon to switch to a new catalog and refresh the UI.
     private func openCatalog(path: String) async {
         guard let info = await VideoRepository.shared.openCatalog(path: path), info.isOpen else {
-            connectionError = "Could not open catalog at \(path)"
+            connectionError = String(format: String(localized: "Could not open catalog at %@"), path)
             // Re-open the sheet so the user can pick again.
             openCatalogIsStartup = false
             showOpenCatalogSheet = true

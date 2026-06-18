@@ -68,6 +68,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
+import com.reelvault.util.Strings
 
 private val logger = LoggerFactory.getLogger("ReelVault")
 
@@ -999,7 +1000,7 @@ fun ReelVaultApp(
                 showOpenCatalogDialog = false
                 loadAfterCatalogOpened()
             } else {
-                errorMessage = "Could not open catalog at $path"
+                errorMessage = Strings.format("err_could_not_open_catalog", path)
                 // Re-open the dialog so the user can pick again.
                 showOpenCatalogDialog = true
             }
@@ -1048,8 +1049,7 @@ fun ReelVaultApp(
             // dialog. Drop the endpoint so we're not left "remote" while on the
             // error screen; Retry re-discovers cleanly.
             RemoteConnection.endpoint = null
-            errorMessage = "The remote server has no catalog open. Open a catalog " +
-                "on the server, then reconnect."
+            errorMessage = Strings["err_no_catalog_open"]
             connectionState = ConnectionState.Failed
         } else {
             val head = recents.list().firstOrNull { java.io.File(it).exists() }
@@ -1063,7 +1063,7 @@ fun ReelVaultApp(
         connectionState = ConnectionState.Connecting
         val ok = repository.connect(overridePort = port)
         if (!ok) {
-            errorMessage = "Connected to port $port but the daemon didn't respond"
+            errorMessage = Strings.format("err_port_no_response", port)
             connectionState = ConnectionState.Failed
             return
         }
@@ -1079,8 +1079,7 @@ fun ReelVaultApp(
             launcher.launch(preferredPort = 50051, dbPath = null)
         }
         if (listening == null) {
-            errorMessage = "Couldn't start the ReelVault backend. " +
-                "Set REELVAULT_CORE_BIN or build core with `cargo build`."
+            errorMessage = Strings["err_cannot_start_backend"]
             connectionState = ConnectionState.Failed
             return
         }
@@ -1093,7 +1092,7 @@ fun ReelVaultApp(
     suspend fun connectRemoteWith(server: DiscoveredServer, token: String, makeDefault: Boolean) {
         val fp = server.fingerprintHex
         if (fp == null) {
-            errorMessage = "Couldn't verify the server's identity (no certificate fingerprint)."
+            errorMessage = Strings["err_no_certificate"]
             connectionState = ConnectionState.Failed
             return
         }
@@ -1102,8 +1101,7 @@ fun ReelVaultApp(
         if (!ok) {
             tokenStore.clear(fp)
             defaultStore.clear()
-            errorMessage = "Couldn't connect to ${server.displayName}. The pairing may " +
-                "have been revoked — choose the server again to re-pair."
+            errorMessage = Strings.format("err_cannot_connect_server", server.displayName)
             connectionState = ConnectionState.Failed
             return
         }
@@ -1121,7 +1119,7 @@ fun ReelVaultApp(
         val fp = server.fingerprintHex
             ?: pairingClient.fetchFingerprint(server.host, server.mediaPort)
         if (fp == null) {
-            errorMessage = "Couldn't reach ${server.displayName} to verify its identity."
+            errorMessage = Strings.format("err_cannot_reach_server", server.displayName)
             connectionState = ConnectionState.Failed
             return
         }

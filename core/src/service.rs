@@ -1956,6 +1956,7 @@ impl ReelVaultTrait for ReelVaultService {
             success: true,
             message: "Tag deleted".to_string(),
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -1992,6 +1993,7 @@ impl ReelVaultTrait for ReelVaultService {
             success: true,
             message: format!("Tagged {} videos", req.video_ids.len()),
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -2009,6 +2011,7 @@ impl ReelVaultTrait for ReelVaultService {
             success: true,
             message: format!("Untagged {} videos", req.video_ids.len()),
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -2047,6 +2050,7 @@ impl ReelVaultTrait for ReelVaultService {
             success: true,
             message: "Collection deleted".to_string(),
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -2089,6 +2093,7 @@ impl ReelVaultTrait for ReelVaultService {
             success: true,
             message: format!("Added {} videos to collection", req.video_ids.len()),
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -2106,6 +2111,7 @@ impl ReelVaultTrait for ReelVaultService {
             success: true,
             message: format!("Removed {} videos from collection", req.video_ids.len()),
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -2121,6 +2127,7 @@ impl ReelVaultTrait for ReelVaultService {
             success: true,
             message: "Notes updated".to_string(),
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -2147,6 +2154,7 @@ impl ReelVaultTrait for ReelVaultService {
             success: true,
             message: format!("Rating set to {} on {} video(s)", req.rating, count),
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -2177,6 +2185,7 @@ impl ReelVaultTrait for ReelVaultService {
             success: true,
             message: format!("Color label '{}' applied to {} video(s)", displayed_label, count),
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -2229,6 +2238,7 @@ impl ReelVaultTrait for ReelVaultService {
             success: true,
             message: "Grid settings saved".to_string(),
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -2250,6 +2260,7 @@ impl ReelVaultTrait for ReelVaultService {
             success: true,
             message: "Video deleted".to_string(),
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -2337,6 +2348,7 @@ impl ReelVaultTrait for ReelVaultService {
             success: true,
             message: "Video ungrouped".to_string(),
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -2352,6 +2364,7 @@ impl ReelVaultTrait for ReelVaultService {
             success: true,
             message: "Preferred video set".to_string(),
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -2513,6 +2526,7 @@ impl ReelVaultTrait for ReelVaultService {
                 success: true,
                 message: "Proxy link cleared".into(),
                 error: String::new(),
+                error_code: 0,
             }));
         }
         // Manual mark — confidence = 1.0, auto_detected = false.
@@ -2523,6 +2537,7 @@ impl ReelVaultTrait for ReelVaultService {
             success: true,
             message: "Proxy link saved".into(),
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -2543,6 +2558,7 @@ impl ReelVaultTrait for ReelVaultService {
             success: true,
             message: "Proxy link removed".into(),
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -2879,6 +2895,7 @@ impl ReelVaultTrait for ReelVaultService {
             success: true,
             message: "Config updated".to_string(),
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -2926,6 +2943,7 @@ impl ReelVaultTrait for ReelVaultService {
             success: true,
             message: "Catalog closed".to_string(),
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -2992,6 +3010,7 @@ impl ReelVaultTrait for ReelVaultService {
                 req.latitude, req.longitude, file_write_message
             ),
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -3065,6 +3084,7 @@ impl ReelVaultTrait for ReelVaultService {
             success: true,
             message: format!("Capture date set{}", file_write_message),
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -3143,6 +3163,7 @@ impl ReelVaultTrait for ReelVaultService {
             success: true,
             message: "Named location deleted".into(),
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -3280,6 +3301,7 @@ impl ReelVaultTrait for ReelVaultService {
                 req.enabled, settle, poll
             ),
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -3359,6 +3381,7 @@ impl ReelVaultTrait for ReelVaultService {
                 success: false,
                 message: String::new(),
                 error: "internal name must not be blank".to_string(),
+                error_code: 13, // ERROR_INVALID_REQUEST
             }));
         }
 
@@ -3388,6 +3411,7 @@ impl ReelVaultTrait for ReelVaultService {
             success: true,
             message,
             error: String::new(),
+            error_code: 0,
         }))
     }
 
@@ -3457,6 +3481,7 @@ impl ReelVaultTrait for ReelVaultService {
                 success: false,
                 message: String::new(),
                 error: "lens name must not be blank".to_string(),
+                error_code: 13, // ERROR_INVALID_REQUEST
             }));
         }
 
@@ -3484,6 +3509,7 @@ impl ReelVaultTrait for ReelVaultService {
             success: true,
             message,
             error: String::new(),
+            error_code: 0,
         }))
     }
 }
