@@ -400,7 +400,8 @@ impl ReelVaultService {
                     creation_date, camera_model, lens_model, gps_latitude, gps_longitude,
                     gps_altitude,
                     iso, aperture, exposure_time_s, focal_length_mm,
-                    exposure_mode, exposure_program, white_balance
+                    exposure_mode, exposure_program, white_balance,
+                    color_transfer, color_primaries, dynamic_range, timecode_start, capture_fps
                  FROM metadata WHERE video_id = ?",
                 [video_id],
                 |row| {
@@ -429,6 +430,11 @@ impl ReelVaultService {
                         row.get::<_, Option<String>>(21)?,
                         row.get::<_, Option<String>>(22)?,
                         row.get::<_, Option<String>>(23)?,
+                        row.get::<_, Option<String>>(24)?,
+                        row.get::<_, Option<String>>(25)?,
+                        row.get::<_, Option<String>>(26)?,
+                        row.get::<_, Option<String>>(27)?,
+                        row.get::<_, Option<f64>>(28)?,
                     ))
                 },
             )
@@ -450,9 +456,11 @@ impl ReelVaultService {
              color_space, hdr, audio_channels, audio_sample_rate, creation_date,
              camera_model, lens_model, gps_lat, gps_lon, gps_alt,
              iso, aperture, exposure_time_s, focal_length_mm,
-             exposure_mode, exposure_program, white_balance) =
+             exposure_mode, exposure_program, white_balance,
+             color_transfer, color_primaries, dynamic_range, timecode_start, capture_fps) =
             row.unwrap_or((0, None, None, 0, 0, 0.0, 0, None, false, 0, 0, None, None, None, None, None, None,
-                           None, None, None, None, None, None, None));
+                           None, None, None, None, None, None, None,
+                           None, None, None, None, None));
 
         let camera_model_str = camera_model.unwrap_or_default();
         // Resolve marketing name with the user's custom overrides
@@ -504,6 +512,11 @@ impl ReelVaultService {
             gps_latitude: gps_lat.unwrap_or(0.0),
             gps_longitude: gps_lon.unwrap_or(0.0),
             gps_altitude: gps_alt.unwrap_or(0.0),
+            color_transfer: color_transfer.unwrap_or_default(),
+            color_primaries: color_primaries.unwrap_or_default(),
+            dynamic_range: dynamic_range.unwrap_or_default(),
+            timecode: timecode_start.unwrap_or_default(),
+            capture_fps: capture_fps.unwrap_or(0.0),
             tags,
             collections: db.get_video_collections(video_id).unwrap_or_default(),
             notes,

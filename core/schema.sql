@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS metadata (
   color_space TEXT,
   color_transfer TEXT,   -- transfer characteristic / EOTF (bt709, smpte2084=PQ, arib-std-b67=HLG)
   color_primaries TEXT,  -- color primaries (bt709, bt2020, …)
+  dynamic_range TEXT,    -- derived facet label: "SDR" / "HDR (PQ)" / "HDR (HLG)" / "Log (S-Log3)" / "RAW"
   hdr INTEGER DEFAULT 0,  -- derived: 1 when color_transfer is an HDR EOTF
   capture_fps REAL,       -- sensor capture rate; > fps means slow-motion
   timecode_start TEXT,    -- SMPTE start timecode from the tmcd track ("HH:MM:SS:FF")

@@ -445,6 +445,20 @@ message VideoMetadata {
   // container doesn't report one. Clients fall back to duration × fps for an
   // (approximate) estimate when this is 0.
   int64 frame_count = 40;
+
+  // Color / dynamic-range. `color_transfer` (EOTF, e.g. "bt709", "smpte2084",
+  // "arib-std-b67") and `color_primaries` ("bt709", "bt2020") are the raw
+  // ffprobe values; `dynamic_range` is the friendly derived label the clients
+  // display and filter on ("SDR", "HDR (PQ)", "HDR (HLG)", "Log (S-Log3)",
+  // "RAW"). All empty when the clip carries no color signal.
+  string color_transfer = 41;
+  string color_primaries = 42;
+  string dynamic_range = 43;
+  // SMPTE start timecode from the tmcd track ("HH:MM:SS:FF"); empty if none.
+  string timecode = 44;
+  // Sensor capture frame rate. 0 when unknown. When > fps the clip is
+  // slow-motion (clients derive the "240 → 30 fps" badge from capture_fps/fps).
+  double capture_fps = 45;
 }
 
 message GetThumbnailRequest {

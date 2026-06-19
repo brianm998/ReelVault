@@ -395,6 +395,7 @@ impl Database {
             // re-indexed; hdr keeps its 0 default, recomputed from color_transfer.
             ("metadata.color_transfer",   "ALTER TABLE metadata ADD COLUMN color_transfer TEXT"),
             ("metadata.color_primaries",  "ALTER TABLE metadata ADD COLUMN color_primaries TEXT"),
+            ("metadata.dynamic_range",    "ALTER TABLE metadata ADD COLUMN dynamic_range TEXT"),
             ("metadata.capture_fps",      "ALTER TABLE metadata ADD COLUMN capture_fps REAL"),
             ("metadata.timecode_start",   "ALTER TABLE metadata ADD COLUMN timecode_start TEXT"),
             ("idx_metadata_iso",          "CREATE INDEX IF NOT EXISTS idx_metadata_iso ON metadata(iso)"),

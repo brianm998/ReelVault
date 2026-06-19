@@ -264,6 +264,16 @@ impl MetadataExtractor {
         let color_transfer = video_stream.color_transfer.clone();
         let color_primaries = video_stream.color_primaries.clone();
         let hdr = Self::is_hdr_transfer(color_transfer.as_deref());
+        // Friendly "Dynamic Range" facet/label: HDR (PQ/HLG) / Log (S-Log3/…) /
+        // RAW / SDR. Needs the camera log OETF, which only lives in container
+        // tags (ffmpeg can't infer it), so read it from format + stream tags.
+        let log_oetf = Self::extract_log_oetf(&format.tags)
+            .or_else(|| Self::extract_log_oetf(&video_stream.tags));
+        let dynamic_range = Self::classify_dynamic_range(
+            codec_video.as_deref(),
+            color_transfer.as_deref(),
+            log_oetf.as_deref(),
+        );
 
         // Start timecode (tmcd track) and sensor capture fps (slow-motion).
         let timecode_start = Self::extract_timecode(&format.tags)
@@ -291,12 +301,12 @@ impl MetadataExtractor {
         conn.execute(
             "INSERT INTO metadata
              (video_id, duration_ms, frame_count, codec_video, codec_audio, width, height, fps, bitrate,
-              color_space, color_transfer, color_primaries, hdr, capture_fps, timecode_start,
+              color_space, color_transfer, color_primaries, dynamic_range, hdr, capture_fps, timecode_start,
               audio_channels, audio_sample_rate, creation_date, camera_model,
               lens_model, gps_latitude, gps_longitude, gps_altitude,
               iso, aperture, exposure_time_s, focal_length_mm,
               exposure_mode, exposure_program, white_balance, metadata_json)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(video_id) DO UPDATE SET
              duration_ms=excluded.duration_ms,
              frame_count=excluded.frame_count,
@@ -309,6 +319,7 @@ impl MetadataExtractor {
              color_space=excluded.color_space,
              color_transfer=excluded.color_transfer,
              color_primaries=excluded.color_primaries,
+             dynamic_range=excluded.dynamic_range,
              hdr=excluded.hdr,
              capture_fps=excluded.capture_fps,
              timecode_start=excluded.timecode_start,
@@ -350,6 +361,7 @@ impl MetadataExtractor {
                 color_space,
                 color_transfer,
                 color_primaries,
+                dynamic_range,
                 hdr,
                 capture_fps,
                 timecode_start,
@@ -636,6 +648,45 @@ impl MetadataExtractor {
     /// HDR-transfer set `thumbnails.rs` uses to decide tone-mapping.
     fn is_hdr_transfer(transfer: Option<&str>) -> bool {
         matches!(transfer, Some("smpte2084") | Some("arib-std-b67") | Some("smpte428"))
+    }
+
+    /// The camera's log OETF, when a recorder/camera records one (Atomos writes
+    /// `com.atomos.raw.intermediate_oetf` = "SLog3"). ffmpeg can't infer a log
+    /// curve from the bitstream, so this is the only way to know a clip is Log.
+    fn extract_log_oetf(tags: &Option<FFProbeTagMap>) -> Option<String> {
+        Self::extract_tag(tags, "com.atomos.raw.intermediate_oetf")
+            .or_else(|| Self::extract_tag(tags, "com.atomos.hdr.gammacurve"))
+            .map(|s| prettify_log_curve(&s))
+    }
+
+    /// A single user-facing "Dynamic Range" classification for the facet and the
+    /// inspector: HDR (PQ/HLG), Log (S-Log3/V-Log/…), RAW, or SDR. Derived from
+    /// the transfer characteristic, the camera log OETF when present, and the
+    /// codec (ProRes RAW is scene-linear, not a delivery format). `None` when the
+    /// clip carries no color signal at all — we don't guess.
+    fn classify_dynamic_range(
+        codec: Option<&str>,
+        transfer: Option<&str>,
+        log_oetf: Option<&str>,
+    ) -> Option<String> {
+        match transfer {
+            Some("smpte2084") => return Some("HDR (PQ)".to_string()),
+            Some("arib-std-b67") => return Some("HDR (HLG)".to_string()),
+            _ => {}
+        }
+        let is_raw = codec.is_some_and(|c| c.contains("raw")) || transfer == Some("linear");
+        if let Some(oetf) = log_oetf {
+            return Some(if is_raw {
+                format!("RAW ({oetf})")
+            } else {
+                format!("Log ({oetf})")
+            });
+        }
+        if is_raw {
+            return Some("RAW".to_string());
+        }
+        // Any other recognized transfer is SDR; absent transfer → unknown.
+        transfer.map(|_| "SDR".to_string())
     }
 
     /// Look for lens info in various tag formats used by different cameras.
@@ -1061,6 +1112,28 @@ pub(crate) fn merge_make_model(
     )
 }
 
+/// Normalize a camera log-curve identifier into its conventional spelling
+/// ("SLog3" → "S-Log3", "VLog" → "V-Log", …). Unknown curves pass through
+/// trimmed so an unrecognized profile still reads sensibly.
+fn prettify_log_curve(raw: &str) -> String {
+    match raw.trim().to_ascii_lowercase().replace(['-', '_', ' '], "").as_str() {
+        "slog3" => "S-Log3".to_string(),
+        "slog2" => "S-Log2".to_string(),
+        "slog" => "S-Log".to_string(),
+        "vlog" => "V-Log".to_string(),
+        "logc" | "logc3" | "arrilogc" => "Log-C".to_string(),
+        "logc4" => "Log-C4".to_string(),
+        "clog" => "C-Log".to_string(),
+        "clog2" => "C-Log2".to_string(),
+        "clog3" => "C-Log3".to_string(),
+        "flog" => "F-Log".to_string(),
+        "flog2" => "F-Log2".to_string(),
+        "dlog" | "dlogm" => "D-Log".to_string(),
+        "hlg" => "HLG".to_string(),
+        _ => raw.trim().to_string(),
+    }
+}
+
 /// Parse an ISO 6709 location string into `(latitude, longitude, optional
 /// altitude)`. QuickTime/iPhone uses signed decimal degrees with a trailing
 /// slash, e.g. `+37.8952-122.0480+069.173/` (altitude in metres) or
@@ -1272,6 +1345,24 @@ mod tests {
         let t2 = tags(&[("make", "Apple"), ("model", "iPhone X")]);
         assert_eq!(MetadataExtractor::extract_make(&t2).as_deref(), Some("Apple"));
         assert_eq!(MetadataExtractor::extract_model(&t2).as_deref(), Some("iPhone X"));
+    }
+
+    #[test]
+    fn dynamic_range_classification() {
+        let c = MetadataExtractor::classify_dynamic_range;
+        assert_eq!(c(Some("hevc"), Some("smpte2084"), None).as_deref(), Some("HDR (PQ)"));
+        assert_eq!(c(Some("hevc"), Some("arib-std-b67"), None).as_deref(), Some("HDR (HLG)"));
+        // FX3 ProRes RAW: linear transfer + Atomos S-Log3 OETF.
+        assert_eq!(
+            c(Some("prores_raw"), Some("linear"), Some("S-Log3")).as_deref(),
+            Some("RAW (S-Log3)")
+        );
+        // Log recorded to a non-RAW codec.
+        assert_eq!(c(Some("prores"), Some("bt709"), Some("S-Log3")).as_deref(), Some("Log (S-Log3)"));
+        assert_eq!(c(Some("h264"), Some("bt709"), None).as_deref(), Some("SDR"));
+        assert_eq!(c(Some("h264"), None, None), None); // no color signal → unknown
+        assert_eq!(prettify_log_curve("SLog3"), "S-Log3");
+        assert_eq!(prettify_log_curve("vlog"), "V-Log");
     }
 
     #[test]

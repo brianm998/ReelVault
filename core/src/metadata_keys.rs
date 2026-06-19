@@ -96,6 +96,7 @@ pub static KEYS: &[MetaKey] = &[
     MetaKey { token: "camera", display_name: "Camera", is_numeric: false, kind: KeyKind::Text("camera_model") },
     MetaKey { token: "lens", display_name: "Lens", is_numeric: false, kind: KeyKind::Text("lens_model") },
     MetaKey { token: "codec", display_name: "Codec", is_numeric: false, kind: KeyKind::Text("codec_video") },
+    MetaKey { token: "dynamic_range", display_name: "Dynamic Range", is_numeric: false, kind: KeyKind::Text("dynamic_range") },
     MetaKey { token: "resolution", display_name: "Resolution", is_numeric: false,
         kind: KeyKind::Expr { expr: "m.width || 'x' || m.height", guard: DIM_GUARD } },
     MetaKey { token: "aspect", display_name: "Aspect Ratio", is_numeric: false,
