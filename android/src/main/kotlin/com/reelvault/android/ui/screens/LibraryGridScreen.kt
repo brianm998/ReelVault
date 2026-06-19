@@ -800,9 +800,10 @@ private fun GridContent(
             columns = GridCells.Fixed(columns),
             state = gridState,
             modifier = Modifier.nestedScroll(pullRefreshState.nestedScrollConnection).fillMaxSize(),
-            contentPadding = PaddingValues(0.dp),
-            horizontalArrangement = Arrangement.spacedBy(0.dp),
-            verticalArrangement = Arrangement.spacedBy(0.dp),
+            // A small gutter so cards don't sit flush against each other / the edges.
+            contentPadding = PaddingValues(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             items(
                 items = videos,
