@@ -17,8 +17,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Satellite
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +34,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +52,7 @@ import com.reelvault.data.models.NamedLocation
 import com.reelvault.data.models.VideoLocation
 import com.reelvault.data.repository.VideoRepository
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
@@ -57,6 +62,45 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tile sources
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Esri World Imagery satellite tile source. Mirrors the desktop's
+ * ReelVaultSatelliteTileFactoryInfo — same endpoint, same tile path
+ * `/{z}/{y}/{x}` (y before x, unlike OSM).
+ * Attribution: Esri, Maxar, Earthstar Geographics, and the GIS community.
+ */
+private val ESRI_SATELLITE_SOURCE = XYTileSource(
+    "EsriWorldImagery",
+    /* minZoom = */ 0,
+    /* maxZoom = */ 19,
+    /* tileSizePixels = */ 256,
+    /* fileExtension = */ "",
+    /* baseUrls = */ arrayOf(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/"
+    ),
+)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SharedPreferences persistence (mirrors desktop MapViewPrefs)
+// ─────────────────────────────────────────────────────────────────────────────
+
+private const val MAP_PREFS_NAME = "reelvault_map"
+private const val PREF_SATELLITE = "satellite"
+
+private fun loadSatellitePref(context: Context): Boolean =
+    context.getSharedPreferences(MAP_PREFS_NAME, Context.MODE_PRIVATE)
+        .getBoolean(PREF_SATELLITE, false)
+
+private fun saveSatellitePref(context: Context, value: Boolean) {
+    context.getSharedPreferences(MAP_PREFS_NAME, Context.MODE_PRIVATE)
+        .edit()
+        .putBoolean(PREF_SATELLITE, value)
+        .apply()
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Location grouping (mirrors desktop GridViewModel.buildLocationFilterGroups and
@@ -244,6 +288,10 @@ fun LibraryMapScreen(
     // "Show on Map" focus request from the detail view, if any.
     val mapFocus by grid.mapFocus.collectAsStateWithLifecycle()
 
+    // Satellite/standard toggle — initialised from SharedPreferences, persisted
+    // when changed. rememberSaveable survives configuration changes (rotation).
+    var isSatellite by rememberSaveable { mutableStateOf(loadSatellitePref(context)) }
+
     var locations by remember { mutableStateOf<List<VideoLocation>>(emptyList()) }
     var named by remember { mutableStateOf<List<NamedLocation>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -319,6 +367,7 @@ fun LibraryMapScreen(
                     groups = groups,
                     accentArgb = accentArgb,
                     focus = mapFocus,
+                    isSatellite = isSatellite,
                     onFocusConsumed = { grid.clearMapFocus() },
                     onSelectGroup = { group ->
                         grid.setGeoLocationFilter(
@@ -331,6 +380,31 @@ fun LibraryMapScreen(
                     },
                     onMapViewCreated = { mapViewRef = it },
                 )
+            }
+
+            // Satellite / standard toggle — bottom-start corner, above the OSM
+            // attribution that sits at the very bottom of the map.
+            if (!isLoading && loadError == null) {
+                FloatingActionButton(
+                    onClick = {
+                        val next = !isSatellite
+                        isSatellite = next
+                        saveSatellitePref(context, next)
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = 12.dp, bottom = 48.dp),
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ) {
+                    Icon(
+                        imageVector = if (isSatellite) Icons.Filled.Map else Icons.Filled.Satellite,
+                        contentDescription = stringResource(
+                            if (isSatellite) R.string.map_switch_to_standard
+                            else R.string.map_switch_to_satellite
+                        ),
+                    )
+                }
             }
 
             // Small geotagged-count badge, top-right corner.
@@ -362,6 +436,7 @@ private fun MapContent(
     groups: List<LocationFilterGroup>,
     accentArgb: Int,
     focus: Triple<Double, Double, Double>?,
+    isSatellite: Boolean,
     onFocusConsumed: () -> Unit,
     onSelectGroup: (LocationFilterGroup) -> Unit,
     onMapViewCreated: (MapView) -> Unit,
@@ -379,7 +454,7 @@ private fun MapContent(
             OsmConfig.ensureInitialized(ctx)
 
             MapView(ctx).apply {
-                setTileSource(TileSourceFactory.MAPNIK)   // OpenStreetMap
+                setTileSource(if (isSatellite) ESRI_SATELLITE_SOURCE else TileSourceFactory.MAPNIK)
                 setUseDataConnection(true)
                 setMultiTouchControls(true)
                 isTilesScaledToDpi = true
@@ -387,6 +462,14 @@ private fun MapContent(
             }
         },
         update = { mapView ->
+            // Flip the tile source when the toggle state changes. OSMDroid
+            // clears its in-memory tile cache automatically when setTileSource
+            // is called, so the map immediately re-fetches tiles for the new
+            // source.
+            val wantedSource = if (isSatellite) ESRI_SATELLITE_SOURCE else TileSourceFactory.MAPNIK
+            if (mapView.tileProvider.tileSource?.name() != wantedSource.name()) {
+                mapView.setTileSource(wantedSource)
+            }
             mapView.overlays.clear()
 
             if (groups.isEmpty()) {
