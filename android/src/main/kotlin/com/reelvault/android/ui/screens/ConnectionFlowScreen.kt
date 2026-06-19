@@ -327,6 +327,7 @@ private fun DiscoveringView() {
                 stringResource(R.string.conn_looking_for_servers),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(6.dp))
