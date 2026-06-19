@@ -353,4 +353,176 @@
     <string name="scan_target_default">लाइब्रेरी</string>
     <string name="scan_scanning_target">%1$s स्कैन हो रहा है…</string>
     <string name="pairing_a_device">एक डिवाइस</string>
+
+    <!-- ── Batch operations ───────────────────────────────────────────────── -->
+    <string name="batch_add_keyword_hint">कीवर्ड जोड़ें…</string>
+    <string name="batch_add_to_collection">संग्रह में जोड़ें</string>
+    <string name="batch_add_to_collection_name">%1$s में जोड़ें</string>
+    <string name="batch_apply_keyword">कीवर्ड लागू करें: %1$s</string>
+    <string name="batch_existing_keywords">मौजूदा कीवर्ड — लागू करने के लिए टैप करें</string>
+    <string name="batch_organize">चुने गए वीडियो व्यवस्थित करें</string>
+    <string name="batch_share">चुने गए वीडियो साझा करें</string>
+    <string name="batch_share_failed">साझा करने के लिए फ़ाइलें तैयार नहीं हो सकीं</string>
+    <string name="batch_share_preparing">%1$d वीडियो तैयार हो रहे हैं…</string>
+    <string name="batch_share_title">%1$d वीडियो साझा करें</string>
+    <plurals name="batch_organize_title">
+        <item quantity="one">%1$d वीडियो व्यवस्थित करें</item>
+        <item quantity="other">%1$d वीडियो व्यवस्थित करें</item>
+    </plurals>
+
+    <!-- ── Card stats & labels ────────────────────────────────────────────── -->
+    <string name="card_clear_color_label_desc">रंग लेबल हटाएं</string>
+    <string name="card_clear_rating_desc">रेटिंग हटाएं</string>
+    <string name="card_menu_color_label">रंग लेबल</string>
+    <string name="card_menu_label_blue">नीला</string>
+    <string name="card_menu_label_green">हरा</string>
+    <string name="card_menu_label_none">कोई नहीं</string>
+    <string name="card_menu_label_purple">बैंगनी</string>
+    <string name="card_menu_label_red">लाल</string>
+    <string name="card_menu_label_yellow">पीला</string>
+    <string name="card_menu_rating">रेटिंग</string>
+    <string name="card_menu_rating_none">कोई नहीं</string>
+    <string name="card_set_color_label_desc">रंग लेबल सेट करें: %1$s</string>
+    <string name="card_set_rating_desc">%1$d-स्टार रेटिंग सेट करें</string>
+    <string name="card_stat_tap_to_change">स्लॉट बदलने के लिए टैप करें</string>
+    <string name="card_stats_sheet_subtitle">प्रत्येक कार्ड के शीर्ष पर दिखने वाले चार आँकड़े चुनें।</string>
+    <string name="card_stats_sheet_title">कार्ड आँकड़े</string>
+    <string name="card_stats_slot_label">स्लॉट %1$d</string>
+
+    <!-- ── Detail view ─────────────────────────────────────────────────────── -->
+    <string name="detail_collection_toggle">संग्रह सदस्यता टॉगल करें: %1$s</string>
+    <string name="detail_graphs_analyzing_audio">ऑडियो विश्लेषण हो रहा है…</string>
+    <string name="detail_graphs_analyzing_frames">फ्रेम विश्लेषण हो रहा है…</string>
+    <string name="detail_graphs_brightness">चमक</string>
+    <string name="detail_graphs_color_over_time">समय के साथ रंग</string>
+    <string name="detail_graphs_loudness">तीव्रता</string>
+    <string name="detail_graphs_rgb_channels">RGB चैनल</string>
+    <string name="detail_graphs_select_video">एक वीडियो चुनें</string>
+    <string name="detail_no_collections">अभी कोई संग्रह नहीं।</string>
+    <string name="detail_section_collections">संग्रह</string>
+    <string name="detail_section_visuals">दृश्य</string>
+    <string name="detail_share_failed">साझा करने के लिए वीडियो डाउनलोड नहीं हो सका: %1$s</string>
+    <string name="detail_share_no_connection">सर्वर से कनेक्ट नहीं — रिमोट वीडियो साझा नहीं किया जा सकता।</string>
+    <string name="detail_share_preparing">साझा करने के लिए फ़ाइल तैयार हो रही है…</string>
+    <string name="detail_tag_picker_add_button">जोड़ें</string>
+    <string name="detail_tag_picker_existing">मौजूदा कीवर्ड</string>
+    <string name="detail_tag_picker_new_hint">कीवर्ड जोड़ें…</string>
+    <string name="detail_tag_picker_no_others">अभी कोई अन्य कीवर्ड नहीं — ऊपर एक टाइप करें।</string>
+
+    <!-- ── Error messages ──────────────────────────────────────────────────── -->
+    <string name="err_apply_keyword">कीवर्ड \'%1$s\' बनाने/लागू करने में विफल</string>
+    <string name="err_apply_keyword_detail">कीवर्ड लागू करना विफल: %1$s</string>
+    <string name="err_load_grid_settings">कार्ड-आँकड़े कॉन्फ़िगरेशन लोड करने में विफल: %1$s</string>
+    <string name="err_save_grid_settings">कार्ड-आँकड़े कॉन्फ़िगरेशन सहेजने में विफल: %1$s</string>
+
+    <!-- ── Filter attributes ───────────────────────────────────────────────── -->
+    <string name="filter_attr_audio">ऑडियो</string>
+    <string name="filter_attr_full_res">पूर्ण रिज़ॉल्यूशन</string>
+    <string name="filter_attr_has">%1$s है</string>
+    <string name="filter_attr_keywords">कीवर्ड</string>
+    <string name="filter_attr_location">स्थान</string>
+    <string name="filter_attr_no">%1$s नहीं</string>
+    <string name="filter_attr_no_label">नहीं</string>
+    <string name="filter_attr_proxies">प्रॉक्सी</string>
+    <string name="filter_attr_yes">है</string>
+    <string name="filter_attributes">विशेषताएं</string>
+    <string name="filter_color_label">रंग लेबल</string>
+    <string name="filter_orientation">अभिविन्यास</string>
+    <string name="filter_orientation_any">कोई भी</string>
+    <string name="filter_orientation_landscape">लैंडस्केप</string>
+    <string name="filter_orientation_portrait">पोर्ट्रेट</string>
+
+    <!-- ── Grid card stats ─────────────────────────────────────────────────── -->
+    <string name="grid_card_stats">कार्ड आँकड़े</string>
+    <string name="grid_configure_card_stats">कार्ड आँकड़े कॉन्फ़िगर करें</string>
+    <string name="grid_density_label">थंबनेल आकार</string>
+    <string name="grid_density_larger">बड़े थंबनेल</string>
+    <string name="grid_density_menu_item">थंबनेल आकार</string>
+    <string name="grid_density_sheet_subtitle">स्क्रीन पर कितने कॉलम फिट हों, यह समायोजित करने के लिए खींचें।</string>
+    <string name="grid_density_sheet_title">थंबनेल आकार</string>
+    <string name="grid_density_smaller">छोटे थंबनेल</string>
+    <string name="grid_smart_collection_empty">इस स्मार्ट संग्रह से कोई वीडियो मेल नहीं खाता</string>
+    <string name="grid_stat_aperture">एपर्चर</string>
+    <string name="grid_stat_audio_codec">ऑडियो कोडेक</string>
+    <string name="grid_stat_bitrate">बिटरेट</string>
+    <string name="grid_stat_camera">कैमरा</string>
+    <string name="grid_stat_capture_date">कैप्चर तिथि</string>
+    <string name="grid_stat_capture_year">कैप्चर वर्ष</string>
+    <string name="grid_stat_duration">अवधि</string>
+    <string name="grid_stat_exposure">एक्सपोज़र</string>
+    <string name="grid_stat_file_size">फ़ाइल आकार</string>
+    <string name="grid_stat_filename">फ़ाइल नाम</string>
+    <string name="grid_stat_focal_length">फोकल लंबाई</string>
+    <string name="grid_stat_fps">FPS</string>
+    <string name="grid_stat_frame_count">फ्रेम गिनती</string>
+    <string name="grid_stat_iso">ISO</string>
+    <string name="grid_stat_lens">लेंस</string>
+    <string name="grid_stat_location">स्थान</string>
+    <string name="grid_stat_none">(खाली)</string>
+    <string name="grid_stat_pixel_dimensions">पिक्सेल आयाम</string>
+    <string name="grid_stat_resolution">रिज़ॉल्यूशन</string>
+    <string name="grid_stat_video_codec">वीडियो कोडेक</string>
+
+    <!-- ── Map ────────────────────────────────────────────────────────────── -->
+    <string name="map_switch_to_satellite">सैटेलाइट दृश्य पर जाएं</string>
+    <string name="map_switch_to_standard">मानक मानचित्र पर जाएं</string>
+
+    <!-- ── Offline downloads ───────────────────────────────────────────────── -->
+    <string name="offline_available_offline">ऑफ़लाइन उपलब्ध</string>
+    <string name="offline_browse_downloads">डाउनलोड ब्राउज़ करें</string>
+    <string name="offline_download_button">ऑफ़लाइन के लिए डाउनलोड करें</string>
+    <string name="offline_downloaded_quality">इस रूप में डाउनलोड किया गया</string>
+    <string name="offline_downloading">डाउनलोड हो रहा है…</string>
+    <string name="offline_empty_desc">सर्वर से कनेक्ट रहते हुए किसी वीडियो पर \"ऑफ़लाइन के लिए डाउनलोड करें\" चुनें ताकि आप इसे बिना कनेक्शन के यहाँ देख सकें।</string>
+    <string name="offline_empty_title">कोई डाउनलोड नहीं</string>
+    <string name="offline_file_missing">यह डाउनलोड डिवाइस पर मौजूद नहीं है।</string>
+    <string name="offline_quality_720p">720p (छोटा)</string>
+    <string name="offline_quality_original">मूल</string>
+    <string name="offline_quality_title">डाउनलोड गुणवत्ता</string>
+    <string name="offline_remove_body">"%1$s" इस डिवाइस से हटा दिया जाएगा।</string>
+    <string name="offline_remove_confirm">हटाएं</string>
+    <string name="offline_remove_download">डाउनलोड हटाएं</string>
+    <string name="offline_remove_title">डाउनलोड हटाएं?</string>
+    <string name="offline_section_title">ऑफ़लाइन</string>
+    <string name="offline_title">डाउनलोड किए गए</string>
+
+    <!-- ── Settings: forget server ────────────────────────────────────────── -->
+    <string name="settings_forget_server_confirm_action">भूल जाएं</string>
+    <string name="settings_forget_server_confirm_body">इससे आपके सहेजे गए क्रेडेंशियल साफ़ हो जाएंगे और कनेक्शन स्क्रीन पर वापस जाएंगे। पुनः कनेक्ट करने के लिए आपको फिर से पेयर करना होगा।</string>
+    <string name="settings_forget_server_confirm_title">यह सर्वर भूल जाएं?</string>
+    <string name="settings_server_forgotten">सर्वर भूला दिया गया</string>
+
+    <!-- ── Sort fields ─────────────────────────────────────────────────────── -->
+    <string name="sort_aperture">एपर्चर</string>
+    <string name="sort_bitrate">बिटरेट</string>
+    <string name="sort_exposure_time">एक्सपोज़र समय</string>
+    <string name="sort_focal_length">फोकल लंबाई</string>
+    <string name="sort_iso">ISO</string>
+    <string name="sort_keyword">कीवर्ड</string>
+    <string name="sort_lens">लेंस</string>
+    <string name="sort_resolution">रिज़ॉल्यूशन</string>
+
+    <!-- ── Stack operations ───────────────────────────────────────────────── -->
+    <string name="stack_combine_error">स्टैक विफल: %1$s</string>
+    <string name="stack_combine_failed">स्टैक बनाने में विफल</string>
+    <string name="stack_combine_into_stack">स्टैक में मिलाएं</string>
+    <string name="stack_load_members_error">स्टैक सदस्य लोड नहीं हो सके: %1$s</string>
+    <string name="stack_members_preferred_label">लीडर</string>
+    <string name="stack_members_promote_action">प्रमोट करें</string>
+    <string name="stack_members_remove_action">हटाएं</string>
+    <string name="stack_members_title">स्टैक सदस्य</string>
+    <string name="stack_promote_error">प्रमोट विफल: %1$s</string>
+    <string name="stack_promote_failed">वीडियो प्रमोट करने में विफल</string>
+    <string name="stack_promote_to_leader">लीडर के रूप में प्रमोट करें</string>
+    <string name="stack_remove_error">हटाना विफल: %1$s</string>
+    <string name="stack_remove_failed">स्टैक से हटाने में विफल</string>
+    <string name="stack_remove_from_stack">स्टैक से हटाएं</string>
+    <string name="stack_section_header">स्टैक</string>
+    <string name="stack_select_at_least_two">स्टैक बनाने के लिए कम से कम 2 वीडियो चुनें</string>
+    <string name="stack_unstack">अनस्टैक करें</string>
+    <string name="stack_unstack_error">अनस्टैक विफल: %1$s</string>
+    <plurals name="stack_combined_message">
+        <item quantity="one">%1$d वीडियो का स्टैक बना</item>
+        <item quantity="other">%1$d वीडियो का स्टैक बना</item>
+    </plurals>
 </resources>

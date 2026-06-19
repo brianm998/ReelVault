@@ -373,4 +373,180 @@
     <string name="scan_target_default">бібліотеку</string>
     <string name="scan_scanning_target">Сканування %1$s…</string>
     <string name="pairing_a_device">Пристрій</string>
+
+    <!-- ── Batch operations ───────────────────────────────────────────────── -->
+    <string name="batch_add_keyword_hint">Додати ключове слово…</string>
+    <string name="batch_add_to_collection">Додати до колекції</string>
+    <string name="batch_add_to_collection_name">Додати до %1$s</string>
+    <string name="batch_apply_keyword">Застосувати ключове слово: %1$s</string>
+    <string name="batch_existing_keywords">Наявні ключові слова — торкніться, щоб застосувати</string>
+    <string name="batch_organize">Впорядкувати вибрані відео</string>
+    <string name="batch_share">Поділитися вибраними відео</string>
+    <string name="batch_share_failed">Не вдалося підготувати файли для поширення</string>
+    <string name="batch_share_preparing">Підготовка %1$d відео…</string>
+    <string name="batch_share_title">Поділитися %1$d відео</string>
+    <plurals name="batch_organize_title">
+        <item quantity="one">Впорядкувати %1$d відео</item>
+        <item quantity="few">Впорядкувати %1$d відео</item>
+        <item quantity="many">Впорядкувати %1$d відео</item>
+        <item quantity="other">Впорядкувати %1$d відео</item>
+    </plurals>
+
+    <!-- ── Card menu / stats ───────────────────────────────────────────────── -->
+    <string name="card_clear_color_label_desc">Прибрати кольорову мітку</string>
+    <string name="card_clear_rating_desc">Прибрати рейтинг</string>
+    <string name="card_menu_color_label">Кольорова мітка</string>
+    <string name="card_menu_label_blue">Синій</string>
+    <string name="card_menu_label_green">Зелений</string>
+    <string name="card_menu_label_none">Немає</string>
+    <string name="card_menu_label_purple">Фіолетовий</string>
+    <string name="card_menu_label_red">Червоний</string>
+    <string name="card_menu_label_yellow">Жовтий</string>
+    <string name="card_menu_rating">Рейтинг</string>
+    <string name="card_menu_rating_none">Немає</string>
+    <string name="card_set_color_label_desc">Встановити кольорову мітку: %1$s</string>
+    <string name="card_set_rating_desc">Встановити рейтинг %1$d зірки</string>
+    <string name="card_stat_tap_to_change">Торкніться, щоб змінити слот</string>
+    <string name="card_stats_sheet_subtitle">Виберіть чотири статистики, що відображаються у верхній частині кожної картки.</string>
+    <string name="card_stats_sheet_title">Статистика карти</string>
+    <string name="card_stats_slot_label">Слот %1$d</string>
+
+    <!-- ── Detail view ─────────────────────────────────────────────────────── -->
+    <string name="detail_collection_toggle">Перемкнути членство в колекції: %1$s</string>
+    <string name="detail_graphs_analyzing_audio">Аналіз аудіо…</string>
+    <string name="detail_graphs_analyzing_frames">Аналіз кадрів…</string>
+    <string name="detail_graphs_brightness">Яскравість</string>
+    <string name="detail_graphs_color_over_time">Колір у часі</string>
+    <string name="detail_graphs_loudness">Гучність</string>
+    <string name="detail_graphs_rgb_channels">RGB-канали</string>
+    <string name="detail_graphs_select_video">Виберіть відео</string>
+    <string name="detail_no_collections">Колекцій ще немає.</string>
+    <string name="detail_section_collections">КОЛЕКЦІЇ</string>
+    <string name="detail_section_visuals">ВІЗУАЛІЗАЦІЯ</string>
+    <string name="detail_share_failed">Не вдалося завантажити відео для поширення: %1$s</string>
+    <string name="detail_share_no_connection">Не підключено до сервера — неможливо поділитися віддаленим відео.</string>
+    <string name="detail_share_preparing">Підготовка файлу для поширення…</string>
+    <string name="detail_tag_picker_add_button">Додати</string>
+    <string name="detail_tag_picker_existing">НАЯВНІ КЛЮЧОВІ СЛОВА</string>
+    <string name="detail_tag_picker_new_hint">Додати ключове слово…</string>
+    <string name="detail_tag_picker_no_others">Інших ключових слів ще немає — введіть одне вище.</string>
+
+    <!-- ── Errors ──────────────────────────────────────────────────────────── -->
+    <string name="err_apply_keyword">Не вдалося створити/застосувати ключове слово \'%1$s\'</string>
+    <string name="err_apply_keyword_detail">Не вдалося застосувати ключове слово: %1$s</string>
+    <string name="err_load_grid_settings">Не вдалося завантажити конфігурацію статистики карти: %1$s</string>
+    <string name="err_save_grid_settings">Не вдалося зберегти конфігурацію статистики карти: %1$s</string>
+
+    <!-- ── Filter attributes ───────────────────────────────────────────────── -->
+    <string name="filter_attr_audio">Аудіо</string>
+    <string name="filter_attr_full_res">Повна роздільна здатність</string>
+    <string name="filter_attr_has">Є %1$s</string>
+    <string name="filter_attr_keywords">Ключові слова</string>
+    <string name="filter_attr_location">Місце</string>
+    <string name="filter_attr_no">Немає %1$s</string>
+    <string name="filter_attr_no_label">Ні</string>
+    <string name="filter_attr_proxies">Проксі</string>
+    <string name="filter_attr_yes">Є</string>
+    <string name="filter_attributes">АТРИБУТИ</string>
+    <string name="filter_color_label">КОЛЬОРОВА МІТКА</string>
+    <string name="filter_orientation">ОРІЄНТАЦІЯ</string>
+    <string name="filter_orientation_any">Будь-яка</string>
+    <string name="filter_orientation_landscape">Горизонтальна</string>
+    <string name="filter_orientation_portrait">Вертикальна</string>
+
+    <!-- ── Grid / card stats ───────────────────────────────────────────────── -->
+    <string name="grid_card_stats">Статистика карти</string>
+    <string name="grid_configure_card_stats">Налаштувати статистику карти</string>
+    <string name="grid_density_label">Розмір мініатюри</string>
+    <string name="grid_density_larger">Більші мініатюри</string>
+    <string name="grid_density_menu_item">Розмір мініатюри</string>
+    <string name="grid_density_sheet_subtitle">Перетягніть, щоб налаштувати кількість стовпців на екрані.</string>
+    <string name="grid_density_sheet_title">Розмір мініатюри</string>
+    <string name="grid_density_smaller">Менші мініатюри</string>
+    <string name="grid_smart_collection_empty">Жодне відео не відповідає цій розумній колекції</string>
+    <string name="grid_stat_aperture">Діафрагма</string>
+    <string name="grid_stat_audio_codec">Аудіокодек</string>
+    <string name="grid_stat_bitrate">Бітрейт</string>
+    <string name="grid_stat_camera">Камера</string>
+    <string name="grid_stat_capture_date">Дата зйомки</string>
+    <string name="grid_stat_capture_year">Рік зйомки</string>
+    <string name="grid_stat_duration">Тривалість</string>
+    <string name="grid_stat_exposure">Витримка</string>
+    <string name="grid_stat_file_size">Розмір файлу</string>
+    <string name="grid_stat_filename">Ім\'я файлу</string>
+    <string name="grid_stat_focal_length">Фокусна відстань</string>
+    <string name="grid_stat_fps">кадр/с</string>
+    <string name="grid_stat_frame_count">Кількість кадрів</string>
+    <string name="grid_stat_iso">ISO</string>
+    <string name="grid_stat_lens">Об\'єктив</string>
+    <string name="grid_stat_location">Місце</string>
+    <string name="grid_stat_none">(порожньо)</string>
+    <string name="grid_stat_pixel_dimensions">Розміри у пікселях</string>
+    <string name="grid_stat_resolution">Роздільна здатність</string>
+    <string name="grid_stat_video_codec">Відеокодек</string>
+
+    <!-- ── Map ────────────────────────────────────────────────────────────── -->
+    <string name="map_switch_to_satellite">Перейти до супутникових знімків</string>
+    <string name="map_switch_to_standard">Перейти до стандартної карти</string>
+
+    <!-- ── Offline ─────────────────────────────────────────────────────────── -->
+    <string name="offline_available_offline">Доступно офлайн</string>
+    <string name="offline_browse_downloads">Переглянути завантаження</string>
+    <string name="offline_download_button">Завантажити для офлайн-перегляду</string>
+    <string name="offline_downloaded_quality">Завантажено у форматі</string>
+    <string name="offline_downloading">Завантаження…</string>
+    <string name="offline_empty_desc">Підключившись до сервера, виберіть «Завантажити для офлайн-перегляду» на відео, щоб дивитися його тут без підключення.</string>
+    <string name="offline_empty_title">Немає завантажень</string>
+    <string name="offline_file_missing">Це завантаження відсутнє на пристрої.</string>
+    <string name="offline_quality_720p">720p (менший розмір)</string>
+    <string name="offline_quality_original">Оригінал</string>
+    <string name="offline_quality_title">Якість завантаження</string>
+    <string name="offline_remove_body">«%1$s» буде видалено з цього пристрою.</string>
+    <string name="offline_remove_confirm">Видалити</string>
+    <string name="offline_remove_download">Видалити завантаження</string>
+    <string name="offline_remove_title">Видалити завантаження?</string>
+    <string name="offline_section_title">Офлайн</string>
+    <string name="offline_title">Завантажено</string>
+
+    <!-- ── Settings — forget server ───────────────────────────────────────── -->
+    <string name="settings_forget_server_confirm_action">Забути</string>
+    <string name="settings_forget_server_confirm_body">Це видалить збережені облікові дані та поверне до екрана підключення. Для повторного підключення потрібно буде виконати спарювання заново.</string>
+    <string name="settings_forget_server_confirm_title">Забути цей сервер?</string>
+    <string name="settings_server_forgotten">Сервер забуто</string>
+
+    <!-- ── Sort fields ─────────────────────────────────────────────────────── -->
+    <string name="sort_aperture">Діафрагма</string>
+    <string name="sort_bitrate">Бітрейт</string>
+    <string name="sort_exposure_time">Час витримки</string>
+    <string name="sort_focal_length">Фокусна відстань</string>
+    <string name="sort_iso">ISO</string>
+    <string name="sort_keyword">Ключове слово</string>
+    <string name="sort_lens">Об\'єктив</string>
+    <string name="sort_resolution">Роздільна здатність</string>
+
+    <!-- ── Stack operations ───────────────────────────────────────────────── -->
+    <string name="stack_combine_error">Не вдалося об\'єднати в стек: %1$s</string>
+    <string name="stack_combine_failed">Не вдалося створити стек</string>
+    <string name="stack_combine_into_stack">Об\'єднати в стек</string>
+    <string name="stack_load_members_error">Не вдалося завантажити елементи стеку: %1$s</string>
+    <string name="stack_members_preferred_label">Лідер</string>
+    <string name="stack_members_promote_action">Підвищити</string>
+    <string name="stack_members_remove_action">Видалити</string>
+    <string name="stack_members_title">Елементи стеку</string>
+    <string name="stack_promote_error">Не вдалося підвищити: %1$s</string>
+    <string name="stack_promote_failed">Не вдалося підвищити відео</string>
+    <string name="stack_promote_to_leader">Підвищити до лідера</string>
+    <string name="stack_remove_error">Не вдалося видалити: %1$s</string>
+    <string name="stack_remove_failed">Не вдалося видалити зі стеку</string>
+    <string name="stack_remove_from_stack">Видалити зі стеку</string>
+    <string name="stack_section_header">Стек</string>
+    <string name="stack_select_at_least_two">Виберіть щонайменше 2 відео, щоб створити стек</string>
+    <string name="stack_unstack">Розформувати стек</string>
+    <string name="stack_unstack_error">Не вдалося розформувати стек: %1$s</string>
+    <plurals name="stack_combined_message">
+        <item quantity="one">Об\'єднано в стек із %1$d відео</item>
+        <item quantity="few">Об\'єднано в стек із %1$d відео</item>
+        <item quantity="many">Об\'єднано в стек із %1$d відео</item>
+        <item quantity="other">Об\'єднано в стек із %1$d відео</item>
+    </plurals>
 </resources>

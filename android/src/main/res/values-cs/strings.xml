@@ -373,4 +373,182 @@
     <string name="scan_scanning_target">Skenuji %1$s…</string>
     <string name="pairing_a_device">Zařízení</string>
 
+    <!-- ── Batch operations ───────────────────────────────────────────────── -->
+    <string name="batch_add_keyword_hint">Přidat klíčové slovo…</string>
+    <string name="batch_add_to_collection">Přidat do kolekce</string>
+    <string name="batch_add_to_collection_name">Přidat do %1$s</string>
+    <string name="batch_apply_keyword">Použít klíčové slovo: %1$s</string>
+    <string name="batch_existing_keywords">Existující klíčová slova — klepnutím použít</string>
+    <string name="batch_organize">Uspořádat vybraná videa</string>
+    <string name="batch_share">Sdílet vybraná videa</string>
+    <string name="batch_share_failed">Nepodařilo se připravit soubory pro sdílení</string>
+    <string name="batch_share_preparing">Připravuji %1$d videí…</string>
+    <string name="batch_share_title">Sdílet %1$d videí</string>
+    <plurals name="batch_organize_title">
+        <item quantity="one">Uspořádat %1$d video</item>
+        <item quantity="few">Uspořádat %1$d videa</item>
+        <item quantity="many">Uspořádat %1$d videa</item>
+        <item quantity="other">Uspořádat %1$d videí</item>
+    </plurals>
+
+    <!-- ── Card stats & labels ────────────────────────────────────────────── -->
+    <string name="card_clear_color_label_desc">Smazat barevný štítek</string>
+    <string name="card_clear_rating_desc">Smazat hodnocení</string>
+    <string name="card_menu_color_label">Barevný štítek</string>
+    <string name="card_menu_label_blue">Modrá</string>
+    <string name="card_menu_label_green">Zelená</string>
+    <string name="card_menu_label_none">Žádná</string>
+    <string name="card_menu_label_purple">Fialová</string>
+    <string name="card_menu_label_red">Červená</string>
+    <string name="card_menu_label_yellow">Žlutá</string>
+    <string name="card_menu_rating">Hodnocení</string>
+    <string name="card_menu_rating_none">Žádné</string>
+    <string name="card_set_color_label_desc">Nastavit barevný štítek: %1$s</string>
+    <string name="card_set_rating_desc">Nastavit hodnocení %1$d hvězd</string>
+    <string name="card_stat_tap_to_change">Klepnutím změnit slot</string>
+    <string name="card_stats_sheet_subtitle">Vyberte čtyři statistiky zobrazené v horní části každé karty.</string>
+    <string name="card_stats_sheet_title">Statistiky karet</string>
+    <string name="card_stats_slot_label">Slot %1$d</string>
+
+    <!-- ── Detail view ────────────────────────────────────────────────────── -->
+    <string name="detail_collection_toggle">Přepnout členství v kolekci: %1$s</string>
+    <string name="detail_graphs_analyzing_audio">Analyzuji zvuk…</string>
+    <string name="detail_graphs_analyzing_frames">Analyzuji snímky…</string>
+    <string name="detail_graphs_brightness">Jas</string>
+    <string name="detail_graphs_color_over_time">Barva v čase</string>
+    <string name="detail_graphs_loudness">Hlasitost</string>
+    <string name="detail_graphs_rgb_channels">Kanály RGB</string>
+    <string name="detail_graphs_select_video">Vyberte video</string>
+    <string name="detail_no_collections">Zatím žádné kolekce.</string>
+    <string name="detail_section_collections">KOLEKCE</string>
+    <string name="detail_section_visuals">VIZUALIZACE</string>
+    <string name="detail_share_failed">Nepodařilo se stáhnout video pro sdílení: %1$s</string>
+    <string name="detail_share_no_connection">Nepřipojeno k serveru — nelze sdílet vzdálené video.</string>
+    <string name="detail_share_preparing">Připravuji soubor pro sdílení…</string>
+    <string name="detail_tag_picker_add_button">Přidat</string>
+    <string name="detail_tag_picker_existing">EXISTUJÍCÍ KLÍČOVÁ SLOVA</string>
+    <string name="detail_tag_picker_new_hint">Přidat klíčové slovo…</string>
+    <string name="detail_tag_picker_no_others">Zatím žádná jiná klíčová slova — napište jedno výše.</string>
+
+    <!-- ── Errors ─────────────────────────────────────────────────────────── -->
+    <string name="err_apply_keyword">Nepodařilo se vytvořit/použít klíčové slovo \'%1$s\'</string>
+    <string name="err_apply_keyword_detail">Použití klíčového slova selhalo: %1$s</string>
+    <string name="err_load_grid_settings">Nepodařilo se načíst konfiguraci statistik karet: %1$s</string>
+    <string name="err_save_grid_settings">Nepodařilo se uložit konfiguraci statistik karet: %1$s</string>
+
+    <!-- ── Filter attributes ──────────────────────────────────────────────── -->
+    <string name="filter_attr_audio">Zvuk</string>
+    <string name="filter_attr_full_res">Plné rozlišení</string>
+    <string name="filter_attr_has">Má %1$s</string>
+    <string name="filter_attr_keywords">Klíčová slova</string>
+    <string name="filter_attr_location">Poloha</string>
+    <string name="filter_attr_no">Bez %1$s</string>
+    <string name="filter_attr_no_label">Ne</string>
+    <string name="filter_attr_proxies">Proxy</string>
+    <string name="filter_attr_yes">Má</string>
+    <string name="filter_attributes">ATRIBUTY</string>
+    <string name="filter_color_label">BAREVNÝ ŠTÍTEK</string>
+    <string name="filter_orientation">ORIENTACE</string>
+    <string name="filter_orientation_any">Libovolná</string>
+    <string name="filter_orientation_landscape">Krajina</string>
+    <string name="filter_orientation_portrait">Portrét</string>
+
+    <!-- ── Grid controls ──────────────────────────────────────────────────── -->
+    <string name="grid_card_stats">Statistiky karet</string>
+    <string name="grid_configure_card_stats">Konfigurovat statistiky karet</string>
+    <string name="grid_density_label">Velikost náhledů</string>
+    <string name="grid_density_larger">Větší náhledy</string>
+    <string name="grid_density_menu_item">Velikost náhledů</string>
+    <string name="grid_density_sheet_subtitle">Přetáhněte pro nastavení počtu sloupců na obrazovce.</string>
+    <string name="grid_density_sheet_title">Velikost náhledů</string>
+    <string name="grid_density_smaller">Menší náhledy</string>
+    <string name="grid_smart_collection_empty">Žádné video neodpovídá této chytré kolekci</string>
+
+    <!-- ── Grid stat names ────────────────────────────────────────────────── -->
+    <string name="grid_stat_aperture">Clona</string>
+    <string name="grid_stat_audio_codec">Audio kodek</string>
+    <string name="grid_stat_bitrate">Přenosová rychlost</string>
+    <string name="grid_stat_camera">Fotoaparát</string>
+    <string name="grid_stat_capture_date">Datum záznamu</string>
+    <string name="grid_stat_capture_year">Rok záznamu</string>
+    <string name="grid_stat_duration">Délka</string>
+    <string name="grid_stat_exposure">Expozice</string>
+    <string name="grid_stat_file_size">Velikost souboru</string>
+    <string name="grid_stat_filename">Název souboru</string>
+    <string name="grid_stat_focal_length">Ohnisková vzdálenost</string>
+    <string name="grid_stat_fps">Sn/s</string>
+    <string name="grid_stat_frame_count">Počet snímků</string>
+    <string name="grid_stat_iso">ISO</string>
+    <string name="grid_stat_lens">Objektiv</string>
+    <string name="grid_stat_location">Poloha</string>
+    <string name="grid_stat_none">(prázdné)</string>
+    <string name="grid_stat_pixel_dimensions">Rozměry v pixelech</string>
+    <string name="grid_stat_resolution">Rozlišení</string>
+    <string name="grid_stat_video_codec">Video kodek</string>
+
+    <!-- ── Map ────────────────────────────────────────────────────────────── -->
+    <string name="map_switch_to_satellite">Přepnout na satelitní snímky</string>
+    <string name="map_switch_to_standard">Přepnout na standardní mapu</string>
+
+    <!-- ── Offline / downloads ────────────────────────────────────────────── -->
+    <string name="offline_available_offline">K dispozici offline</string>
+    <string name="offline_browse_downloads">Procházet stažená videa</string>
+    <string name="offline_download_button">Stáhnout pro offline</string>
+    <string name="offline_downloaded_quality">Staženo jako</string>
+    <string name="offline_downloading">Stahuji…</string>
+    <string name="offline_empty_desc">Pokud jste připojeni k serveru, zvolte „Stáhnout pro offline" u videa a sledujte ho zde bez připojení.</string>
+    <string name="offline_empty_title">Žádná stažená videa</string>
+    <string name="offline_file_missing">Toto stažené video chybí v zařízení.</string>
+    <string name="offline_quality_720p">720p (menší)</string>
+    <string name="offline_quality_original">Originál</string>
+    <string name="offline_quality_title">Kvalita stahování</string>
+    <string name="offline_remove_body">„%1$s" bude smazáno z tohoto zařízení.</string>
+    <string name="offline_remove_confirm">Odebrat</string>
+    <string name="offline_remove_download">Odebrat stažené video</string>
+    <string name="offline_remove_title">Odebrat stažené video?</string>
+    <string name="offline_section_title">Offline</string>
+    <string name="offline_title">Stažená videa</string>
+
+    <!-- ── Settings — server ─────────────────────────────────────────────── -->
+    <string name="settings_forget_server_confirm_action">Zapomenout</string>
+    <string name="settings_forget_server_confirm_body">Tím se smažou uložené přihlašovací údaje a vrátíte se na obrazovku připojení. Pro opětovné připojení bude nutné znovu spárovat zařízení.</string>
+    <string name="settings_forget_server_confirm_title">Zapomenout tento server?</string>
+    <string name="settings_server_forgotten">Server zapomenut</string>
+
+    <!-- ── Sort field names (new) ─────────────────────────────────────────── -->
+    <string name="sort_aperture">Clona</string>
+    <string name="sort_bitrate">Přenosová rychlost</string>
+    <string name="sort_exposure_time">Čas expozice</string>
+    <string name="sort_focal_length">Ohnisková vzdálenost</string>
+    <string name="sort_iso">ISO</string>
+    <string name="sort_keyword">Klíčové slovo</string>
+    <string name="sort_lens">Objektiv</string>
+    <string name="sort_resolution">Rozlišení</string>
+
+    <!-- ── Stack operations ───────────────────────────────────────────────── -->
+    <string name="stack_combine_error">Zásobník selhal: %1$s</string>
+    <string name="stack_combine_failed">Nepodařilo se vytvořit zásobník</string>
+    <string name="stack_combine_into_stack">Sloučit do zásobníku</string>
+    <string name="stack_load_members_error">Nepodařilo se načíst členy zásobníku: %1$s</string>
+    <string name="stack_members_preferred_label">Vedoucí</string>
+    <string name="stack_members_promote_action">Povýšit</string>
+    <string name="stack_members_remove_action">Odebrat</string>
+    <string name="stack_members_title">Členové zásobníku</string>
+    <string name="stack_promote_error">Povýšení selhalo: %1$s</string>
+    <string name="stack_promote_failed">Nepodařilo se povýšit video</string>
+    <string name="stack_promote_to_leader">Povýšit na vedoucího</string>
+    <string name="stack_remove_error">Odebrání selhalo: %1$s</string>
+    <string name="stack_remove_failed">Nepodařilo se odebrat ze zásobníku</string>
+    <string name="stack_remove_from_stack">Odebrat ze zásobníku</string>
+    <string name="stack_section_header">Zásobník</string>
+    <string name="stack_select_at_least_two">Pro vytvoření zásobníku vyberte alespoň 2 videa</string>
+    <string name="stack_unstack">Rozebrat zásobník</string>
+    <string name="stack_unstack_error">Rozebírání zásobníku selhalo: %1$s</string>
+    <plurals name="stack_combined_message">
+        <item quantity="one">Sloučeno do zásobníku %1$d videa</item>
+        <item quantity="few">Sloučeno do zásobníku %1$d videí</item>
+        <item quantity="many">Sloučeno do zásobníku %1$d videí</item>
+        <item quantity="other">Sloučeno do zásobníku %1$d videí</item>
+    </plurals>
+
 </resources>

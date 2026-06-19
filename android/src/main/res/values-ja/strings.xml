@@ -637,4 +637,318 @@
     <string name="scan_scanning_target">%1$s をスキャン中…</string>
     <!-- kit corpus: 'A device' → 'デバイス' -->
     <string name="pairing_a_device">デバイス</string>
+
+    <!-- ── Batch operations ───────────────────────────────────────────────── -->
+    <!-- new -->
+    <string name="batch_add_keyword_hint">キーワードを追加…</string>
+    <!-- new -->
+    <string name="batch_add_to_collection">コレクションに追加</string>
+    <!-- new -->
+    <string name="batch_add_to_collection_name">%1$s に追加</string>
+    <!-- kit corpus: 'Apply keyword failed: %@' → 'キーワードの適用に失敗しました: %@' (adapted) -->
+    <string name="batch_apply_keyword">キーワードを適用: %1$s</string>
+    <!-- new -->
+    <string name="batch_existing_keywords">既存のキーワード — タップして適用</string>
+    <!-- new -->
+    <string name="batch_organize">選択したビデオを整理</string>
+    <!-- new -->
+    <string name="batch_share">選択したビデオを共有</string>
+    <!-- new -->
+    <string name="batch_share_failed">共有用ファイルを準備できませんでした</string>
+    <!-- new -->
+    <string name="batch_share_preparing">%1$d 本のビデオを準備中…</string>
+    <!-- new -->
+    <string name="batch_share_title">%1$d 本のビデオを共有</string>
+    <!-- ja CLDR: other only -->
+    <plurals name="batch_organize_title">
+        <item quantity="other">%1$d 本のビデオを整理</item>
+    </plurals>
+
+    <!-- ── Card context menu ──────────────────────────────────────────────── -->
+    <!-- new -->
+    <string name="card_clear_color_label_desc">カラーラベルをクリア</string>
+    <!-- new -->
+    <string name="card_clear_rating_desc">評価をクリア</string>
+    <!-- new -->
+    <string name="card_menu_color_label">カラーラベル</string>
+    <!-- kit corpus: 'Blue' → '青' -->
+    <string name="card_menu_label_blue">青</string>
+    <!-- kit corpus: 'Green' → '緑' -->
+    <string name="card_menu_label_green">緑</string>
+    <!-- kit corpus: 'None' → 'なし' -->
+    <string name="card_menu_label_none">なし</string>
+    <!-- kit corpus: 'Purple' → '紫' -->
+    <string name="card_menu_label_purple">紫</string>
+    <!-- kit corpus: 'Red' → '赤' -->
+    <string name="card_menu_label_red">赤</string>
+    <!-- kit corpus: 'Yellow' → '黄色' -->
+    <string name="card_menu_label_yellow">黄色</string>
+    <!-- kit corpus: 'Rating' → '評価' -->
+    <string name="card_menu_rating">評価</string>
+    <!-- kit corpus: 'None' → 'なし' -->
+    <string name="card_menu_rating_none">なし</string>
+    <!-- new -->
+    <string name="card_set_color_label_desc">カラーラベルを設定: %1$s</string>
+    <!-- new -->
+    <string name="card_set_rating_desc">%1$d 星の評価を設定</string>
+    <!-- new -->
+    <string name="card_stat_tap_to_change">タップしてスロットを変更</string>
+    <!-- new -->
+    <string name="card_stats_sheet_subtitle">各カードの上部に表示する4つの統計情報を選択してください。</string>
+    <!-- iOS corpus: 'Card Stats' → 'カード統計' -->
+    <string name="card_stats_sheet_title">カード統計</string>
+    <!-- new -->
+    <string name="card_stats_slot_label">スロット %1$d</string>
+
+    <!-- ── Detail view (new keys) ─────────────────────────────────────────── -->
+    <!-- new -->
+    <string name="detail_collection_toggle">コレクションメンバーシップを切り替え: %1$s</string>
+    <!-- new -->
+    <string name="detail_graphs_analyzing_audio">音声を分析中…</string>
+    <!-- new -->
+    <string name="detail_graphs_analyzing_frames">フレームを分析中…</string>
+    <!-- new -->
+    <string name="detail_graphs_brightness">輝度</string>
+    <!-- new -->
+    <string name="detail_graphs_color_over_time">時間経過に伴う色変化</string>
+    <!-- new -->
+    <string name="detail_graphs_loudness">ラウドネス</string>
+    <!-- new -->
+    <string name="detail_graphs_rgb_channels">RGB チャンネル</string>
+    <!-- new -->
+    <string name="detail_graphs_select_video">ビデオを選択</string>
+    <!-- new -->
+    <string name="detail_no_collections">コレクションがありません。</string>
+    <!-- new -->
+    <string name="detail_section_collections">コレクション</string>
+    <!-- new -->
+    <string name="detail_section_visuals">ビジュアル</string>
+    <!-- new -->
+    <string name="detail_share_failed">共有用のビデオをダウンロードできませんでした: %1$s</string>
+    <!-- new -->
+    <string name="detail_share_no_connection">サーバーに接続していません — リモートビデオを共有できません。</string>
+    <!-- new -->
+    <string name="detail_share_preparing">共有用ファイルを準備中…</string>
+    <!-- new -->
+    <string name="detail_tag_picker_add_button">追加</string>
+    <!-- new -->
+    <string name="detail_tag_picker_existing">既存のキーワード</string>
+    <!-- new -->
+    <string name="detail_tag_picker_new_hint">キーワードを追加…</string>
+    <!-- new -->
+    <string name="detail_tag_picker_no_others">他のキーワードはまだありません — 上に入力してください。</string>
+
+    <!-- ── Error strings (new keys) ───────────────────────────────────────── -->
+    <!-- kit corpus: "Failed to apply '%@'" → "'%@' の適用に失敗しました" (adapted) -->
+    <string name="err_apply_keyword">キーワード \'%1$s\' の作成/適用に失敗しました</string>
+    <!-- kit corpus: 'Apply keyword failed: %@' → 'キーワードの適用に失敗しました: %@' (adapted) -->
+    <string name="err_apply_keyword_detail">キーワードの適用に失敗しました: %1$s</string>
+    <!-- new -->
+    <string name="err_load_grid_settings">カード統計設定の読み込みに失敗しました: %1$s</string>
+    <!-- kit corpus: 'Failed to save grid settings: %@' → 'グリッド設定の保存に失敗しました: %@' (adapted) -->
+    <string name="err_save_grid_settings">カード統計設定の保存に失敗しました: %1$s</string>
+
+    <!-- ── Filter panel (new keys) ─────────────────────────────────────────── -->
+    <!-- kit corpus: 'Has audio' → '音声あり' (adapted) -->
+    <string name="filter_attr_audio">音声</string>
+    <!-- kit corpus: 'Full resolution' → 'フル解像度' -->
+    <string name="filter_attr_full_res">フル解像度</string>
+    <!-- new -->
+    <string name="filter_attr_has">%1$s あり</string>
+    <!-- kit corpus: 'Keywords' → 'キーワード' -->
+    <string name="filter_attr_keywords">キーワード</string>
+    <!-- kit corpus: 'Location' → '場所' -->
+    <string name="filter_attr_location">場所</string>
+    <!-- new -->
+    <string name="filter_attr_no">%1$s なし</string>
+    <!-- kit corpus: 'No' → 'いいえ' -->
+    <string name="filter_attr_no_label">いいえ</string>
+    <!-- kit corpus: 'Has proxies' → 'プロキシあり' (adapted) -->
+    <string name="filter_attr_proxies">プロキシ</string>
+    <!-- kit corpus: 'Yes' → 'はい' -->
+    <string name="filter_attr_yes">あり</string>
+    <!-- new -->
+    <string name="filter_attributes">属性</string>
+    <!-- new -->
+    <string name="filter_color_label">カラーラベル</string>
+    <!-- kit corpus: 'Orientation' → '向き' (adapted) -->
+    <string name="filter_orientation">向き</string>
+    <!-- kit corpus: 'Any' → 'すべて' -->
+    <string name="filter_orientation_any">すべて</string>
+    <!-- kit corpus: 'Landscape' → '横向き' -->
+    <string name="filter_orientation_landscape">横向き</string>
+    <!-- kit corpus: 'Portrait' → '縦向き' -->
+    <string name="filter_orientation_portrait">縦向き</string>
+
+    <!-- ── Grid (new keys) ────────────────────────────────────────────────── -->
+    <!-- iOS corpus: 'Card Stats' → 'カード統計' -->
+    <string name="grid_card_stats">カード統計</string>
+    <!-- new -->
+    <string name="grid_configure_card_stats">カード統計を設定</string>
+    <!-- new -->
+    <string name="grid_density_label">サムネイルサイズ</string>
+    <!-- new -->
+    <string name="grid_density_larger">サムネイルを大きく</string>
+    <!-- new -->
+    <string name="grid_density_menu_item">サムネイルサイズ</string>
+    <!-- new -->
+    <string name="grid_density_sheet_subtitle">ドラッグして画面に表示する列数を調整してください。</string>
+    <!-- new -->
+    <string name="grid_density_sheet_title">サムネイルサイズ</string>
+    <!-- new -->
+    <string name="grid_density_smaller">サムネイルを小さく</string>
+    <!-- kit corpus: 'No videos match this smart collection' → 'このスマートコレクションに一致する動画はありません' -->
+    <string name="grid_smart_collection_empty">このスマートコレクションに一致するビデオはありません</string>
+    <!-- kit corpus: 'Aperture' → '絞り' -->
+    <string name="grid_stat_aperture">絞り</string>
+    <!-- kit corpus: 'Audio codec' → '音声コーデック' -->
+    <string name="grid_stat_audio_codec">音声コーデック</string>
+    <!-- kit corpus: 'Bitrate' → 'ビットレート' -->
+    <string name="grid_stat_bitrate">ビットレート</string>
+    <!-- kit corpus: 'Camera' → 'カメラ' -->
+    <string name="grid_stat_camera">カメラ</string>
+    <!-- kit corpus: 'Capture date' → '撮影日' -->
+    <string name="grid_stat_capture_date">撮影日</string>
+    <!-- kit corpus: 'Capture year' → '撮影年' -->
+    <string name="grid_stat_capture_year">撮影年</string>
+    <!-- kit corpus: 'Duration' → '長さ' -->
+    <string name="grid_stat_duration">長さ</string>
+    <!-- kit corpus: 'Exposure' → '露出' -->
+    <string name="grid_stat_exposure">露出</string>
+    <!-- kit corpus: 'File size' → 'ファイルサイズ' -->
+    <string name="grid_stat_file_size">ファイルサイズ</string>
+    <!-- kit corpus: 'Filename' → 'ファイル名' -->
+    <string name="grid_stat_filename">ファイル名</string>
+    <!-- kit corpus: 'Focal length' → '焦点距離' -->
+    <string name="grid_stat_focal_length">焦点距離</string>
+    <!-- kit corpus: 'FPS' -->
+    <string name="grid_stat_fps">FPS</string>
+    <!-- kit corpus: 'Frame count' → 'フレーム数' -->
+    <string name="grid_stat_frame_count">フレーム数</string>
+    <!-- kit corpus: 'ISO' -->
+    <string name="grid_stat_iso">ISO</string>
+    <!-- kit corpus: 'Lens' → 'レンズ' -->
+    <string name="grid_stat_lens">レンズ</string>
+    <!-- kit corpus: 'Location' → '場所' -->
+    <string name="grid_stat_location">場所</string>
+    <!-- kit corpus: '(empty)' → '(空)' -->
+    <string name="grid_stat_none">（空）</string>
+    <!-- kit corpus: 'Pixel dimensions' → 'ピクセル寸法' -->
+    <string name="grid_stat_pixel_dimensions">ピクセル寸法</string>
+    <!-- kit corpus: 'Resolution' → '解像度' -->
+    <string name="grid_stat_resolution">解像度</string>
+    <!-- kit corpus: 'Video codec' → '映像コーデック' -->
+    <string name="grid_stat_video_codec">映像コーデック</string>
+
+    <!-- ── Map (new keys) ─────────────────────────────────────────────────── -->
+    <!-- new -->
+    <string name="map_switch_to_satellite">衛星画像に切り替え</string>
+    <!-- new -->
+    <string name="map_switch_to_standard">標準マップに切り替え</string>
+
+    <!-- ── Offline (new keys) ─────────────────────────────────────────────── -->
+    <!-- new -->
+    <string name="offline_available_offline">オフラインで利用可能</string>
+    <!-- new -->
+    <string name="offline_browse_downloads">ダウンロードを参照</string>
+    <!-- new -->
+    <string name="offline_download_button">オフライン用にダウンロード</string>
+    <!-- new -->
+    <string name="offline_downloaded_quality">ダウンロード品質</string>
+    <!-- new -->
+    <string name="offline_downloading">ダウンロード中…</string>
+    <!-- new -->
+    <string name="offline_empty_desc">サーバーに接続中に、ビデオで「オフライン用にダウンロード」を選ぶと、接続なしでここで視聴できます。</string>
+    <!-- new -->
+    <string name="offline_empty_title">ダウンロードなし</string>
+    <!-- new -->
+    <string name="offline_file_missing">このダウンロードはデバイスに見つかりません。</string>
+    <!-- new -->
+    <string name="offline_quality_720p">720p（小さいサイズ）</string>
+    <!-- new -->
+    <string name="offline_quality_original">オリジナル</string>
+    <!-- new -->
+    <string name="offline_quality_title">ダウンロード品質</string>
+    <!-- new -->
+    <string name="offline_remove_body">「%1$s」はこのデバイスから削除されます。</string>
+    <!-- new -->
+    <string name="offline_remove_confirm">削除</string>
+    <!-- new -->
+    <string name="offline_remove_download">ダウンロードを削除</string>
+    <!-- new -->
+    <string name="offline_remove_title">ダウンロードを削除しますか？</string>
+    <!-- new -->
+    <string name="offline_section_title">オフライン</string>
+    <!-- iOS corpus: 'Downloaded' → 'ダウンロード済み' -->
+    <string name="offline_title">ダウンロード済み</string>
+
+    <!-- ── Settings (new keys) ────────────────────────────────────────────── -->
+    <!-- new -->
+    <string name="settings_forget_server_confirm_action">忘れる</string>
+    <!-- new -->
+    <string name="settings_forget_server_confirm_body">保存済みの認証情報をクリアして接続画面に戻ります。再接続するには再ペアリングが必要です。</string>
+    <!-- iOS corpus: 'Forget This Server…' → 'このサーバーを忘れる…' (adapted) -->
+    <string name="settings_forget_server_confirm_title">このサーバーを忘れますか？</string>
+    <!-- new -->
+    <string name="settings_server_forgotten">サーバーを忘れました</string>
+
+    <!-- ── Sort field names (new keys) ───────────────────────────────────── -->
+    <!-- kit corpus: 'Aperture' → '絞り' -->
+    <string name="sort_aperture">絞り</string>
+    <!-- kit corpus: 'Bitrate' → 'ビットレート' -->
+    <string name="sort_bitrate">ビットレート</string>
+    <!-- iOS corpus: 'Exposure Time' → '露光時間' -->
+    <string name="sort_exposure_time">露光時間</string>
+    <!-- kit corpus: 'Focal length' → '焦点距離' -->
+    <string name="sort_focal_length">焦点距離</string>
+    <!-- kit corpus: 'ISO' -->
+    <string name="sort_iso">ISO</string>
+    <!-- iOS corpus: 'Keyword' → 'キーワード' -->
+    <string name="sort_keyword">キーワード</string>
+    <!-- kit corpus: 'Lens' → 'レンズ' -->
+    <string name="sort_lens">レンズ</string>
+    <!-- kit corpus: 'Resolution' → '解像度' -->
+    <string name="sort_resolution">解像度</string>
+
+    <!-- ── Stack operations (new keys) ───────────────────────────────────── -->
+    <!-- desktop corpus: 'スタックの並べ替えに失敗しました: {0}' (adapted) -->
+    <string name="stack_combine_error">スタックに失敗しました: %1$s</string>
+    <!-- new -->
+    <string name="stack_combine_failed">スタックの作成に失敗しました</string>
+    <!-- new -->
+    <string name="stack_combine_into_stack">スタックに結合</string>
+    <!-- new -->
+    <string name="stack_load_members_error">スタックメンバーを読み込めませんでした: %1$s</string>
+    <!-- new -->
+    <string name="stack_members_preferred_label">リーダー</string>
+    <!-- new -->
+    <string name="stack_members_promote_action">昇格</string>
+    <!-- new -->
+    <string name="stack_members_remove_action">削除</string>
+    <!-- new -->
+    <string name="stack_members_title">スタックメンバー</string>
+    <!-- new -->
+    <string name="stack_promote_error">昇格に失敗しました: %1$s</string>
+    <!-- new -->
+    <string name="stack_promote_failed">ビデオの昇格に失敗しました</string>
+    <!-- new -->
+    <string name="stack_promote_to_leader">リーダーに昇格</string>
+    <!-- kit corpus: 'Failed to remove from stack: %@' → 'スタックからの削除に失敗しました: %@' (adapted) -->
+    <string name="stack_remove_error">削除に失敗しました: %1$s</string>
+    <!-- kit corpus: 'Failed to remove video from stack' → 'スタックからの動画の削除に失敗しました' (adapted) -->
+    <string name="stack_remove_failed">スタックからの削除に失敗しました</string>
+    <!-- new -->
+    <string name="stack_remove_from_stack">スタックから削除</string>
+    <!-- new -->
+    <string name="stack_section_header">スタック</string>
+    <!-- new -->
+    <string name="stack_select_at_least_two">スタックを作成するには少なくとも2本のビデオを選択してください</string>
+    <!-- kit corpus: 'Failed to unstack: %@' → 'スタックの解除に失敗しました: %@' (adapted) -->
+    <string name="stack_unstack">スタック解除</string>
+    <!-- new -->
+    <string name="stack_unstack_error">スタック解除に失敗しました: %1$s</string>
+    <!-- ja CLDR: other only -->
+    <plurals name="stack_combined_message">
+        <item quantity="other">%1$d 本のビデオのスタックに結合しました</item>
+    </plurals>
 </resources>

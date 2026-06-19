@@ -343,4 +343,174 @@
     <string name="scan_target_default">thư viện</string>
     <string name="scan_scanning_target">Đang quét %1$s…</string>
     <string name="pairing_a_device">Một thiết bị</string>
+
+    <!-- ── Batch operations ──────────────────────────────────────────────── -->
+    <string name="batch_add_keyword_hint">Thêm từ khóa…</string>
+    <string name="batch_add_to_collection">Thêm vào bộ sưu tập</string>
+    <string name="batch_add_to_collection_name">Thêm vào %1$s</string>
+    <string name="batch_apply_keyword">Áp dụng từ khóa: %1$s</string>
+    <string name="batch_existing_keywords">Từ khóa hiện có — nhấn để áp dụng</string>
+    <string name="batch_organize">Sắp xếp video đã chọn</string>
+    <string name="batch_share">Chia sẻ video đã chọn</string>
+    <string name="batch_share_failed">Không thể chuẩn bị tệp để chia sẻ</string>
+    <string name="batch_share_preparing">Đang chuẩn bị %1$d video…</string>
+    <string name="batch_share_title">Chia sẻ %1$d video</string>
+    <plurals name="batch_organize_title">
+        <item quantity="other">Sắp xếp %1$d video</item>
+    </plurals>
+
+    <!-- ── Card stats / menus ─────────────────────────────────────────────── -->
+    <string name="card_clear_color_label_desc">Xóa nhãn màu</string>
+    <string name="card_clear_rating_desc">Xóa đánh giá</string>
+    <string name="card_menu_color_label">Nhãn màu</string>
+    <string name="card_menu_label_blue">Xanh dương</string>
+    <string name="card_menu_label_green">Xanh lá</string>
+    <string name="card_menu_label_none">Không có</string>
+    <string name="card_menu_label_purple">Tím</string>
+    <string name="card_menu_label_red">Đỏ</string>
+    <string name="card_menu_label_yellow">Vàng</string>
+    <string name="card_menu_rating">Đánh giá</string>
+    <string name="card_menu_rating_none">Không có</string>
+    <string name="card_set_color_label_desc">Đặt nhãn màu: %1$s</string>
+    <string name="card_set_rating_desc">Đặt đánh giá %1$d sao</string>
+    <string name="card_stat_tap_to_change">Nhấn để đổi ô</string>
+    <string name="card_stats_sheet_subtitle">Chọn bốn thống kê hiển thị ở đầu mỗi thẻ.</string>
+    <string name="card_stats_sheet_title">Thống kê thẻ</string>
+    <string name="card_stats_slot_label">Ô %1$d</string>
+
+    <!-- ── Detail view (collections / graphs / share / tag picker) ───────── -->
+    <string name="detail_collection_toggle">Bật/tắt tư cách thành viên bộ sưu tập: %1$s</string>
+    <string name="detail_graphs_analyzing_audio">Đang phân tích âm thanh…</string>
+    <string name="detail_graphs_analyzing_frames">Đang phân tích khung hình…</string>
+    <string name="detail_graphs_brightness">Độ sáng</string>
+    <string name="detail_graphs_color_over_time">Màu sắc theo thời gian</string>
+    <string name="detail_graphs_loudness">Độ to</string>
+    <string name="detail_graphs_rgb_channels">Kênh RGB</string>
+    <string name="detail_graphs_select_video">Chọn một video</string>
+    <string name="detail_no_collections">Chưa có bộ sưu tập nào.</string>
+    <string name="detail_section_collections">BỘ SƯU TẬP</string>
+    <string name="detail_section_visuals">HÌNH ẢNH</string>
+    <string name="detail_share_failed">Không thể tải video để chia sẻ: %1$s</string>
+    <string name="detail_share_no_connection">Chưa kết nối với máy chủ — không thể chia sẻ video từ xa.</string>
+    <string name="detail_share_preparing">Đang chuẩn bị tệp để chia sẻ…</string>
+    <string name="detail_tag_picker_add_button">Thêm</string>
+    <string name="detail_tag_picker_existing">TỪ KHÓA HIỆN CÓ</string>
+    <string name="detail_tag_picker_new_hint">Thêm từ khóa…</string>
+    <string name="detail_tag_picker_no_others">Chưa có từ khóa nào khác — nhập một từ khóa ở trên.</string>
+
+    <!-- ── Errors (keyword / grid settings) ──────────────────────────────── -->
+    <string name="err_apply_keyword">Không thể tạo/áp dụng từ khóa \'%1$s\'</string>
+    <string name="err_apply_keyword_detail">Áp dụng từ khóa thất bại: %1$s</string>
+    <string name="err_load_grid_settings">Không thể tải cấu hình thống kê thẻ: %1$s</string>
+    <string name="err_save_grid_settings">Không thể lưu cấu hình thống kê thẻ: %1$s</string>
+
+    <!-- ── Filter attributes / orientation ───────────────────────────────── -->
+    <string name="filter_attr_audio">Âm thanh</string>
+    <string name="filter_attr_full_res">Độ phân giải đầy đủ</string>
+    <string name="filter_attr_has">Có %1$s</string>
+    <string name="filter_attr_keywords">Từ khóa</string>
+    <string name="filter_attr_location">Vị trí</string>
+    <string name="filter_attr_no">Không có %1$s</string>
+    <string name="filter_attr_no_label">Không</string>
+    <string name="filter_attr_proxies">Proxy</string>
+    <string name="filter_attr_yes">Có</string>
+    <string name="filter_attributes">THUỘC TÍNH</string>
+    <string name="filter_color_label">NHÃN MÀU</string>
+    <string name="filter_orientation">HƯỚNG</string>
+    <string name="filter_orientation_any">Bất kỳ</string>
+    <string name="filter_orientation_landscape">Ngang</string>
+    <string name="filter_orientation_portrait">Dọc</string>
+
+    <!-- ── Grid density / card stats / stat fields ───────────────────────── -->
+    <string name="grid_card_stats">Thống kê thẻ</string>
+    <string name="grid_configure_card_stats">Cấu hình thống kê thẻ</string>
+    <string name="grid_density_label">Kích thước hình thu nhỏ</string>
+    <string name="grid_density_larger">Hình thu nhỏ lớn hơn</string>
+    <string name="grid_density_menu_item">Kích thước hình thu nhỏ</string>
+    <string name="grid_density_sheet_subtitle">Kéo để điều chỉnh số cột hiển thị trên màn hình.</string>
+    <string name="grid_density_sheet_title">Kích thước hình thu nhỏ</string>
+    <string name="grid_density_smaller">Hình thu nhỏ nhỏ hơn</string>
+    <string name="grid_smart_collection_empty">Không có video nào khớp với bộ sưu tập thông minh này</string>
+    <string name="grid_stat_aperture">Khẩu độ</string>
+    <string name="grid_stat_audio_codec">Codec âm thanh</string>
+    <string name="grid_stat_bitrate">Tốc độ bit</string>
+    <string name="grid_stat_camera">Máy quay</string>
+    <string name="grid_stat_capture_date">Ngày quay</string>
+    <string name="grid_stat_capture_year">Năm quay</string>
+    <string name="grid_stat_duration">Thời lượng</string>
+    <string name="grid_stat_exposure">Tốc độ chụp</string>
+    <string name="grid_stat_file_size">Kích thước tệp</string>
+    <string name="grid_stat_filename">Tên tệp</string>
+    <string name="grid_stat_focal_length">Tiêu cự</string>
+    <string name="grid_stat_fps">FPS</string>
+    <string name="grid_stat_frame_count">Số khung hình</string>
+    <string name="grid_stat_iso">ISO</string>
+    <string name="grid_stat_lens">Ống kính</string>
+    <string name="grid_stat_location">Vị trí</string>
+    <string name="grid_stat_none">(trống)</string>
+    <string name="grid_stat_pixel_dimensions">Kích thước pixel</string>
+    <string name="grid_stat_resolution">Độ phân giải</string>
+    <string name="grid_stat_video_codec">Codec video</string>
+
+    <!-- ── Map ───────────────────────────────────────────────────────────── -->
+    <string name="map_switch_to_satellite">Chuyển sang ảnh vệ tinh</string>
+    <string name="map_switch_to_standard">Chuyển sang bản đồ tiêu chuẩn</string>
+
+    <!-- ── Offline downloads ──────────────────────────────────────────────── -->
+    <string name="offline_available_offline">Có sẵn ngoại tuyến</string>
+    <string name="offline_browse_downloads">Duyệt bản tải xuống</string>
+    <string name="offline_download_button">Tải xuống để dùng ngoại tuyến</string>
+    <string name="offline_downloaded_quality">Đã tải xuống dưới dạng</string>
+    <string name="offline_downloading">Đang tải xuống…</string>
+    <string name="offline_empty_desc">Khi kết nối với máy chủ, chọn "Tải xuống để dùng ngoại tuyến" trên một video để xem nó ở đây mà không cần kết nối.</string>
+    <string name="offline_empty_title">Không có bản tải xuống</string>
+    <string name="offline_file_missing">Bản tải xuống này bị thiếu trên thiết bị.</string>
+    <string name="offline_quality_720p">720p (nhỏ hơn)</string>
+    <string name="offline_quality_original">Gốc</string>
+    <string name="offline_quality_title">Chất lượng tải xuống</string>
+    <string name="offline_remove_body">"%1$s" sẽ bị xóa khỏi thiết bị này.</string>
+    <string name="offline_remove_confirm">Xóa</string>
+    <string name="offline_remove_download">Xóa bản tải xuống</string>
+    <string name="offline_remove_title">Xóa bản tải xuống?</string>
+    <string name="offline_section_title">Ngoại tuyến</string>
+    <string name="offline_title">Đã tải xuống</string>
+
+    <!-- ── Settings (forget server) ──────────────────────────────────────── -->
+    <string name="settings_forget_server_confirm_action">Quên</string>
+    <string name="settings_forget_server_confirm_body">Thao tác này sẽ xóa thông tin đăng nhập đã lưu và trả về màn hình kết nối. Bạn sẽ cần ghép đôi lại để kết nối.</string>
+    <string name="settings_forget_server_confirm_title">Quên máy chủ này?</string>
+    <string name="settings_server_forgotten">Đã quên máy chủ</string>
+
+    <!-- ── Sort fields ────────────────────────────────────────────────────── -->
+    <string name="sort_aperture">Khẩu độ</string>
+    <string name="sort_bitrate">Tốc độ bit</string>
+    <string name="sort_exposure_time">Thời gian phơi sáng</string>
+    <string name="sort_focal_length">Tiêu cự</string>
+    <string name="sort_iso">ISO</string>
+    <string name="sort_keyword">Từ khóa</string>
+    <string name="sort_lens">Ống kính</string>
+    <string name="sort_resolution">Độ phân giải</string>
+
+    <!-- ── Stack operations ───────────────────────────────────────────────── -->
+    <string name="stack_combine_error">Tạo ngăn xếp thất bại: %1$s</string>
+    <string name="stack_combine_failed">Không thể tạo ngăn xếp</string>
+    <string name="stack_combine_into_stack">Gộp vào ngăn xếp</string>
+    <string name="stack_load_members_error">Không thể tải thành viên ngăn xếp: %1$s</string>
+    <string name="stack_members_preferred_label">Dẫn đầu</string>
+    <string name="stack_members_promote_action">Thăng cấp</string>
+    <string name="stack_members_remove_action">Xóa</string>
+    <string name="stack_members_title">Thành viên ngăn xếp</string>
+    <string name="stack_promote_error">Thăng cấp thất bại: %1$s</string>
+    <string name="stack_promote_failed">Không thể thăng cấp video</string>
+    <string name="stack_promote_to_leader">Thăng cấp làm dẫn đầu</string>
+    <string name="stack_remove_error">Xóa thất bại: %1$s</string>
+    <string name="stack_remove_failed">Không thể xóa khỏi ngăn xếp</string>
+    <string name="stack_remove_from_stack">Xóa khỏi ngăn xếp</string>
+    <string name="stack_section_header">Ngăn xếp</string>
+    <string name="stack_select_at_least_two">Chọn ít nhất 2 video để tạo ngăn xếp</string>
+    <string name="stack_unstack">Tách ngăn xếp</string>
+    <string name="stack_unstack_error">Tách ngăn xếp thất bại: %1$s</string>
+    <plurals name="stack_combined_message">
+        <item quantity="other">Đã gộp thành ngăn xếp %1$d video</item>
+    </plurals>
 </resources>

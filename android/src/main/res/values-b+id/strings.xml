@@ -343,4 +343,174 @@
     <string name="scan_scanning_target">Memindai %1$s…</string>
     <string name="pairing_a_device">Sebuah perangkat</string>
 
+    <!-- ── Batch operations ───────────────────────────────────────────────── -->
+    <string name="batch_add_keyword_hint">Tambahkan kata kunci…</string>
+    <string name="batch_add_to_collection">Tambahkan ke koleksi</string>
+    <string name="batch_add_to_collection_name">Tambahkan ke %1$s</string>
+    <string name="batch_apply_keyword">Terapkan kata kunci: %1$s</string>
+    <string name="batch_existing_keywords">Kata kunci yang ada — ketuk untuk menerapkan</string>
+    <string name="batch_organize">Atur video yang dipilih</string>
+    <string name="batch_share">Bagikan video yang dipilih</string>
+    <string name="batch_share_failed">Tidak dapat menyiapkan file untuk dibagikan</string>
+    <string name="batch_share_preparing">Menyiapkan %1$d video…</string>
+    <string name="batch_share_title">Bagikan %1$d video</string>
+    <plurals name="batch_organize_title">
+        <item quantity="other">Atur %1$d video</item>
+    </plurals>
+
+    <!-- ── Card / badge extras ────────────────────────────────────────────── -->
+    <string name="card_clear_color_label_desc">Hapus label warna</string>
+    <string name="card_clear_rating_desc">Hapus penilaian</string>
+    <string name="card_menu_color_label">Label Warna</string>
+    <string name="card_menu_label_blue">Biru</string>
+    <string name="card_menu_label_green">Hijau</string>
+    <string name="card_menu_label_none">Tidak ada</string>
+    <string name="card_menu_label_purple">Ungu</string>
+    <string name="card_menu_label_red">Merah</string>
+    <string name="card_menu_label_yellow">Kuning</string>
+    <string name="card_menu_rating">Penilaian</string>
+    <string name="card_menu_rating_none">Tidak ada</string>
+    <string name="card_set_color_label_desc">Atur label warna: %1$s</string>
+    <string name="card_set_rating_desc">Atur penilaian %1$d bintang</string>
+    <string name="card_stat_tap_to_change">Ketuk untuk mengganti slot</string>
+    <string name="card_stats_sheet_subtitle">Pilih empat statistik yang ditampilkan di bagian atas setiap kartu.</string>
+    <string name="card_stats_sheet_title">Statistik Kartu</string>
+    <string name="card_stats_slot_label">Slot %1$d</string>
+
+    <!-- ── Detail extras ──────────────────────────────────────────────────── -->
+    <string name="detail_collection_toggle">Alihkan keanggotaan koleksi: %1$s</string>
+    <string name="detail_graphs_analyzing_audio">Menganalisis audio…</string>
+    <string name="detail_graphs_analyzing_frames">Menganalisis frame…</string>
+    <string name="detail_graphs_brightness">Kecerahan</string>
+    <string name="detail_graphs_color_over_time">Warna dari waktu ke waktu</string>
+    <string name="detail_graphs_loudness">Kekerasan suara</string>
+    <string name="detail_graphs_rgb_channels">Saluran RGB</string>
+    <string name="detail_graphs_select_video">Pilih video</string>
+    <string name="detail_no_collections">Belum ada koleksi.</string>
+    <string name="detail_section_collections">KOLEKSI</string>
+    <string name="detail_section_visuals">VISUAL</string>
+    <string name="detail_share_failed">Tidak dapat mengunduh video untuk dibagikan: %1$s</string>
+    <string name="detail_share_no_connection">Tidak terhubung ke server — tidak dapat membagikan video jarak jauh.</string>
+    <string name="detail_share_preparing">Menyiapkan file untuk dibagikan…</string>
+    <string name="detail_tag_picker_add_button">Tambah</string>
+    <string name="detail_tag_picker_existing">KATA KUNCI YANG ADA</string>
+    <string name="detail_tag_picker_new_hint">Tambahkan kata kunci…</string>
+    <string name="detail_tag_picker_no_others">Belum ada kata kunci lain — ketik di atas.</string>
+
+    <!-- ── Error messages (new) ───────────────────────────────────────────── -->
+    <string name="err_apply_keyword">Gagal membuat/menerapkan kata kunci \'%1$s\'</string>
+    <string name="err_apply_keyword_detail">Penerapan kata kunci gagal: %1$s</string>
+    <string name="err_load_grid_settings">Gagal memuat konfigurasi statistik kartu: %1$s</string>
+    <string name="err_save_grid_settings">Gagal menyimpan konfigurasi statistik kartu: %1$s</string>
+
+    <!-- ── Filter bar extras ──────────────────────────────────────────────── -->
+    <string name="filter_attr_audio">Audio</string>
+    <string name="filter_attr_full_res">Resolusi Penuh</string>
+    <string name="filter_attr_has">Memiliki %1$s</string>
+    <string name="filter_attr_keywords">Kata Kunci</string>
+    <string name="filter_attr_location">Lokasi</string>
+    <string name="filter_attr_no">Tidak ada %1$s</string>
+    <string name="filter_attr_no_label">Tidak</string>
+    <string name="filter_attr_proxies">Proxy</string>
+    <string name="filter_attr_yes">Memiliki</string>
+    <string name="filter_attributes">ATRIBUT</string>
+    <string name="filter_color_label">LABEL WARNA</string>
+    <string name="filter_orientation">ORIENTASI</string>
+    <string name="filter_orientation_any">Semua</string>
+    <string name="filter_orientation_landscape">Lanskap</string>
+    <string name="filter_orientation_portrait">Potret</string>
+
+    <!-- ── Grid extras ────────────────────────────────────────────────────── -->
+    <string name="grid_card_stats">Statistik Kartu</string>
+    <string name="grid_configure_card_stats">Konfigurasi statistik kartu</string>
+    <string name="grid_density_label">Ukuran Thumbnail</string>
+    <string name="grid_density_larger">Thumbnail lebih besar</string>
+    <string name="grid_density_menu_item">Ukuran Thumbnail</string>
+    <string name="grid_density_sheet_subtitle">Seret untuk menyesuaikan berapa banyak kolom yang muat di layar.</string>
+    <string name="grid_density_sheet_title">Ukuran Thumbnail</string>
+    <string name="grid_density_smaller">Thumbnail lebih kecil</string>
+    <string name="grid_smart_collection_empty">Tidak ada video yang cocok dengan koleksi cerdas ini</string>
+    <string name="grid_stat_aperture">Apertur</string>
+    <string name="grid_stat_audio_codec">Codec audio</string>
+    <string name="grid_stat_bitrate">Bitrate</string>
+    <string name="grid_stat_camera">Kamera</string>
+    <string name="grid_stat_capture_date">Tanggal pengambilan</string>
+    <string name="grid_stat_capture_year">Tahun pengambilan</string>
+    <string name="grid_stat_duration">Durasi</string>
+    <string name="grid_stat_exposure">Eksposur</string>
+    <string name="grid_stat_file_size">Ukuran file</string>
+    <string name="grid_stat_filename">Nama file</string>
+    <string name="grid_stat_focal_length">Panjang fokal</string>
+    <string name="grid_stat_fps">FPS</string>
+    <string name="grid_stat_frame_count">Jumlah frame</string>
+    <string name="grid_stat_iso">ISO</string>
+    <string name="grid_stat_lens">Lensa</string>
+    <string name="grid_stat_location">Lokasi</string>
+    <string name="grid_stat_none">(kosong)</string>
+    <string name="grid_stat_pixel_dimensions">Dimensi piksel</string>
+    <string name="grid_stat_resolution">Resolusi</string>
+    <string name="grid_stat_video_codec">Codec video</string>
+
+    <!-- ── Map extras ─────────────────────────────────────────────────────── -->
+    <string name="map_switch_to_satellite">Beralih ke citra satelit</string>
+    <string name="map_switch_to_standard">Beralih ke peta standar</string>
+
+    <!-- ── Offline / downloads ────────────────────────────────────────────── -->
+    <string name="offline_available_offline">Tersedia offline</string>
+    <string name="offline_browse_downloads">Jelajahi Unduhan</string>
+    <string name="offline_download_button">Unduh untuk Offline</string>
+    <string name="offline_downloaded_quality">Diunduh sebagai</string>
+    <string name="offline_downloading">Mengunduh…</string>
+    <string name="offline_empty_desc">Saat terhubung ke server, pilih \"Unduh untuk Offline\" pada video untuk menontonnya di sini tanpa koneksi.</string>
+    <string name="offline_empty_title">Tidak Ada Unduhan</string>
+    <string name="offline_file_missing">Unduhan ini tidak ada di perangkat.</string>
+    <string name="offline_quality_720p">720p (lebih kecil)</string>
+    <string name="offline_quality_original">Asli</string>
+    <string name="offline_quality_title">Kualitas unduhan</string>
+    <string name="offline_remove_body">\"%1$s\" akan dihapus dari perangkat ini.</string>
+    <string name="offline_remove_confirm">Hapus</string>
+    <string name="offline_remove_download">Hapus Unduhan</string>
+    <string name="offline_remove_title">Hapus Unduhan?</string>
+    <string name="offline_section_title">Offline</string>
+    <string name="offline_title">Telah Diunduh</string>
+
+    <!-- ── Settings extras ────────────────────────────────────────────────── -->
+    <string name="settings_forget_server_confirm_action">Lupakan</string>
+    <string name="settings_forget_server_confirm_body">Ini akan menghapus kredensial yang tersimpan dan kembali ke layar koneksi. Anda perlu memasangkan ulang untuk menyambung kembali.</string>
+    <string name="settings_forget_server_confirm_title">Lupakan Server Ini?</string>
+    <string name="settings_server_forgotten">Server terlupakan</string>
+
+    <!-- ── Sort field extras ──────────────────────────────────────────────── -->
+    <string name="sort_aperture">Apertur</string>
+    <string name="sort_bitrate">Bitrate</string>
+    <string name="sort_exposure_time">Waktu Eksposur</string>
+    <string name="sort_focal_length">Panjang Fokal</string>
+    <string name="sort_iso">ISO</string>
+    <string name="sort_keyword">Kata Kunci</string>
+    <string name="sort_lens">Lensa</string>
+    <string name="sort_resolution">Resolusi</string>
+
+    <!-- ── Stack operations ───────────────────────────────────────────────── -->
+    <string name="stack_combine_error">Tumpukan gagal: %1$s</string>
+    <string name="stack_combine_failed">Gagal membuat tumpukan</string>
+    <string name="stack_combine_into_stack">Gabungkan ke tumpukan</string>
+    <string name="stack_load_members_error">Tidak dapat memuat anggota tumpukan: %1$s</string>
+    <string name="stack_members_preferred_label">Pemimpin</string>
+    <string name="stack_members_promote_action">Promosikan</string>
+    <string name="stack_members_remove_action">Hapus</string>
+    <string name="stack_members_title">Anggota tumpukan</string>
+    <string name="stack_promote_error">Promosi gagal: %1$s</string>
+    <string name="stack_promote_failed">Gagal mempromosikan video</string>
+    <string name="stack_promote_to_leader">Promosikan ke pemimpin</string>
+    <string name="stack_remove_error">Penghapusan gagal: %1$s</string>
+    <string name="stack_remove_failed">Gagal menghapus dari tumpukan</string>
+    <string name="stack_remove_from_stack">Hapus dari tumpukan</string>
+    <string name="stack_section_header">Tumpukan</string>
+    <string name="stack_select_at_least_two">Pilih setidaknya 2 video untuk membuat tumpukan</string>
+    <string name="stack_unstack">Pisahkan tumpukan</string>
+    <string name="stack_unstack_error">Pemisahan tumpukan gagal: %1$s</string>
+    <plurals name="stack_combined_message">
+        <item quantity="other">Digabungkan ke tumpukan berisi %1$d video</item>
+    </plurals>
+
 </resources>

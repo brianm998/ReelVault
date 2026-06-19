@@ -436,4 +436,322 @@
     <!-- "A device" → kit corpus: "Um dispositivo" -->
     <string name="pairing_a_device">Um dispositivo</string>
 
+    <!-- ── Batch operations ───────────────────────────────────────────────── -->
+    <!-- batch_add_keyword_hint: new -->
+    <string name="batch_add_keyword_hint">Adicionar uma palavra-chave…</string>
+    <!-- batch_add_to_collection: kit corpus: "Adicionar à coleção" (pattern) -->
+    <string name="batch_add_to_collection">Adicionar à coleção</string>
+    <!-- batch_add_to_collection_name: new -->
+    <string name="batch_add_to_collection_name">Adicionar a %1$s</string>
+    <!-- batch_apply_keyword: new -->
+    <string name="batch_apply_keyword">Aplicar palavra-chave: %1$s</string>
+    <!-- batch_existing_keywords: new -->
+    <string name="batch_existing_keywords">Palavras-chave existentes — toque para aplicar</string>
+    <!-- batch_organize: new -->
+    <string name="batch_organize">Organizar vídeos selecionados</string>
+    <!-- batch_share: new -->
+    <string name="batch_share">Compartilhar vídeos selecionados</string>
+    <!-- batch_share_failed: new -->
+    <string name="batch_share_failed">Não foi possível preparar os arquivos para compartilhamento</string>
+    <!-- batch_share_preparing: new -->
+    <string name="batch_share_preparing">Preparando %1$d vídeos…</string>
+    <!-- batch_share_title: new -->
+    <string name="batch_share_title">Compartilhar %1$d vídeos</string>
+    <!-- batch_organize_title: plurals -->
+    <plurals name="batch_organize_title">
+        <item quantity="one">Organizar %1$d vídeo</item>
+        <item quantity="other">Organizar %1$d vídeos</item>
+    </plurals>
+
+    <!-- ── Card actions ───────────────────────────────────────────────────── -->
+    <!-- card_clear_color_label_desc: new -->
+    <string name="card_clear_color_label_desc">Limpar rótulo de cor</string>
+    <!-- card_clear_rating_desc: new -->
+    <string name="card_clear_rating_desc">Limpar avaliação</string>
+    <!-- card_menu_color_label: kit corpus pattern -->
+    <string name="card_menu_color_label">Rótulo de cor</string>
+    <!-- card_menu_label_blue: kit corpus: "Azul" -->
+    <string name="card_menu_label_blue">Azul</string>
+    <!-- card_menu_label_green: kit corpus: "Verde" -->
+    <string name="card_menu_label_green">Verde</string>
+    <!-- card_menu_label_none: kit corpus: "Nenhuma" -->
+    <string name="card_menu_label_none">Nenhuma</string>
+    <!-- card_menu_label_purple: kit corpus: "Roxo" -->
+    <string name="card_menu_label_purple">Roxo</string>
+    <!-- card_menu_label_red: kit corpus: "Vermelho" -->
+    <string name="card_menu_label_red">Vermelho</string>
+    <!-- card_menu_label_yellow: kit corpus: "Amarelo" -->
+    <string name="card_menu_label_yellow">Amarelo</string>
+    <!-- card_menu_rating: kit corpus: "Avaliação" -->
+    <string name="card_menu_rating">Avaliação</string>
+    <!-- card_menu_rating_none: kit corpus: "Nenhuma" -->
+    <string name="card_menu_rating_none">Nenhuma</string>
+    <!-- card_set_color_label_desc: new -->
+    <string name="card_set_color_label_desc">Definir rótulo de cor: %1$s</string>
+    <!-- card_set_rating_desc: new -->
+    <string name="card_set_rating_desc">Definir avaliação de %1$d estrela(s)</string>
+    <!-- card_stat_tap_to_change: new -->
+    <string name="card_stat_tap_to_change">Toque para alterar o slot</string>
+    <!-- card_stats_sheet_subtitle: new -->
+    <string name="card_stats_sheet_subtitle">Escolha as quatro estatísticas exibidas no topo de cada card.</string>
+    <!-- card_stats_sheet_title: new -->
+    <string name="card_stats_sheet_title">Estatísticas do card</string>
+    <!-- card_stats_slot_label: new -->
+    <string name="card_stats_slot_label">Slot %1$d</string>
+
+    <!-- ── Detail — collections / graphs / sharing / tag picker ──────────── -->
+    <!-- detail_collection_toggle: new -->
+    <string name="detail_collection_toggle">Alternar participação na coleção: %1$s</string>
+    <!-- detail_graphs_analyzing_audio: new -->
+    <string name="detail_graphs_analyzing_audio">Analisando áudio…</string>
+    <!-- detail_graphs_analyzing_frames: new -->
+    <string name="detail_graphs_analyzing_frames">Analisando quadros…</string>
+    <!-- detail_graphs_brightness: new -->
+    <string name="detail_graphs_brightness">Brilho</string>
+    <!-- detail_graphs_color_over_time: new -->
+    <string name="detail_graphs_color_over_time">Cor ao longo do tempo</string>
+    <!-- detail_graphs_loudness: new -->
+    <string name="detail_graphs_loudness">Sonoridade</string>
+    <!-- detail_graphs_rgb_channels: new -->
+    <string name="detail_graphs_rgb_channels">Canais RGB</string>
+    <!-- detail_graphs_select_video: new -->
+    <string name="detail_graphs_select_video">Selecione um vídeo</string>
+    <!-- detail_no_collections: new -->
+    <string name="detail_no_collections">Nenhuma coleção ainda.</string>
+    <!-- detail_section_collections: new -->
+    <string name="detail_section_collections">COLEÇÕES</string>
+    <!-- detail_section_visuals: new -->
+    <string name="detail_section_visuals">VISUAIS</string>
+    <!-- detail_share_failed: new -->
+    <string name="detail_share_failed">Não foi possível baixar o vídeo para compartilhamento: %1$s</string>
+    <!-- detail_share_no_connection: new -->
+    <string name="detail_share_no_connection">Não conectado a um servidor — não é possível compartilhar o vídeo remoto.</string>
+    <!-- detail_share_preparing: new -->
+    <string name="detail_share_preparing">Preparando arquivo para compartilhamento…</string>
+    <!-- detail_tag_picker_add_button: new -->
+    <string name="detail_tag_picker_add_button">Adicionar</string>
+    <!-- detail_tag_picker_existing: new -->
+    <string name="detail_tag_picker_existing">PALAVRAS-CHAVE EXISTENTES</string>
+    <!-- detail_tag_picker_new_hint: new -->
+    <string name="detail_tag_picker_new_hint">Adicionar uma palavra-chave…</string>
+    <!-- detail_tag_picker_no_others: new -->
+    <string name="detail_tag_picker_no_others">Nenhuma outra palavra-chave ainda — digite uma acima.</string>
+
+    <!-- ── Error strings ──────────────────────────────────────────────────── -->
+    <!-- err_apply_keyword: kit corpus pattern: "Falha ao aplicar '%@'" -->
+    <string name="err_apply_keyword">Falha ao criar/aplicar a palavra-chave \'%1$s\'</string>
+    <!-- err_apply_keyword_detail: kit corpus: "Apply keyword failed: %@" → "Falha ao aplicar palavra-chave: %@" -->
+    <string name="err_apply_keyword_detail">Falha ao aplicar palavra-chave: %1$s</string>
+    <!-- err_load_grid_settings: new -->
+    <string name="err_load_grid_settings">Falha ao carregar configuração de estatísticas do card: %1$s</string>
+    <!-- err_save_grid_settings: kit corpus: "Falha ao salvar configurações da grade: %@" -->
+    <string name="err_save_grid_settings">Falha ao salvar configurações de estatísticas do card: %1$s</string>
+
+    <!-- ── Filter — attributes / color label / orientation ───────────────── -->
+    <!-- filter_attr_audio: new -->
+    <string name="filter_attr_audio">Áudio</string>
+    <!-- filter_attr_full_res: kit corpus: "Resolução completa" -->
+    <string name="filter_attr_full_res">Resolução completa</string>
+    <!-- filter_attr_has: kit corpus: "Tem %1$s" -->
+    <string name="filter_attr_has">Tem %1$s</string>
+    <!-- filter_attr_keywords: kit corpus: "Palavras-chave" -->
+    <string name="filter_attr_keywords">Palavras-chave</string>
+    <!-- filter_attr_location: kit corpus: "Localização" -->
+    <string name="filter_attr_location">Localização</string>
+    <!-- filter_attr_no: new -->
+    <string name="filter_attr_no">Sem %1$s</string>
+    <!-- filter_attr_no_label: kit corpus: "Não" -->
+    <string name="filter_attr_no_label">Não</string>
+    <!-- filter_attr_proxies: kit corpus: "proxies" -->
+    <string name="filter_attr_proxies">Proxies</string>
+    <!-- filter_attr_yes: kit corpus: "Tem" (Has) -->
+    <string name="filter_attr_yes">Tem</string>
+    <!-- filter_attributes: new (section header) -->
+    <string name="filter_attributes">ATRIBUTOS</string>
+    <!-- filter_color_label: new (section header) -->
+    <string name="filter_color_label">RÓTULO DE COR</string>
+    <!-- filter_orientation: kit corpus: "Orientação" (section header) -->
+    <string name="filter_orientation">ORIENTAÇÃO</string>
+    <!-- filter_orientation_any: kit corpus: "Qualquer" -->
+    <string name="filter_orientation_any">Qualquer</string>
+    <!-- filter_orientation_landscape: kit corpus: "Paisagem" -->
+    <string name="filter_orientation_landscape">Paisagem</string>
+    <!-- filter_orientation_portrait: kit corpus: "Retrato" -->
+    <string name="filter_orientation_portrait">Retrato</string>
+
+    <!-- ── Grid — card stats / density / smart collections ───────────────── -->
+    <!-- grid_card_stats: new -->
+    <string name="grid_card_stats">Estatísticas do card</string>
+    <!-- grid_configure_card_stats: new -->
+    <string name="grid_configure_card_stats">Configurar estatísticas do card</string>
+    <!-- grid_density_label: new -->
+    <string name="grid_density_label">Tamanho das miniaturas</string>
+    <!-- grid_density_larger: new -->
+    <string name="grid_density_larger">Miniaturas maiores</string>
+    <!-- grid_density_menu_item: new -->
+    <string name="grid_density_menu_item">Tamanho das miniaturas</string>
+    <!-- grid_density_sheet_subtitle: new -->
+    <string name="grid_density_sheet_subtitle">Arraste para ajustar quantas colunas cabem na tela.</string>
+    <!-- grid_density_sheet_title: new -->
+    <string name="grid_density_sheet_title">Tamanho das miniaturas</string>
+    <!-- grid_density_smaller: new -->
+    <string name="grid_density_smaller">Miniaturas menores</string>
+    <!-- grid_smart_collection_empty: kit corpus: "Nenhum vídeo corresponde a esta coleção inteligente" -->
+    <string name="grid_smart_collection_empty">Nenhum vídeo corresponde a esta coleção inteligente</string>
+
+    <!-- ── Grid stat names ────────────────────────────────────────────────── -->
+    <!-- grid_stat_aperture: kit corpus: "Abertura" -->
+    <string name="grid_stat_aperture">Abertura</string>
+    <!-- grid_stat_audio_codec: kit corpus: "Codec de áudio" -->
+    <string name="grid_stat_audio_codec">Codec de áudio</string>
+    <!-- grid_stat_bitrate: kit corpus: "Taxa de bits" -->
+    <string name="grid_stat_bitrate">Taxa de bits</string>
+    <!-- grid_stat_camera: kit corpus: "Câmera" -->
+    <string name="grid_stat_camera">Câmera</string>
+    <!-- grid_stat_capture_date: kit corpus: "Data de captura" -->
+    <string name="grid_stat_capture_date">Data de captura</string>
+    <!-- grid_stat_capture_year: kit corpus: "Ano de captura" -->
+    <string name="grid_stat_capture_year">Ano de captura</string>
+    <!-- grid_stat_duration: kit corpus: "Duração" -->
+    <string name="grid_stat_duration">Duração</string>
+    <!-- grid_stat_exposure: kit corpus: "Exposição" -->
+    <string name="grid_stat_exposure">Exposição</string>
+    <!-- grid_stat_file_size: kit corpus: "Tamanho" -->
+    <string name="grid_stat_file_size">Tamanho do arquivo</string>
+    <!-- grid_stat_filename: kit corpus: "Nome do arquivo" -->
+    <string name="grid_stat_filename">Nome do arquivo</string>
+    <!-- grid_stat_focal_length: kit corpus: "Distância focal" -->
+    <string name="grid_stat_focal_length">Distância focal</string>
+    <!-- grid_stat_fps: kit corpus: "FPS" -->
+    <string name="grid_stat_fps">FPS</string>
+    <!-- grid_stat_frame_count: kit corpus: "Contagem de quadros" -->
+    <string name="grid_stat_frame_count">Contagem de quadros</string>
+    <!-- grid_stat_iso: kit corpus: "ISO" -->
+    <string name="grid_stat_iso">ISO</string>
+    <!-- grid_stat_lens: kit corpus: "Lente" -->
+    <string name="grid_stat_lens">Lente</string>
+    <!-- grid_stat_location: kit corpus: "Localização" -->
+    <string name="grid_stat_location">Localização</string>
+    <!-- grid_stat_none: kit corpus: "(vazio)" -->
+    <string name="grid_stat_none">(vazio)</string>
+    <!-- grid_stat_pixel_dimensions: kit corpus: "Dimensões em pixels" -->
+    <string name="grid_stat_pixel_dimensions">Dimensões em pixels</string>
+    <!-- grid_stat_resolution: kit corpus: "Resolução" -->
+    <string name="grid_stat_resolution">Resolução</string>
+    <!-- grid_stat_video_codec: kit corpus: "Codec de vídeo" -->
+    <string name="grid_stat_video_codec">Codec de vídeo</string>
+
+    <!-- ── Map ────────────────────────────────────────────────────────────── -->
+    <!-- map_switch_to_satellite: new -->
+    <string name="map_switch_to_satellite">Mudar para imagem de satélite</string>
+    <!-- map_switch_to_standard: new -->
+    <string name="map_switch_to_standard">Mudar para mapa padrão</string>
+
+    <!-- ── Offline ─────────────────────────────────────────────────────────── -->
+    <!-- offline_available_offline: new -->
+    <string name="offline_available_offline">Disponível offline</string>
+    <!-- offline_browse_downloads: new -->
+    <string name="offline_browse_downloads">Explorar downloads</string>
+    <!-- offline_download_button: new -->
+    <string name="offline_download_button">Baixar para uso offline</string>
+    <!-- offline_downloaded_quality: new -->
+    <string name="offline_downloaded_quality">Baixado como</string>
+    <!-- offline_downloading: new -->
+    <string name="offline_downloading">Baixando…</string>
+    <!-- offline_empty_desc: new -->
+    <string name="offline_empty_desc">Enquanto conectado a um servidor, escolha "Baixar para uso offline" em um vídeo para assisti-lo aqui sem conexão.</string>
+    <!-- offline_empty_title: new -->
+    <string name="offline_empty_title">Nenhum download</string>
+    <!-- offline_file_missing: new -->
+    <string name="offline_file_missing">Este download está ausente do dispositivo.</string>
+    <!-- offline_quality_720p: new -->
+    <string name="offline_quality_720p">720p (menor)</string>
+    <!-- offline_quality_original: new -->
+    <string name="offline_quality_original">Original</string>
+    <!-- offline_quality_title: new -->
+    <string name="offline_quality_title">Qualidade do download</string>
+    <!-- offline_remove_body: new -->
+    <string name="offline_remove_body">"%1$s" será excluído deste dispositivo.</string>
+    <!-- offline_remove_confirm: new -->
+    <string name="offline_remove_confirm">Remover</string>
+    <!-- offline_remove_download: new -->
+    <string name="offline_remove_download">Remover download</string>
+    <!-- offline_remove_title: new -->
+    <string name="offline_remove_title">Remover download?</string>
+    <!-- offline_section_title: new -->
+    <string name="offline_section_title">Offline</string>
+    <!-- offline_title: new -->
+    <string name="offline_title">Baixados</string>
+
+    <!-- ── Settings — forget server ──────────────────────────────────────── -->
+    <!-- settings_forget_server_confirm_action: new -->
+    <string name="settings_forget_server_confirm_action">Esquecer</string>
+    <!-- settings_forget_server_confirm_body: new -->
+    <string name="settings_forget_server_confirm_body">Isso apagará suas credenciais salvas e retornará à tela de conexão. Será necessário emparelhar novamente para reconectar.</string>
+    <!-- settings_forget_server_confirm_title: new -->
+    <string name="settings_forget_server_confirm_title">Esquecer este servidor?</string>
+    <!-- settings_server_forgotten: new -->
+    <string name="settings_server_forgotten">Servidor esquecido</string>
+
+    <!-- ── Sort field names (new) ─────────────────────────────────────────── -->
+    <!-- sort_aperture: kit corpus: "Abertura" -->
+    <string name="sort_aperture">Abertura</string>
+    <!-- sort_bitrate: kit corpus: "Taxa de bits" -->
+    <string name="sort_bitrate">Taxa de bits</string>
+    <!-- sort_exposure_time: new -->
+    <string name="sort_exposure_time">Tempo de exposição</string>
+    <!-- sort_focal_length: kit corpus: "Distância focal" -->
+    <string name="sort_focal_length">Distância focal</string>
+    <!-- sort_iso: kit corpus: "ISO" -->
+    <string name="sort_iso">ISO</string>
+    <!-- sort_keyword: new -->
+    <string name="sort_keyword">Palavra-chave</string>
+    <!-- sort_lens: kit corpus: "Lente" -->
+    <string name="sort_lens">Lente</string>
+    <!-- sort_resolution: kit corpus: "Resolução" -->
+    <string name="sort_resolution">Resolução</string>
+
+    <!-- ── Stack operations ───────────────────────────────────────────────── -->
+    <!-- stack_combine_error: new -->
+    <string name="stack_combine_error">Falha na pilha: %1$s</string>
+    <!-- stack_combine_failed: new -->
+    <string name="stack_combine_failed">Falha ao criar pilha</string>
+    <!-- stack_combine_into_stack: new -->
+    <string name="stack_combine_into_stack">Combinar em pilha</string>
+    <!-- stack_load_members_error: new -->
+    <string name="stack_load_members_error">Não foi possível carregar os membros da pilha: %1$s</string>
+    <!-- stack_members_preferred_label: new -->
+    <string name="stack_members_preferred_label">Líder</string>
+    <!-- stack_members_promote_action: new -->
+    <string name="stack_members_promote_action">Promover</string>
+    <!-- stack_members_remove_action: kit corpus: "Remover" -->
+    <string name="stack_members_remove_action">Remover</string>
+    <!-- stack_members_title: new -->
+    <string name="stack_members_title">Membros da pilha</string>
+    <!-- stack_promote_error: new -->
+    <string name="stack_promote_error">Falha na promoção: %1$s</string>
+    <!-- stack_promote_failed: kit corpus: "Falha ao definir vídeo preferido" -->
+    <string name="stack_promote_failed">Falha ao promover o vídeo</string>
+    <!-- stack_promote_to_leader: new -->
+    <string name="stack_promote_to_leader">Promover a líder</string>
+    <!-- stack_remove_error: kit corpus: "Falha ao remover da pilha: %@" -->
+    <string name="stack_remove_error">Falha ao remover: %1$s</string>
+    <!-- stack_remove_failed: kit corpus: "Falha ao remover vídeo da pilha" -->
+    <string name="stack_remove_failed">Falha ao remover da pilha</string>
+    <!-- stack_remove_from_stack: new -->
+    <string name="stack_remove_from_stack">Remover da pilha</string>
+    <!-- stack_section_header: new -->
+    <string name="stack_section_header">Pilha</string>
+    <!-- stack_select_at_least_two: new -->
+    <string name="stack_select_at_least_two">Selecione pelo menos 2 vídeos para criar uma pilha</string>
+    <!-- stack_unstack: new -->
+    <string name="stack_unstack">Desempilhar</string>
+    <!-- stack_unstack_error: kit corpus: "Falha ao desempilhar: %@" -->
+    <string name="stack_unstack_error">Falha ao desempilhar: %1$s</string>
+    <!-- stack_combined_message: plurals -->
+    <plurals name="stack_combined_message">
+        <item quantity="one">Combinado em uma pilha de %1$d vídeo</item>
+        <item quantity="other">Combinado em uma pilha de %1$d vídeos</item>
+    </plurals>
+
 </resources>

@@ -343,4 +343,176 @@
     <string name="scan_target_default">资料库</string>
     <string name="scan_scanning_target">正在扫描 %1$s…</string>
     <string name="pairing_a_device">一个设备</string>
+
+    <!-- ── Batch operations ───────────────────────────────────────────────── -->
+    <string name="batch_add_keyword_hint">添加关键词…</string>
+    <string name="batch_add_to_collection">添加到合集</string>
+    <string name="batch_add_to_collection_name">添加到 %1$s</string>
+    <string name="batch_apply_keyword">应用关键词：%1$s</string>
+    <string name="batch_existing_keywords">现有关键词 — 点击应用</string>
+    <string name="batch_organize">整理已选视频</string>
+    <string name="batch_share">分享已选视频</string>
+    <string name="batch_share_failed">无法准备用于分享的文件</string>
+    <string name="batch_share_preparing">正在准备 %1$d 个视频…</string>
+    <string name="batch_share_title">分享 %1$d 个视频</string>
+    <plurals name="batch_organize_title">
+        <item quantity="other">整理 %1$d 个视频</item>
+    </plurals>
+
+    <!-- ── Card menu / stats ──────────────────────────────────────────────── -->
+    <string name="card_clear_color_label_desc">清除颜色标签</string>
+    <string name="card_clear_rating_desc">清除评分</string>
+    <string name="card_menu_color_label">颜色标签</string>
+    <string name="card_menu_label_blue">蓝色</string>
+    <string name="card_menu_label_green">绿色</string>
+    <string name="card_menu_label_none">无</string>
+    <string name="card_menu_label_purple">紫色</string>
+    <string name="card_menu_label_red">红色</string>
+    <string name="card_menu_label_yellow">黄色</string>
+    <string name="card_menu_rating">评分</string>
+    <string name="card_menu_rating_none">无</string>
+    <string name="card_set_color_label_desc">设置颜色标签：%1$s</string>
+    <string name="card_set_rating_desc">设置 %1$d 星评分</string>
+    <string name="card_stat_tap_to_change">点击更改插槽</string>
+    <string name="card_stats_sheet_subtitle">选择每张卡片顶部显示的四项统计信息。</string>
+    <string name="card_stats_sheet_title">卡片统计</string>
+    <string name="card_stats_slot_label">插槽 %1$d</string>
+
+    <!-- ── Detail view (graphs / collections / sharing / tag picker) ──────── -->
+    <string name="detail_collection_toggle">切换合集成员：%1$s</string>
+    <string name="detail_graphs_analyzing_audio">正在分析音频…</string>
+    <string name="detail_graphs_analyzing_frames">正在分析帧…</string>
+    <string name="detail_graphs_brightness">亮度</string>
+    <string name="detail_graphs_color_over_time">随时间变化的颜色</string>
+    <string name="detail_graphs_loudness">响度</string>
+    <string name="detail_graphs_rgb_channels">RGB 通道</string>
+    <string name="detail_graphs_select_video">选择一个视频</string>
+    <string name="detail_no_collections">暂无合集。</string>
+    <string name="detail_section_collections">合集</string>
+    <string name="detail_section_visuals">视觉分析</string>
+    <string name="detail_share_failed">无法下载视频用于分享：%1$s</string>
+    <string name="detail_share_no_connection">未连接到服务器 — 无法分享远程视频。</string>
+    <string name="detail_share_preparing">正在准备文件用于分享…</string>
+    <string name="detail_tag_picker_add_button">添加</string>
+    <string name="detail_tag_picker_existing">现有关键词</string>
+    <string name="detail_tag_picker_new_hint">添加关键词…</string>
+    <string name="detail_tag_picker_no_others">暂无其他关键词 — 请在上方输入。</string>
+
+    <!-- ── Error messages ─────────────────────────────────────────────────── -->
+    <string name="err_apply_keyword">创建/应用关键词\'%1$s\'失败</string>
+    <string name="err_apply_keyword_detail">应用关键词失败：%1$s</string>
+    <string name="err_load_grid_settings">加载卡片统计配置失败：%1$s</string>
+    <string name="err_save_grid_settings">保存卡片统计配置失败：%1$s</string>
+
+    <!-- ── Filter panel ───────────────────────────────────────────────────── -->
+    <string name="filter_attr_audio">音频</string>
+    <string name="filter_attr_full_res">全分辨率</string>
+    <string name="filter_attr_has">有 %1$s</string>
+    <string name="filter_attr_keywords">关键词</string>
+    <string name="filter_attr_location">位置</string>
+    <string name="filter_attr_no">无 %1$s</string>
+    <string name="filter_attr_no_label">否</string>
+    <string name="filter_attr_proxies">代理</string>
+    <string name="filter_attr_yes">有</string>
+    <string name="filter_attributes">属性</string>
+    <string name="filter_color_label">颜色标签</string>
+    <string name="filter_orientation">方向</string>
+    <string name="filter_orientation_any">任意</string>
+    <string name="filter_orientation_landscape">横向</string>
+    <string name="filter_orientation_portrait">竖向</string>
+
+    <!-- ── Grid (density / card stats / smart collection) ────────────────── -->
+    <string name="grid_card_stats">卡片统计</string>
+    <string name="grid_configure_card_stats">配置卡片统计</string>
+    <string name="grid_density_label">缩略图大小</string>
+    <string name="grid_density_larger">较大缩略图</string>
+    <string name="grid_density_menu_item">缩略图大小</string>
+    <string name="grid_density_sheet_subtitle">拖动以调整屏幕上显示的列数。</string>
+    <string name="grid_density_sheet_title">缩略图大小</string>
+    <string name="grid_density_smaller">较小缩略图</string>
+    <string name="grid_smart_collection_empty">没有视频匹配此智能合集</string>
+
+    <!-- ── Grid stat slot names ───────────────────────────────────────────── -->
+    <string name="grid_stat_aperture">光圈</string>
+    <string name="grid_stat_audio_codec">音频编解码器</string>
+    <string name="grid_stat_bitrate">比特率</string>
+    <string name="grid_stat_camera">相机</string>
+    <string name="grid_stat_capture_date">拍摄日期</string>
+    <string name="grid_stat_capture_year">拍摄年份</string>
+    <string name="grid_stat_duration">时长</string>
+    <string name="grid_stat_exposure">曝光</string>
+    <string name="grid_stat_file_size">文件大小</string>
+    <string name="grid_stat_filename">文件名</string>
+    <string name="grid_stat_focal_length">焦距</string>
+    <string name="grid_stat_fps">帧率</string>
+    <string name="grid_stat_frame_count">帧数</string>
+    <string name="grid_stat_iso">ISO</string>
+    <string name="grid_stat_lens">镜头</string>
+    <string name="grid_stat_location">位置</string>
+    <string name="grid_stat_none">（空）</string>
+    <string name="grid_stat_pixel_dimensions">像素尺寸</string>
+    <string name="grid_stat_resolution">分辨率</string>
+    <string name="grid_stat_video_codec">视频编解码器</string>
+
+    <!-- ── Map ───────────────────────────────────────────────────────────── -->
+    <string name="map_switch_to_satellite">切换到卫星地图</string>
+    <string name="map_switch_to_standard">切换到标准地图</string>
+
+    <!-- ── Offline / downloads ────────────────────────────────────────────── -->
+    <string name="offline_available_offline">离线可用</string>
+    <string name="offline_browse_downloads">浏览下载内容</string>
+    <string name="offline_download_button">下载以供离线使用</string>
+    <string name="offline_downloaded_quality">下载质量</string>
+    <string name="offline_downloading">正在下载…</string>
+    <string name="offline_empty_desc">连接到服务器后，在视频上选择"下载以供离线使用"，即可在无网络连接时在此处观看。</string>
+    <string name="offline_empty_title">暂无下载</string>
+    <string name="offline_file_missing">该下载文件已从设备中丢失。</string>
+    <string name="offline_quality_720p">720p（较小）</string>
+    <string name="offline_quality_original">原始</string>
+    <string name="offline_quality_title">下载质量</string>
+    <string name="offline_remove_body">"%1$s"将从此设备中删除。</string>
+    <string name="offline_remove_confirm">移除</string>
+    <string name="offline_remove_download">移除下载</string>
+    <string name="offline_remove_title">移除下载？</string>
+    <string name="offline_section_title">离线</string>
+    <string name="offline_title">已下载</string>
+
+    <!-- ── Settings (forget server) ──────────────────────────────────────── -->
+    <string name="settings_forget_server_confirm_action">忘记</string>
+    <string name="settings_forget_server_confirm_body">这将清除您已保存的凭据并返回连接界面。您需要重新配对才能重新连接。</string>
+    <string name="settings_forget_server_confirm_title">忘记此服务器？</string>
+    <string name="settings_server_forgotten">服务器已忘记</string>
+
+    <!-- ── Sort field names (new) ─────────────────────────────────────────── -->
+    <string name="sort_aperture">光圈</string>
+    <string name="sort_bitrate">比特率</string>
+    <string name="sort_exposure_time">曝光时间</string>
+    <string name="sort_focal_length">焦距</string>
+    <string name="sort_iso">ISO</string>
+    <string name="sort_keyword">关键词</string>
+    <string name="sort_lens">镜头</string>
+    <string name="sort_resolution">分辨率</string>
+
+    <!-- ── Stack operations ───────────────────────────────────────────────── -->
+    <string name="stack_combine_error">堆叠失败：%1$s</string>
+    <string name="stack_combine_failed">创建堆叠失败</string>
+    <string name="stack_combine_into_stack">合并为堆叠</string>
+    <string name="stack_load_members_error">无法加载堆叠成员：%1$s</string>
+    <string name="stack_members_preferred_label">主视频</string>
+    <string name="stack_members_promote_action">提升</string>
+    <string name="stack_members_remove_action">移除</string>
+    <string name="stack_members_title">堆叠成员</string>
+    <string name="stack_promote_error">提升失败：%1$s</string>
+    <string name="stack_promote_failed">提升视频失败</string>
+    <string name="stack_promote_to_leader">提升为主视频</string>
+    <string name="stack_remove_error">移除失败：%1$s</string>
+    <string name="stack_remove_failed">从堆叠中移除失败</string>
+    <string name="stack_remove_from_stack">从堆叠中移除</string>
+    <string name="stack_section_header">堆叠</string>
+    <string name="stack_select_at_least_two">至少选择 2 个视频以创建堆叠</string>
+    <string name="stack_unstack">取消堆叠</string>
+    <string name="stack_unstack_error">取消堆叠失败：%1$s</string>
+    <plurals name="stack_combined_message">
+        <item quantity="other">已合并为包含 %1$d 个视频的堆叠</item>
+    </plurals>
 </resources>

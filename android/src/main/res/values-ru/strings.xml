@@ -373,4 +373,182 @@
     <string name="scan_target_default">библиотеку</string>
     <string name="scan_scanning_target">Сканирование %1$s…</string>
     <string name="pairing_a_device">Устройство</string>
+
+    <!-- ── Batch operations ───────────────────────────────────────────────── -->
+    <string name="batch_add_keyword_hint">Добавить ключевое слово…</string>
+    <string name="batch_add_to_collection">Добавить в коллекцию</string>
+    <string name="batch_add_to_collection_name">Добавить в %1$s</string>
+    <string name="batch_apply_keyword">Применить ключевое слово: %1$s</string>
+    <string name="batch_existing_keywords">Существующие ключевые слова — нажмите для применения</string>
+    <string name="batch_organize">Организовать выбранные видео</string>
+    <string name="batch_share">Поделиться выбранными видео</string>
+    <string name="batch_share_failed">Не удалось подготовить файлы для отправки</string>
+    <string name="batch_share_preparing">Подготовка %1$d видео…</string>
+    <string name="batch_share_title">Поделиться %1$d видео</string>
+    <plurals name="batch_organize_title">
+        <item quantity="one">Организовать %1$d видео</item>
+        <item quantity="few">Организовать %1$d видео</item>
+        <item quantity="many">Организовать %1$d видео</item>
+        <item quantity="other">Организовать %1$d видео</item>
+    </plurals>
+
+    <!-- ── Card menu / stats ──────────────────────────────────────────────── -->
+    <string name="card_clear_color_label_desc">Очистить цветовую метку</string>
+    <string name="card_clear_rating_desc">Очистить рейтинг</string>
+    <string name="card_menu_color_label">Цветовая метка</string>
+    <string name="card_menu_label_blue">Синий</string>
+    <string name="card_menu_label_green">Зелёный</string>
+    <string name="card_menu_label_none">Нет</string>
+    <string name="card_menu_label_purple">Фиолетовый</string>
+    <string name="card_menu_label_red">Красный</string>
+    <string name="card_menu_label_yellow">Жёлтый</string>
+    <string name="card_menu_rating">Рейтинг</string>
+    <string name="card_menu_rating_none">Нет</string>
+    <string name="card_set_color_label_desc">Установить цветовую метку: %1$s</string>
+    <string name="card_set_rating_desc">Установить рейтинг %1$d звезды</string>
+    <string name="card_stat_tap_to_change">Нажмите для смены слота</string>
+    <string name="card_stats_sheet_subtitle">Выберите четыре показателя, отображаемые вверху каждой карточки.</string>
+    <string name="card_stats_sheet_title">Статистика карточки</string>
+    <string name="card_stats_slot_label">Слот %1$d</string>
+
+    <!-- ── Detail view ────────────────────────────────────────────────────── -->
+    <string name="detail_collection_toggle">Переключить принадлежность к коллекции: %1$s</string>
+    <string name="detail_graphs_analyzing_audio">Анализ аудио…</string>
+    <string name="detail_graphs_analyzing_frames">Анализ кадров…</string>
+    <string name="detail_graphs_brightness">Яркость</string>
+    <string name="detail_graphs_color_over_time">Цвет со временем</string>
+    <string name="detail_graphs_loudness">Громкость</string>
+    <string name="detail_graphs_rgb_channels">Каналы RGB</string>
+    <string name="detail_graphs_select_video">Выберите видео</string>
+    <string name="detail_no_collections">Нет коллекций.</string>
+    <string name="detail_section_collections">КОЛЛЕКЦИИ</string>
+    <string name="detail_section_visuals">ВИЗУАЛИЗАЦИЯ</string>
+    <string name="detail_share_failed">Не удалось загрузить видео для отправки: %1$s</string>
+    <string name="detail_share_no_connection">Нет подключения к серверу — не удаётся поделиться удалённым видео.</string>
+    <string name="detail_share_preparing">Подготовка файла для отправки…</string>
+    <string name="detail_tag_picker_add_button">Добавить</string>
+    <string name="detail_tag_picker_existing">СУЩЕСТВУЮЩИЕ КЛЮЧЕВЫЕ СЛОВА</string>
+    <string name="detail_tag_picker_new_hint">Добавить ключевое слово…</string>
+    <string name="detail_tag_picker_no_others">Других ключевых слов пока нет — введите выше.</string>
+
+    <!-- ── Errors (batch / grid settings / keyword) ───────────────────────── -->
+    <string name="err_apply_keyword">Не удалось создать/применить ключевое слово \'%1$s\'</string>
+    <string name="err_apply_keyword_detail">Применение ключевого слова не удалось: %1$s</string>
+    <string name="err_load_grid_settings">Не удалось загрузить конфигурацию статистики карточек: %1$s</string>
+    <string name="err_save_grid_settings">Не удалось сохранить конфигурацию статистики карточек: %1$s</string>
+
+    <!-- ── Filter attributes ─────────────────────────────────────────────── -->
+    <string name="filter_attr_audio">Аудио</string>
+    <string name="filter_attr_full_res">Полное разрешение</string>
+    <string name="filter_attr_has">Есть %1$s</string>
+    <string name="filter_attr_keywords">Ключевые слова</string>
+    <string name="filter_attr_location">Расположение</string>
+    <string name="filter_attr_no">Нет %1$s</string>
+    <string name="filter_attr_no_label">Нет</string>
+    <string name="filter_attr_proxies">Прокси</string>
+    <string name="filter_attr_yes">Есть</string>
+    <string name="filter_attributes">АТРИБУТЫ</string>
+    <string name="filter_color_label">ЦВЕТОВАЯ МЕТКА</string>
+    <string name="filter_orientation">ОРИЕНТАЦИЯ</string>
+    <string name="filter_orientation_any">Любая</string>
+    <string name="filter_orientation_landscape">Альбомная</string>
+    <string name="filter_orientation_portrait">Портретная</string>
+
+    <!-- ── Grid options ───────────────────────────────────────────────────── -->
+    <string name="grid_card_stats">Статистика карточки</string>
+    <string name="grid_configure_card_stats">Настроить статистику карточки</string>
+    <string name="grid_density_label">Размер эскизов</string>
+    <string name="grid_density_larger">Крупные эскизы</string>
+    <string name="grid_density_menu_item">Размер эскизов</string>
+    <string name="grid_density_sheet_subtitle">Перетащите, чтобы настроить количество столбцов на экране.</string>
+    <string name="grid_density_sheet_title">Размер эскизов</string>
+    <string name="grid_density_smaller">Мелкие эскизы</string>
+    <string name="grid_smart_collection_empty">Ни одно видео не соответствует этой смарт-коллекции</string>
+
+    <!-- ── Grid stat field names ──────────────────────────────────────────── -->
+    <string name="grid_stat_aperture">Диафрагма</string>
+    <string name="grid_stat_audio_codec">Аудиокодек</string>
+    <string name="grid_stat_bitrate">Битрейт</string>
+    <string name="grid_stat_camera">Камера</string>
+    <string name="grid_stat_capture_date">Дата съёмки</string>
+    <string name="grid_stat_capture_year">Год съёмки</string>
+    <string name="grid_stat_duration">Длительность</string>
+    <string name="grid_stat_exposure">Экспозиция</string>
+    <string name="grid_stat_file_size">Размер файла</string>
+    <string name="grid_stat_filename">Имя файла</string>
+    <string name="grid_stat_focal_length">Фокусное расстояние</string>
+    <string name="grid_stat_fps">кадр/с</string>
+    <string name="grid_stat_frame_count">Количество кадров</string>
+    <string name="grid_stat_iso">ISO</string>
+    <string name="grid_stat_lens">Объектив</string>
+    <string name="grid_stat_location">Расположение</string>
+    <string name="grid_stat_none">(пусто)</string>
+    <string name="grid_stat_pixel_dimensions">Размер в пикселях</string>
+    <string name="grid_stat_resolution">Разрешение</string>
+    <string name="grid_stat_video_codec">Видеокодек</string>
+
+    <!-- ── Map ────────────────────────────────────────────────────────────── -->
+    <string name="map_switch_to_satellite">Переключить на спутниковый снимок</string>
+    <string name="map_switch_to_standard">Переключить на стандартную карту</string>
+
+    <!-- ── Offline / Downloads ───────────────────────────────────────────── -->
+    <string name="offline_available_offline">Доступно офлайн</string>
+    <string name="offline_browse_downloads">Просмотр загрузок</string>
+    <string name="offline_download_button">Загрузить для офлайн-просмотра</string>
+    <string name="offline_downloaded_quality">Загружено как</string>
+    <string name="offline_downloading">Загрузка…</string>
+    <string name="offline_empty_desc">При подключении к серверу выберите «Загрузить для офлайн-просмотра» у видео, чтобы смотреть его здесь без подключения.</string>
+    <string name="offline_empty_title">Нет загрузок</string>
+    <string name="offline_file_missing">Этот файл загрузки отсутствует на устройстве.</string>
+    <string name="offline_quality_720p">720p (меньший размер)</string>
+    <string name="offline_quality_original">Оригинал</string>
+    <string name="offline_quality_title">Качество загрузки</string>
+    <string name="offline_remove_body">«%1$s» будет удалено с этого устройства.</string>
+    <string name="offline_remove_confirm">Удалить</string>
+    <string name="offline_remove_download">Удалить загрузку</string>
+    <string name="offline_remove_title">Удалить загрузку?</string>
+    <string name="offline_section_title">Офлайн</string>
+    <string name="offline_title">Загруженные</string>
+
+    <!-- ── Settings — server ─────────────────────────────────────────────── -->
+    <string name="settings_forget_server_confirm_action">Забыть</string>
+    <string name="settings_forget_server_confirm_body">Это очистит сохранённые данные и вернёт вас на экран подключения. Для повторного подключения потребуется выполнить сопряжение заново.</string>
+    <string name="settings_forget_server_confirm_title">Забыть этот сервер?</string>
+    <string name="settings_server_forgotten">Сервер забыт</string>
+
+    <!-- ── Sort field names (new) ─────────────────────────────────────────── -->
+    <string name="sort_aperture">Диафрагма</string>
+    <string name="sort_bitrate">Битрейт</string>
+    <string name="sort_exposure_time">Выдержка</string>
+    <string name="sort_focal_length">Фокусное расстояние</string>
+    <string name="sort_iso">ISO</string>
+    <string name="sort_keyword">Ключевое слово</string>
+    <string name="sort_lens">Объектив</string>
+    <string name="sort_resolution">Разрешение</string>
+
+    <!-- ── Stack operations ───────────────────────────────────────────────── -->
+    <string name="stack_combine_error">Ошибка стека: %1$s</string>
+    <string name="stack_combine_failed">Не удалось создать стек</string>
+    <string name="stack_combine_into_stack">Объединить в стек</string>
+    <string name="stack_load_members_error">Не удалось загрузить элементы стека: %1$s</string>
+    <string name="stack_members_preferred_label">Главное</string>
+    <string name="stack_members_promote_action">Повысить</string>
+    <string name="stack_members_remove_action">Удалить</string>
+    <string name="stack_members_title">Элементы стека</string>
+    <string name="stack_promote_error">Ошибка повышения: %1$s</string>
+    <string name="stack_promote_failed">Не удалось повысить видео</string>
+    <string name="stack_promote_to_leader">Сделать главным</string>
+    <string name="stack_remove_error">Ошибка удаления: %1$s</string>
+    <string name="stack_remove_failed">Не удалось удалить из стека</string>
+    <string name="stack_remove_from_stack">Удалить из стека</string>
+    <string name="stack_section_header">Стек</string>
+    <string name="stack_select_at_least_two">Выберите не менее 2 видео для создания стека</string>
+    <string name="stack_unstack">Расформировать стек</string>
+    <string name="stack_unstack_error">Расформирование стека не удалось: %1$s</string>
+    <plurals name="stack_combined_message">
+        <item quantity="one">Объединено в стек из %1$d видео</item>
+        <item quantity="few">Объединено в стек из %1$d видео</item>
+        <item quantity="many">Объединено в стек из %1$d видео</item>
+        <item quantity="other">Объединено в стек из %1$d видео</item>
+    </plurals>
 </resources>

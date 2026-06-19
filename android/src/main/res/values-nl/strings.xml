@@ -353,4 +353,178 @@
     <string name="scan_target_default">bibliotheek</string>
     <string name="scan_scanning_target">%1$s scannen…</string>
     <string name="pairing_a_device">Een apparaat</string>
+
+    <!-- ── Batch operations ───────────────────────────────────────────────── -->
+    <string name="batch_add_keyword_hint">Een trefwoord toevoegen…</string>
+    <string name="batch_add_to_collection">Toevoegen aan verzameling</string>
+    <string name="batch_add_to_collection_name">Toevoegen aan %1$s</string>
+    <string name="batch_apply_keyword">Trefwoord toepassen: %1$s</string>
+    <string name="batch_existing_keywords">Bestaande trefwoorden — tik om toe te passen</string>
+    <string name="batch_organize">Geselecteerde video\'s ordenen</string>
+    <string name="batch_share">Geselecteerde video\'s delen</string>
+    <string name="batch_share_failed">Bestanden konden niet worden voorbereid voor delen</string>
+    <string name="batch_share_preparing">%1$d video\'s voorbereiden…</string>
+    <string name="batch_share_title">%1$d video\'s delen</string>
+    <plurals name="batch_organize_title">
+        <item quantity="one">%1$d video ordenen</item>
+        <item quantity="other">%1$d video\'s ordenen</item>
+    </plurals>
+
+    <!-- ── Card actions / color labels / ratings ──────────────────────────── -->
+    <string name="card_clear_color_label_desc">Kleurlabel wissen</string>
+    <string name="card_clear_rating_desc">Beoordeling wissen</string>
+    <string name="card_menu_color_label">Kleurlabel</string>
+    <string name="card_menu_label_blue">Blauw</string>
+    <string name="card_menu_label_green">Groen</string>
+    <string name="card_menu_label_none">Geen</string>
+    <string name="card_menu_label_purple">Paars</string>
+    <string name="card_menu_label_red">Rood</string>
+    <string name="card_menu_label_yellow">Geel</string>
+    <string name="card_menu_rating">Beoordeling</string>
+    <string name="card_menu_rating_none">Geen</string>
+    <string name="card_set_color_label_desc">Kleurlabel instellen: %1$s</string>
+    <string name="card_set_rating_desc">%1$d-sterrenbeoordeling instellen</string>
+    <string name="card_stat_tap_to_change">Tik om vak te wijzigen</string>
+    <string name="card_stats_sheet_subtitle">Kies de vier statistieken die bovenaan elke kaart worden getoond.</string>
+    <string name="card_stats_sheet_title">Kaartstatistieken</string>
+    <string name="card_stats_slot_label">Vak %1$d</string>
+
+    <!-- ── Detail view — collections / graphs / sharing / tag picker ─────── -->
+    <string name="detail_collection_toggle">Verzamelingslidmaatschap in-/uitschakelen: %1$s</string>
+    <string name="detail_graphs_analyzing_audio">Audio analyseren…</string>
+    <string name="detail_graphs_analyzing_frames">Frames analyseren…</string>
+    <string name="detail_graphs_brightness">Helderheid</string>
+    <string name="detail_graphs_color_over_time">Kleur over tijd</string>
+    <string name="detail_graphs_loudness">Luidheid</string>
+    <string name="detail_graphs_rgb_channels">RGB-kanalen</string>
+    <string name="detail_graphs_select_video">Selecteer een video</string>
+    <string name="detail_no_collections">Nog geen verzamelingen.</string>
+    <string name="detail_section_collections">VERZAMELINGEN</string>
+    <string name="detail_section_visuals">VISUALS</string>
+    <string name="detail_share_failed">Video kon niet worden gedownload voor delen: %1$s</string>
+    <string name="detail_share_no_connection">Niet verbonden met een server — externe video kan niet worden gedeeld.</string>
+    <string name="detail_share_preparing">Bestand voorbereiden voor delen…</string>
+    <string name="detail_tag_picker_add_button">Toevoegen</string>
+    <string name="detail_tag_picker_existing">BESTAANDE TREFWOORDEN</string>
+    <string name="detail_tag_picker_new_hint">Een trefwoord toevoegen…</string>
+    <string name="detail_tag_picker_no_others">Nog geen andere trefwoorden — typ er een hierboven.</string>
+
+    <!-- ── Errors ─────────────────────────────────────────────────────────── -->
+    <string name="err_apply_keyword">Aanmaken/toepassen van trefwoord \'%1$s\' mislukt</string>
+    <string name="err_apply_keyword_detail">Trefwoord toepassen mislukt: %1$s</string>
+    <string name="err_load_grid_settings">Laden van kaartstatistieken-configuratie mislukt: %1$s</string>
+    <string name="err_save_grid_settings">Opslaan van kaartstatistieken-configuratie mislukt: %1$s</string>
+
+    <!-- ── Filter panel — attributes / orientation / color label ─────────── -->
+    <string name="filter_attr_audio">Audio</string>
+    <string name="filter_attr_full_res">Volledige resolutie</string>
+    <string name="filter_attr_has">Heeft %1$s</string>
+    <string name="filter_attr_keywords">Trefwoorden</string>
+    <string name="filter_attr_location">Locatie</string>
+    <string name="filter_attr_no">Geen %1$s</string>
+    <string name="filter_attr_no_label">Nee</string>
+    <string name="filter_attr_proxies">Proxy\'s</string>
+    <string name="filter_attr_yes">Heeft</string>
+    <string name="filter_attributes">ATTRIBUTEN</string>
+    <string name="filter_color_label">KLEURLABEL</string>
+    <string name="filter_orientation">ORIËNTATIE</string>
+    <string name="filter_orientation_any">Willekeurig</string>
+    <string name="filter_orientation_landscape">Liggend</string>
+    <string name="filter_orientation_portrait">Staand</string>
+
+    <!-- ── Grid — card stats / density / smart collection ────────────────── -->
+    <string name="grid_card_stats">Kaartstatistieken</string>
+    <string name="grid_configure_card_stats">Kaartstatistieken configureren</string>
+    <string name="grid_density_label">Miniatuurgrootte</string>
+    <string name="grid_density_larger">Grotere miniaturen</string>
+    <string name="grid_density_menu_item">Miniatuurgrootte</string>
+    <string name="grid_density_sheet_subtitle">Sleep om het aantal kolommen op het scherm in te stellen.</string>
+    <string name="grid_density_sheet_title">Miniatuurgrootte</string>
+    <string name="grid_density_smaller">Kleinere miniaturen</string>
+    <string name="grid_smart_collection_empty">Geen video\'s komen overeen met deze slimme verzameling</string>
+
+    <!-- ── Grid stat field names ──────────────────────────────────────────── -->
+    <string name="grid_stat_aperture">Diafragma</string>
+    <string name="grid_stat_audio_codec">Audiocodec</string>
+    <string name="grid_stat_bitrate">Bitsnelheid</string>
+    <string name="grid_stat_camera">Camera</string>
+    <string name="grid_stat_capture_date">Opnamedatum</string>
+    <string name="grid_stat_capture_year">Opnamejaar</string>
+    <string name="grid_stat_duration">Duur</string>
+    <string name="grid_stat_exposure">Sluitertijd</string>
+    <string name="grid_stat_file_size">Bestandsgrootte</string>
+    <string name="grid_stat_filename">Bestandsnaam</string>
+    <string name="grid_stat_focal_length">Brandpuntsafstand</string>
+    <string name="grid_stat_fps">FPS</string>
+    <string name="grid_stat_frame_count">Aantal frames</string>
+    <string name="grid_stat_iso">ISO</string>
+    <string name="grid_stat_lens">Objectief</string>
+    <string name="grid_stat_location">Locatie</string>
+    <string name="grid_stat_none">(leeg)</string>
+    <string name="grid_stat_pixel_dimensions">Pixelafmetingen</string>
+    <string name="grid_stat_resolution">Resolutie</string>
+    <string name="grid_stat_video_codec">Videocodec</string>
+
+    <!-- ── Map ────────────────────────────────────────────────────────────── -->
+    <string name="map_switch_to_satellite">Overschakelen naar satellietafbeelding</string>
+    <string name="map_switch_to_standard">Overschakelen naar standaardkaart</string>
+
+    <!-- ── Offline downloads ──────────────────────────────────────────────── -->
+    <string name="offline_available_offline">Offline beschikbaar</string>
+    <string name="offline_browse_downloads">Downloads bladeren</string>
+    <string name="offline_download_button">Downloaden voor offline gebruik</string>
+    <string name="offline_downloaded_quality">Gedownload als</string>
+    <string name="offline_downloading">Downloaden…</string>
+    <string name="offline_empty_desc">Kies "Downloaden voor offline gebruik" op een video terwijl u verbonden bent met een server, om deze hier te bekijken zonder verbinding.</string>
+    <string name="offline_empty_title">Geen downloads</string>
+    <string name="offline_file_missing">Deze download ontbreekt op het apparaat.</string>
+    <string name="offline_quality_720p">720p (kleiner)</string>
+    <string name="offline_quality_original">Origineel</string>
+    <string name="offline_quality_title">Downloadkwaliteit</string>
+    <string name="offline_remove_body">"%1$s" wordt van dit apparaat verwijderd.</string>
+    <string name="offline_remove_confirm">Verwijderen</string>
+    <string name="offline_remove_download">Download verwijderen</string>
+    <string name="offline_remove_title">Download verwijderen?</string>
+    <string name="offline_section_title">Offline</string>
+    <string name="offline_title">Gedownload</string>
+
+    <!-- ── Settings — forget server ──────────────────────────────────────── -->
+    <string name="settings_forget_server_confirm_action">Vergeten</string>
+    <string name="settings_forget_server_confirm_body">Dit wist uw opgeslagen inloggegevens en keert terug naar het verbindingsscherm. U moet opnieuw koppelen om opnieuw verbinding te maken.</string>
+    <string name="settings_forget_server_confirm_title">Deze server vergeten?</string>
+    <string name="settings_server_forgotten">Server vergeten</string>
+
+    <!-- ── Sort field names ───────────────────────────────────────────────── -->
+    <string name="sort_aperture">Diafragma</string>
+    <string name="sort_bitrate">Bitsnelheid</string>
+    <string name="sort_exposure_time">Sluitertijd</string>
+    <string name="sort_focal_length">Brandpuntsafstand</string>
+    <string name="sort_iso">ISO</string>
+    <string name="sort_keyword">Trefwoord</string>
+    <string name="sort_lens">Objectief</string>
+    <string name="sort_resolution">Resolutie</string>
+
+    <!-- ── Stack operations ───────────────────────────────────────────────── -->
+    <string name="stack_combine_error">Stapelen mislukt: %1$s</string>
+    <string name="stack_combine_failed">Stapel aanmaken mislukt</string>
+    <string name="stack_combine_into_stack">Samenvoegen tot stapel</string>
+    <string name="stack_load_members_error">Kan stapelleden niet laden: %1$s</string>
+    <string name="stack_members_preferred_label">Leider</string>
+    <string name="stack_members_promote_action">Promoveren</string>
+    <string name="stack_members_remove_action">Verwijderen</string>
+    <string name="stack_members_title">Stapelleden</string>
+    <string name="stack_promote_error">Promoveren mislukt: %1$s</string>
+    <string name="stack_promote_failed">Video promoveren mislukt</string>
+    <string name="stack_promote_to_leader">Promoveren tot leider</string>
+    <string name="stack_remove_error">Verwijderen mislukt: %1$s</string>
+    <string name="stack_remove_failed">Verwijderen uit stapel mislukt</string>
+    <string name="stack_remove_from_stack">Uit stapel verwijderen</string>
+    <string name="stack_section_header">Stapel</string>
+    <string name="stack_select_at_least_two">Selecteer ten minste 2 video\'s om een stapel te maken</string>
+    <string name="stack_unstack">Stapel opheffen</string>
+    <string name="stack_unstack_error">Stapel opheffen mislukt: %1$s</string>
+    <plurals name="stack_combined_message">
+        <item quantity="one">Samengevoegd tot een stapel van %1$d video</item>
+        <item quantity="other">Samengevoegd tot een stapel van %1$d video\'s</item>
+    </plurals>
 </resources>

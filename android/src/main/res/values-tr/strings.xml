@@ -353,4 +353,176 @@
     <string name="scan_target_default">kütüphane</string>
     <string name="scan_scanning_target">%1$s taranıyor…</string>
     <string name="pairing_a_device">Bir cihaz</string>
+
+    <!-- ── Batch operations ───────────────────────────────────────────────── -->
+    <string name="batch_add_keyword_hint">Anahtar kelime ekle…</string>
+    <string name="batch_add_to_collection">Koleksiyona ekle</string>
+    <string name="batch_add_to_collection_name">%1$s\'e ekle</string>
+    <string name="batch_apply_keyword">Anahtar kelimeyi uygula: %1$s</string>
+    <string name="batch_existing_keywords">Mevcut anahtar kelimeler — uygulamak için dokunun</string>
+    <string name="batch_organize">Seçili videoları düzenle</string>
+    <string name="batch_share">Seçili videoları paylaş</string>
+    <string name="batch_share_failed">Paylaşım için dosyalar hazırlanamadı</string>
+    <string name="batch_share_preparing">%1$d video hazırlanıyor…</string>
+    <string name="batch_share_title">%1$d videoyu paylaş</string>
+    <plurals name="batch_organize_title">
+        <item quantity="one">%1$d videoyu düzenle</item>
+        <item quantity="other">%1$d videoyu düzenle</item>
+    </plurals>
+
+    <!-- ── Card actions ───────────────────────────────────────────────────── -->
+    <string name="card_clear_color_label_desc">Renk etiketini temizle</string>
+    <string name="card_clear_rating_desc">Değerlendirmeyi temizle</string>
+    <string name="card_menu_color_label">Renk Etiketi</string>
+    <string name="card_menu_label_blue">Mavi</string>
+    <string name="card_menu_label_green">Yeşil</string>
+    <string name="card_menu_label_none">Yok</string>
+    <string name="card_menu_label_purple">Mor</string>
+    <string name="card_menu_label_red">Kırmızı</string>
+    <string name="card_menu_label_yellow">Sarı</string>
+    <string name="card_menu_rating">Değerlendirme</string>
+    <string name="card_menu_rating_none">Yok</string>
+    <string name="card_set_color_label_desc">Renk etiketini ayarla: %1$s</string>
+    <string name="card_set_rating_desc">%1$d yıldız değerlendirmesi ayarla</string>
+    <string name="card_stat_tap_to_change">Yuvayı değiştirmek için dokunun</string>
+    <string name="card_stats_sheet_subtitle">Her kartın üstünde gösterilen dört istatistiği seçin.</string>
+    <string name="card_stats_sheet_title">Kart İstatistikleri</string>
+    <string name="card_stats_slot_label">Yuva %1$d</string>
+
+    <!-- ── Detail view ────────────────────────────────────────────────────── -->
+    <string name="detail_collection_toggle">Koleksiyon üyeliğini değiştir: %1$s</string>
+    <string name="detail_graphs_analyzing_audio">Ses analiz ediliyor…</string>
+    <string name="detail_graphs_analyzing_frames">Kareler analiz ediliyor…</string>
+    <string name="detail_graphs_brightness">Parlaklık</string>
+    <string name="detail_graphs_color_over_time">Zaman içinde renk</string>
+    <string name="detail_graphs_loudness">Ses yüksekliği</string>
+    <string name="detail_graphs_rgb_channels">RGB kanalları</string>
+    <string name="detail_graphs_select_video">Video seçin</string>
+    <string name="detail_no_collections">Henüz koleksiyon yok.</string>
+    <string name="detail_section_collections">KOLEKSİYONLAR</string>
+    <string name="detail_section_visuals">GÖRSELLİK</string>
+    <string name="detail_share_failed">Video paylaşım için indirilemedi: %1$s</string>
+    <string name="detail_share_no_connection">Sunucuya bağlı değil — uzak video paylaşılamaz.</string>
+    <string name="detail_share_preparing">Paylaşım için dosya hazırlanıyor…</string>
+    <string name="detail_tag_picker_add_button">Ekle</string>
+    <string name="detail_tag_picker_existing">MEVCUT ANAHTAR KELİMELER</string>
+    <string name="detail_tag_picker_new_hint">Anahtar kelime ekle…</string>
+    <string name="detail_tag_picker_no_others">Başka anahtar kelime yok — yukarıya bir tane yazın.</string>
+
+    <!-- ── Errors ─────────────────────────────────────────────────────────── -->
+    <string name="err_apply_keyword">\'%1$s\' anahtar kelimesi oluşturulamadı/uygulanamadı</string>
+    <string name="err_apply_keyword_detail">Anahtar kelime uygulanamadı: %1$s</string>
+    <string name="err_load_grid_settings">Kart istatistikleri yapılandırması yüklenemedi: %1$s</string>
+    <string name="err_save_grid_settings">Kart istatistikleri yapılandırması kaydedilemedi: %1$s</string>
+
+    <!-- ── Filter attributes ──────────────────────────────────────────────── -->
+    <string name="filter_attr_audio">Ses</string>
+    <string name="filter_attr_full_res">Tam Çözünürlük</string>
+    <string name="filter_attr_has">%1$s var</string>
+    <string name="filter_attr_keywords">Anahtar Kelimeler</string>
+    <string name="filter_attr_location">Konum</string>
+    <string name="filter_attr_no">%1$s yok</string>
+    <string name="filter_attr_no_label">Yok</string>
+    <string name="filter_attr_proxies">Proxy\'ler</string>
+    <string name="filter_attr_yes">Var</string>
+    <string name="filter_attributes">ÖZELLİKLER</string>
+    <string name="filter_color_label">RENK ETİKETİ</string>
+    <string name="filter_orientation">YÖNLENDIRME</string>
+    <string name="filter_orientation_any">Herhangi</string>
+    <string name="filter_orientation_landscape">Yatay</string>
+    <string name="filter_orientation_portrait">Dikey</string>
+
+    <!-- ── Grid / card stats ──────────────────────────────────────────────── -->
+    <string name="grid_card_stats">Kart İstatistikleri</string>
+    <string name="grid_configure_card_stats">Kart istatistiklerini yapılandır</string>
+    <string name="grid_density_label">Küçük Resim Boyutu</string>
+    <string name="grid_density_larger">Daha büyük küçük resimler</string>
+    <string name="grid_density_menu_item">Küçük Resim Boyutu</string>
+    <string name="grid_density_sheet_subtitle">Ekrana kaç sütun sığacağını ayarlamak için sürükleyin.</string>
+    <string name="grid_density_sheet_title">Küçük Resim Boyutu</string>
+    <string name="grid_density_smaller">Daha küçük küçük resimler</string>
+    <string name="grid_smart_collection_empty">Bu akıllı koleksiyona uyan video yok</string>
+    <string name="grid_stat_aperture">Diyafram</string>
+    <string name="grid_stat_audio_codec">Ses kodek</string>
+    <string name="grid_stat_bitrate">Bit hızı</string>
+    <string name="grid_stat_camera">Kamera</string>
+    <string name="grid_stat_capture_date">Çekim tarihi</string>
+    <string name="grid_stat_capture_year">Çekim yılı</string>
+    <string name="grid_stat_duration">Süre</string>
+    <string name="grid_stat_exposure">Poz süresi</string>
+    <string name="grid_stat_file_size">Dosya boyutu</string>
+    <string name="grid_stat_filename">Dosya adı</string>
+    <string name="grid_stat_focal_length">Odak uzaklığı</string>
+    <string name="grid_stat_fps">FPS</string>
+    <string name="grid_stat_frame_count">Kare sayısı</string>
+    <string name="grid_stat_iso">ISO</string>
+    <string name="grid_stat_lens">Lens</string>
+    <string name="grid_stat_location">Konum</string>
+    <string name="grid_stat_none">(boş)</string>
+    <string name="grid_stat_pixel_dimensions">Piksel boyutları</string>
+    <string name="grid_stat_resolution">Çözünürlük</string>
+    <string name="grid_stat_video_codec">Video kodek</string>
+
+    <!-- ── Map ────────────────────────────────────────────────────────────── -->
+    <string name="map_switch_to_satellite">Uydu görüntüsüne geç</string>
+    <string name="map_switch_to_standard">Standart haritaya geç</string>
+
+    <!-- ── Offline downloads ──────────────────────────────────────────────── -->
+    <string name="offline_available_offline">Çevrimdışı kullanılabilir</string>
+    <string name="offline_browse_downloads">İndirmelere Gözat</string>
+    <string name="offline_download_button">Çevrimdışı İndir</string>
+    <string name="offline_downloaded_quality">İndirildi</string>
+    <string name="offline_downloading">İndiriliyor…</string>
+    <string name="offline_empty_desc">Bir sunucuya bağlıyken, bağlantısız izlemek için bir videoda "Çevrimdışı İndir" seçeneğini belirleyin.</string>
+    <string name="offline_empty_title">İndirme Yok</string>
+    <string name="offline_file_missing">Bu indirme cihazda bulunamıyor.</string>
+    <string name="offline_quality_720p">720p (daha küçük)</string>
+    <string name="offline_quality_original">Orijinal</string>
+    <string name="offline_quality_title">İndirme kalitesi</string>
+    <string name="offline_remove_body">"%1$s" bu cihazdan silinecek.</string>
+    <string name="offline_remove_confirm">Kaldır</string>
+    <string name="offline_remove_download">İndirmeyi Kaldır</string>
+    <string name="offline_remove_title">İndirme Kaldırılsın mı?</string>
+    <string name="offline_section_title">Çevrimdışı</string>
+    <string name="offline_title">İndirilenler</string>
+
+    <!-- ── Settings ───────────────────────────────────────────────────────── -->
+    <string name="settings_forget_server_confirm_action">Unut</string>
+    <string name="settings_forget_server_confirm_body">Bu işlem kaydedilmiş kimlik bilgilerinizi siler ve bağlantı ekranına döner. Yeniden bağlanmak için yeniden eşleştirmeniz gerekecek.</string>
+    <string name="settings_forget_server_confirm_title">Bu Sunucu Unutulsun mu?</string>
+    <string name="settings_server_forgotten">Sunucu unutuldu</string>
+
+    <!-- ── Sort field names ───────────────────────────────────────────────── -->
+    <string name="sort_aperture">Diyafram</string>
+    <string name="sort_bitrate">Bit Hızı</string>
+    <string name="sort_exposure_time">Poz Süresi</string>
+    <string name="sort_focal_length">Odak Uzaklığı</string>
+    <string name="sort_iso">ISO</string>
+    <string name="sort_keyword">Anahtar Kelime</string>
+    <string name="sort_lens">Lens</string>
+    <string name="sort_resolution">Çözünürlük</string>
+
+    <!-- ── Stack operations ───────────────────────────────────────────────── -->
+    <string name="stack_combine_error">Yığın başarısız: %1$s</string>
+    <string name="stack_combine_failed">Yığın oluşturulamadı</string>
+    <string name="stack_combine_into_stack">Yığına birleştir</string>
+    <string name="stack_load_members_error">Yığın üyeleri yüklenemedi: %1$s</string>
+    <string name="stack_members_preferred_label">Lider</string>
+    <string name="stack_members_promote_action">Terfi Et</string>
+    <string name="stack_members_remove_action">Kaldır</string>
+    <string name="stack_members_title">Yığın üyeleri</string>
+    <string name="stack_promote_error">Terfi başarısız: %1$s</string>
+    <string name="stack_promote_failed">Video terfi ettirilemedi</string>
+    <string name="stack_promote_to_leader">Lider olarak terfi et</string>
+    <string name="stack_remove_error">Kaldırma başarısız: %1$s</string>
+    <string name="stack_remove_failed">Yığından kaldırılamadı</string>
+    <string name="stack_remove_from_stack">Yığından kaldır</string>
+    <string name="stack_section_header">Yığın</string>
+    <string name="stack_select_at_least_two">Yığın oluşturmak için en az 2 video seçin</string>
+    <string name="stack_unstack">Yığını Çöz</string>
+    <string name="stack_unstack_error">Yığın çözme başarısız: %1$s</string>
+    <plurals name="stack_combined_message">
+        <item quantity="one">%1$d videoluk bir yığında birleştirildi</item>
+        <item quantity="other">%1$d videoluk bir yığında birleştirildi</item>
+    </plurals>
 </resources>

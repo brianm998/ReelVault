@@ -343,4 +343,175 @@
     <string name="scan_target_default">ไลบรารี</string>
     <string name="scan_scanning_target">กำลังสแกน %1$s…</string>
     <string name="pairing_a_device">อุปกรณ์หนึ่งเครื่อง</string>
+
+    <!-- ── Phase 2 additions (batch / card / detail / filter / grid / map / offline / settings / sort / stack) ── -->
+    <!-- batch -->
+    <string name="batch_add_keyword_hint">เพิ่มคีย์เวิร์ด…</string>
+    <string name="batch_add_to_collection">เพิ่มลงในคอลเลกชัน</string>
+    <string name="batch_add_to_collection_name">เพิ่มลงใน %1$s</string>
+    <string name="batch_apply_keyword">ใช้คีย์เวิร์ด: %1$s</string>
+    <string name="batch_existing_keywords">คีย์เวิร์ดที่มีอยู่ — แตะเพื่อใช้งาน</string>
+    <string name="batch_organize">จัดระเบียบวิดีโอที่เลือก</string>
+    <string name="batch_share">แชร์วิดีโอที่เลือก</string>
+    <string name="batch_share_failed">ไม่สามารถเตรียมไฟล์สำหรับการแชร์ได้</string>
+    <string name="batch_share_preparing">กำลังเตรียม %1$d วิดีโอ…</string>
+    <string name="batch_share_title">แชร์ %1$d วิดีโอ</string>
+    <plurals name="batch_organize_title">
+        <item quantity="other">จัดระเบียบ %1$d วิดีโอ</item>
+    </plurals>
+
+    <!-- card -->
+    <string name="card_clear_color_label_desc">ล้างป้ายสี</string>
+    <string name="card_clear_rating_desc">ล้างคะแนน</string>
+    <string name="card_menu_color_label">ป้ายสี</string>
+    <string name="card_menu_label_blue">น้ำเงิน</string>
+    <string name="card_menu_label_green">เขียว</string>
+    <string name="card_menu_label_none">ไม่มี</string>
+    <string name="card_menu_label_purple">ม่วง</string>
+    <string name="card_menu_label_red">แดง</string>
+    <string name="card_menu_label_yellow">เหลือง</string>
+    <string name="card_menu_rating">คะแนน</string>
+    <string name="card_menu_rating_none">ไม่มี</string>
+    <string name="card_set_color_label_desc">ตั้งป้ายสี: %1$s</string>
+    <string name="card_set_rating_desc">ตั้งคะแนน %1$d ดาว</string>
+    <string name="card_stat_tap_to_change">แตะเพื่อเปลี่ยนช่อง</string>
+    <string name="card_stats_sheet_subtitle">เลือกสี่สถิติที่แสดงที่ด้านบนของแต่ละการ์ด</string>
+    <string name="card_stats_sheet_title">สถิติการ์ด</string>
+    <string name="card_stats_slot_label">ช่อง %1$d</string>
+
+    <!-- detail -->
+    <string name="detail_collection_toggle">สลับการเป็นสมาชิกคอลเลกชัน: %1$s</string>
+    <string name="detail_graphs_analyzing_audio">กำลังวิเคราะห์เสียง…</string>
+    <string name="detail_graphs_analyzing_frames">กำลังวิเคราะห์เฟรม…</string>
+    <string name="detail_graphs_brightness">ความสว่าง</string>
+    <string name="detail_graphs_color_over_time">สีตามเวลา</string>
+    <string name="detail_graphs_loudness">ความดัง</string>
+    <string name="detail_graphs_rgb_channels">ช่อง RGB</string>
+    <string name="detail_graphs_select_video">เลือกวิดีโอ</string>
+    <string name="detail_no_collections">ยังไม่มีคอลเลกชัน</string>
+    <string name="detail_section_collections">คอลเลกชัน</string>
+    <string name="detail_section_visuals">ภาพ</string>
+    <string name="detail_share_failed">ไม่สามารถดาวน์โหลดวิดีโอสำหรับการแชร์: %1$s</string>
+    <string name="detail_share_no_connection">ไม่ได้เชื่อมต่อกับเซิร์ฟเวอร์ — ไม่สามารถแชร์วิดีโอระยะไกลได้</string>
+    <string name="detail_share_preparing">กำลังเตรียมไฟล์สำหรับการแชร์…</string>
+    <string name="detail_tag_picker_add_button">เพิ่ม</string>
+    <string name="detail_tag_picker_existing">คีย์เวิร์ดที่มีอยู่</string>
+    <string name="detail_tag_picker_new_hint">เพิ่มคีย์เวิร์ด…</string>
+    <string name="detail_tag_picker_no_others">ยังไม่มีคีย์เวิร์ดอื่น — พิมพ์ด้านบน</string>
+
+    <!-- err -->
+    <string name="err_apply_keyword">ไม่สามารถสร้าง/ใช้คีย์เวิร์ด \'%1$s\'</string>
+    <string name="err_apply_keyword_detail">การใช้คีย์เวิร์ดล้มเหลว: %1$s</string>
+    <string name="err_load_grid_settings">โหลดการตั้งค่าสถิติการ์ดไม่สำเร็จ: %1$s</string>
+    <string name="err_save_grid_settings">บันทึกการตั้งค่าสถิติการ์ดไม่สำเร็จ: %1$s</string>
+
+    <!-- filter -->
+    <string name="filter_attr_audio">เสียง</string>
+    <string name="filter_attr_full_res">ความละเอียดเต็ม</string>
+    <string name="filter_attr_has">มี %1$s</string>
+    <string name="filter_attr_keywords">คีย์เวิร์ด</string>
+    <string name="filter_attr_location">ตำแหน่ง</string>
+    <string name="filter_attr_no">ไม่มี %1$s</string>
+    <string name="filter_attr_no_label">ไม่</string>
+    <string name="filter_attr_proxies">พร็อกซี</string>
+    <string name="filter_attr_yes">มี</string>
+    <string name="filter_attributes">แอตทริบิวต์</string>
+    <string name="filter_color_label">ป้ายสี</string>
+    <string name="filter_orientation">การวางแนว</string>
+    <string name="filter_orientation_any">ใดก็ได้</string>
+    <string name="filter_orientation_landscape">แนวนอน</string>
+    <string name="filter_orientation_portrait">แนวตั้ง</string>
+
+    <!-- grid -->
+    <string name="grid_card_stats">สถิติการ์ด</string>
+    <string name="grid_configure_card_stats">กำหนดค่าสถิติการ์ด</string>
+    <string name="grid_density_label">ขนาดภาพขนาดย่อ</string>
+    <string name="grid_density_larger">ภาพขนาดย่อใหญ่ขึ้น</string>
+    <string name="grid_density_menu_item">ขนาดภาพขนาดย่อ</string>
+    <string name="grid_density_sheet_subtitle">ลากเพื่อปรับจำนวนคอลัมน์ที่แสดงบนหน้าจอ</string>
+    <string name="grid_density_sheet_title">ขนาดภาพขนาดย่อ</string>
+    <string name="grid_density_smaller">ภาพขนาดย่อเล็กลง</string>
+    <string name="grid_smart_collection_empty">ไม่มีวิดีโอที่ตรงกับคอลเลกชันสมาร์ทนี้</string>
+    <string name="grid_stat_aperture">รูรับแสง</string>
+    <string name="grid_stat_audio_codec">โคเดกเสียง</string>
+    <string name="grid_stat_bitrate">บิตเรต</string>
+    <string name="grid_stat_camera">กล้อง</string>
+    <string name="grid_stat_capture_date">วันที่ถ่าย</string>
+    <string name="grid_stat_capture_year">ปีที่ถ่าย</string>
+    <string name="grid_stat_duration">ระยะเวลา</string>
+    <string name="grid_stat_exposure">ความเร็วชัตเตอร์</string>
+    <string name="grid_stat_file_size">ขนาดไฟล์</string>
+    <string name="grid_stat_filename">ชื่อไฟล์</string>
+    <string name="grid_stat_focal_length">ระยะโฟกัส</string>
+    <string name="grid_stat_fps">FPS</string>
+    <string name="grid_stat_frame_count">จำนวนเฟรม</string>
+    <string name="grid_stat_iso">ISO</string>
+    <string name="grid_stat_lens">เลนส์</string>
+    <string name="grid_stat_location">ตำแหน่ง</string>
+    <string name="grid_stat_none">(ว่าง)</string>
+    <string name="grid_stat_pixel_dimensions">ขนาดพิกเซล</string>
+    <string name="grid_stat_resolution">ความละเอียด</string>
+    <string name="grid_stat_video_codec">โคเดกวิดีโอ</string>
+
+    <!-- map -->
+    <string name="map_switch_to_satellite">สลับเป็นภาพถ่ายดาวเทียม</string>
+    <string name="map_switch_to_standard">สลับเป็นแผนที่มาตรฐาน</string>
+
+    <!-- offline -->
+    <string name="offline_available_offline">พร้อมใช้งานออฟไลน์</string>
+    <string name="offline_browse_downloads">เรียกดูการดาวน์โหลด</string>
+    <string name="offline_download_button">ดาวน์โหลดสำหรับออฟไลน์</string>
+    <string name="offline_downloaded_quality">ดาวน์โหลดแล้วเป็น</string>
+    <string name="offline_downloading">กำลังดาวน์โหลด…</string>
+    <string name="offline_empty_desc">ขณะเชื่อมต่อกับเซิร์ฟเวอร์ เลือก \"ดาวน์โหลดสำหรับออฟไลน์\" บนวิดีโอเพื่อดูที่นี่โดยไม่ต้องเชื่อมต่อ</string>
+    <string name="offline_empty_title">ไม่มีการดาวน์โหลด</string>
+    <string name="offline_file_missing">ไม่พบไฟล์ดาวน์โหลดนี้ในอุปกรณ์</string>
+    <string name="offline_quality_720p">720p (เล็กกว่า)</string>
+    <string name="offline_quality_original">ต้นฉบับ</string>
+    <string name="offline_quality_title">คุณภาพการดาวน์โหลด</string>
+    <string name="offline_remove_body">\"%1$s\" จะถูกลบออกจากอุปกรณ์นี้</string>
+    <string name="offline_remove_confirm">ลบ</string>
+    <string name="offline_remove_download">ลบการดาวน์โหลด</string>
+    <string name="offline_remove_title">ลบการดาวน์โหลด?</string>
+    <string name="offline_section_title">ออฟไลน์</string>
+    <string name="offline_title">ดาวน์โหลดแล้ว</string>
+
+    <!-- settings -->
+    <string name="settings_forget_server_confirm_action">ลืม</string>
+    <string name="settings_forget_server_confirm_body">การดำเนินการนี้จะล้างข้อมูลประจำตัวที่บันทึกไว้และกลับไปยังหน้าจอการเชื่อมต่อ คุณจะต้องจับคู่ใหม่เพื่อเชื่อมต่ออีกครั้ง</string>
+    <string name="settings_forget_server_confirm_title">ลืมเซิร์ฟเวอร์นี้?</string>
+    <string name="settings_server_forgotten">ลืมเซิร์ฟเวอร์แล้ว</string>
+
+    <!-- sort -->
+    <string name="sort_aperture">รูรับแสง</string>
+    <string name="sort_bitrate">บิตเรต</string>
+    <string name="sort_exposure_time">เวลาแสง</string>
+    <string name="sort_focal_length">ระยะโฟกัส</string>
+    <string name="sort_iso">ISO</string>
+    <string name="sort_keyword">คีย์เวิร์ด</string>
+    <string name="sort_lens">เลนส์</string>
+    <string name="sort_resolution">ความละเอียด</string>
+
+    <!-- stack -->
+    <string name="stack_combine_error">การสร้างสแต็กล้มเหลว: %1$s</string>
+    <string name="stack_combine_failed">ไม่สามารถสร้างสแต็กได้</string>
+    <string name="stack_combine_into_stack">รวมเป็นสแต็ก</string>
+    <string name="stack_load_members_error">ไม่สามารถโหลดสมาชิกสแต็กได้: %1$s</string>
+    <string name="stack_members_preferred_label">ผู้นำ</string>
+    <string name="stack_members_promote_action">เลื่อนขึ้น</string>
+    <string name="stack_members_remove_action">ลบ</string>
+    <string name="stack_members_title">สมาชิกสแต็ก</string>
+    <string name="stack_promote_error">การเลื่อนขึ้นล้มเหลว: %1$s</string>
+    <string name="stack_promote_failed">ไม่สามารถเลื่อนขึ้นวิดีโอได้</string>
+    <string name="stack_promote_to_leader">เลื่อนขึ้นเป็นผู้นำ</string>
+    <string name="stack_remove_error">การลบล้มเหลว: %1$s</string>
+    <string name="stack_remove_failed">ไม่สามารถลบออกจากสแต็กได้</string>
+    <string name="stack_remove_from_stack">ลบออกจากสแต็ก</string>
+    <string name="stack_section_header">สแต็ก</string>
+    <string name="stack_select_at_least_two">เลือกวิดีโออย่างน้อย 2 รายการเพื่อสร้างสแต็ก</string>
+    <string name="stack_unstack">ยกเลิกสแต็ก</string>
+    <string name="stack_unstack_error">การยกเลิกสแต็กล้มเหลว: %1$s</string>
+    <plurals name="stack_combined_message">
+        <item quantity="other">รวมเป็นสแต็กจำนวน %1$d รายการแล้ว</item>
+    </plurals>
 </resources>

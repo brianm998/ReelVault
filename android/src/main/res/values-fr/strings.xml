@@ -353,4 +353,176 @@
     <string name="scan_target_default">bibliothèque</string>
     <string name="scan_scanning_target">Analyse de %1$s…</string>
     <string name="pairing_a_device">Un appareil</string>
+
+    <!-- ── Batch operations ───────────────────────────────────────────────── -->
+    <string name="batch_add_keyword_hint">Ajouter un mot-clé…</string>
+    <string name="batch_add_to_collection">Ajouter à la collection</string>
+    <string name="batch_add_to_collection_name">Ajouter à %1$s</string>
+    <string name="batch_apply_keyword">Appliquer le mot-clé : %1$s</string>
+    <string name="batch_existing_keywords">Mots-clés existants — appuyez pour appliquer</string>
+    <string name="batch_organize">Organiser les vidéos sélectionnées</string>
+    <string name="batch_share">Partager les vidéos sélectionnées</string>
+    <string name="batch_share_failed">Impossible de préparer les fichiers pour le partage</string>
+    <string name="batch_share_preparing">Préparation de %1$d vidéo(s)…</string>
+    <string name="batch_share_title">Partager %1$d vidéo(s)</string>
+    <plurals name="batch_organize_title">
+        <item quantity="one">Organiser %1$d vidéo</item>
+        <item quantity="other">Organiser %1$d vidéos</item>
+    </plurals>
+
+    <!-- ── Card stats / labels ────────────────────────────────────────────── -->
+    <string name="card_clear_color_label_desc">Effacer l\'étiquette de couleur</string>
+    <string name="card_clear_rating_desc">Effacer la note</string>
+    <string name="card_menu_color_label">Étiquette de couleur</string>
+    <string name="card_menu_label_blue">Bleu</string>
+    <string name="card_menu_label_green">Vert</string>
+    <string name="card_menu_label_none">Aucune</string>
+    <string name="card_menu_label_purple">Violet</string>
+    <string name="card_menu_label_red">Rouge</string>
+    <string name="card_menu_label_yellow">Jaune</string>
+    <string name="card_menu_rating">Note</string>
+    <string name="card_menu_rating_none">Aucune</string>
+    <string name="card_set_color_label_desc">Définir l\'étiquette de couleur : %1$s</string>
+    <string name="card_set_rating_desc">Définir une note de %1$d étoile(s)</string>
+    <string name="card_stat_tap_to_change">Appuyez pour changer l\'emplacement</string>
+    <string name="card_stats_sheet_subtitle">Choisissez les quatre statistiques affichées en haut de chaque carte.</string>
+    <string name="card_stats_sheet_title">Statistiques de carte</string>
+    <string name="card_stats_slot_label">Emplacement %1$d</string>
+
+    <!-- ── Detail view (new sections) ────────────────────────────────────── -->
+    <string name="detail_collection_toggle">Basculer l\'appartenance à la collection : %1$s</string>
+    <string name="detail_graphs_analyzing_audio">Analyse audio en cours…</string>
+    <string name="detail_graphs_analyzing_frames">Analyse des images en cours…</string>
+    <string name="detail_graphs_brightness">Luminosité</string>
+    <string name="detail_graphs_color_over_time">Couleur dans le temps</string>
+    <string name="detail_graphs_loudness">Volume</string>
+    <string name="detail_graphs_rgb_channels">Canaux RVB</string>
+    <string name="detail_graphs_select_video">Sélectionner une vidéo</string>
+    <string name="detail_no_collections">Aucune collection pour l\'instant.</string>
+    <string name="detail_section_collections">COLLECTIONS</string>
+    <string name="detail_section_visuals">VISUELS</string>
+    <string name="detail_share_failed">Impossible de télécharger la vidéo pour le partage : %1$s</string>
+    <string name="detail_share_no_connection">Non connecté à un serveur — impossible de partager la vidéo distante.</string>
+    <string name="detail_share_preparing">Préparation du fichier pour le partage…</string>
+    <string name="detail_tag_picker_add_button">Ajouter</string>
+    <string name="detail_tag_picker_existing">MOTS-CLÉS EXISTANTS</string>
+    <string name="detail_tag_picker_new_hint">Ajouter un mot-clé…</string>
+    <string name="detail_tag_picker_no_others">Aucun autre mot-clé pour l\'instant — saisissez-en un ci-dessus.</string>
+
+    <!-- ── Error messages (new) ───────────────────────────────────────────── -->
+    <string name="err_apply_keyword">Impossible de créer/appliquer le mot-clé \'%1$s\'</string>
+    <string name="err_apply_keyword_detail">Échec de l\'application du mot-clé : %1$s</string>
+    <string name="err_load_grid_settings">Impossible de charger la configuration des statistiques de carte : %1$s</string>
+    <string name="err_save_grid_settings">Impossible d\'enregistrer la configuration des statistiques de carte : %1$s</string>
+
+    <!-- ── Filter bar (new attributes) ───────────────────────────────────── -->
+    <string name="filter_attr_audio">Audio</string>
+    <string name="filter_attr_full_res">Pleine résolution</string>
+    <string name="filter_attr_has">A %1$s</string>
+    <string name="filter_attr_keywords">Mots-clés</string>
+    <string name="filter_attr_location">Lieu</string>
+    <string name="filter_attr_no">Pas de %1$s</string>
+    <string name="filter_attr_no_label">Non</string>
+    <string name="filter_attr_proxies">Proxys</string>
+    <string name="filter_attr_yes">A</string>
+    <string name="filter_attributes">ATTRIBUTS</string>
+    <string name="filter_color_label">ÉTIQUETTE DE COULEUR</string>
+    <string name="filter_orientation">ORIENTATION</string>
+    <string name="filter_orientation_any">Tout</string>
+    <string name="filter_orientation_landscape">Paysage</string>
+    <string name="filter_orientation_portrait">Portrait</string>
+
+    <!-- ── Grid controls (new) ───────────────────────────────────────────── -->
+    <string name="grid_card_stats">Statistiques de carte</string>
+    <string name="grid_configure_card_stats">Configurer les statistiques de carte</string>
+    <string name="grid_density_label">Taille des vignettes</string>
+    <string name="grid_density_larger">Vignettes plus grandes</string>
+    <string name="grid_density_menu_item">Taille des vignettes</string>
+    <string name="grid_density_sheet_subtitle">Faites glisser pour ajuster le nombre de colonnes à l\'écran.</string>
+    <string name="grid_density_sheet_title">Taille des vignettes</string>
+    <string name="grid_density_smaller">Vignettes plus petites</string>
+    <string name="grid_smart_collection_empty">Aucune vidéo ne correspond à cette collection dynamique</string>
+    <string name="grid_stat_aperture">Ouverture</string>
+    <string name="grid_stat_audio_codec">Codec audio</string>
+    <string name="grid_stat_bitrate">Débit</string>
+    <string name="grid_stat_camera">Appareil</string>
+    <string name="grid_stat_capture_date">Date de prise de vue</string>
+    <string name="grid_stat_capture_year">Année de prise de vue</string>
+    <string name="grid_stat_duration">Durée</string>
+    <string name="grid_stat_exposure">Exposition</string>
+    <string name="grid_stat_file_size">Taille</string>
+    <string name="grid_stat_filename">Nom de fichier</string>
+    <string name="grid_stat_focal_length">Focale</string>
+    <string name="grid_stat_fps">IPS</string>
+    <string name="grid_stat_frame_count">Nombre d\'images</string>
+    <string name="grid_stat_iso">ISO</string>
+    <string name="grid_stat_lens">Objectif</string>
+    <string name="grid_stat_location">Lieu</string>
+    <string name="grid_stat_none">(vide)</string>
+    <string name="grid_stat_pixel_dimensions">Dimensions en pixels</string>
+    <string name="grid_stat_resolution">Résolution</string>
+    <string name="grid_stat_video_codec">Codec vidéo</string>
+
+    <!-- ── Map (new) ──────────────────────────────────────────────────────── -->
+    <string name="map_switch_to_satellite">Passer en vue satellite</string>
+    <string name="map_switch_to_standard">Passer en carte standard</string>
+
+    <!-- ── Offline / Downloads ───────────────────────────────────────────── -->
+    <string name="offline_available_offline">Disponible hors ligne</string>
+    <string name="offline_browse_downloads">Parcourir les téléchargements</string>
+    <string name="offline_download_button">Télécharger pour une utilisation hors ligne</string>
+    <string name="offline_downloaded_quality">Téléchargé en</string>
+    <string name="offline_downloading">Téléchargement en cours…</string>
+    <string name="offline_empty_desc">Lorsque vous êtes connecté à un serveur, choisissez « Télécharger pour une utilisation hors ligne » sur une vidéo pour la regarder ici sans connexion.</string>
+    <string name="offline_empty_title">Aucun téléchargement</string>
+    <string name="offline_file_missing">Ce téléchargement est manquant sur l\'appareil.</string>
+    <string name="offline_quality_720p">720p (plus léger)</string>
+    <string name="offline_quality_original">Original</string>
+    <string name="offline_quality_title">Qualité du téléchargement</string>
+    <string name="offline_remove_body">« %1$s » sera supprimé de cet appareil.</string>
+    <string name="offline_remove_confirm">Supprimer</string>
+    <string name="offline_remove_download">Supprimer le téléchargement</string>
+    <string name="offline_remove_title">Supprimer le téléchargement ?</string>
+    <string name="offline_section_title">Hors ligne</string>
+    <string name="offline_title">Téléchargés</string>
+
+    <!-- ── Settings (new) ────────────────────────────────────────────────── -->
+    <string name="settings_forget_server_confirm_action">Oublier</string>
+    <string name="settings_forget_server_confirm_body">Cela effacera vos identifiants enregistrés et vous ramènera à l\'écran de connexion. Vous devrez vous réappairer pour vous reconnecter.</string>
+    <string name="settings_forget_server_confirm_title">Oublier ce serveur ?</string>
+    <string name="settings_server_forgotten">Serveur oublié</string>
+
+    <!-- ── Sort field names (new) ─────────────────────────────────────────── -->
+    <string name="sort_aperture">Ouverture</string>
+    <string name="sort_bitrate">Débit</string>
+    <string name="sort_exposure_time">Temps d\'exposition</string>
+    <string name="sort_focal_length">Longueur focale</string>
+    <string name="sort_iso">ISO</string>
+    <string name="sort_keyword">Mot-clé</string>
+    <string name="sort_lens">Objectif</string>
+    <string name="sort_resolution">Résolution</string>
+
+    <!-- ── Stack operations ───────────────────────────────────────────────── -->
+    <string name="stack_combine_error">Échec de la pile : %1$s</string>
+    <string name="stack_combine_failed">Impossible de créer la pile</string>
+    <string name="stack_combine_into_stack">Combiner en pile</string>
+    <string name="stack_load_members_error">Impossible de charger les membres de la pile : %1$s</string>
+    <string name="stack_members_preferred_label">Chef de file</string>
+    <string name="stack_members_promote_action">Promouvoir</string>
+    <string name="stack_members_remove_action">Retirer</string>
+    <string name="stack_members_title">Membres de la pile</string>
+    <string name="stack_promote_error">Échec de la promotion : %1$s</string>
+    <string name="stack_promote_failed">Impossible de promouvoir la vidéo</string>
+    <string name="stack_promote_to_leader">Promouvoir en chef de file</string>
+    <string name="stack_remove_error">Échec du retrait : %1$s</string>
+    <string name="stack_remove_failed">Impossible de retirer de la pile</string>
+    <string name="stack_remove_from_stack">Retirer de la pile</string>
+    <string name="stack_section_header">Pile</string>
+    <string name="stack_select_at_least_two">Sélectionnez au moins 2 vidéos pour créer une pile</string>
+    <string name="stack_unstack">Désempiler</string>
+    <string name="stack_unstack_error">Échec du désempilage : %1$s</string>
+    <plurals name="stack_combined_message">
+        <item quantity="one">Combiné en une pile de %1$d vidéo</item>
+        <item quantity="other">Combiné en une pile de %1$d vidéos</item>
+    </plurals>
 </resources>

@@ -343,4 +343,174 @@
     <string name="scan_scanning_target">%1$s 스캔 중…</string>
     <string name="pairing_a_device">기기</string>
 
+    <!-- ── Batch operations ───────────────────────────────────────────────── -->
+    <string name="batch_add_keyword_hint">키워드 추가…</string>
+    <string name="batch_add_to_collection">컬렉션에 추가</string>
+    <string name="batch_add_to_collection_name">%1$s에 추가</string>
+    <string name="batch_apply_keyword">키워드 적용: %1$s</string>
+    <string name="batch_existing_keywords">기존 키워드 — 탭하여 적용</string>
+    <string name="batch_organize">선택한 동영상 정리</string>
+    <string name="batch_share">선택한 동영상 공유</string>
+    <string name="batch_share_failed">공유를 위한 파일 준비에 실패했습니다</string>
+    <string name="batch_share_preparing">동영상 %1$d개 준비 중…</string>
+    <string name="batch_share_title">동영상 %1$d개 공유</string>
+    <plurals name="batch_organize_title">
+        <item quantity="other">동영상 %1$d개 정리</item>
+    </plurals>
+
+    <!-- ── Card menu / stats ──────────────────────────────────────────────── -->
+    <string name="card_clear_color_label_desc">색상 레이블 지우기</string>
+    <string name="card_clear_rating_desc">평점 지우기</string>
+    <string name="card_menu_color_label">색상 레이블</string>
+    <string name="card_menu_label_blue">파란색</string>
+    <string name="card_menu_label_green">초록색</string>
+    <string name="card_menu_label_none">없음</string>
+    <string name="card_menu_label_purple">보라색</string>
+    <string name="card_menu_label_red">빨간색</string>
+    <string name="card_menu_label_yellow">노란색</string>
+    <string name="card_menu_rating">평점</string>
+    <string name="card_menu_rating_none">없음</string>
+    <string name="card_set_color_label_desc">색상 레이블 설정: %1$s</string>
+    <string name="card_set_rating_desc">%1$d점 평점 설정</string>
+    <string name="card_stat_tap_to_change">탭하여 슬롯 변경</string>
+    <string name="card_stats_sheet_subtitle">각 카드 상단에 표시할 네 가지 정보를 선택하세요.</string>
+    <string name="card_stats_sheet_title">카드 정보</string>
+    <string name="card_stats_slot_label">슬롯 %1$d</string>
+
+    <!-- ── Detail view ────────────────────────────────────────────────────── -->
+    <string name="detail_collection_toggle">컬렉션 멤버십 토글: %1$s</string>
+    <string name="detail_graphs_analyzing_audio">오디오 분석 중…</string>
+    <string name="detail_graphs_analyzing_frames">프레임 분석 중…</string>
+    <string name="detail_graphs_brightness">밝기</string>
+    <string name="detail_graphs_color_over_time">시간별 색상</string>
+    <string name="detail_graphs_loudness">음량</string>
+    <string name="detail_graphs_rgb_channels">RGB 채널</string>
+    <string name="detail_graphs_select_video">동영상 선택</string>
+    <string name="detail_no_collections">아직 컬렉션이 없습니다.</string>
+    <string name="detail_section_collections">컬렉션</string>
+    <string name="detail_section_visuals">시각 정보</string>
+    <string name="detail_share_failed">공유를 위한 동영상 다운로드에 실패했습니다: %1$s</string>
+    <string name="detail_share_no_connection">서버에 연결되지 않음 — 원격 동영상을 공유할 수 없습니다.</string>
+    <string name="detail_share_preparing">공유를 위한 파일 준비 중…</string>
+    <string name="detail_tag_picker_add_button">추가</string>
+    <string name="detail_tag_picker_existing">기존 키워드</string>
+    <string name="detail_tag_picker_new_hint">키워드 추가…</string>
+    <string name="detail_tag_picker_no_others">다른 키워드가 없습니다 — 위에서 입력하세요.</string>
+
+    <!-- ── Errors ─────────────────────────────────────────────────────────── -->
+    <string name="err_apply_keyword">키워드 \'%1$s\' 생성/적용 실패</string>
+    <string name="err_apply_keyword_detail">키워드 적용 실패: %1$s</string>
+    <string name="err_load_grid_settings">카드 정보 설정을 불러오지 못했습니다: %1$s</string>
+    <string name="err_save_grid_settings">카드 정보 설정을 저장하지 못했습니다: %1$s</string>
+
+    <!-- ── Filter attributes ──────────────────────────────────────────────── -->
+    <string name="filter_attr_audio">오디오</string>
+    <string name="filter_attr_full_res">전체 해상도</string>
+    <string name="filter_attr_has">%1$s 있음</string>
+    <string name="filter_attr_keywords">키워드</string>
+    <string name="filter_attr_location">위치</string>
+    <string name="filter_attr_no">%1$s 없음</string>
+    <string name="filter_attr_no_label">아니요</string>
+    <string name="filter_attr_proxies">프록시</string>
+    <string name="filter_attr_yes">있음</string>
+    <string name="filter_attributes">속성</string>
+    <string name="filter_color_label">색상 레이블</string>
+    <string name="filter_orientation">방향</string>
+    <string name="filter_orientation_any">모두</string>
+    <string name="filter_orientation_landscape">가로</string>
+    <string name="filter_orientation_portrait">세로</string>
+
+    <!-- ── Grid / card stats ──────────────────────────────────────────────── -->
+    <string name="grid_card_stats">카드 정보</string>
+    <string name="grid_configure_card_stats">카드 정보 설정</string>
+    <string name="grid_density_label">썸네일 크기</string>
+    <string name="grid_density_larger">썸네일 크게</string>
+    <string name="grid_density_menu_item">썸네일 크기</string>
+    <string name="grid_density_sheet_subtitle">드래그하여 화면에 맞는 열 수를 조정하세요.</string>
+    <string name="grid_density_sheet_title">썸네일 크기</string>
+    <string name="grid_density_smaller">썸네일 작게</string>
+    <string name="grid_smart_collection_empty">이 스마트 컬렉션에 일치하는 동영상이 없습니다</string>
+    <string name="grid_stat_aperture">조리개</string>
+    <string name="grid_stat_audio_codec">오디오 코덱</string>
+    <string name="grid_stat_bitrate">비트레이트</string>
+    <string name="grid_stat_camera">카메라</string>
+    <string name="grid_stat_capture_date">촬영 날짜</string>
+    <string name="grid_stat_capture_year">촬영 연도</string>
+    <string name="grid_stat_duration">재생 시간</string>
+    <string name="grid_stat_exposure">노출</string>
+    <string name="grid_stat_file_size">파일 크기</string>
+    <string name="grid_stat_filename">파일명</string>
+    <string name="grid_stat_focal_length">초점 거리</string>
+    <string name="grid_stat_fps">FPS</string>
+    <string name="grid_stat_frame_count">프레임 수</string>
+    <string name="grid_stat_iso">ISO</string>
+    <string name="grid_stat_lens">렌즈</string>
+    <string name="grid_stat_location">위치</string>
+    <string name="grid_stat_none">(비어 있음)</string>
+    <string name="grid_stat_pixel_dimensions">픽셀 크기</string>
+    <string name="grid_stat_resolution">해상도</string>
+    <string name="grid_stat_video_codec">비디오 코덱</string>
+
+    <!-- ── Map ───────────────────────────────────────────────────────────── -->
+    <string name="map_switch_to_satellite">위성 이미지로 전환</string>
+    <string name="map_switch_to_standard">기본 지도로 전환</string>
+
+    <!-- ── Offline / Downloads ────────────────────────────────────────────── -->
+    <string name="offline_available_offline">오프라인에서 사용 가능</string>
+    <string name="offline_browse_downloads">다운로드 탐색</string>
+    <string name="offline_download_button">오프라인용 다운로드</string>
+    <string name="offline_downloaded_quality">다운로드 품질</string>
+    <string name="offline_downloading">다운로드 중…</string>
+    <string name="offline_empty_desc">서버에 연결되어 있는 동안 동영상에서 \"오프라인용 다운로드\"를 선택하면 연결 없이 여기서 시청할 수 있습니다.</string>
+    <string name="offline_empty_title">다운로드 없음</string>
+    <string name="offline_file_missing">이 다운로드 파일이 기기에 없습니다.</string>
+    <string name="offline_quality_720p">720p (소용량)</string>
+    <string name="offline_quality_original">원본</string>
+    <string name="offline_quality_title">다운로드 품질</string>
+    <string name="offline_remove_body">\"%1$s\"이(가) 이 기기에서 삭제됩니다.</string>
+    <string name="offline_remove_confirm">제거</string>
+    <string name="offline_remove_download">다운로드 제거</string>
+    <string name="offline_remove_title">다운로드를 제거하시겠습니까?</string>
+    <string name="offline_section_title">오프라인</string>
+    <string name="offline_title">다운로드됨</string>
+
+    <!-- ── Settings — server management ──────────────────────────────────── -->
+    <string name="settings_forget_server_confirm_action">지우기</string>
+    <string name="settings_forget_server_confirm_body">저장된 자격 증명을 지우고 연결 화면으로 돌아갑니다. 다시 연결하려면 재페어링이 필요합니다.</string>
+    <string name="settings_forget_server_confirm_title">이 서버를 지우시겠습니까?</string>
+    <string name="settings_server_forgotten">서버가 지워졌습니다</string>
+
+    <!-- ── Sort fields ────────────────────────────────────────────────────── -->
+    <string name="sort_aperture">조리개</string>
+    <string name="sort_bitrate">비트레이트</string>
+    <string name="sort_exposure_time">노출 시간</string>
+    <string name="sort_focal_length">초점 거리</string>
+    <string name="sort_iso">ISO</string>
+    <string name="sort_keyword">키워드</string>
+    <string name="sort_lens">렌즈</string>
+    <string name="sort_resolution">해상도</string>
+
+    <!-- ── Stack operations ───────────────────────────────────────────────── -->
+    <string name="stack_combine_error">스택 생성 실패: %1$s</string>
+    <string name="stack_combine_failed">스택 생성에 실패했습니다</string>
+    <string name="stack_combine_into_stack">스택으로 묶기</string>
+    <string name="stack_load_members_error">스택 멤버를 불러올 수 없습니다: %1$s</string>
+    <string name="stack_members_preferred_label">대표</string>
+    <string name="stack_members_promote_action">승격</string>
+    <string name="stack_members_remove_action">제거</string>
+    <string name="stack_members_title">스택 멤버</string>
+    <string name="stack_promote_error">승격 실패: %1$s</string>
+    <string name="stack_promote_failed">동영상 승격에 실패했습니다</string>
+    <string name="stack_promote_to_leader">대표로 승격</string>
+    <string name="stack_remove_error">제거 실패: %1$s</string>
+    <string name="stack_remove_failed">스택에서 동영상 제거 실패</string>
+    <string name="stack_remove_from_stack">스택에서 제거</string>
+    <string name="stack_section_header">스택</string>
+    <string name="stack_select_at_least_two">스택을 만들려면 동영상을 2개 이상 선택하세요</string>
+    <string name="stack_unstack">스택 해제</string>
+    <string name="stack_unstack_error">스택 해제 실패: %1$s</string>
+    <plurals name="stack_combined_message">
+        <item quantity="other">동영상 %1$d개로 묶음 생성됨</item>
+    </plurals>
+
 </resources>

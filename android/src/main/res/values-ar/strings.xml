@@ -394,4 +394,186 @@
     <string name="scan_scanning_target">جارٍ فحص %1$s…</string>
     <string name="pairing_a_device">جهاز</string>
 
+    <!-- ── Batch operations ───────────────────────────────────────────── -->
+    <string name="batch_add_keyword_hint">إضافة كلمة مفتاحية…</string>
+    <string name="batch_add_to_collection">إضافة إلى مجموعة</string>
+    <string name="batch_add_to_collection_name">إضافة إلى %1$s</string>
+    <string name="batch_apply_keyword">تطبيق الكلمة المفتاحية: %1$s</string>
+    <string name="batch_existing_keywords">الكلمات المفتاحية الموجودة — انقر للتطبيق</string>
+    <string name="batch_organize">تنظيم مقاطع الفيديو المحددة</string>
+    <string name="batch_share">مشاركة مقاطع الفيديو المحددة</string>
+    <string name="batch_share_failed">تعذر تجهيز الملفات للمشاركة</string>
+    <string name="batch_share_preparing">جارٍ تجهيز %1$d مقطع فيديو…</string>
+    <string name="batch_share_title">مشاركة %1$d مقطع فيديو</string>
+    <plurals name="batch_organize_title">
+        <item quantity="zero">تنظيم مقاطع الفيديو</item>
+        <item quantity="one">تنظيم مقطع فيديو واحد</item>
+        <item quantity="two">تنظيم مقطعَي فيديو</item>
+        <item quantity="few">تنظيم %1$d مقاطع فيديو</item>
+        <item quantity="many">تنظيم %1$d مقطع فيديو</item>
+        <item quantity="other">تنظيم %1$d مقطع فيديو</item>
+    </plurals>
+
+    <!-- ── Card menu / stats ──────────────────────────────────────────── -->
+    <string name="card_clear_color_label_desc">مسح تسمية اللون</string>
+    <string name="card_clear_rating_desc">مسح التقييم</string>
+    <string name="card_menu_color_label">تسمية اللون</string>
+    <string name="card_menu_label_blue">أزرق</string>
+    <string name="card_menu_label_green">أخضر</string>
+    <string name="card_menu_label_none">بلا</string>
+    <string name="card_menu_label_purple">بنفسجي</string>
+    <string name="card_menu_label_red">أحمر</string>
+    <string name="card_menu_label_yellow">أصفر</string>
+    <string name="card_menu_rating">التقييم</string>
+    <string name="card_menu_rating_none">بلا</string>
+    <string name="card_set_color_label_desc">تعيين تسمية اللون: %1$s</string>
+    <string name="card_set_rating_desc">تعيين تقييم %1$d نجمة</string>
+    <string name="card_stat_tap_to_change">انقر لتغيير الخانة</string>
+    <string name="card_stats_sheet_subtitle">اختر الإحصاءات الأربعة المعروضة في أعلى كل بطاقة.</string>
+    <string name="card_stats_sheet_title">إحصاءات البطاقة</string>
+    <string name="card_stats_slot_label">خانة %1$d</string>
+
+    <!-- ── Detail — collections / visuals / share / tag picker ──────── -->
+    <string name="detail_collection_toggle">تبديل عضوية المجموعة: %1$s</string>
+    <string name="detail_graphs_analyzing_audio">جارٍ تحليل الصوت…</string>
+    <string name="detail_graphs_analyzing_frames">جارٍ تحليل الإطارات…</string>
+    <string name="detail_graphs_brightness">السطوع</string>
+    <string name="detail_graphs_color_over_time">اللون عبر الزمن</string>
+    <string name="detail_graphs_loudness">مستوى الصوت</string>
+    <string name="detail_graphs_rgb_channels">قنوات RGB</string>
+    <string name="detail_graphs_select_video">اختر مقطع فيديو</string>
+    <string name="detail_no_collections">لا توجد مجموعات بعد.</string>
+    <string name="detail_section_collections">المجموعات</string>
+    <string name="detail_section_visuals">المرئيات</string>
+    <string name="detail_share_failed">تعذر تنزيل الفيديو للمشاركة: %1$s</string>
+    <string name="detail_share_no_connection">غير متصل بالخادم — لا يمكن مشاركة الفيديو البعيد.</string>
+    <string name="detail_share_preparing">جارٍ تجهيز الملف للمشاركة…</string>
+    <string name="detail_tag_picker_add_button">إضافة</string>
+    <string name="detail_tag_picker_existing">الكلمات المفتاحية الموجودة</string>
+    <string name="detail_tag_picker_new_hint">إضافة كلمة مفتاحية…</string>
+    <string name="detail_tag_picker_no_others">لا توجد كلمات مفتاحية أخرى بعد — اكتب واحدة أعلاه.</string>
+
+    <!-- ── Errors ─────────────────────────────────────────────────────── -->
+    <string name="err_apply_keyword">فشل إنشاء/تطبيق الكلمة المفتاحية \'%1$s\'</string>
+    <string name="err_apply_keyword_detail">فشل تطبيق الكلمة المفتاحية: %1$s</string>
+    <string name="err_load_grid_settings">فشل تحميل إعدادات إحصاءات البطاقة: %1$s</string>
+    <string name="err_save_grid_settings">فشل حفظ إعدادات إحصاءات البطاقة: %1$s</string>
+
+    <!-- ── Filter attributes ──────────────────────────────────────────── -->
+    <string name="filter_attr_audio">الصوت</string>
+    <string name="filter_attr_full_res">الدقة الكاملة</string>
+    <string name="filter_attr_has">لديه %1$s</string>
+    <string name="filter_attr_keywords">الكلمات المفتاحية</string>
+    <string name="filter_attr_location">الموقع</string>
+    <string name="filter_attr_no">لا %1$s</string>
+    <string name="filter_attr_no_label">لا</string>
+    <string name="filter_attr_proxies">الوكلاء</string>
+    <string name="filter_attr_yes">لديه</string>
+    <string name="filter_attributes">الخصائص</string>
+    <string name="filter_color_label">تسمية اللون</string>
+    <string name="filter_orientation">الاتجاه</string>
+    <string name="filter_orientation_any">أي</string>
+    <string name="filter_orientation_landscape">أفقي</string>
+    <string name="filter_orientation_portrait">عمودي</string>
+
+    <!-- ── Grid — card stats / density ───────────────────────────────── -->
+    <string name="grid_card_stats">إحصاءات البطاقة</string>
+    <string name="grid_configure_card_stats">تهيئة إحصاءات البطاقة</string>
+    <string name="grid_density_label">حجم الصورة المصغرة</string>
+    <string name="grid_density_larger">صور مصغرة أكبر</string>
+    <string name="grid_density_menu_item">حجم الصورة المصغرة</string>
+    <string name="grid_density_sheet_subtitle">اسحب لضبط عدد الأعمدة على الشاشة.</string>
+    <string name="grid_density_sheet_title">حجم الصورة المصغرة</string>
+    <string name="grid_density_smaller">صور مصغرة أصغر</string>
+    <string name="grid_smart_collection_empty">لا توجد مقاطع فيديو تطابق هذه المجموعة الذكية</string>
+
+    <!-- ── Grid stat field names ──────────────────────────────────────── -->
+    <string name="grid_stat_aperture">فتحة العدسة</string>
+    <string name="grid_stat_audio_codec">ترميز الصوت</string>
+    <string name="grid_stat_bitrate">معدل البت</string>
+    <string name="grid_stat_camera">الكاميرا</string>
+    <string name="grid_stat_capture_date">تاريخ الالتقاط</string>
+    <string name="grid_stat_capture_year">سنة الالتقاط</string>
+    <string name="grid_stat_duration">المدة</string>
+    <string name="grid_stat_exposure">التعرض</string>
+    <string name="grid_stat_file_size">حجم الملف</string>
+    <string name="grid_stat_filename">اسم الملف</string>
+    <string name="grid_stat_focal_length">البعد البؤري</string>
+    <string name="grid_stat_fps">إطار/ث</string>
+    <string name="grid_stat_frame_count">عدد الإطارات</string>
+    <string name="grid_stat_iso">ISO</string>
+    <string name="grid_stat_lens">العدسة</string>
+    <string name="grid_stat_location">الموقع</string>
+    <string name="grid_stat_none">(فارغ)</string>
+    <string name="grid_stat_pixel_dimensions">أبعاد البكسل</string>
+    <string name="grid_stat_resolution">الدقة</string>
+    <string name="grid_stat_video_codec">ترميز الفيديو</string>
+
+    <!-- ── Map ────────────────────────────────────────────────────────── -->
+    <string name="map_switch_to_satellite">التبديل إلى صور الأقمار الاصطناعية</string>
+    <string name="map_switch_to_standard">التبديل إلى الخريطة العادية</string>
+
+    <!-- ── Offline ─────────────────────────────────────────────────────── -->
+    <string name="offline_available_offline">متاح بدون اتصال</string>
+    <string name="offline_browse_downloads">تصفح التنزيلات</string>
+    <string name="offline_download_button">تنزيل للاستخدام بدون اتصال</string>
+    <string name="offline_downloaded_quality">تم التنزيل بجودة</string>
+    <string name="offline_downloading">جارٍ التنزيل…</string>
+    <string name="offline_empty_desc">أثناء الاتصال بخادم، اختر \"تنزيل للاستخدام بدون اتصال\" على أي مقطع فيديو لمشاهدته هنا بدون اتصال.</string>
+    <string name="offline_empty_title">لا توجد تنزيلات</string>
+    <string name="offline_file_missing">هذا التنزيل غير موجود على الجهاز.</string>
+    <string name="offline_quality_720p">720p (أصغر حجمًا)</string>
+    <string name="offline_quality_original">الأصلي</string>
+    <string name="offline_quality_title">جودة التنزيل</string>
+    <string name="offline_remove_body">سيتم حذف \"%1$s\" من هذا الجهاز.</string>
+    <string name="offline_remove_confirm">إزالة</string>
+    <string name="offline_remove_download">إزالة التنزيل</string>
+    <string name="offline_remove_title">إزالة التنزيل؟</string>
+    <string name="offline_section_title">غير متصل</string>
+    <string name="offline_title">المُنزَّل</string>
+
+    <!-- ── Settings — forget server ──────────────────────────────────── -->
+    <string name="settings_forget_server_confirm_action">نسيان</string>
+    <string name="settings_forget_server_confirm_body">سيؤدي هذا إلى مسح بيانات الاعتماد المحفوظة والعودة إلى شاشة الاتصال. ستحتاج إلى إعادة الإقران للاتصال مجددًا.</string>
+    <string name="settings_forget_server_confirm_title">نسيان هذا الخادم؟</string>
+    <string name="settings_server_forgotten">تم نسيان الخادم</string>
+
+    <!-- ── Sort field names (new) ─────────────────────────────────────── -->
+    <string name="sort_aperture">فتحة العدسة</string>
+    <string name="sort_bitrate">معدل البت</string>
+    <string name="sort_exposure_time">وقت التعرض</string>
+    <string name="sort_focal_length">البعد البؤري</string>
+    <string name="sort_iso">ISO</string>
+    <string name="sort_keyword">الكلمة المفتاحية</string>
+    <string name="sort_lens">العدسة</string>
+    <string name="sort_resolution">الدقة</string>
+
+    <!-- ── Stack operations ───────────────────────────────────────────── -->
+    <string name="stack_combine_error">فشل التكديس: %1$s</string>
+    <string name="stack_combine_failed">فشل إنشاء المجموعة</string>
+    <string name="stack_combine_into_stack">دمج في مجموعة</string>
+    <string name="stack_load_members_error">تعذر تحميل أعضاء المجموعة: %1$s</string>
+    <string name="stack_members_preferred_label">القائد</string>
+    <string name="stack_members_promote_action">ترقية</string>
+    <string name="stack_members_remove_action">إزالة</string>
+    <string name="stack_members_title">أعضاء المجموعة</string>
+    <string name="stack_promote_error">فشلت الترقية: %1$s</string>
+    <string name="stack_promote_failed">فشل ترقية الفيديو</string>
+    <string name="stack_promote_to_leader">ترقية إلى قائد</string>
+    <string name="stack_remove_error">فشلت الإزالة: %1$s</string>
+    <string name="stack_remove_failed">فشل الإزالة من المجموعة</string>
+    <string name="stack_remove_from_stack">إزالة من المجموعة</string>
+    <string name="stack_section_header">المجموعة</string>
+    <string name="stack_select_at_least_two">حدد مقطعَي فيديو على الأقل لإنشاء مجموعة</string>
+    <string name="stack_unstack">فك التجميع</string>
+    <string name="stack_unstack_error">فشل فك التجميع: %1$s</string>
+    <plurals name="stack_combined_message">
+        <item quantity="zero">تم الدمج في مجموعة من صفر مقاطع</item>
+        <item quantity="one">تم الدمج في مجموعة من مقطع فيديو واحد</item>
+        <item quantity="two">تم الدمج في مجموعة من مقطعَي فيديو</item>
+        <item quantity="few">تم الدمج في مجموعة من %1$d مقاطع فيديو</item>
+        <item quantity="many">تم الدمج في مجموعة من %1$d مقطع فيديو</item>
+        <item quantity="other">تم الدمج في مجموعة من %1$d مقطع فيديو</item>
+    </plurals>
+
 </resources>
