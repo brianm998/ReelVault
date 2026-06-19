@@ -402,7 +402,8 @@ impl ReelVaultService {
                     iso, aperture, exposure_time_s, focal_length_mm,
                     exposure_mode, exposure_program, white_balance,
                     color_transfer, color_primaries, dynamic_range, timecode_start, capture_fps,
-                    bit_depth, audio_bit_depth, audio_language, audio_track_count, spatial, projection
+                    bit_depth, audio_bit_depth, audio_language, audio_track_count, spatial, projection,
+                    gps_track, gps_track_distance_m
                  FROM metadata WHERE video_id = ?",
                 [video_id],
                 |row| {
@@ -442,6 +443,8 @@ impl ReelVaultService {
                         row.get::<_, Option<i32>>(32)?,
                         row.get::<_, i32>(33)? != 0,
                         row.get::<_, Option<String>>(34)?,
+                        row.get::<_, Option<String>>(35)?,
+                        row.get::<_, Option<f64>>(36)?,
                     ))
                 },
             )
@@ -465,11 +468,13 @@ impl ReelVaultService {
              iso, aperture, exposure_time_s, focal_length_mm,
              exposure_mode, exposure_program, white_balance,
              color_transfer, color_primaries, dynamic_range, timecode_start, capture_fps,
-             bit_depth, audio_bit_depth, audio_language, audio_track_count, spatial, projection) =
+             bit_depth, audio_bit_depth, audio_language, audio_track_count, spatial, projection,
+             gps_track, gps_track_distance_m) =
             row.unwrap_or((0, None, None, 0, 0, 0.0, 0, None, false, 0, 0, None, None, None, None, None, None,
                            None, None, None, None, None, None, None,
                            None, None, None, None, None,
-                           None, None, None, None, false, None));
+                           None, None, None, None, false, None,
+                           None, None));
 
         let camera_model_str = camera_model.unwrap_or_default();
         // Resolve marketing name with the user's custom overrides
@@ -532,6 +537,8 @@ impl ReelVaultService {
             audio_track_count: audio_track_count.unwrap_or(0),
             spatial,
             projection: projection.unwrap_or_default(),
+            gps_track: gps_track.unwrap_or_default(),
+            gps_track_distance_m: gps_track_distance_m.unwrap_or(0.0),
             tags,
             collections: db.get_video_collections(video_id).unwrap_or_default(),
             notes,
@@ -683,7 +690,8 @@ impl ReelVaultService {
                             lens_model, iso, aperture, exposure_time_s, focal_length_mm,
                             bitrate, COALESCE(frame_count, 0),
                             dynamic_range, timecode_start, capture_fps,
-                            bit_depth, audio_bit_depth, audio_language, audio_track_count, spatial, projection
+                            bit_depth, audio_bit_depth, audio_language, audio_track_count, spatial, projection,
+                            gps_track_distance_m
                      FROM metadata WHERE video_id IN ({ph})"
                 )) {
                     if let Ok(rows) = stmt.query_map(
@@ -718,6 +726,7 @@ impl ReelVaultService {
                                     audio_track_count: row.get::<_, Option<i32>>(24)?,
                                     spatial: row.get::<_, Option<i32>>(25)?.unwrap_or(0) != 0,
                                     projection: row.get::<_, Option<String>>(26)?,
+                                    gps_track_distance_m: row.get::<_, Option<f64>>(27)?,
                                 },
                             ))
                         },
@@ -981,6 +990,7 @@ impl ReelVaultService {
                     audio_track_count: m.audio_track_count.unwrap_or(0),
                     spatial: m.spatial,
                     projection: m.projection.unwrap_or_default(),
+                    gps_track_distance_m: m.gps_track_distance_m.unwrap_or(0.0),
                 }
             })
             .collect()
@@ -1028,6 +1038,7 @@ struct MetaFields {
     audio_track_count: Option<i32>,
     spatial: bool,
     projection: Option<String>,
+    gps_track_distance_m: Option<f64>,
 }
 
 /// Chunk size for `IN (?,…)` lists — comfortably below SQLite's bind-variable

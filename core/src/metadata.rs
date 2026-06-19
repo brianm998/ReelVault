@@ -241,6 +241,14 @@ impl MetadataExtractor {
             creation_date = dji.creation_date_ms;
         }
 
+        // GoPro GPMF movement path: a downsampled JSON polyline + its total
+        // ground distance, for a track overlay on the map. NULL when the clip
+        // has no GPS telemetry.
+        let gps_track = (!gpmf.gps_track.is_empty())
+            .then(|| serde_json::to_string(&gpmf.gps_track).ok())
+            .flatten();
+        let gps_track_distance_m = (gpmf.track_distance_m > 0.0).then_some(gpmf.track_distance_m);
+
         // Recover a missing make prefix. Some files carry only the model
         // (a sidecar wrote `tiff:Model` but no make, and ffprobe had none
         // either), leaving a bare code like "ILCE-7SM2". When that code
@@ -403,10 +411,10 @@ impl MetadataExtractor {
               capture_fps, timecode_start,
               audio_channels, audio_sample_rate, audio_bit_depth, audio_language, audio_track_count,
               creation_date, camera_model,
-              lens_model, gps_latitude, gps_longitude, gps_altitude,
+              lens_model, gps_latitude, gps_longitude, gps_altitude, gps_track, gps_track_distance_m,
               iso, aperture, exposure_time_s, focal_length_mm,
               exposure_mode, exposure_program, white_balance, metadata_json)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(video_id) DO UPDATE SET
              duration_ms=excluded.duration_ms,
              frame_count=excluded.frame_count,
@@ -441,6 +449,8 @@ impl MetadataExtractor {
              gps_latitude=COALESCE(excluded.gps_latitude, gps_latitude),
              gps_longitude=COALESCE(excluded.gps_longitude, gps_longitude),
              gps_altitude=COALESCE(excluded.gps_altitude, gps_altitude),
+             gps_track=excluded.gps_track,
+             gps_track_distance_m=excluded.gps_track_distance_m,
              iso=excluded.iso,
              aperture=excluded.aperture,
              exposure_time_s=excluded.exposure_time_s,
@@ -485,6 +495,8 @@ impl MetadataExtractor {
                 gps_latitude,
                 gps_longitude,
                 gps_altitude,
+                gps_track,
+                gps_track_distance_m,
                 final_iso,
                 final_aperture,
                 final_exposure_time_s,

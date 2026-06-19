@@ -1382,7 +1382,8 @@ public class VideoRepository: ObservableObject {
             audioLanguage: p.audioLanguage,
             audioTrackCount: Int(p.audioTrackCount),
             spatial: p.spatial,
-            projection: p.projection
+            projection: p.projection,
+            gpsTrackDistanceM: p.gpsTrackDistanceM
         )
     }
 
@@ -1434,7 +1435,9 @@ public class VideoRepository: ObservableObject {
             audioLanguage: p.audioLanguage,
             audioTrackCount: Int(p.audioTrackCount),
             spatial: p.spatial,
-            projection: p.projection
+            projection: p.projection,
+            gpsTrack: p.gpsTrack,
+            gpsTrackDistanceM: p.gpsTrackDistanceM
         )
     }
 

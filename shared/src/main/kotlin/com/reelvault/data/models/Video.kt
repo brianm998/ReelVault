@@ -104,10 +104,19 @@ data class VideoSummary(
     val spatial: Boolean = false,
     /** Spherical/360 projection ("equirectangular", …); empty if not 360. */
     val projection: String = "",
+    /** GoPro/drone GPS-track total distance in metres (0 if none); the full
+     *  polyline is detail-only (VideoMetadata.gpsTrack). */
+    val gpsTrackDistanceM: Double = 0.0,
 ) {
     val isInGroup: Boolean get() = groupId.isNotEmpty() && groupSize > 1
     /** True when the clip is 360°/spherical. */
     val is360: Boolean get() = projection.isNotEmpty()
+    /** "0.30 km" / "180 m" when a GPS track distance is known, else null. */
+    val gpsTrackDistanceLabel: String? get() = when {
+        gpsTrackDistanceM <= 0 -> null
+        gpsTrackDistanceM >= 1000 -> "%.2f km".format(gpsTrackDistanceM / 1000)
+        else -> "%.0f m".format(gpsTrackDistanceM)
+    }
     /** "240 → 30 fps" when captured faster than playback (slow-motion), else null. */
     val slowMotionLabel: String? get() =
         if (captureFps > fps + 1 && fps > 0) "${Math.round(captureFps)} → ${Math.round(fps)} fps" else null
@@ -232,10 +241,20 @@ data class VideoMetadata(
     val spatial: Boolean = false,
     /** Spherical/360 projection ("equirectangular", …); empty if not 360. */
     val projection: String = "",
+    /** GoPro/drone movement path as a JSON polyline `[[lat,lon],…]` (empty if
+     *  none), and its total ground distance in metres (0 if none). */
+    val gpsTrack: String = "",
+    val gpsTrackDistanceM: Double = 0.0,
 ) {
     val resolution: String get() = "$width x $height"
     /** True when the clip is 360°/spherical. */
     val is360: Boolean get() = projection.isNotEmpty()
+    /** "0.30 km" / "180 m" when a GPS track distance is known, else null. */
+    val gpsTrackDistanceLabel: String? get() = when {
+        gpsTrackDistanceM <= 0 -> null
+        gpsTrackDistanceM >= 1000 -> "%.2f km".format(gpsTrackDistanceM / 1000)
+        else -> "%.0f m".format(gpsTrackDistanceM)
+    }
 
     /** "240 → 30 fps" when captured faster than playback (slow-motion), else
      *  null. The 1 fps margin avoids false positives from rounding. */

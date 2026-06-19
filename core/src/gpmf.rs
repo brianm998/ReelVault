@@ -55,8 +55,14 @@ pub struct GpmfMetadata {
     pub device_name: Option<String>,
     /// First valid GPS fix: (latitude, longitude, optional altitude in metres),
     /// from the `GPS5` stream scaled by its `SCAL` divisors. `None` when the
-    /// clip carries no GPS lock in the first chunk.
+    /// clip carries no GPS lock.
     pub gps: Option<(f64, f64, Option<f64>)>,
+    /// The full movement path: every valid GPS sample over the clip, as
+    /// (latitude, longitude), downsampled to a sane point count. Empty when
+    /// there's no GPS. Drives a flight/track polyline on the map.
+    pub gps_track: Vec<(f64, f64)>,
+    /// Total ground distance along `gps_track` in metres (great-circle sum).
+    pub track_distance_m: f64,
 }
 
 impl GpmfMetadata {
@@ -64,6 +70,10 @@ impl GpmfMetadata {
         self.device_name.is_none() && self.gps.is_none()
     }
 }
+
+/// Largest point count we keep for a stored track — enough for a smooth map
+/// polyline without bloating the row (GoPro logs GPS at ~18 Hz).
+const MAX_TRACK_POINTS: usize = 512;
 
 /// Read the GoPro GPMF track from `path`, returning what we recovered. Never
 /// errors: a missing/unreadable/`gpmd`-less file yields an empty result, like
@@ -89,7 +99,9 @@ fn read_inner(path: &Path) -> std::io::Result<Option<GpmfMetadata>> {
         None => return Ok(None), // no GPMF track
     };
 
-    let payload = match read_first_chunk(&mut f, stbl)? {
+    // Read every GPMF sample (all chunks) so we can build the full GPS track,
+    // not just a single fix. Bounded by MAX_GPMF_BYTES.
+    let payload = match read_all_chunks(&mut f, stbl)? {
         Some(p) => p,
         None => return Ok(None),
     };
@@ -202,65 +214,87 @@ fn be_u64(b: &[u8], off: usize) -> Option<u64> {
         .map(|s| u64::from_be_bytes([s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7]]))
 }
 
-/// Read the bytes of the GPMF track's **first chunk** from `mdat`, using the
-/// `stbl` sub-tables: the first chunk's file offset (`stco`/`co64`), how many
-/// samples it holds (`stsc`), and their sizes (`stsz`).
-fn read_first_chunk<R: Read + Seek>(reader: &mut R, stbl: (u64, u64)) -> std::io::Result<Option<Vec<u8>>> {
+/// Read **all** GPMF samples (every chunk) from `mdat` and concatenate them,
+/// using the `stbl` sub-tables: chunk offsets (`stco`/`co64`), the
+/// sample-to-chunk map (`stsc`), and sample sizes (`stsz`). Bounded by
+/// `MAX_GPMF_BYTES` — a long clip's telemetry is at most a few MB.
+fn read_all_chunks<R: Read + Seek>(reader: &mut R, stbl: (u64, u64)) -> std::io::Result<Option<Vec<u8>>> {
     let (sbs, sbe) = stbl;
 
-    // First chunk offset.
-    let first_offset = if let Some((s, e)) = find_child(reader, sbs, sbe, b"stco")? {
+    // Chunk offsets (stco = 32-bit, co64 = 64-bit).
+    let offsets: Vec<u64> = if let Some((s, e)) = find_child(reader, sbs, sbe, b"stco")? {
         let p = read_payload(reader, s, e, MAX_TABLE_BYTES)?;
-        match be_u32(&p, 8) {
-            Some(o) => o as u64,
-            None => return Ok(None),
-        }
+        let n = be_u32(&p, 4).unwrap_or(0) as usize;
+        (0..n).filter_map(|i| be_u32(&p, 8 + i * 4).map(|v| v as u64)).collect()
     } else if let Some((s, e)) = find_child(reader, sbs, sbe, b"co64")? {
         let p = read_payload(reader, s, e, MAX_TABLE_BYTES)?;
-        match be_u64(&p, 8) {
-            Some(o) => o,
-            None => return Ok(None),
-        }
+        let n = be_u32(&p, 4).unwrap_or(0) as usize;
+        (0..n).filter_map(|i| be_u64(&p, 8 + i * 8)).collect()
     } else {
         return Ok(None);
     };
-
-    // Samples in the first chunk (stsc first entry's samples_per_chunk).
-    let samples_in_chunk = match find_child(reader, sbs, sbe, b"stsc")? {
-        Some((s, e)) => {
-            let p = read_payload(reader, s, e, MAX_TABLE_BYTES)?;
-            // entry 0 at offset 8: first_chunk(4), samples_per_chunk(4), sdi(4)
-            be_u32(&p, 12).unwrap_or(1).max(1)
-        }
-        None => 1,
-    } as usize;
-
-    // Sample sizes (stsz): uniform when sample_size != 0, else a table.
-    let (sbs2, sbe2) = match find_child(reader, sbs, sbe, b"stsz")? {
-        Some(r) => r,
-        None => return Ok(None),
-    };
-    let stsz = read_payload(reader, sbs2, sbe2, MAX_TABLE_BYTES)?;
-    let uniform = be_u32(&stsz, 4).unwrap_or(0);
-    let bytes: u64 = if uniform != 0 {
-        uniform as u64 * samples_in_chunk as u64
-    } else {
-        // Sum the first `samples_in_chunk` per-sample sizes (table starts at 12).
-        (0..samples_in_chunk)
-            .filter_map(|i| be_u32(&stsz, 12 + i * 4).map(|v| v as u64))
-            .sum()
-    };
-    let bytes = bytes.min(MAX_GPMF_BYTES);
-    if bytes == 0 {
+    if offsets.is_empty() {
         return Ok(None);
     }
 
-    let mut buf = vec![0u8; bytes as usize];
-    reader.seek(SeekFrom::Start(first_offset))?;
-    // A short read is fine — parse whatever we got.
-    let n = read_full(reader, &mut buf);
-    buf.truncate(n);
-    Ok((!buf.is_empty()).then_some(buf))
+    // stsc entries: (first_chunk, samples_per_chunk). Sorted by first_chunk.
+    let stsc: Vec<(u32, u32)> = match find_child(reader, sbs, sbe, b"stsc")? {
+        Some((s, e)) => {
+            let p = read_payload(reader, s, e, MAX_TABLE_BYTES)?;
+            let n = be_u32(&p, 4).unwrap_or(0) as usize;
+            (0..n)
+                .filter_map(|i| {
+                    let fc = be_u32(&p, 8 + i * 12)?;
+                    let spc = be_u32(&p, 12 + i * 12)?;
+                    Some((fc, spc))
+                })
+                .collect()
+        }
+        None => vec![(1, 1)],
+    };
+    if stsc.is_empty() {
+        return Ok(None);
+    }
+
+    // stsz: uniform size, or a per-sample table.
+    let (s2, e2) = match find_child(reader, sbs, sbe, b"stsz")? {
+        Some(r) => r,
+        None => return Ok(None),
+    };
+    let stsz = read_payload(reader, s2, e2, MAX_TABLE_BYTES)?;
+    let uniform = be_u32(&stsz, 4).unwrap_or(0);
+    let sample_size = |idx: usize| -> u64 {
+        if uniform != 0 {
+            uniform as u64
+        } else {
+            be_u32(&stsz, 12 + idx * 4).unwrap_or(0) as u64
+        }
+    };
+    // samples_per_chunk for 1-based chunk `c`: the last stsc entry whose
+    // first_chunk <= c.
+    let spc_for = |c: u32| -> u32 {
+        stsc.iter().rev().find(|(fc, _)| *fc <= c).map(|(_, spc)| *spc).unwrap_or(1)
+    };
+
+    let mut out: Vec<u8> = Vec::new();
+    let mut sample_idx = 0usize;
+    for (ci, &off) in offsets.iter().enumerate() {
+        let spc = spc_for(ci as u32 + 1) as usize;
+        let chunk_bytes: u64 = (0..spc).map(|s| sample_size(sample_idx + s)).sum();
+        sample_idx += spc;
+        if chunk_bytes == 0 {
+            continue;
+        }
+        if out.len() as u64 + chunk_bytes > MAX_GPMF_BYTES {
+            break; // stay bounded
+        }
+        let mut buf = vec![0u8; chunk_bytes as usize];
+        reader.seek(SeekFrom::Start(off))?;
+        let n = read_full(reader, &mut buf);
+        buf.truncate(n);
+        out.extend_from_slice(&buf);
+    }
+    Ok((!out.is_empty()).then_some(out))
 }
 
 /// Read as many bytes as possible into `buf`; returns the count.
@@ -291,15 +325,46 @@ struct Acc {
     /// Device active when the accepted GPS fix was read.
     gps_device: Option<String>,
     gps: Option<(f64, f64, Option<f64>)>,
+    /// Every valid GPS sample over the clip, in order.
+    track: Vec<(f64, f64)>,
 }
 
 impl Acc {
     fn finish(self) -> GpmfMetadata {
+        let track = downsample(&self.track, MAX_TRACK_POINTS);
+        let track_distance_m = track_distance(&self.track); // distance from the full series
         GpmfMetadata {
             device_name: self.gps_device.or(self.first_real_device),
             gps: self.gps,
+            gps_track: track,
+            track_distance_m,
         }
     }
+}
+
+/// Keep at most `max` evenly-spaced points (returns the input when already
+/// short enough) — same idea as the loudness downsampler.
+fn downsample(pts: &[(f64, f64)], max: usize) -> Vec<(f64, f64)> {
+    if pts.len() <= max {
+        return pts.to_vec();
+    }
+    (0..max).map(|i| pts[i * pts.len() / max]).collect()
+}
+
+/// Great-circle distance (metres) summed along the point series.
+fn track_distance(pts: &[(f64, f64)]) -> f64 {
+    const R: f64 = 6_371_000.0;
+    pts.windows(2)
+        .map(|w| {
+            let (la1, lo1) = (w[0].0.to_radians(), w[0].1.to_radians());
+            let (la2, lo2) = (w[1].0.to_radians(), w[1].1.to_radians());
+            let dlat = la2 - la1;
+            let dlon = lo2 - lo1;
+            let a = (dlat / 2.0).sin().powi(2)
+                + la1.cos() * la2.cos() * (dlon / 2.0).sin().powi(2);
+            2.0 * R * a.sqrt().min(1.0).asin()
+        })
+        .sum()
 }
 
 /// True for the pseudo-devices GoPro emits alongside the real camera record.
@@ -368,18 +433,13 @@ fn handle_leaf(
         b"GPSF" => {
             acc.last_gpsf = read_be_int(type_, data).map(|v| v as u32);
         }
-        b"GPS5" if acc.gps.is_none() => {
-            // First sample = [lat, lon, alt, 2D speed, 3D speed] as int32, each
-            // divided by the matching SCAL divisor. Skip if the fix says no lock.
-            if matches!(acc.last_gpsf, Some(0)) {
+        b"GPS5" => {
+            // Each sample = [lat, lon, alt, 2D speed, 3D speed] as int32, each
+            // divided by the matching SCAL divisor. One GPSF (fix) covers the
+            // whole element — skip the lot if there's no lock.
+            if matches!(acc.last_gpsf, Some(0)) || struct_size < 12 {
                 return;
             }
-            if struct_size < 12 {
-                return; // need at least lat/lon/alt
-            }
-            let raw: Vec<i64> = (0..struct_size / 4)
-                .filter_map(|i| read_be_int(b'l', &data[i * 4..i * 4 + 4]))
-                .collect();
             let scal = |i: usize| -> f64 {
                 // SCAL may carry one divisor for all components or one each.
                 let s = if acc.last_scal.len() == 1 {
@@ -389,15 +449,23 @@ fn handle_leaf(
                 };
                 if s.abs() < f64::EPSILON { 1.0 } else { s }
             };
-            if raw.len() >= 3 {
-                let lat = raw[0] as f64 / scal(0);
-                let lon = raw[1] as f64 / scal(1);
-                let alt = raw[2] as f64 / scal(2);
-                // Sanity: reject obviously bogus coordinates.
-                if lat.abs() <= 90.0 && lon.abs() <= 180.0 && (lat != 0.0 || lon != 0.0) {
-                    acc.gps = Some((lat, lon, Some(alt)));
+            // Iterate every sample in the element to build the track.
+            for s in 0..repeat {
+                let off = s * struct_size;
+                let Some(rlat) = read_be_int(b'l', &data[off..off + 4]) else { continue };
+                let Some(rlon) = read_be_int(b'l', &data[off + 4..off + 8]) else { continue };
+                let lat = rlat as f64 / scal(0);
+                let lon = rlon as f64 / scal(1);
+                // Reject bogus / null-island coordinates.
+                if lat.abs() > 90.0 || lon.abs() > 180.0 || (lat == 0.0 && lon == 0.0) {
+                    continue;
+                }
+                if acc.gps.is_none() {
+                    let alt = read_be_int(b'l', &data[off + 8..off + 12]).map(|a| a as f64 / scal(2));
+                    acc.gps = Some((lat, lon, alt));
                     acc.gps_device = acc.current_device.clone();
                 }
+                acc.track.push((lat, lon));
             }
         }
         _ => {}
@@ -530,8 +598,16 @@ mod tests {
                 continue;
             }
             let m = read_gpmf(&p);
-            eprintln!("GPMF {name}: device={:?} gps={:?}", m.device_name, m.gps);
+            eprintln!(
+                "GPMF {name}: device={:?} gps={:?} track_points={} distance={:.1}m",
+                m.device_name, m.gps, m.gps_track.len(), m.track_distance_m
+            );
             assert!(m.device_name.is_some(), "{name}: expected a device name");
+            // hero6 is a moving clip — it must yield a multi-point track.
+            if name == "hero6.mp4" {
+                assert!(m.gps_track.len() > 10, "expected a GPS track");
+                assert!(m.track_distance_m > 0.0);
+            }
         }
     }
 }

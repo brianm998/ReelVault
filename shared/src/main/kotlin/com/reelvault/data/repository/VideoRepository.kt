@@ -241,6 +241,7 @@ class VideoRepository(private val channelFactory: ChannelFactory) {
             audioTrackCount = proto.audioTrackCount,
             spatial = proto.spatial,
             projection = proto.projection,
+            gpsTrackDistanceM = proto.gpsTrackDistanceM,
         )
     }
 
@@ -297,6 +298,8 @@ class VideoRepository(private val channelFactory: ChannelFactory) {
             audioTrackCount = proto.audioTrackCount,
             spatial = proto.spatial,
             projection = proto.projection,
+            gpsTrack = proto.gpsTrack,
+            gpsTrackDistanceM = proto.gpsTrackDistanceM,
         )
     }
 

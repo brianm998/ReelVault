@@ -227,6 +227,9 @@ struct DetailView: View {
                 if metadata.is360 {
                     MetadataItemView(label: "360° Video", value: metadata.projection.capitalized)
                 }
+                if let track = metadata.gpsTrackDistanceLabel {
+                    MetadataItemView(label: "GPS Track", value: track)
+                }
                 if !metadata.dynamicRange.isEmpty {
                     MetadataItemView(label: "Dynamic Range", value: metadata.dynamicRange)
                 }

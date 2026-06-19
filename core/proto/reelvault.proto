@@ -354,6 +354,10 @@ message VideoSummary {
   bool spatial = 44;
   // Spherical/360 projection ("equirectangular", …); empty if not 360.
   string projection = 45;
+  // GoPro/drone GPS-track total distance (metres; 0 if none). The full polyline
+  // is detail-only (VideoMetadata.gps_track) — only the distance stat rides the
+  // summary so the inspector can show it without a per-video round-trip.
+  double gps_track_distance_m = 46;
 }
 
 enum FullResolutionStatus {
@@ -491,6 +495,11 @@ message VideoMetadata {
   bool spatial = 50;
   // Spherical/360 projection ("equirectangular", "cubemap", …); empty if not 360.
   string projection = 51;
+  // GoPro/drone movement path: a downsampled JSON polyline `[[lat,lon],…]` for a
+  // map track overlay (empty if no GPS telemetry), and its total ground distance
+  // in metres (0 if none). Detail-only — not on the grid summary.
+  string gps_track = 52;
+  double gps_track_distance_m = 53;
 }
 
 message GetThumbnailRequest {

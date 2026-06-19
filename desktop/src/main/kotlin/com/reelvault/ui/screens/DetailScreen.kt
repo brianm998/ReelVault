@@ -286,6 +286,7 @@ fun DetailScreen(
                     if (metadata.value!!.is360) {
                         MetadataItem("360° Video", metadata.value!!.projection.replaceFirstChar { it.uppercase() })
                     }
+                    metadata.value!!.gpsTrackDistanceLabel?.let { MetadataItem("GPS Track", it) }
                     if (metadata.value!!.dynamicRange.isNotEmpty()) {
                         MetadataItem("Dynamic Range", metadata.value!!.dynamicRange)
                     }

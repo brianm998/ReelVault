@@ -399,6 +399,8 @@ impl Database {
             ("metadata.bit_depth",        "ALTER TABLE metadata ADD COLUMN bit_depth INTEGER"),
             ("metadata.spatial",          "ALTER TABLE metadata ADD COLUMN spatial INTEGER DEFAULT 0"),
             ("metadata.projection",       "ALTER TABLE metadata ADD COLUMN projection TEXT"),
+            ("metadata.gps_track",        "ALTER TABLE metadata ADD COLUMN gps_track TEXT"),
+            ("metadata.gps_track_distance_m", "ALTER TABLE metadata ADD COLUMN gps_track_distance_m REAL"),
             ("metadata.audio_bit_depth",  "ALTER TABLE metadata ADD COLUMN audio_bit_depth INTEGER"),
             ("metadata.audio_language",   "ALTER TABLE metadata ADD COLUMN audio_language TEXT"),
             ("metadata.audio_track_count","ALTER TABLE metadata ADD COLUMN audio_track_count INTEGER"),

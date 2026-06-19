@@ -77,6 +77,8 @@ CREATE TABLE IF NOT EXISTS metadata (
   gps_latitude REAL,
   gps_longitude REAL,
   gps_altitude REAL,
+  gps_track TEXT,             -- downsampled movement path as JSON [[lat,lon],…] (GoPro GPMF); NULL if none
+  gps_track_distance_m REAL,  -- great-circle distance summed along the track, metres
   -- Photo-style EXIF, sourced from an embedded XMP packet (read by xmp.rs).
   -- These are populated for videos whose encoder wrote XMP-EXIF into the
   -- MP4/MOV (e.g. via exiftool); NULL otherwise. ffprobe doesn't surface

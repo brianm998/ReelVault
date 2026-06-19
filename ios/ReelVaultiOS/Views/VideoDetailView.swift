@@ -1341,6 +1341,9 @@ struct VideoMetadataSection: View {
             if video.is360 {
                 detailRow("360° Video", video.projection.capitalized)
             }
+            if let track = video.gpsTrackDistanceLabel {
+                detailRow("GPS Track", track)
+            }
             if video.durationMs > 0 {
                 detailRow("Duration", video.durationFormatted)
             }
