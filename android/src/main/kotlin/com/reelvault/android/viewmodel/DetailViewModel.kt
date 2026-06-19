@@ -134,6 +134,35 @@ class DetailViewModel(
     }
 
     /**
+     * Apply [keyword] (a free-text name) to the currently-loaded video.
+     * Creates the tag if it doesn't exist yet — mirrors the iOS/desktop
+     * `applyKeyword(_, to:)` pattern. Reloads metadata on success so the
+     * tag chips in the inspector refresh immediately.
+     */
+    fun applyKeyword(keyword: String) {
+        val name = keyword.trim()
+        if (name.isEmpty()) return
+        val videoId = _metadata.value?.id ?: return
+        viewModelScope.launch {
+            try {
+                val tag = repository.createTag(name)
+                if (tag == null) {
+                    _error.value = appContext.getString(R.string.err_apply_keyword, name)
+                    return@launch
+                }
+                val ok = repository.tagVideos(listOf(videoId), tag.id)
+                if (ok) {
+                    loadMetadata(videoId)
+                } else {
+                    _error.value = appContext.getString(R.string.err_apply_keyword, name)
+                }
+            } catch (e: Exception) {
+                _error.value = appContext.getString(R.string.err_apply_keyword_detail, e.message ?: "")
+            }
+        }
+    }
+
+    /**
      * Remove [tagId] from the currently-loaded video. Reloads metadata on
      * success.
      */

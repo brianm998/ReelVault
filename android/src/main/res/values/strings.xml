@@ -240,8 +240,12 @@
     <string name="detail_add_tag">Add tag</string>
     <string name="detail_no_tags">No tags</string>
     <string name="detail_remove_tag">Remove %1$s</string>
-    <string name="detail_add_tag_title">Add Tag</string>
-    <string name="detail_all_tags_applied">All tags are already applied.</string>
+    <string name="detail_add_tag_title">Add Keyword</string>
+    <string name="detail_all_tags_applied">All keywords are already applied.</string>
+    <string name="detail_tag_picker_new_hint">Add a keyword…</string>
+    <string name="detail_tag_picker_add_button">Add</string>
+    <string name="detail_tag_picker_existing">EXISTING KEYWORDS</string>
+    <string name="detail_tag_picker_no_others">No other keywords yet — type one above.</string>
     <string name="detail_section_notes">NOTES</string>
     <string name="detail_edit">Edit</string>
     <string name="detail_no_notes">No notes</string>
@@ -380,6 +384,8 @@
     <string name="err_add_to_collection_detail">Failed to add to collection: %1$s</string>
     <string name="err_remove_from_collection">Failed to remove from collection</string>
     <string name="err_remove_from_collection_detail">Failed to remove from collection: %1$s</string>
+    <string name="err_apply_keyword">Failed to create/apply keyword \'%1$s\'</string>
+    <string name="err_apply_keyword_detail">Apply keyword failed: %1$s</string>
     <string name="scan_target_default">library</string>
     <string name="scan_scanning_target">Scanning %1$s…</string>
     <string name="pairing_a_device">A device</string>

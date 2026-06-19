@@ -379,6 +379,7 @@ private fun DetailContent(
                 allTags = allTags,
                 onAddTag = { tagId -> vm.addTag(tagId) },
                 onRemoveTag = { tagId -> vm.removeTag(tagId) },
+                onApplyKeyword = { name -> vm.applyKeyword(name) },
             )
         }
 
@@ -807,6 +808,7 @@ private fun TagsSection(
     allTags: List<com.reelvault.data.models.Tag>,
     onAddTag: (String) -> Unit,
     onRemoveTag: (String) -> Unit,
+    onApplyKeyword: (String) -> Unit,
 ) {
     var showTagPicker by remember { mutableStateOf(false) }
 
@@ -874,6 +876,10 @@ private fun TagsSection(
                 onAddTag(tagId)
                 showTagPicker = false
             },
+            onApplyKeyword = { name ->
+                onApplyKeyword(name)
+                showTagPicker = false
+            },
             onDismiss = { showTagPicker = false },
         )
     }
@@ -902,25 +908,129 @@ private fun TagChip(label: String, onRemove: () -> Unit) {
     )
 }
 
+/**
+ * Keyword picker that lets the user:
+ *  1. Type a free-text keyword name and tap "Add" (or press Enter) to create
+ *     it if it doesn't exist and apply it — mirrors iOS/desktop applyKeyword.
+ *  2. Tap any already-existing keyword from the list below to apply it quickly.
+ */
 @Composable
 private fun TagPickerDialog(
     allTags: List<com.reelvault.data.models.Tag>,
     currentTagIds: List<String>,
     onAddTag: (String) -> Unit,
+    onApplyKeyword: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    var newKeyword by remember { mutableStateOf("") }
     val available = allTags.filter { it.id !in currentTagIds }
+
+    // Suggestions: existing tags whose names contain the typed text (case-insensitive),
+    // excluding tags already on the video. When the field is empty, show all available tags.
+    val suggestions = remember(newKeyword, available) {
+        val q = newKeyword.trim().lowercase()
+        if (q.isEmpty()) available
+        else available.filter { it.name.lowercase().contains(q) }
+    }
+
+    // True when the trimmed input matches an existing tag name exactly.
+    val exactMatch = remember(newKeyword, allTags) {
+        val q = newKeyword.trim()
+        allTags.any { it.name.equals(q, ignoreCase = true) }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.detail_add_tag_title)) },
         text = {
-            if (available.isEmpty()) {
-                Text(stringResource(R.string.detail_all_tags_applied))
-            } else {
-                Column {
-                    available.forEach { tag ->
-                        TextButton(onClick = { onAddTag(tag.id) }) {
-                            Text(tag.name)
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // ── Free-text entry ──────────────────────────────────────
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedTextField(
+                        value = newKeyword,
+                        onValueChange = { newKeyword = it },
+                        placeholder = {
+                            Text(
+                                text = stringResource(R.string.detail_tag_picker_new_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        textStyle = MaterialTheme.typography.bodyMedium,
+                        keyboardOptions = KeyboardOptions(
+                            imeAction = ImeAction.Done,
+                            capitalization = KeyboardCapitalization.None,
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                val name = newKeyword.trim()
+                                if (name.isNotEmpty()) onApplyKeyword(name)
+                            },
+                        ),
+                    )
+                    Button(
+                        onClick = {
+                            val name = newKeyword.trim()
+                            if (name.isNotEmpty()) onApplyKeyword(name)
+                        },
+                        enabled = newKeyword.isNotBlank(),
+                    ) {
+                        Text(stringResource(R.string.detail_tag_picker_add_button))
+                    }
+                }
+
+                // Helper text: tells the user that a new keyword will be created
+                // when the typed name doesn't already exist.
+                if (newKeyword.isNotBlank() && !exactMatch) {
+                    Text(
+                        text = stringResource(R.string.detail_tag_picker_new_hint),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp, start = 4.dp),
+                    )
+                }
+
+                // ── Existing keywords ────────────────────────────────────
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.detail_tag_picker_existing),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+
+                if (suggestions.isEmpty()) {
+                    Text(
+                        text = if (available.isEmpty()) {
+                            stringResource(R.string.detail_all_tags_applied)
+                        } else {
+                            stringResource(R.string.detail_tag_picker_no_others)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    Column {
+                        suggestions.forEach { tag ->
+                            TextButton(
+                                onClick = { onAddTag(tag.id) },
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(
+                                    horizontal = 8.dp,
+                                    vertical = 4.dp,
+                                ),
+                            ) {
+                                Text(
+                                    text = tag.name,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            }
                         }
                     }
                 }
