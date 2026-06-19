@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS metadata (
   dynamic_range TEXT,    -- derived facet label: "SDR" / "HDR (PQ)" / "HDR (HLG)" / "Log (S-Log3)" / "RAW"
   hdr INTEGER DEFAULT 0,  -- derived: 1 when color_transfer is an HDR EOTF
   bit_depth INTEGER,      -- coded video bit depth (8/10/12/16)
+  spatial INTEGER DEFAULT 0,  -- 1 for stereoscopic MV-HEVC (Apple Vision Pro spatial) video
   capture_fps REAL,       -- sensor capture rate; > fps means slow-motion
   timecode_start TEXT,    -- SMPTE start timecode from the tmcd track ("HH:MM:SS:FF")
   audio_channels INTEGER,

@@ -397,6 +397,7 @@ impl Database {
             ("metadata.color_primaries",  "ALTER TABLE metadata ADD COLUMN color_primaries TEXT"),
             ("metadata.dynamic_range",    "ALTER TABLE metadata ADD COLUMN dynamic_range TEXT"),
             ("metadata.bit_depth",        "ALTER TABLE metadata ADD COLUMN bit_depth INTEGER"),
+            ("metadata.spatial",          "ALTER TABLE metadata ADD COLUMN spatial INTEGER DEFAULT 0"),
             ("metadata.audio_bit_depth",  "ALTER TABLE metadata ADD COLUMN audio_bit_depth INTEGER"),
             ("metadata.audio_language",   "ALTER TABLE metadata ADD COLUMN audio_language TEXT"),
             ("metadata.audio_track_count","ALTER TABLE metadata ADD COLUMN audio_track_count INTEGER"),

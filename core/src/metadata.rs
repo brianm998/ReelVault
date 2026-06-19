@@ -278,6 +278,9 @@ impl MetadataExtractor {
         // Coded video bit depth (8 / 10 / 12 …) for grading workflows.
         let bit_depth = Self::video_bit_depth(video_stream);
 
+        // Spatial (stereoscopic MV-HEVC, Apple Vision Pro) video.
+        let spatial = Self::is_spatial(video_stream, &format.tags);
+
         // Color space + HDR. ffprobe reports the transfer characteristic on the
         // video stream; an HDR EOTF (PQ/HLG/DCI) is what makes a clip HDR — both
         // the FX3 ProRes and the iPhone 16 Pro (HLG) footage land here, where
@@ -323,14 +326,14 @@ impl MetadataExtractor {
         conn.execute(
             "INSERT INTO metadata
              (video_id, duration_ms, frame_count, codec_video, codec_audio, width, height, fps, bitrate,
-              color_space, color_transfer, color_primaries, dynamic_range, hdr, bit_depth,
+              color_space, color_transfer, color_primaries, dynamic_range, hdr, bit_depth, spatial,
               capture_fps, timecode_start,
               audio_channels, audio_sample_rate, audio_bit_depth, audio_language, audio_track_count,
               creation_date, camera_model,
               lens_model, gps_latitude, gps_longitude, gps_altitude,
               iso, aperture, exposure_time_s, focal_length_mm,
               exposure_mode, exposure_program, white_balance, metadata_json)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(video_id) DO UPDATE SET
              duration_ms=excluded.duration_ms,
              frame_count=excluded.frame_count,
@@ -346,6 +349,7 @@ impl MetadataExtractor {
              dynamic_range=excluded.dynamic_range,
              hdr=excluded.hdr,
              bit_depth=excluded.bit_depth,
+             spatial=excluded.spatial,
              capture_fps=excluded.capture_fps,
              timecode_start=excluded.timecode_start,
              audio_channels=excluded.audio_channels,
@@ -392,6 +396,7 @@ impl MetadataExtractor {
                 dynamic_range,
                 hdr,
                 bit_depth,
+                spatial,
                 capture_fps,
                 timecode_start,
                 audio_channels,
@@ -680,6 +685,24 @@ impl MetadataExtractor {
     /// HDR-transfer set `thumbnails.rs` uses to decide tone-mapping.
     fn is_hdr_transfer(transfer: Option<&str>) -> bool {
         matches!(transfer, Some("smpte2084") | Some("arib-std-b67") | Some("smpte428"))
+    }
+
+    /// Detect spatial (stereoscopic, Apple Vision Pro) video. Two independent
+    /// signals, either sufficient:
+    ///   1. The video stream exposes more than one view (`view_ids_available`
+    ///      = "0,1") — the MV-HEVC multi-view marker ffprobe surfaces; a 2D clip
+    ///      leaves it empty.
+    ///   2. An explicit `com.apple.quicktime.spatial.*` container tag.
+    /// Verified against a real iPhone 16 Pro spatial clip (both signals present).
+    fn is_spatial(video_stream: &FFProbeStream, format_tags: &Option<FFProbeTagMap>) -> bool {
+        let multiview = video_stream
+            .view_ids_available
+            .as_deref()
+            .is_some_and(|v| v.contains(','));
+        let spatial_tag = format_tags.as_ref().is_some_and(|t| {
+            t.iter().any(|(k, _)| k.to_ascii_lowercase().starts_with("com.apple.quicktime.spatial"))
+        });
+        multiview || spatial_tag
     }
 
     /// Coded video bit depth (8 / 10 / 12 / 16). Prefers ffprobe's
@@ -1047,6 +1070,10 @@ pub struct FFProbeStream {
     /// Audio sample bit depth for PCM (24 for the FX3); 0/absent for
     /// compressed audio (AAC).
     pub bits_per_sample: Option<i32>,
+    /// Comma-separated view ids for multi-view (MV-HEVC) video. "0,1" on a
+    /// spatial/stereoscopic clip; empty on ordinary 2D video. The presence of
+    /// more than one view is how we detect spatial video.
+    pub view_ids_available: Option<String>,
     /// Transfer characteristic (EOTF) and color primaries. The presence of an
     /// HDR transfer (`smpte2084` = PQ, `arib-std-b67` = HLG, `smpte428`) is how
     /// we classify a clip as HDR; primaries (`bt2020`, …) refine the label.

@@ -350,6 +350,8 @@ message VideoSummary {
   int32 audio_bit_depth = 41;
   string audio_language = 42;
   int32 audio_track_count = 43;
+  // True for stereoscopic MV-HEVC (Apple Vision Pro "spatial") video.
+  bool spatial = 44;
 }
 
 enum FullResolutionStatus {
@@ -483,6 +485,8 @@ message VideoMetadata {
   int32 audio_bit_depth = 47;
   string audio_language = 48;
   int32 audio_track_count = 49;
+  // True for stereoscopic MV-HEVC (Apple Vision Pro "spatial") video.
+  bool spatial = 50;
 }
 
 message GetThumbnailRequest {
