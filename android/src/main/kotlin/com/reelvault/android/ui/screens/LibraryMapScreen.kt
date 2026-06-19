@@ -292,21 +292,26 @@ fun LibraryMapScreen(
     // when changed. rememberSaveable survives configuration changes (rotation).
     var isSatellite by rememberSaveable { mutableStateOf(loadSatellitePref(context)) }
 
-    var locations by remember { mutableStateOf<List<VideoLocation>>(emptyList()) }
+    // Filtered locations come from the GridViewModel — they already honour the
+    // active library filter (search, tags, rating, colour, attributes, etc.)
+    // rather than the unfiltered listVideosWithLocations() RPC.
+    val locations by grid.videoLocations.collectAsStateWithLifecycle()
+    val isLoading by grid.isLoadingVideoLocations.collectAsStateWithLifecycle()
+
     var named by remember { mutableStateOf<List<NamedLocation>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
     var loadError by remember { mutableStateOf<String?>(null) }
 
+    // Trigger an immediate filtered-locations load when the map opens so the
+    // pin set is fresh. The named locations are best-effort (just pin labels).
     LaunchedEffect(Unit) {
         try {
-            // Named locations are best-effort; failure just means unlabelled pins.
             named = runCatching { repository.listNamedLocations() }.getOrDefault(emptyList())
-            locations = repository.listVideosWithLocations()
         } catch (e: Exception) {
             loadError = context.getString(R.string.map_load_failed, e.message ?: "")
-        } finally {
-            isLoading = false
         }
+        // Kick a fresh filtered load (no debounce) so the pins reflect the
+        // current grid filter immediately, not a possibly-stale cached value.
+        grid.loadVideoLocationsFiltered()
     }
 
     val groups = remember(locations, named) { buildLocationFilterGroups(locations, named) }

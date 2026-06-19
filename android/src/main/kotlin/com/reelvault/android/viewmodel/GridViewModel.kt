@@ -25,7 +25,9 @@ import com.reelvault.data.models.derivedAttributeMetadataFilters
 import com.reelvault.data.models.METADATA_NEGATE_PREFIX
 import com.reelvault.data.models.METADATA_VALUE_SEPARATOR
 import com.reelvault.data.repository.VideoRepository
+import com.reelvault.data.models.VideoLocation
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -33,6 +35,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val PREF_SORT_FIELD = "sortField"
 private const val PREF_SORT_ASCENDING = "sortAscending"
@@ -183,6 +186,23 @@ class GridViewModel(
 
     private val _mapFocus = MutableStateFlow<Triple<Double, Double, Double>?>(null)
     val mapFocus: StateFlow<Triple<Double, Double, Double>?> = _mapFocus.asStateFlow()
+
+    // ── Video locations (filtered map) ────────────────────────────────────
+    // Snapshot of every geotagged video matching the current grid filters.
+    // Refreshed asynchronously after each grid reload so the map always
+    // plots the same set the grid shows. The geo-proximity filter itself is
+    // excluded (the map draws the circle; applying it here would hide pins
+    // the user is trying to inspect).
+
+    private val _videoLocations = MutableStateFlow<List<VideoLocation>>(emptyList())
+    /** GPS-tagged videos matching the current grid filters. Points the map. */
+    val videoLocations: StateFlow<List<VideoLocation>> = _videoLocations.asStateFlow()
+
+    private val _isLoadingVideoLocations = MutableStateFlow(false)
+    /** True while the filtered locations load is in flight. */
+    val isLoadingVideoLocations: StateFlow<Boolean> = _isLoadingVideoLocations.asStateFlow()
+
+    private var locationsRefreshJob: Job? = null
 
     // ── Catalog events ────────────────────────────────────────────────────
 
@@ -865,6 +885,8 @@ class GridViewModel(
         postIndexClearJob?.cancel()
         postIndexClearJob = null
         _postIndexProgress.value = null
+        locationsRefreshJob?.cancel()
+        locationsRefreshJob = null
     }
 
     fun dismissIncomingPairing() {
@@ -925,6 +947,10 @@ class GridViewModel(
         gridSettingsSaveJob?.cancel()
         gridSettingsSaveJob = null
         _topSlots.value = defaultGridTopSlots
+        locationsRefreshJob?.cancel()
+        locationsRefreshJob = null
+        _videoLocations.value = emptyList()
+        _isLoadingVideoLocations.value = false
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -961,6 +987,100 @@ class GridViewModel(
         val smartKeys = smartMetadataFilters.map { it.key }.toSet()
         val extra = derived.filter { it.key !in smartKeys }
         return smartMetadataFilters + extra
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Video locations (filtered map)
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Immediately (re)load GPS-tagged videos matching the current grid filters.
+     * Call when the map screen opens to ensure the pin set is fresh even if
+     * the debounced [scheduleVideoLocationsRefresh] hasn't fired yet.
+     */
+    fun loadVideoLocationsFiltered() {
+        locationsRefreshJob?.cancel()
+        locationsRefreshJob = viewModelScope.launch {
+            loadVideoLocationsFilteredAsync()
+        }
+    }
+
+    /**
+     * Debounced trigger for [loadVideoLocationsFilteredAsync]. Collapses a
+     * burst of grid reloads (rapid filtering, collection/tag changes) into
+     * a single full-library pagination pass, matching the desktop behaviour.
+     * The map consumes [videoLocations] on demand, so a short delay is harmless.
+     */
+    private fun scheduleVideoLocationsRefresh() {
+        locationsRefreshJob?.cancel()
+        locationsRefreshJob = viewModelScope.launch {
+            delay(400)
+            loadVideoLocationsFilteredAsync()
+        }
+    }
+
+    /**
+     * Paginate all videos that match the current grid filters with
+     * `hasLocation = Yes` forced, and publish the result to [videoLocations].
+     *
+     * Runs on [Dispatchers.IO] (mirrors the desktop's `withContext(Dispatchers.IO)`
+     * block) so a slow NAS-backed catalog never blocks the main thread.
+     * The geo-proximity filter is intentionally excluded — the map draws the
+     * circle; applying it here would hide pins the user is trying to inspect.
+     *
+     * Mirrors desktop `loadVideoLocationsFilteredAsync`.
+     */
+    private suspend fun loadVideoLocationsFilteredAsync() {
+        _isLoadingVideoLocations.value = true
+        try {
+            val accumulated = withContext(Dispatchers.IO) {
+                val batchSize = 500
+                val acc = mutableListOf<VideoLocation>()
+                var offset = 0
+                while (true) {
+                    val (page, total) = repository.listVideos(
+                        limit = batchSize,
+                        offset = offset,
+                        sortBy = sortBy,
+                        sortAscending = sortAscending,
+                        filterTags = filterTags,
+                        collectionId = collectionId,
+                        locationPath = locationPathFilter,
+                        geoFilter = null,  // exclude proximity circle — map draws it
+                        filterMinRating = _filterMinRating.value,
+                        filterColorLabel = _filterColorLabel.value,
+                        searchQuery = _searchQuery.value,
+                        metadataFilters = mergedMetadataFilters(),
+                        // Force hasLocation=Yes so only geotagged videos are returned.
+                        // A stale "location: no" from grid/list would otherwise empty the map.
+                        hasLocation = AttributeFilterState.Yes,
+                        hasKeywords = mergeAttr(smartHasKeywords, _filterHasKeywords.value),
+                        hasProxies = mergeAttr(smartHasProxies, _filterHasProxies.value),
+                        fullResolution = mergeAttr(smartFullResolution, _filterFullResolution.value),
+                    )
+                    page.filter { it.hasLocation }.forEach { v ->
+                        acc += VideoLocation(
+                            id = v.id,
+                            filename = v.filename,
+                            path = v.path,
+                            latitude = v.gpsLatitude,
+                            longitude = v.gpsLongitude,
+                            hasThumbnail = v.hasThumbnail,
+                        )
+                    }
+                    offset += page.size
+                    if (page.isEmpty() || offset >= total) break
+                }
+                acc
+            }
+            _videoLocations.value = accumulated
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Non-fatal — map keeps its last known locations.
+        } finally {
+            _isLoadingVideoLocations.value = false
+        }
     }
 
     private fun handleCatalogEvent(event: CatalogEvent) {
@@ -1076,6 +1196,11 @@ class GridViewModel(
                 ) {
                     clearSelection()
                 }
+
+                // Keep map locations in sync with the active grid filters.
+                // Debounced so a burst of filter changes collapses into one
+                // pagination pass (mirrors desktop scheduleVideoLocationsRefresh).
+                scheduleVideoLocationsRefresh()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -1094,6 +1219,7 @@ class GridViewModel(
         super.onCleared()
         stopCatalogEventStream()
         gridSettingsSaveJob?.cancel()
+        locationsRefreshJob?.cancel()
     }
 
     // ─────────────────────────────────────────────────────────────────────
