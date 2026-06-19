@@ -203,17 +203,43 @@ impl MetadataExtractor {
         // which the old extractor ignored entirely — camera-original location
         // never reached the catalog, only a manual UpdateVideoLocation did.
         // Prefer the ffprobe tag; fall back to the natively-parsed key.
-        let (gps_latitude, gps_longitude, gps_altitude) =
-            Self::extract_location(&format.tags)
-                .or_else(|| Self::extract_location(&video_stream.tags))
-                .or_else(|| {
-                    qt.get("com.apple.quicktime.location.ISO6709")
-                        .and_then(|s| parse_iso6709(s))
-                })
-                // GoPro: a representative GPS fix from the GPMF track.
-                .or(gpmf.gps)
-                .map(|(la, lo, al)| (Some(la), Some(lo), al))
-                .unwrap_or((None, None, None));
+        let gps_from_container = Self::extract_location(&format.tags)
+            .or_else(|| Self::extract_location(&video_stream.tags))
+            .or_else(|| {
+                qt.get("com.apple.quicktime.location.ISO6709")
+                    .and_then(|s| parse_iso6709(s))
+            })
+            // GoPro: a representative GPS fix from the GPMF track.
+            .or(gpmf.gps);
+
+        // DJI drone telemetry from a sidecar `<clip>.SRT` (GPS + ISO/aperture/
+        // shutter/date). Only looked for when nothing else gave us a location —
+        // DJI clips never carry container GPS, so a GPS-bearing clip (iPhone,
+        // GoPro) can't be one, and we skip the sidecar stat. Also gated to the
+        // container extensions DJI produces.
+        let dji = {
+            let ext = video_path
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(|e| e.to_ascii_lowercase());
+            let is_dji_container =
+                matches!(ext.as_deref(), Some("mp4") | Some("mov") | Some("lrv") | Some("m4v"));
+            if gps_from_container.is_none() && is_dji_container {
+                crate::dji::read_sidecar(video_path)
+            } else {
+                crate::dji::DjiTelemetry::default()
+            }
+        };
+
+        let (gps_latitude, gps_longitude, gps_altitude) = gps_from_container
+            .or(dji.gps)
+            .map(|(la, lo, al)| (Some(la), Some(lo), al))
+            .unwrap_or((None, None, None));
+
+        // DJI sidecar capture time, when the container carried none.
+        if creation_date.is_none() {
+            creation_date = dji.creation_date_ms;
+        }
 
         // Recover a missing make prefix. Some files carry only the model
         // (a sidecar wrote `tiff:Model` but no make, and ffprobe had none
@@ -257,16 +283,19 @@ impl MetadataExtractor {
         // see the helpers below for the full list — because there's no
         // standard for these tag names in MP4/MOV udta and writers vary.
         let final_iso = xmp.as_ref().and_then(|x| x.iso)
-            .or_else(|| Self::udta_int(&format.tags, &video_stream.tags, ISO_KEYS));
+            .or_else(|| Self::udta_int(&format.tags, &video_stream.tags, ISO_KEYS))
+            .or(dji.iso);
         let final_aperture = xmp.as_ref().and_then(|x| x.aperture)
             .or_else(|| Self::udta_rational(&format.tags, &video_stream.tags, FNUMBER_KEYS))
             // iPhone per-track key, formatted "F1.78" — strip the leading F.
             .or_else(|| {
                 qt.get("com.apple.quicktime.camera.lens_irisfnumber")
                     .and_then(|s| crate::xmp::parse_rational(s.trim_start_matches(['F', 'f'])))
-            });
+            })
+            .or(dji.aperture);
         let final_exposure_time_s = xmp.as_ref().and_then(|x| x.exposure_time_s)
-            .or_else(|| Self::udta_rational(&format.tags, &video_stream.tags, EXPOSURE_TIME_KEYS));
+            .or_else(|| Self::udta_rational(&format.tags, &video_stream.tags, EXPOSURE_TIME_KEYS))
+            .or(dji.exposure_time_s);
         let final_focal_length_mm = xmp.as_ref().and_then(|x| x.focal_length_mm)
             .or_else(|| Self::udta_rational(&format.tags, &video_stream.tags, FOCAL_LENGTH_KEYS));
         let final_exposure_mode = xmp.as_ref().and_then(|x| x.exposure_mode.clone())
