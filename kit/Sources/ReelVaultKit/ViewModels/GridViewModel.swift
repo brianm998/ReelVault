@@ -2732,7 +2732,9 @@ public class GridViewModel: ObservableObject {
                     fullResolution: v.fullResolution,
                     isOnline: v.isOnline,
                     frameCount: v.frameCount,
-                    dynamicRange: v.dynamicRange, timecode: v.timecode, captureFps: v.captureFps
+                    dynamicRange: v.dynamicRange, timecode: v.timecode, captureFps: v.captureFps,
+                    bitDepth: v.bitDepth, audioBitDepth: v.audioBitDepth,
+                    audioLanguage: v.audioLanguage, audioTrackCount: v.audioTrackCount
                 )
             }
             return v

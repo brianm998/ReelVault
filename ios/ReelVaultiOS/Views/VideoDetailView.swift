@@ -1332,6 +1332,9 @@ struct VideoMetadataSection: View {
             if !video.codecVideo.isEmpty {
                 detailRow("Codec", video.codecVideo)
             }
+            if let bd = video.bitDepthLabel {
+                detailRow("Bit Depth", bd)
+            }
             if video.durationMs > 0 {
                 detailRow("Duration", video.durationFormatted)
             }
@@ -1343,6 +1346,15 @@ struct VideoMetadataSection: View {
             }
             if !video.timecode.isEmpty {
                 detailRow("Timecode", video.timecode)
+            }
+            if let abd = video.audioBitDepthLabel {
+                detailRow("Audio Bit Depth", abd)
+            }
+            if !video.audioLanguage.isEmpty {
+                detailRow("Audio Language", video.audioLanguage)
+            }
+            if video.audioTrackCount > 1 {
+                detailRow("Audio Tracks", String(video.audioTrackCount))
             }
             if !video.cameraDisplayName.isEmpty {
                 detailRow("Camera", video.cameraDisplayName)

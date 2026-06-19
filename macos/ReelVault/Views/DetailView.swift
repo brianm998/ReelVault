@@ -197,8 +197,20 @@ struct DetailView: View {
                     MetadataItemView(label: "Frames", value: frames)
                 }
                 MetadataItemView(label: "Video Codec", value: metadata.codecVideo.isEmpty ? "—" : metadata.codecVideo)
+                if let bd = metadata.bitDepthLabel {
+                    MetadataItemView(label: "Bit Depth", value: bd)
+                }
                 if !metadata.codecAudio.isEmpty {
                     MetadataItemView(label: "Audio Codec", value: metadata.codecAudio)
+                }
+                if let abd = metadata.audioBitDepthLabel {
+                    MetadataItemView(label: "Audio Bit Depth", value: abd)
+                }
+                if !metadata.audioLanguage.isEmpty {
+                    MetadataItemView(label: "Audio Language", value: metadata.audioLanguage)
+                }
+                if metadata.audioTrackCount > 1 {
+                    MetadataItemView(label: "Audio Tracks", value: String(metadata.audioTrackCount))
                 }
                 MetadataItemView(label: "Bitrate", value: metadata.bitrateFormatted)
                 MetadataItemView(label: "Size", value: metadata.sizeFormatted)

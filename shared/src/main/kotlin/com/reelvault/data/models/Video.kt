@@ -94,11 +94,20 @@ data class VideoSummary(
     val dynamicRange: String = "",
     val timecode: String = "",
     val captureFps: Double = 0.0,
+    /** Coded video bit depth, PCM audio depth, primary audio language, and
+     *  audio-track count — surfaced on the summary for the grid/iOS inspector. */
+    val bitDepth: Int = 0,
+    val audioBitDepth: Int = 0,
+    val audioLanguage: String = "",
+    val audioTrackCount: Int = 0,
 ) {
     val isInGroup: Boolean get() = groupId.isNotEmpty() && groupSize > 1
     /** "240 → 30 fps" when captured faster than playback (slow-motion), else null. */
     val slowMotionLabel: String? get() =
         if (captureFps > fps + 1 && fps > 0) "${Math.round(captureFps)} → ${Math.round(fps)} fps" else null
+    /** "10-bit" / "24-bit" labels, or null when unknown. */
+    val bitDepthLabel: String? get() = if (bitDepth > 0) "${bitDepth}-bit" else null
+    val audioBitDepthLabel: String? get() = if (audioBitDepth > 0) "${audioBitDepth}-bit" else null
     val hasProxies: Boolean get() = proxyCount > 0
     val isProxy: Boolean get() = proxyOf.isNotEmpty()
     val hasLocation: Boolean get() = gpsLatitude != 0.0 || gpsLongitude != 0.0
@@ -207,6 +216,12 @@ data class VideoMetadata(
     /** Sensor capture frame rate; 0 when unknown. Above [fps] → slow-motion
      *  (see [slowMotionLabel]). */
     val captureFps: Double = 0.0,
+    /** Coded video bit depth (8/10/12/16; 0 unknown), PCM audio depth (0 when
+     *  compressed), primary audio language ("" when und), and audio-track count. */
+    val bitDepth: Int = 0,
+    val audioBitDepth: Int = 0,
+    val audioLanguage: String = "",
+    val audioTrackCount: Int = 0,
 ) {
     val resolution: String get() = "$width x $height"
 
@@ -214,6 +229,9 @@ data class VideoMetadata(
      *  null. The 1 fps margin avoids false positives from rounding. */
     val slowMotionLabel: String? get() =
         if (captureFps > fps + 1 && fps > 0) "${Math.round(captureFps)} → ${Math.round(fps)} fps" else null
+    /** "10-bit" / "24-bit" labels, or null when unknown. */
+    val bitDepthLabel: String? get() = if (bitDepth > 0) "${bitDepth}-bit" else null
+    val audioBitDepthLabel: String? get() = if (audioBitDepth > 0) "${audioBitDepth}-bit" else null
     val durationFormatted: String get() {
         val seconds = durationMs / 1000
         val hours = seconds / 3600

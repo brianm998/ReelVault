@@ -235,6 +235,10 @@ class VideoRepository(private val channelFactory: ChannelFactory) {
             dynamicRange = proto.dynamicRange,
             timecode = proto.timecode,
             captureFps = proto.captureFps,
+            bitDepth = proto.bitDepth,
+            audioBitDepth = proto.audioBitDepth,
+            audioLanguage = proto.audioLanguage,
+            audioTrackCount = proto.audioTrackCount,
         )
     }
 
@@ -285,6 +289,10 @@ class VideoRepository(private val channelFactory: ChannelFactory) {
             dynamicRange = proto.dynamicRange,
             timecode = proto.timecode,
             captureFps = proto.captureFps,
+            bitDepth = proto.bitDepth,
+            audioBitDepth = proto.audioBitDepth,
+            audioLanguage = proto.audioLanguage,
+            audioTrackCount = proto.audioTrackCount,
         )
     }
 

@@ -1376,7 +1376,11 @@ public class VideoRepository: ObservableObject {
             frameCount: p.frameCount,
             dynamicRange: p.dynamicRange,
             timecode: p.timecode,
-            captureFps: p.captureFps
+            captureFps: p.captureFps,
+            bitDepth: Int(p.bitDepth),
+            audioBitDepth: Int(p.audioBitDepth),
+            audioLanguage: p.audioLanguage,
+            audioTrackCount: Int(p.audioTrackCount)
         )
     }
 
@@ -1422,7 +1426,11 @@ public class VideoRepository: ObservableObject {
             colorPrimaries: p.colorPrimaries,
             dynamicRange: p.dynamicRange,
             timecode: p.timecode,
-            captureFps: p.captureFps
+            captureFps: p.captureFps,
+            bitDepth: Int(p.bitDepth),
+            audioBitDepth: Int(p.audioBitDepth),
+            audioLanguage: p.audioLanguage,
+            audioTrackCount: Int(p.audioTrackCount)
         )
     }
 
