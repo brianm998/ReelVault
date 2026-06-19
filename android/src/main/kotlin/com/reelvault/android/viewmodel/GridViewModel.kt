@@ -126,6 +126,19 @@ class GridViewModel(
     private val _filterColorLabel = MutableStateFlow("")
     val filterColorLabel: StateFlow<String> = _filterColorLabel.asStateFlow()
 
+    // ── Geographic (map) filter ───────────────────────────────────────────
+    // Set when the user taps a location cluster on the map: (lat, lon, radiusKm).
+    // Passed to the daemon as a proximity filter so the grid shows only videos
+    // shot at that place. Mirrors the desktop/iOS `filterLocation`.
+
+    private val _filterLocation = MutableStateFlow<Triple<Double, Double, Double>?>(null)
+    val filterLocation: StateFlow<Triple<Double, Double, Double>?> = _filterLocation.asStateFlow()
+
+    /** Human label for the active geo filter (place name or coordinates), or
+     *  null when no geo filter is set. Drives the status-bar filter pill. */
+    private val _filterLocationLabel = MutableStateFlow<String?>(null)
+    val filterLocationLabel: StateFlow<String?> = _filterLocationLabel.asStateFlow()
+
     // ── Catalog events ────────────────────────────────────────────────────
 
     private val _liveUpdatesEnabled = MutableStateFlow(true)
@@ -189,6 +202,7 @@ class GridViewModel(
                     filterTags = filterTags,
                     collectionId = collectionId,
                     locationPath = locationPathFilter,
+                    geoFilter = _filterLocation.value,
                     filterMinRating = _filterMinRating.value,
                     filterColorLabel = _filterColorLabel.value,
                     searchQuery = _searchQuery.value,
@@ -322,6 +336,30 @@ class GridViewModel(
         reloadFromTop(showSpinner = true)
     }
 
+    /**
+     * Narrow the grid to videos within [radiusKm] of ([latitude], [longitude]).
+     * Invoked when the user taps a location cluster on the map. [label] is the
+     * place name (or coordinates) shown in the status-bar filter pill.
+     */
+    fun setGeoLocationFilter(
+        latitude: Double,
+        longitude: Double,
+        radiusKm: Double,
+        label: String? = null,
+    ) {
+        _filterLocation.value = Triple(latitude, longitude, radiusKm)
+        _filterLocationLabel.value = label
+        reloadFromTop(showSpinner = true)
+    }
+
+    /** Drop the geographic filter and show all videos again. */
+    fun clearGeoLocationFilter() {
+        if (_filterLocation.value == null) return
+        _filterLocation.value = null
+        _filterLocationLabel.value = null
+        reloadFromTop(showSpinner = true)
+    }
+
     fun setMinRatingFilter(n: Int) {
         if (_filterMinRating.value == n) return
         _filterMinRating.value = n
@@ -401,6 +439,41 @@ class GridViewModel(
 
     fun clearError() {
         _error.value = null
+    }
+
+    /**
+     * Reset all per-session state back to defaults — call when the user
+     * disconnects so a later connection (possibly to a *different* library)
+     * starts clean. Because this view-model is activity-scoped (shared across
+     * the Grid/Map/Detail destinations) it outlives the connection, so without
+     * this the previous session's filters — including a geo filter and its
+     * status-bar pill — would leak into the next one. Persisted preferences
+     * (sort field/direction, view mode) are intentionally left intact.
+     */
+    fun resetForNewSession() {
+        listLoadJob?.cancel()
+        stopCatalogEventStream()
+        _filterLocation.value = null
+        _filterLocationLabel.value = null
+        filterTags = emptyList()
+        _filterTagId.value = ""
+        collectionId = null
+        _selectedCollectionId.value = null
+        locationPathFilter = ""
+        _searchQuery.value = ""
+        _filterMinRating.value = 0
+        _filterColorLabel.value = ""
+        _selectedVideoId.value = null
+        _videos.value = emptyList()
+        _totalCount.value = 0L
+        _hasMore.value = false
+        _hasLoadedOnce.value = false
+        _error.value = null
+        _watcherBanner.value = null
+        _incomingPairingDevice.value = null
+        _postIndexProgress.value = null
+        _liveUpdatesEnabled.value = true
+        currentPage = 0
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -496,6 +569,7 @@ class GridViewModel(
                     filterTags = filterTags,
                     collectionId = collectionId,
                     locationPath = locationPathFilter,
+                    geoFilter = _filterLocation.value,
                     filterMinRating = _filterMinRating.value,
                     filterColorLabel = _filterColorLabel.value,
                     searchQuery = _searchQuery.value,

@@ -8,6 +8,7 @@ package com.reelvault.android.ui.screens
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,12 +28,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.reelvault.android.ui.components.ThumbnailImage
 import com.reelvault.android.viewmodel.GridViewModel
 import com.reelvault.data.models.Collection
@@ -62,17 +61,13 @@ private const val WIDE_TABLET_WIDTH_DP = 1100
 @Composable
 fun LibraryGridScreen(
     repository: VideoRepository,
+    vm: GridViewModel,
     onVideoSelected: (String) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenMap: () -> Unit,
     onDisconnect: () -> Unit,
     onOpenLocalMedia: () -> Unit = {},
 ) {
-    val context = LocalContext.current
-    val vm: GridViewModel = viewModel(
-        factory = GridViewModel.Factory(repository, context)
-    )
-
     // ── Collect state ────────────────────────────────────────────────────
     val videos by vm.videos.collectAsStateWithLifecycle()
     val isLoading by vm.isLoading.collectAsStateWithLifecycle()
@@ -91,6 +86,7 @@ fun LibraryGridScreen(
     val postIndexProgress by vm.postIndexProgress.collectAsStateWithLifecycle()
     val filterTagId by vm.filterTagId.collectAsStateWithLifecycle()
     val selectedCollectionId by vm.selectedCollectionId.collectAsStateWithLifecycle()
+    val filterLocationLabel by vm.filterLocationLabel.collectAsStateWithLifecycle()
 
     // ── Local UI state ───────────────────────────────────────────────────
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -176,6 +172,7 @@ fun LibraryGridScreen(
                     vm.setLocationFilter("")
                     vm.setTagFilter("")
                     vm.setCollectionFilter(null)
+                    vm.clearGeoLocationFilter()
                     scope.launch { drawerState.close() }
                 },
                 onClose = { scope.launch { drawerState.close() } },
@@ -265,6 +262,8 @@ fun LibraryGridScreen(
                     viewMode = viewMode,
                     filterTagId = filterTagId,
                     selectedCollectionId = selectedCollectionId,
+                    filterLocationLabel = filterLocationLabel,
+                    onClearGeoFilter = { vm.clearGeoLocationFilter() },
                     tags = tags,
                     collections = collections,
                 )
@@ -1264,6 +1263,8 @@ private fun LibraryStatusBar(
     viewMode: String,
     filterTagId: String,
     selectedCollectionId: String?,
+    filterLocationLabel: String?,
+    onClearGeoFilter: () -> Unit,
     tags: List<Tag>,
     collections: List<Collection>,
 ) {
@@ -1293,33 +1294,74 @@ private fun LibraryStatusBar(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            // Active filter pill
-            val filterLabel = when {
-                activeTag != null -> activeTag.name
-                activeCollection != null -> activeCollection.name
-                else -> null
-            }
-            if (filterLabel != null) {
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+            // Active filter pills (geo-location + tag/collection).
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Geo-location filter (set by tapping a cluster on the map).
+                // Tapping the pill clears it and shows all videos again.
+                if (filterLocationLabel != null) {
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        modifier = Modifier.clickable { onClearGeoFilter() },
                     ) {
-                        Icon(
-                            Icons.Default.FilterList,
-                            contentDescription = null,
-                            modifier = Modifier.size(12.dp),
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                        )
-                        Text(
-                            text = filterLabel,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        )
+                        Row(
+                            modifier = Modifier.padding(start = 8.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.Place,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            )
+                            Text(
+                                text = filterLocationLabel,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Clear location filter",
+                                modifier = Modifier.size(12.dp),
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            )
+                        }
+                    }
+                }
+
+                val filterLabel = when {
+                    activeTag != null -> activeTag.name
+                    activeCollection != null -> activeCollection.name
+                    else -> null
+                }
+                if (filterLabel != null) {
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.FilterList,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            )
+                            Text(
+                                text = filterLabel,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            )
+                        }
                     }
                 }
             }

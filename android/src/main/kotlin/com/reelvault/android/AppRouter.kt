@@ -4,10 +4,13 @@
 package com.reelvault.android
 
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.reelvault.android.ui.screens.*
+import com.reelvault.android.viewmodel.GridViewModel
 
 sealed class Screen(val route: String) {
     object Connection : Screen("connection")
@@ -25,6 +28,15 @@ fun AppRouter() {
     val app = ReelVaultApp.instance
     val navController = rememberNavController()
     var isConnected by remember { mutableStateOf(false) }
+
+    // One GridViewModel shared across the Grid, Map and Detail destinations
+    // (activity-scoped) so the map can apply a location filter the grid reads,
+    // and "Show on Map" can focus the map — mirroring the single shared `grid`
+    // view-model on iOS/macOS.
+    val context = LocalContext.current
+    val gridViewModel: GridViewModel = viewModel(
+        factory = GridViewModel.Factory(app.videoRepository, context)
+    )
 
     NavHost(
         navController = navController,
@@ -51,6 +63,7 @@ fun AppRouter() {
         composable(Screen.Grid.route) {
             LibraryGridScreen(
                 repository = app.videoRepository,
+                vm = gridViewModel,
                 onVideoSelected = { videoId ->
                     navController.navigate(Screen.Detail.createRoute(videoId))
                 },
@@ -61,6 +74,9 @@ fun AppRouter() {
                 },
                 onDisconnect = {
                     app.videoRepository.disconnect()
+                    // Activity-scoped VM outlives the connection — wipe the old
+                    // session's filters/state so the next connection starts clean.
+                    gridViewModel.resetForNewSession()
                     isConnected = false
                     navController.navigate(Screen.Connection.route) {
                         popUpTo(0) { inclusive = true }
@@ -85,10 +101,8 @@ fun AppRouter() {
         composable(Screen.Map.route) {
             LibraryMapScreen(
                 repository = app.videoRepository,
-                onVideoSelected = { videoId ->
-                    navController.navigate(Screen.Detail.createRoute(videoId))
-                },
-                onBack = { navController.popBackStack() }
+                grid = gridViewModel,
+                onBack = { navController.popBackStack() },
             )
         }
         composable(Screen.LocalMedia.route) {
