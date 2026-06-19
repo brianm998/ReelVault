@@ -123,7 +123,7 @@ impl ThumbnailGenerator {
         // Resizing a JPEG is pure image work, not video decode — on iOS (no
         // ffmpeg subprocess) do it with the `image` crate. Desktop keeps the
         // ffmpeg path so its thumbnails are byte-for-byte unchanged.
-        #[cfg(target_os = "ios")]
+        #[cfg(any(target_os = "ios", target_os = "android"))]
         {
             use image::GenericImageView;
             let img = image::open(frame_path)
@@ -142,7 +142,7 @@ impl ThumbnailGenerator {
             Ok(())
         }
 
-        #[cfg(not(target_os = "ios"))]
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
         {
             let output = crate::ffmpeg::ffmpeg_command()
                 .args([

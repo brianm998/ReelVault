@@ -30,11 +30,22 @@ pub mod xmp;
 pub mod quicktime;
 pub mod metadata_keys;
 
+/// Platform-agnostic in-process embed logic (loopback gRPC boot, ingest, prune),
+/// shared by the iOS C-ABI surface and the Android JNI surface. Compiled only for
+/// the mobile targets; the desktop build never sees it.
+#[cfg(any(target_os = "ios", target_os = "android"))]
+mod embed;
+
 /// C-ABI entry point that boots the core in-process inside the iOS app
 /// (docs/IOS_CORE_PORT.md §7.2). Compiled only for iOS; the desktop build never
 /// sees it, so there is zero behavior change off-device.
 #[cfg(target_os = "ios")]
 pub mod ios;
+
+/// JNI entry point that boots the core in-process inside the Android app — the
+/// Android mirror of [`ios`], delegating to [`embed`]. Compiled only for Android.
+#[cfg(target_os = "android")]
+pub mod android;
 
 pub use error::Result;
 

@@ -1,63 +1,28 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 ReelVault Contributors
 
-//! In-process embed entry point for the iOS app (docs/IOS_CORE_PORT.md §7).
+//! C-ABI embed surface for the iOS app (docs/IOS_CORE_PORT.md §7).
 //!
-//! On iOS the core cannot run as a separate daemon (no `fork`/`exec`, the app is
-//! suspended at the OS's discretion), so instead of *spawning* a process the way
-//! macOS does (`macos/.../ServerLauncher.swift`), the app links the core as a
-//! static library and boots the **same** `ReelVaultService::into_server()` on an
-//! in-process loopback gRPC listener. `VideoRepository` then connects to
-//! `127.0.0.1:<port>` exactly as it connects to a remote daemon — local mode is
-//! just a different endpoint, so the whole client (`kit/`) is reused unchanged.
+//! The platform-agnostic embed logic (booting the in-process loopback gRPC
+//! server, ingest, prune, is-indexed) lives in [`crate::embed`], shared with the
+//! Android JNI surface ([`crate::android`]). This module is the iOS-specific
+//! half: it decodes the C strings Swift passes, exposes the `#[no_mangle] extern
+//! "C"` entry points, and implements the native [`MediaBackend`] over a table of
+//! Swift function pointers (`NativeMediaCallbacks`) — Rust can't call Swift
+//! directly, so the app registers callbacks the core invokes for the media work
+//! the desktop core shells out to ffmpeg for (docs/IOS_CORE_PORT.md §6.2).
 //!
-//! This module is compiled **only** for `target_os = "ios"` (gated in `lib.rs`),
-//! so the desktop build never sees it and there is zero behavior change there.
-//!
-//! Phase 0 scaffold: this boots the server over the app-container catalog and
-//! returns the bound port. The media pipeline still routes through the CLI
-//! backend, which doesn't work in the iOS sandbox — that's replaced by the
-//! native `MediaBackend` in later phases. So the embedded server answers catalog
-//! RPCs (`GetStatus`, `ListVideos`, …) today; on-device metadata/thumbnail/proxy
-//! generation lands with Phases 1–2.
+//! Compiled **only** for `target_os = "ios"` (gated in `lib.rs`).
 
 use std::ffi::{c_char, CStr, CString};
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::Arc;
 
-use tokio::net::TcpListener;
-use tokio::runtime::{Builder, Runtime};
-use tokio_stream::wrappers::TcpListenerStream;
-use tonic::transport::Server;
-
+use crate::embed;
 use crate::error::{ReelVaultError, Result};
 use crate::media_backend::{set_backend, MediaBackend, MediaSource};
 use crate::metadata::FFProbeOutput;
 use crate::thumbnails::ColorInfo;
-
-use crate::config::Config;
-use crate::db::Database;
-use crate::service::ReelVaultService;
-
-/// The live embedded server: its tokio runtime (kept alive so the spawned gRPC
-/// server keeps running) and the loopback port the app connects to.
-struct Embedded {
-    rt: Runtime,
-    port: u16,
-}
-
-/// One embedded server per process. `OnceLock<Mutex<…>>` so `start`/`stop` from
-/// the Swift side are serialized and `start` is idempotent.
-static EMBEDDED: OnceLock<Mutex<Option<Embedded>>> = OnceLock::new();
-
-/// Handles the photo-ingest FFI needs, captured in `boot` before `db`/`config`
-/// move into the gRPC service.
-struct IngestCtx {
-    db: Arc<Database>,
-    cache: PathBuf,
-    events: tokio::sync::broadcast::Sender<crate::watcher::CatalogChange>,
-}
-static INGEST: OnceLock<IngestCtx> = OnceLock::new();
 
 /// Borrow a C string as an owned `String`, or `None` if null / not UTF-8.
 ///
@@ -82,95 +47,6 @@ unsafe fn cpath(p: *const c_char) -> Option<PathBuf> {
     CStr::from_ptr(p).to_str().ok().map(PathBuf::from)
 }
 
-/// Initialize a tracing subscriber writing to stderr, once. On iOS stderr is
-/// captured by `xcrun simctl launch --console` and the device log, so the
-/// embedded core's `tracing` output is visible during simulator/device testing.
-fn init_logging() {
-    use std::sync::Once;
-    static ONCE: Once = Once::new();
-    ONCE.call_once(|| {
-        let _ = tracing_subscriber::fmt()
-            .with_writer(std::io::stderr)
-            .with_ansi(false)
-            .with_target(false)
-            .try_init();
-    });
-}
-
-/// Run an FFI entry-point body, catching any Rust panic so it never unwinds
-/// across the `extern "C"` boundary — a panic that reaches C is an immediate
-/// process abort (the `panic_cannot_unwind` crash). Logs the panic message to
-/// `tracing` AND stderr (so it's visible in the Xcode console / device log even
-/// if logging isn't set up yet) and returns `fallback`. iOS builds use
-/// `panic = "unwind"`, so this actually catches.
-fn ffi_guard<T>(name: &str, fallback: T, body: impl FnOnce() -> T) -> T {
-    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(body)) {
-        Ok(value) => value,
-        Err(payload) => {
-            let msg = payload
-                .downcast_ref::<&str>()
-                .map(|s| (*s).to_string())
-                .or_else(|| payload.downcast_ref::<String>().cloned())
-                .unwrap_or_else(|| "panic with non-string payload".to_string());
-            tracing::error!("ffi: {name} panicked (caught — app NOT aborted): {msg}");
-            eprintln!("ReelVault FFI: {name} panicked (caught): {msg}");
-            fallback
-        }
-    }
-}
-
-/// Build the runtime, open the catalog, and spawn the in-process gRPC server.
-/// Returns the runtime (to park in the static) and the bound loopback port.
-fn boot(db_path: PathBuf, data_dir: PathBuf, cache_dir: PathBuf) -> anyhow::Result<(Runtime, u16)> {
-    let rt = Builder::new_multi_thread().enable_all().build()?;
-    // Setup runs on the runtime so the `tokio::spawn`s inside `new()` and the
-    // server have a reactor; the server task keeps running after `block_on`.
-    let port = rt.block_on(async move {
-        let db = std::sync::Arc::new(Database::new(&db_path)?);
-        db.initialize().await?;
-
-        let mut config = Config::load(db.as_ref()).await?;
-        // On iOS, trust the Swift-supplied container path over `dirs`
-        // (docs/IOS_CORE_PORT.md §6.10 / §11.4).
-        config.thumbnail_cache_path = cache_dir;
-        // The `notify` recursive watcher doesn't map to the Photos/Files sandbox;
-        // live updates come from PHPhotoLibraryChangeObserver in a later phase
-        // (§6.8). Keep it off so `new()` doesn't boot the desktop watcher.
-        config.watch_enabled = false;
-        let config = std::sync::Arc::new(config);
-
-        // Capture handles the photo-ingest FFI needs before `db`/`config` move
-        // into the service.
-        let ingest_db = Arc::clone(&db);
-        let ingest_cache = config.thumbnail_cache_path.clone();
-
-        // Pairing is a LAN concept; loopback needs none. A fresh empty cell
-        // satisfies `new()`'s signature without enabling anything (§7.2).
-        let pairing = crate::pairing::new_state();
-        let service = ReelVaultService::new(db, config, pairing, data_dir);
-
-        let _ = INGEST.set(IngestCtx {
-            db: ingest_db,
-            cache: ingest_cache,
-            events: service.catalog_events(),
-        });
-
-        let listener = TcpListener::bind(("127.0.0.1", 0)).await?;
-        let port = listener.local_addr()?.port();
-        tokio::spawn(async move {
-            if let Err(e) = Server::builder()
-                .add_service(service.into_server())
-                .serve_with_incoming(TcpListenerStream::new(listener))
-                .await
-            {
-                tracing::error!("embedded gRPC server exited: {e}");
-            }
-        });
-        Ok::<u16, anyhow::Error>(port)
-    })?;
-    Ok((rt, port))
-}
-
 /// Boot the embedded server over the app-container catalog and return the bound
 /// loopback port, or `0` on error. Idempotent: a second call returns the same
 /// port. Swift then calls `VideoRepository.shared.connect(to: .loopback(port:))`.
@@ -188,38 +64,13 @@ pub extern "C" fn reelvault_start_embedded(
     data_dir: *const c_char,
     cache_dir: *const c_char,
 ) -> u16 {
-    ffi_guard("start_embedded", 0, || {
-        let cell = EMBEDDED.get_or_init(|| Mutex::new(None));
-        let mut guard = match cell.lock() {
-            Ok(g) => g,
-            Err(_) => return 0,
-        };
-        if let Some(existing) = guard.as_ref() {
-            return existing.port; // already booted
-        }
-        init_logging();
-        // Select the rustls crypto provider before any TLS work — the post-index
-        // sensor fetch (reqwest) builds a rustls 0.23 ClientConfig that otherwise
-        // panics (both aws-lc-rs and ring are compiled in). See
-        // `crate::install_crypto_provider`.
-        crate::install_crypto_provider();
-        tracing::info!("reelvault_start_embedded: booting embedded core");
+    embed::ffi_guard("start_embedded", 0, || {
         let (db_path, data_dir, cache_dir) =
             match unsafe { (cpath(db_path), cpath(data_dir), cpath(cache_dir)) } {
                 (Some(a), Some(b), Some(c)) => (a, b, c),
                 _ => return 0,
             };
-        match boot(db_path, data_dir, cache_dir) {
-            Ok((rt, port)) => {
-                tracing::info!("reelvault_start_embedded: serving on 127.0.0.1:{port}");
-                *guard = Some(Embedded { rt, port });
-                port
-            }
-            Err(e) => {
-                tracing::error!("reelvault_start_embedded failed: {e}");
-                0
-            }
-        }
+        embed::embed_start(db_path, data_dir, cache_dir)
     })
 }
 
@@ -228,15 +79,7 @@ pub extern "C" fn reelvault_start_embedded(
 /// boots a fresh one. Safe to call when nothing is running.
 #[no_mangle]
 pub extern "C" fn reelvault_stop_embedded() {
-    ffi_guard("stop_embedded", (), || {
-        if let Some(cell) = EMBEDDED.get() {
-            if let Ok(mut guard) = cell.lock() {
-                if let Some(embedded) = guard.take() {
-                    embedded.rt.shutdown_background();
-                }
-            }
-        }
-    })
+    embed::ffi_guard("stop_embedded", (), embed::embed_stop)
 }
 
 // ===========================================================================
@@ -283,11 +126,7 @@ pub struct NativeMediaCallbacks {
 impl MediaSource {
     /// `(kind, id)` for the FFI callbacks (see [`NativeMediaCallbacks`]).
     fn ffi_parts(&self) -> (i32, CString) {
-        let (kind, s) = match self {
-            MediaSource::Path(p) => (0, p.to_string_lossy().into_owned()),
-            MediaSource::PhotoAsset(id) => (1, id.clone()),
-            MediaSource::Bookmark(b) => (2, b.iter().map(|x| format!("{x:02x}")).collect()),
-        };
+        let (kind, s) = embed::source_kind_and_id(self);
         (kind, CString::new(s).unwrap_or_default())
     }
 }
@@ -401,8 +240,8 @@ impl MediaBackend for NativeMediaBackend {
 /// race over the default CLI backend (which can't run in the iOS sandbox).
 #[no_mangle]
 pub extern "C" fn reelvault_register_media_backend(callbacks: NativeMediaCallbacks) {
-    ffi_guard("register_media_backend", (), || {
-        init_logging();
+    embed::ffi_guard("register_media_backend", (), || {
+        embed::init_logging();
         // Swift may register the backend (and trigger media work) before
         // `reelvault_start_embedded`; install the rustls provider here too. Idempotent.
         crate::install_crypto_provider();
@@ -414,9 +253,7 @@ pub extern "C" fn reelvault_register_media_backend(callbacks: NativeMediaCallbac
 /// Ingest one Photos video into the on-device catalog (docs/IOS_CORE_PORT.md
 /// §6.9). Swift's PhotoKit enumerator calls this once per `PHAsset`
 /// (`local_id` = its localIdentifier, `filename` = the original filename) after
-/// the embedded server is up. Probes + thumbnails the asset through the native
-/// backend, upserts a `photos://<local_id>` row, and publishes a live
-/// `VideoAdded` so the grid refreshes. Returns 0 on success, negative on error.
+/// the embedded server is up. Returns 0 on success, negative on error.
 ///
 /// Runs synchronously on the caller's (background) thread and re-enters Swift
 /// via the media callbacks — so call it off the main thread.
@@ -429,146 +266,56 @@ pub extern "C" fn reelvault_ingest_photo(
     local_id: *const c_char,
     filename: *const c_char,
 ) -> i32 {
-    ffi_guard("ingest_photo", -99, || {
-        let ctx = match INGEST.get() {
-            Some(c) => c,
-            None => return -1, // server not booted yet
-        };
+    embed::ffi_guard("ingest_photo", -99, || {
         let local_id = match unsafe { cstring(local_id) } {
             Some(s) if !s.is_empty() => s,
             _ => return -2,
         };
-        let filename =
-            unsafe { cstring(filename) }.unwrap_or_else(|| format!("{local_id}.mov"));
-        let source = MediaSource::PhotoAsset(local_id.clone());
-        let display_path = format!("photos://{local_id}");
-
-        match crate::indexing::IndexingEngine::index_media_source(
-            ctx.db.as_ref(),
-            &source,
-            &display_path,
-            &filename,
-            "photo",
-            &local_id,
-            &ctx.cache,
-        ) {
-            Ok(video_id) => {
-                let _ = ctx.events.send(crate::watcher::CatalogChange::VideoAdded {
-                    video_id,
-                    path: PathBuf::from(display_path),
-                });
-                0
-            }
-            Err(e) => {
-                tracing::warn!("reelvault_ingest_photo({local_id}) failed: {e}");
-                -3
-            }
-        }
+        embed::ingest_asset(local_id, unsafe { cstring(filename) })
     })
 }
 
-/// Ingest one filesystem video into the on-device catalog — the Files-app /
-/// security-scoped-bookmark and container path (docs/IOS_CORE_PORT.md D7
-/// "Files second"). Probes + thumbnails through the native backend (AVURLAsset)
-/// and adds a row keyed on the path. Returns 0 on success, negative on error.
+/// Ingest one filesystem video into the on-device catalog — the Files-app
+/// container path (docs/IOS_CORE_PORT.md D7 "Files second"). Returns 0 on
+/// success, negative on error.
 ///
 /// # Safety
 /// `path` / `filename` must be NUL-terminated C strings (filename may be null).
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)] // FFI boundary; pointers validated via `cstring`
 pub extern "C" fn reelvault_ingest_path(path: *const c_char, filename: *const c_char) -> i32 {
-    ffi_guard("ingest_path", -99, || {
-        let ctx = match INGEST.get() {
-            Some(c) => c,
-            None => return -1,
-        };
+    embed::ffi_guard("ingest_path", -99, || {
         let path = match unsafe { cstring(path) } {
             Some(s) if !s.is_empty() => s,
             _ => return -2,
         };
-        let filename = unsafe { cstring(filename) }.unwrap_or_else(|| {
-            std::path::Path::new(&path)
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("video")
-                .to_string()
-        });
-        let source = MediaSource::Path(PathBuf::from(&path));
-        let file_size = std::fs::metadata(&path).map(|m| m.len() as i64).ok();
-
-        match crate::indexing::IndexingEngine::index_media_source(
-            ctx.db.as_ref(),
-            &source,
-            &path,
-            &filename,
-            "path",
-            &path,
-            &ctx.cache,
-        ) {
-            Ok(video_id) => {
-                // index_media_source doesn't know the on-disk size; record it for
-                // filesystem sources (Photos rows stay NULL — no stable path).
-                if let Some(sz) = file_size {
-                    let _ = ctx.db.update_video_file_size(&video_id, sz);
-                }
-                let _ = ctx.events.send(crate::watcher::CatalogChange::VideoAdded {
-                    video_id,
-                    path: PathBuf::from(path),
-                });
-                0
-            }
-            Err(e) => {
-                tracing::warn!("reelvault_ingest_path({path}) failed: {e}");
-                -3
-            }
-        }
+        embed::ingest_path(path, unsafe { cstring(filename) })
     })
 }
 
-/// Has `display_path` already been cataloged? Lets the Swift enumerators skip
-/// re-probing assets that are already indexed, so a relaunch over an unchanged
-/// library is near-instant instead of re-running the (expensive) AVFoundation
-/// probe + thumbnail for every asset. `display_path` is the same string the
-/// matching `reelvault_ingest_*` would use (`photos://<localId>` or a file
-/// path). Returns 1 if a row exists, 0 if not, negative on error. A missing
-/// thumbnail for an already-indexed row is regenerated on demand by
-/// `GetThumbnail`, so skipping here can't strand a row without a preview.
+/// Has `display_path` already been cataloged (row + metadata)? Lets the Swift
+/// enumerators skip re-probing assets that are already indexed. `display_path` is
+/// the same string the matching `reelvault_ingest_*` would use
+/// (`photos://<localId>` or a file path). Returns 1 if fully indexed, 0 if not,
+/// negative on error.
 ///
 /// # Safety
 /// `display_path` must be a NUL-terminated C string.
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)] // FFI boundary; pointer validated via `cstring`
 pub extern "C" fn reelvault_is_video_indexed(display_path: *const c_char) -> i32 {
-    ffi_guard("is_video_indexed", -99, || {
-        let ctx = match INGEST.get() {
-            Some(c) => c,
-            None => return -1,
-        };
+    embed::ffi_guard("is_video_indexed", -99, || {
         let path = match unsafe { cstring(display_path) } {
             Some(s) if !s.is_empty() => s,
             _ => return -2,
         };
-        // Require metadata, not just a row: a row added by a probe-then-failed
-        // ingest must be re-ingested, not skipped (see Database::is_fully_indexed).
-        match ctx.db.is_fully_indexed(&path) {
-            Ok(true) => 1,
-            Ok(false) => 0,
-            Err(_) => -3,
-        }
+        embed::is_indexed(path)
     })
 }
 
 /// Ingest one Files-app video via a security-scoped bookmark (D7 "Files
-/// second"). Swift resolves the document-picker URL, captures a bookmark
-/// (`bookmark`/`len` raw bytes) and the display `filename` (may be NULL). The
-/// row is keyed on `bookmark://<hex>` (mirrors `photos://<id>`: the filename is
-/// what the grid shows, while the path carries the bookmark so the native
-/// backend and on-device playback can both re-resolve the scoped URL).
-/// source_kind="bookmark", source_id=hex(bookmark). 0 on success, negative on
+/// second"). The row is keyed on `bookmark://<hex>`. 0 on success, negative on
 /// error.
-///
-/// Note: bookmark bytes aren't stable for a given file, so re-importing the
-/// same file makes a new row (no path-based dedup) — acceptable for v1.
 ///
 /// # Safety
 /// `bookmark` points to `len` readable bytes; `filename` is a NUL-terminated C
@@ -580,99 +327,31 @@ pub extern "C" fn reelvault_ingest_bookmark(
     len: usize,
     filename: *const c_char,
 ) -> i32 {
-    ffi_guard("ingest_bookmark", -99, || {
-        let ctx = match INGEST.get() {
-            Some(c) => c,
-            None => return -1,
-        };
+    embed::ffi_guard("ingest_bookmark", -99, || {
         if bookmark.is_null() || len == 0 {
             return -2;
         }
         // SAFETY: caller guarantees `bookmark` points to `len` readable bytes.
         let bytes = unsafe { std::slice::from_raw_parts(bookmark, len) }.to_vec();
-        let hex_id: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
-        let display_path = format!("bookmark://{hex_id}");
-        let filename = unsafe { cstring(filename) }.unwrap_or_else(|| "video".to_string());
-        let source = MediaSource::Bookmark(bytes);
-
-        match crate::indexing::IndexingEngine::index_media_source(
-            ctx.db.as_ref(),
-            &source,
-            &display_path,
-            &filename,
-            "bookmark",
-            &hex_id,
-            &ctx.cache,
-        ) {
-            Ok(video_id) => {
-                let _ = ctx.events.send(crate::watcher::CatalogChange::VideoAdded {
-                    video_id,
-                    path: PathBuf::from(display_path),
-                });
-                0
-            }
-            Err(e) => {
-                tracing::warn!("reelvault_ingest_bookmark failed: {e}");
-                -3
-            }
-        }
+        embed::ingest_bookmark(bytes, unsafe { cstring(filename) })
     })
 }
 
 /// Reconcile the on-device catalog against the Photos library: remove every
 /// `source_kind = 'photo'` row whose `source_id` (PHAsset.localIdentifier) is NOT
-/// in `present_ids_json` (a JSON array of the localIdentifiers currently in
-/// Photos). This prunes videos the user deleted from Photos — the additions side
-/// is handled by `reelvault_ingest_photo` + the live observer; this is the
-/// removal side (docs/IOS_CORE_PORT.md §6.9). Each removed row publishes a
-/// `VideoRemoved` event so the grid refreshes.
-///
-/// The caller MUST pass a COMPLETE present-set (a full Photos enumeration) — a
-/// partial/limited set would delete everything outside it. Only photo-source
-/// rows are touched, so Files (`bookmark`) rows are never pruned. Returns the
-/// number removed, or negative on error.
+/// in `present_ids_json` (a JSON array). Returns the number removed, or negative
+/// on error. The caller MUST pass a COMPLETE present-set.
 ///
 /// # Safety
 /// `present_ids_json` must be a NUL-terminated UTF-8 C string (a JSON array).
 #[no_mangle]
 #[allow(clippy::not_unsafe_ptr_arg_deref)] // FFI boundary; pointer validated via `cstring`
 pub extern "C" fn reelvault_prune_photos(present_ids_json: *const c_char) -> i32 {
-    ffi_guard("prune_photos", -1, || {
-        let ctx = match INGEST.get() {
-            Some(c) => c,
-            None => return -1,
-        };
+    embed::ffi_guard("prune_photos", -1, || {
         let json = match unsafe { cstring(present_ids_json) } {
             Some(s) => s,
             None => return -2,
         };
-        let present: std::collections::HashSet<String> = match serde_json::from_str::<Vec<String>>(&json) {
-            Ok(v) => v.into_iter().collect(),
-            Err(_) => return -2,
-        };
-        let rows = match ctx.db.list_videos_by_source_kind("photo") {
-            Ok(r) => r,
-            Err(e) => {
-                tracing::warn!("reelvault_prune_photos: list failed: {e}");
-                return -3;
-            }
-        };
-        let mut removed = 0;
-        for (video_id, source_id) in rows {
-            if present.contains(&source_id) {
-                continue;
-            }
-            if ctx.db.delete_video(&video_id).is_ok() {
-                let _ = ctx.events.send(crate::watcher::CatalogChange::VideoRemoved {
-                    video_id: Some(video_id),
-                    path: PathBuf::from(format!("photos://{source_id}")),
-                });
-                removed += 1;
-            }
-        }
-        if removed > 0 {
-            tracing::info!("reelvault_prune_photos: removed {removed} deleted Photos video(s)");
-        }
-        removed
+        embed::prune_photos(json)
     })
 }

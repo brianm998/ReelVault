@@ -73,7 +73,7 @@ pub fn default_max_concurrent_ffmpeg() -> usize {
     let cores = std::thread::available_parallelism()
         .map(|n| n.get())
         .unwrap_or(4);
-    if cfg!(target_os = "ios") {
+    if cfg!(any(target_os = "ios", target_os = "android")) {
         cores.min(2)
     } else {
         cores
