@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- app_name intentionally omitted — falls back to the default "ReelVault" -->
+
+    <!-- ── Common ───────────────────────────────────────────────────────── -->
+    <string name="common_back">Terug</string>
+    <string name="common_cancel">Annuleren</string>
+    <string name="common_save">Opslaan</string>
+    <string name="common_done">Gereed</string>
+    <string name="common_clear">Wissen</string>
+    <string name="common_selected">Geselecteerd</string>
+    <string name="common_offline">Offline</string>
+    <string name="common_unavailable">Niet beschikbaar</string>
+    <string name="common_unknown_error">onbekende fout</string>
+
+    <!-- ── Connection flow ──────────────────────────────────────────────── -->
+    <string name="conn_reconnecting_to">Opnieuw verbinden met %1$s…</string>
+    <string name="conn_connecting_to">Verbinden met %1$s…</string>
+    <string name="conn_connecting">Verbinden…</string>
+    <string name="conn_pairing_with">Koppelen met %1$s…</string>
+    <string name="conn_could_not_connect_named">Kan geen verbinding maken met %1$s. Controleer of de daemon actief is en probeer opnieuw.</string>
+    <string name="conn_could_not_connect_simple">Kan geen verbinding maken met %1$s.</string>
+    <string name="conn_pairing_rejected">Koppeling geweigerd — controleer de code en probeer opnieuw.</string>
+    <string name="conn_looking_for_servers">Zoeken naar ReelVault-servers…</string>
+    <string name="conn_scanning_network">Lokaal netwerk scannen</string>
+    <string name="conn_connect_title">Verbinden met ReelVault</string>
+    <string name="conn_rescan">Opnieuw scannen</string>
+    <string name="conn_no_servers_found">Geen servers gevonden</string>
+    <string name="conn_no_servers_hint">Start een ReelVault core-daemon met --remote op een computer in dit Wi-Fi-netwerk en scan opnieuw.</string>
+    <string name="conn_available_servers">Beschikbare servers</string>
+    <string name="conn_enter_address_manually">Adres handmatig invoeren</string>
+    <string name="conn_browse_local_videos">Lokale video\'s bladeren</string>
+    <string name="conn_requires_pairing">Koppeling vereist</string>
+    <string name="conn_enter_pairing_code">Koppelcode invoeren</string>
+    <string name="conn_pair_with">Koppelen met %1$s</string>
+    <string name="conn_pairing_instructions">Kies op de computer waarop ReelVault wordt uitgevoerd Bestand ▸ Een nieuw apparaat koppelen om een 6-cijferige code te tonen (een headless server logt deze ook). Voer de code hieronder in — dit hoeft maar één keer.</string>
+    <string name="conn_pin_placeholder">000000</string>
+    <string name="conn_pair_button">Koppelen</string>
+    <string name="conn_connect_manually">Handmatig verbinden</string>
+    <string name="conn_host_label">Host of IP-adres</string>
+    <string name="conn_host_placeholder">192.168.1.100</string>
+    <string name="conn_grpc_port_label">gRPC-poort</string>
+    <string name="conn_grpc_port_placeholder">50051</string>
+    <string name="conn_fingerprint_label">Certificaatvingerafdruk (SHA-256, optioneel)</string>
+    <string name="conn_fingerprint_placeholder">abcd1234…</string>
+    <string name="conn_fetch">Ophalen</string>
+    <string name="conn_could_not_reach">Kan %1$s:%2$d niet bereiken — controleer de host en of de daemon actief is.</string>
+    <string name="conn_connect_button">Verbinden</string>
+    <string name="conn_retry">Opnieuw proberen</string>
+    <string name="conn_enter_address">Adres invoeren</string>
+
+    <!-- ── Library grid ─────────────────────────────────────────────────── -->
+    <string name="grid_incoming_pairing_title">Inkomend koppelverzoek</string>
+    <string name="grid_incoming_pairing_message">%1$s wil verbinding maken met deze bibliotheek. Toestaan?</string>
+    <string name="grid_allow">Toestaan</string>
+    <string name="grid_deny">Weigeren</string>
+    <string name="grid_close_search">Zoeken sluiten</string>
+    <string name="grid_search_videos_hint">Video\'s zoeken…</string>
+    <string name="grid_selected_count">%1$d geselecteerd</string>
+    <string name="grid_clear_selection">Selectie wissen</string>
+    <string name="grid_open_library_panel">Bibliotheekpaneel openen</string>
+    <string name="grid_search">Zoeken</string>
+    <string name="grid_sort">Sorteren</string>
+    <string name="grid_switch_to_list_view">Overschakelen naar lijstweergave</string>
+    <string name="grid_switch_to_grid_view">Overschakelen naar rasterweergave</string>
+    <string name="grid_more_options">Meer opties</string>
+    <string name="grid_map">Kaart</string>
+    <string name="grid_settings">Instellingen</string>
+    <string name="grid_disconnect">Verbinding verbreken</string>
+    <string name="grid_sort_by">Sorteren op</string>
+    <string name="grid_sort_ascending_arrow">%1$s ↑</string>
+    <string name="grid_sort_descending_arrow">%1$s ↓</string>
+    <string name="grid_library">Bibliotheek</string>
+    <string name="grid_clear_filters">Filters wissen</string>
+    <string name="grid_close">Sluiten</string>
+    <string name="grid_catalog">Catalogus</string>
+    <string name="grid_remote_library">Externe bibliotheek</string>
+    <string name="grid_local_videos">Lokale video\'s</string>
+    <string name="grid_all_videos">Alle video\'s</string>
+    <string name="grid_locations">Locaties</string>
+    <string name="grid_keywords">Trefwoorden</string>
+    <string name="grid_collections">Verzamelingen</string>
+    <string name="grid_no_videos">Geen video\'s</string>
+    <string name="grid_processing">Verwerken…</string>
+    <string name="grid_percent">%1$d%%</string>
+    <string name="grid_no_videos_match_search">Geen video\'s komen overeen met \"%1$s\"</string>
+    <string name="grid_no_videos_with_keyword">Geen video\'s met dit trefwoord</string>
+    <string name="grid_collection_empty">Deze verzameling is leeg</string>
+    <string name="grid_no_videos_in_library">Geen video\'s in bibliotheek</string>
+    <string name="grid_empty_add_location_hint">Voeg een bibliotheeklocatie toe in Instellingen om te beginnen.</string>
+    <string name="grid_empty_no_match_filter">…of geen video\'s voldoen aan het huidige filter</string>
+    <string name="grid_reset_filter">Filter resetten</string>
+    <string name="grid_clear_location_filter">Locatiefilter wissen</string>
+    <string name="grid_star_count">%1$d ster</string>
+    <plurals name="grid_video_count">
+        <item quantity="one">%1$d video</item>
+        <item quantity="other">%1$d video\'s</item>
+    </plurals>
+    <plurals name="grid_location_video_count">
+        <item quantity="one">%1$d video</item>
+        <item quantity="other">%1$d video\'s</item>
+    </plurals>
+
+    <!-- ── Map ──────────────────────────────────────────────────────────── -->
+    <string name="map_title">Kaart</string>
+    <string name="map_load_failed">Kaartgegevens laden mislukt: %1$s</string>
+    <string name="map_unknown_error">Onbekende fout</string>
+    <string name="map_no_geotagged">Geen geogetagde video\'s.\nVideo\'s met GPS-metadata verschijnen hier op de kaart.</string>
+    <string name="map_geotagged_count">%1$d geogetagd</string>
+    <plurals name="map_marker_video_count">
+        <item quantity="one">%1$d video</item>
+        <item quantity="other">%1$d video\'s</item>
+    </plurals>
+
+    <!-- ── Local media ──────────────────────────────────────────────────── -->
+    <string name="local_selected_count">%1$d geselecteerd</string>
+    <string name="local_title">Lokale video\'s</string>
+    <string name="local_clear_selection">Selectie wissen</string>
+    <string name="local_upload_to_server">Uploaden naar server</string>
+    <string name="local_select_all">Alles selecteren</string>
+    <string name="local_upload_failed">Uploaden mislukt: %1$s</string>
+    <string name="local_no_videos_found">Geen video\'s gevonden op apparaat</string>
+    <string name="local_not_connected_hint">Niet verbonden — maak verbinding met een ReelVault-server om te uploaden</string>
+    <string name="local_uploaded">Geüpload</string>
+    <string name="local_video_access_denied">Toegang tot video\'s geweigerd</string>
+    <string name="local_permission_hint">Verleen de machtiging "Video\'s" via Instellingen → Apps → ReelVault → Machtigingen om lokale video\'s te bekijken.</string>
+    <plurals name="local_uploaded_count">
+        <item quantity="one">%1$d video geüpload</item>
+        <item quantity="other">%1$d video\'s geüpload</item>
+    </plurals>
+    <plurals name="local_selected_upload_hint">
+        <item quantity="one">%1$d video geselecteerd — tik op ↑ om naar de server te uploaden</item>
+        <item quantity="other">%1$d video\'s geselecteerd — tik op ↑ om naar de server te uploaden</item>
+    </plurals>
+
+    <!-- ── Settings ─────────────────────────────────────────────────────── -->
+    <string name="settings_title">Instellingen</string>
+    <string name="settings_back">Terug</string>
+    <string name="settings_library_locations">Bibliotheeklocaties</string>
+    <string name="settings_no_watched_folders">Geen bewaakte mappen</string>
+    <string name="settings_rescan_complete">Opnieuw scannen voltooid</string>
+    <string name="settings_rescan_failed">Opnieuw scannen mislukt: %1$s</string>
+    <string name="settings_about">Over</string>
+    <string name="settings_app_version">App-versie</string>
+    <string name="settings_loading_daemon_info">Daemon-informatie laden…</string>
+    <string name="settings_connection">Verbinding</string>
+    <string name="settings_server_connection">Serververbinding</string>
+    <string name="settings_connected_remote">Verbonden met externe daemon op %1$s:%2$d</string>
+    <string name="settings_connected_local">Verbonden met lokale daemon</string>
+    <string name="settings_disconnected">Verbinding met server verbroken</string>
+    <string name="settings_forget_server">Server vergeten</string>
+    <string name="settings_reconnected">Opnieuw verbonden</string>
+    <string name="settings_reconnect_failed">Opnieuw verbinden mislukt</string>
+    <string name="settings_reconnect">Opnieuw verbinden</string>
+    <string name="settings_scan">Scannen</string>
+    <string name="settings_full_rescan">Volledig opnieuw scannen</string>
+    <string name="settings_full_rescan_desc">Alle bewaakte mappen opnieuw indexeren, metadata extraheren en miniaturen genereren voor nieuwe of gewijzigde video\'s.</string>
+    <string name="settings_full_scan_complete">Volledig scannen voltooid</string>
+    <string name="settings_scan_failed">Scannen mislukt: %1$s</string>
+    <string name="settings_scanning">Scannen…</string>
+    <string name="settings_start_full_scan">Volledig scannen starten</string>
+    <string name="settings_collapse">Samenvouwen</string>
+    <string name="settings_expand">Uitvouwen</string>
+    <string name="settings_last_scanned">Laatste scan: %1$s</string>
+    <string name="settings_never_scanned">Nooit gescand</string>
+    <string name="settings_non_recursive"> (niet-recursief)</string>
+    <string name="settings_disabled"> (uitgeschakeld)</string>
+    <string name="settings_rescan_path">%1$s opnieuw scannen</string>
+    <string name="settings_daemon_version">Daemon-versie</string>
+    <string name="settings_videos_indexed">Geïndexeerde video\'s</string>
+    <string name="settings_cache_size">Cachegrootte</string>
+    <string name="settings_uptime">Uptime</string>
+    <string name="settings_loading">Laden…</string>
+    <plurals name="settings_location_video_count">
+        <item quantity="one">%1$d video</item>
+        <item quantity="other">%1$d video\'s</item>
+    </plurals>
+
+    <!-- ── Detail ───────────────────────────────────────────────────────── -->
+    <string name="detail_title">Detail</string>
+    <string name="detail_share">Delen</string>
+    <string name="detail_share_subject">%1$s delen</string>
+    <string name="detail_video_not_found">Video niet gevonden</string>
+    <string name="detail_section_file_info">Bestandsinfo</string>
+    <string name="detail_section_video">Video</string>
+    <string name="detail_section_audio">Audio</string>
+    <string name="detail_section_capture">Opname</string>
+    <string name="detail_field_filename">Bestandsnaam</string>
+    <string name="detail_field_path">Pad</string>
+    <string name="detail_field_size">Grootte</string>
+    <string name="detail_field_indexed">Geïndexeerd</string>
+    <string name="detail_field_online">Online</string>
+    <string name="detail_value_online_yes">Ja</string>
+    <string name="detail_value_online_no">Nee (offline)</string>
+    <string name="detail_field_resolution">Resolutie</string>
+    <string name="detail_field_codec">Codec</string>
+    <string name="detail_field_fps">FPS</string>
+    <string name="detail_field_bitrate">Bitsnelheid</string>
+    <string name="detail_field_frames">Frames</string>
+    <string name="detail_field_hdr">HDR</string>
+    <string name="detail_value_yes">Ja</string>
+    <string name="detail_field_color_space">Kleurruimte</string>
+    <string name="detail_field_resolution_status">Resolutiestatus</string>
+    <string name="detail_value_full_resolution">Volledige resolutie</string>
+    <string name="detail_value_not_full_resolution">Niet volledige resolutie</string>
+    <string name="detail_field_channels">Kanalen</string>
+    <string name="detail_field_sample_rate">Samplefrequentie</string>
+    <string name="detail_value_sample_rate">%1$d Hz</string>
+    <string name="detail_field_date">Datum</string>
+    <string name="detail_field_camera">Camera</string>
+    <string name="detail_field_camera_internal">Camera (intern)</string>
+    <string name="detail_field_lens">Objectief</string>
+    <string name="detail_field_iso">ISO</string>
+    <string name="detail_value_iso">ISO %1$d</string>
+    <string name="detail_field_aperture">Diafragma</string>
+    <string name="detail_field_exposure">Sluitertijd</string>
+    <string name="detail_field_focal_length">Brandpuntsafstand</string>
+    <string name="detail_field_exposure_mode">Belichtingsmodus</string>
+    <string name="detail_field_exposure_program">Belichtingsprogramma</string>
+    <string name="detail_field_white_balance">Witbalans</string>
+    <string name="detail_em_dash">—</string>
+    <string name="detail_section_location">LOCATIE</string>
+    <string name="detail_field_gps">GPS</string>
+    <string name="detail_field_altitude">Hoogte</string>
+    <string name="detail_value_altitude">%1$.1f m</string>
+    <string name="detail_no_location">Geen locatie</string>
+    <string name="detail_change_location">Locatie wijzigen…</string>
+    <string name="detail_set_location">Locatie instellen…</string>
+    <string name="detail_remove_location">Locatie verwijderen</string>
+    <string name="detail_show_on_map">Tonen op kaart</string>
+    <string name="detail_set_location_title">Locatie instellen</string>
+    <string name="detail_drag_to_position">Sleep de kaart om de speld te plaatsen.</string>
+    <string name="detail_write_location_to_file">Locatie in het bestand schrijven</string>
+    <string name="detail_write_location_desc">Slaat de GPS-tag ook op in het videobestand, niet alleen in de catalogus.</string>
+    <string name="detail_section_tags">TAGS</string>
+    <string name="detail_add_tag">Tag toevoegen</string>
+    <string name="detail_no_tags">Geen tags</string>
+    <string name="detail_remove_tag">%1$s verwijderen</string>
+    <string name="detail_add_tag_title">Tag toevoegen</string>
+    <string name="detail_all_tags_applied">Alle tags zijn al toegepast.</string>
+    <string name="detail_section_notes">NOTITIES</string>
+    <string name="detail_edit">Bewerken</string>
+    <string name="detail_no_notes">Geen notities</string>
+    <string name="detail_section_rating">BEOORDELING</string>
+    <string name="detail_rating_out_of_five">%1$d / 5</string>
+    <string name="detail_section_color_label">KLEURLABEL</string>
+    <string name="detail_color_label_none">G</string>
+    <string name="detail_color_label_selected">%1$s geselecteerd</string>
+    <string name="detail_section_proxies">PROXY\'S</string>
+    <string name="detail_proxy_auto">Auto</string>
+    <string name="detail_audio_channels_mono">1 (Mono)</string>
+    <string name="detail_audio_channels_stereo">2 (Stereo)</string>
+    <string name="detail_audio_channels_51">5.1 Surround</string>
+    <string name="detail_audio_channels_71">7.1 Surround</string>
+    <plurals name="detail_star_count">
+        <item quantity="one">%1$d ster</item>
+        <item quantity="other">%1$d sterren</item>
+    </plurals>
+
+    <!-- ── Filter bar ───────────────────────────────────────────────────── -->
+    <string name="filter_filters">Filters</string>
+    <string name="filter_clear_all">Alles wissen</string>
+    <string name="filter_remove_filter">Filter verwijderen</string>
+    <string name="filter_sort_ascending">Oplopend sorteren</string>
+    <string name="filter_sort_descending">Aflopend sorteren</string>
+    <string name="filter_filters_and_sort">Filters &amp; Sorteren</string>
+    <string name="filter_done">Gereed</string>
+    <string name="filter_search">ZOEKEN</string>
+    <string name="filter_search_placeholder">Bestandsnamen, notities zoeken…</string>
+    <string name="filter_clear_search">Zoekopdracht wissen</string>
+    <string name="filter_minimum_rating">MINIMALE BEOORDELING</string>
+    <string name="filter_any">Willekeurig</string>
+    <string name="filter_rating_plus">%1$d+</string>
+    <string name="filter_keywords">TREFWOORDEN</string>
+    <string name="filter_all">Alle</string>
+    <string name="filter_tag_with_count">%1$s (%2$d)</string>
+    <string name="filter_collections">VERZAMELINGEN</string>
+    <string name="filter_collection_with_count">%1$s (%2$d)</string>
+    <string name="filter_sort">SORTEREN</string>
+    <string name="filter_change_sort_field">Sorteerveld wijzigen</string>
+    <string name="filter_sort_ascending_reverse">Oplopend sorteren — tik om te keren</string>
+    <string name="filter_sort_descending_reverse">Aflopend sorteren — tik om te keren</string>
+    <string name="filter_ascending">Oplopend</string>
+    <string name="filter_descending">Aflopend</string>
+
+    <!-- ── Sort field names ─────────────────────────────────────────────── -->
+    <string name="sort_date_indexed">Datum geïndexeerd</string>
+    <string name="sort_date_captured">Opnamedatum</string>
+    <string name="sort_filename">Bestandsnaam</string>
+    <string name="sort_file_size">Bestandsgrootte</string>
+    <string name="sort_duration">Duur</string>
+    <string name="sort_rating">Beoordeling</string>
+    <string name="sort_frame_rate">Framesnelheid</string>
+    <string name="sort_codec">Codec</string>
+    <string name="sort_camera">Camera</string>
+
+    <!-- ── Cards / badges ───────────────────────────────────────────────── -->
+    <string name="card_no_thumbnail">Geen miniatuur</string>
+    <string name="card_offline">Offline</string>
+    <string name="card_selected">Geselecteerd</string>
+    <string name="card_full_resolution">Volledige resolutie</string>
+    <string name="card_not_full_resolution">Niet volledige resolutie</string>
+    <string name="card_has_audio">Heeft een audiotrack</string>
+    <string name="card_file_offline">Bestand offline</string>
+    <string name="card_star">%1$d ster</string>
+    <plurals name="card_keyword_count">
+        <item quantity="one">%1$d trefwoord</item>
+        <item quantity="other">%1$d trefwoorden</item>
+    </plurals>
+    <plurals name="card_proxy_count">
+        <item quantity="one">%1$d proxy beschikbaar</item>
+        <item quantity="other">%1$d proxy\'s beschikbaar</item>
+    </plurals>
+    <plurals name="card_stack_count">
+        <item quantity="one">Stapel van %1$d</item>
+        <item quantity="other">Stapel van %1$d</item>
+    </plurals>
+
+    <!-- ── Video player ─────────────────────────────────────────────────── -->
+    <string name="player_no_stream">Geen stream beschikbaar</string>
+    <string name="player_play">Afspelen</string>
+    <string name="player_pause">Pauzeren</string>
+    <string name="player_volume">Volume</string>
+    <string name="player_quality">Kwaliteit</string>
+    <string name="player_full_screen">Volledig scherm</string>
+    <string name="player_exit_full_screen">Volledig scherm sluiten</string>
+    <string name="player_retry">Opnieuw proberen</string>
+    <string name="player_selected">Geselecteerd</string>
+    <string name="player_cancel">Annuleren</string>
+    <string name="player_playback_error">Afspeelfout</string>
+
+    <!-- ── ViewModel errors (snackbars) ─────────────────────────────────── -->
+    <string name="err_load_more_videos">Meer video\'s laden mislukt: %1$s</string>
+    <string name="err_load_videos">Video\'s laden mislukt: %1$s</string>
+    <string name="err_load_metadata">Metadata laden mislukt: %1$s</string>
+    <string name="err_video_not_found">Video niet gevonden</string>
+    <string name="err_update_notes">Notities bijwerken mislukt</string>
+    <string name="err_update_notes_detail">Notities bijwerken mislukt: %1$s</string>
+    <string name="err_add_tag">Tag toevoegen mislukt</string>
+    <string name="err_add_tag_detail">Tag toevoegen mislukt: %1$s</string>
+    <string name="err_remove_tag">Tag verwijderen mislukt</string>
+    <string name="err_remove_tag_detail">Tag verwijderen mislukt: %1$s</string>
+    <string name="err_update_rating">Beoordeling bijwerken mislukt: %1$s</string>
+    <string name="err_update_color_label">Kleurlabel bijwerken mislukt: %1$s</string>
+    <string name="err_update_location">Locatie bijwerken mislukt</string>
+    <string name="err_update_location_detail">Locatie bijwerken mislukt: %1$s</string>
+    <string name="err_remove_location">Locatie verwijderen mislukt</string>
+    <string name="err_remove_location_detail">Locatie verwijderen mislukt: %1$s</string>
+    <string name="err_add_to_collection">Toevoegen aan verzameling mislukt</string>
+    <string name="err_add_to_collection_detail">Toevoegen aan verzameling mislukt: %1$s</string>
+    <string name="err_remove_from_collection">Verwijderen uit verzameling mislukt</string>
+    <string name="err_remove_from_collection_detail">Verwijderen uit verzameling mislukt: %1$s</string>
+    <string name="scan_target_default">bibliotheek</string>
+    <string name="scan_scanning_target">%1$s scannen…</string>
+    <string name="pairing_a_device">Een apparaat</string>
+</resources>

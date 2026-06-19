@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- app_name omitted — falls back to the default "ReelVault" -->
+
+    <!-- ── Common ───────────────────────────────────────────────────────── -->
+    <string name="common_back">ย้อนกลับ</string>
+    <string name="common_cancel">ยกเลิก</string>
+    <string name="common_save">บันทึก</string>
+    <string name="common_done">เสร็จสิ้น</string>
+    <string name="common_clear">ล้าง</string>
+    <string name="common_selected">เลือกแล้ว</string>
+    <string name="common_offline">ออฟไลน์</string>
+    <string name="common_unavailable">ไม่พร้อมใช้งาน</string>
+    <string name="common_unknown_error">ข้อผิดพลาดที่ไม่ทราบสาเหตุ</string>
+
+    <!-- ── Connection flow ──────────────────────────────────────────────── -->
+    <string name="conn_reconnecting_to">กำลังเชื่อมต่อใหม่ไปยัง %1$s…</string>
+    <string name="conn_connecting_to">กำลังเชื่อมต่อไปยัง %1$s…</string>
+    <string name="conn_connecting">กำลังเชื่อมต่อ…</string>
+    <string name="conn_pairing_with">กำลังจับคู่กับ %1$s…</string>
+    <string name="conn_could_not_connect_named">ไม่สามารถเชื่อมต่อกับ %1$s ได้ ตรวจสอบว่า daemon กำลังทำงานอยู่แล้วลองอีกครั้ง</string>
+    <string name="conn_could_not_connect_simple">ไม่สามารถเชื่อมต่อกับ %1$s ได้</string>
+    <string name="conn_pairing_rejected">การจับคู่ถูกปฏิเสธ — ตรวจสอบรหัสและลองอีกครั้ง</string>
+    <string name="conn_looking_for_servers">กำลังค้นหาเซิร์ฟเวอร์ ReelVault…</string>
+    <string name="conn_scanning_network">กำลังสแกนเครือข่ายท้องถิ่น</string>
+    <string name="conn_connect_title">เชื่อมต่อกับ ReelVault</string>
+    <string name="conn_rescan">สแกนซ้ำ</string>
+    <string name="conn_no_servers_found">ไม่พบเซิร์ฟเวอร์</string>
+    <string name="conn_no_servers_hint">เริ่ม ReelVault core daemon ด้วย --remote บนคอมพิวเตอร์ในเครือข่าย Wi-Fi นี้ แล้วสแกนซ้ำ</string>
+    <string name="conn_available_servers">เซิร์ฟเวอร์ที่พร้อมใช้งาน</string>
+    <string name="conn_enter_address_manually">ป้อนที่อยู่ด้วยตนเอง</string>
+    <string name="conn_browse_local_videos">เรียกดูวิดีโอในเครื่อง</string>
+    <string name="conn_requires_pairing">ต้องมีการจับคู่</string>
+    <string name="conn_enter_pairing_code">ป้อนรหัสจับคู่</string>
+    <string name="conn_pair_with">จับคู่กับ %1$s</string>
+    <string name="conn_pairing_instructions">บนคอมพิวเตอร์ที่รัน ReelVault เลือก File ▸ Pair a New Device เพื่อแสดงรหัส 6 หลัก (เซิร์ฟเวอร์แบบ headless จะบันทึกรหัสไว้ด้วย) ป้อนรหัสด้านล่าง — คุณทำสิ่งนี้เพียงครั้งเดียว</string>
+    <string name="conn_pin_placeholder">000000</string>
+    <string name="conn_pair_button">จับคู่</string>
+    <string name="conn_connect_manually">เชื่อมต่อด้วยตนเอง</string>
+    <string name="conn_host_label">โฮสต์หรือที่อยู่ IP</string>
+    <string name="conn_host_placeholder">192.168.1.100</string>
+    <string name="conn_grpc_port_label">พอร์ต gRPC</string>
+    <string name="conn_grpc_port_placeholder">50051</string>
+    <string name="conn_fingerprint_label">ลายนิ้วมือใบรับรอง (SHA-256, ไม่บังคับ)</string>
+    <string name="conn_fingerprint_placeholder">abcd1234…</string>
+    <string name="conn_fetch">ดึงข้อมูล</string>
+    <string name="conn_could_not_reach">ไม่สามารถเข้าถึง %1$s:%2$d ได้ — ตรวจสอบโฮสต์และดูว่า daemon กำลังทำงานอยู่</string>
+    <string name="conn_connect_button">เชื่อมต่อ</string>
+    <string name="conn_retry">ลองอีกครั้ง</string>
+    <string name="conn_enter_address">ป้อนที่อยู่</string>
+
+    <!-- ── Library grid ─────────────────────────────────────────────────── -->
+    <string name="grid_incoming_pairing_title">คำขอจับคู่ขาเข้า</string>
+    <string name="grid_incoming_pairing_message">%1$s ต้องการเชื่อมต่อกับไลบรารีนี้ อนุญาตหรือไม่?</string>
+    <string name="grid_allow">อนุญาต</string>
+    <string name="grid_deny">ปฏิเสธ</string>
+    <string name="grid_close_search">ปิดการค้นหา</string>
+    <string name="grid_search_videos_hint">ค้นหาวิดีโอ…</string>
+    <string name="grid_selected_count">เลือกแล้ว %1$d รายการ</string>
+    <string name="grid_clear_selection">ยกเลิกการเลือก</string>
+    <string name="grid_open_library_panel">เปิดแผงไลบรารี</string>
+    <string name="grid_search">ค้นหา</string>
+    <string name="grid_sort">จัดเรียง</string>
+    <string name="grid_switch_to_list_view">สลับเป็นมุมมองรายการ</string>
+    <string name="grid_switch_to_grid_view">สลับเป็นมุมมองตาราง</string>
+    <string name="grid_more_options">ตัวเลือกเพิ่มเติม</string>
+    <string name="grid_map">แผนที่</string>
+    <string name="grid_settings">การตั้งค่า</string>
+    <string name="grid_disconnect">ยกเลิกการเชื่อมต่อ</string>
+    <string name="grid_sort_by">จัดเรียงตาม</string>
+    <string name="grid_sort_ascending_arrow">%1$s ↑</string>
+    <string name="grid_sort_descending_arrow">%1$s ↓</string>
+    <string name="grid_library">ไลบรารี</string>
+    <string name="grid_clear_filters">ล้างตัวกรอง</string>
+    <string name="grid_close">ปิด</string>
+    <string name="grid_catalog">แคตตาล็อก</string>
+    <string name="grid_remote_library">ไลบรารีระยะไกล</string>
+    <string name="grid_local_videos">วิดีโอในเครื่อง</string>
+    <string name="grid_all_videos">วิดีโอทั้งหมด</string>
+    <string name="grid_locations">ตำแหน่ง</string>
+    <string name="grid_keywords">คีย์เวิร์ด</string>
+    <string name="grid_collections">คอลเลกชัน</string>
+    <string name="grid_no_videos">ไม่มีวิดีโอ</string>
+    <string name="grid_processing">กำลังประมวลผล…</string>
+    <string name="grid_percent">%1$d%%</string>
+    <string name="grid_no_videos_match_search">ไม่พบวิดีโอที่ตรงกับ \"%1$s\"</string>
+    <string name="grid_no_videos_with_keyword">ไม่มีวิดีโอที่มีคีย์เวิร์ดนี้</string>
+    <string name="grid_collection_empty">คอลเลกชันนี้ว่างเปล่า</string>
+    <string name="grid_no_videos_in_library">ไม่มีวิดีโอในไลบรารี</string>
+    <string name="grid_empty_add_location_hint">เพิ่มตำแหน่งไลบรารีในการตั้งค่าเพื่อเริ่มต้น</string>
+    <string name="grid_empty_no_match_filter">…หรือไม่มีวิดีโอที่ตรงกับตัวกรองปัจจุบัน</string>
+    <string name="grid_reset_filter">รีเซ็ตตัวกรอง</string>
+    <string name="grid_clear_location_filter">ล้างตัวกรองตำแหน่ง</string>
+    <string name="grid_star_count">%1$d ดาว</string>
+    <plurals name="grid_video_count">
+        <item quantity="other">%1$d วิดีโอ</item>
+    </plurals>
+    <plurals name="grid_location_video_count">
+        <item quantity="other">%1$d วิดีโอ</item>
+    </plurals>
+
+    <!-- ── Map ──────────────────────────────────────────────────────────── -->
+    <string name="map_title">แผนที่</string>
+    <string name="map_load_failed">โหลดข้อมูลแผนที่ไม่สำเร็จ: %1$s</string>
+    <string name="map_unknown_error">ข้อผิดพลาดที่ไม่ทราบสาเหตุ</string>
+    <string name="map_no_geotagged">ไม่มีวิดีโอที่มีข้อมูลตำแหน่ง\nวิดีโอที่มีข้อมูล GPS จะปรากฏที่นี่บนแผนที่</string>
+    <string name="map_geotagged_count">%1$d รายการที่มีพิกัด</string>
+    <plurals name="map_marker_video_count">
+        <item quantity="other">%1$d วิดีโอ</item>
+    </plurals>
+
+    <!-- ── Local media ──────────────────────────────────────────────────── -->
+    <string name="local_selected_count">เลือกแล้ว %1$d รายการ</string>
+    <string name="local_title">วิดีโอในเครื่อง</string>
+    <string name="local_clear_selection">ยกเลิกการเลือก</string>
+    <string name="local_upload_to_server">อัปโหลดไปยังเซิร์ฟเวอร์</string>
+    <string name="local_select_all">เลือกทั้งหมด</string>
+    <string name="local_upload_failed">อัปโหลดไม่สำเร็จ: %1$s</string>
+    <string name="local_no_videos_found">ไม่พบวิดีโอในอุปกรณ์</string>
+    <string name="local_not_connected_hint">ไม่ได้เชื่อมต่อ — เชื่อมต่อกับเซิร์ฟเวอร์ ReelVault เพื่ออัปโหลด</string>
+    <string name="local_uploaded">อัปโหลดแล้ว</string>
+    <string name="local_video_access_denied">ปฏิเสธการเข้าถึงวิดีโอ</string>
+    <string name="local_permission_hint">ให้สิทธิ์ "วิดีโอ" ในการตั้งค่า → แอป → ReelVault → สิทธิ์ เพื่อเรียกดูวิดีโอในเครื่อง</string>
+    <plurals name="local_uploaded_count">
+        <item quantity="other">อัปโหลด %1$d วิดีโอแล้ว</item>
+    </plurals>
+    <plurals name="local_selected_upload_hint">
+        <item quantity="other">เลือก %1$d วิดีโอแล้ว — แตะ ↑ เพื่ออัปโหลดไปยังเซิร์ฟเวอร์</item>
+    </plurals>
+
+    <!-- ── Settings ─────────────────────────────────────────────────────── -->
+    <string name="settings_title">การตั้งค่า</string>
+    <string name="settings_back">ย้อนกลับ</string>
+    <string name="settings_library_locations">ตำแหน่งไลบรารี</string>
+    <string name="settings_no_watched_folders">ไม่มีโฟลเดอร์ที่ตรวจสอบ</string>
+    <string name="settings_rescan_complete">สแกนซ้ำเสร็จสิ้น</string>
+    <string name="settings_rescan_failed">สแกนซ้ำไม่สำเร็จ: %1$s</string>
+    <string name="settings_about">เกี่ยวกับ</string>
+    <string name="settings_app_version">เวอร์ชันแอป</string>
+    <string name="settings_loading_daemon_info">กำลังโหลดข้อมูล daemon…</string>
+    <string name="settings_connection">การเชื่อมต่อ</string>
+    <string name="settings_server_connection">การเชื่อมต่อเซิร์ฟเวอร์</string>
+    <string name="settings_connected_remote">เชื่อมต่อกับ daemon ระยะไกลที่ %1$s:%2$d</string>
+    <string name="settings_connected_local">เชื่อมต่อกับ daemon ในเครื่องแล้ว</string>
+    <string name="settings_disconnected">ยกเลิกการเชื่อมต่อจากเซิร์ฟเวอร์แล้ว</string>
+    <string name="settings_forget_server">ลืมเซิร์ฟเวอร์</string>
+    <string name="settings_reconnected">เชื่อมต่อใหม่สำเร็จ</string>
+    <string name="settings_reconnect_failed">เชื่อมต่อใหม่ไม่สำเร็จ</string>
+    <string name="settings_reconnect">เชื่อมต่อใหม่</string>
+    <string name="settings_scan">สแกน</string>
+    <string name="settings_full_rescan">สแกนทั้งหมดซ้ำ</string>
+    <string name="settings_full_rescan_desc">จัดทำดัชนีโฟลเดอร์ที่ตรวจสอบทั้งหมดใหม่ ดึงข้อมูลเมตา และสร้างภาพขนาดย่อสำหรับวิดีโอใหม่หรือที่เปลี่ยนแปลง</string>
+    <string name="settings_full_scan_complete">สแกนทั้งหมดเสร็จสิ้น</string>
+    <string name="settings_scan_failed">สแกนไม่สำเร็จ: %1$s</string>
+    <string name="settings_scanning">กำลังสแกน…</string>
+    <string name="settings_start_full_scan">เริ่มสแกนทั้งหมด</string>
+    <string name="settings_collapse">ย่อ</string>
+    <string name="settings_expand">ขยาย</string>
+    <string name="settings_last_scanned">สแกนล่าสุด: %1$s</string>
+    <string name="settings_never_scanned">ยังไม่เคยสแกน</string>
+    <string name="settings_non_recursive"> (ไม่รวมโฟลเดอร์ย่อย)</string>
+    <string name="settings_disabled"> (ปิดใช้งาน)</string>
+    <string name="settings_rescan_path">สแกนซ้ำ %1$s</string>
+    <string name="settings_daemon_version">เวอร์ชัน Daemon</string>
+    <string name="settings_videos_indexed">วิดีโอที่จัดทำดัชนีแล้ว</string>
+    <string name="settings_cache_size">ขนาดแคช</string>
+    <string name="settings_uptime">เวลาทำงาน</string>
+    <string name="settings_loading">กำลังโหลด…</string>
+    <plurals name="settings_location_video_count">
+        <item quantity="other">%1$d วิดีโอ</item>
+    </plurals>
+
+    <!-- ── Detail ───────────────────────────────────────────────────────── -->
+    <string name="detail_title">รายละเอียด</string>
+    <string name="detail_share">แชร์</string>
+    <string name="detail_share_subject">แชร์ %1$s</string>
+    <string name="detail_video_not_found">ไม่พบวิดีโอ</string>
+    <string name="detail_section_file_info">ข้อมูลไฟล์</string>
+    <string name="detail_section_video">วิดีโอ</string>
+    <string name="detail_section_audio">เสียง</string>
+    <string name="detail_section_capture">การถ่าย</string>
+    <string name="detail_field_filename">ชื่อไฟล์</string>
+    <string name="detail_field_path">เส้นทาง</string>
+    <string name="detail_field_size">ขนาด</string>
+    <string name="detail_field_indexed">จัดทำดัชนีแล้ว</string>
+    <string name="detail_field_online">ออนไลน์</string>
+    <string name="detail_value_online_yes">ใช่</string>
+    <string name="detail_value_online_no">ไม่ (ออฟไลน์)</string>
+    <string name="detail_field_resolution">ความละเอียด</string>
+    <string name="detail_field_codec">โคเดก</string>
+    <string name="detail_field_fps">FPS</string>
+    <string name="detail_field_bitrate">บิตเรต</string>
+    <string name="detail_field_frames">เฟรม</string>
+    <string name="detail_field_hdr">HDR</string>
+    <string name="detail_value_yes">ใช่</string>
+    <string name="detail_field_color_space">พื้นที่สี</string>
+    <string name="detail_field_resolution_status">สถานะความละเอียด</string>
+    <string name="detail_value_full_resolution">ความละเอียดเต็ม</string>
+    <string name="detail_value_not_full_resolution">ความละเอียดไม่เต็ม</string>
+    <string name="detail_field_channels">ช่องสัญญาณ</string>
+    <string name="detail_field_sample_rate">อัตราการสุ่มตัวอย่าง</string>
+    <string name="detail_value_sample_rate">%1$d Hz</string>
+    <string name="detail_field_date">วันที่</string>
+    <string name="detail_field_camera">กล้อง</string>
+    <string name="detail_field_camera_internal">กล้อง (ภายใน)</string>
+    <string name="detail_field_lens">เลนส์</string>
+    <string name="detail_field_iso">ISO</string>
+    <string name="detail_value_iso">ISO %1$d</string>
+    <string name="detail_field_aperture">รูรับแสง</string>
+    <string name="detail_field_exposure">ความเร็วชัตเตอร์</string>
+    <string name="detail_field_focal_length">ทางยาวโฟกัส</string>
+    <string name="detail_field_exposure_mode">โหมดรับแสง</string>
+    <string name="detail_field_exposure_program">โปรแกรมรับแสง</string>
+    <string name="detail_field_white_balance">ไวท์บาลานซ์</string>
+    <string name="detail_em_dash">—</string>
+    <string name="detail_section_location">ตำแหน่ง</string>
+    <string name="detail_field_gps">GPS</string>
+    <string name="detail_field_altitude">ระดับความสูง</string>
+    <string name="detail_value_altitude">%1$.1f ม.</string>
+    <string name="detail_no_location">ไม่มีตำแหน่ง</string>
+    <string name="detail_change_location">เปลี่ยนตำแหน่ง…</string>
+    <string name="detail_set_location">ตั้งค่าตำแหน่ง…</string>
+    <string name="detail_remove_location">ลบตำแหน่ง</string>
+    <string name="detail_show_on_map">แสดงบนแผนที่</string>
+    <string name="detail_set_location_title">ตั้งค่าตำแหน่ง</string>
+    <string name="detail_drag_to_position">ลากแผนที่เพื่อวางตำแหน่งหมุด</string>
+    <string name="detail_write_location_to_file">เขียนตำแหน่งลงในไฟล์</string>
+    <string name="detail_write_location_desc">ฝังแท็ก GPS ลงในไฟล์วิดีโอด้วย ไม่ใช่แค่แคตตาล็อก</string>
+    <string name="detail_section_tags">แท็ก</string>
+    <string name="detail_add_tag">เพิ่มแท็ก</string>
+    <string name="detail_no_tags">ไม่มีแท็ก</string>
+    <string name="detail_remove_tag">ลบ %1$s</string>
+    <string name="detail_add_tag_title">เพิ่มแท็ก</string>
+    <string name="detail_all_tags_applied">ใช้แท็กทั้งหมดแล้ว</string>
+    <string name="detail_section_notes">บันทึก</string>
+    <string name="detail_edit">แก้ไข</string>
+    <string name="detail_no_notes">ไม่มีบันทึก</string>
+    <string name="detail_section_rating">คะแนน</string>
+    <string name="detail_rating_out_of_five">%1$d / 5</string>
+    <string name="detail_section_color_label">ป้ายสี</string>
+    <string name="detail_color_label_none">ไม่มี</string>
+    <string name="detail_color_label_selected">เลือก %1$s แล้ว</string>
+    <string name="detail_section_proxies">พร็อกซี</string>
+    <string name="detail_proxy_auto">อัตโนมัติ</string>
+    <string name="detail_audio_channels_mono">1 (โมโน)</string>
+    <string name="detail_audio_channels_stereo">2 (สเตอริโอ)</string>
+    <string name="detail_audio_channels_51">5.1 เสียงรอบทิศทาง</string>
+    <string name="detail_audio_channels_71">7.1 เสียงรอบทิศทาง</string>
+    <plurals name="detail_star_count">
+        <item quantity="other">%1$d ดาว</item>
+    </plurals>
+
+    <!-- ── Filter bar ───────────────────────────────────────────────────── -->
+    <string name="filter_filters">ตัวกรอง</string>
+    <string name="filter_clear_all">ล้างทั้งหมด</string>
+    <string name="filter_remove_filter">ลบตัวกรอง</string>
+    <string name="filter_sort_ascending">จัดเรียงจากน้อยไปมาก</string>
+    <string name="filter_sort_descending">จัดเรียงจากมากไปน้อย</string>
+    <string name="filter_filters_and_sort">ตัวกรองและการจัดเรียง</string>
+    <string name="filter_done">เสร็จสิ้น</string>
+    <string name="filter_search">ค้นหา</string>
+    <string name="filter_search_placeholder">ค้นหาชื่อไฟล์, บันทึก…</string>
+    <string name="filter_clear_search">ล้างการค้นหา</string>
+    <string name="filter_minimum_rating">คะแนนขั้นต่ำ</string>
+    <string name="filter_any">ใดก็ได้</string>
+    <string name="filter_rating_plus">%1$d+</string>
+    <string name="filter_keywords">คีย์เวิร์ด</string>
+    <string name="filter_all">ทั้งหมด</string>
+    <string name="filter_tag_with_count">%1$s (%2$d)</string>
+    <string name="filter_collections">คอลเลกชัน</string>
+    <string name="filter_collection_with_count">%1$s (%2$d)</string>
+    <string name="filter_sort">จัดเรียง</string>
+    <string name="filter_change_sort_field">เปลี่ยนช่องการจัดเรียง</string>
+    <string name="filter_sort_ascending_reverse">จัดเรียงจากน้อยไปมาก — แตะเพื่อกลับด้าน</string>
+    <string name="filter_sort_descending_reverse">จัดเรียงจากมากไปน้อย — แตะเพื่อกลับด้าน</string>
+    <string name="filter_ascending">จากน้อยไปมาก</string>
+    <string name="filter_descending">จากมากไปน้อย</string>
+
+    <!-- ── Sort field names ─────────────────────────────────────────────── -->
+    <string name="sort_date_indexed">วันที่จัดทำดัชนี</string>
+    <string name="sort_date_captured">วันที่ถ่าย</string>
+    <string name="sort_filename">ชื่อไฟล์</string>
+    <string name="sort_file_size">ขนาดไฟล์</string>
+    <string name="sort_duration">ระยะเวลา</string>
+    <string name="sort_rating">คะแนน</string>
+    <string name="sort_frame_rate">อัตราเฟรม</string>
+    <string name="sort_codec">โคเดก</string>
+    <string name="sort_camera">กล้อง</string>
+
+    <!-- ── Cards / badges ───────────────────────────────────────────────── -->
+    <string name="card_no_thumbnail">ไม่มีภาพขนาดย่อ</string>
+    <string name="card_offline">ออฟไลน์</string>
+    <string name="card_selected">เลือกแล้ว</string>
+    <string name="card_full_resolution">ความละเอียดเต็ม</string>
+    <string name="card_not_full_resolution">ความละเอียดไม่เต็ม</string>
+    <string name="card_has_audio">มีแทร็กเสียง</string>
+    <string name="card_file_offline">ไฟล์ออฟไลน์</string>
+    <string name="card_star">%1$d ดาว</string>
+    <plurals name="card_keyword_count">
+        <item quantity="other">%1$d คีย์เวิร์ด</item>
+    </plurals>
+    <plurals name="card_proxy_count">
+        <item quantity="other">%1$d พร็อกซีพร้อมใช้งาน</item>
+    </plurals>
+    <plurals name="card_stack_count">
+        <item quantity="other">สแต็กจำนวน %1$d รายการ</item>
+    </plurals>
+
+    <!-- ── Video player ─────────────────────────────────────────────────── -->
+    <string name="player_no_stream">ไม่มีสตรีมที่พร้อมใช้งาน</string>
+    <string name="player_play">เล่น</string>
+    <string name="player_pause">หยุดชั่วคราว</string>
+    <string name="player_volume">ระดับเสียง</string>
+    <string name="player_quality">คุณภาพ</string>
+    <string name="player_full_screen">เต็มจอ</string>
+    <string name="player_exit_full_screen">ออกจากโหมดเต็มจอ</string>
+    <string name="player_retry">ลองอีกครั้ง</string>
+    <string name="player_selected">เลือกแล้ว</string>
+    <string name="player_cancel">ยกเลิก</string>
+    <string name="player_playback_error">ข้อผิดพลาดการเล่น</string>
+
+    <!-- ── ViewModel errors (snackbars) ─────────────────────────────────── -->
+    <string name="err_load_more_videos">โหลดวิดีโอเพิ่มเติมไม่สำเร็จ: %1$s</string>
+    <string name="err_load_videos">โหลดวิดีโอไม่สำเร็จ: %1$s</string>
+    <string name="err_load_metadata">โหลดข้อมูลเมตาไม่สำเร็จ: %1$s</string>
+    <string name="err_video_not_found">ไม่พบวิดีโอ</string>
+    <string name="err_update_notes">อัปเดตบันทึกไม่สำเร็จ</string>
+    <string name="err_update_notes_detail">อัปเดตบันทึกไม่สำเร็จ: %1$s</string>
+    <string name="err_add_tag">เพิ่มแท็กไม่สำเร็จ</string>
+    <string name="err_add_tag_detail">เพิ่มแท็กไม่สำเร็จ: %1$s</string>
+    <string name="err_remove_tag">ลบแท็กไม่สำเร็จ</string>
+    <string name="err_remove_tag_detail">ลบแท็กไม่สำเร็จ: %1$s</string>
+    <string name="err_update_rating">อัปเดตคะแนนไม่สำเร็จ: %1$s</string>
+    <string name="err_update_color_label">อัปเดตป้ายสีไม่สำเร็จ: %1$s</string>
+    <string name="err_update_location">อัปเดตตำแหน่งไม่สำเร็จ</string>
+    <string name="err_update_location_detail">อัปเดตตำแหน่งไม่สำเร็จ: %1$s</string>
+    <string name="err_remove_location">ลบตำแหน่งไม่สำเร็จ</string>
+    <string name="err_remove_location_detail">ลบตำแหน่งไม่สำเร็จ: %1$s</string>
+    <string name="err_add_to_collection">เพิ่มลงในคอลเลกชันไม่สำเร็จ</string>
+    <string name="err_add_to_collection_detail">เพิ่มลงในคอลเลกชันไม่สำเร็จ: %1$s</string>
+    <string name="err_remove_from_collection">ลบออกจากคอลเลกชันไม่สำเร็จ</string>
+    <string name="err_remove_from_collection_detail">ลบออกจากคอลเลกชันไม่สำเร็จ: %1$s</string>
+    <string name="scan_target_default">ไลบรารี</string>
+    <string name="scan_scanning_target">กำลังสแกน %1$s…</string>
+    <string name="pairing_a_device">อุปกรณ์หนึ่งเครื่อง</string>
+</resources>

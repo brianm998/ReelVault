@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- app_name intentionally omitted — falls back to the default "ReelVault" -->
+
+    <!-- ── Common ───────────────────────────────────────────────────────── -->
+    <string name="common_back">Назад</string>
+    <string name="common_cancel">Скасувати</string>
+    <string name="common_save">Зберегти</string>
+    <string name="common_done">Готово</string>
+    <string name="common_clear">Очистити</string>
+    <string name="common_selected">Вибрано</string>
+    <string name="common_offline">Офлайн</string>
+    <string name="common_unavailable">Недоступно</string>
+    <string name="common_unknown_error">невідома помилка</string>
+
+    <!-- ── Connection flow ──────────────────────────────────────────────── -->
+    <string name="conn_reconnecting_to">Повторне підключення до %1$s…</string>
+    <string name="conn_connecting_to">Підключення до %1$s…</string>
+    <string name="conn_connecting">Підключення…</string>
+    <string name="conn_pairing_with">Спарювання з %1$s…</string>
+    <string name="conn_could_not_connect_named">Не вдалося підключитися до %1$s. Перевірте, чи запущено демон, і спробуйте ще раз.</string>
+    <string name="conn_could_not_connect_simple">Не вдалося підключитися до %1$s.</string>
+    <string name="conn_pairing_rejected">Спарювання відхилено — перевірте код і спробуйте ще раз.</string>
+    <string name="conn_looking_for_servers">Пошук серверів ReelVault…</string>
+    <string name="conn_scanning_network">Сканування локальної мережі</string>
+    <string name="conn_connect_title">Підключитися до ReelVault</string>
+    <string name="conn_rescan">Повторне сканування</string>
+    <string name="conn_no_servers_found">Сервери не знайдено</string>
+    <string name="conn_no_servers_hint">Запустіть демон ReelVault з параметром --remote на комп\'ютері в цій Wi-Fi-мережі, а потім виконайте повторне сканування.</string>
+    <string name="conn_available_servers">Доступні сервери</string>
+    <string name="conn_enter_address_manually">Ввести адресу вручну</string>
+    <string name="conn_browse_local_videos">Переглянути локальні відео</string>
+    <string name="conn_requires_pairing">Потрібне спарювання</string>
+    <string name="conn_enter_pairing_code">Введіть код спарювання</string>
+    <string name="conn_pair_with">Спарувати з %1$s</string>
+    <string name="conn_pairing_instructions">На комп\'ютері з ReelVault виберіть Файл ▸ Спарувати новий пристрій, щоб показати 6-значний код (безголовий сервер також виводить його у журнал). Введіть його нижче — це потрібно зробити лише один раз.</string>
+    <string name="conn_pin_placeholder">000000</string>
+    <string name="conn_pair_button">Спарувати</string>
+    <string name="conn_connect_manually">Підключитися вручну</string>
+    <string name="conn_host_label">Хост або IP-адреса</string>
+    <string name="conn_host_placeholder">192.168.1.100</string>
+    <string name="conn_grpc_port_label">Порт gRPC</string>
+    <string name="conn_grpc_port_placeholder">50051</string>
+    <string name="conn_fingerprint_label">Відбиток сертифіката (SHA-256, необов\'язково)</string>
+    <string name="conn_fingerprint_placeholder">abcd1234…</string>
+    <string name="conn_fetch">Отримати</string>
+    <string name="conn_could_not_reach">Не вдалося підключитися до %1$s:%2$d — перевірте хост і переконайтеся, що демон запущено.</string>
+    <string name="conn_connect_button">Підключитися</string>
+    <string name="conn_retry">Повторити</string>
+    <string name="conn_enter_address">Введіть адресу</string>
+
+    <!-- ── Library grid ─────────────────────────────────────────────────── -->
+    <string name="grid_incoming_pairing_title">Вхідний запит на спарювання</string>
+    <string name="grid_incoming_pairing_message">%1$s хоче підключитися до цієї бібліотеки. Дозволити?</string>
+    <string name="grid_allow">Дозволити</string>
+    <string name="grid_deny">Відхилити</string>
+    <string name="grid_close_search">Закрити пошук</string>
+    <string name="grid_search_videos_hint">Пошук відео…</string>
+    <string name="grid_selected_count">%1$d вибрано</string>
+    <string name="grid_clear_selection">Зняти виділення</string>
+    <string name="grid_open_library_panel">Відкрити панель бібліотеки</string>
+    <string name="grid_search">Пошук</string>
+    <string name="grid_sort">Сортування</string>
+    <string name="grid_switch_to_list_view">Перейти до перегляду списком</string>
+    <string name="grid_switch_to_grid_view">Перейти до перегляду сіткою</string>
+    <string name="grid_more_options">Більше параметрів</string>
+    <string name="grid_map">Карта</string>
+    <string name="grid_settings">Налаштування</string>
+    <string name="grid_disconnect">Відключитися</string>
+    <string name="grid_sort_by">Сортувати за</string>
+    <string name="grid_sort_ascending_arrow">%1$s ↑</string>
+    <string name="grid_sort_descending_arrow">%1$s ↓</string>
+    <string name="grid_library">Бібліотека</string>
+    <string name="grid_clear_filters">Скинути фільтри</string>
+    <string name="grid_close">Закрити</string>
+    <string name="grid_catalog">Каталог</string>
+    <string name="grid_remote_library">Віддалена бібліотека</string>
+    <string name="grid_local_videos">Локальні відео</string>
+    <string name="grid_all_videos">Всі відео</string>
+    <string name="grid_locations">Розташування</string>
+    <string name="grid_keywords">Ключові слова</string>
+    <string name="grid_collections">Колекції</string>
+    <string name="grid_no_videos">Немає відео</string>
+    <string name="grid_processing">Обробка…</string>
+    <string name="grid_percent">%1$d%%</string>
+    <string name="grid_no_videos_match_search">Жодне відео не відповідає «%1$s»</string>
+    <string name="grid_no_videos_with_keyword">Немає відео з цим ключовим словом</string>
+    <string name="grid_collection_empty">Ця колекція порожня</string>
+    <string name="grid_no_videos_in_library">У бібліотеці немає відео</string>
+    <string name="grid_empty_add_location_hint">Додайте розташування бібліотеки в Налаштуваннях, щоб почати.</string>
+    <string name="grid_empty_no_match_filter">…або жодне відео не відповідає поточному фільтру</string>
+    <string name="grid_reset_filter">Скинути фільтр</string>
+    <string name="grid_clear_location_filter">Скинути фільтр розташування</string>
+    <string name="grid_star_count">%1$d зірка</string>
+    <plurals name="grid_video_count">
+        <item quantity="one">%1$d відео</item>
+        <item quantity="few">%1$d відео</item>
+        <item quantity="many">%1$d відео</item>
+        <item quantity="other">%1$d відео</item>
+    </plurals>
+    <plurals name="grid_location_video_count">
+        <item quantity="one">%1$d відео</item>
+        <item quantity="few">%1$d відео</item>
+        <item quantity="many">%1$d відео</item>
+        <item quantity="other">%1$d відео</item>
+    </plurals>
+
+    <!-- ── Map ──────────────────────────────────────────────────────────── -->
+    <string name="map_title">Карта</string>
+    <string name="map_load_failed">Не вдалося завантажити дані карти: %1$s</string>
+    <string name="map_unknown_error">Невідома помилка</string>
+    <string name="map_no_geotagged">Немає геопозначених відео.\nВідео з GPS-метаданими з\'являться тут на карті.</string>
+    <string name="map_geotagged_count">%1$d геопозначених</string>
+    <plurals name="map_marker_video_count">
+        <item quantity="one">%1$d відео</item>
+        <item quantity="few">%1$d відео</item>
+        <item quantity="many">%1$d відео</item>
+        <item quantity="other">%1$d відео</item>
+    </plurals>
+
+    <!-- ── Local media ──────────────────────────────────────────────────── -->
+    <string name="local_selected_count">%1$d вибрано</string>
+    <string name="local_title">Локальні відео</string>
+    <string name="local_clear_selection">Зняти виділення</string>
+    <string name="local_upload_to_server">Завантажити на сервер</string>
+    <string name="local_select_all">Вибрати все</string>
+    <string name="local_upload_failed">Помилка завантаження: %1$s</string>
+    <string name="local_no_videos_found">Відео на пристрої не знайдено</string>
+    <string name="local_not_connected_hint">Не підключено — підключіться до сервера ReelVault для завантаження</string>
+    <string name="local_uploaded">Завантажено</string>
+    <string name="local_video_access_denied">Доступ до відео заборонено</string>
+    <string name="local_permission_hint">Надайте дозвіл «Відео» в Налаштуваннях → Програми → ReelVault → Дозволи, щоб переглядати локальні відео.</string>
+    <plurals name="local_uploaded_count">
+        <item quantity="one">Завантажено %1$d відео</item>
+        <item quantity="few">Завантажено %1$d відео</item>
+        <item quantity="many">Завантажено %1$d відео</item>
+        <item quantity="other">Завантажено %1$d відео</item>
+    </plurals>
+    <plurals name="local_selected_upload_hint">
+        <item quantity="one">%1$d відео вибрано — торкніться ↑, щоб завантажити на сервер</item>
+        <item quantity="few">%1$d відео вибрано — торкніться ↑, щоб завантажити на сервер</item>
+        <item quantity="many">%1$d відео вибрано — торкніться ↑, щоб завантажити на сервер</item>
+        <item quantity="other">%1$d відео вибрано — торкніться ↑, щоб завантажити на сервер</item>
+    </plurals>
+
+    <!-- ── Settings ─────────────────────────────────────────────────────── -->
+    <string name="settings_title">Налаштування</string>
+    <string name="settings_back">Назад</string>
+    <string name="settings_library_locations">Розташування бібліотеки</string>
+    <string name="settings_no_watched_folders">Немає відстежуваних папок</string>
+    <string name="settings_rescan_complete">Повторне сканування завершено</string>
+    <string name="settings_rescan_failed">Повторне сканування не вдалося: %1$s</string>
+    <string name="settings_about">Про програму</string>
+    <string name="settings_app_version">Версія програми</string>
+    <string name="settings_loading_daemon_info">Завантаження інформації про демон…</string>
+    <string name="settings_connection">З\'єднання</string>
+    <string name="settings_server_connection">З\'єднання з сервером</string>
+    <string name="settings_connected_remote">Підключено до віддаленого демона на %1$s:%2$d</string>
+    <string name="settings_connected_local">Підключено до локального демона</string>
+    <string name="settings_disconnected">Відключено від сервера</string>
+    <string name="settings_forget_server">Забути сервер</string>
+    <string name="settings_reconnected">Повторне підключення виконано успішно</string>
+    <string name="settings_reconnect_failed">Повторне підключення не вдалося</string>
+    <string name="settings_reconnect">Повторно підключитися</string>
+    <string name="settings_scan">Сканування</string>
+    <string name="settings_full_rescan">Повне повторне сканування</string>
+    <string name="settings_full_rescan_desc">Повторно проіндексувати всі відстежувані папки, витягти метадані та згенерувати мініатюри для нових або змінених відео.</string>
+    <string name="settings_full_scan_complete">Повне сканування завершено</string>
+    <string name="settings_scan_failed">Сканування не вдалося: %1$s</string>
+    <string name="settings_scanning">Сканування…</string>
+    <string name="settings_start_full_scan">Розпочати повне сканування</string>
+    <string name="settings_collapse">Згорнути</string>
+    <string name="settings_expand">Розгорнути</string>
+    <string name="settings_last_scanned">Останнє сканування: %1$s</string>
+    <string name="settings_never_scanned">Ніколи не сканувалося</string>
+    <string name="settings_non_recursive"> (нерекурсивно)</string>
+    <string name="settings_disabled"> (вимкнено)</string>
+    <string name="settings_rescan_path">Повторне сканування %1$s</string>
+    <string name="settings_daemon_version">Версія демона</string>
+    <string name="settings_videos_indexed">Проіндексовано відео</string>
+    <string name="settings_cache_size">Розмір кешу</string>
+    <string name="settings_uptime">Час роботи</string>
+    <string name="settings_loading">Завантаження…</string>
+    <plurals name="settings_location_video_count">
+        <item quantity="one">%1$d відео</item>
+        <item quantity="few">%1$d відео</item>
+        <item quantity="many">%1$d відео</item>
+        <item quantity="other">%1$d відео</item>
+    </plurals>
+
+    <!-- ── Detail ───────────────────────────────────────────────────────── -->
+    <string name="detail_title">Деталі</string>
+    <string name="detail_share">Поділитися</string>
+    <string name="detail_share_subject">Поділитися %1$s</string>
+    <string name="detail_video_not_found">Відео не знайдено</string>
+    <string name="detail_section_file_info">Інформація про файл</string>
+    <string name="detail_section_video">Відео</string>
+    <string name="detail_section_audio">Аудіо</string>
+    <string name="detail_section_capture">Зйомка</string>
+    <string name="detail_field_filename">Ім\'я файлу</string>
+    <string name="detail_field_path">Шлях</string>
+    <string name="detail_field_size">Розмір</string>
+    <string name="detail_field_indexed">Проіндексовано</string>
+    <string name="detail_field_online">Онлайн</string>
+    <string name="detail_value_online_yes">Так</string>
+    <string name="detail_value_online_no">Ні (офлайн)</string>
+    <string name="detail_field_resolution">Роздільна здатність</string>
+    <string name="detail_field_codec">Кодек</string>
+    <string name="detail_field_fps">кадр/с</string>
+    <string name="detail_field_bitrate">Бітрейт</string>
+    <string name="detail_field_frames">Кадри</string>
+    <string name="detail_field_hdr">HDR</string>
+    <string name="detail_value_yes">Так</string>
+    <string name="detail_field_color_space">Кольоровий простір</string>
+    <string name="detail_field_resolution_status">Статус роздільної здатності</string>
+    <string name="detail_value_full_resolution">Повна роздільна здатність</string>
+    <string name="detail_value_not_full_resolution">Не повна роздільна здатність</string>
+    <string name="detail_field_channels">Канали</string>
+    <string name="detail_field_sample_rate">Частота дискретизації</string>
+    <string name="detail_value_sample_rate">%1$d Гц</string>
+    <string name="detail_field_date">Дата</string>
+    <string name="detail_field_camera">Камера</string>
+    <string name="detail_field_camera_internal">Камера (внутрішня)</string>
+    <string name="detail_field_lens">Об\'єктив</string>
+    <string name="detail_field_iso">ISO</string>
+    <string name="detail_value_iso">ISO %1$d</string>
+    <string name="detail_field_aperture">Діафрагма</string>
+    <string name="detail_field_exposure">Витримка</string>
+    <string name="detail_field_focal_length">Фокусна відстань</string>
+    <string name="detail_field_exposure_mode">Режим витримки</string>
+    <string name="detail_field_exposure_program">Програма витримки</string>
+    <string name="detail_field_white_balance">Баланс білого</string>
+    <string name="detail_em_dash">—</string>
+    <string name="detail_section_location">РОЗТАШУВАННЯ</string>
+    <string name="detail_field_gps">GPS</string>
+    <string name="detail_field_altitude">Висота</string>
+    <string name="detail_value_altitude">%1$.1f м</string>
+    <string name="detail_no_location">Немає розташування</string>
+    <string name="detail_change_location">Змінити розташування…</string>
+    <string name="detail_set_location">Встановити розташування…</string>
+    <string name="detail_remove_location">Видалити розташування</string>
+    <string name="detail_show_on_map">Показати на карті</string>
+    <string name="detail_set_location_title">Встановити розташування</string>
+    <string name="detail_drag_to_position">Перетягніть карту, щоб розмістити мітку.</string>
+    <string name="detail_write_location_to_file">Записати розташування у файл</string>
+    <string name="detail_write_location_desc">Також вбудовує GPS-тег у відеофайл, а не лише до каталогу.</string>
+    <string name="detail_section_tags">ТЕГИ</string>
+    <string name="detail_add_tag">Додати тег</string>
+    <string name="detail_no_tags">Немає тегів</string>
+    <string name="detail_remove_tag">Видалити %1$s</string>
+    <string name="detail_add_tag_title">Додати тег</string>
+    <string name="detail_all_tags_applied">Усі теги вже застосовано.</string>
+    <string name="detail_section_notes">НОТАТКИ</string>
+    <string name="detail_edit">Редагувати</string>
+    <string name="detail_no_notes">Немає нотаток</string>
+    <string name="detail_section_rating">РЕЙТИНГ</string>
+    <string name="detail_rating_out_of_five">%1$d / 5</string>
+    <string name="detail_section_color_label">КОЛЬОРОВА МІТКА</string>
+    <string name="detail_color_label_none">Н</string>
+    <string name="detail_color_label_selected">%1$s вибрано</string>
+    <string name="detail_section_proxies">ПРОКСІ</string>
+    <string name="detail_proxy_auto">Авто</string>
+    <string name="detail_audio_channels_mono">1 (Моно)</string>
+    <string name="detail_audio_channels_stereo">2 (Стерео)</string>
+    <string name="detail_audio_channels_51">5.1 Об\'ємний звук</string>
+    <string name="detail_audio_channels_71">7.1 Об\'ємний звук</string>
+    <plurals name="detail_star_count">
+        <item quantity="one">%1$d зірка</item>
+        <item quantity="few">%1$d зірки</item>
+        <item quantity="many">%1$d зірок</item>
+        <item quantity="other">%1$d зірки</item>
+    </plurals>
+
+    <!-- ── Filter bar ───────────────────────────────────────────────────── -->
+    <string name="filter_filters">Фільтри</string>
+    <string name="filter_clear_all">Очистити все</string>
+    <string name="filter_remove_filter">Видалити фільтр</string>
+    <string name="filter_sort_ascending">Сортування за зростанням</string>
+    <string name="filter_sort_descending">Сортування за спаданням</string>
+    <string name="filter_filters_and_sort">Фільтри та сортування</string>
+    <string name="filter_done">Готово</string>
+    <string name="filter_search">ПОШУК</string>
+    <string name="filter_search_placeholder">Пошук імен файлів, нотаток…</string>
+    <string name="filter_clear_search">Очистити пошук</string>
+    <string name="filter_minimum_rating">МІНІМАЛЬНИЙ РЕЙТИНГ</string>
+    <string name="filter_any">Будь-який</string>
+    <string name="filter_rating_plus">%1$d+</string>
+    <string name="filter_keywords">КЛЮЧОВІ СЛОВА</string>
+    <string name="filter_all">Всі</string>
+    <string name="filter_tag_with_count">%1$s (%2$d)</string>
+    <string name="filter_collections">КОЛЕКЦІЇ</string>
+    <string name="filter_collection_with_count">%1$s (%2$d)</string>
+    <string name="filter_sort">СОРТУВАННЯ</string>
+    <string name="filter_change_sort_field">Змінити поле сортування</string>
+    <string name="filter_sort_ascending_reverse">Сортування за зростанням — торкніться, щоб змінити</string>
+    <string name="filter_sort_descending_reverse">Сортування за спаданням — торкніться, щоб змінити</string>
+    <string name="filter_ascending">За зростанням</string>
+    <string name="filter_descending">За спаданням</string>
+
+    <!-- ── Sort field names ─────────────────────────────────────────────── -->
+    <string name="sort_date_indexed">Дата індексування</string>
+    <string name="sort_date_captured">Дата зйомки</string>
+    <string name="sort_filename">Ім\'я файлу</string>
+    <string name="sort_file_size">Розмір файлу</string>
+    <string name="sort_duration">Тривалість</string>
+    <string name="sort_rating">Рейтинг</string>
+    <string name="sort_frame_rate">Частота кадрів</string>
+    <string name="sort_codec">Кодек</string>
+    <string name="sort_camera">Камера</string>
+
+    <!-- ── Cards / badges ───────────────────────────────────────────────── -->
+    <string name="card_no_thumbnail">Немає мініатюри</string>
+    <string name="card_offline">Офлайн</string>
+    <string name="card_selected">Вибрано</string>
+    <string name="card_full_resolution">Повна роздільна здатність</string>
+    <string name="card_not_full_resolution">Не повна роздільна здатність</string>
+    <string name="card_has_audio">Є аудіодоріжка</string>
+    <string name="card_file_offline">Файл офлайн</string>
+    <string name="card_star">%1$d зірка</string>
+    <plurals name="card_keyword_count">
+        <item quantity="one">%1$d ключове слово</item>
+        <item quantity="few">%1$d ключових слова</item>
+        <item quantity="many">%1$d ключових слів</item>
+        <item quantity="other">%1$d ключових слова</item>
+    </plurals>
+    <plurals name="card_proxy_count">
+        <item quantity="one">%1$d проксі доступний</item>
+        <item quantity="few">%1$d проксі доступні</item>
+        <item quantity="many">%1$d проксі доступні</item>
+        <item quantity="other">%1$d проксі доступні</item>
+    </plurals>
+    <plurals name="card_stack_count">
+        <item quantity="one">Стек із %1$d</item>
+        <item quantity="few">Стек із %1$d</item>
+        <item quantity="many">Стек із %1$d</item>
+        <item quantity="other">Стек із %1$d</item>
+    </plurals>
+
+    <!-- ── Video player ─────────────────────────────────────────────────── -->
+    <string name="player_no_stream">Немає доступного потоку</string>
+    <string name="player_play">Відтворити</string>
+    <string name="player_pause">Пауза</string>
+    <string name="player_volume">Гучність</string>
+    <string name="player_quality">Якість</string>
+    <string name="player_full_screen">На весь екран</string>
+    <string name="player_exit_full_screen">Вийти з повноекранного режиму</string>
+    <string name="player_retry">Повторити</string>
+    <string name="player_selected">Вибрано</string>
+    <string name="player_cancel">Скасувати</string>
+    <string name="player_playback_error">Помилка відтворення</string>
+
+    <!-- ── ViewModel errors (snackbars) ─────────────────────────────────── -->
+    <string name="err_load_more_videos">Не вдалося завантажити більше відео: %1$s</string>
+    <string name="err_load_videos">Не вдалося завантажити відео: %1$s</string>
+    <string name="err_load_metadata">Не вдалося завантажити метадані: %1$s</string>
+    <string name="err_video_not_found">Відео не знайдено</string>
+    <string name="err_update_notes">Не вдалося оновити нотатки</string>
+    <string name="err_update_notes_detail">Не вдалося оновити нотатки: %1$s</string>
+    <string name="err_add_tag">Не вдалося додати тег</string>
+    <string name="err_add_tag_detail">Не вдалося додати тег: %1$s</string>
+    <string name="err_remove_tag">Не вдалося видалити тег</string>
+    <string name="err_remove_tag_detail">Не вдалося видалити тег: %1$s</string>
+    <string name="err_update_rating">Не вдалося оновити рейтинг: %1$s</string>
+    <string name="err_update_color_label">Не вдалося оновити кольорову мітку: %1$s</string>
+    <string name="err_update_location">Не вдалося оновити розташування</string>
+    <string name="err_update_location_detail">Не вдалося оновити розташування: %1$s</string>
+    <string name="err_remove_location">Не вдалося видалити розташування</string>
+    <string name="err_remove_location_detail">Не вдалося видалити розташування: %1$s</string>
+    <string name="err_add_to_collection">Не вдалося додати до колекції</string>
+    <string name="err_add_to_collection_detail">Не вдалося додати до колекції: %1$s</string>
+    <string name="err_remove_from_collection">Не вдалося видалити з колекції</string>
+    <string name="err_remove_from_collection_detail">Не вдалося видалити з колекції: %1$s</string>
+    <string name="scan_target_default">бібліотеку</string>
+    <string name="scan_scanning_target">Сканування %1$s…</string>
+    <string name="pairing_a_device">Пристрій</string>
+</resources>

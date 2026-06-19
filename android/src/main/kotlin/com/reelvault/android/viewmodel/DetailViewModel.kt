@@ -3,9 +3,11 @@
 
 package com.reelvault.android.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.reelvault.android.R
 import com.reelvault.data.models.VideoMetadata
 import com.reelvault.data.repository.VideoRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +25,7 @@ import kotlinx.coroutines.launch
  */
 class DetailViewModel(
     private val repository: VideoRepository,
+    private val appContext: Context,
 ) : ViewModel() {
 
     // ── Metadata ──────────────────────────────────────────────────────────
@@ -65,10 +68,10 @@ class DetailViewModel(
                 if (meta != null) {
                     loadThumbnail(videoId)
                 } else {
-                    _error.value = "Video not found"
+                    _error.value = appContext.getString(R.string.err_video_not_found)
                 }
             } catch (e: Exception) {
-                _error.value = "Failed to load metadata: ${e.message}"
+                _error.value = appContext.getString(R.string.err_load_metadata, e.message ?: "")
             } finally {
                 _isLoading.value = false
             }
@@ -99,9 +102,9 @@ class DetailViewModel(
         viewModelScope.launch {
             try {
                 val ok = repository.updateVideoNotes(videoId, newNotes)
-                if (!ok) _error.value = "Failed to update notes"
+                if (!ok) _error.value = appContext.getString(R.string.err_update_notes)
             } catch (e: Exception) {
-                _error.value = "Failed to update notes: ${e.message}"
+                _error.value = appContext.getString(R.string.err_update_notes_detail, e.message ?: "")
             }
         }
     }
@@ -122,10 +125,10 @@ class DetailViewModel(
                 if (ok) {
                     loadMetadata(videoId)
                 } else {
-                    _error.value = "Failed to add tag"
+                    _error.value = appContext.getString(R.string.err_add_tag)
                 }
             } catch (e: Exception) {
-                _error.value = "Failed to add tag: ${e.message}"
+                _error.value = appContext.getString(R.string.err_add_tag_detail, e.message ?: "")
             }
         }
     }
@@ -142,10 +145,10 @@ class DetailViewModel(
                 if (ok) {
                     loadMetadata(videoId)
                 } else {
-                    _error.value = "Failed to remove tag"
+                    _error.value = appContext.getString(R.string.err_remove_tag)
                 }
             } catch (e: Exception) {
-                _error.value = "Failed to remove tag: ${e.message}"
+                _error.value = appContext.getString(R.string.err_remove_tag_detail, e.message ?: "")
             }
         }
     }
@@ -167,7 +170,7 @@ class DetailViewModel(
             try {
                 repository.updateVideoRating(listOf(videoId), clamped)
             } catch (e: Exception) {
-                _error.value = "Failed to update rating: ${e.message}"
+                _error.value = appContext.getString(R.string.err_update_rating, e.message ?: "")
                 // Reload to restore the actual persisted value.
                 loadMetadata(videoId)
             }
@@ -190,7 +193,7 @@ class DetailViewModel(
             try {
                 repository.updateVideoColorLabel(listOf(videoId), label)
             } catch (e: Exception) {
-                _error.value = "Failed to update color label: ${e.message}"
+                _error.value = appContext.getString(R.string.err_update_color_label, e.message ?: "")
                 loadMetadata(videoId)
             }
         }
@@ -216,10 +219,10 @@ class DetailViewModel(
                 val ok = repository.updateVideoLocation(
                     videoId, latitude, longitude, writeToFile = writeToFile,
                 )
-                if (!ok) _error.value = "Failed to update location"
+                if (!ok) _error.value = appContext.getString(R.string.err_update_location)
                 loadMetadata(videoId)
             } catch (e: Exception) {
-                _error.value = "Failed to update location: ${e.message}"
+                _error.value = appContext.getString(R.string.err_update_location_detail, e.message ?: "")
                 loadMetadata(videoId)
             }
         }
@@ -235,10 +238,10 @@ class DetailViewModel(
         viewModelScope.launch {
             try {
                 val ok = repository.updateVideoLocation(videoId, 0.0, 0.0)
-                if (!ok) _error.value = "Failed to remove location"
+                if (!ok) _error.value = appContext.getString(R.string.err_remove_location)
                 loadMetadata(videoId)
             } catch (e: Exception) {
-                _error.value = "Failed to remove location: ${e.message}"
+                _error.value = appContext.getString(R.string.err_remove_location_detail, e.message ?: "")
                 loadMetadata(videoId)
             }
         }
@@ -260,10 +263,10 @@ class DetailViewModel(
                 if (ok) {
                     loadMetadata(videoId)
                 } else {
-                    _error.value = "Failed to add to collection"
+                    _error.value = appContext.getString(R.string.err_add_to_collection)
                 }
             } catch (e: Exception) {
-                _error.value = "Failed to add to collection: ${e.message}"
+                _error.value = appContext.getString(R.string.err_add_to_collection_detail, e.message ?: "")
             }
         }
     }
@@ -280,10 +283,10 @@ class DetailViewModel(
                 if (ok) {
                     loadMetadata(videoId)
                 } else {
-                    _error.value = "Failed to remove from collection"
+                    _error.value = appContext.getString(R.string.err_remove_from_collection)
                 }
             } catch (e: Exception) {
-                _error.value = "Failed to remove from collection: ${e.message}"
+                _error.value = appContext.getString(R.string.err_remove_from_collection_detail, e.message ?: "")
             }
         }
     }
@@ -310,11 +313,12 @@ class DetailViewModel(
 
     class Factory(
         private val repository: VideoRepository,
+        private val context: Context,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             require(modelClass.isAssignableFrom(DetailViewModel::class.java))
-            return DetailViewModel(repository) as T
+            return DetailViewModel(repository, context.applicationContext) as T
         }
     }
 }

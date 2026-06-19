@@ -23,6 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -37,6 +39,7 @@ import com.reelvault.android.ui.components.ProxyRendition
 import com.reelvault.android.ui.components.VideoPlayer
 import com.reelvault.android.ui.theme.swatch
 import com.reelvault.android.ui.theme.dimmed
+import com.reelvault.android.R
 import com.reelvault.android.viewmodel.DetailViewModel
 import com.reelvault.data.models.ColorLabel
 import com.reelvault.data.models.FullResolutionStatus
@@ -64,9 +67,10 @@ fun VideoDetailScreen(
     /** "Show on Map" — focus the in-app map on (lat, lon). No-op host hides the button. */
     onShowOnMap: ((Double, Double) -> Unit)? = null,
 ) {
+    val context = LocalContext.current
     val vm: DetailViewModel = viewModel(
         key = "detail_$videoId",
-        factory = DetailViewModel.Factory(repository),
+        factory = DetailViewModel.Factory(repository, context),
     )
 
     val metadata by vm.metadata.collectAsStateWithLifecycle()
@@ -92,8 +96,6 @@ fun VideoDetailScreen(
         allTags = repository.listTags()
     }
 
-    val context = LocalContext.current
-
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(error) {
         val msg = error ?: return@LaunchedEffect
@@ -106,7 +108,7 @@ fun VideoDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = metadata?.filename ?: "Detail",
+                        text = metadata?.filename ?: stringResource(R.string.detail_title),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -115,7 +117,7 @@ fun VideoDetailScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.common_back),
                             tint = MaterialTheme.colorScheme.onSurface,
                         )
                     }
@@ -125,7 +127,7 @@ fun VideoDetailScreen(
                         IconButton(onClick = { shareVideo(context, metadata!!) }) {
                             Icon(
                                 imageVector = Icons.Default.Share,
-                                contentDescription = "Share",
+                                contentDescription = stringResource(R.string.detail_share),
                             )
                         }
                     }
@@ -168,7 +170,7 @@ fun VideoDetailScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = error ?: "Video not found",
+                            text = error ?: stringResource(R.string.detail_video_not_found),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.error,
                         )
@@ -226,30 +228,30 @@ private fun DetailContent(
 
         // ── File Info ─────────────────────────────────────────────────────
         item {
-            MetadataSection(title = "File Info") {
-                MetadataRow("Filename", metadata.filename)
-                MetadataRow("Path", metadata.path, monospace = true)
-                MetadataRow("Size", metadata.sizeFormatted)
-                MetadataRow("Indexed", epochMsToDisplay(metadata.indexedAt))
-                MetadataRow("Online", if (metadata.isOnline) "Yes" else "No (offline)")
+            MetadataSection(title = stringResource(R.string.detail_section_file_info)) {
+                MetadataRow(stringResource(R.string.detail_field_filename), metadata.filename)
+                MetadataRow(stringResource(R.string.detail_field_path), metadata.path, monospace = true)
+                MetadataRow(stringResource(R.string.detail_field_size), metadata.sizeFormatted)
+                MetadataRow(stringResource(R.string.detail_field_indexed), epochMsToDisplay(metadata.indexedAt, LocalContext.current))
+                MetadataRow(stringResource(R.string.detail_field_online), if (metadata.isOnline) stringResource(R.string.detail_value_online_yes) else stringResource(R.string.detail_value_online_no))
             }
         }
 
         // ── Video ─────────────────────────────────────────────────────────
         item {
-            MetadataSection(title = "Video") {
-                MetadataRow("Resolution", metadata.resolution)
-                MetadataRow("Codec", metadata.codecVideo.ifEmpty { "—" })
-                if (metadata.fps > 0) MetadataRow("FPS", "%.3f".format(metadata.fps))
-                MetadataRow("Bitrate", metadata.bitrateFormatted)
-                metadata.frameCountFormatted?.let { MetadataRow("Frames", it) }
-                if (metadata.hdr) MetadataRow("HDR", "Yes")
-                if (metadata.colorSpace.isNotEmpty()) MetadataRow("Color Space", metadata.colorSpace)
+            MetadataSection(title = stringResource(R.string.detail_section_video)) {
+                MetadataRow(stringResource(R.string.detail_field_resolution), metadata.resolution)
+                MetadataRow(stringResource(R.string.detail_field_codec), metadata.codecVideo.ifEmpty { stringResource(R.string.detail_em_dash) })
+                if (metadata.fps > 0) MetadataRow(stringResource(R.string.detail_field_fps), "%.3f".format(metadata.fps))
+                MetadataRow(stringResource(R.string.detail_field_bitrate), metadata.bitrateFormatted)
+                metadata.frameCountFormatted?.let { MetadataRow(stringResource(R.string.detail_field_frames), it) }
+                if (metadata.hdr) MetadataRow(stringResource(R.string.detail_field_hdr), stringResource(R.string.detail_value_yes))
+                if (metadata.colorSpace.isNotEmpty()) MetadataRow(stringResource(R.string.detail_field_color_space), metadata.colorSpace)
                 when (metadata.fullResolution) {
                     FullResolutionStatus.Full ->
-                        MetadataRow("Resolution Status", "Full resolution")
+                        MetadataRow(stringResource(R.string.detail_field_resolution_status), stringResource(R.string.detail_value_full_resolution))
                     FullResolutionStatus.NotFull ->
-                        MetadataRow("Resolution Status", "Not full resolution")
+                        MetadataRow(stringResource(R.string.detail_field_resolution_status), stringResource(R.string.detail_value_not_full_resolution))
                     FullResolutionStatus.Unspecified -> Unit
                 }
             }
@@ -258,13 +260,13 @@ private fun DetailContent(
         // ── Audio ─────────────────────────────────────────────────────────
         if (metadata.codecAudio.isNotEmpty()) {
             item {
-                MetadataSection(title = "Audio") {
-                    MetadataRow("Codec", metadata.codecAudio)
+                MetadataSection(title = stringResource(R.string.detail_section_audio)) {
+                    MetadataRow(stringResource(R.string.detail_field_codec), metadata.codecAudio)
                     if (metadata.audioChannels > 0) {
-                        MetadataRow("Channels", audioChannelLabel(metadata.audioChannels))
+                        MetadataRow(stringResource(R.string.detail_field_channels), audioChannelLabel(metadata.audioChannels, LocalContext.current))
                     }
                     if (metadata.audioSampleRate > 0) {
-                        MetadataRow("Sample Rate", "${metadata.audioSampleRate} Hz")
+                        MetadataRow(stringResource(R.string.detail_field_sample_rate), stringResource(R.string.detail_value_sample_rate, metadata.audioSampleRate))
                     }
                 }
             }
@@ -283,41 +285,41 @@ private fun DetailContent(
             metadata.whiteBalance.isNotEmpty()
         if (hasCapture) {
             item {
-                MetadataSection(title = "Capture") {
+                MetadataSection(title = stringResource(R.string.detail_section_capture)) {
                     if (metadata.creationDate > 0) {
-                        MetadataRow("Date", metadata.creationDateFormatted)
+                        MetadataRow(stringResource(R.string.detail_field_date), metadata.creationDateFormatted)
                     }
                     if (metadata.cameraModel.isNotEmpty()) {
                         val displayName = metadata.cameraDisplayName.ifEmpty { metadata.cameraModel }
-                        MetadataRow("Camera", displayName)
+                        MetadataRow(stringResource(R.string.detail_field_camera), displayName)
                         // Show internal name when it differs from the marketing name.
                         if (metadata.cameraDisplayName.isNotEmpty() &&
                             metadata.cameraDisplayName != metadata.cameraModel
                         ) {
-                            MetadataRow("Camera (internal)", metadata.cameraModel)
+                            MetadataRow(stringResource(R.string.detail_field_camera_internal), metadata.cameraModel)
                         }
                     }
                     if (metadata.lensModel.isNotEmpty()) {
-                        MetadataRow("Lens", metadata.lensModel)
+                        MetadataRow(stringResource(R.string.detail_field_lens), metadata.lensModel)
                     }
-                    if (metadata.iso > 0) MetadataRow("ISO", "ISO ${metadata.iso}")
+                    if (metadata.iso > 0) MetadataRow(stringResource(R.string.detail_field_iso), stringResource(R.string.detail_value_iso, metadata.iso))
                     if (metadata.aperture > 0.0) {
-                        MetadataRow("Aperture", "f/%.1f".format(metadata.aperture))
+                        MetadataRow(stringResource(R.string.detail_field_aperture), "f/%.1f".format(metadata.aperture))
                     }
                     if (metadata.exposureTimeS > 0.0) {
-                        MetadataRow("Exposure", GridStatKey.formatExposureTime(metadata.exposureTimeS))
+                        MetadataRow(stringResource(R.string.detail_field_exposure), GridStatKey.formatExposureTime(metadata.exposureTimeS))
                     }
                     if (metadata.focalLengthMm > 0.0) {
-                        MetadataRow("Focal Length", "%.0f mm".format(metadata.focalLengthMm))
+                        MetadataRow(stringResource(R.string.detail_field_focal_length), "%.0f mm".format(metadata.focalLengthMm))
                     }
                     if (metadata.exposureMode.isNotEmpty()) {
-                        MetadataRow("Exposure Mode", metadata.exposureMode)
+                        MetadataRow(stringResource(R.string.detail_field_exposure_mode), metadata.exposureMode)
                     }
                     if (metadata.exposureProgram.isNotEmpty()) {
-                        MetadataRow("Exposure Program", metadata.exposureProgram)
+                        MetadataRow(stringResource(R.string.detail_field_exposure_program), metadata.exposureProgram)
                     }
                     if (metadata.whiteBalance.isNotEmpty()) {
-                        MetadataRow("White Balance", metadata.whiteBalance)
+                        MetadataRow(stringResource(R.string.detail_field_white_balance), metadata.whiteBalance)
                     }
                 }
             }
@@ -533,7 +535,7 @@ private fun LocationSection(
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                text = "LOCATION",
+                text = stringResource(R.string.detail_section_location),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -545,7 +547,7 @@ private fun LocationSection(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(
-                        text = "GPS",
+                        text = stringResource(R.string.detail_field_gps),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(0.4f),
@@ -565,13 +567,13 @@ private fun LocationSection(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
-                            text = "Altitude",
+                            text = stringResource(R.string.detail_field_altitude),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(0.4f),
                         )
                         Text(
-                            text = "%.1f m".format(metadata.gpsAltitude),
+                            text = stringResource(R.string.detail_value_altitude, metadata.gpsAltitude),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.weight(0.6f),
@@ -580,7 +582,7 @@ private fun LocationSection(
                 }
             } else {
                 Text(
-                    text = "No location",
+                    text = stringResource(R.string.detail_no_location),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -591,20 +593,20 @@ private fun LocationSection(
             // Action buttons mirror the iOS LocationButtonsSection.
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 LocationActionButton(
-                    text = if (hasLocation) "Change location…" else "Set location…",
+                    text = if (hasLocation) stringResource(R.string.detail_change_location) else stringResource(R.string.detail_set_location),
                     icon = Icons.Default.EditLocationAlt,
                     onClick = { showPicker = true },
                 )
                 if (hasLocation) {
                     LocationActionButton(
-                        text = "Remove location",
+                        text = stringResource(R.string.detail_remove_location),
                         icon = Icons.Default.WrongLocation,
                         destructive = true,
                         onClick = onRemoveLocation,
                     )
                     if (onShowOnMap != null) {
                         LocationActionButton(
-                            text = "Show on Map",
+                            text = stringResource(R.string.detail_show_on_map),
                             icon = Icons.Default.Map,
                             onClick = { onShowOnMap(metadata.gpsLatitude, metadata.gpsLongitude) },
                         )
@@ -680,10 +682,10 @@ private fun LocationPickerSheet(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    TextButton(onClick = onDismiss) { Text("Cancel") }
-                    Text("Set Location", style = MaterialTheme.typography.titleMedium)
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+                    Text(stringResource(R.string.detail_set_location_title), style = MaterialTheme.typography.titleMedium)
                     TextButton(onClick = { onApply(center.first, center.second, writeToFile) }) {
-                        Text("Save")
+                        Text(stringResource(R.string.common_save))
                     }
                 }
 
@@ -734,7 +736,7 @@ private fun LocationPickerSheet(
                         fontFamily = FontFamily.Monospace,
                     )
                     Text(
-                        text = "Drag the map to position the pin.",
+                        text = stringResource(R.string.detail_drag_to_position),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -743,11 +745,11 @@ private fun LocationPickerSheet(
                         Checkbox(checked = writeToFile, onCheckedChange = { writeToFile = it })
                         Column {
                             Text(
-                                text = "Write location into the file",
+                                text = stringResource(R.string.detail_write_location_to_file),
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                             Text(
-                                text = "Also embeds the GPS tag in the video file, not just the catalog.",
+                                text = stringResource(R.string.detail_write_location_desc),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -787,7 +789,7 @@ private fun TagsSection(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "TAGS",
+                    text = stringResource(R.string.detail_section_tags),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -797,7 +799,7 @@ private fun TagsSection(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = "Add tag",
+                        contentDescription = stringResource(R.string.detail_add_tag),
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.primary,
                     )
@@ -806,7 +808,7 @@ private fun TagsSection(
 
             if (metadata.tags.isEmpty()) {
                 Text(
-                    text = "No tags",
+                    text = stringResource(R.string.detail_no_tags),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp),
@@ -856,7 +858,7 @@ private fun TagChip(label: String, onRemove: () -> Unit) {
         trailingIcon = {
             Icon(
                 imageVector = Icons.Default.Close,
-                contentDescription = "Remove $label",
+                contentDescription = stringResource(R.string.detail_remove_tag, label),
                 modifier = Modifier
                     .size(14.dp)
                     .clickable { onRemove() },
@@ -875,10 +877,10 @@ private fun TagPickerDialog(
     val available = allTags.filter { it.id !in currentTagIds }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Tag") },
+        title = { Text(stringResource(R.string.detail_add_tag_title)) },
         text = {
             if (available.isEmpty()) {
-                Text("All tags are already applied.")
+                Text(stringResource(R.string.detail_all_tags_applied))
             } else {
                 Column {
                     available.forEach { tag ->
@@ -890,7 +892,7 @@ private fun TagPickerDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         },
     )
 }
@@ -922,7 +924,7 @@ private fun NotesSection(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "NOTES",
+                    text = stringResource(R.string.detail_section_notes),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -935,7 +937,7 @@ private fun NotesSection(
                         editing = !editing
                     },
                 ) {
-                    Text(if (editing) "Save" else "Edit")
+                    Text(if (editing) stringResource(R.string.common_save) else stringResource(R.string.detail_edit))
                 }
             }
 
@@ -963,7 +965,7 @@ private fun NotesSection(
                 )
             } else {
                 Text(
-                    text = notes.ifEmpty { "No notes" },
+                    text = notes.ifEmpty { stringResource(R.string.detail_no_notes) },
                     style = MaterialTheme.typography.bodySmall,
                     color = if (notes.isEmpty()) {
                         MaterialTheme.colorScheme.onSurfaceVariant
@@ -995,7 +997,7 @@ private fun RatingSection(
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                text = "RATING",
+                text = stringResource(R.string.detail_section_rating),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1008,7 +1010,7 @@ private fun RatingSection(
                 (1..5).forEach { star ->
                     Icon(
                         imageVector = if (star <= rating) Icons.Default.Star else Icons.Default.StarBorder,
-                        contentDescription = "$star star${if (star == 1) "" else "s"}",
+                        contentDescription = pluralStringResource(R.plurals.detail_star_count, star, star),
                         modifier = Modifier
                             .size(28.dp)
                             .clickable {
@@ -1025,7 +1027,7 @@ private fun RatingSection(
                 if (rating > 0) {
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "$rating / 5",
+                        text = stringResource(R.string.detail_rating_out_of_five, rating),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1053,7 +1055,7 @@ private fun ColorLabelSection(
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                text = "COLOR LABEL",
+                text = stringResource(R.string.detail_section_color_label),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1097,14 +1099,14 @@ private fun ColorLabelChip(
     ) {
         if (label == ColorLabel.None) {
             Text(
-                text = "N",
+                text = stringResource(R.string.detail_color_label_none),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else if (isSelected) {
             Icon(
                 imageVector = Icons.Default.Check,
-                contentDescription = "${label.displayName} selected",
+                contentDescription = stringResource(R.string.detail_color_label_selected, label.displayName),
                 modifier = Modifier.size(16.dp),
                 tint = Color.White,
             )
@@ -1127,7 +1129,7 @@ private fun ProxiesSection(proxies: List<VideoRepository.ProxyInfo>) {
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                text = "PROXIES",
+                text = stringResource(R.string.detail_section_proxies),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1166,7 +1168,7 @@ private fun ProxyRow(proxy: VideoRepository.ProxyInfo) {
                     shape = RoundedCornerShape(4.dp),
                 ) {
                     Text(
-                        text = "Auto",
+                        text = stringResource(R.string.detail_proxy_auto),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
@@ -1198,22 +1200,27 @@ private fun shareVideo(context: Context, metadata: VideoMetadata) {
         putExtra(Intent.EXTRA_SUBJECT, metadata.filename)
         putExtra(Intent.EXTRA_TEXT, metadata.path)
     }
-    context.startActivity(Intent.createChooser(shareIntent, "Share ${metadata.filename}"))
+    context.startActivity(
+        Intent.createChooser(
+            shareIntent,
+            context.getString(R.string.detail_share_subject, metadata.filename),
+        )
+    )
 }
 
-private fun epochMsToDisplay(epochMs: Long): String {
-    if (epochMs <= 0L) return "—"
+private fun epochMsToDisplay(epochMs: Long, context: Context): String {
+    if (epochMs <= 0L) return context.getString(R.string.detail_em_dash)
     val instant = java.time.Instant.ofEpochMilli(epochMs)
     val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")
         .withZone(java.time.ZoneId.systemDefault())
     return formatter.format(instant)
 }
 
-private fun audioChannelLabel(channels: Int): String = when (channels) {
-    1 -> "1 (Mono)"
-    2 -> "2 (Stereo)"
-    6 -> "5.1 Surround"
-    8 -> "7.1 Surround"
+private fun audioChannelLabel(channels: Int, context: Context): String = when (channels) {
+    1 -> context.getString(R.string.detail_audio_channels_mono)
+    2 -> context.getString(R.string.detail_audio_channels_stereo)
+    6 -> context.getString(R.string.detail_audio_channels_51)
+    8 -> context.getString(R.string.detail_audio_channels_71)
     else -> channels.toString()
 }
 

@@ -35,8 +35,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.reelvault.android.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.reelvault.android.util.OsmConfig
 import com.reelvault.android.viewmodel.GridViewModel
@@ -237,6 +240,7 @@ fun LibraryMapScreen(
     onBack: () -> Unit,
 ) {
     val accentArgb = MaterialTheme.colorScheme.primary.toArgb()
+    val context = LocalContext.current
     // "Show on Map" focus request from the detail view, if any.
     val mapFocus by grid.mapFocus.collectAsStateWithLifecycle()
 
@@ -251,7 +255,7 @@ fun LibraryMapScreen(
             named = runCatching { repository.listNamedLocations() }.getOrDefault(emptyList())
             locations = repository.listVideosWithLocations()
         } catch (e: Exception) {
-            loadError = "Failed to load map data: ${e.message}"
+            loadError = context.getString(R.string.map_load_failed, e.message ?: "")
         } finally {
             isLoading = false
         }
@@ -274,12 +278,12 @@ fun LibraryMapScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Map") },
+                title = { Text(stringResource(R.string.map_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.common_back),
                         )
                     }
                 },
@@ -295,7 +299,7 @@ fun LibraryMapScreen(
                 isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
 
                 loadError != null -> Text(
-                    text = loadError ?: "Unknown error",
+                    text = loadError ?: stringResource(R.string.map_unknown_error),
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier
                         .align(Alignment.Center)
@@ -303,7 +307,7 @@ fun LibraryMapScreen(
                 )
 
                 locations.isEmpty() -> Text(
-                    text = "No geotagged videos.\nVideos with GPS metadata appear here on the map.",
+                    text = stringResource(R.string.map_no_geotagged),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
@@ -332,7 +336,7 @@ fun LibraryMapScreen(
             // Small geotagged-count badge, top-right corner.
             if (!isLoading && loadError == null && locations.isNotEmpty()) {
                 Text(
-                    text = "${locations.size} geotagged",
+                    text = stringResource(R.string.map_geotagged_count, locations.size),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier
@@ -402,7 +406,9 @@ private fun MapContent(
                     position = GeoPoint(group.latitude, group.longitude)
                     icon = glyph.drawable
                     setAnchor(Marker.ANCHOR_CENTER, glyph.anchorV)
-                    title = if (group.isNamed) group.label else "${group.count} video${if (group.count == 1) "" else "s"}"
+                    title = if (group.isNamed) group.label else mapView.context.resources.getQuantityString(
+                        R.plurals.map_marker_video_count, group.count, group.count,
+                    )
                     infoWindow = null   // Tapping filters + navigates; no bubble.
                     setOnMarkerClickListener { _, _ ->
                         onSelectGroup(group)

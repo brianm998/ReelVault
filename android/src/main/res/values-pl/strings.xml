@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- app_name intentionally omitted — falls back to the default "ReelVault" -->
+
+    <!-- ── Common ───────────────────────────────────────────────────────── -->
+    <string name="common_back">Wstecz</string>
+    <string name="common_cancel">Anuluj</string>
+    <string name="common_save">Zapisz</string>
+    <string name="common_done">Gotowe</string>
+    <string name="common_clear">Wyczyść</string>
+    <string name="common_selected">Wybrano</string>
+    <string name="common_offline">Offline</string>
+    <string name="common_unavailable">Niedostępne</string>
+    <string name="common_unknown_error">nieznany błąd</string>
+
+    <!-- ── Connection flow ──────────────────────────────────────────────── -->
+    <string name="conn_reconnecting_to">Ponowne łączenie z %1$s…</string>
+    <string name="conn_connecting_to">Łączenie z %1$s…</string>
+    <string name="conn_connecting">Łączenie…</string>
+    <string name="conn_pairing_with">Parowanie z %1$s…</string>
+    <string name="conn_could_not_connect_named">Nie można połączyć się z %1$s. Sprawdź, czy demon jest uruchomiony, i spróbuj ponownie.</string>
+    <string name="conn_could_not_connect_simple">Nie można połączyć się z %1$s.</string>
+    <string name="conn_pairing_rejected">Parowanie odrzucone — sprawdź kod i spróbuj ponownie.</string>
+    <string name="conn_looking_for_servers">Szukanie serwerów ReelVault…</string>
+    <string name="conn_scanning_network">Skanowanie sieci lokalnej</string>
+    <string name="conn_connect_title">Połącz z ReelVault</string>
+    <string name="conn_rescan">Skanuj ponownie</string>
+    <string name="conn_no_servers_found">Nie znaleziono serwerów</string>
+    <string name="conn_no_servers_hint">Uruchom demona ReelVault z opcją --remote na komputerze w tej sieci Wi-Fi, a następnie ponów skanowanie.</string>
+    <string name="conn_available_servers">Dostępne serwery</string>
+    <string name="conn_enter_address_manually">Wprowadź adres ręcznie</string>
+    <string name="conn_browse_local_videos">Przeglądaj lokalne filmy</string>
+    <string name="conn_requires_pairing">Wymaga parowania</string>
+    <string name="conn_enter_pairing_code">Wprowadź kod parowania</string>
+    <string name="conn_pair_with">Sparuj z %1$s</string>
+    <string name="conn_pairing_instructions">Na komputerze z uruchomionym ReelVault wybierz Plik ▸ Sparuj nowe urządzenie, aby wyświetlić 6-cyfrowy kod (serwer bez interfejsu graficznego wyświetla go w dzienniku). Wpisz go poniżej — robisz to tylko raz.</string>
+    <string name="conn_pin_placeholder">000000</string>
+    <string name="conn_pair_button">Sparuj</string>
+    <string name="conn_connect_manually">Połącz ręcznie</string>
+    <string name="conn_host_label">Host lub adres IP</string>
+    <string name="conn_host_placeholder">192.168.1.100</string>
+    <string name="conn_grpc_port_label">Port gRPC</string>
+    <string name="conn_grpc_port_placeholder">50051</string>
+    <string name="conn_fingerprint_label">Odcisk certyfikatu (SHA-256, opcjonalnie)</string>
+    <string name="conn_fingerprint_placeholder">abcd1234…</string>
+    <string name="conn_fetch">Pobierz</string>
+    <string name="conn_could_not_reach">Nie można dotrzeć do %1$s:%2$d — sprawdź host i czy demon jest uruchomiony.</string>
+    <string name="conn_connect_button">Połącz</string>
+    <string name="conn_retry">Ponów</string>
+    <string name="conn_enter_address">Wprowadź adres</string>
+
+    <!-- ── Library grid ─────────────────────────────────────────────────── -->
+    <string name="grid_incoming_pairing_title">Przychodzące żądanie parowania</string>
+    <string name="grid_incoming_pairing_message">%1$s chce połączyć się z tą biblioteką. Zezwolić?</string>
+    <string name="grid_allow">Zezwól</string>
+    <string name="grid_deny">Odmów</string>
+    <string name="grid_close_search">Zamknij wyszukiwanie</string>
+    <string name="grid_search_videos_hint">Szukaj filmów…</string>
+    <string name="grid_selected_count">Wybrano: %1$d</string>
+    <string name="grid_clear_selection">Wyczyść zaznaczenie</string>
+    <string name="grid_open_library_panel">Otwórz panel biblioteki</string>
+    <string name="grid_search">Szukaj</string>
+    <string name="grid_sort">Sortuj</string>
+    <string name="grid_switch_to_list_view">Przełącz na widok listy</string>
+    <string name="grid_switch_to_grid_view">Przełącz na widok siatki</string>
+    <string name="grid_more_options">Więcej opcji</string>
+    <string name="grid_map">Mapa</string>
+    <string name="grid_settings">Ustawienia</string>
+    <string name="grid_disconnect">Rozłącz</string>
+    <string name="grid_sort_by">Sortuj według</string>
+    <string name="grid_sort_ascending_arrow">%1$s ↑</string>
+    <string name="grid_sort_descending_arrow">%1$s ↓</string>
+    <string name="grid_library">Biblioteka</string>
+    <string name="grid_clear_filters">Wyczyść filtry</string>
+    <string name="grid_close">Zamknij</string>
+    <string name="grid_catalog">Katalog</string>
+    <string name="grid_remote_library">Zdalna biblioteka</string>
+    <string name="grid_local_videos">Lokalne filmy</string>
+    <string name="grid_all_videos">Wszystkie filmy</string>
+    <string name="grid_locations">Lokalizacje</string>
+    <string name="grid_keywords">Słowa kluczowe</string>
+    <string name="grid_collections">Kolekcje</string>
+    <string name="grid_no_videos">Brak filmów</string>
+    <string name="grid_processing">Przetwarzanie…</string>
+    <string name="grid_percent">%1$d%%</string>
+    <string name="grid_no_videos_match_search">Brak filmów pasujących do „%1$s"</string>
+    <string name="grid_no_videos_with_keyword">Brak filmów z tym słowem kluczowym</string>
+    <string name="grid_collection_empty">Ta kolekcja jest pusta</string>
+    <string name="grid_no_videos_in_library">Brak filmów w bibliotece</string>
+    <string name="grid_empty_add_location_hint">Dodaj lokalizację biblioteki w Ustawieniach, aby rozpocząć.</string>
+    <string name="grid_empty_no_match_filter">…lub żaden film nie pasuje do bieżącego filtru</string>
+    <string name="grid_reset_filter">Resetuj filtr</string>
+    <string name="grid_clear_location_filter">Wyczyść filtr lokalizacji</string>
+    <string name="grid_star_count">%1$d gwiazdka</string>
+    <plurals name="grid_video_count">
+        <item quantity="one">%1$d film</item>
+        <item quantity="few">%1$d filmy</item>
+        <item quantity="many">%1$d filmów</item>
+        <item quantity="other">%1$d filmów</item>
+    </plurals>
+    <plurals name="grid_location_video_count">
+        <item quantity="one">%1$d film</item>
+        <item quantity="few">%1$d filmy</item>
+        <item quantity="many">%1$d filmów</item>
+        <item quantity="other">%1$d filmów</item>
+    </plurals>
+
+    <!-- ── Map ──────────────────────────────────────────────────────────── -->
+    <string name="map_title">Mapa</string>
+    <string name="map_load_failed">Nie udało się załadować danych mapy: %1$s</string>
+    <string name="map_unknown_error">Nieznany błąd</string>
+    <string name="map_no_geotagged">Brak filmów z geolokalizacją.\nFilmy z metadanymi GPS pojawią się tutaj na mapie.</string>
+    <string name="map_geotagged_count">%1$d z geolokalizacją</string>
+    <plurals name="map_marker_video_count">
+        <item quantity="one">%1$d film</item>
+        <item quantity="few">%1$d filmy</item>
+        <item quantity="many">%1$d filmów</item>
+        <item quantity="other">%1$d filmów</item>
+    </plurals>
+
+    <!-- ── Local media ──────────────────────────────────────────────────── -->
+    <string name="local_selected_count">Wybrano: %1$d</string>
+    <string name="local_title">Lokalne filmy</string>
+    <string name="local_clear_selection">Wyczyść zaznaczenie</string>
+    <string name="local_upload_to_server">Prześlij na serwer</string>
+    <string name="local_select_all">Zaznacz wszystko</string>
+    <string name="local_upload_failed">Przesyłanie nie powiodło się: %1$s</string>
+    <string name="local_no_videos_found">Nie znaleziono filmów na urządzeniu</string>
+    <string name="local_not_connected_hint">Brak połączenia — połącz się z serwerem ReelVault, aby przesłać filmy</string>
+    <string name="local_uploaded">Przesłano</string>
+    <string name="local_video_access_denied">Odmowa dostępu do filmów</string>
+    <string name="local_permission_hint">Przyznaj uprawnienie „Filmy" w Ustawienia → Aplikacje → ReelVault → Uprawnienia, aby przeglądać lokalne filmy.</string>
+    <plurals name="local_uploaded_count">
+        <item quantity="one">Przesłano %1$d film</item>
+        <item quantity="few">Przesłano %1$d filmy</item>
+        <item quantity="many">Przesłano %1$d filmów</item>
+        <item quantity="other">Przesłano %1$d filmów</item>
+    </plurals>
+    <plurals name="local_selected_upload_hint">
+        <item quantity="one">%1$d film wybrany — dotknij ↑, aby przesłać na serwer</item>
+        <item quantity="few">%1$d filmy wybrane — dotknij ↑, aby przesłać na serwer</item>
+        <item quantity="many">%1$d filmów wybranych — dotknij ↑, aby przesłać na serwer</item>
+        <item quantity="other">%1$d filmów wybranych — dotknij ↑, aby przesłać na serwer</item>
+    </plurals>
+
+    <!-- ── Settings ─────────────────────────────────────────────────────── -->
+    <string name="settings_title">Ustawienia</string>
+    <string name="settings_back">Wstecz</string>
+    <string name="settings_library_locations">Lokalizacje biblioteki</string>
+    <string name="settings_no_watched_folders">Brak obserwowanych folderów</string>
+    <string name="settings_rescan_complete">Ponowne skanowanie zakończone</string>
+    <string name="settings_rescan_failed">Ponowne skanowanie nie powiodło się: %1$s</string>
+    <string name="settings_about">O aplikacji</string>
+    <string name="settings_app_version">Wersja aplikacji</string>
+    <string name="settings_loading_daemon_info">Ładowanie informacji o demonie…</string>
+    <string name="settings_connection">Połączenie</string>
+    <string name="settings_server_connection">Połączenie z serwerem</string>
+    <string name="settings_connected_remote">Połączono ze zdalnym demonem: %1$s:%2$d</string>
+    <string name="settings_connected_local">Połączono z lokalnym demonem</string>
+    <string name="settings_disconnected">Rozłączono z serwerem</string>
+    <string name="settings_forget_server">Zapomnij serwer</string>
+    <string name="settings_reconnected">Ponowne połączenie powiodło się</string>
+    <string name="settings_reconnect_failed">Ponowne połączenie nie powiodło się</string>
+    <string name="settings_reconnect">Połącz ponownie</string>
+    <string name="settings_scan">Skanuj</string>
+    <string name="settings_full_rescan">Pełne skanowanie</string>
+    <string name="settings_full_rescan_desc">Ponownie indeksuje wszystkie obserwowane foldery, wyodrębnia metadane i generuje miniatury dla nowych lub zmienionych filmów.</string>
+    <string name="settings_full_scan_complete">Pełne skanowanie zakończone</string>
+    <string name="settings_scan_failed">Skanowanie nie powiodło się: %1$s</string>
+    <string name="settings_scanning">Skanowanie…</string>
+    <string name="settings_start_full_scan">Rozpocznij pełne skanowanie</string>
+    <string name="settings_collapse">Zwiń</string>
+    <string name="settings_expand">Rozwiń</string>
+    <string name="settings_last_scanned">Ostatnio skanowano: %1$s</string>
+    <string name="settings_never_scanned">Nigdy nie skanowano</string>
+    <string name="settings_non_recursive"> (bez podfolderów)</string>
+    <string name="settings_disabled"> (wyłączono)</string>
+    <string name="settings_rescan_path">Skanuj ponownie %1$s</string>
+    <string name="settings_daemon_version">Wersja demona</string>
+    <string name="settings_videos_indexed">Zaindeksowane filmy</string>
+    <string name="settings_cache_size">Rozmiar pamięci podręcznej</string>
+    <string name="settings_uptime">Czas pracy</string>
+    <string name="settings_loading">Ładowanie…</string>
+    <plurals name="settings_location_video_count">
+        <item quantity="one">%1$d film</item>
+        <item quantity="few">%1$d filmy</item>
+        <item quantity="many">%1$d filmów</item>
+        <item quantity="other">%1$d filmów</item>
+    </plurals>
+
+    <!-- ── Detail ───────────────────────────────────────────────────────── -->
+    <string name="detail_title">Szczegóły</string>
+    <string name="detail_share">Udostępnij</string>
+    <string name="detail_share_subject">Udostępnij %1$s</string>
+    <string name="detail_video_not_found">Nie znaleziono wideo</string>
+    <string name="detail_section_file_info">Informacje o pliku</string>
+    <string name="detail_section_video">Wideo</string>
+    <string name="detail_section_audio">Audio</string>
+    <string name="detail_section_capture">Nagranie</string>
+    <string name="detail_field_filename">Nazwa pliku</string>
+    <string name="detail_field_path">Ścieżka</string>
+    <string name="detail_field_size">Rozmiar</string>
+    <string name="detail_field_indexed">Zaindeksowano</string>
+    <string name="detail_field_online">Online</string>
+    <string name="detail_value_online_yes">Tak</string>
+    <string name="detail_value_online_no">Nie (offline)</string>
+    <string name="detail_field_resolution">Rozdzielczość</string>
+    <string name="detail_field_codec">Kodek</string>
+    <string name="detail_field_fps">Kl/s</string>
+    <string name="detail_field_bitrate">Przepływność</string>
+    <string name="detail_field_frames">Klatki</string>
+    <string name="detail_field_hdr">HDR</string>
+    <string name="detail_value_yes">Tak</string>
+    <string name="detail_field_color_space">Przestrzeń kolorów</string>
+    <string name="detail_field_resolution_status">Status rozdzielczości</string>
+    <string name="detail_value_full_resolution">Pełna rozdzielczość</string>
+    <string name="detail_value_not_full_resolution">Niepełna rozdzielczość</string>
+    <string name="detail_field_channels">Kanały</string>
+    <string name="detail_field_sample_rate">Częstotliwość próbkowania</string>
+    <string name="detail_value_sample_rate">%1$d Hz</string>
+    <string name="detail_field_date">Data</string>
+    <string name="detail_field_camera">Aparat</string>
+    <string name="detail_field_camera_internal">Aparat (wewnętrzny)</string>
+    <string name="detail_field_lens">Obiektyw</string>
+    <string name="detail_field_iso">ISO</string>
+    <string name="detail_value_iso">ISO %1$d</string>
+    <string name="detail_field_aperture">Przysłona</string>
+    <string name="detail_field_exposure">Czas naświetlania</string>
+    <string name="detail_field_focal_length">Ogniskowa</string>
+    <string name="detail_field_exposure_mode">Tryb ekspozycji</string>
+    <string name="detail_field_exposure_program">Program ekspozycji</string>
+    <string name="detail_field_white_balance">Balans bieli</string>
+    <string name="detail_em_dash">—</string>
+    <string name="detail_section_location">LOKALIZACJA</string>
+    <string name="detail_field_gps">GPS</string>
+    <string name="detail_field_altitude">Wysokość</string>
+    <string name="detail_value_altitude">%1$.1f m</string>
+    <string name="detail_no_location">Brak lokalizacji</string>
+    <string name="detail_change_location">Zmień lokalizację…</string>
+    <string name="detail_set_location">Ustaw lokalizację…</string>
+    <string name="detail_remove_location">Usuń lokalizację</string>
+    <string name="detail_show_on_map">Pokaż na mapie</string>
+    <string name="detail_set_location_title">Ustaw lokalizację</string>
+    <string name="detail_drag_to_position">Przeciągnij mapę, aby ustawić pinezkę.</string>
+    <string name="detail_write_location_to_file">Zapisz lokalizację w pliku</string>
+    <string name="detail_write_location_desc">Osadza również tag GPS w pliku wideo, nie tylko w katalogu.</string>
+    <string name="detail_section_tags">TAGI</string>
+    <string name="detail_add_tag">Dodaj tag</string>
+    <string name="detail_no_tags">Brak tagów</string>
+    <string name="detail_remove_tag">Usuń %1$s</string>
+    <string name="detail_add_tag_title">Dodaj tag</string>
+    <string name="detail_all_tags_applied">Wszystkie tagi zostały już zastosowane.</string>
+    <string name="detail_section_notes">NOTATKI</string>
+    <string name="detail_edit">Edytuj</string>
+    <string name="detail_no_notes">Brak notatek</string>
+    <string name="detail_section_rating">OCENA</string>
+    <string name="detail_rating_out_of_five">%1$d / 5</string>
+    <string name="detail_section_color_label">ETYKIETA KOLORU</string>
+    <string name="detail_color_label_none">B</string>
+    <string name="detail_color_label_selected">Wybrano: %1$s</string>
+    <string name="detail_section_proxies">PROXY</string>
+    <string name="detail_proxy_auto">Auto</string>
+    <string name="detail_audio_channels_mono">1 (Mono)</string>
+    <string name="detail_audio_channels_stereo">2 (Stereo)</string>
+    <string name="detail_audio_channels_51">5.1 Surround</string>
+    <string name="detail_audio_channels_71">7.1 Surround</string>
+    <plurals name="detail_star_count">
+        <item quantity="one">%1$d gwiazdka</item>
+        <item quantity="few">%1$d gwiazdki</item>
+        <item quantity="many">%1$d gwiazdek</item>
+        <item quantity="other">%1$d gwiazdek</item>
+    </plurals>
+
+    <!-- ── Filter bar ───────────────────────────────────────────────────── -->
+    <string name="filter_filters">Filtry</string>
+    <string name="filter_clear_all">Wyczyść wszystko</string>
+    <string name="filter_remove_filter">Usuń filtr</string>
+    <string name="filter_sort_ascending">Sortuj rosnąco</string>
+    <string name="filter_sort_descending">Sortuj malejąco</string>
+    <string name="filter_filters_and_sort">Filtry i sortowanie</string>
+    <string name="filter_done">Gotowe</string>
+    <string name="filter_search">WYSZUKAJ</string>
+    <string name="filter_search_placeholder">Szukaj nazw plików, notatek…</string>
+    <string name="filter_clear_search">Wyczyść wyszukiwanie</string>
+    <string name="filter_minimum_rating">MINIMALNA OCENA</string>
+    <string name="filter_any">Dowolny</string>
+    <string name="filter_rating_plus">%1$d+</string>
+    <string name="filter_keywords">SŁOWA KLUCZOWE</string>
+    <string name="filter_all">Wszystkie</string>
+    <string name="filter_tag_with_count">%1$s (%2$d)</string>
+    <string name="filter_collections">KOLEKCJE</string>
+    <string name="filter_collection_with_count">%1$s (%2$d)</string>
+    <string name="filter_sort">SORTUJ</string>
+    <string name="filter_change_sort_field">Zmień pole sortowania</string>
+    <string name="filter_sort_ascending_reverse">Sortuj rosnąco — dotknij, aby odwrócić</string>
+    <string name="filter_sort_descending_reverse">Sortuj malejąco — dotknij, aby odwrócić</string>
+    <string name="filter_ascending">Rosnąco</string>
+    <string name="filter_descending">Malejąco</string>
+
+    <!-- ── Sort field names ─────────────────────────────────────────────── -->
+    <string name="sort_date_indexed">Data indeksowania</string>
+    <string name="sort_date_captured">Data nagrania</string>
+    <string name="sort_filename">Nazwa pliku</string>
+    <string name="sort_file_size">Rozmiar pliku</string>
+    <string name="sort_duration">Czas trwania</string>
+    <string name="sort_rating">Ocena</string>
+    <string name="sort_frame_rate">Szybkość klatek</string>
+    <string name="sort_codec">Kodek</string>
+    <string name="sort_camera">Aparat</string>
+
+    <!-- ── Cards / badges ───────────────────────────────────────────────── -->
+    <string name="card_no_thumbnail">Brak miniatury</string>
+    <string name="card_offline">Offline</string>
+    <string name="card_selected">Wybrano</string>
+    <string name="card_full_resolution">Pełna rozdzielczość</string>
+    <string name="card_not_full_resolution">Niepełna rozdzielczość</string>
+    <string name="card_has_audio">Posiada ścieżkę audio</string>
+    <string name="card_file_offline">Plik offline</string>
+    <string name="card_star">%1$d gwiazdka</string>
+    <plurals name="card_keyword_count">
+        <item quantity="one">%1$d słowo kluczowe</item>
+        <item quantity="few">%1$d słowa kluczowe</item>
+        <item quantity="many">%1$d słów kluczowych</item>
+        <item quantity="other">%1$d słów kluczowych</item>
+    </plurals>
+    <plurals name="card_proxy_count">
+        <item quantity="one">%1$d proxy dostępne</item>
+        <item quantity="few">%1$d proxy dostępne</item>
+        <item quantity="many">%1$d proxy dostępnych</item>
+        <item quantity="other">%1$d proxy dostępnych</item>
+    </plurals>
+    <plurals name="card_stack_count">
+        <item quantity="one">Stos z %1$d elementu</item>
+        <item quantity="few">Stos z %1$d elementów</item>
+        <item quantity="many">Stos z %1$d elementów</item>
+        <item quantity="other">Stos z %1$d elementów</item>
+    </plurals>
+
+    <!-- ── Video player ─────────────────────────────────────────────────── -->
+    <string name="player_no_stream">Brak dostępnego strumienia</string>
+    <string name="player_play">Odtwórz</string>
+    <string name="player_pause">Pauza</string>
+    <string name="player_volume">Głośność</string>
+    <string name="player_quality">Jakość</string>
+    <string name="player_full_screen">Pełny ekran</string>
+    <string name="player_exit_full_screen">Wyjdź z pełnego ekranu</string>
+    <string name="player_retry">Ponów</string>
+    <string name="player_selected">Wybrano</string>
+    <string name="player_cancel">Anuluj</string>
+    <string name="player_playback_error">Błąd odtwarzania</string>
+
+    <!-- ── ViewModel errors (snackbars) ─────────────────────────────────── -->
+    <string name="err_load_more_videos">Nie można załadować więcej filmów: %1$s</string>
+    <string name="err_load_videos">Nie można załadować filmów: %1$s</string>
+    <string name="err_load_metadata">Nie można załadować metadanych: %1$s</string>
+    <string name="err_video_not_found">Wideo nie znalezione</string>
+    <string name="err_update_notes">Nie można zaktualizować notatek</string>
+    <string name="err_update_notes_detail">Nie można zaktualizować notatek: %1$s</string>
+    <string name="err_add_tag">Nie można dodać tagu</string>
+    <string name="err_add_tag_detail">Nie można dodać tagu: %1$s</string>
+    <string name="err_remove_tag">Nie można usunąć tagu</string>
+    <string name="err_remove_tag_detail">Nie można usunąć tagu: %1$s</string>
+    <string name="err_update_rating">Nie można zaktualizować oceny: %1$s</string>
+    <string name="err_update_color_label">Nie można zaktualizować etykiety koloru: %1$s</string>
+    <string name="err_update_location">Nie można zaktualizować lokalizacji</string>
+    <string name="err_update_location_detail">Nie można zaktualizować lokalizacji: %1$s</string>
+    <string name="err_remove_location">Nie można usunąć lokalizacji</string>
+    <string name="err_remove_location_detail">Nie można usunąć lokalizacji: %1$s</string>
+    <string name="err_add_to_collection">Nie można dodać do kolekcji</string>
+    <string name="err_add_to_collection_detail">Nie można dodać do kolekcji: %1$s</string>
+    <string name="err_remove_from_collection">Nie można usunąć z kolekcji</string>
+    <string name="err_remove_from_collection_detail">Nie można usunąć z kolekcji: %1$s</string>
+    <string name="scan_target_default">biblioteka</string>
+    <string name="scan_scanning_target">Skanowanie %1$s…</string>
+    <string name="pairing_a_device">Urządzenie</string>
+</resources>

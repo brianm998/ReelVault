@@ -19,8 +19,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.reelvault.android.R
 import androidx.compose.ui.unit.sp
 import com.reelvault.android.data.AndroidServerDiscovery
 import com.reelvault.android.data.DefaultServerPrefs
@@ -104,7 +106,7 @@ fun ConnectionFlowScreen(
         val token = tokenStorage.get(fp) ?: return@LaunchedEffect
 
         autoConnecting = true
-        state = ConnectionState.Connecting("Reconnecting to ${saved.host}…")
+        state = ConnectionState.Connecting(context.getString(R.string.conn_reconnecting_to, saved.host))
         RemoteConnection.endpoint = RemoteConnection.Endpoint(
             host = saved.host,
             mediaPort = saved.mediaPort,
@@ -160,7 +162,7 @@ fun ConnectionFlowScreen(
 
     /** Connect to a remote daemon that has already been paired (token known). */
     fun connectRemote(server: DiscoveredServer, token: String) {
-        state = ConnectionState.Connecting("Connecting to ${server.displayName}…")
+        state = ConnectionState.Connecting(context.getString(R.string.conn_connecting_to, server.displayName))
         scope.launch {
             RemoteConnection.endpoint = RemoteConnection.Endpoint(
                 host = server.host,
@@ -180,8 +182,7 @@ fun ConnectionFlowScreen(
             } else {
                 RemoteConnection.endpoint = null
                 state = ConnectionState.Error(
-                    "Could not connect to ${server.displayName}. " +
-                        "Check that the daemon is running and try again."
+                    context.getString(R.string.conn_could_not_connect_named, server.displayName)
                 )
             }
         }
@@ -192,14 +193,14 @@ fun ConnectionFlowScreen(
         val fp = server.fingerprintHex
         if (fp == null) {
             // No TLS fingerprint means a plaintext loopback daemon — connect directly.
-            state = ConnectionState.Connecting("Connecting…")
+            state = ConnectionState.Connecting(context.getString(R.string.conn_connecting))
             scope.launch {
                 val ok = repository.connect()
                 if (ok) {
                     DefaultServerPrefs(context).save(server)
                     onConnected()
                 } else {
-                    state = ConnectionState.Error("Could not connect to ${server.displayName}.")
+                    state = ConnectionState.Error(context.getString(R.string.conn_could_not_connect_simple, server.displayName))
                 }
             }
             return
@@ -220,12 +221,12 @@ fun ConnectionFlowScreen(
     /** Redeem a PIN and, on success, cache the token and connect. */
     fun onSubmitPin(server: DiscoveredServer, pin: String) {
         val fp = server.fingerprintHex ?: return
-        state = ConnectionState.Connecting("Pairing with ${server.displayName}…")
+        state = ConnectionState.Connecting(context.getString(R.string.conn_pairing_with, server.displayName))
         scope.launch {
             val token = pairingClient.pair(server.host, server.mediaPort, fp, pin)
             if (token == null) {
                 state = ConnectionState.Error(
-                    "Pairing rejected — check the code and try again."
+                    context.getString(R.string.conn_pairing_rejected)
                 )
             } else {
                 tokenStorage.set(fp, token)
@@ -307,14 +308,14 @@ private fun DiscoveringView() {
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                "Looking for ReelVault servers…",
+                stringResource(R.string.conn_looking_for_servers),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                "Scanning the local network",
+                stringResource(R.string.conn_scanning_network),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -335,9 +336,9 @@ private fun ChooseServerView(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Connect to ReelVault") },
+                title = { Text(stringResource(R.string.conn_connect_title)) },
                 actions = {
-                    TextButton(onClick = onRetry) { Text("Rescan") }
+                    TextButton(onClick = onRetry) { Text(stringResource(R.string.conn_rescan)) }
                 },
             )
         }
@@ -371,13 +372,12 @@ private fun ChooseServerView(
                             Spacer(Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    "No servers found",
+                                    stringResource(R.string.conn_no_servers_found),
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.SemiBold,
                                 )
                                 Text(
-                                    "Start a ReelVault core daemon with --remote on a " +
-                                        "computer on this Wi-Fi network, then rescan.",
+                                    stringResource(R.string.conn_no_servers_hint),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -388,7 +388,7 @@ private fun ChooseServerView(
             } else {
                 item {
                     Text(
-                        "Available servers",
+                        stringResource(R.string.conn_available_servers),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 2.dp),
@@ -405,7 +405,7 @@ private fun ChooseServerView(
                     onClick = onEnterManually,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Enter address manually")
+                    Text(stringResource(R.string.conn_enter_address_manually))
                 }
             }
 
@@ -420,7 +420,7 @@ private fun ChooseServerView(
                         modifier = Modifier.size(18.dp),
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text("Browse local videos")
+                    Text(stringResource(R.string.conn_browse_local_videos))
                 }
             }
         }
@@ -465,7 +465,7 @@ private fun ServerCard(server: DiscoveredServer, onClick: () -> Unit) {
                 )
                 if (server.requiresPairing) {
                     Text(
-                        "Requires pairing",
+                        stringResource(R.string.conn_requires_pairing),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.tertiary,
                     )
@@ -488,7 +488,7 @@ private fun EnterPinView(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Enter Pairing Code") },
+                title = { Text(stringResource(R.string.conn_enter_pairing_code)) },
             )
         }
     ) { padding ->
@@ -508,16 +508,14 @@ private fun EnterPinView(
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                "Pair with ${server.displayName}",
+                stringResource(R.string.conn_pair_with, server.displayName),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "On the computer running ReelVault, choose File ▸ Pair a New Device " +
-                    "to show a 6-digit code (a headless server also logs it). " +
-                    "Enter it below — you only do this once.",
+                stringResource(R.string.conn_pairing_instructions),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -526,7 +524,7 @@ private fun EnterPinView(
             OutlinedTextField(
                 value = pin,
                 onValueChange = { new -> pin = new.filter { it.isDigit() }.take(6) },
-                placeholder = { Text("000000", fontFamily = FontFamily.Monospace) },
+                placeholder = { Text(stringResource(R.string.conn_pin_placeholder), fontFamily = FontFamily.Monospace) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.NumberPassword,
@@ -544,12 +542,12 @@ private fun EnterPinView(
             )
             Spacer(Modifier.height(24.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TextButton(onClick = onCancel) { Text("Cancel") }
+                TextButton(onClick = onCancel) { Text(stringResource(R.string.common_cancel)) }
                 Button(
                     onClick = { onSubmit(pin.trim()) },
                     enabled = canSubmit,
                 ) {
-                    Text("Pair")
+                    Text(stringResource(R.string.conn_pair_button))
                 }
             }
         }
@@ -569,6 +567,7 @@ private fun ManualEntryView(
     var fetchingFp by remember { mutableStateOf(false) }
     var fpError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     val portInt = port.toIntOrNull() ?: 50051
     val canConnect = host.isNotBlank()
@@ -577,9 +576,9 @@ private fun ManualEntryView(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Connect Manually") },
+                title = { Text(stringResource(R.string.conn_connect_manually)) },
                 navigationIcon = {
-                    TextButton(onClick = onCancel) { Text("Cancel") }
+                    TextButton(onClick = onCancel) { Text(stringResource(R.string.common_cancel)) }
                 },
             )
         }
@@ -598,8 +597,8 @@ private fun ManualEntryView(
                     fingerprint = ""
                     fpError = null
                 },
-                label = { Text("Host or IP address") },
-                placeholder = { Text("192.168.1.100") },
+                label = { Text(stringResource(R.string.conn_host_label)) },
+                placeholder = { Text(stringResource(R.string.conn_host_placeholder)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Uri,
@@ -611,8 +610,8 @@ private fun ManualEntryView(
             OutlinedTextField(
                 value = port,
                 onValueChange = { port = it.filter { c -> c.isDigit() }.take(5) },
-                label = { Text("gRPC port") },
-                placeholder = { Text("50051") },
+                label = { Text(stringResource(R.string.conn_grpc_port_label)) },
+                placeholder = { Text(stringResource(R.string.conn_grpc_port_placeholder)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Number,
@@ -633,8 +632,8 @@ private fun ManualEntryView(
                         fingerprint = it
                         fpError = null
                     },
-                    label = { Text("Cert fingerprint (SHA-256, optional)") },
-                    placeholder = { Text("abcd1234…") },
+                    label = { Text(stringResource(R.string.conn_fingerprint_label)) },
+                    placeholder = { Text(stringResource(R.string.conn_fingerprint_placeholder)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Ascii,
@@ -661,8 +660,7 @@ private fun ManualEntryView(
                             if (fetched != null) {
                                 fingerprint = fetched
                             } else {
-                                fpError = "Could not reach ${host.trim()}:$mediaPort — " +
-                                    "check host and that the daemon is running."
+                                fpError = context.getString(R.string.conn_could_not_reach, host.trim(), mediaPort)
                             }
                         }
                     },
@@ -674,7 +672,7 @@ private fun ManualEntryView(
                             strokeWidth = 2.dp,
                         )
                     } else {
-                        Text("Fetch")
+                        Text(stringResource(R.string.conn_fetch))
                     }
                 }
             }
@@ -696,7 +694,7 @@ private fun ManualEntryView(
                 enabled = canConnect,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Connect")
+                Text(stringResource(R.string.conn_connect_button))
             }
         }
     }
@@ -756,8 +754,8 @@ private fun ErrorView(
             )
             Spacer(Modifier.height(24.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = onRetry) { Text("Retry") }
-                Button(onClick = onEnterManually) { Text("Enter address") }
+                OutlinedButton(onClick = onRetry) { Text(stringResource(R.string.conn_retry)) }
+                Button(onClick = onEnterManually) { Text(stringResource(R.string.conn_enter_address)) }
             }
         }
     }

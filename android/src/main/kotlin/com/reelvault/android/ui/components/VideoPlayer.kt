@@ -25,7 +25,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.reelvault.android.R
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.viewinterop.AndroidView
@@ -240,13 +242,13 @@ fun VideoPlayer(
             ) {
                 Icon(
                     imageVector = Icons.Default.VideoFile,
-                    contentDescription = "No stream available",
+                    contentDescription = stringResource(R.string.player_no_stream),
                     modifier = Modifier.size(56.dp),
                     tint = Color.White.copy(alpha = 0.5f),
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "No stream available",
+                    text = stringResource(R.string.player_no_stream),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.5f),
                 )
@@ -281,7 +283,7 @@ fun VideoPlayer(
             ) {
                 Icon(
                     imageVector = Icons.Default.PlayArrow,
-                    contentDescription = "Play",
+                    contentDescription = stringResource(R.string.player_play),
                     tint = Color.White,
                     modifier = Modifier.size(44.dp),
                 )
@@ -290,7 +292,7 @@ fun VideoPlayer(
 
         if (playerError != null) {
             ErrorOverlay(
-                message = playerError!!.localizedMessage ?: "Playback error",
+                message = playerError!!.localizedMessage ?: stringResource(R.string.player_playback_error),
                 onRetry = {
                     playerError = null
                     exoPlayer.prepare()
@@ -548,7 +550,7 @@ private fun ControlsOverlay(
             IconButton(onClick = onPlayPause) {
                 Icon(
                     imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (isPlaying) "Pause" else "Play",
+                    contentDescription = if (isPlaying) stringResource(R.string.player_pause) else stringResource(R.string.player_play),
                     tint = Color.White,
                     modifier = Modifier.size(28.dp),
                 )
@@ -556,7 +558,7 @@ private fun ControlsOverlay(
 
             Icon(
                 imageVector = if (volume > 0f) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
-                contentDescription = "Volume",
+                contentDescription = stringResource(R.string.player_volume),
                 tint = Color.White.copy(alpha = 0.85f),
                 modifier = Modifier.size(18.dp),
             )
@@ -577,7 +579,7 @@ private fun ControlsOverlay(
                 IconButton(onClick = onQualityClick) {
                     Icon(
                         imageVector = Icons.Default.Tune,
-                        contentDescription = "Quality",
+                        contentDescription = stringResource(R.string.player_quality),
                         tint = Color.White,
                         modifier = Modifier.size(22.dp),
                     )
@@ -587,7 +589,7 @@ private fun ControlsOverlay(
             IconButton(onClick = onFullScreen) {
                 Icon(
                     imageVector = if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
-                    contentDescription = if (isFullscreen) "Exit full screen" else "Full screen",
+                    contentDescription = if (isFullscreen) stringResource(R.string.player_exit_full_screen) else stringResource(R.string.player_full_screen),
                     tint = Color.White,
                     modifier = Modifier.size(22.dp),
                 )
@@ -631,7 +633,7 @@ private fun ErrorOverlay(message: String, onRetry: () -> Unit) {
                 modifier = Modifier.size(16.dp),
             )
             Spacer(modifier = Modifier.width(4.dp))
-            Text("Retry")
+            Text(stringResource(R.string.player_retry))
         }
     }
 }
@@ -649,7 +651,7 @@ private fun RenditionPickerDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Quality") },
+        title = { Text(stringResource(R.string.player_quality)) },
         text = {
             Column {
                 renditions.forEach { rendition ->
@@ -673,7 +675,7 @@ private fun RenditionPickerDialog(
                             if (isSelected) {
                                 Icon(
                                     imageVector = Icons.Default.Check,
-                                    contentDescription = "Selected",
+                                    contentDescription = stringResource(R.string.player_selected),
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(16.dp),
                                 )
@@ -684,7 +686,7 @@ private fun RenditionPickerDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.player_cancel)) }
         },
     )
 }

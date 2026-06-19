@@ -60,9 +60,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.reelvault.android.BuildConfig
+import com.reelvault.android.R
 import com.reelvault.data.models.LibraryLocation
 import com.reelvault.data.repository.VideoRepository
 import kotlinx.coroutines.launch
@@ -95,6 +99,7 @@ fun LibrarySettingsScreen(
 ) {
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     // ── Section expand/collapse state ─────────────────────────────────────
     var locationsExpanded by remember { mutableStateOf(true) }
@@ -149,12 +154,12 @@ fun LibrarySettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.Default.ChevronRight,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.settings_back),
                             modifier = Modifier.size(28.dp),
                         )
                     }
@@ -177,7 +182,7 @@ fun LibrarySettingsScreen(
             item(key = "locations_header") {
                 Spacer(modifier = Modifier.height(4.dp))
                 SectionCard(
-                    title = "Library Locations",
+                    title = stringResource(R.string.settings_library_locations),
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Folder,
@@ -195,7 +200,7 @@ fun LibrarySettingsScreen(
                             ListItem(
                                 headlineContent = {
                                     Text(
-                                        "No watched folders",
+                                        stringResource(R.string.settings_no_watched_folders),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
@@ -220,10 +225,13 @@ fun LibrarySettingsScreen(
                                                     locationPath = location.path,
                                                 ).collect { /* consume progress */ }
                                                 locations = repository.listLibraryLocations()
-                                                snackbar.showSnackbar("Rescan complete")
+                                                snackbar.showSnackbar(context.getString(R.string.settings_rescan_complete))
                                             } catch (e: Exception) {
                                                 snackbar.showSnackbar(
-                                                    "Rescan failed: ${e.message ?: "unknown error"}"
+                                                    context.getString(
+                                                        R.string.settings_rescan_failed,
+                                                        e.message ?: context.getString(R.string.common_unknown_error),
+                                                    )
                                                 )
                                             } finally {
                                                 rescanningPaths = rescanningPaths - location.path
@@ -240,7 +248,7 @@ fun LibrarySettingsScreen(
             // ── 2. About ─────────────────────────────────────────────────
             item(key = "about_header") {
                 SectionCard(
-                    title = "About",
+                    title = stringResource(R.string.settings_about),
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Info,
@@ -254,7 +262,7 @@ fun LibrarySettingsScreen(
                 ) {
                     // App version — always available from BuildConfig.
                     ListItem(
-                        headlineContent = { Text("App Version") },
+                        headlineContent = { Text(stringResource(R.string.settings_app_version)) },
                         supportingContent = { Text(BuildConfig.VERSION_NAME) },
                     )
                     HorizontalDivider(
@@ -263,7 +271,7 @@ fun LibrarySettingsScreen(
                     )
                     // Daemon info — async; shows a spinner until ready.
                     when {
-                        daemonLoading -> LoadingRow(label = "Loading daemon info…")
+                        daemonLoading -> LoadingRow(label = stringResource(R.string.settings_loading_daemon_info))
                         else -> {
                             DaemonInfoRow(
                                 version = daemonVersion,
@@ -279,7 +287,7 @@ fun LibrarySettingsScreen(
             // ── 3. Connection ─────────────────────────────────────────────
             item(key = "connection_header") {
                 SectionCard(
-                    title = "Connection",
+                    title = stringResource(R.string.settings_connection),
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.WifiOff,
@@ -292,13 +300,13 @@ fun LibrarySettingsScreen(
                     onToggle = { connectionExpanded = !connectionExpanded },
                 ) {
                     ListItem(
-                        headlineContent = { Text("Server connection") },
+                        headlineContent = { Text(stringResource(R.string.settings_server_connection)) },
                         supportingContent = {
                             Text(
                                 if (repository.isRemote) {
-                                    "Connected to remote daemon at ${repository.host}:${repository.currentPort}"
+                                    stringResource(R.string.settings_connected_remote, repository.host, repository.currentPort)
                                 } else {
-                                    "Connected to local daemon"
+                                    stringResource(R.string.settings_connected_local)
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -318,7 +326,7 @@ fun LibrarySettingsScreen(
                                     onClick = {
                                         scope.launch {
                                             repository.disconnect()
-                                            snackbar.showSnackbar("Disconnected from server")
+                                            snackbar.showSnackbar(context.getString(R.string.settings_disconnected))
                                         }
                                     },
                                     colors = ButtonDefaults.outlinedButtonColors(
@@ -331,15 +339,15 @@ fun LibrarySettingsScreen(
                                         modifier = Modifier.size(16.dp),
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Forget Server")
+                                    Text(stringResource(R.string.settings_forget_server))
                                 }
                                 FilledTonalButton(
                                     onClick = {
                                         scope.launch {
                                             val ok = repository.connect()
                                             snackbar.showSnackbar(
-                                                if (ok) "Reconnected successfully"
-                                                else "Reconnect failed"
+                                                if (ok) context.getString(R.string.settings_reconnected)
+                                                else context.getString(R.string.settings_reconnect_failed)
                                             )
                                         }
                                     },
@@ -350,7 +358,7 @@ fun LibrarySettingsScreen(
                                         modifier = Modifier.size(16.dp),
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Reconnect")
+                                    Text(stringResource(R.string.settings_reconnect))
                                 }
                             }
                         },
@@ -361,7 +369,7 @@ fun LibrarySettingsScreen(
             // ── 4. Scan ───────────────────────────────────────────────────
             item(key = "scan_header") {
                 SectionCard(
-                    title = "Scan",
+                    title = stringResource(R.string.settings_scan),
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Search,
@@ -376,14 +384,13 @@ fun LibrarySettingsScreen(
                     ListItem(
                         headlineContent = {
                             Text(
-                                "Full rescan",
+                                stringResource(R.string.settings_full_rescan),
                                 fontWeight = FontWeight.Medium,
                             )
                         },
                         supportingContent = {
                             Text(
-                                "Re-index all watched folders, extract metadata and generate " +
-                                    "thumbnails for any new or changed videos.",
+                                stringResource(R.string.settings_full_rescan_desc),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -404,10 +411,13 @@ fun LibrarySettingsScreen(
                                         try {
                                             repository.scanLibrary().collect { /* consume */ }
                                             locations = repository.listLibraryLocations()
-                                            snackbar.showSnackbar("Full scan complete")
+                                            snackbar.showSnackbar(context.getString(R.string.settings_full_scan_complete))
                                         } catch (e: Exception) {
                                             snackbar.showSnackbar(
-                                                "Scan failed: ${e.message ?: "unknown error"}"
+                                                context.getString(
+                                                    R.string.settings_scan_failed,
+                                                    e.message ?: context.getString(R.string.common_unknown_error),
+                                                )
                                             )
                                         } finally {
                                             scanInProgress = false
@@ -422,7 +432,7 @@ fun LibrarySettingsScreen(
                                     modifier = Modifier.size(16.dp),
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text(if (scanInProgress) "Scanning…" else "Start Full Scan")
+                                Text(if (scanInProgress) stringResource(R.string.settings_scanning) else stringResource(R.string.settings_start_full_scan))
                             }
                         },
                     )
@@ -479,7 +489,7 @@ private fun SectionCard(
             )
             Icon(
                 imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                contentDescription = if (expanded) "Collapse" else "Expand",
+                contentDescription = if (expanded) stringResource(R.string.settings_collapse) else stringResource(R.string.settings_expand),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp),
             )
@@ -510,9 +520,9 @@ private fun LibraryLocationRow(
 ) {
     val lastScannedText = if (location.lastScanned > 0L) {
         val sdf = remember { SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()) }
-        "Last scanned: ${sdf.format(Date(location.lastScanned))}"
+        stringResource(R.string.settings_last_scanned, sdf.format(Date(location.lastScanned)))
     } else {
-        "Never scanned"
+        stringResource(R.string.settings_never_scanned)
     }
 
     ListItem(
@@ -524,6 +534,12 @@ private fun LibraryLocationRow(
             )
         },
         supportingContent = {
+            val videoCountInt = location.videoCount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            val videoCountText = pluralStringResource(
+                R.plurals.settings_location_video_count, videoCountInt, videoCountInt,
+            )
+            val nonRecursiveSuffix = stringResource(R.string.settings_non_recursive)
+            val disabledSuffix = stringResource(R.string.settings_disabled)
             Column {
                 Text(
                     text = location.path,
@@ -533,9 +549,9 @@ private fun LibraryLocationRow(
                 )
                 Text(
                     text = buildString {
-                        append("${location.videoCount} video${if (location.videoCount == 1L) "" else "s"}")
-                        if (!location.recursive) append(" (non-recursive)")
-                        if (!location.enabled) append(" (disabled)")
+                        append(videoCountText)
+                        if (!location.recursive) append(nonRecursiveSuffix)
+                        if (!location.enabled) append(disabledSuffix)
                         append(" • ")
                         append(lastScannedText)
                     },
@@ -563,7 +579,7 @@ private fun LibraryLocationRow(
                 IconButton(onClick = onRescan) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
-                        contentDescription = "Rescan ${location.path}",
+                        contentDescription = stringResource(R.string.settings_rescan_path, location.path),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -584,9 +600,9 @@ private fun DaemonInfoRow(
     cacheSizeBytes: Long?,
 ) {
     ListItem(
-        headlineContent = { Text("Daemon Version") },
+        headlineContent = { Text(stringResource(R.string.settings_daemon_version)) },
         supportingContent = {
-            Text(version ?: "Unavailable")
+            Text(version ?: stringResource(R.string.common_unavailable))
         },
     )
     HorizontalDivider(
@@ -594,11 +610,11 @@ private fun DaemonInfoRow(
         color = MaterialTheme.colorScheme.outlineVariant,
     )
     ListItem(
-        headlineContent = { Text("Videos Indexed") },
+        headlineContent = { Text(stringResource(R.string.settings_videos_indexed)) },
         supportingContent = {
             Text(
                 when (totalVideos) {
-                    null -> "Unavailable"
+                    null -> stringResource(R.string.common_unavailable)
                     else -> "%,d".format(totalVideos)
                 }
             )
@@ -609,11 +625,11 @@ private fun DaemonInfoRow(
         color = MaterialTheme.colorScheme.outlineVariant,
     )
     ListItem(
-        headlineContent = { Text("Cache Size") },
+        headlineContent = { Text(stringResource(R.string.settings_cache_size)) },
         supportingContent = {
             Text(
                 when {
-                    cacheSizeBytes == null -> "Unavailable"
+                    cacheSizeBytes == null -> stringResource(R.string.common_unavailable)
                     cacheSizeBytes < 1024L -> "${cacheSizeBytes} B"
                     cacheSizeBytes < 1024L * 1024L -> "%.1f KB".format(cacheSizeBytes / 1024.0)
                     cacheSizeBytes < 1024L * 1024L * 1024L -> "%.1f MB".format(
@@ -629,11 +645,11 @@ private fun DaemonInfoRow(
         color = MaterialTheme.colorScheme.outlineVariant,
     )
     ListItem(
-        headlineContent = { Text("Uptime") },
+        headlineContent = { Text(stringResource(R.string.settings_uptime)) },
         supportingContent = {
             Text(
                 when {
-                    uptimeSeconds == null -> "Unavailable"
+                    uptimeSeconds == null -> stringResource(R.string.common_unavailable)
                     uptimeSeconds < 60L -> "${uptimeSeconds}s"
                     uptimeSeconds < 3600L -> "${uptimeSeconds / 60}m ${uptimeSeconds % 60}s"
                     else -> {
@@ -652,7 +668,7 @@ private fun DaemonInfoRow(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun LoadingRow(label: String = "Loading…") {
+private fun LoadingRow(label: String = stringResource(R.string.settings_loading)) {
     Box(
         modifier = Modifier
             .fillMaxWidth()

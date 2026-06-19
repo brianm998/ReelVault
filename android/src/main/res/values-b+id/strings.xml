@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ── Common ───────────────────────────────────────────────────────── -->
+    <string name="common_back">Kembali</string>
+    <string name="common_cancel">Batalkan</string>
+    <string name="common_save">Simpan</string>
+    <string name="common_done">Selesai</string>
+    <string name="common_clear">Hapus</string>
+    <string name="common_selected">Dipilih</string>
+    <string name="common_offline">Offline</string>
+    <string name="common_unavailable">Tidak tersedia</string>
+    <string name="common_unknown_error">kesalahan tidak diketahui</string>
+
+    <!-- ── Connection flow ──────────────────────────────────────────────── -->
+    <string name="conn_reconnecting_to">Menghubungkan kembali ke %1$s…</string>
+    <string name="conn_connecting_to">Menghubungkan ke %1$s…</string>
+    <string name="conn_connecting">Menghubungkan…</string>
+    <string name="conn_pairing_with">Memasangkan dengan %1$s…</string>
+    <string name="conn_could_not_connect_named">Tidak dapat terhubung ke %1$s. Pastikan daemon sedang berjalan dan coba lagi.</string>
+    <string name="conn_could_not_connect_simple">Tidak dapat terhubung ke %1$s.</string>
+    <string name="conn_pairing_rejected">Pemasangan ditolak — periksa kode dan coba lagi.</string>
+    <string name="conn_looking_for_servers">Mencari server ReelVault…</string>
+    <string name="conn_scanning_network">Memindai jaringan lokal</string>
+    <string name="conn_connect_title">Sambungkan ke ReelVault</string>
+    <string name="conn_rescan">Pindai ulang</string>
+    <string name="conn_no_servers_found">Tidak ada server ditemukan</string>
+    <string name="conn_no_servers_hint">Jalankan daemon inti ReelVault dengan --remote di komputer dalam jaringan Wi-Fi yang sama, lalu pindai ulang.</string>
+    <string name="conn_available_servers">Server yang tersedia</string>
+    <string name="conn_enter_address_manually">Masukkan alamat secara manual</string>
+    <string name="conn_browse_local_videos">Jelajahi video lokal</string>
+    <string name="conn_requires_pairing">Memerlukan pemasangan</string>
+    <string name="conn_enter_pairing_code">Masukkan Kode Pembuatan Pasangan</string>
+    <string name="conn_pair_with">Pasangkan dengan %1$s</string>
+    <string name="conn_pairing_instructions">Di komputer yang menjalankan ReelVault, pilih File ▸ Pasangkan Perangkat Baru untuk menampilkan kode 6 digit (server tanpa antarmuka juga mencatatnya). Masukkan di bawah — Anda hanya perlu melakukan ini sekali.</string>
+    <string name="conn_pin_placeholder">000000</string>
+    <string name="conn_pair_button">Pasangkan</string>
+    <string name="conn_connect_manually">Sambungkan Secara Manual</string>
+    <string name="conn_host_label">Host atau alamat IP</string>
+    <string name="conn_host_placeholder">192.168.1.100</string>
+    <string name="conn_grpc_port_label">Port gRPC</string>
+    <string name="conn_grpc_port_placeholder">50051</string>
+    <string name="conn_fingerprint_label">Sidik jari sertifikat (SHA-256, opsional)</string>
+    <string name="conn_fingerprint_placeholder">abcd1234…</string>
+    <string name="conn_fetch">Ambil</string>
+    <string name="conn_could_not_reach">Tidak dapat menjangkau %1$s:%2$d — periksa host dan pastikan daemon sedang berjalan.</string>
+    <string name="conn_connect_button">Sambungkan</string>
+    <string name="conn_retry">Coba lagi</string>
+    <string name="conn_enter_address">Masukkan alamat</string>
+
+    <!-- ── Library grid ─────────────────────────────────────────────────── -->
+    <string name="grid_incoming_pairing_title">Permintaan Pemasangan Masuk</string>
+    <string name="grid_incoming_pairing_message">%1$s ingin terhubung ke perpustakaan ini. Izinkan?</string>
+    <string name="grid_allow">Izinkan</string>
+    <string name="grid_deny">Tolak</string>
+    <string name="grid_close_search">Tutup pencarian</string>
+    <string name="grid_search_videos_hint">Cari video…</string>
+    <string name="grid_selected_count">%1$d dipilih</string>
+    <string name="grid_clear_selection">Batalkan pilihan</string>
+    <string name="grid_open_library_panel">Buka panel perpustakaan</string>
+    <string name="grid_search">Cari</string>
+    <string name="grid_sort">Urutkan</string>
+    <string name="grid_switch_to_list_view">Beralih ke tampilan daftar</string>
+    <string name="grid_switch_to_grid_view">Beralih ke tampilan kisi</string>
+    <string name="grid_more_options">Opsi lainnya</string>
+    <string name="grid_map">Peta</string>
+    <string name="grid_settings">Pengaturan</string>
+    <string name="grid_disconnect">Putuskan sambungan</string>
+    <string name="grid_sort_by">Urutkan berdasarkan</string>
+    <string name="grid_sort_ascending_arrow">%1$s ↑</string>
+    <string name="grid_sort_descending_arrow">%1$s ↓</string>
+    <string name="grid_library">Perpustakaan</string>
+    <string name="grid_clear_filters">Hapus filter</string>
+    <string name="grid_close">Tutup</string>
+    <string name="grid_catalog">Katalog</string>
+    <string name="grid_remote_library">Perpustakaan Jarak Jauh</string>
+    <string name="grid_local_videos">Video Lokal</string>
+    <string name="grid_all_videos">Semua Video</string>
+    <string name="grid_locations">Lokasi</string>
+    <string name="grid_keywords">Kata Kunci</string>
+    <string name="grid_collections">Koleksi</string>
+    <string name="grid_no_videos">Tidak ada video</string>
+    <string name="grid_processing">Memproses…</string>
+    <string name="grid_percent">%1$d%%</string>
+    <string name="grid_no_videos_match_search">Tidak ada video yang cocok dengan \"%1$s\"</string>
+    <string name="grid_no_videos_with_keyword">Tidak ada video dengan kata kunci ini</string>
+    <string name="grid_collection_empty">Koleksi ini kosong</string>
+    <string name="grid_no_videos_in_library">Tidak ada video di perpustakaan</string>
+    <string name="grid_empty_add_location_hint">Tambahkan lokasi perpustakaan di Pengaturan untuk memulai.</string>
+    <string name="grid_empty_no_match_filter">…atau tidak ada video yang cocok dengan filter saat ini</string>
+    <string name="grid_reset_filter">Reset filter</string>
+    <string name="grid_clear_location_filter">Hapus filter lokasi</string>
+    <string name="grid_star_count">%1$d bintang</string>
+    <plurals name="grid_video_count">
+        <item quantity="other">%1$d video</item>
+    </plurals>
+    <plurals name="grid_location_video_count">
+        <item quantity="other">%1$d video</item>
+    </plurals>
+
+    <!-- ── Map ──────────────────────────────────────────────────────────── -->
+    <string name="map_title">Peta</string>
+    <string name="map_load_failed">Gagal memuat data peta: %1$s</string>
+    <string name="map_unknown_error">Kesalahan tidak diketahui</string>
+    <string name="map_no_geotagged">Tidak ada video bertanda lokasi.\nVideo dengan metadata GPS akan muncul di sini pada peta.</string>
+    <string name="map_geotagged_count">%1$d bertanda lokasi</string>
+    <plurals name="map_marker_video_count">
+        <item quantity="other">%1$d video</item>
+    </plurals>
+
+    <!-- ── Local media ──────────────────────────────────────────────────── -->
+    <string name="local_selected_count">%1$d dipilih</string>
+    <string name="local_title">Video Lokal</string>
+    <string name="local_clear_selection">Batalkan pilihan</string>
+    <string name="local_upload_to_server">Unggah ke server</string>
+    <string name="local_select_all">Pilih semua</string>
+    <string name="local_upload_failed">Pengunggahan gagal: %1$s</string>
+    <string name="local_no_videos_found">Tidak ada video ditemukan di perangkat</string>
+    <string name="local_not_connected_hint">Tidak terhubung — sambungkan ke server ReelVault untuk mengunggah</string>
+    <string name="local_uploaded">Diunggah</string>
+    <string name="local_video_access_denied">Akses video ditolak</string>
+    <string name="local_permission_hint">Berikan izin \"Video\" di Pengaturan → Aplikasi → ReelVault → Izin untuk menjelajahi video lokal.</string>
+    <plurals name="local_uploaded_count">
+        <item quantity="other">%1$d video diunggah</item>
+    </plurals>
+    <plurals name="local_selected_upload_hint">
+        <item quantity="other">%1$d video dipilih — ketuk ↑ untuk mengunggah ke server</item>
+    </plurals>
+
+    <!-- ── Settings ─────────────────────────────────────────────────────── -->
+    <string name="settings_title">Pengaturan</string>
+    <string name="settings_back">Kembali</string>
+    <string name="settings_library_locations">Lokasi Perpustakaan</string>
+    <string name="settings_no_watched_folders">Tidak ada folder yang dipantau</string>
+    <string name="settings_rescan_complete">Pemindaian ulang selesai</string>
+    <string name="settings_rescan_failed">Pemindaian ulang gagal: %1$s</string>
+    <string name="settings_about">Tentang</string>
+    <string name="settings_app_version">Versi Aplikasi</string>
+    <string name="settings_loading_daemon_info">Memuat info daemon…</string>
+    <string name="settings_connection">Koneksi</string>
+    <string name="settings_server_connection">Koneksi server</string>
+    <string name="settings_connected_remote">Terhubung ke daemon jarak jauh di %1$s:%2$d</string>
+    <string name="settings_connected_local">Terhubung ke daemon lokal</string>
+    <string name="settings_disconnected">Terputus dari server</string>
+    <string name="settings_forget_server">Lupakan Server</string>
+    <string name="settings_reconnected">Berhasil terhubung kembali</string>
+    <string name="settings_reconnect_failed">Koneksi ulang gagal</string>
+    <string name="settings_reconnect">Hubungkan ulang</string>
+    <string name="settings_scan">Pindai</string>
+    <string name="settings_full_rescan">Pemindaian ulang penuh</string>
+    <string name="settings_full_rescan_desc">Indeks ulang semua folder yang dipantau, ekstrak metadata, dan buat thumbnail untuk video baru atau yang berubah.</string>
+    <string name="settings_full_scan_complete">Pemindaian penuh selesai</string>
+    <string name="settings_scan_failed">Pemindaian gagal: %1$s</string>
+    <string name="settings_scanning">Memindai…</string>
+    <string name="settings_start_full_scan">Mulai Pemindaian Penuh</string>
+    <string name="settings_collapse">Ciutkan</string>
+    <string name="settings_expand">Perluas</string>
+    <string name="settings_last_scanned">Terakhir dipindai: %1$s</string>
+    <string name="settings_never_scanned">Belum pernah dipindai</string>
+    <string name="settings_non_recursive"> (non-rekursif)</string>
+    <string name="settings_disabled"> (dinonaktifkan)</string>
+    <string name="settings_rescan_path">Pindai ulang %1$s</string>
+    <string name="settings_daemon_version">Versi Daemon</string>
+    <string name="settings_videos_indexed">Video Terindeks</string>
+    <string name="settings_cache_size">Ukuran Cache</string>
+    <string name="settings_uptime">Waktu Aktif</string>
+    <string name="settings_loading">Memuat…</string>
+    <plurals name="settings_location_video_count">
+        <item quantity="other">%1$d video</item>
+    </plurals>
+
+    <!-- ── Detail ───────────────────────────────────────────────────────── -->
+    <string name="detail_title">Detail</string>
+    <string name="detail_share">Bagikan</string>
+    <string name="detail_share_subject">Bagikan %1$s</string>
+    <string name="detail_video_not_found">Video tidak ditemukan</string>
+    <string name="detail_section_file_info">Info File</string>
+    <string name="detail_section_video">Video</string>
+    <string name="detail_section_audio">Audio</string>
+    <string name="detail_section_capture">Pengambilan</string>
+    <string name="detail_field_filename">Nama file</string>
+    <string name="detail_field_path">Jalur</string>
+    <string name="detail_field_size">Ukuran</string>
+    <string name="detail_field_indexed">Terindeks</string>
+    <string name="detail_field_online">Online</string>
+    <string name="detail_value_online_yes">Ya</string>
+    <string name="detail_value_online_no">Tidak (offline)</string>
+    <string name="detail_field_resolution">Resolusi</string>
+    <string name="detail_field_codec">Codec</string>
+    <string name="detail_field_fps">FPS</string>
+    <string name="detail_field_bitrate">Bitrate</string>
+    <string name="detail_field_frames">Frame</string>
+    <string name="detail_field_hdr">HDR</string>
+    <string name="detail_value_yes">Ya</string>
+    <string name="detail_field_color_space">Ruang warna</string>
+    <string name="detail_field_resolution_status">Status resolusi</string>
+    <string name="detail_value_full_resolution">Resolusi penuh</string>
+    <string name="detail_value_not_full_resolution">Bukan resolusi penuh</string>
+    <string name="detail_field_channels">Kanal</string>
+    <string name="detail_field_sample_rate">Laju sampel</string>
+    <string name="detail_value_sample_rate">%1$d Hz</string>
+    <string name="detail_field_date">Tanggal</string>
+    <string name="detail_field_camera">Kamera</string>
+    <string name="detail_field_camera_internal">Kamera (internal)</string>
+    <string name="detail_field_lens">Lensa</string>
+    <string name="detail_field_iso">ISO</string>
+    <string name="detail_value_iso">ISO %1$d</string>
+    <string name="detail_field_aperture">Apertur</string>
+    <string name="detail_field_exposure">Eksposur</string>
+    <string name="detail_field_focal_length">Panjang fokal</string>
+    <string name="detail_field_exposure_mode">Mode eksposur</string>
+    <string name="detail_field_exposure_program">Program eksposur</string>
+    <string name="detail_field_white_balance">Keseimbangan putih</string>
+    <string name="detail_em_dash">—</string>
+    <string name="detail_section_location">LOKASI</string>
+    <string name="detail_field_gps">GPS</string>
+    <string name="detail_field_altitude">Ketinggian</string>
+    <string name="detail_value_altitude">%1$.1f m</string>
+    <string name="detail_no_location">Tidak ada lokasi</string>
+    <string name="detail_change_location">Ubah lokasi…</string>
+    <string name="detail_set_location">Atur lokasi…</string>
+    <string name="detail_remove_location">Hapus lokasi</string>
+    <string name="detail_show_on_map">Tampilkan di Peta</string>
+    <string name="detail_set_location_title">Atur Lokasi</string>
+    <string name="detail_drag_to_position">Seret peta untuk memposisikan penanda.</string>
+    <string name="detail_write_location_to_file">Tulis lokasi ke dalam file</string>
+    <string name="detail_write_location_desc">Juga menyematkan tag GPS di file video, bukan hanya di katalog.</string>
+    <string name="detail_section_tags">TAG</string>
+    <string name="detail_add_tag">Tambah tag</string>
+    <string name="detail_no_tags">Tidak ada tag</string>
+    <string name="detail_remove_tag">Hapus %1$s</string>
+    <string name="detail_add_tag_title">Tambah Tag</string>
+    <string name="detail_all_tags_applied">Semua tag sudah diterapkan.</string>
+    <string name="detail_section_notes">CATATAN</string>
+    <string name="detail_edit">Edit</string>
+    <string name="detail_no_notes">Tidak ada catatan</string>
+    <string name="detail_section_rating">PENILAIAN</string>
+    <string name="detail_rating_out_of_five">%1$d / 5</string>
+    <string name="detail_section_color_label">LABEL WARNA</string>
+    <string name="detail_color_label_none">N</string>
+    <string name="detail_color_label_selected">%1$s dipilih</string>
+    <string name="detail_section_proxies">PROXY</string>
+    <string name="detail_proxy_auto">Otomatis</string>
+    <string name="detail_audio_channels_mono">1 (Mono)</string>
+    <string name="detail_audio_channels_stereo">2 (Stereo)</string>
+    <string name="detail_audio_channels_51">5.1 Surround</string>
+    <string name="detail_audio_channels_71">7.1 Surround</string>
+    <plurals name="detail_star_count">
+        <item quantity="other">%1$d bintang</item>
+    </plurals>
+
+    <!-- ── Filter bar ───────────────────────────────────────────────────── -->
+    <string name="filter_filters">Filter</string>
+    <string name="filter_clear_all">Hapus semua</string>
+    <string name="filter_remove_filter">Hapus filter</string>
+    <string name="filter_sort_ascending">Urutkan menaik</string>
+    <string name="filter_sort_descending">Urutkan menurun</string>
+    <string name="filter_filters_and_sort">Filter &amp; Urutan</string>
+    <string name="filter_done">Selesai</string>
+    <string name="filter_search">CARI</string>
+    <string name="filter_search_placeholder">Cari nama file, catatan…</string>
+    <string name="filter_clear_search">Hapus pencarian</string>
+    <string name="filter_minimum_rating">PENILAIAN MINIMUM</string>
+    <string name="filter_any">Semua</string>
+    <string name="filter_rating_plus">%1$d+</string>
+    <string name="filter_keywords">KATA KUNCI</string>
+    <string name="filter_all">Semua</string>
+    <string name="filter_tag_with_count">%1$s (%2$d)</string>
+    <string name="filter_collections">KOLEKSI</string>
+    <string name="filter_collection_with_count">%1$s (%2$d)</string>
+    <string name="filter_sort">URUTAN</string>
+    <string name="filter_change_sort_field">Ubah bidang pengurutan</string>
+    <string name="filter_sort_ascending_reverse">Urutkan menaik — ketuk untuk membalik</string>
+    <string name="filter_sort_descending_reverse">Urutkan menurun — ketuk untuk membalik</string>
+    <string name="filter_ascending">Menaik</string>
+    <string name="filter_descending">Menurun</string>
+
+    <!-- ── Sort field names ─────────────────────────────────────────────── -->
+    <string name="sort_date_indexed">Tanggal Diindeks</string>
+    <string name="sort_date_captured">Tanggal Diambil</string>
+    <string name="sort_filename">Nama File</string>
+    <string name="sort_file_size">Ukuran File</string>
+    <string name="sort_duration">Durasi</string>
+    <string name="sort_rating">Penilaian</string>
+    <string name="sort_frame_rate">Kecepatan Bingkai</string>
+    <string name="sort_codec">Codec</string>
+    <string name="sort_camera">Kamera</string>
+
+    <!-- ── Cards / badges ───────────────────────────────────────────────── -->
+    <string name="card_no_thumbnail">Tidak ada thumbnail</string>
+    <string name="card_offline">Offline</string>
+    <string name="card_selected">Dipilih</string>
+    <string name="card_full_resolution">Resolusi penuh</string>
+    <string name="card_not_full_resolution">Bukan resolusi penuh</string>
+    <string name="card_has_audio">Memiliki trek audio</string>
+    <string name="card_file_offline">File offline</string>
+    <string name="card_star">%1$d bintang</string>
+    <plurals name="card_keyword_count">
+        <item quantity="other">%1$d kata kunci</item>
+    </plurals>
+    <plurals name="card_proxy_count">
+        <item quantity="other">%1$d proxy tersedia</item>
+    </plurals>
+    <plurals name="card_stack_count">
+        <item quantity="other">Tumpukan berisi %1$d</item>
+    </plurals>
+
+    <!-- ── Video player ─────────────────────────────────────────────────── -->
+    <string name="player_no_stream">Tidak ada aliran tersedia</string>
+    <string name="player_play">Putar</string>
+    <string name="player_pause">Jeda</string>
+    <string name="player_volume">Volume</string>
+    <string name="player_quality">Kualitas</string>
+    <string name="player_full_screen">Layar penuh</string>
+    <string name="player_exit_full_screen">Keluar dari layar penuh</string>
+    <string name="player_retry">Coba lagi</string>
+    <string name="player_selected">Dipilih</string>
+    <string name="player_cancel">Batalkan</string>
+    <string name="player_playback_error">Kesalahan pemutaran</string>
+
+    <!-- ── ViewModel errors (snackbars) ─────────────────────────────────── -->
+    <string name="err_load_more_videos">Gagal memuat lebih banyak video: %1$s</string>
+    <string name="err_load_videos">Gagal memuat video: %1$s</string>
+    <string name="err_load_metadata">Gagal memuat metadata: %1$s</string>
+    <string name="err_video_not_found">Video tidak ditemukan</string>
+    <string name="err_update_notes">Gagal memperbarui catatan</string>
+    <string name="err_update_notes_detail">Gagal memperbarui catatan: %1$s</string>
+    <string name="err_add_tag">Gagal menambahkan tag</string>
+    <string name="err_add_tag_detail">Gagal menambahkan tag: %1$s</string>
+    <string name="err_remove_tag">Gagal menghapus tag</string>
+    <string name="err_remove_tag_detail">Gagal menghapus tag: %1$s</string>
+    <string name="err_update_rating">Gagal memperbarui penilaian: %1$s</string>
+    <string name="err_update_color_label">Gagal memperbarui label warna: %1$s</string>
+    <string name="err_update_location">Gagal memperbarui lokasi</string>
+    <string name="err_update_location_detail">Gagal memperbarui lokasi: %1$s</string>
+    <string name="err_remove_location">Gagal menghapus lokasi</string>
+    <string name="err_remove_location_detail">Gagal menghapus lokasi: %1$s</string>
+    <string name="err_add_to_collection">Gagal menambahkan ke koleksi</string>
+    <string name="err_add_to_collection_detail">Gagal menambahkan ke koleksi: %1$s</string>
+    <string name="err_remove_from_collection">Gagal menghapus dari koleksi</string>
+    <string name="err_remove_from_collection_detail">Gagal menghapus dari koleksi: %1$s</string>
+    <string name="scan_target_default">perpustakaan</string>
+    <string name="scan_scanning_target">Memindai %1$s…</string>
+    <string name="pairing_a_device">Sebuah perangkat</string>
+
+</resources>

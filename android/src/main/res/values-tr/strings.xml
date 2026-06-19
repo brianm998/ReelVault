@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- app_name intentionally omitted — falls back to default "ReelVault" -->
+
+    <!-- ── Common ───────────────────────────────────────────────────────── -->
+    <string name="common_back">Geri</string>
+    <string name="common_cancel">İptal</string>
+    <string name="common_save">Kaydet</string>
+    <string name="common_done">Bitti</string>
+    <string name="common_clear">Temizle</string>
+    <string name="common_selected">Seçildi</string>
+    <string name="common_offline">Çevrimdışı</string>
+    <string name="common_unavailable">Kullanılamıyor</string>
+    <string name="common_unknown_error">bilinmeyen hata</string>
+
+    <!-- ── Connection flow ──────────────────────────────────────────────── -->
+    <string name="conn_reconnecting_to">%1$s\'e yeniden bağlanılıyor…</string>
+    <string name="conn_connecting_to">%1$s\'e bağlanılıyor…</string>
+    <string name="conn_connecting">Bağlanılıyor…</string>
+    <string name="conn_pairing_with">%1$s ile eşleştiriliyor…</string>
+    <string name="conn_could_not_connect_named">%1$s\'e bağlanılamadı. Daemon\'ın çalıştığını kontrol edin ve tekrar deneyin.</string>
+    <string name="conn_could_not_connect_simple">%1$s\'e bağlanılamadı.</string>
+    <string name="conn_pairing_rejected">Eşleştirme reddedildi — kodu kontrol edin ve tekrar deneyin.</string>
+    <string name="conn_looking_for_servers">ReelVault sunucuları aranıyor…</string>
+    <string name="conn_scanning_network">Yerel ağ taranıyor</string>
+    <string name="conn_connect_title">ReelVault\'a Bağlan</string>
+    <string name="conn_rescan">Yeniden Tara</string>
+    <string name="conn_no_servers_found">Sunucu bulunamadı</string>
+    <string name="conn_no_servers_hint">Bu Wi-Fi ağındaki bir bilgisayarda --remote seçeneğiyle bir ReelVault çekirdek daemon\'ı başlatın, ardından yeniden tarayın.</string>
+    <string name="conn_available_servers">Mevcut sunucular</string>
+    <string name="conn_enter_address_manually">Adresi elle girin</string>
+    <string name="conn_browse_local_videos">Yerel videoları görüntüle</string>
+    <string name="conn_requires_pairing">Eşleştirme gerektirir</string>
+    <string name="conn_enter_pairing_code">Eşleştirme Kodu Girin</string>
+    <string name="conn_pair_with">%1$s ile Eşleştir</string>
+    <string name="conn_pairing_instructions">ReelVault çalıştıran bilgisayarda Dosya ▸ Yeni Cihaz Eşleştir seçeneğini seçerek 6 haneli bir kod görüntüleyin (başsız bir sunucu da bunu günlüğe kaydeder). Aşağıya girin — bunu yalnızca bir kez yaparsınız.</string>
+    <string name="conn_pin_placeholder">000000</string>
+    <string name="conn_pair_button">Eşleştir</string>
+    <string name="conn_connect_manually">Elle Bağlan</string>
+    <string name="conn_host_label">Sunucu adı veya IP adresi</string>
+    <string name="conn_host_placeholder">192.168.1.100</string>
+    <string name="conn_grpc_port_label">gRPC portu</string>
+    <string name="conn_grpc_port_placeholder">50051</string>
+    <string name="conn_fingerprint_label">Sertifika parmak izi (SHA-256, isteğe bağlı)</string>
+    <string name="conn_fingerprint_placeholder">abcd1234…</string>
+    <string name="conn_fetch">Al</string>
+    <string name="conn_could_not_reach">%1$s:%2$d\'e ulaşılamadı — sunucu adresini ve daemon\'ın çalıştığını kontrol edin.</string>
+    <string name="conn_connect_button">Bağlan</string>
+    <string name="conn_retry">Yeniden Dene</string>
+    <string name="conn_enter_address">Adres girin</string>
+
+    <!-- ── Library grid ─────────────────────────────────────────────────── -->
+    <string name="grid_incoming_pairing_title">Gelen Eşleştirme İsteği</string>
+    <string name="grid_incoming_pairing_message">%1$s bu kütüphaneye bağlanmak istiyor. İzin verilsin mi?</string>
+    <string name="grid_allow">İzin Ver</string>
+    <string name="grid_deny">Reddet</string>
+    <string name="grid_close_search">Aramayı kapat</string>
+    <string name="grid_search_videos_hint">Video ara…</string>
+    <string name="grid_selected_count">%1$d seçildi</string>
+    <string name="grid_clear_selection">Seçimi temizle</string>
+    <string name="grid_open_library_panel">Kütüphane panelini aç</string>
+    <string name="grid_search">Ara</string>
+    <string name="grid_sort">Sırala</string>
+    <string name="grid_switch_to_list_view">Liste görünümüne geç</string>
+    <string name="grid_switch_to_grid_view">Izgara görünümüne geç</string>
+    <string name="grid_more_options">Daha fazla seçenek</string>
+    <string name="grid_map">Harita</string>
+    <string name="grid_settings">Ayarlar</string>
+    <string name="grid_disconnect">Bağlantıyı kes</string>
+    <string name="grid_sort_by">Sıralama ölçütü</string>
+    <string name="grid_sort_ascending_arrow">%1$s ↑</string>
+    <string name="grid_sort_descending_arrow">%1$s ↓</string>
+    <string name="grid_library">Kütüphane</string>
+    <string name="grid_clear_filters">Filtreleri temizle</string>
+    <string name="grid_close">Kapat</string>
+    <string name="grid_catalog">Katalog</string>
+    <string name="grid_remote_library">Uzak Kütüphane</string>
+    <string name="grid_local_videos">Yerel Videolar</string>
+    <string name="grid_all_videos">Tüm Videolar</string>
+    <string name="grid_locations">Konumlar</string>
+    <string name="grid_keywords">Anahtar Kelimeler</string>
+    <string name="grid_collections">Koleksiyonlar</string>
+    <string name="grid_no_videos">Video yok</string>
+    <string name="grid_processing">İşleniyor…</string>
+    <string name="grid_percent">%1$d%%</string>
+    <string name="grid_no_videos_match_search">"%1$s" ile eşleşen video yok</string>
+    <string name="grid_no_videos_with_keyword">Bu anahtar kelimeyle video yok</string>
+    <string name="grid_collection_empty">Bu koleksiyon boş</string>
+    <string name="grid_no_videos_in_library">Kütüphanede video yok</string>
+    <string name="grid_empty_add_location_hint">Başlamak için Ayarlar\'da bir kütüphane konumu ekleyin.</string>
+    <string name="grid_empty_no_match_filter">…veya mevcut filtreyle eşleşen video yok</string>
+    <string name="grid_reset_filter">Filtreyi sıfırla</string>
+    <string name="grid_clear_location_filter">Konum filtresini temizle</string>
+    <string name="grid_star_count">%1$d yıldız</string>
+    <plurals name="grid_video_count">
+        <item quantity="one">%1$d video</item>
+        <item quantity="other">%1$d video</item>
+    </plurals>
+    <plurals name="grid_location_video_count">
+        <item quantity="one">%1$d video</item>
+        <item quantity="other">%1$d video</item>
+    </plurals>
+
+    <!-- ── Map ──────────────────────────────────────────────────────────── -->
+    <string name="map_title">Harita</string>
+    <string name="map_load_failed">Harita verileri yüklenemedi: %1$s</string>
+    <string name="map_unknown_error">Bilinmeyen hata</string>
+    <string name="map_no_geotagged">Coğrafi etiketli video yok.\nGPS meta verisi olan videolar burada haritada görünür.</string>
+    <string name="map_geotagged_count">%1$d coğrafi etiketli</string>
+    <plurals name="map_marker_video_count">
+        <item quantity="one">%1$d video</item>
+        <item quantity="other">%1$d video</item>
+    </plurals>
+
+    <!-- ── Local media ──────────────────────────────────────────────────── -->
+    <string name="local_selected_count">%1$d seçildi</string>
+    <string name="local_title">Yerel Videolar</string>
+    <string name="local_clear_selection">Seçimi temizle</string>
+    <string name="local_upload_to_server">Sunucuya yükle</string>
+    <string name="local_select_all">Tümünü seç</string>
+    <string name="local_upload_failed">Yükleme başarısız: %1$s</string>
+    <string name="local_no_videos_found">Cihazda video bulunamadı</string>
+    <string name="local_not_connected_hint">Bağlı değil — yüklemek için bir ReelVault sunucusuna bağlanın</string>
+    <string name="local_uploaded">Yüklendi</string>
+    <string name="local_video_access_denied">Video erişimi reddedildi</string>
+    <string name="local_permission_hint">Yerel videoları görüntülemek için Ayarlar → Uygulamalar → ReelVault → İzinler\'den "Videolar" iznini verin.</string>
+    <plurals name="local_uploaded_count">
+        <item quantity="one">%1$d video yüklendi</item>
+        <item quantity="other">%1$d video yüklendi</item>
+    </plurals>
+    <plurals name="local_selected_upload_hint">
+        <item quantity="one">%1$d video seçildi — sunucuya yüklemek için ↑ simgesine dokunun</item>
+        <item quantity="other">%1$d video seçildi — sunucuya yüklemek için ↑ simgesine dokunun</item>
+    </plurals>
+
+    <!-- ── Settings ─────────────────────────────────────────────────────── -->
+    <string name="settings_title">Ayarlar</string>
+    <string name="settings_back">Geri</string>
+    <string name="settings_library_locations">Kütüphane Konumları</string>
+    <string name="settings_no_watched_folders">İzlenen klasör yok</string>
+    <string name="settings_rescan_complete">Yeniden tarama tamamlandı</string>
+    <string name="settings_rescan_failed">Yeniden tarama başarısız: %1$s</string>
+    <string name="settings_about">Hakkında</string>
+    <string name="settings_app_version">Uygulama Sürümü</string>
+    <string name="settings_loading_daemon_info">Daemon bilgisi yükleniyor…</string>
+    <string name="settings_connection">Bağlantı</string>
+    <string name="settings_server_connection">Sunucu bağlantısı</string>
+    <string name="settings_connected_remote">%1$s:%2$d adresindeki uzak daemon\'a bağlandı</string>
+    <string name="settings_connected_local">Yerel daemon\'a bağlandı</string>
+    <string name="settings_disconnected">Sunucu bağlantısı kesildi</string>
+    <string name="settings_forget_server">Sunucuyu Unut</string>
+    <string name="settings_reconnected">Yeniden bağlantı başarılı</string>
+    <string name="settings_reconnect_failed">Yeniden bağlantı başarısız</string>
+    <string name="settings_reconnect">Yeniden Bağlan</string>
+    <string name="settings_scan">Tara</string>
+    <string name="settings_full_rescan">Tam yeniden tarama</string>
+    <string name="settings_full_rescan_desc">İzlenen tüm klasörleri yeniden dizinle, yeni veya değiştirilmiş videolar için meta verileri çıkar ve küçük resimleri oluştur.</string>
+    <string name="settings_full_scan_complete">Tam tarama tamamlandı</string>
+    <string name="settings_scan_failed">Tarama başarısız: %1$s</string>
+    <string name="settings_scanning">Taranıyor…</string>
+    <string name="settings_start_full_scan">Tam Taramayı Başlat</string>
+    <string name="settings_collapse">Daralt</string>
+    <string name="settings_expand">Genişlet</string>
+    <string name="settings_last_scanned">Son tarama: %1$s</string>
+    <string name="settings_never_scanned">Hiç taranmadı</string>
+    <string name="settings_non_recursive"> (özyinelemesiz)</string>
+    <string name="settings_disabled"> (devre dışı)</string>
+    <string name="settings_rescan_path">%1$s\'i yeniden tara</string>
+    <string name="settings_daemon_version">Daemon Sürümü</string>
+    <string name="settings_videos_indexed">Dizine Eklenen Videolar</string>
+    <string name="settings_cache_size">Önbellek Boyutu</string>
+    <string name="settings_uptime">Çalışma Süresi</string>
+    <string name="settings_loading">Yükleniyor…</string>
+    <plurals name="settings_location_video_count">
+        <item quantity="one">%1$d video</item>
+        <item quantity="other">%1$d video</item>
+    </plurals>
+
+    <!-- ── Detail ───────────────────────────────────────────────────────── -->
+    <string name="detail_title">Ayrıntı</string>
+    <string name="detail_share">Paylaş</string>
+    <string name="detail_share_subject">%1$s\'i Paylaş</string>
+    <string name="detail_video_not_found">Video bulunamadı</string>
+    <string name="detail_section_file_info">Dosya Bilgisi</string>
+    <string name="detail_section_video">Video</string>
+    <string name="detail_section_audio">Ses</string>
+    <string name="detail_section_capture">Çekim</string>
+    <string name="detail_field_filename">Dosya adı</string>
+    <string name="detail_field_path">Yol</string>
+    <string name="detail_field_size">Boyut</string>
+    <string name="detail_field_indexed">Dizine eklendi</string>
+    <string name="detail_field_online">Çevrimiçi</string>
+    <string name="detail_value_online_yes">Evet</string>
+    <string name="detail_value_online_no">Hayır (çevrimdışı)</string>
+    <string name="detail_field_resolution">Çözünürlük</string>
+    <string name="detail_field_codec">Kodek</string>
+    <string name="detail_field_fps">FPS</string>
+    <string name="detail_field_bitrate">Bit hızı</string>
+    <string name="detail_field_frames">Kareler</string>
+    <string name="detail_field_hdr">HDR</string>
+    <string name="detail_value_yes">Evet</string>
+    <string name="detail_field_color_space">Renk uzayı</string>
+    <string name="detail_field_resolution_status">Çözünürlük Durumu</string>
+    <string name="detail_value_full_resolution">Tam çözünürlük</string>
+    <string name="detail_value_not_full_resolution">Tam çözünürlük değil</string>
+    <string name="detail_field_channels">Kanallar</string>
+    <string name="detail_field_sample_rate">Örnekleme Hızı</string>
+    <string name="detail_value_sample_rate">%1$d Hz</string>
+    <string name="detail_field_date">Tarih</string>
+    <string name="detail_field_camera">Kamera</string>
+    <string name="detail_field_camera_internal">Kamera (dahili)</string>
+    <string name="detail_field_lens">Lens</string>
+    <string name="detail_field_iso">ISO</string>
+    <string name="detail_value_iso">ISO %1$d</string>
+    <string name="detail_field_aperture">Diyafram</string>
+    <string name="detail_field_exposure">Poz süresi</string>
+    <string name="detail_field_focal_length">Odak uzaklığı</string>
+    <string name="detail_field_exposure_mode">Poz modu</string>
+    <string name="detail_field_exposure_program">Poz programı</string>
+    <string name="detail_field_white_balance">Beyaz dengesi</string>
+    <string name="detail_em_dash">—</string>
+    <string name="detail_section_location">KONUM</string>
+    <string name="detail_field_gps">GPS</string>
+    <string name="detail_field_altitude">Rakım</string>
+    <string name="detail_value_altitude">%1$.1f m</string>
+    <string name="detail_no_location">Konum yok</string>
+    <string name="detail_change_location">Konumu değiştir…</string>
+    <string name="detail_set_location">Konum ayarla…</string>
+    <string name="detail_remove_location">Konumu kaldır</string>
+    <string name="detail_show_on_map">Haritada Göster</string>
+    <string name="detail_set_location_title">Konum Ayarla</string>
+    <string name="detail_drag_to_position">Pini konumlandırmak için haritayı sürükleyin.</string>
+    <string name="detail_write_location_to_file">Konumu dosyaya yaz</string>
+    <string name="detail_write_location_desc">GPS etiketini yalnızca kataloğa değil, video dosyasına da gömer.</string>
+    <string name="detail_section_tags">ETİKETLER</string>
+    <string name="detail_add_tag">Etiket ekle</string>
+    <string name="detail_no_tags">Etiket yok</string>
+    <string name="detail_remove_tag">%1$s\'i kaldır</string>
+    <string name="detail_add_tag_title">Etiket Ekle</string>
+    <string name="detail_all_tags_applied">Tüm etiketler zaten uygulanmış.</string>
+    <string name="detail_section_notes">NOTLAR</string>
+    <string name="detail_edit">Düzenle</string>
+    <string name="detail_no_notes">Not yok</string>
+    <string name="detail_section_rating">DEĞERLENDİRME</string>
+    <string name="detail_rating_out_of_five">%1$d / 5</string>
+    <string name="detail_section_color_label">RENK ETİKETİ</string>
+    <string name="detail_color_label_none">Y</string>
+    <string name="detail_color_label_selected">%1$s seçildi</string>
+    <string name="detail_section_proxies">PROXY\'LER</string>
+    <string name="detail_proxy_auto">Otomatik</string>
+    <string name="detail_audio_channels_mono">1 (Mono)</string>
+    <string name="detail_audio_channels_stereo">2 (Stereo)</string>
+    <string name="detail_audio_channels_51">5.1 Surround</string>
+    <string name="detail_audio_channels_71">7.1 Surround</string>
+    <plurals name="detail_star_count">
+        <item quantity="one">%1$d yıldız</item>
+        <item quantity="other">%1$d yıldız</item>
+    </plurals>
+
+    <!-- ── Filter bar ───────────────────────────────────────────────────── -->
+    <string name="filter_filters">Filtreler</string>
+    <string name="filter_clear_all">Tümünü temizle</string>
+    <string name="filter_remove_filter">Filtreyi kaldır</string>
+    <string name="filter_sort_ascending">Artan sırayla sırala</string>
+    <string name="filter_sort_descending">Azalan sırayla sırala</string>
+    <string name="filter_filters_and_sort">Filtreler ve Sıralama</string>
+    <string name="filter_done">Bitti</string>
+    <string name="filter_search">ARA</string>
+    <string name="filter_search_placeholder">Dosya adlarını, notları ara…</string>
+    <string name="filter_clear_search">Aramayı temizle</string>
+    <string name="filter_minimum_rating">MİNİMUM DEĞERLENDİRME</string>
+    <string name="filter_any">Herhangi</string>
+    <string name="filter_rating_plus">%1$d+</string>
+    <string name="filter_keywords">ANAHTAR KELİMELER</string>
+    <string name="filter_all">Tümü</string>
+    <string name="filter_tag_with_count">%1$s (%2$d)</string>
+    <string name="filter_collections">KOLEKSİYONLAR</string>
+    <string name="filter_collection_with_count">%1$s (%2$d)</string>
+    <string name="filter_sort">SIRALA</string>
+    <string name="filter_change_sort_field">Sıralama alanını değiştir</string>
+    <string name="filter_sort_ascending_reverse">Artan sırayla sırala — ters çevirmek için dokunun</string>
+    <string name="filter_sort_descending_reverse">Azalan sırayla sırala — ters çevirmek için dokunun</string>
+    <string name="filter_ascending">Artan</string>
+    <string name="filter_descending">Azalan</string>
+
+    <!-- ── Sort field names ─────────────────────────────────────────────── -->
+    <string name="sort_date_indexed">Dizine Eklenme Tarihi</string>
+    <string name="sort_date_captured">Çekim Tarihi</string>
+    <string name="sort_filename">Dosya Adı</string>
+    <string name="sort_file_size">Dosya Boyutu</string>
+    <string name="sort_duration">Süre</string>
+    <string name="sort_rating">Değerlendirme</string>
+    <string name="sort_frame_rate">Kare Hızı</string>
+    <string name="sort_codec">Kodek</string>
+    <string name="sort_camera">Kamera</string>
+
+    <!-- ── Cards / badges ───────────────────────────────────────────────── -->
+    <string name="card_no_thumbnail">Küçük resim yok</string>
+    <string name="card_offline">Çevrimdışı</string>
+    <string name="card_selected">Seçildi</string>
+    <string name="card_full_resolution">Tam çözünürlük</string>
+    <string name="card_not_full_resolution">Tam çözünürlük değil</string>
+    <string name="card_has_audio">Ses parçası var</string>
+    <string name="card_file_offline">Dosya çevrimdışı</string>
+    <string name="card_star">%1$d yıldız</string>
+    <plurals name="card_keyword_count">
+        <item quantity="one">%1$d anahtar kelime</item>
+        <item quantity="other">%1$d anahtar kelime</item>
+    </plurals>
+    <plurals name="card_proxy_count">
+        <item quantity="one">%1$d proxy mevcut</item>
+        <item quantity="other">%1$d proxy mevcut</item>
+    </plurals>
+    <plurals name="card_stack_count">
+        <item quantity="one">%1$d\'li yığın</item>
+        <item quantity="other">%1$d\'li yığın</item>
+    </plurals>
+
+    <!-- ── Video player ─────────────────────────────────────────────────── -->
+    <string name="player_no_stream">Yayın yok</string>
+    <string name="player_play">Oynat</string>
+    <string name="player_pause">Duraklat</string>
+    <string name="player_volume">Ses</string>
+    <string name="player_quality">Kalite</string>
+    <string name="player_full_screen">Tam ekran</string>
+    <string name="player_exit_full_screen">Tam ekrandan çık</string>
+    <string name="player_retry">Yeniden Dene</string>
+    <string name="player_selected">Seçildi</string>
+    <string name="player_cancel">İptal</string>
+    <string name="player_playback_error">Oynatma hatası</string>
+
+    <!-- ── ViewModel errors (snackbars) ─────────────────────────────────── -->
+    <string name="err_load_more_videos">Daha fazla video yüklenemedi: %1$s</string>
+    <string name="err_load_videos">Videolar yüklenemedi: %1$s</string>
+    <string name="err_load_metadata">Meta veri yüklenemedi: %1$s</string>
+    <string name="err_video_not_found">Video bulunamadı</string>
+    <string name="err_update_notes">Notlar güncellenemedi</string>
+    <string name="err_update_notes_detail">Notlar güncellenemedi: %1$s</string>
+    <string name="err_add_tag">Etiket eklenemedi</string>
+    <string name="err_add_tag_detail">Etiket eklenemedi: %1$s</string>
+    <string name="err_remove_tag">Etiket kaldırılamadı</string>
+    <string name="err_remove_tag_detail">Etiket kaldırılamadı: %1$s</string>
+    <string name="err_update_rating">Değerlendirme güncellenemedi: %1$s</string>
+    <string name="err_update_color_label">Renk etiketi güncellenemedi: %1$s</string>
+    <string name="err_update_location">Konum güncellenemedi</string>
+    <string name="err_update_location_detail">Konum güncellenemedi: %1$s</string>
+    <string name="err_remove_location">Konum kaldırılamadı</string>
+    <string name="err_remove_location_detail">Konum kaldırılamadı: %1$s</string>
+    <string name="err_add_to_collection">Koleksiyona eklenemedi</string>
+    <string name="err_add_to_collection_detail">Koleksiyona eklenemedi: %1$s</string>
+    <string name="err_remove_from_collection">Koleksiyondan kaldırılamadı</string>
+    <string name="err_remove_from_collection_detail">Koleksiyondan kaldırılamadı: %1$s</string>
+    <string name="scan_target_default">kütüphane</string>
+    <string name="scan_scanning_target">%1$s taranıyor…</string>
+    <string name="pairing_a_device">Bir cihaz</string>
+</resources>

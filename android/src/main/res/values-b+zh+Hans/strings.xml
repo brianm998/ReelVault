@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- app_name omitted — falls back to default (ReelVault) -->
+
+    <!-- ── Common ───────────────────────────────────────────────────────── -->
+    <string name="common_back">返回</string>
+    <string name="common_cancel">取消</string>
+    <string name="common_save">保存</string>
+    <string name="common_done">完成</string>
+    <string name="common_clear">清除</string>
+    <string name="common_selected">已选</string>
+    <string name="common_offline">离线</string>
+    <string name="common_unavailable">不可用</string>
+    <string name="common_unknown_error">未知错误</string>
+
+    <!-- ── Connection flow ──────────────────────────────────────────────── -->
+    <string name="conn_reconnecting_to">正在重新连接到 %1$s…</string>
+    <string name="conn_connecting_to">正在连接到 %1$s…</string>
+    <string name="conn_connecting">正在连接…</string>
+    <string name="conn_pairing_with">正在与 %1$s 配对…</string>
+    <string name="conn_could_not_connect_named">无法连接到 %1$s。请确认守护进程正在运行后重试。</string>
+    <string name="conn_could_not_connect_simple">无法连接到 %1$s。</string>
+    <string name="conn_pairing_rejected">配对被拒绝 — 请检查代码并重试。</string>
+    <string name="conn_looking_for_servers">正在寻找 ReelVault 服务器…</string>
+    <string name="conn_scanning_network">正在扫描本地网络</string>
+    <string name="conn_connect_title">连接到 ReelVault</string>
+    <string name="conn_rescan">重新扫描</string>
+    <string name="conn_no_servers_found">未找到服务器</string>
+    <string name="conn_no_servers_hint">在同一 Wi-Fi 网络的电脑上使用 --remote 启动 ReelVault 核心守护进程，然后重新扫描。</string>
+    <string name="conn_available_servers">可用服务器</string>
+    <string name="conn_enter_address_manually">手动输入地址</string>
+    <string name="conn_browse_local_videos">浏览本地视频</string>
+    <string name="conn_requires_pairing">需要配对</string>
+    <string name="conn_enter_pairing_code">输入配对码</string>
+    <string name="conn_pair_with">与 %1$s 配对</string>
+    <string name="conn_pairing_instructions">在运行 ReelVault 的电脑上，选择"文件 ▸ 配对新设备"以显示 6 位代码（无界面服务器也会在日志中打印）。在下方输入 — 只需操作一次。</string>
+    <string name="conn_pin_placeholder">000000</string>
+    <string name="conn_pair_button">配对</string>
+    <string name="conn_connect_manually">手动连接</string>
+    <string name="conn_host_label">主机或 IP 地址</string>
+    <string name="conn_host_placeholder">192.168.1.100</string>
+    <string name="conn_grpc_port_label">gRPC 端口</string>
+    <string name="conn_grpc_port_placeholder">50051</string>
+    <string name="conn_fingerprint_label">证书指纹（SHA-256，可选）</string>
+    <string name="conn_fingerprint_placeholder">abcd1234…</string>
+    <string name="conn_fetch">获取</string>
+    <string name="conn_could_not_reach">无法连接到 %1$s:%2$d — 请检查主机地址及守护进程是否正在运行。</string>
+    <string name="conn_connect_button">连接</string>
+    <string name="conn_retry">重试</string>
+    <string name="conn_enter_address">输入地址</string>
+
+    <!-- ── Library grid ─────────────────────────────────────────────────── -->
+    <string name="grid_incoming_pairing_title">收到配对请求</string>
+    <string name="grid_incoming_pairing_message">%1$s 请求连接到此资料库。是否允许？</string>
+    <string name="grid_allow">允许</string>
+    <string name="grid_deny">拒绝</string>
+    <string name="grid_close_search">关闭搜索</string>
+    <string name="grid_search_videos_hint">搜索视频…</string>
+    <string name="grid_selected_count">已选 %1$d 项</string>
+    <string name="grid_clear_selection">清除选择</string>
+    <string name="grid_open_library_panel">打开资料库面板</string>
+    <string name="grid_search">搜索</string>
+    <string name="grid_sort">排序</string>
+    <string name="grid_switch_to_list_view">切换到列表视图</string>
+    <string name="grid_switch_to_grid_view">切换到网格视图</string>
+    <string name="grid_more_options">更多选项</string>
+    <string name="grid_map">地图</string>
+    <string name="grid_settings">设置</string>
+    <string name="grid_disconnect">断开连接</string>
+    <string name="grid_sort_by">排序方式</string>
+    <string name="grid_sort_ascending_arrow">%1$s ↑</string>
+    <string name="grid_sort_descending_arrow">%1$s ↓</string>
+    <string name="grid_library">资料库</string>
+    <string name="grid_clear_filters">清除筛选</string>
+    <string name="grid_close">关闭</string>
+    <string name="grid_catalog">目录</string>
+    <string name="grid_remote_library">远程资料库</string>
+    <string name="grid_local_videos">本地视频</string>
+    <string name="grid_all_videos">所有视频</string>
+    <string name="grid_locations">位置</string>
+    <string name="grid_keywords">关键词</string>
+    <string name="grid_collections">合集</string>
+    <string name="grid_no_videos">无视频</string>
+    <string name="grid_processing">处理中…</string>
+    <string name="grid_percent">%1$d%%</string>
+    <string name="grid_no_videos_match_search">没有视频匹配"%1$s"</string>
+    <string name="grid_no_videos_with_keyword">此关键词下没有视频</string>
+    <string name="grid_collection_empty">此合集为空</string>
+    <string name="grid_no_videos_in_library">资料库中没有视频</string>
+    <string name="grid_empty_add_location_hint">在设置中添加资料库位置以开始使用。</string>
+    <string name="grid_empty_no_match_filter">…或没有视频匹配当前筛选条件</string>
+    <string name="grid_reset_filter">重置筛选</string>
+    <string name="grid_clear_location_filter">清除位置筛选</string>
+    <string name="grid_star_count">%1$d 星</string>
+    <plurals name="grid_video_count">
+        <item quantity="other">%1$d 个视频</item>
+    </plurals>
+    <plurals name="grid_location_video_count">
+        <item quantity="other">%1$d 个视频</item>
+    </plurals>
+
+    <!-- ── Map ──────────────────────────────────────────────────────────── -->
+    <string name="map_title">地图</string>
+    <string name="map_load_failed">加载地图数据失败：%1$s</string>
+    <string name="map_unknown_error">未知错误</string>
+    <string name="map_no_geotagged">没有包含地理标签的视频。\n带有 GPS 元数据的视频将显示在此地图上。</string>
+    <string name="map_geotagged_count">%1$d 个含地理标签</string>
+    <plurals name="map_marker_video_count">
+        <item quantity="other">%1$d 个视频</item>
+    </plurals>
+
+    <!-- ── Local media ──────────────────────────────────────────────────── -->
+    <string name="local_selected_count">已选 %1$d 项</string>
+    <string name="local_title">本地视频</string>
+    <string name="local_clear_selection">清除选择</string>
+    <string name="local_upload_to_server">上传到服务器</string>
+    <string name="local_select_all">全选</string>
+    <string name="local_upload_failed">上传失败：%1$s</string>
+    <string name="local_no_videos_found">未在设备上找到视频</string>
+    <string name="local_not_connected_hint">未连接 — 请连接到 ReelVault 服务器以上传</string>
+    <string name="local_uploaded">已上传</string>
+    <string name="local_video_access_denied">视频访问被拒绝</string>
+    <string name="local_permission_hint">请在"设置 → 应用 → ReelVault → 权限"中授予"视频"权限以浏览本地视频。</string>
+    <plurals name="local_uploaded_count">
+        <item quantity="other">已上传 %1$d 个视频</item>
+    </plurals>
+    <plurals name="local_selected_upload_hint">
+        <item quantity="other">已选 %1$d 个视频 — 点击 ↑ 上传到服务器</item>
+    </plurals>
+
+    <!-- ── Settings ─────────────────────────────────────────────────────── -->
+    <string name="settings_title">设置</string>
+    <string name="settings_back">返回</string>
+    <string name="settings_library_locations">资料库位置</string>
+    <string name="settings_no_watched_folders">没有监控文件夹</string>
+    <string name="settings_rescan_complete">重新扫描完成</string>
+    <string name="settings_rescan_failed">重新扫描失败：%1$s</string>
+    <string name="settings_about">关于</string>
+    <string name="settings_app_version">应用版本</string>
+    <string name="settings_loading_daemon_info">正在加载守护进程信息…</string>
+    <string name="settings_connection">连接</string>
+    <string name="settings_server_connection">服务器连接</string>
+    <string name="settings_connected_remote">已连接到远程守护进程 %1$s:%2$d</string>
+    <string name="settings_connected_local">已连接到本地守护进程</string>
+    <string name="settings_disconnected">已从服务器断开连接</string>
+    <string name="settings_forget_server">忘记服务器</string>
+    <string name="settings_reconnected">重新连接成功</string>
+    <string name="settings_reconnect_failed">重新连接失败</string>
+    <string name="settings_reconnect">重新连接</string>
+    <string name="settings_scan">扫描</string>
+    <string name="settings_full_rescan">完整重新扫描</string>
+    <string name="settings_full_rescan_desc">重新索引所有监控文件夹，为新增或修改的视频提取元数据并生成缩略图。</string>
+    <string name="settings_full_scan_complete">完整扫描完成</string>
+    <string name="settings_scan_failed">扫描失败：%1$s</string>
+    <string name="settings_scanning">正在扫描…</string>
+    <string name="settings_start_full_scan">开始完整扫描</string>
+    <string name="settings_collapse">折叠</string>
+    <string name="settings_expand">展开</string>
+    <string name="settings_last_scanned">上次扫描：%1$s</string>
+    <string name="settings_never_scanned">从未扫描</string>
+    <string name="settings_non_recursive">（非递归）</string>
+    <string name="settings_disabled">（已禁用）</string>
+    <string name="settings_rescan_path">重新扫描 %1$s</string>
+    <string name="settings_daemon_version">守护进程版本</string>
+    <string name="settings_videos_indexed">已索引视频数</string>
+    <string name="settings_cache_size">缓存大小</string>
+    <string name="settings_uptime">运行时长</string>
+    <string name="settings_loading">加载中…</string>
+    <plurals name="settings_location_video_count">
+        <item quantity="other">%1$d 个视频</item>
+    </plurals>
+
+    <!-- ── Detail ───────────────────────────────────────────────────────── -->
+    <string name="detail_title">详情</string>
+    <string name="detail_share">共享</string>
+    <string name="detail_share_subject">共享 %1$s</string>
+    <string name="detail_video_not_found">未找到视频</string>
+    <string name="detail_section_file_info">文件信息</string>
+    <string name="detail_section_video">视频</string>
+    <string name="detail_section_audio">音频</string>
+    <string name="detail_section_capture">拍摄</string>
+    <string name="detail_field_filename">文件名</string>
+    <string name="detail_field_path">路径</string>
+    <string name="detail_field_size">大小</string>
+    <string name="detail_field_indexed">已索引</string>
+    <string name="detail_field_online">在线</string>
+    <string name="detail_value_online_yes">是</string>
+    <string name="detail_value_online_no">否（离线）</string>
+    <string name="detail_field_resolution">分辨率</string>
+    <string name="detail_field_codec">编解码器</string>
+    <string name="detail_field_fps">帧率</string>
+    <string name="detail_field_bitrate">比特率</string>
+    <string name="detail_field_frames">帧数</string>
+    <string name="detail_field_hdr">HDR</string>
+    <string name="detail_value_yes">是</string>
+    <string name="detail_field_color_space">色彩空间</string>
+    <string name="detail_field_resolution_status">分辨率状态</string>
+    <string name="detail_value_full_resolution">全分辨率</string>
+    <string name="detail_value_not_full_resolution">非全分辨率</string>
+    <string name="detail_field_channels">声道数</string>
+    <string name="detail_field_sample_rate">采样率</string>
+    <string name="detail_value_sample_rate">%1$d Hz</string>
+    <string name="detail_field_date">日期</string>
+    <string name="detail_field_camera">相机</string>
+    <string name="detail_field_camera_internal">相机（内置）</string>
+    <string name="detail_field_lens">镜头</string>
+    <string name="detail_field_iso">ISO</string>
+    <string name="detail_value_iso">ISO %1$d</string>
+    <string name="detail_field_aperture">光圈</string>
+    <string name="detail_field_exposure">曝光</string>
+    <string name="detail_field_focal_length">焦距</string>
+    <string name="detail_field_exposure_mode">曝光模式</string>
+    <string name="detail_field_exposure_program">曝光程序</string>
+    <string name="detail_field_white_balance">白平衡</string>
+    <string name="detail_em_dash">—</string>
+    <string name="detail_section_location">位置</string>
+    <string name="detail_field_gps">GPS</string>
+    <string name="detail_field_altitude">海拔</string>
+    <string name="detail_value_altitude">%1$.1f 米</string>
+    <string name="detail_no_location">无位置</string>
+    <string name="detail_change_location">更改位置…</string>
+    <string name="detail_set_location">设置位置…</string>
+    <string name="detail_remove_location">移除位置</string>
+    <string name="detail_show_on_map">在地图上显示</string>
+    <string name="detail_set_location_title">设置位置</string>
+    <string name="detail_drag_to_position">拖动地图以定位图钉。</string>
+    <string name="detail_write_location_to_file">将位置写入文件</string>
+    <string name="detail_write_location_desc">同时将 GPS 标签嵌入视频文件，而不仅限于目录。</string>
+    <string name="detail_section_tags">标签</string>
+    <string name="detail_add_tag">添加标签</string>
+    <string name="detail_no_tags">无标签</string>
+    <string name="detail_remove_tag">移除 %1$s</string>
+    <string name="detail_add_tag_title">添加标签</string>
+    <string name="detail_all_tags_applied">所有标签均已应用。</string>
+    <string name="detail_section_notes">备注</string>
+    <string name="detail_edit">编辑</string>
+    <string name="detail_no_notes">无备注</string>
+    <string name="detail_section_rating">评分</string>
+    <string name="detail_rating_out_of_five">%1$d / 5</string>
+    <string name="detail_section_color_label">颜色标签</string>
+    <string name="detail_color_label_none">无</string>
+    <string name="detail_color_label_selected">已选 %1$s</string>
+    <string name="detail_section_proxies">代理</string>
+    <string name="detail_proxy_auto">自动</string>
+    <string name="detail_audio_channels_mono">1（单声道）</string>
+    <string name="detail_audio_channels_stereo">2（立体声）</string>
+    <string name="detail_audio_channels_51">5.1 环绕声</string>
+    <string name="detail_audio_channels_71">7.1 环绕声</string>
+    <plurals name="detail_star_count">
+        <item quantity="other">%1$d 星</item>
+    </plurals>
+
+    <!-- ── Filter bar ───────────────────────────────────────────────────── -->
+    <string name="filter_filters">筛选</string>
+    <string name="filter_clear_all">全部清除</string>
+    <string name="filter_remove_filter">移除筛选</string>
+    <string name="filter_sort_ascending">升序排列</string>
+    <string name="filter_sort_descending">降序排列</string>
+    <string name="filter_filters_and_sort">筛选与排序</string>
+    <string name="filter_done">完成</string>
+    <string name="filter_search">搜索</string>
+    <string name="filter_search_placeholder">搜索文件名、备注…</string>
+    <string name="filter_clear_search">清除搜索</string>
+    <string name="filter_minimum_rating">最低评分</string>
+    <string name="filter_any">任意</string>
+    <string name="filter_rating_plus">%1$d+</string>
+    <string name="filter_keywords">关键词</string>
+    <string name="filter_all">全部</string>
+    <string name="filter_tag_with_count">%1$s（%2$d）</string>
+    <string name="filter_collections">合集</string>
+    <string name="filter_collection_with_count">%1$s（%2$d）</string>
+    <string name="filter_sort">排序</string>
+    <string name="filter_change_sort_field">更改排序字段</string>
+    <string name="filter_sort_ascending_reverse">升序排列 — 点击反转</string>
+    <string name="filter_sort_descending_reverse">降序排列 — 点击反转</string>
+    <string name="filter_ascending">升序</string>
+    <string name="filter_descending">降序</string>
+
+    <!-- ── Sort field names ─────────────────────────────────────────────── -->
+    <string name="sort_date_indexed">索引日期</string>
+    <string name="sort_date_captured">拍摄日期</string>
+    <string name="sort_filename">文件名</string>
+    <string name="sort_file_size">文件大小</string>
+    <string name="sort_duration">时长</string>
+    <string name="sort_rating">评分</string>
+    <string name="sort_frame_rate">帧率</string>
+    <string name="sort_codec">编解码器</string>
+    <string name="sort_camera">相机</string>
+
+    <!-- ── Cards / badges ───────────────────────────────────────────────── -->
+    <string name="card_no_thumbnail">无缩略图</string>
+    <string name="card_offline">离线</string>
+    <string name="card_selected">已选</string>
+    <string name="card_full_resolution">全分辨率</string>
+    <string name="card_not_full_resolution">非全分辨率</string>
+    <string name="card_has_audio">有音频轨道</string>
+    <string name="card_file_offline">文件离线</string>
+    <string name="card_star">%1$d 星</string>
+    <plurals name="card_keyword_count">
+        <item quantity="other">%1$d 个关键词</item>
+    </plurals>
+    <plurals name="card_proxy_count">
+        <item quantity="other">%1$d 个代理可用</item>
+    </plurals>
+    <plurals name="card_stack_count">
+        <item quantity="other">%1$d 项堆叠</item>
+    </plurals>
+
+    <!-- ── Video player ─────────────────────────────────────────────────── -->
+    <string name="player_no_stream">无可用流</string>
+    <string name="player_play">播放</string>
+    <string name="player_pause">暂停</string>
+    <string name="player_volume">音量</string>
+    <string name="player_quality">质量</string>
+    <string name="player_full_screen">全屏</string>
+    <string name="player_exit_full_screen">退出全屏</string>
+    <string name="player_retry">重试</string>
+    <string name="player_selected">已选</string>
+    <string name="player_cancel">取消</string>
+    <string name="player_playback_error">播放错误</string>
+
+    <!-- ── ViewModel errors (snackbars) ─────────────────────────────────── -->
+    <string name="err_load_more_videos">加载更多视频失败：%1$s</string>
+    <string name="err_load_videos">加载视频失败：%1$s</string>
+    <string name="err_load_metadata">加载元数据失败：%1$s</string>
+    <string name="err_video_not_found">未找到视频</string>
+    <string name="err_update_notes">更新备注失败</string>
+    <string name="err_update_notes_detail">更新备注失败：%1$s</string>
+    <string name="err_add_tag">添加标签失败</string>
+    <string name="err_add_tag_detail">添加标签失败：%1$s</string>
+    <string name="err_remove_tag">移除标签失败</string>
+    <string name="err_remove_tag_detail">移除标签失败：%1$s</string>
+    <string name="err_update_rating">更新评分失败：%1$s</string>
+    <string name="err_update_color_label">更新颜色标签失败：%1$s</string>
+    <string name="err_update_location">更新位置失败</string>
+    <string name="err_update_location_detail">更新位置失败：%1$s</string>
+    <string name="err_remove_location">移除位置失败</string>
+    <string name="err_remove_location_detail">移除位置失败：%1$s</string>
+    <string name="err_add_to_collection">添加到合集失败</string>
+    <string name="err_add_to_collection_detail">添加到合集失败：%1$s</string>
+    <string name="err_remove_from_collection">从合集中移除失败</string>
+    <string name="err_remove_from_collection_detail">从合集中移除失败：%1$s</string>
+    <string name="scan_target_default">资料库</string>
+    <string name="scan_scanning_target">正在扫描 %1$s…</string>
+    <string name="pairing_a_device">一个设备</string>
+</resources>

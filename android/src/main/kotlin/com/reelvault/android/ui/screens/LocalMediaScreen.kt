@@ -27,8 +27,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.reelvault.android.R
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.reelvault.android.data.LocalMediaRepository
@@ -94,19 +97,19 @@ fun LocalMediaScreen(
             TopAppBar(
                 title = {
                     if (selectedIds.isNotEmpty()) {
-                        Text("${selectedIds.size} selected")
+                        Text(stringResource(R.string.local_selected_count, selectedIds.size))
                     } else {
-                        Text("Local Videos")
+                        Text(stringResource(R.string.local_title))
                     }
                 },
                 navigationIcon = {
                     if (selectedIds.isNotEmpty()) {
                         IconButton(onClick = { selectedIds = emptySet() }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear selection")
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.local_clear_selection))
                         }
                     } else {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
                         }
                     }
                 },
@@ -125,18 +128,22 @@ fun LocalMediaScreen(
                                                 successCount++
                                             }
                                         } catch (e: Exception) {
-                                            errorMsg = "Upload failed: ${e.message}"
+                                            errorMsg = context.getString(R.string.local_upload_failed, e.message ?: "")
                                         }
                                     }
                                     uploadingIds = emptySet()
                                     if (successCount > 0) {
-                                        snackbarHostState.showSnackbar("Uploaded $successCount video${if (successCount > 1) "s" else ""}")
+                                        snackbarHostState.showSnackbar(
+                                            context.resources.getQuantityString(
+                                                R.plurals.local_uploaded_count, successCount, successCount,
+                                            )
+                                        )
                                         selectedIds = emptySet()
                                     }
                                 }
                             }
                         ) {
-                            Icon(Icons.Default.Upload, contentDescription = "Upload to server")
+                            Icon(Icons.Default.Upload, contentDescription = stringResource(R.string.local_upload_to_server))
                         }
                     }
                     if (selectedIds.isNotEmpty()) {
@@ -148,7 +155,7 @@ fun LocalMediaScreen(
                             Icon(
                                 if (selectedIds.size == videos.size) Icons.Default.Deselect
                                 else Icons.Default.SelectAll,
-                                contentDescription = "Select all"
+                                contentDescription = stringResource(R.string.local_select_all)
                             )
                         }
                     }
@@ -175,7 +182,9 @@ fun LocalMediaScreen(
                             modifier = Modifier.size(20.dp),
                         )
                         Text(
-                            text = "${selectedIds.size} video${if (selectedIds.size > 1) "s" else ""} selected — tap ↑ to upload to server",
+                            text = pluralStringResource(
+                                R.plurals.local_selected_upload_hint, selectedIds.size, selectedIds.size,
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
@@ -211,7 +220,7 @@ fun LocalMediaScreen(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Text(
-                                "No videos found on device",
+                                stringResource(R.string.local_no_videos_found),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -262,7 +271,7 @@ fun LocalMediaScreen(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
-                            "Not connected — connect to a ReelVault server to upload",
+                            stringResource(R.string.local_not_connected_hint),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -373,7 +382,7 @@ private fun LocalVideoCell(
                 ) {
                     Icon(
                         Icons.Default.Check,
-                        contentDescription = "Uploaded",
+                        contentDescription = stringResource(R.string.local_uploaded),
                         modifier = Modifier.size(12.dp),
                         tint = MaterialTheme.colorScheme.onPrimary,
                     )
@@ -390,7 +399,7 @@ private fun LocalVideoCell(
                 ) {
                     Icon(
                         Icons.Default.Check,
-                        contentDescription = "Selected",
+                        contentDescription = stringResource(R.string.common_selected),
                         modifier = Modifier.size(12.dp),
                         tint = MaterialTheme.colorScheme.onPrimary,
                     )
@@ -415,11 +424,11 @@ private fun PermissionDeniedMessage() {
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                "Video access denied",
+                stringResource(R.string.local_video_access_denied),
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(
-                "Grant \"Videos\" permission in Settings → Apps → ReelVault → Permissions to browse local videos.",
+                stringResource(R.string.local_permission_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,

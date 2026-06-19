@@ -1,0 +1,439 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ReelVault localised strings — pt-BR
+     Corpus sources: kit/Localizable.xcstrings, ios/Localizable.xcstrings,
+                     macos/Localizable.xcstrings, desktop/strings_pt_BR.properties
+     app_name intentionally omitted (falls back to English "ReelVault"). -->
+<resources>
+
+    <!-- ── Common ───────────────────────────────────────────────────────── -->
+    <!-- "Cancel" → iOS corpus: "Cancelar" -->
+    <string name="common_back">Voltar</string>
+    <string name="common_cancel">Cancelar</string>
+    <!-- "Save" → new -->
+    <string name="common_save">Salvar</string>
+    <!-- "Done" → iOS corpus: "Concluído" -->
+    <string name="common_done">Concluído</string>
+    <!-- "Clear" → kit corpus: "Limpar" -->
+    <string name="common_clear">Limpar</string>
+    <string name="common_selected">Selecionado</string>
+    <!-- "Offline" → iOS corpus: "Offline" -->
+    <string name="common_offline">Offline</string>
+    <string name="common_unavailable">Indisponível</string>
+    <string name="common_unknown_error">erro desconhecido</string>
+
+    <!-- ── Connection flow ──────────────────────────────────────────────── -->
+    <string name="conn_reconnecting_to">Reconectando a %1$s…</string>
+    <string name="conn_connecting_to">Conectando a %1$s…</string>
+    <!-- "Connecting…" → macOS corpus: "Conectando ao ReelVault…" (adapted) -->
+    <string name="conn_connecting">Conectando…</string>
+    <string name="conn_pairing_with">Emparelhando com %1$s…</string>
+    <string name="conn_could_not_connect_named">Não foi possível conectar a %1$s. Verifique se o daemon está em execução e tente novamente.</string>
+    <string name="conn_could_not_connect_simple">Não foi possível conectar a %1$s.</string>
+    <!-- "Pairing rejected" → iOS corpus pattern: "Falha no emparelhamento — verifique o código e tente novamente." -->
+    <string name="conn_pairing_rejected">Emparelhamento recusado — verifique o código e tente novamente.</string>
+    <string name="conn_looking_for_servers">Procurando servidores ReelVault…</string>
+    <string name="conn_scanning_network">Verificando a rede local</string>
+    <!-- "Connect to ReelVault" → macOS corpus base -->
+    <string name="conn_connect_title">Conectar ao ReelVault</string>
+    <string name="conn_rescan">Verificar novamente</string>
+    <string name="conn_no_servers_found">Nenhum servidor encontrado</string>
+    <string name="conn_no_servers_hint">Inicie um daemon core do ReelVault com --remote em um computador nesta rede Wi-Fi e verifique novamente.</string>
+    <string name="conn_available_servers">Servidores disponíveis</string>
+    <string name="conn_enter_address_manually">Inserir endereço manualmente</string>
+    <string name="conn_browse_local_videos">Explorar vídeos locais</string>
+    <string name="conn_requires_pairing">Requer emparelhamento</string>
+    <!-- "Enter Pairing Code" → iOS corpus: "Inserir código de emparelhamento" -->
+    <string name="conn_enter_pairing_code">Inserir código de emparelhamento</string>
+    <string name="conn_pair_with">Emparelhar com %1$s</string>
+    <string name="conn_pairing_instructions">No computador com o ReelVault, escolha Arquivo ▸ Emparelhar novo dispositivo para exibir um código de 6 dígitos (um servidor headless também o registra em log). Insira-o abaixo — você só precisa fazer isso uma vez.</string>
+    <string name="conn_pin_placeholder">000000</string>
+    <!-- "Pair" → iOS corpus: "Emparelhar" -->
+    <string name="conn_pair_button">Emparelhar</string>
+    <string name="conn_connect_manually">Conectar manualmente</string>
+    <string name="conn_host_label">Host ou endereço IP</string>
+    <string name="conn_host_placeholder">192.168.1.100</string>
+    <string name="conn_grpc_port_label">Porta gRPC</string>
+    <string name="conn_grpc_port_placeholder">50051</string>
+    <string name="conn_fingerprint_label">Impressão digital do certificado (SHA-256, opcional)</string>
+    <string name="conn_fingerprint_placeholder">abcd1234…</string>
+    <string name="conn_fetch">Buscar</string>
+    <string name="conn_could_not_reach">Não foi possível alcançar %1$s:%2$d — verifique o host e se o daemon está em execução.</string>
+    <!-- "Connect" → iOS corpus: "Conectar" -->
+    <string name="conn_connect_button">Conectar</string>
+    <string name="conn_retry">Tentar novamente</string>
+    <string name="conn_enter_address">Inserir endereço</string>
+
+    <!-- ── Library grid ─────────────────────────────────────────────────── -->
+    <string name="grid_incoming_pairing_title">Solicitação de emparelhamento recebida</string>
+    <string name="grid_incoming_pairing_message">%1$s quer se conectar a esta biblioteca. Permitir?</string>
+    <string name="grid_allow">Permitir</string>
+    <string name="grid_deny">Negar</string>
+    <string name="grid_close_search">Fechar pesquisa</string>
+    <!-- "Search videos…" → macOS corpus: "Pesquisar vídeos…" -->
+    <string name="grid_search_videos_hint">Pesquisar vídeos…</string>
+    <string name="grid_selected_count">%1$d selecionado(s)</string>
+    <string name="grid_clear_selection">Limpar seleção</string>
+    <string name="grid_open_library_panel">Abrir painel da biblioteca</string>
+    <!-- "Search" → iOS corpus: "Pesquisar" -->
+    <string name="grid_search">Pesquisar</string>
+    <string name="grid_sort">Ordenar</string>
+    <string name="grid_switch_to_list_view">Alternar para vista em lista</string>
+    <string name="grid_switch_to_grid_view">Alternar para vista em grade</string>
+    <string name="grid_more_options">Mais opções</string>
+    <!-- "Map" → iOS corpus: "Mapa" -->
+    <string name="grid_map">Mapa</string>
+    <!-- "Settings" → iOS corpus: "Configurações" -->
+    <string name="grid_settings">Configurações</string>
+    <string name="grid_disconnect">Desconectar</string>
+    <string name="grid_sort_by">Ordenar por</string>
+    <string name="grid_sort_ascending_arrow">%1$s ↑</string>
+    <string name="grid_sort_descending_arrow">%1$s ↓</string>
+    <!-- "Library" → iOS corpus: "Biblioteca" -->
+    <string name="grid_library">Biblioteca</string>
+    <string name="grid_clear_filters">Limpar filtros</string>
+    <string name="grid_close">Fechar</string>
+    <string name="grid_catalog">Catálogo</string>
+    <string name="grid_remote_library">Biblioteca remota</string>
+    <string name="grid_local_videos">Vídeos locais</string>
+    <string name="grid_all_videos">Todos os vídeos</string>
+    <string name="grid_locations">Localizações</string>
+    <!-- "Keywords" → kit corpus: "Palavras-chave" -->
+    <string name="grid_keywords">Palavras-chave</string>
+    <string name="grid_collections">Coleções</string>
+    <!-- "No videos found" → kit corpus: "Nenhum vídeo encontrado" -->
+    <string name="grid_no_videos">Nenhum vídeo</string>
+    <string name="grid_processing">Processando…</string>
+    <string name="grid_percent">%1$d%%</string>
+    <string name="grid_no_videos_match_search">Nenhum vídeo corresponde a \"%1$s\"</string>
+    <string name="grid_no_videos_with_keyword">Nenhum vídeo com esta palavra-chave</string>
+    <!-- "This collection is empty" → kit corpus: "Esta coleção está vazia" -->
+    <string name="grid_collection_empty">Esta coleção está vazia</string>
+    <string name="grid_no_videos_in_library">Nenhum vídeo na biblioteca</string>
+    <string name="grid_empty_add_location_hint">Adicione uma localização de biblioteca em Configurações para começar.</string>
+    <!-- "No videos match the current filter" → kit corpus: "Nenhum vídeo corresponde ao filtro atual" -->
+    <string name="grid_empty_no_match_filter">…ou nenhum vídeo corresponde ao filtro atual</string>
+    <string name="grid_reset_filter">Redefinir filtro</string>
+    <string name="grid_clear_location_filter">Limpar filtro de localização</string>
+    <string name="grid_star_count">%1$d estrela</string>
+    <plurals name="grid_video_count">
+        <item quantity="one">%1$d vídeo</item>
+        <item quantity="other">%1$d vídeos</item>
+    </plurals>
+    <plurals name="grid_location_video_count">
+        <item quantity="one">%1$d vídeo</item>
+        <item quantity="other">%1$d vídeos</item>
+    </plurals>
+
+    <!-- ── Map ──────────────────────────────────────────────────────────── -->
+    <!-- "Map" → iOS corpus: "Mapa" -->
+    <string name="map_title">Mapa</string>
+    <string name="map_load_failed">Falha ao carregar dados do mapa: %1$s</string>
+    <string name="map_unknown_error">Erro desconhecido</string>
+    <string name="map_no_geotagged">Nenhum vídeo com geotag.\nVídeos com metadados de GPS aparecem aqui no mapa.</string>
+    <string name="map_geotagged_count">%1$d com geotag</string>
+    <plurals name="map_marker_video_count">
+        <item quantity="one">%1$d vídeo</item>
+        <item quantity="other">%1$d vídeos</item>
+    </plurals>
+
+    <!-- ── Local media ──────────────────────────────────────────────────── -->
+    <string name="local_selected_count">%1$d selecionado(s)</string>
+    <!-- "Local Videos" → iOS corpus: "Vídeos" -->
+    <string name="local_title">Vídeos locais</string>
+    <string name="local_clear_selection">Limpar seleção</string>
+    <!-- "Upload to Server" → iOS corpus: "Enviar ao servidor" -->
+    <string name="local_upload_to_server">Enviar ao servidor</string>
+    <!-- "Select All" → iOS corpus: "Selecionar tudo" -->
+    <string name="local_select_all">Selecionar tudo</string>
+    <string name="local_upload_failed">Falha no envio: %1$s</string>
+    <string name="local_no_videos_found">Nenhum vídeo encontrado no dispositivo</string>
+    <string name="local_not_connected_hint">Não conectado — conecte-se a um servidor ReelVault para enviar</string>
+    <string name="local_uploaded">Enviado</string>
+    <string name="local_video_access_denied">Acesso a vídeos negado</string>
+    <string name="local_permission_hint">Conceda a permissão "Vídeos" em Configurações → Apps → ReelVault → Permissões para explorar vídeos locais.</string>
+    <plurals name="local_uploaded_count">
+        <item quantity="one">%1$d vídeo enviado</item>
+        <item quantity="other">%1$d vídeos enviados</item>
+    </plurals>
+    <plurals name="local_selected_upload_hint">
+        <item quantity="one">%1$d vídeo selecionado — toque em ↑ para enviar ao servidor</item>
+        <item quantity="other">%1$d vídeos selecionados — toque em ↑ para enviar ao servidor</item>
+    </plurals>
+
+    <!-- ── Settings ─────────────────────────────────────────────────────── -->
+    <!-- "Settings" → iOS corpus: "Configurações" -->
+    <string name="settings_title">Configurações</string>
+    <string name="settings_back">Voltar</string>
+    <string name="settings_library_locations">Localizações da biblioteca</string>
+    <string name="settings_no_watched_folders">Nenhuma pasta monitorada</string>
+    <string name="settings_rescan_complete">Verificação concluída</string>
+    <!-- "Rescan failed" → desktop corpus: "Falha ao reescanear: {0}" -->
+    <string name="settings_rescan_failed">Falha na verificação: %1$s</string>
+    <string name="settings_about">Sobre</string>
+    <string name="settings_app_version">Versão do app</string>
+    <string name="settings_loading_daemon_info">Carregando informações do daemon…</string>
+    <string name="settings_connection">Conexão</string>
+    <string name="settings_server_connection">Conexão com o servidor</string>
+    <string name="settings_connected_remote">Conectado ao daemon remoto em %1$s:%2$d</string>
+    <string name="settings_connected_local">Conectado ao daemon local</string>
+    <string name="settings_disconnected">Desconectado do servidor</string>
+    <string name="settings_forget_server">Esquecer servidor</string>
+    <string name="settings_reconnected">Reconectado com sucesso</string>
+    <string name="settings_reconnect_failed">Falha na reconexão</string>
+    <string name="settings_reconnect">Reconectar</string>
+    <string name="settings_scan">Verificar</string>
+    <string name="settings_full_rescan">Verificação completa</string>
+    <string name="settings_full_rescan_desc">Reindexar todas as pastas monitoradas, extrair metadados e gerar miniaturas para vídeos novos ou alterados.</string>
+    <string name="settings_full_scan_complete">Verificação completa concluída</string>
+    <!-- "Scan failed" → desktop corpus: "Falha na varredura: {0}" -->
+    <string name="settings_scan_failed">Falha na varredura: %1$s</string>
+    <string name="settings_scanning">Verificando…</string>
+    <string name="settings_start_full_scan">Iniciar verificação completa</string>
+    <string name="settings_collapse">Recolher</string>
+    <string name="settings_expand">Expandir</string>
+    <string name="settings_last_scanned">Última verificação: %1$s</string>
+    <string name="settings_never_scanned">Nunca verificado</string>
+    <string name="settings_non_recursive"> (não recursivo)</string>
+    <string name="settings_disabled"> (desativado)</string>
+    <!-- "Rescan %@…" → desktop corpus: "Escaneando %@…" (adapted) -->
+    <string name="settings_rescan_path">Verificar %1$s</string>
+    <string name="settings_daemon_version">Versão do daemon</string>
+    <string name="settings_videos_indexed">Vídeos indexados</string>
+    <string name="settings_cache_size">Tamanho do cache</string>
+    <string name="settings_uptime">Tempo de atividade</string>
+    <string name="settings_loading">Carregando…</string>
+    <plurals name="settings_location_video_count">
+        <item quantity="one">%1$d vídeo</item>
+        <item quantity="other">%1$d vídeos</item>
+    </plurals>
+
+    <!-- ── Detail ───────────────────────────────────────────────────────── -->
+    <!-- "Detail" → iOS corpus: "Detalhe" -->
+    <string name="detail_title">Detalhe</string>
+    <!-- "Share" → iOS corpus: "Compartilhar" -->
+    <string name="detail_share">Compartilhar</string>
+    <string name="detail_share_subject">Compartilhar %1$s</string>
+    <string name="detail_video_not_found">Vídeo não encontrado</string>
+    <string name="detail_section_file_info">Informações do arquivo</string>
+    <string name="detail_section_video">Vídeo</string>
+    <string name="detail_section_audio">Áudio</string>
+    <string name="detail_section_capture">Captura</string>
+    <!-- "Filename" → kit/macOS/iOS corpus: "Nome do arquivo" -->
+    <string name="detail_field_filename">Nome do arquivo</string>
+    <string name="detail_field_path">Caminho</string>
+    <!-- "File Size" → iOS corpus: "Tamanho do arquivo" -->
+    <string name="detail_field_size">Tamanho</string>
+    <string name="detail_field_indexed">Indexado</string>
+    <string name="detail_field_online">Online</string>
+    <string name="detail_value_online_yes">Sim</string>
+    <string name="detail_value_online_no">Não (offline)</string>
+    <!-- "Resolution" → iOS corpus: "Resolução" -->
+    <string name="detail_field_resolution">Resolução</string>
+    <!-- "Codec" → iOS corpus: "Codec" -->
+    <string name="detail_field_codec">Codec</string>
+    <!-- "FPS" → kit corpus: "FPS" -->
+    <string name="detail_field_fps">FPS</string>
+    <!-- "Bitrate" → iOS corpus: "Taxa de bits" -->
+    <string name="detail_field_bitrate">Taxa de bits</string>
+    <string name="detail_field_frames">Quadros</string>
+    <string name="detail_field_hdr">HDR</string>
+    <!-- "Yes" → kit corpus: "Sim" -->
+    <string name="detail_value_yes">Sim</string>
+    <!-- "Color space" → kit corpus: "Espaço de cor" -->
+    <string name="detail_field_color_space">Espaço de cor</string>
+    <string name="detail_field_resolution_status">Status de resolução</string>
+    <!-- "Full resolution" → kit corpus: "Resolução completa" -->
+    <string name="detail_value_full_resolution">Resolução completa</string>
+    <string name="detail_value_not_full_resolution">Não está em resolução completa</string>
+    <string name="detail_field_channels">Canais</string>
+    <string name="detail_field_sample_rate">Taxa de amostragem</string>
+    <string name="detail_value_sample_rate">%1$d Hz</string>
+    <string name="detail_field_date">Data</string>
+    <!-- "Camera" → iOS corpus: "Câmera" -->
+    <string name="detail_field_camera">Câmera</string>
+    <string name="detail_field_camera_internal">Câmera (interna)</string>
+    <!-- "Lens" → iOS corpus: "Lente" -->
+    <string name="detail_field_lens">Lente</string>
+    <!-- "ISO" → iOS corpus: "ISO" -->
+    <string name="detail_field_iso">ISO</string>
+    <string name="detail_value_iso">ISO %1$d</string>
+    <!-- "Aperture" → iOS corpus: "Abertura" -->
+    <string name="detail_field_aperture">Abertura</string>
+    <!-- "Exposure" → kit corpus: "Exposição" -->
+    <string name="detail_field_exposure">Exposição</string>
+    <!-- "Focal Length" → iOS corpus: "Comprimento focal" -->
+    <string name="detail_field_focal_length">Comprimento focal</string>
+    <string name="detail_field_exposure_mode">Modo de exposição</string>
+    <string name="detail_field_exposure_program">Programa de exposição</string>
+    <string name="detail_field_white_balance">Balanço de branco</string>
+    <string name="detail_em_dash">—</string>
+    <string name="detail_section_location">LOCALIZAÇÃO</string>
+    <string name="detail_field_gps">GPS</string>
+    <string name="detail_field_altitude">Altitude</string>
+    <string name="detail_value_altitude">%1$.1f m</string>
+    <string name="detail_no_location">Sem localização</string>
+    <string name="detail_change_location">Alterar localização…</string>
+    <!-- "Set Location" → iOS corpus: "Definir localização" -->
+    <string name="detail_set_location">Definir localização…</string>
+    <string name="detail_remove_location">Remover localização</string>
+    <string name="detail_show_on_map">Mostrar no mapa</string>
+    <!-- "Set Location" → iOS corpus: "Definir localização" -->
+    <string name="detail_set_location_title">Definir localização</string>
+    <string name="detail_drag_to_position">Arraste o mapa para posicionar o marcador.</string>
+    <string name="detail_write_location_to_file">Gravar localização no arquivo</string>
+    <string name="detail_write_location_desc">Também incorpora a tag GPS no arquivo de vídeo, não apenas no catálogo.</string>
+    <string name="detail_section_tags">TAGS</string>
+    <string name="detail_add_tag">Adicionar tag</string>
+    <string name="detail_no_tags">Sem tags</string>
+    <string name="detail_remove_tag">Remover %1$s</string>
+    <string name="detail_add_tag_title">Adicionar tag</string>
+    <string name="detail_all_tags_applied">Todas as tags já foram aplicadas.</string>
+    <string name="detail_section_notes">NOTAS</string>
+    <string name="detail_edit">Editar</string>
+    <string name="detail_no_notes">Sem notas</string>
+    <string name="detail_section_rating">AVALIAÇÃO</string>
+    <string name="detail_rating_out_of_five">%1$d / 5</string>
+    <string name="detail_section_color_label">RÓTULO DE COR</string>
+    <string name="detail_color_label_none">N</string>
+    <string name="detail_color_label_selected">%1$s selecionado</string>
+    <string name="detail_section_proxies">PROXIES</string>
+    <!-- "Auto" → iOS corpus: "Auto" -->
+    <string name="detail_proxy_auto">Auto</string>
+    <string name="detail_audio_channels_mono">1 (Mono)</string>
+    <string name="detail_audio_channels_stereo">2 (Estéreo)</string>
+    <string name="detail_audio_channels_51">Surround 5.1</string>
+    <string name="detail_audio_channels_71">Surround 7.1</string>
+    <plurals name="detail_star_count">
+        <item quantity="one">%1$d estrela</item>
+        <item quantity="other">%1$d estrelas</item>
+    </plurals>
+
+    <!-- ── Filter bar ───────────────────────────────────────────────────── -->
+    <string name="filter_filters">Filtros</string>
+    <string name="filter_clear_all">Limpar tudo</string>
+    <string name="filter_remove_filter">Remover filtro</string>
+    <string name="filter_sort_ascending">Ordem crescente</string>
+    <string name="filter_sort_descending">Ordem decrescente</string>
+    <string name="filter_filters_and_sort">Filtros e ordenação</string>
+    <!-- "Done" → iOS corpus: "Concluído" -->
+    <string name="filter_done">Concluído</string>
+    <string name="filter_search">PESQUISA</string>
+    <string name="filter_search_placeholder">Pesquisar nomes de arquivo, notas…</string>
+    <string name="filter_clear_search">Limpar pesquisa</string>
+    <string name="filter_minimum_rating">AVALIAÇÃO MÍNIMA</string>
+    <!-- "Any" → kit corpus: "Qualquer" -->
+    <string name="filter_any">Qualquer</string>
+    <string name="filter_rating_plus">%1$d+</string>
+    <!-- "Keywords" → kit corpus: "Palavras-chave" (section header, upper-case in EN) -->
+    <string name="filter_keywords">PALAVRAS-CHAVE</string>
+    <!-- "All" → new -->
+    <string name="filter_all">Todas</string>
+    <string name="filter_tag_with_count">%1$s (%2$d)</string>
+    <string name="filter_collections">COLEÇÕES</string>
+    <string name="filter_collection_with_count">%1$s (%2$d)</string>
+    <string name="filter_sort">ORDENAÇÃO</string>
+    <string name="filter_change_sort_field">Alterar campo de ordenação</string>
+    <string name="filter_sort_ascending_reverse">Ordem crescente — toque para inverter</string>
+    <string name="filter_sort_descending_reverse">Ordem decrescente — toque para inverter</string>
+    <string name="filter_ascending">Crescente</string>
+    <string name="filter_descending">Decrescente</string>
+
+    <!-- ── Sort field names ─────────────────────────────────────────────── -->
+    <string name="sort_date_indexed">Data de indexação</string>
+    <!-- "Date Captured" → iOS corpus: "Data de captura" -->
+    <string name="sort_date_captured">Data de captura</string>
+    <!-- "Filename" → kit corpus: "Nome do arquivo" -->
+    <string name="sort_filename">Nome do arquivo</string>
+    <!-- "File Size" → iOS corpus: "Tamanho do arquivo" -->
+    <string name="sort_file_size">Tamanho do arquivo</string>
+    <!-- "Duration" → iOS corpus: "Duração" -->
+    <string name="sort_duration">Duração</string>
+    <!-- "Rating" → kit corpus: "Avaliação" -->
+    <string name="sort_rating">Avaliação</string>
+    <!-- "Frame Rate" → iOS corpus: "Taxa de quadros" -->
+    <string name="sort_frame_rate">Taxa de quadros</string>
+    <!-- "Codec" → iOS corpus: "Codec" -->
+    <string name="sort_codec">Codec</string>
+    <!-- "Camera" → iOS corpus: "Câmera" -->
+    <string name="sort_camera">Câmera</string>
+
+    <!-- ── Cards / badges ───────────────────────────────────────────────── -->
+    <string name="card_no_thumbnail">Sem miniatura</string>
+    <!-- "Offline" → iOS corpus: "Offline" -->
+    <string name="card_offline">Offline</string>
+    <string name="card_selected">Selecionado</string>
+    <!-- "Full resolution" → kit corpus: "Resolução completa" -->
+    <string name="card_full_resolution">Resolução completa</string>
+    <string name="card_not_full_resolution">Não está em resolução completa</string>
+    <string name="card_has_audio">Tem uma faixa de áudio</string>
+    <string name="card_file_offline">Arquivo offline</string>
+    <string name="card_star">%1$d estrela</string>
+    <plurals name="card_keyword_count">
+        <item quantity="one">%1$d palavra-chave</item>
+        <item quantity="other">%1$d palavras-chave</item>
+    </plurals>
+    <plurals name="card_proxy_count">
+        <item quantity="one">%1$d proxy disponível</item>
+        <item quantity="other">%1$d proxies disponíveis</item>
+    </plurals>
+    <plurals name="card_stack_count">
+        <item quantity="one">Pilha de %1$d</item>
+        <item quantity="other">Pilha de %1$d</item>
+    </plurals>
+
+    <!-- ── Video player ─────────────────────────────────────────────────── -->
+    <string name="player_no_stream">Nenhum stream disponível</string>
+    <string name="player_play">Reproduzir</string>
+    <string name="player_pause">Pausar</string>
+    <string name="player_volume">Volume</string>
+    <string name="player_quality">Qualidade</string>
+    <string name="player_full_screen">Tela cheia</string>
+    <string name="player_exit_full_screen">Sair da tela cheia</string>
+    <string name="player_retry">Tentar novamente</string>
+    <string name="player_selected">Selecionado</string>
+    <!-- "Cancel" → iOS corpus: "Cancelar" -->
+    <string name="player_cancel">Cancelar</string>
+    <string name="player_playback_error">Erro de reprodução</string>
+
+    <!-- ── ViewModel errors (snackbars) ─────────────────────────────────── -->
+    <!-- "Failed to load more videos" → desktop corpus: "Falha ao carregar mais vídeos: {0}" -->
+    <string name="err_load_more_videos">Falha ao carregar mais vídeos: %1$s</string>
+    <!-- "Failed to load videos" → desktop corpus: "Falha ao carregar vídeos: {0}" -->
+    <string name="err_load_videos">Falha ao carregar vídeos: %1$s</string>
+    <!-- "Failed to load metadata" → desktop corpus: "Falha ao carregar metadados: {0}" -->
+    <string name="err_load_metadata">Falha ao carregar metadados: %1$s</string>
+    <!-- "Video not found" → desktop corpus: "Vídeo não encontrado" -->
+    <string name="err_video_not_found">Vídeo não encontrado</string>
+    <!-- "Failed to update notes" → desktop corpus: "Falha ao atualizar notas" -->
+    <string name="err_update_notes">Falha ao atualizar notas</string>
+    <!-- "Failed to update notes: {0}" → desktop corpus -->
+    <string name="err_update_notes_detail">Falha ao atualizar notas: %1$s</string>
+    <!-- "Failed to add tag" → desktop corpus: "Falha ao adicionar tag" -->
+    <string name="err_add_tag">Falha ao adicionar tag</string>
+    <!-- "Failed to add tag: {0}" → desktop corpus -->
+    <string name="err_add_tag_detail">Falha ao adicionar tag: %1$s</string>
+    <!-- "Failed to remove tag" → desktop corpus: "Falha ao remover tag" -->
+    <string name="err_remove_tag">Falha ao remover tag</string>
+    <!-- "Failed to remove tag: {0}" → desktop corpus -->
+    <string name="err_remove_tag_detail">Falha ao remover tag: %1$s</string>
+    <string name="err_update_rating">Falha ao atualizar avaliação: %1$s</string>
+    <string name="err_update_color_label">Falha ao atualizar rótulo de cor: %1$s</string>
+    <!-- "Failed to update location" → new (from desktop pattern) -->
+    <string name="err_update_location">Falha ao atualizar localização</string>
+    <string name="err_update_location_detail">Falha ao atualizar localização: %1$s</string>
+    <!-- "Failed to remove location" → desktop corpus: "Falha ao remover localização da biblioteca" (adapted) -->
+    <string name="err_remove_location">Falha ao remover localização</string>
+    <string name="err_remove_location_detail">Falha ao remover localização: %1$s</string>
+    <!-- "Failed to add to collection" → desktop corpus: "Falha ao adicionar à coleção" -->
+    <string name="err_add_to_collection">Falha ao adicionar à coleção</string>
+    <!-- "Failed to add to collection: {0}" → desktop corpus -->
+    <string name="err_add_to_collection_detail">Falha ao adicionar à coleção: %1$s</string>
+    <string name="err_remove_from_collection">Falha ao remover da coleção</string>
+    <string name="err_remove_from_collection_detail">Falha ao remover da coleção: %1$s</string>
+    <string name="scan_target_default">biblioteca</string>
+    <!-- "Scanning %@…" → desktop corpus: "Escaneando %@…" -->
+    <string name="scan_scanning_target">Verificando %1$s…</string>
+    <!-- "A device" → kit corpus: "Um dispositivo" -->
+    <string name="pairing_a_device">Um dispositivo</string>
+
+</resources>

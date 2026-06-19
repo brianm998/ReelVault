@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- app_name intentionally omitted — falls back to default -->
+
+    <!-- ── Common ───────────────────────────────────────────────────────── -->
+    <string name="common_back">Quay lại</string>
+    <string name="common_cancel">Hủy</string>
+    <string name="common_save">Lưu</string>
+    <string name="common_done">Xong</string>
+    <string name="common_clear">Xóa</string>
+    <string name="common_selected">Đã chọn</string>
+    <string name="common_offline">Ngoại tuyến</string>
+    <string name="common_unavailable">Không khả dụng</string>
+    <string name="common_unknown_error">lỗi không xác định</string>
+
+    <!-- ── Connection flow ──────────────────────────────────────────────── -->
+    <string name="conn_reconnecting_to">Đang kết nối lại với %1$s…</string>
+    <string name="conn_connecting_to">Đang kết nối với %1$s…</string>
+    <string name="conn_connecting">Đang kết nối…</string>
+    <string name="conn_pairing_with">Đang ghép đôi với %1$s…</string>
+    <string name="conn_could_not_connect_named">Không thể kết nối với %1$s. Kiểm tra xem daemon có đang chạy không và thử lại.</string>
+    <string name="conn_could_not_connect_simple">Không thể kết nối với %1$s.</string>
+    <string name="conn_pairing_rejected">Ghép đôi bị từ chối — kiểm tra mã và thử lại.</string>
+    <string name="conn_looking_for_servers">Đang tìm kiếm máy chủ ReelVault…</string>
+    <string name="conn_scanning_network">Đang quét mạng cục bộ</string>
+    <string name="conn_connect_title">Kết nối với ReelVault</string>
+    <string name="conn_rescan">Quét lại</string>
+    <string name="conn_no_servers_found">Không tìm thấy máy chủ</string>
+    <string name="conn_no_servers_hint">Khởi động daemon ReelVault core với --remote trên một máy tính trong mạng Wi-Fi này, rồi quét lại.</string>
+    <string name="conn_available_servers">Máy chủ khả dụng</string>
+    <string name="conn_enter_address_manually">Nhập địa chỉ thủ công</string>
+    <string name="conn_browse_local_videos">Duyệt video cục bộ</string>
+    <string name="conn_requires_pairing">Yêu cầu ghép đôi</string>
+    <string name="conn_enter_pairing_code">Nhập mã ghép đôi</string>
+    <string name="conn_pair_with">Ghép đôi với %1$s</string>
+    <string name="conn_pairing_instructions">Trên máy tính đang chạy ReelVault, chọn File ▸ Ghép đôi thiết bị mới để hiển thị mã 6 chữ số (máy chủ không màn hình cũng ghi lại mã này). Nhập mã bên dưới — bạn chỉ cần làm điều này một lần.</string>
+    <string name="conn_pin_placeholder">000000</string>
+    <string name="conn_pair_button">Ghép đôi</string>
+    <string name="conn_connect_manually">Kết nối thủ công</string>
+    <string name="conn_host_label">Máy chủ hoặc địa chỉ IP</string>
+    <string name="conn_host_placeholder">192.168.1.100</string>
+    <string name="conn_grpc_port_label">Cổng gRPC</string>
+    <string name="conn_grpc_port_placeholder">50051</string>
+    <string name="conn_fingerprint_label">Dấu vân tay chứng chỉ (SHA-256, tùy chọn)</string>
+    <string name="conn_fingerprint_placeholder">abcd1234…</string>
+    <string name="conn_fetch">Tải về</string>
+    <string name="conn_could_not_reach">Không thể kết nối tới %1$s:%2$d — kiểm tra máy chủ và đảm bảo daemon đang chạy.</string>
+    <string name="conn_connect_button">Kết nối</string>
+    <string name="conn_retry">Thử lại</string>
+    <string name="conn_enter_address">Nhập địa chỉ</string>
+
+    <!-- ── Library grid ─────────────────────────────────────────────────── -->
+    <string name="grid_incoming_pairing_title">Yêu cầu ghép đôi mới</string>
+    <string name="grid_incoming_pairing_message">%1$s muốn kết nối với thư viện này. Cho phép?</string>
+    <string name="grid_allow">Cho phép</string>
+    <string name="grid_deny">Từ chối</string>
+    <string name="grid_close_search">Đóng tìm kiếm</string>
+    <string name="grid_search_videos_hint">Tìm kiếm video…</string>
+    <string name="grid_selected_count">Đã chọn %1$d</string>
+    <string name="grid_clear_selection">Bỏ chọn tất cả</string>
+    <string name="grid_open_library_panel">Mở bảng thư viện</string>
+    <string name="grid_search">Tìm kiếm</string>
+    <string name="grid_sort">Sắp xếp</string>
+    <string name="grid_switch_to_list_view">Chuyển sang chế độ xem danh sách</string>
+    <string name="grid_switch_to_grid_view">Chuyển sang chế độ xem lưới</string>
+    <string name="grid_more_options">Thêm tùy chọn</string>
+    <string name="grid_map">Bản đồ</string>
+    <string name="grid_settings">Cài đặt</string>
+    <string name="grid_disconnect">Ngắt kết nối</string>
+    <string name="grid_sort_by">Sắp xếp theo</string>
+    <string name="grid_sort_ascending_arrow">%1$s ↑</string>
+    <string name="grid_sort_descending_arrow">%1$s ↓</string>
+    <string name="grid_library">Thư viện</string>
+    <string name="grid_clear_filters">Xóa bộ lọc</string>
+    <string name="grid_close">Đóng</string>
+    <string name="grid_catalog">Danh mục</string>
+    <string name="grid_remote_library">Thư viện từ xa</string>
+    <string name="grid_local_videos">Video cục bộ</string>
+    <string name="grid_all_videos">Tất cả video</string>
+    <string name="grid_locations">Vị trí</string>
+    <string name="grid_keywords">Từ khóa</string>
+    <string name="grid_collections">Bộ sưu tập</string>
+    <string name="grid_no_videos">Không có video</string>
+    <string name="grid_processing">Đang xử lý…</string>
+    <string name="grid_percent">%1$d%%</string>
+    <string name="grid_no_videos_match_search">Không có video khớp với \"%1$s\"</string>
+    <string name="grid_no_videos_with_keyword">Không có video nào có từ khóa này</string>
+    <string name="grid_collection_empty">Bộ sưu tập này trống</string>
+    <string name="grid_no_videos_in_library">Không có video trong thư viện</string>
+    <string name="grid_empty_add_location_hint">Thêm vị trí thư viện trong Cài đặt để bắt đầu.</string>
+    <string name="grid_empty_no_match_filter">…hoặc không có video nào khớp với bộ lọc hiện tại</string>
+    <string name="grid_reset_filter">Đặt lại bộ lọc</string>
+    <string name="grid_clear_location_filter">Xóa bộ lọc vị trí</string>
+    <string name="grid_star_count">%1$d sao</string>
+    <plurals name="grid_video_count">
+        <item quantity="other">%1$d video</item>
+    </plurals>
+    <plurals name="grid_location_video_count">
+        <item quantity="other">%1$d video</item>
+    </plurals>
+
+    <!-- ── Map ──────────────────────────────────────────────────────────── -->
+    <string name="map_title">Bản đồ</string>
+    <string name="map_load_failed">Không tải được dữ liệu bản đồ: %1$s</string>
+    <string name="map_unknown_error">Lỗi không xác định</string>
+    <string name="map_no_geotagged">Không có video gắn thẻ địa lý.\nCác video có siêu dữ liệu GPS sẽ xuất hiện tại đây trên bản đồ.</string>
+    <string name="map_geotagged_count">%1$d có gắn thẻ địa lý</string>
+    <plurals name="map_marker_video_count">
+        <item quantity="other">%1$d video</item>
+    </plurals>
+
+    <!-- ── Local media ──────────────────────────────────────────────────── -->
+    <string name="local_selected_count">Đã chọn %1$d</string>
+    <string name="local_title">Video cục bộ</string>
+    <string name="local_clear_selection">Bỏ chọn tất cả</string>
+    <string name="local_upload_to_server">Tải lên máy chủ</string>
+    <string name="local_select_all">Chọn tất cả</string>
+    <string name="local_upload_failed">Tải lên thất bại: %1$s</string>
+    <string name="local_no_videos_found">Không tìm thấy video nào trên thiết bị</string>
+    <string name="local_not_connected_hint">Chưa kết nối — kết nối với máy chủ ReelVault để tải lên</string>
+    <string name="local_uploaded">Đã tải lên</string>
+    <string name="local_video_access_denied">Quyền truy cập video bị từ chối</string>
+    <string name="local_permission_hint">Cấp quyền "Video" trong Cài đặt → Ứng dụng → ReelVault → Quyền để duyệt video cục bộ.</string>
+    <plurals name="local_uploaded_count">
+        <item quantity="other">Đã tải lên %1$d video</item>
+    </plurals>
+    <plurals name="local_selected_upload_hint">
+        <item quantity="other">Đã chọn %1$d video — nhấn ↑ để tải lên máy chủ</item>
+    </plurals>
+
+    <!-- ── Settings ─────────────────────────────────────────────────────── -->
+    <string name="settings_title">Cài đặt</string>
+    <string name="settings_back">Quay lại</string>
+    <string name="settings_library_locations">Vị trí thư viện</string>
+    <string name="settings_no_watched_folders">Không có thư mục nào được theo dõi</string>
+    <string name="settings_rescan_complete">Quét lại hoàn tất</string>
+    <string name="settings_rescan_failed">Quét lại thất bại: %1$s</string>
+    <string name="settings_about">Giới thiệu</string>
+    <string name="settings_app_version">Phiên bản ứng dụng</string>
+    <string name="settings_loading_daemon_info">Đang tải thông tin daemon…</string>
+    <string name="settings_connection">Kết nối</string>
+    <string name="settings_server_connection">Kết nối máy chủ</string>
+    <string name="settings_connected_remote">Đã kết nối với daemon từ xa tại %1$s:%2$d</string>
+    <string name="settings_connected_local">Đã kết nối với daemon cục bộ</string>
+    <string name="settings_disconnected">Đã ngắt kết nối khỏi máy chủ</string>
+    <string name="settings_forget_server">Quên máy chủ</string>
+    <string name="settings_reconnected">Kết nối lại thành công</string>
+    <string name="settings_reconnect_failed">Kết nối lại thất bại</string>
+    <string name="settings_reconnect">Kết nối lại</string>
+    <string name="settings_scan">Quét</string>
+    <string name="settings_full_rescan">Quét lại toàn bộ</string>
+    <string name="settings_full_rescan_desc">Lập chỉ mục lại tất cả các thư mục được theo dõi, trích xuất siêu dữ liệu và tạo hình thu nhỏ cho mọi video mới hoặc đã thay đổi.</string>
+    <string name="settings_full_scan_complete">Quét toàn bộ hoàn tất</string>
+    <string name="settings_scan_failed">Quét thất bại: %1$s</string>
+    <string name="settings_scanning">Đang quét…</string>
+    <string name="settings_start_full_scan">Bắt đầu quét toàn bộ</string>
+    <string name="settings_collapse">Thu gọn</string>
+    <string name="settings_expand">Mở rộng</string>
+    <string name="settings_last_scanned">Lần quét cuối: %1$s</string>
+    <string name="settings_never_scanned">Chưa từng quét</string>
+    <string name="settings_non_recursive"> (không đệ quy)</string>
+    <string name="settings_disabled"> (đã tắt)</string>
+    <string name="settings_rescan_path">Quét lại %1$s</string>
+    <string name="settings_daemon_version">Phiên bản daemon</string>
+    <string name="settings_videos_indexed">Video đã lập chỉ mục</string>
+    <string name="settings_cache_size">Kích thước bộ nhớ đệm</string>
+    <string name="settings_uptime">Thời gian hoạt động</string>
+    <string name="settings_loading">Đang tải…</string>
+    <plurals name="settings_location_video_count">
+        <item quantity="other">%1$d video</item>
+    </plurals>
+
+    <!-- ── Detail ───────────────────────────────────────────────────────── -->
+    <string name="detail_title">Chi tiết</string>
+    <string name="detail_share">Chia sẻ</string>
+    <string name="detail_share_subject">Chia sẻ %1$s</string>
+    <string name="detail_video_not_found">Không tìm thấy video</string>
+    <string name="detail_section_file_info">Thông tin tệp</string>
+    <string name="detail_section_video">Video</string>
+    <string name="detail_section_audio">Âm thanh</string>
+    <string name="detail_section_capture">Chụp quay</string>
+    <string name="detail_field_filename">Tên tệp</string>
+    <string name="detail_field_path">Đường dẫn</string>
+    <string name="detail_field_size">Kích thước</string>
+    <string name="detail_field_indexed">Đã lập chỉ mục</string>
+    <string name="detail_field_online">Trực tuyến</string>
+    <string name="detail_value_online_yes">Có</string>
+    <string name="detail_value_online_no">Không (ngoại tuyến)</string>
+    <string name="detail_field_resolution">Độ phân giải</string>
+    <string name="detail_field_codec">Codec</string>
+    <string name="detail_field_fps">FPS</string>
+    <string name="detail_field_bitrate">Tốc độ bit</string>
+    <string name="detail_field_frames">Số khung hình</string>
+    <string name="detail_field_hdr">HDR</string>
+    <string name="detail_value_yes">Có</string>
+    <string name="detail_field_color_space">Không gian màu</string>
+    <string name="detail_field_resolution_status">Trạng thái độ phân giải</string>
+    <string name="detail_value_full_resolution">Độ phân giải đầy đủ</string>
+    <string name="detail_value_not_full_resolution">Không phải độ phân giải đầy đủ</string>
+    <string name="detail_field_channels">Kênh</string>
+    <string name="detail_field_sample_rate">Tần số lấy mẫu</string>
+    <string name="detail_value_sample_rate">%1$d Hz</string>
+    <string name="detail_field_date">Ngày</string>
+    <string name="detail_field_camera">Máy quay</string>
+    <string name="detail_field_camera_internal">Máy quay (nội bộ)</string>
+    <string name="detail_field_lens">Ống kính</string>
+    <string name="detail_field_iso">ISO</string>
+    <string name="detail_value_iso">ISO %1$d</string>
+    <string name="detail_field_aperture">Khẩu độ</string>
+    <string name="detail_field_exposure">Tốc độ chụp</string>
+    <string name="detail_field_focal_length">Tiêu cự</string>
+    <string name="detail_field_exposure_mode">Chế độ phơi sáng</string>
+    <string name="detail_field_exposure_program">Chương trình phơi sáng</string>
+    <string name="detail_field_white_balance">Cân bằng trắng</string>
+    <string name="detail_em_dash">—</string>
+    <string name="detail_section_location">VỊ TRÍ</string>
+    <string name="detail_field_gps">GPS</string>
+    <string name="detail_field_altitude">Độ cao</string>
+    <string name="detail_value_altitude">%1$.1f m</string>
+    <string name="detail_no_location">Không có vị trí</string>
+    <string name="detail_change_location">Thay đổi vị trí…</string>
+    <string name="detail_set_location">Đặt vị trí…</string>
+    <string name="detail_remove_location">Xóa vị trí</string>
+    <string name="detail_show_on_map">Hiển thị trên bản đồ</string>
+    <string name="detail_set_location_title">Đặt vị trí</string>
+    <string name="detail_drag_to_position">Kéo bản đồ để định vị ghim.</string>
+    <string name="detail_write_location_to_file">Ghi vị trí vào tệp</string>
+    <string name="detail_write_location_desc">Cũng nhúng thẻ GPS vào tệp video, không chỉ trong danh mục.</string>
+    <string name="detail_section_tags">NHÃN</string>
+    <string name="detail_add_tag">Thêm nhãn</string>
+    <string name="detail_no_tags">Không có nhãn</string>
+    <string name="detail_remove_tag">Xóa %1$s</string>
+    <string name="detail_add_tag_title">Thêm nhãn</string>
+    <string name="detail_all_tags_applied">Tất cả nhãn đã được áp dụng.</string>
+    <string name="detail_section_notes">GHI CHÚ</string>
+    <string name="detail_edit">Chỉnh sửa</string>
+    <string name="detail_no_notes">Không có ghi chú</string>
+    <string name="detail_section_rating">ĐÁNH GIÁ</string>
+    <string name="detail_rating_out_of_five">%1$d / 5</string>
+    <string name="detail_section_color_label">NHÃN MÀU</string>
+    <string name="detail_color_label_none">N</string>
+    <string name="detail_color_label_selected">Đã chọn %1$s</string>
+    <string name="detail_section_proxies">PROXY</string>
+    <string name="detail_proxy_auto">Tự động</string>
+    <string name="detail_audio_channels_mono">1 (Mono)</string>
+    <string name="detail_audio_channels_stereo">2 (Stereo)</string>
+    <string name="detail_audio_channels_51">5.1 Surround</string>
+    <string name="detail_audio_channels_71">7.1 Surround</string>
+    <plurals name="detail_star_count">
+        <item quantity="other">%1$d sao</item>
+    </plurals>
+
+    <!-- ── Filter bar ───────────────────────────────────────────────────── -->
+    <string name="filter_filters">Bộ lọc</string>
+    <string name="filter_clear_all">Xóa tất cả</string>
+    <string name="filter_remove_filter">Xóa bộ lọc</string>
+    <string name="filter_sort_ascending">Sắp xếp tăng dần</string>
+    <string name="filter_sort_descending">Sắp xếp giảm dần</string>
+    <string name="filter_filters_and_sort">Bộ lọc &amp; Sắp xếp</string>
+    <string name="filter_done">Xong</string>
+    <string name="filter_search">TÌM KIẾM</string>
+    <string name="filter_search_placeholder">Tìm kiếm tên tệp, ghi chú…</string>
+    <string name="filter_clear_search">Xóa tìm kiếm</string>
+    <string name="filter_minimum_rating">ĐÁNH GIÁ TỐI THIỂU</string>
+    <string name="filter_any">Bất kỳ</string>
+    <string name="filter_rating_plus">%1$d+</string>
+    <string name="filter_keywords">TỪ KHÓA</string>
+    <string name="filter_all">Tất cả</string>
+    <string name="filter_tag_with_count">%1$s (%2$d)</string>
+    <string name="filter_collections">BỘ SƯU TẬP</string>
+    <string name="filter_collection_with_count">%1$s (%2$d)</string>
+    <string name="filter_sort">SẮP XẾP</string>
+    <string name="filter_change_sort_field">Thay đổi trường sắp xếp</string>
+    <string name="filter_sort_ascending_reverse">Sắp xếp tăng dần — nhấn để đảo ngược</string>
+    <string name="filter_sort_descending_reverse">Sắp xếp giảm dần — nhấn để đảo ngược</string>
+    <string name="filter_ascending">Tăng dần</string>
+    <string name="filter_descending">Giảm dần</string>
+
+    <!-- ── Sort field names ─────────────────────────────────────────────── -->
+    <string name="sort_date_indexed">Ngày lập chỉ mục</string>
+    <string name="sort_date_captured">Ngày quay</string>
+    <string name="sort_filename">Tên tệp</string>
+    <string name="sort_file_size">Kích thước tệp</string>
+    <string name="sort_duration">Thời lượng</string>
+    <string name="sort_rating">Đánh giá</string>
+    <string name="sort_frame_rate">Tốc độ khung hình</string>
+    <string name="sort_codec">Codec</string>
+    <string name="sort_camera">Máy quay</string>
+
+    <!-- ── Cards / badges ───────────────────────────────────────────────── -->
+    <string name="card_no_thumbnail">Không có hình thu nhỏ</string>
+    <string name="card_offline">Ngoại tuyến</string>
+    <string name="card_selected">Đã chọn</string>
+    <string name="card_full_resolution">Độ phân giải đầy đủ</string>
+    <string name="card_not_full_resolution">Không phải độ phân giải đầy đủ</string>
+    <string name="card_has_audio">Có âm thanh</string>
+    <string name="card_file_offline">Tệp ngoại tuyến</string>
+    <string name="card_star">%1$d sao</string>
+    <plurals name="card_keyword_count">
+        <item quantity="other">%1$d từ khóa</item>
+    </plurals>
+    <plurals name="card_proxy_count">
+        <item quantity="other">%1$d proxy khả dụng</item>
+    </plurals>
+    <plurals name="card_stack_count">
+        <item quantity="other">Ngăn xếp %1$d</item>
+    </plurals>
+
+    <!-- ── Video player ─────────────────────────────────────────────────── -->
+    <string name="player_no_stream">Không có luồng khả dụng</string>
+    <string name="player_play">Phát</string>
+    <string name="player_pause">Tạm dừng</string>
+    <string name="player_volume">Âm lượng</string>
+    <string name="player_quality">Chất lượng</string>
+    <string name="player_full_screen">Toàn màn hình</string>
+    <string name="player_exit_full_screen">Thoát toàn màn hình</string>
+    <string name="player_retry">Thử lại</string>
+    <string name="player_selected">Đã chọn</string>
+    <string name="player_cancel">Hủy</string>
+    <string name="player_playback_error">Lỗi phát lại</string>
+
+    <!-- ── ViewModel errors (snackbars) ─────────────────────────────────── -->
+    <string name="err_load_more_videos">Không thể tải thêm video: %1$s</string>
+    <string name="err_load_videos">Không thể tải video: %1$s</string>
+    <string name="err_load_metadata">Không thể tải siêu dữ liệu: %1$s</string>
+    <string name="err_video_not_found">Không tìm thấy video</string>
+    <string name="err_update_notes">Không thể cập nhật ghi chú</string>
+    <string name="err_update_notes_detail">Không thể cập nhật ghi chú: %1$s</string>
+    <string name="err_add_tag">Không thể thêm nhãn</string>
+    <string name="err_add_tag_detail">Không thể thêm nhãn: %1$s</string>
+    <string name="err_remove_tag">Không thể xóa nhãn</string>
+    <string name="err_remove_tag_detail">Không thể xóa nhãn: %1$s</string>
+    <string name="err_update_rating">Không thể cập nhật đánh giá: %1$s</string>
+    <string name="err_update_color_label">Không thể cập nhật nhãn màu: %1$s</string>
+    <string name="err_update_location">Không thể cập nhật vị trí</string>
+    <string name="err_update_location_detail">Không thể cập nhật vị trí: %1$s</string>
+    <string name="err_remove_location">Không thể xóa vị trí</string>
+    <string name="err_remove_location_detail">Không thể xóa vị trí: %1$s</string>
+    <string name="err_add_to_collection">Không thể thêm vào bộ sưu tập</string>
+    <string name="err_add_to_collection_detail">Không thể thêm vào bộ sưu tập: %1$s</string>
+    <string name="err_remove_from_collection">Không thể xóa khỏi bộ sưu tập</string>
+    <string name="err_remove_from_collection_detail">Không thể xóa khỏi bộ sưu tập: %1$s</string>
+    <string name="scan_target_default">thư viện</string>
+    <string name="scan_scanning_target">Đang quét %1$s…</string>
+    <string name="pairing_a_device">Một thiết bị</string>
+</resources>

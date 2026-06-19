@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ── Common ───────────────────────────────────────────────────────── -->
+    <string name="common_back">Zpět</string>
+    <string name="common_cancel">Zrušit</string>
+    <string name="common_save">Uložit</string>
+    <string name="common_done">Hotovo</string>
+    <string name="common_clear">Smazat</string>
+    <string name="common_selected">Vybráno</string>
+    <string name="common_offline">Offline</string>
+    <string name="common_unavailable">Nedostupné</string>
+    <string name="common_unknown_error">neznámá chyba</string>
+
+    <!-- ── Connection flow ──────────────────────────────────────────────── -->
+    <string name="conn_reconnecting_to">Znovu se připojuji k %1$s…</string>
+    <string name="conn_connecting_to">Připojuji se k %1$s…</string>
+    <string name="conn_connecting">Připojuji se…</string>
+    <string name="conn_pairing_with">Páruji s %1$s…</string>
+    <string name="conn_could_not_connect_named">Nepodařilo se připojit k %1$s. Ověřte, že démon běží, a zkuste to znovu.</string>
+    <string name="conn_could_not_connect_simple">Nepodařilo se připojit k %1$s.</string>
+    <string name="conn_pairing_rejected">Párování zamítnuto — zkontrolujte kód a zkuste to znovu.</string>
+    <string name="conn_looking_for_servers">Hledám servery ReelVault…</string>
+    <string name="conn_scanning_network">Prohledávám místní síť</string>
+    <string name="conn_connect_title">Připojit k ReelVault</string>
+    <string name="conn_rescan">Prohledat znovu</string>
+    <string name="conn_no_servers_found">Žádné servery nenalezeny</string>
+    <string name="conn_no_servers_hint">Spusťte démon ReelVault core s parametrem --remote na počítači ve stejné Wi-Fi síti a poté prohledejte znovu.</string>
+    <string name="conn_available_servers">Dostupné servery</string>
+    <string name="conn_enter_address_manually">Zadat adresu ručně</string>
+    <string name="conn_browse_local_videos">Procházet místní videa</string>
+    <string name="conn_requires_pairing">Vyžaduje párování</string>
+    <string name="conn_enter_pairing_code">Zadejte kód párování</string>
+    <string name="conn_pair_with">Párovat s %1$s</string>
+    <string name="conn_pairing_instructions">Na počítači s ReelVault vyberte Soubor ▸ Párovat nové zařízení, aby se zobrazil 6místný kód (server bez grafiky ho zaloguje). Zadejte jej níže — stačí to udělat jen jednou.</string>
+    <string name="conn_pin_placeholder">000000</string>
+    <string name="conn_pair_button">Párovat</string>
+    <string name="conn_connect_manually">Připojit ručně</string>
+    <string name="conn_host_label">Hostitel nebo IP adresa</string>
+    <string name="conn_host_placeholder">192.168.1.100</string>
+    <string name="conn_grpc_port_label">gRPC port</string>
+    <string name="conn_grpc_port_placeholder">50051</string>
+    <string name="conn_fingerprint_label">Otisk certifikátu (SHA-256, volitelné)</string>
+    <string name="conn_fingerprint_placeholder">abcd1234…</string>
+    <string name="conn_fetch">Načíst</string>
+    <string name="conn_could_not_reach">Nelze se dostat na %1$s:%2$d — zkontrolujte hostitele a zda démon běží.</string>
+    <string name="conn_connect_button">Připojit</string>
+    <string name="conn_retry">Opakovat</string>
+    <string name="conn_enter_address">Zadat adresu</string>
+
+    <!-- ── Library grid ─────────────────────────────────────────────────── -->
+    <string name="grid_incoming_pairing_title">Příchozí žádost o párování</string>
+    <string name="grid_incoming_pairing_message">%1$s se chce připojit k této knihovně. Povolit?</string>
+    <string name="grid_allow">Povolit</string>
+    <string name="grid_deny">Zamítnout</string>
+    <string name="grid_close_search">Zavřít hledání</string>
+    <string name="grid_search_videos_hint">Prohledat videa…</string>
+    <string name="grid_selected_count">%1$d vybráno</string>
+    <string name="grid_clear_selection">Zrušit výběr</string>
+    <string name="grid_open_library_panel">Otevřít panel knihovny</string>
+    <string name="grid_search">Hledat</string>
+    <string name="grid_sort">Seřadit</string>
+    <string name="grid_switch_to_list_view">Přepnout na zobrazení seznamu</string>
+    <string name="grid_switch_to_grid_view">Přepnout na zobrazení mřížky</string>
+    <string name="grid_more_options">Další možnosti</string>
+    <string name="grid_map">Mapa</string>
+    <string name="grid_settings">Nastavení</string>
+    <string name="grid_disconnect">Odpojit</string>
+    <string name="grid_sort_by">Seřadit podle</string>
+    <string name="grid_sort_ascending_arrow">%1$s ↑</string>
+    <string name="grid_sort_descending_arrow">%1$s ↓</string>
+    <string name="grid_library">Knihovna</string>
+    <string name="grid_clear_filters">Smazat filtry</string>
+    <string name="grid_close">Zavřít</string>
+    <string name="grid_catalog">Katalog</string>
+    <string name="grid_remote_library">Vzdálená knihovna</string>
+    <string name="grid_local_videos">Místní videa</string>
+    <string name="grid_all_videos">Všechna videa</string>
+    <string name="grid_locations">Umístění</string>
+    <string name="grid_keywords">Klíčová slova</string>
+    <string name="grid_collections">Kolekce</string>
+    <string name="grid_no_videos">Žádná videa</string>
+    <string name="grid_processing">Zpracovávám…</string>
+    <string name="grid_percent">%1$d%%</string>
+    <string name="grid_no_videos_match_search">Žádné video neodpovídá „%1$s"</string>
+    <string name="grid_no_videos_with_keyword">Žádné video s tímto klíčovým slovem</string>
+    <string name="grid_collection_empty">Tato kolekce je prázdná</string>
+    <string name="grid_no_videos_in_library">Žádná videa v knihovně</string>
+    <string name="grid_empty_add_location_hint">Přidejte umístění knihovny v Nastavení, abyste mohli začít.</string>
+    <string name="grid_empty_no_match_filter">…nebo žádné video neodpovídá aktuálnímu filtru</string>
+    <string name="grid_reset_filter">Resetovat filtr</string>
+    <string name="grid_clear_location_filter">Smazat filtr umístění</string>
+    <string name="grid_star_count">%1$d hvězda</string>
+    <plurals name="grid_video_count">
+        <item quantity="one">%1$d video</item>
+        <item quantity="few">%1$d videa</item>
+        <item quantity="many">%1$d videa</item>
+        <item quantity="other">%1$d videí</item>
+    </plurals>
+    <plurals name="grid_location_video_count">
+        <item quantity="one">%1$d video</item>
+        <item quantity="few">%1$d videa</item>
+        <item quantity="many">%1$d videa</item>
+        <item quantity="other">%1$d videí</item>
+    </plurals>
+
+    <!-- ── Map ──────────────────────────────────────────────────────────── -->
+    <string name="map_title">Mapa</string>
+    <string name="map_load_failed">Nepodařilo se načíst data mapy: %1$s</string>
+    <string name="map_unknown_error">Neznámá chyba</string>
+    <string name="map_no_geotagged">Žádná geoznačkovaná videa.\nVidea s metadaty GPS se zobrazí zde na mapě.</string>
+    <string name="map_geotagged_count">%1$d geoznačkováno</string>
+    <plurals name="map_marker_video_count">
+        <item quantity="one">%1$d video</item>
+        <item quantity="few">%1$d videa</item>
+        <item quantity="many">%1$d videa</item>
+        <item quantity="other">%1$d videí</item>
+    </plurals>
+
+    <!-- ── Local media ──────────────────────────────────────────────────── -->
+    <string name="local_selected_count">%1$d vybráno</string>
+    <string name="local_title">Místní videa</string>
+    <string name="local_clear_selection">Zrušit výběr</string>
+    <string name="local_upload_to_server">Nahrát na server</string>
+    <string name="local_select_all">Vybrat vše</string>
+    <string name="local_upload_failed">Nahrání selhalo: %1$s</string>
+    <string name="local_no_videos_found">Na zařízení nebyla nalezena žádná videa</string>
+    <string name="local_not_connected_hint">Nepřipojeno — připojte se k serveru ReelVault pro nahrání</string>
+    <string name="local_uploaded">Nahráno</string>
+    <string name="local_video_access_denied">Přístup k videím odepřen</string>
+    <string name="local_permission_hint">Udělte oprávnění „Videa" v Nastavení → Aplikace → ReelVault → Oprávnění pro procházení místních videí.</string>
+    <plurals name="local_uploaded_count">
+        <item quantity="one">Nahráno %1$d video</item>
+        <item quantity="few">Nahrána %1$d videa</item>
+        <item quantity="many">Nahrána %1$d videa</item>
+        <item quantity="other">Nahráno %1$d videí</item>
+    </plurals>
+    <plurals name="local_selected_upload_hint">
+        <item quantity="one">%1$d video vybráno — klepněte na ↑ pro nahrání na server</item>
+        <item quantity="few">%1$d videa vybrána — klepněte na ↑ pro nahrání na server</item>
+        <item quantity="many">%1$d videa vybrána — klepněte na ↑ pro nahrání na server</item>
+        <item quantity="other">%1$d videí vybráno — klepněte na ↑ pro nahrání na server</item>
+    </plurals>
+
+    <!-- ── Settings ─────────────────────────────────────────────────────── -->
+    <string name="settings_title">Nastavení</string>
+    <string name="settings_back">Zpět</string>
+    <string name="settings_library_locations">Umístění knihovny</string>
+    <string name="settings_no_watched_folders">Žádné sledované složky</string>
+    <string name="settings_rescan_complete">Opakované skenování dokončeno</string>
+    <string name="settings_rescan_failed">Opakované skenování selhalo: %1$s</string>
+    <string name="settings_about">O aplikaci</string>
+    <string name="settings_app_version">Verze aplikace</string>
+    <string name="settings_loading_daemon_info">Načítám informace o démonu…</string>
+    <string name="settings_connection">Připojení</string>
+    <string name="settings_server_connection">Připojení k serveru</string>
+    <string name="settings_connected_remote">Připojeno k vzdálenému démonu na %1$s:%2$d</string>
+    <string name="settings_connected_local">Připojeno k místnímu démonu</string>
+    <string name="settings_disconnected">Odpojeno od serveru</string>
+    <string name="settings_forget_server">Zapomenout server</string>
+    <string name="settings_reconnected">Úspěšně znovu připojeno</string>
+    <string name="settings_reconnect_failed">Opětovné připojení selhalo</string>
+    <string name="settings_reconnect">Znovu připojit</string>
+    <string name="settings_scan">Skenovat</string>
+    <string name="settings_full_rescan">Úplné přeskenování</string>
+    <string name="settings_full_rescan_desc">Znovu indexuje všechny sledované složky, extrahuje metadata a generuje náhledy pro nová nebo změněná videa.</string>
+    <string name="settings_full_scan_complete">Úplné skenování dokončeno</string>
+    <string name="settings_scan_failed">Skenování selhalo: %1$s</string>
+    <string name="settings_scanning">Skenuji…</string>
+    <string name="settings_start_full_scan">Spustit úplné skenování</string>
+    <string name="settings_collapse">Sbalit</string>
+    <string name="settings_expand">Rozbalit</string>
+    <string name="settings_last_scanned">Naposledy skenováno: %1$s</string>
+    <string name="settings_never_scanned">Nikdy neskenováno</string>
+    <string name="settings_non_recursive"> (nerekurzivní)</string>
+    <string name="settings_disabled"> (zakázáno)</string>
+    <string name="settings_rescan_path">Přeskenovat %1$s</string>
+    <string name="settings_daemon_version">Verze démonu</string>
+    <string name="settings_videos_indexed">Indexovaná videa</string>
+    <string name="settings_cache_size">Velikost mezipaměti</string>
+    <string name="settings_uptime">Doba provozu</string>
+    <string name="settings_loading">Načítám…</string>
+    <plurals name="settings_location_video_count">
+        <item quantity="one">%1$d video</item>
+        <item quantity="few">%1$d videa</item>
+        <item quantity="many">%1$d videa</item>
+        <item quantity="other">%1$d videí</item>
+    </plurals>
+
+    <!-- ── Detail ───────────────────────────────────────────────────────── -->
+    <string name="detail_title">Podrobnosti</string>
+    <string name="detail_share">Sdílet</string>
+    <string name="detail_share_subject">Sdílet %1$s</string>
+    <string name="detail_video_not_found">Video nenalezeno</string>
+    <string name="detail_section_file_info">Informace o souboru</string>
+    <string name="detail_section_video">Video</string>
+    <string name="detail_section_audio">Zvuk</string>
+    <string name="detail_section_capture">Záznam</string>
+    <string name="detail_field_filename">Název souboru</string>
+    <string name="detail_field_path">Cesta</string>
+    <string name="detail_field_size">Velikost</string>
+    <string name="detail_field_indexed">Indexováno</string>
+    <string name="detail_field_online">Online</string>
+    <string name="detail_value_online_yes">Ano</string>
+    <string name="detail_value_online_no">Ne (offline)</string>
+    <string name="detail_field_resolution">Rozlišení</string>
+    <string name="detail_field_codec">Kodek</string>
+    <string name="detail_field_fps">Sn/s</string>
+    <string name="detail_field_bitrate">Přenosová rychlost</string>
+    <string name="detail_field_frames">Snímky</string>
+    <string name="detail_field_hdr">HDR</string>
+    <string name="detail_value_yes">Ano</string>
+    <string name="detail_field_color_space">Barevný prostor</string>
+    <string name="detail_field_resolution_status">Stav rozlišení</string>
+    <string name="detail_value_full_resolution">Plné rozlišení</string>
+    <string name="detail_value_not_full_resolution">Není plné rozlišení</string>
+    <string name="detail_field_channels">Kanály</string>
+    <string name="detail_field_sample_rate">Vzorkovací frekvence</string>
+    <string name="detail_value_sample_rate">%1$d Hz</string>
+    <string name="detail_field_date">Datum</string>
+    <string name="detail_field_camera">Fotoaparát</string>
+    <string name="detail_field_camera_internal">Fotoaparát (interní)</string>
+    <string name="detail_field_lens">Objektiv</string>
+    <string name="detail_field_iso">ISO</string>
+    <string name="detail_value_iso">ISO %1$d</string>
+    <string name="detail_field_aperture">Clona</string>
+    <string name="detail_field_exposure">Expozice</string>
+    <string name="detail_field_focal_length">Ohnisková vzdálenost</string>
+    <string name="detail_field_exposure_mode">Režim expozice</string>
+    <string name="detail_field_exposure_program">Program expozice</string>
+    <string name="detail_field_white_balance">Vyvážení bílé</string>
+    <string name="detail_em_dash">—</string>
+    <string name="detail_section_location">POLOHA</string>
+    <string name="detail_field_gps">GPS</string>
+    <string name="detail_field_altitude">Nadmořská výška</string>
+    <string name="detail_value_altitude">%1$.1f m</string>
+    <string name="detail_no_location">Žádná poloha</string>
+    <string name="detail_change_location">Změnit polohu…</string>
+    <string name="detail_set_location">Nastavit polohu…</string>
+    <string name="detail_remove_location">Odebrat polohu</string>
+    <string name="detail_show_on_map">Zobrazit na mapě</string>
+    <string name="detail_set_location_title">Nastavit polohu</string>
+    <string name="detail_drag_to_position">Přetáhněte mapu pro umístění kolíčku.</string>
+    <string name="detail_write_location_to_file">Zapsat polohu do souboru</string>
+    <string name="detail_write_location_desc">Také vloží GPS značku do souboru videa, nejen do katalogu.</string>
+    <string name="detail_section_tags">ŠTÍTKY</string>
+    <string name="detail_add_tag">Přidat štítek</string>
+    <string name="detail_no_tags">Žádné štítky</string>
+    <string name="detail_remove_tag">Odebrat %1$s</string>
+    <string name="detail_add_tag_title">Přidat štítek</string>
+    <string name="detail_all_tags_applied">Všechny štítky jsou již použity.</string>
+    <string name="detail_section_notes">POZNÁMKY</string>
+    <string name="detail_edit">Upravit</string>
+    <string name="detail_no_notes">Žádné poznámky</string>
+    <string name="detail_section_rating">HODNOCENÍ</string>
+    <string name="detail_rating_out_of_five">%1$d / 5</string>
+    <string name="detail_section_color_label">BAREVNÝ ŠTÍTEK</string>
+    <string name="detail_color_label_none">Ž</string>
+    <string name="detail_color_label_selected">%1$s vybráno</string>
+    <string name="detail_section_proxies">PROXY</string>
+    <string name="detail_proxy_auto">Auto</string>
+    <string name="detail_audio_channels_mono">1 (Mono)</string>
+    <string name="detail_audio_channels_stereo">2 (Stereo)</string>
+    <string name="detail_audio_channels_51">5.1 Surround</string>
+    <string name="detail_audio_channels_71">7.1 Surround</string>
+    <plurals name="detail_star_count">
+        <item quantity="one">%1$d hvězda</item>
+        <item quantity="few">%1$d hvězdy</item>
+        <item quantity="many">%1$d hvězdy</item>
+        <item quantity="other">%1$d hvězd</item>
+    </plurals>
+
+    <!-- ── Filter bar ───────────────────────────────────────────────────── -->
+    <string name="filter_filters">Filtry</string>
+    <string name="filter_clear_all">Smazat vše</string>
+    <string name="filter_remove_filter">Odebrat filtr</string>
+    <string name="filter_sort_ascending">Seřadit vzestupně</string>
+    <string name="filter_sort_descending">Seřadit sestupně</string>
+    <string name="filter_filters_and_sort">Filtry &amp; řazení</string>
+    <string name="filter_done">Hotovo</string>
+    <string name="filter_search">HLEDAT</string>
+    <string name="filter_search_placeholder">Prohledat názvy souborů, poznámky…</string>
+    <string name="filter_clear_search">Smazat hledání</string>
+    <string name="filter_minimum_rating">MINIMÁLNÍ HODNOCENÍ</string>
+    <string name="filter_any">Libovolný</string>
+    <string name="filter_rating_plus">%1$d+</string>
+    <string name="filter_keywords">KLÍČOVÁ SLOVA</string>
+    <string name="filter_all">Vše</string>
+    <string name="filter_tag_with_count">%1$s (%2$d)</string>
+    <string name="filter_collections">KOLEKCE</string>
+    <string name="filter_collection_with_count">%1$s (%2$d)</string>
+    <string name="filter_sort">ŘAZENÍ</string>
+    <string name="filter_change_sort_field">Změnit pole řazení</string>
+    <string name="filter_sort_ascending_reverse">Seřadit vzestupně — klepnutím obrátit</string>
+    <string name="filter_sort_descending_reverse">Seřadit sestupně — klepnutím obrátit</string>
+    <string name="filter_ascending">Vzestupně</string>
+    <string name="filter_descending">Sestupně</string>
+
+    <!-- ── Sort field names ─────────────────────────────────────────────── -->
+    <string name="sort_date_indexed">Datum indexování</string>
+    <string name="sort_date_captured">Datum pořízení</string>
+    <string name="sort_filename">Název souboru</string>
+    <string name="sort_file_size">Velikost souboru</string>
+    <string name="sort_duration">Délka</string>
+    <string name="sort_rating">Hodnocení</string>
+    <string name="sort_frame_rate">Snímková frekvence</string>
+    <string name="sort_codec">Kodek</string>
+    <string name="sort_camera">Fotoaparát</string>
+
+    <!-- ── Cards / badges ───────────────────────────────────────────────── -->
+    <string name="card_no_thumbnail">Bez náhledu</string>
+    <string name="card_offline">Offline</string>
+    <string name="card_selected">Vybráno</string>
+    <string name="card_full_resolution">Plné rozlišení</string>
+    <string name="card_not_full_resolution">Není plné rozlišení</string>
+    <string name="card_has_audio">Má zvukovou stopu</string>
+    <string name="card_file_offline">Soubor offline</string>
+    <string name="card_star">%1$d hvězda</string>
+    <plurals name="card_keyword_count">
+        <item quantity="one">%1$d klíčové slovo</item>
+        <item quantity="few">%1$d klíčová slova</item>
+        <item quantity="many">%1$d klíčová slova</item>
+        <item quantity="other">%1$d klíčových slov</item>
+    </plurals>
+    <plurals name="card_proxy_count">
+        <item quantity="one">%1$d proxy k dispozici</item>
+        <item quantity="few">%1$d proxy k dispozici</item>
+        <item quantity="many">%1$d proxy k dispozici</item>
+        <item quantity="other">%1$d proxy k dispozici</item>
+    </plurals>
+    <plurals name="card_stack_count">
+        <item quantity="one">Zásobník %1$d</item>
+        <item quantity="few">Zásobník %1$d</item>
+        <item quantity="many">Zásobník %1$d</item>
+        <item quantity="other">Zásobník %1$d</item>
+    </plurals>
+
+    <!-- ── Video player ─────────────────────────────────────────────────── -->
+    <string name="player_no_stream">Žádný stream není k dispozici</string>
+    <string name="player_play">Přehrát</string>
+    <string name="player_pause">Pozastavit</string>
+    <string name="player_volume">Hlasitost</string>
+    <string name="player_quality">Kvalita</string>
+    <string name="player_full_screen">Celá obrazovka</string>
+    <string name="player_exit_full_screen">Ukončit celou obrazovku</string>
+    <string name="player_retry">Opakovat</string>
+    <string name="player_selected">Vybráno</string>
+    <string name="player_cancel">Zrušit</string>
+    <string name="player_playback_error">Chyba přehrávání</string>
+
+    <!-- ── ViewModel errors (snackbars) ─────────────────────────────────── -->
+    <string name="err_load_more_videos">Nepodařilo se načíst více videí: %1$s</string>
+    <string name="err_load_videos">Nepodařilo se načíst videa: %1$s</string>
+    <string name="err_load_metadata">Nepodařilo se načíst metadata: %1$s</string>
+    <string name="err_video_not_found">Video nenalezeno</string>
+    <string name="err_update_notes">Nepodařilo se aktualizovat poznámky</string>
+    <string name="err_update_notes_detail">Nepodařilo se aktualizovat poznámky: %1$s</string>
+    <string name="err_add_tag">Nepodařilo se přidat štítek</string>
+    <string name="err_add_tag_detail">Nepodařilo se přidat štítek: %1$s</string>
+    <string name="err_remove_tag">Nepodařilo se odebrat štítek</string>
+    <string name="err_remove_tag_detail">Nepodařilo se odebrat štítek: %1$s</string>
+    <string name="err_update_rating">Nepodařilo se nastavit hodnocení: %1$s</string>
+    <string name="err_update_color_label">Nepodařilo se nastavit barevný štítek: %1$s</string>
+    <string name="err_update_location">Nepodařilo se aktualizovat polohu</string>
+    <string name="err_update_location_detail">Nepodařilo se aktualizovat polohu: %1$s</string>
+    <string name="err_remove_location">Nepodařilo se odebrat polohu</string>
+    <string name="err_remove_location_detail">Nepodařilo se odebrat polohu: %1$s</string>
+    <string name="err_add_to_collection">Nepodařilo se přidat do kolekce</string>
+    <string name="err_add_to_collection_detail">Nepodařilo se přidat do kolekce: %1$s</string>
+    <string name="err_remove_from_collection">Nepodařilo se odebrat z kolekce</string>
+    <string name="err_remove_from_collection_detail">Nepodařilo se odebrat z kolekce: %1$s</string>
+    <string name="scan_target_default">knihovna</string>
+    <string name="scan_scanning_target">Skenuji %1$s…</string>
+    <string name="pairing_a_device">Zařízení</string>
+
+</resources>

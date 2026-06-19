@@ -23,6 +23,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import com.reelvault.android.R
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -89,7 +92,7 @@ fun CardStatusBadges(
             StatusBadge(
                 icon = Icons.Default.Sell,
                 tint = Color(0xFF64B5F6), // light blue — "has keywords"
-                contentDescription = "${video.tags.size} keyword${if (video.tags.size == 1) "" else "s"}",
+                contentDescription = pluralStringResource(R.plurals.card_keyword_count, video.tags.size, video.tags.size),
                 iconSize = iconSize, badge = badge, rotate = portrait,
             )
         }
@@ -99,7 +102,7 @@ fun CardStatusBadges(
             StatusBadge(
                 icon = Icons.Default.FilterNone,
                 tint = Color.White,
-                contentDescription = "${video.proxyCount} proxy/proxies available",
+                contentDescription = pluralStringResource(R.plurals.card_proxy_count, video.proxyCount, video.proxyCount),
                 iconSize = iconSize, badge = badge, rotate = portrait,
             )
         }
@@ -109,7 +112,7 @@ fun CardStatusBadges(
             StatusBadge(
                 icon = Icons.Default.Verified,
                 tint = Color(0xFF81C784), // subtle green — "full resolution"
-                contentDescription = "Full resolution",
+                contentDescription = stringResource(R.string.card_full_resolution),
                 iconSize = iconSize, badge = badge, rotate = portrait,
             )
         }
@@ -117,7 +120,7 @@ fun CardStatusBadges(
             StatusBadge(
                 icon = Icons.Default.Crop,
                 tint = Color.White,
-                contentDescription = "Not full resolution",
+                contentDescription = stringResource(R.string.card_not_full_resolution),
                 iconSize = iconSize, badge = badge, rotate = portrait,
             )
         }
@@ -128,7 +131,7 @@ fun CardStatusBadges(
             StatusBadge(
                 icon = Icons.Default.GraphicEq,
                 tint = Color.White,
-                contentDescription = "Has an audio track",
+                contentDescription = stringResource(R.string.card_has_audio),
                 iconSize = iconSize, badge = badge, rotate = portrait,
             )
         }
@@ -138,7 +141,7 @@ fun CardStatusBadges(
             StatusBadge(
                 icon = Icons.Default.CloudOff,
                 tint = Color(0xFFFF8A65), // orange — offline
-                contentDescription = "File offline",
+                contentDescription = stringResource(R.string.card_file_offline),
                 iconSize = iconSize, badge = badge, rotate = portrait,
             )
         }

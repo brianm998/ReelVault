@@ -1,0 +1,640 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- app_name omitted — falls back to the English default -->
+
+    <!-- ── Common ───────────────────────────────────────────────────────── -->
+    <!-- "Back" — new -->
+    <string name="common_back">戻る</string>
+    <!-- "Cancel" — kit/iOS corpus: 'キャンセル' -->
+    <string name="common_cancel">キャンセル</string>
+    <!-- "Save" — new -->
+    <string name="common_save">保存</string>
+    <!-- "Done" — iOS corpus: '完了' -->
+    <string name="common_done">完了</string>
+    <!-- "Clear" — kit corpus: 'クリア' -->
+    <string name="common_clear">クリア</string>
+    <!-- "Selected" — new -->
+    <string name="common_selected">選択済み</string>
+    <!-- "Offline" — iOS corpus: 'オフライン' -->
+    <string name="common_offline">オフライン</string>
+    <!-- "Unavailable" — new -->
+    <string name="common_unavailable">利用不可</string>
+    <!-- "unknown error" — new -->
+    <string name="common_unknown_error">不明なエラー</string>
+
+    <!-- ── Connection flow ──────────────────────────────────────────────── -->
+    <!-- new -->
+    <string name="conn_reconnecting_to">%1$s に再接続中…</string>
+    <!-- new -->
+    <string name="conn_connecting_to">%1$s に接続中…</string>
+    <!-- new -->
+    <string name="conn_connecting">接続中…</string>
+    <!-- new -->
+    <string name="conn_pairing_with">%1$s とペアリング中…</string>
+    <!-- new -->
+    <string name="conn_could_not_connect_named">%1$s に接続できませんでした。デーモンが実行中であることを確認して、もう一度お試しください。</string>
+    <!-- new -->
+    <string name="conn_could_not_connect_simple">%1$s に接続できませんでした。</string>
+    <!-- iOS/macOS corpus: 'ペアリング失敗 — コードを確認してもう一度試してください。' (adapted) -->
+    <string name="conn_pairing_rejected">ペアリングが拒否されました — コードを確認してもう一度試してください。</string>
+    <!-- new -->
+    <string name="conn_looking_for_servers">ReelVault サーバーを検索中…</string>
+    <!-- new -->
+    <string name="conn_scanning_network">ローカルネットワークをスキャン中</string>
+    <!-- new -->
+    <string name="conn_connect_title">ReelVault に接続</string>
+    <!-- new -->
+    <string name="conn_rescan">再スキャン</string>
+    <!-- new -->
+    <string name="conn_no_servers_found">サーバーが見つかりません</string>
+    <!-- new -->
+    <string name="conn_no_servers_hint">この Wi-Fi ネットワーク上のコンピューターで --remote オプションを付けて ReelVault コアデーモンを起動してから、再スキャンしてください。</string>
+    <!-- new -->
+    <string name="conn_available_servers">利用可能なサーバー</string>
+    <!-- new -->
+    <string name="conn_enter_address_manually">アドレスを手動で入力</string>
+    <!-- new -->
+    <string name="conn_browse_local_videos">ローカルビデオを参照</string>
+    <!-- new -->
+    <string name="conn_requires_pairing">ペアリングが必要です</string>
+    <!-- iOS corpus: 'ペアリングコードを入力' -->
+    <string name="conn_enter_pairing_code">ペアリングコードを入力</string>
+    <!-- new -->
+    <string name="conn_pair_with">%1$s とペアリング</string>
+    <!-- new -->
+    <string name="conn_pairing_instructions">ReelVault を実行しているコンピューターで「ファイル ▸ 新しいデバイスをペアリング」を選択すると 6 桁のコードが表示されます（ヘッドレスサーバーの場合はログにも出力されます）。以下に入力してください — この操作は一度だけ行います。</string>
+    <!-- new (placeholder value kept as-is) -->
+    <string name="conn_pin_placeholder">000000</string>
+    <!-- iOS corpus: 'ペアリング' -->
+    <string name="conn_pair_button">ペアリング</string>
+    <!-- new -->
+    <string name="conn_connect_manually">手動で接続</string>
+    <!-- new -->
+    <string name="conn_host_label">ホストまたは IP アドレス</string>
+    <!-- placeholder, not translated -->
+    <string name="conn_host_placeholder">192.168.1.100</string>
+    <!-- new -->
+    <string name="conn_grpc_port_label">gRPC ポート</string>
+    <!-- placeholder, not translated -->
+    <string name="conn_grpc_port_placeholder">50051</string>
+    <!-- new -->
+    <string name="conn_fingerprint_label">証明書フィンガープリント（SHA-256、省略可）</string>
+    <!-- placeholder, not translated -->
+    <string name="conn_fingerprint_placeholder">abcd1234…</string>
+    <!-- new -->
+    <string name="conn_fetch">取得</string>
+    <!-- new -->
+    <string name="conn_could_not_reach">%1$s:%2$d に到達できませんでした — ホストとデーモンの起動状態を確認してください。</string>
+    <!-- iOS corpus: '接続' -->
+    <string name="conn_connect_button">接続</string>
+    <!-- new -->
+    <string name="conn_retry">再試行</string>
+    <!-- new -->
+    <string name="conn_enter_address">アドレスを入力</string>
+
+    <!-- ── Library grid ─────────────────────────────────────────────────── -->
+    <!-- new -->
+    <string name="grid_incoming_pairing_title">ペアリングリクエスト</string>
+    <!-- new -->
+    <string name="grid_incoming_pairing_message">%1$s がこのライブラリへの接続を求めています。許可しますか？</string>
+    <!-- new -->
+    <string name="grid_allow">許可</string>
+    <!-- new -->
+    <string name="grid_deny">拒否</string>
+    <!-- new -->
+    <string name="grid_close_search">検索を閉じる</string>
+    <!-- macOS corpus: 'ビデオを検索…' (adapted) -->
+    <string name="grid_search_videos_hint">ビデオを検索…</string>
+    <!-- new -->
+    <string name="grid_selected_count">%1$d 件選択</string>
+    <!-- new -->
+    <string name="grid_clear_selection">選択を解除</string>
+    <!-- new -->
+    <string name="grid_open_library_panel">ライブラリパネルを開く</string>
+    <!-- iOS corpus: '検索' -->
+    <string name="grid_search">検索</string>
+    <!-- new -->
+    <string name="grid_sort">並べ替え</string>
+    <!-- new -->
+    <string name="grid_switch_to_list_view">リスト表示に切り替え</string>
+    <!-- new -->
+    <string name="grid_switch_to_grid_view">グリッド表示に切り替え</string>
+    <!-- new -->
+    <string name="grid_more_options">その他のオプション</string>
+    <!-- iOS corpus: 'マップ' -->
+    <string name="grid_map">マップ</string>
+    <!-- iOS corpus: '設定' -->
+    <string name="grid_settings">設定</string>
+    <!-- new -->
+    <string name="grid_disconnect">切断</string>
+    <!-- new -->
+    <string name="grid_sort_by">並べ替え基準</string>
+    <!-- new -->
+    <string name="grid_sort_ascending_arrow">%1$s ↑</string>
+    <!-- new -->
+    <string name="grid_sort_descending_arrow">%1$s ↓</string>
+    <!-- iOS corpus: 'ライブラリ' -->
+    <string name="grid_library">ライブラリ</string>
+    <!-- new -->
+    <string name="grid_clear_filters">フィルターをクリア</string>
+    <!-- new -->
+    <string name="grid_close">閉じる</string>
+    <!-- new -->
+    <string name="grid_catalog">カタログ</string>
+    <!-- new -->
+    <string name="grid_remote_library">リモートライブラリ</string>
+    <!-- new -->
+    <string name="grid_local_videos">ローカルビデオ</string>
+    <!-- new -->
+    <string name="grid_all_videos">すべてのビデオ</string>
+    <!-- new -->
+    <string name="grid_locations">場所</string>
+    <!-- kit/iOS/macOS corpus: 'キーワード' -->
+    <string name="grid_keywords">キーワード</string>
+    <!-- kit corpus: (from 'Keywords') -->
+    <string name="grid_collections">コレクション</string>
+    <!-- kit corpus: 'No videos found' → '動画が見つかりません' -->
+    <string name="grid_no_videos">ビデオなし</string>
+    <!-- new -->
+    <string name="grid_processing">処理中…</string>
+    <!-- new -->
+    <string name="grid_percent">%1$d%%</string>
+    <!-- new -->
+    <string name="grid_no_videos_match_search">\"%1$s\" に一致するビデオはありません</string>
+    <!-- new -->
+    <string name="grid_no_videos_with_keyword">このキーワードのビデオはありません</string>
+    <!-- kit corpus: 'This collection is empty' → 'このコレクションは空です' -->
+    <string name="grid_collection_empty">このコレクションは空です</string>
+    <!-- kit corpus: 'Your library is empty' → 'ライブラリが空です' (adapted) -->
+    <string name="grid_no_videos_in_library">ライブラリにビデオはありません</string>
+    <!-- new -->
+    <string name="grid_empty_add_location_hint">始めるには設定でライブラリの場所を追加してください。</string>
+    <!-- new -->
+    <string name="grid_empty_no_match_filter">…または現在のフィルターに一致するビデオはありません</string>
+    <!-- new -->
+    <string name="grid_reset_filter">フィルターをリセット</string>
+    <!-- new -->
+    <string name="grid_clear_location_filter">場所フィルターをクリア</string>
+    <!-- new -->
+    <string name="grid_star_count">%1$d 星</string>
+    <!-- ja CLDR: other only -->
+    <plurals name="grid_video_count">
+        <item quantity="other">%1$d 本のビデオ</item>
+    </plurals>
+    <plurals name="grid_location_video_count">
+        <item quantity="other">%1$d 本のビデオ</item>
+    </plurals>
+
+    <!-- ── Map ──────────────────────────────────────────────────────────── -->
+    <!-- iOS corpus: 'マップ' -->
+    <string name="map_title">マップ</string>
+    <!-- new -->
+    <string name="map_load_failed">マップデータの読み込みに失敗しました: %1$s</string>
+    <!-- kit corpus: 'Unknown' → '不明' -->
+    <string name="map_unknown_error">不明なエラー</string>
+    <!-- new -->
+    <string name="map_no_geotagged">ジオタグ付きビデオはありません。\nGPS メタデータを持つビデオがここに表示されます。</string>
+    <!-- new -->
+    <string name="map_geotagged_count">%1$d 件のジオタグ付き</string>
+    <!-- ja CLDR: other only -->
+    <plurals name="map_marker_video_count">
+        <item quantity="other">%1$d 本のビデオ</item>
+    </plurals>
+
+    <!-- ── Local media ──────────────────────────────────────────────────── -->
+    <!-- new -->
+    <string name="local_selected_count">%1$d 件選択</string>
+    <!-- new -->
+    <string name="local_title">ローカルビデオ</string>
+    <!-- new -->
+    <string name="local_clear_selection">選択を解除</string>
+    <!-- iOS corpus: 'サーバーにアップロード' -->
+    <string name="local_upload_to_server">サーバーにアップロード</string>
+    <!-- iOS corpus: 'すべて選択' -->
+    <string name="local_select_all">すべて選択</string>
+    <!-- new -->
+    <string name="local_upload_failed">アップロードに失敗しました: %1$s</string>
+    <!-- new -->
+    <string name="local_no_videos_found">デバイスにビデオが見つかりません</string>
+    <!-- new -->
+    <string name="local_not_connected_hint">未接続 — ローカルビデオをアップロードするには ReelVault サーバーに接続してください</string>
+    <!-- new -->
+    <string name="local_uploaded">アップロード済み</string>
+    <!-- new -->
+    <string name="local_video_access_denied">ビデオへのアクセスが拒否されました</string>
+    <!-- new -->
+    <string name="local_permission_hint">設定 → アプリ → ReelVault → 権限で「ビデオ」の権限を許可すると、ローカルビデオを参照できます。</string>
+    <!-- ja CLDR: other only -->
+    <plurals name="local_uploaded_count">
+        <item quantity="other">%1$d 本のビデオをアップロードしました</item>
+    </plurals>
+    <plurals name="local_selected_upload_hint">
+        <item quantity="other">%1$d 本のビデオを選択中 — ↑ をタップしてサーバーにアップロード</item>
+    </plurals>
+
+    <!-- ── Settings ─────────────────────────────────────────────────────── -->
+    <!-- iOS corpus: '設定' -->
+    <string name="settings_title">設定</string>
+    <!-- new -->
+    <string name="settings_back">戻る</string>
+    <!-- new -->
+    <string name="settings_library_locations">ライブラリの場所</string>
+    <!-- new -->
+    <string name="settings_no_watched_folders">監視フォルダがありません</string>
+    <!-- new -->
+    <string name="settings_rescan_complete">再スキャン完了</string>
+    <!-- desktop corpus: '再スキャンに失敗しました: {0}' (adapted) -->
+    <string name="settings_rescan_failed">再スキャンに失敗しました: %1$s</string>
+    <!-- new -->
+    <string name="settings_about">バージョン情報</string>
+    <!-- new -->
+    <string name="settings_app_version">アプリバージョン</string>
+    <!-- new -->
+    <string name="settings_loading_daemon_info">デーモン情報を読み込み中…</string>
+    <!-- new -->
+    <string name="settings_connection">接続</string>
+    <!-- new -->
+    <string name="settings_server_connection">サーバー接続</string>
+    <!-- new -->
+    <string name="settings_connected_remote">リモートデーモン %1$s:%2$d に接続済み</string>
+    <!-- new -->
+    <string name="settings_connected_local">ローカルデーモンに接続済み</string>
+    <!-- new -->
+    <string name="settings_disconnected">サーバーから切断されました</string>
+    <!-- new -->
+    <string name="settings_forget_server">サーバーを忘れる</string>
+    <!-- new -->
+    <string name="settings_reconnected">再接続に成功しました</string>
+    <!-- new -->
+    <string name="settings_reconnect_failed">再接続に失敗しました</string>
+    <!-- new -->
+    <string name="settings_reconnect">再接続</string>
+    <!-- new -->
+    <string name="settings_scan">スキャン</string>
+    <!-- new -->
+    <string name="settings_full_rescan">フルスキャン</string>
+    <!-- new -->
+    <string name="settings_full_rescan_desc">監視中のすべてのフォルダを再インデックスし、新規または変更されたビデオのメタデータを抽出してサムネイルを生成します。</string>
+    <!-- new -->
+    <string name="settings_full_scan_complete">フルスキャン完了</string>
+    <!-- desktop corpus: 'スキャンに失敗しました: {0}' (adapted) -->
+    <string name="settings_scan_failed">スキャンに失敗しました: %1$s</string>
+    <!-- new -->
+    <string name="settings_scanning">スキャン中…</string>
+    <!-- new -->
+    <string name="settings_start_full_scan">フルスキャンを開始</string>
+    <!-- new -->
+    <string name="settings_collapse">折りたたむ</string>
+    <!-- new -->
+    <string name="settings_expand">展開する</string>
+    <!-- new -->
+    <string name="settings_last_scanned">最終スキャン: %1$s</string>
+    <!-- new -->
+    <string name="settings_never_scanned">スキャン未実施</string>
+    <!-- new -->
+    <string name="settings_non_recursive">（非再帰的）</string>
+    <!-- new -->
+    <string name="settings_disabled">（無効）</string>
+    <!-- new -->
+    <string name="settings_rescan_path">%1$s を再スキャン</string>
+    <!-- new -->
+    <string name="settings_daemon_version">デーモンバージョン</string>
+    <!-- new -->
+    <string name="settings_videos_indexed">インデックス済みビデオ数</string>
+    <!-- new -->
+    <string name="settings_cache_size">キャッシュサイズ</string>
+    <!-- new -->
+    <string name="settings_uptime">稼働時間</string>
+    <!-- new -->
+    <string name="settings_loading">読み込み中…</string>
+    <!-- ja CLDR: other only -->
+    <plurals name="settings_location_video_count">
+        <item quantity="other">%1$d 本のビデオ</item>
+    </plurals>
+
+    <!-- ── Detail ───────────────────────────────────────────────────────── -->
+    <!-- iOS corpus: '詳細' -->
+    <string name="detail_title">詳細</string>
+    <!-- iOS corpus: '共有' -->
+    <string name="detail_share">共有</string>
+    <!-- new -->
+    <string name="detail_share_subject">%1$s を共有</string>
+    <!-- new -->
+    <string name="detail_video_not_found">ビデオが見つかりません</string>
+    <!-- new -->
+    <string name="detail_section_file_info">ファイル情報</string>
+    <!-- new -->
+    <string name="detail_section_video">ビデオ</string>
+    <!-- new -->
+    <string name="detail_section_audio">オーディオ</string>
+    <!-- new -->
+    <string name="detail_section_capture">撮影情報</string>
+    <!-- macOS/kit corpus: 'ファイル名' -->
+    <string name="detail_field_filename">ファイル名</string>
+    <!-- new -->
+    <string name="detail_field_path">パス</string>
+    <!-- macOS/iOS corpus: 'ファイルサイズ' -->
+    <string name="detail_field_size">ファイルサイズ</string>
+    <!-- new -->
+    <string name="detail_field_indexed">インデックス日時</string>
+    <!-- new -->
+    <string name="detail_field_online">オンライン</string>
+    <!-- kit corpus: 'Yes' → 'はい' -->
+    <string name="detail_value_online_yes">はい</string>
+    <!-- kit corpus: 'No' → 'いいえ' (adapted) -->
+    <string name="detail_value_online_no">いいえ（オフライン）</string>
+    <!-- macOS/iOS corpus: '解像度' -->
+    <string name="detail_field_resolution">解像度</string>
+    <!-- macOS/iOS corpus: 'コーデック' -->
+    <string name="detail_field_codec">コーデック</string>
+    <!-- kit corpus: 'FPS' -->
+    <string name="detail_field_fps">FPS</string>
+    <!-- kit corpus: 'ビットレート' -->
+    <string name="detail_field_bitrate">ビットレート</string>
+    <!-- new -->
+    <string name="detail_field_frames">フレーム数</string>
+    <!-- new -->
+    <string name="detail_field_hdr">HDR</string>
+    <!-- kit corpus: 'Yes' → 'はい' -->
+    <string name="detail_value_yes">はい</string>
+    <!-- kit corpus: 'Color space' → '色空間' -->
+    <string name="detail_field_color_space">色空間</string>
+    <!-- new -->
+    <string name="detail_field_resolution_status">解像度ステータス</string>
+    <!-- kit corpus: 'Full resolution' → 'フル解像度' -->
+    <string name="detail_value_full_resolution">フル解像度</string>
+    <!-- new -->
+    <string name="detail_value_not_full_resolution">フル解像度ではありません</string>
+    <!-- new -->
+    <string name="detail_field_channels">チャンネル数</string>
+    <!-- new -->
+    <string name="detail_field_sample_rate">サンプルレート</string>
+    <!-- new -->
+    <string name="detail_value_sample_rate">%1$d Hz</string>
+    <!-- new -->
+    <string name="detail_field_date">日付</string>
+    <!-- macOS/iOS/kit corpus: 'カメラ' -->
+    <string name="detail_field_camera">カメラ</string>
+    <!-- new -->
+    <string name="detail_field_camera_internal">カメラ（内蔵）</string>
+    <!-- macOS/iOS/kit corpus: 'レンズ' -->
+    <string name="detail_field_lens">レンズ</string>
+    <!-- macOS/iOS/kit corpus: 'ISO' -->
+    <string name="detail_field_iso">ISO</string>
+    <!-- new -->
+    <string name="detail_value_iso">ISO %1$d</string>
+    <!-- kit corpus: 'Aperture' → '絞り' -->
+    <string name="detail_field_aperture">絞り</string>
+    <!-- kit corpus: 'Exposure' → '露出' -->
+    <string name="detail_field_exposure">露出</string>
+    <!-- macOS/iOS/kit corpus: '焦点距離' -->
+    <string name="detail_field_focal_length">焦点距離</string>
+    <!-- new -->
+    <string name="detail_field_exposure_mode">露出モード</string>
+    <!-- new -->
+    <string name="detail_field_exposure_program">露出プログラム</string>
+    <!-- new -->
+    <string name="detail_field_white_balance">ホワイトバランス</string>
+    <!-- em dash — keep as-is -->
+    <string name="detail_em_dash">—</string>
+    <!-- new -->
+    <string name="detail_section_location">場所</string>
+    <!-- new -->
+    <string name="detail_field_gps">GPS</string>
+    <!-- new -->
+    <string name="detail_field_altitude">高度</string>
+    <!-- new -->
+    <string name="detail_value_altitude">%1$.1f m</string>
+    <!-- new -->
+    <string name="detail_no_location">場所なし</string>
+    <!-- new -->
+    <string name="detail_change_location">場所を変更…</string>
+    <!-- iOS corpus: '場所を設定' (adapted) -->
+    <string name="detail_set_location">場所を設定…</string>
+    <!-- new -->
+    <string name="detail_remove_location">場所を削除</string>
+    <!-- new -->
+    <string name="detail_show_on_map">マップで表示</string>
+    <!-- iOS corpus: '場所を設定' -->
+    <string name="detail_set_location_title">場所を設定</string>
+    <!-- new -->
+    <string name="detail_drag_to_position">マップをドラッグしてピンを配置してください。</string>
+    <!-- new -->
+    <string name="detail_write_location_to_file">場所をファイルに書き込む</string>
+    <!-- new -->
+    <string name="detail_write_location_desc">カタログだけでなく、ビデオファイルにも GPS タグを埋め込みます。</string>
+    <!-- new -->
+    <string name="detail_section_tags">タグ</string>
+    <!-- new -->
+    <string name="detail_add_tag">タグを追加</string>
+    <!-- new -->
+    <string name="detail_no_tags">タグなし</string>
+    <!-- new -->
+    <string name="detail_remove_tag">%1$s を削除</string>
+    <!-- new -->
+    <string name="detail_add_tag_title">タグを追加</string>
+    <!-- new -->
+    <string name="detail_all_tags_applied">すべてのタグが適用済みです。</string>
+    <!-- new -->
+    <string name="detail_section_notes">メモ</string>
+    <!-- new -->
+    <string name="detail_edit">編集</string>
+    <!-- new -->
+    <string name="detail_no_notes">メモなし</string>
+    <!-- new -->
+    <string name="detail_section_rating">評価</string>
+    <!-- new -->
+    <string name="detail_rating_out_of_five">%1$d / 5</string>
+    <!-- new -->
+    <string name="detail_section_color_label">カラーラベル</string>
+    <!-- new (abbreviation for "None") -->
+    <string name="detail_color_label_none">なし</string>
+    <!-- new -->
+    <string name="detail_color_label_selected">%1$s を選択</string>
+    <!-- new -->
+    <string name="detail_section_proxies">プロキシ</string>
+    <!-- iOS corpus: '自動' -->
+    <string name="detail_proxy_auto">自動</string>
+    <!-- new -->
+    <string name="detail_audio_channels_mono">1（モノラル）</string>
+    <!-- new -->
+    <string name="detail_audio_channels_stereo">2（ステレオ）</string>
+    <!-- new -->
+    <string name="detail_audio_channels_51">5.1 サラウンド</string>
+    <!-- new -->
+    <string name="detail_audio_channels_71">7.1 サラウンド</string>
+    <!-- ja CLDR: other only -->
+    <plurals name="detail_star_count">
+        <item quantity="other">%1$d 星</item>
+    </plurals>
+
+    <!-- ── Filter bar ───────────────────────────────────────────────────── -->
+    <!-- new -->
+    <string name="filter_filters">フィルター</string>
+    <!-- new -->
+    <string name="filter_clear_all">すべてクリア</string>
+    <!-- new -->
+    <string name="filter_remove_filter">フィルターを削除</string>
+    <!-- new -->
+    <string name="filter_sort_ascending">昇順で並べ替え</string>
+    <!-- new -->
+    <string name="filter_sort_descending">降順で並べ替え</string>
+    <!-- new -->
+    <string name="filter_filters_and_sort">フィルターと並べ替え</string>
+    <!-- iOS corpus: '完了' -->
+    <string name="filter_done">完了</string>
+    <!-- new -->
+    <string name="filter_search">検索</string>
+    <!-- new -->
+    <string name="filter_search_placeholder">ファイル名、メモを検索…</string>
+    <!-- new -->
+    <string name="filter_clear_search">検索をクリア</string>
+    <!-- new -->
+    <string name="filter_minimum_rating">最低評価</string>
+    <!-- kit corpus: 'Any' → 'すべて' -->
+    <string name="filter_any">すべて</string>
+    <!-- new -->
+    <string name="filter_rating_plus">%1$d 以上</string>
+    <!-- kit/iOS/macOS corpus: 'キーワード' -->
+    <string name="filter_keywords">キーワード</string>
+    <!-- new -->
+    <string name="filter_all">すべて</string>
+    <!-- new -->
+    <string name="filter_tag_with_count">%1$s (%2$d)</string>
+    <!-- new -->
+    <string name="filter_collections">コレクション</string>
+    <!-- new -->
+    <string name="filter_collection_with_count">%1$s (%2$d)</string>
+    <!-- new -->
+    <string name="filter_sort">並べ替え</string>
+    <!-- new -->
+    <string name="filter_change_sort_field">並べ替えフィールドを変更</string>
+    <!-- new -->
+    <string name="filter_sort_ascending_reverse">昇順 — タップして逆順に</string>
+    <!-- new -->
+    <string name="filter_sort_descending_reverse">降順 — タップして逆順に</string>
+    <!-- new -->
+    <string name="filter_ascending">昇順</string>
+    <!-- new -->
+    <string name="filter_descending">降順</string>
+
+    <!-- ── Sort field names ─────────────────────────────────────────────── -->
+    <!-- new -->
+    <string name="sort_date_indexed">インデックス日時</string>
+    <!-- iOS/macOS corpus: '撮影日' -->
+    <string name="sort_date_captured">撮影日</string>
+    <!-- macOS/kit corpus: 'ファイル名' -->
+    <string name="sort_filename">ファイル名</string>
+    <!-- macOS/iOS corpus: 'ファイルサイズ' -->
+    <string name="sort_file_size">ファイルサイズ</string>
+    <!-- macOS/iOS corpus: '再生時間' -->
+    <string name="sort_duration">再生時間</string>
+    <!-- kit corpus: 'Rating' → '評価' -->
+    <string name="sort_rating">評価</string>
+    <!-- macOS/iOS corpus: 'フレームレート' -->
+    <string name="sort_frame_rate">フレームレート</string>
+    <!-- macOS/iOS corpus: 'コーデック' -->
+    <string name="sort_codec">コーデック</string>
+    <!-- macOS/iOS/kit corpus: 'カメラ' -->
+    <string name="sort_camera">カメラ</string>
+
+    <!-- ── Cards / badges ───────────────────────────────────────────────── -->
+    <!-- new -->
+    <string name="card_no_thumbnail">サムネイルなし</string>
+    <!-- iOS corpus: 'オフライン' -->
+    <string name="card_offline">オフライン</string>
+    <!-- new -->
+    <string name="card_selected">選択済み</string>
+    <!-- kit corpus: 'Full resolution' → 'フル解像度' -->
+    <string name="card_full_resolution">フル解像度</string>
+    <!-- new -->
+    <string name="card_not_full_resolution">フル解像度ではありません</string>
+    <!-- new -->
+    <string name="card_has_audio">音声トラックあり</string>
+    <!-- new -->
+    <string name="card_file_offline">ファイルオフライン</string>
+    <!-- new -->
+    <string name="card_star">%1$d 星</string>
+    <!-- ja CLDR: other only -->
+    <plurals name="card_keyword_count">
+        <item quantity="other">%1$d 個のキーワード</item>
+    </plurals>
+    <plurals name="card_proxy_count">
+        <item quantity="other">%1$d 個のプロキシが利用可能</item>
+    </plurals>
+    <plurals name="card_stack_count">
+        <item quantity="other">%1$d 件のスタック</item>
+    </plurals>
+
+    <!-- ── Video player ─────────────────────────────────────────────────── -->
+    <!-- new -->
+    <string name="player_no_stream">利用可能なストリームがありません</string>
+    <!-- new -->
+    <string name="player_play">再生</string>
+    <!-- new -->
+    <string name="player_pause">一時停止</string>
+    <!-- new -->
+    <string name="player_volume">音量</string>
+    <!-- new -->
+    <string name="player_quality">品質</string>
+    <!-- new -->
+    <string name="player_full_screen">全画面</string>
+    <!-- new -->
+    <string name="player_exit_full_screen">全画面を終了</string>
+    <!-- new -->
+    <string name="player_retry">再試行</string>
+    <!-- new -->
+    <string name="player_selected">選択済み</string>
+    <!-- iOS corpus: 'キャンセル' -->
+    <string name="player_cancel">キャンセル</string>
+    <!-- new -->
+    <string name="player_playback_error">再生エラー</string>
+
+    <!-- ── ViewModel errors (snackbars) ─────────────────────────────────── -->
+    <!-- desktop corpus: 'さらに動画を読み込めませんでした: {0}' (adapted) -->
+    <string name="err_load_more_videos">さらにビデオを読み込めませんでした: %1$s</string>
+    <!-- kit/desktop corpus: '動画の読み込みに失敗しました: %@' / '動画を読み込めませんでした: {0}' (adapted) -->
+    <string name="err_load_videos">ビデオの読み込みに失敗しました: %1$s</string>
+    <!-- kit/desktop corpus: 'メタデータの読み込みに失敗しました: %@' / 'メタデータを読み込めませんでした: {0}' (adapted) -->
+    <string name="err_load_metadata">メタデータの読み込みに失敗しました: %1$s</string>
+    <!-- desktop corpus: '動画が見つかりませんでした' -->
+    <string name="err_video_not_found">ビデオが見つかりません</string>
+    <!-- kit/desktop corpus: 'Failed to update notes' → 'メモの更新に失敗しました' -->
+    <string name="err_update_notes">メモの更新に失敗しました</string>
+    <!-- desktop corpus: 'メモを更新できませんでした: {0}' (adapted) -->
+    <string name="err_update_notes_detail">メモの更新に失敗しました: %1$s</string>
+    <!-- desktop corpus: 'タグを追加できませんでした' (adapted) -->
+    <string name="err_add_tag">タグの追加に失敗しました</string>
+    <!-- desktop corpus: 'タグを追加できませんでした: {0}' (adapted) -->
+    <string name="err_add_tag_detail">タグの追加に失敗しました: %1$s</string>
+    <!-- kit/desktop corpus: 'Failed to remove tag' → 'タグの削除に失敗しました' -->
+    <string name="err_remove_tag">タグの削除に失敗しました</string>
+    <!-- desktop corpus: 'タグを削除できませんでした: {0}' (adapted) -->
+    <string name="err_remove_tag_detail">タグの削除に失敗しました: %1$s</string>
+    <!-- kit corpus: 'Failed to set rating: %@' → '評価の設定に失敗しました: %@' (adapted) -->
+    <string name="err_update_rating">評価の更新に失敗しました: %1$s</string>
+    <!-- kit corpus: 'Failed to set color label: %@' → 'カラーラベルの設定に失敗しました: %@' (adapted) -->
+    <string name="err_update_color_label">カラーラベルの更新に失敗しました: %1$s</string>
+    <!-- new -->
+    <string name="err_update_location">場所の更新に失敗しました</string>
+    <!-- new -->
+    <string name="err_update_location_detail">場所の更新に失敗しました: %1$s</string>
+    <!-- new -->
+    <string name="err_remove_location">場所の削除に失敗しました</string>
+    <!-- new -->
+    <string name="err_remove_location_detail">場所の削除に失敗しました: %1$s</string>
+    <!-- desktop corpus: 'コレクションへの追加に失敗しました' -->
+    <string name="err_add_to_collection">コレクションへの追加に失敗しました</string>
+    <!-- desktop corpus: 'コレクションへの追加に失敗しました: {0}' (adapted) -->
+    <string name="err_add_to_collection_detail">コレクションへの追加に失敗しました: %1$s</string>
+    <!-- new -->
+    <string name="err_remove_from_collection">コレクションからの削除に失敗しました</string>
+    <!-- new -->
+    <string name="err_remove_from_collection_detail">コレクションからの削除に失敗しました: %1$s</string>
+    <!-- new -->
+    <string name="scan_target_default">ライブラリ</string>
+    <!-- desktop corpus: '%@ をスキャン中…' (adapted) -->
+    <string name="scan_scanning_target">%1$s をスキャン中…</string>
+    <!-- kit corpus: 'A device' → 'デバイス' -->
+    <string name="pairing_a_device">デバイス</string>
+</resources>

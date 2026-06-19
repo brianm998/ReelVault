@@ -41,6 +41,9 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import com.reelvault.android.R
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -271,12 +274,12 @@ fun VideoCard(
                         ) {
                             Icon(
                                 Icons.Default.CloudOff,
-                                contentDescription = "Offline",
+                                contentDescription = stringResource(R.string.card_offline),
                                 modifier = Modifier.size(14.dp),
                                 tint = Color.White,
                             )
                             Text(
-                                text = "Offline",
+                                text = stringResource(R.string.card_offline),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color.White,
                             )
@@ -303,7 +306,7 @@ fun VideoCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Layers,
-                                contentDescription = "Stack of ${video.groupSize}",
+                                contentDescription = pluralStringResource(R.plurals.card_stack_count, video.groupSize, video.groupSize),
                                 modifier = Modifier.size(12.dp),
                                 tint = MaterialTheme.colorScheme.onPrimary,
                             )
@@ -336,7 +339,7 @@ fun VideoCard(
                     ) {
                         Icon(
                             Icons.Default.Check,
-                            contentDescription = "Selected",
+                            contentDescription = stringResource(R.string.card_selected),
                             modifier = Modifier.size(14.dp),
                             tint = MaterialTheme.colorScheme.onPrimary,
                         )
@@ -429,7 +432,7 @@ fun VideoCard(
                                 )
                                 Icon(
                                     Icons.Default.Star,
-                                    contentDescription = "$pos star",
+                                    contentDescription = stringResource(R.string.card_star, pos),
                                     modifier = Modifier.size(12.dp),
                                     tint = Color.White,
                                 )
@@ -460,7 +463,7 @@ private fun ThumbnailPlaceholder(modifier: Modifier = Modifier) {
     ) {
         Icon(
             imageVector = Icons.Default.Movie,
-            contentDescription = "No thumbnail",
+            contentDescription = stringResource(R.string.card_no_thumbnail),
             modifier = Modifier.size(36.dp),
             tint = Color.White.copy(alpha = 0.4f),
         )

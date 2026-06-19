@@ -5,6 +5,7 @@ package com.reelvault.android.viewmodel
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.reelvault.android.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -44,6 +45,7 @@ private const val POST_INDEX_LINGER_MS = 3_500L
 class GridViewModel(
     private val repository: VideoRepository,
     private val prefs: SharedPreferences,
+    private val appContext: Context,
 ) : ViewModel() {
 
     // ── Video list ────────────────────────────────────────────────────────
@@ -224,7 +226,7 @@ class GridViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _error.value = "Failed to load more videos: ${e.message}"
+                _error.value = appContext.getString(R.string.err_load_more_videos, e.message ?: "")
                 _isLoading.value = false
             }
         }
@@ -543,9 +545,9 @@ class GridViewModel(
                 _liveUpdatesEnabled.value = false
 
             CatalogEventKind.ScanStarted -> {
-                val target = if (event.path.isBlank()) "library"
+                val target = if (event.path.isBlank()) appContext.getString(R.string.scan_target_default)
                              else event.path.substringAfterLast('/')
-                _watcherBanner.value = "Scanning $target…"
+                _watcherBanner.value = appContext.getString(R.string.scan_scanning_target, target)
             }
 
             CatalogEventKind.ScanCompleted -> {
@@ -575,7 +577,7 @@ class GridViewModel(
             }
 
             CatalogEventKind.PairingRequested ->
-                _incomingPairingDevice.value = event.message.ifBlank { "A device" }
+                _incomingPairingDevice.value = event.message.ifBlank { appContext.getString(R.string.pairing_a_device) }
 
             CatalogEventKind.Unknown -> { /* future kinds */ }
         }
@@ -645,7 +647,7 @@ class GridViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _error.value = "Failed to load videos: ${e.message}"
+                _error.value = appContext.getString(R.string.err_load_videos, e.message ?: "")
                 _isLoading.value = false
                 _hasLoadedOnce.value = true
             }
@@ -673,7 +675,7 @@ class GridViewModel(
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             require(modelClass.isAssignableFrom(GridViewModel::class.java))
             val prefs = context.getSharedPreferences("reelvault_grid_prefs", Context.MODE_PRIVATE)
-            return GridViewModel(repository, prefs) as T
+            return GridViewModel(repository, prefs, context.applicationContext) as T
         }
     }
 }

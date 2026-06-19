@@ -55,10 +55,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import android.content.Context
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.reelvault.android.R
 import com.reelvault.android.viewmodel.GridViewModel
 import com.reelvault.data.models.Collection
 import com.reelvault.data.models.Tag
@@ -135,7 +139,7 @@ fun LibraryFilterBar(
                 // ── "Filters" leading chip ─────────────────────────────────
                 AssistChip(
                     onClick = { showSheet = true },
-                    label = { Text("Filters") },
+                    label = { Text(stringResource(R.string.filter_filters)) },
                     leadingIcon = {
                         Icon(
                             Icons.Default.FilterList,
@@ -212,7 +216,7 @@ fun LibraryFilterBar(
                             viewModel.setMinRatingFilter(0)
                             viewModel.setColorLabelFilter("")
                         },
-                        label = { Text("Clear all") },
+                        label = { Text(stringResource(R.string.filter_clear_all)) },
                         colors = AssistChipDefaults.assistChipColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
                             labelColor = MaterialTheme.colorScheme.onErrorContainer,
@@ -273,7 +277,7 @@ private fun ActiveFilterChip(
             ) {
                 Icon(
                     Icons.Default.Close,
-                    contentDescription = "Remove filter",
+                    contentDescription = stringResource(R.string.filter_remove_filter),
                     modifier = Modifier.size(14.dp),
                 )
             }
@@ -294,7 +298,7 @@ private fun SortChip(
     ascending: Boolean,
     onClick: () -> Unit,
 ) {
-    val label = sortFieldDisplayName(sortField)
+    val label = sortFieldDisplayName(sortField, LocalContext.current)
     FilterChip(
         selected = false,
         onClick = onClick,
@@ -302,7 +306,7 @@ private fun SortChip(
         leadingIcon = {
             Icon(
                 imageVector = if (ascending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
-                contentDescription = if (ascending) "Sort ascending" else "Sort descending",
+                contentDescription = if (ascending) stringResource(R.string.filter_sort_ascending) else stringResource(R.string.filter_sort_descending),
                 modifier = Modifier.size(14.dp),
             )
         },
@@ -341,11 +345,11 @@ private fun FilterSheetContent(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                text = "Filters & Sort",
+                text = stringResource(R.string.filter_filters_and_sort),
                 style = MaterialTheme.typography.titleMedium,
             )
             TextButton(onClick = onDismiss) {
-                Text("Done")
+                Text(stringResource(R.string.filter_done))
             }
         }
 
@@ -355,7 +359,7 @@ private fun FilterSheetContent(
 
         // ── Keyword search ─────────────────────────────────────────────────
         Text(
-            text = "SEARCH",
+            text = stringResource(R.string.filter_search),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 6.dp),
@@ -365,7 +369,7 @@ private fun FilterSheetContent(
             onValueChange = { viewModel.searchVideos(it) },
             placeholder = {
                 Text(
-                    "Search filenames, notes…",
+                    stringResource(R.string.filter_search_placeholder),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -376,7 +380,7 @@ private fun FilterSheetContent(
             trailingIcon = if (searchQuery.isNotEmpty()) {
                 {
                     IconButton(onClick = { viewModel.clearSearch() }, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = "Clear search", modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.filter_clear_search), modifier = Modifier.size(16.dp))
                     }
                 }
             } else null,
@@ -390,7 +394,7 @@ private fun FilterSheetContent(
 
         // ── Minimum rating ─────────────────────────────────────────────────
         Text(
-            text = "MINIMUM RATING",
+            text = stringResource(R.string.filter_minimum_rating),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 6.dp),
@@ -403,7 +407,7 @@ private fun FilterSheetContent(
             FilterChip(
                 selected = filterMinRating == 0,
                 onClick = { viewModel.setMinRatingFilter(0) },
-                label = { Text("Any") },
+                label = { Text(stringResource(R.string.filter_any)) },
             )
             (1..5).forEach { pos ->
                 FilterChip(
@@ -418,7 +422,7 @@ private fun FilterSheetContent(
                                 tint = if (filterMinRating == pos) MaterialTheme.colorScheme.onSecondaryContainer
                                        else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            Text("$pos+")
+                            Text(stringResource(R.string.filter_rating_plus, pos))
                         }
                     },
                 )
@@ -430,7 +434,7 @@ private fun FilterSheetContent(
         // ── Tags ───────────────────────────────────────────────────────────
         if (tags.isNotEmpty()) {
             Text(
-                text = "KEYWORDS",
+                text = stringResource(R.string.filter_keywords),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 6.dp),
@@ -447,7 +451,7 @@ private fun FilterSheetContent(
                 FilterChip(
                     selected = filterTagId.isEmpty(),
                     onClick = { viewModel.setTagFilter("") },
-                    label = { Text("All") },
+                    label = { Text(stringResource(R.string.filter_all)) },
                 )
                 tags.forEach { tag ->
                     FilterChip(
@@ -457,7 +461,7 @@ private fun FilterSheetContent(
                         },
                         label = {
                             Text(
-                                text = if (tag.videoCount > 0) "${tag.name} (${tag.videoCount})" else tag.name,
+                                text = if (tag.videoCount > 0) stringResource(R.string.filter_tag_with_count, tag.name, tag.videoCount) else tag.name,
                                 maxLines = 1,
                             )
                         },
@@ -470,7 +474,7 @@ private fun FilterSheetContent(
         // ── Collections ────────────────────────────────────────────────────
         if (collections.isNotEmpty()) {
             Text(
-                text = "COLLECTIONS",
+                text = stringResource(R.string.filter_collections),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 6.dp),
@@ -485,7 +489,7 @@ private fun FilterSheetContent(
                 FilterChip(
                     selected = selectedCollectionId == null,
                     onClick = { viewModel.setCollectionFilter(null) },
-                    label = { Text("All") },
+                    label = { Text(stringResource(R.string.filter_all)) },
                 )
                 collections.forEach { col ->
                     FilterChip(
@@ -497,7 +501,7 @@ private fun FilterSheetContent(
                         },
                         label = {
                             Text(
-                                text = if (col.videoCount > 0) "${col.name} (${col.videoCount})" else col.name,
+                                text = if (col.videoCount > 0) stringResource(R.string.filter_collection_with_count, col.name, col.videoCount) else col.name,
                                 maxLines = 1,
                             )
                         },
@@ -512,7 +516,7 @@ private fun FilterSheetContent(
 
         // ── Sort ───────────────────────────────────────────────────────────
         Text(
-            text = "SORT",
+            text = stringResource(R.string.filter_sort),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 6.dp),
@@ -535,20 +539,21 @@ private fun SortPicker(
     ascending: Boolean,
     onSetSort: (String, Boolean) -> Unit,
 ) {
+    val context = LocalContext.current
     val sortOptions = listOf(
-        "indexed_at"     to "Date Indexed",
-        "creation_date"  to "Date Captured",
-        "filename"       to "Filename",
-        "size_bytes"     to "File Size",
-        "duration_ms"    to "Duration",
-        "rating"         to "Rating",
-        "fps"            to "Frame Rate",
-        "codec"          to "Codec",
-        "camera"         to "Camera",
+        "indexed_at"     to sortFieldDisplayName("indexed_at", context),
+        "creation_date"  to sortFieldDisplayName("creation_date", context),
+        "filename"       to sortFieldDisplayName("filename", context),
+        "size_bytes"     to sortFieldDisplayName("size_bytes", context),
+        "duration_ms"    to sortFieldDisplayName("duration_ms", context),
+        "rating"         to sortFieldDisplayName("rating", context),
+        "fps"            to sortFieldDisplayName("fps", context),
+        "codec"          to sortFieldDisplayName("codec", context),
+        "camera"         to sortFieldDisplayName("camera", context),
     )
 
     var menuExpanded by remember { mutableStateOf(false) }
-    val currentLabel = sortFieldDisplayName(currentField)
+    val currentLabel = sortFieldDisplayName(currentField, context)
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -563,7 +568,7 @@ private fun SortPicker(
                 trailingIcon = {
                     Icon(
                         Icons.Default.ArrowDropDown,
-                        contentDescription = "Change sort field",
+                        contentDescription = stringResource(R.string.filter_change_sort_field),
                         modifier = Modifier.size(16.dp),
                     )
                 },
@@ -601,12 +606,12 @@ private fun SortPicker(
         ) {
             Icon(
                 imageVector = if (ascending) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
-                contentDescription = if (ascending) "Sort ascending — tap to reverse" else "Sort descending — tap to reverse",
+                contentDescription = if (ascending) stringResource(R.string.filter_sort_ascending_reverse) else stringResource(R.string.filter_sort_descending_reverse),
                 modifier = Modifier.size(20.dp),
             )
         }
         Text(
-            text = if (ascending) "Ascending" else "Descending",
+            text = if (ascending) stringResource(R.string.filter_ascending) else stringResource(R.string.filter_descending),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -615,15 +620,15 @@ private fun SortPicker(
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-private fun sortFieldDisplayName(field: String): String = when (field) {
-    "indexed_at"    -> "Date Indexed"
-    "creation_date" -> "Date Captured"
-    "filename"      -> "Filename"
-    "size_bytes"    -> "File Size"
-    "duration_ms"   -> "Duration"
-    "rating"        -> "Rating"
-    "fps"           -> "Frame Rate"
-    "codec"         -> "Codec"
-    "camera"        -> "Camera"
+private fun sortFieldDisplayName(field: String, context: Context): String = when (field) {
+    "indexed_at"    -> context.getString(R.string.sort_date_indexed)
+    "creation_date" -> context.getString(R.string.sort_date_captured)
+    "filename"      -> context.getString(R.string.sort_filename)
+    "size_bytes"    -> context.getString(R.string.sort_file_size)
+    "duration_ms"   -> context.getString(R.string.sort_duration)
+    "rating"        -> context.getString(R.string.sort_rating)
+    "fps"           -> context.getString(R.string.sort_frame_rate)
+    "codec"         -> context.getString(R.string.sort_codec)
+    "camera"        -> context.getString(R.string.sort_camera)
     else            -> field.replaceFirstChar { it.uppercase() }
 }

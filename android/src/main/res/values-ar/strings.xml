@@ -1,0 +1,397 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Arabic (ar) — CLDR plural categories: zero, one, two, few (3–10), many (11–99), other -->
+<resources>
+
+    <!-- ── Common ───────────────────────────────────────────────────────── -->
+    <string name="common_back">رجوع</string>
+    <string name="common_cancel">إلغاء</string>
+    <string name="common_save">حفظ</string>
+    <string name="common_done">تم</string>
+    <string name="common_clear">مسح</string>
+    <string name="common_selected">محدد</string>
+    <string name="common_offline">غير متصل</string>
+    <string name="common_unavailable">غير متاح</string>
+    <string name="common_unknown_error">خطأ غير معروف</string>
+
+    <!-- ── Connection flow ──────────────────────────────────────────────── -->
+    <string name="conn_reconnecting_to">جارٍ إعادة الاتصال بـ %1$s…</string>
+    <string name="conn_connecting_to">جارٍ الاتصال بـ %1$s…</string>
+    <string name="conn_connecting">جارٍ الاتصال…</string>
+    <string name="conn_pairing_with">جارٍ الإقران مع %1$s…</string>
+    <string name="conn_could_not_connect_named">تعذر الاتصال بـ %1$s. تحقق من أن الخادم يعمل وحاول مجددًا.</string>
+    <string name="conn_could_not_connect_simple">تعذر الاتصال بـ %1$s.</string>
+    <string name="conn_pairing_rejected">رُفض الإقران — تحقق من الرمز وحاول مرة أخرى.</string>
+    <string name="conn_looking_for_servers">جارٍ البحث عن خوادم ReelVault…</string>
+    <string name="conn_scanning_network">جارٍ فحص الشبكة المحلية</string>
+    <string name="conn_connect_title">الاتصال بـ ReelVault</string>
+    <string name="conn_rescan">إعادة الفحص</string>
+    <string name="conn_no_servers_found">لم يُعثر على خوادم</string>
+    <string name="conn_no_servers_hint">شغِّل خادم ReelVault الأساسي مع ‎--remote على جهاز كمبيوتر على نفس شبكة Wi-Fi، ثم أعد الفحص.</string>
+    <string name="conn_available_servers">الخوادم المتاحة</string>
+    <string name="conn_enter_address_manually">إدخال العنوان يدويًا</string>
+    <string name="conn_browse_local_videos">تصفح مقاطع الفيديو المحلية</string>
+    <string name="conn_requires_pairing">يتطلب إقرانًا</string>
+    <string name="conn_enter_pairing_code">أدخل رمز الإقران</string>
+    <string name="conn_pair_with">إقران مع %1$s</string>
+    <string name="conn_pairing_instructions">على الجهاز الذي يعمل عليه ReelVault، اختر ملف ▸ إقران جهاز جديد لعرض رمز مكوّن من 6 أرقام (يسجّله الخادم بدون واجهة أيضًا). أدخله أدناه — تحتاج إلى فعل ذلك مرة واحدة فقط.</string>
+    <string name="conn_pin_placeholder">000000</string>
+    <string name="conn_pair_button">إقران</string>
+    <string name="conn_connect_manually">الاتصال يدويًا</string>
+    <string name="conn_host_label">المضيف أو عنوان IP</string>
+    <string name="conn_host_placeholder">192.168.1.100</string>
+    <string name="conn_grpc_port_label">منفذ gRPC</string>
+    <string name="conn_grpc_port_placeholder">50051</string>
+    <string name="conn_fingerprint_label">بصمة الشهادة (SHA-256، اختياري)</string>
+    <string name="conn_fingerprint_placeholder">abcd1234…</string>
+    <string name="conn_fetch">جلب</string>
+    <string name="conn_could_not_reach">تعذر الوصول إلى %1$s:%2$d — تحقق من المضيف وتأكد من أن الخادم يعمل.</string>
+    <string name="conn_connect_button">اتصال</string>
+    <string name="conn_retry">إعادة المحاولة</string>
+    <string name="conn_enter_address">إدخال العنوان</string>
+
+    <!-- ── Library grid ─────────────────────────────────────────────────── -->
+    <string name="grid_incoming_pairing_title">طلب إقران وارد</string>
+    <string name="grid_incoming_pairing_message">يريد %1$s الاتصال بهذه المكتبة. السماح؟</string>
+    <string name="grid_allow">سماح</string>
+    <string name="grid_deny">رفض</string>
+    <string name="grid_close_search">إغلاق البحث</string>
+    <string name="grid_search_videos_hint">البحث في مقاطع الفيديو…</string>
+    <string name="grid_selected_count">%1$d محدد</string>
+    <string name="grid_clear_selection">إلغاء التحديد</string>
+    <string name="grid_open_library_panel">فتح لوحة المكتبة</string>
+    <string name="grid_search">بحث</string>
+    <string name="grid_sort">ترتيب</string>
+    <string name="grid_switch_to_list_view">التبديل إلى عرض القائمة</string>
+    <string name="grid_switch_to_grid_view">التبديل إلى عرض الشبكة</string>
+    <string name="grid_more_options">المزيد من الخيارات</string>
+    <string name="grid_map">الخريطة</string>
+    <string name="grid_settings">الإعدادات</string>
+    <string name="grid_disconnect">قطع الاتصال</string>
+    <string name="grid_sort_by">ترتيب حسب</string>
+    <string name="grid_sort_ascending_arrow">%1$s ↑</string>
+    <string name="grid_sort_descending_arrow">%1$s ↓</string>
+    <string name="grid_library">المكتبة</string>
+    <string name="grid_clear_filters">مسح المرشحات</string>
+    <string name="grid_close">إغلاق</string>
+    <string name="grid_catalog">الكتالوج</string>
+    <string name="grid_remote_library">المكتبة البعيدة</string>
+    <string name="grid_local_videos">مقاطع الفيديو المحلية</string>
+    <string name="grid_all_videos">جميع مقاطع الفيديو</string>
+    <string name="grid_locations">المواقع</string>
+    <string name="grid_keywords">الكلمات المفتاحية</string>
+    <string name="grid_collections">المجموعات</string>
+    <string name="grid_no_videos">لا توجد مقاطع فيديو</string>
+    <string name="grid_processing">جارٍ المعالجة…</string>
+    <string name="grid_percent">%1$d%%</string>
+    <string name="grid_no_videos_match_search">لا توجد مقاطع فيديو تطابق \"%1$s\"</string>
+    <string name="grid_no_videos_with_keyword">لا توجد مقاطع فيديو بهذه الكلمة المفتاحية</string>
+    <string name="grid_collection_empty">هذه المجموعة فارغة</string>
+    <string name="grid_no_videos_in_library">لا توجد مقاطع فيديو في المكتبة</string>
+    <string name="grid_empty_add_location_hint">أضف موقع مكتبة في الإعدادات للبدء.</string>
+    <string name="grid_empty_no_match_filter">…أو لا توجد مقاطع فيديو تطابق المرشح الحالي</string>
+    <string name="grid_reset_filter">إعادة تعيين المرشح</string>
+    <string name="grid_clear_location_filter">مسح مرشح الموقع</string>
+    <string name="grid_star_count">%1$d نجمة</string>
+    <plurals name="grid_video_count">
+        <item quantity="zero">لا مقاطع فيديو</item>
+        <item quantity="one">مقطع فيديو واحد</item>
+        <item quantity="two">مقطعا فيديو</item>
+        <item quantity="few">%1$d مقاطع فيديو</item>
+        <item quantity="many">%1$d مقطع فيديو</item>
+        <item quantity="other">%1$d مقطع فيديو</item>
+    </plurals>
+    <plurals name="grid_location_video_count">
+        <item quantity="zero">لا مقاطع فيديو</item>
+        <item quantity="one">مقطع فيديو واحد</item>
+        <item quantity="two">مقطعا فيديو</item>
+        <item quantity="few">%1$d مقاطع فيديو</item>
+        <item quantity="many">%1$d مقطع فيديو</item>
+        <item quantity="other">%1$d مقطع فيديو</item>
+    </plurals>
+
+    <!-- ── Map ──────────────────────────────────────────────────────────── -->
+    <string name="map_title">الخريطة</string>
+    <string name="map_load_failed">فشل تحميل بيانات الخريطة: %1$s</string>
+    <string name="map_unknown_error">خطأ غير معروف</string>
+    <string name="map_no_geotagged">لا توجد مقاطع فيديو بعلامات جغرافية.\nتظهر مقاطع الفيديو التي تحتوي على بيانات GPS هنا على الخريطة.</string>
+    <string name="map_geotagged_count">%1$d بعلامة جغرافية</string>
+    <plurals name="map_marker_video_count">
+        <item quantity="zero">لا مقاطع فيديو</item>
+        <item quantity="one">مقطع فيديو واحد</item>
+        <item quantity="two">مقطعا فيديو</item>
+        <item quantity="few">%1$d مقاطع فيديو</item>
+        <item quantity="many">%1$d مقطع فيديو</item>
+        <item quantity="other">%1$d مقطع فيديو</item>
+    </plurals>
+
+    <!-- ── Local media ──────────────────────────────────────────────────── -->
+    <string name="local_selected_count">%1$d محدد</string>
+    <string name="local_title">مقاطع الفيديو المحلية</string>
+    <string name="local_clear_selection">إلغاء التحديد</string>
+    <string name="local_upload_to_server">تحميل إلى الخادم</string>
+    <string name="local_select_all">تحديد الكل</string>
+    <string name="local_upload_failed">فشل التحميل: %1$s</string>
+    <string name="local_no_videos_found">لم يُعثر على مقاطع فيديو على الجهاز</string>
+    <string name="local_not_connected_hint">غير متصل — اتصل بخادم ReelVault للتحميل</string>
+    <string name="local_uploaded">تم التحميل</string>
+    <string name="local_video_access_denied">تم رفض الوصول إلى الفيديو</string>
+    <string name="local_permission_hint">امنح إذن \"مقاطع الفيديو\" في الإعدادات ← التطبيقات ← ReelVault ← الأذونات لتصفح مقاطع الفيديو المحلية.</string>
+    <plurals name="local_uploaded_count">
+        <item quantity="zero">لم يُحمَّل أي مقطع فيديو</item>
+        <item quantity="one">تم تحميل مقطع فيديو واحد</item>
+        <item quantity="two">تم تحميل مقطعَي فيديو</item>
+        <item quantity="few">تم تحميل %1$d مقاطع فيديو</item>
+        <item quantity="many">تم تحميل %1$d مقطع فيديو</item>
+        <item quantity="other">تم تحميل %1$d مقطع فيديو</item>
+    </plurals>
+    <plurals name="local_selected_upload_hint">
+        <item quantity="zero">لم يُحدَّد أي مقطع فيديو</item>
+        <item quantity="one">مقطع فيديو واحد محدد — انقر ↑ للتحميل إلى الخادم</item>
+        <item quantity="two">مقطعا فيديو محددان — انقر ↑ للتحميل إلى الخادم</item>
+        <item quantity="few">%1$d مقاطع فيديو محددة — انقر ↑ للتحميل إلى الخادم</item>
+        <item quantity="many">%1$d مقطع فيديو محدد — انقر ↑ للتحميل إلى الخادم</item>
+        <item quantity="other">%1$d مقطع فيديو محدد — انقر ↑ للتحميل إلى الخادم</item>
+    </plurals>
+
+    <!-- ── Settings ─────────────────────────────────────────────────────── -->
+    <string name="settings_title">الإعدادات</string>
+    <string name="settings_back">رجوع</string>
+    <string name="settings_library_locations">مواقع المكتبة</string>
+    <string name="settings_no_watched_folders">لا توجد مجلدات مراقبة</string>
+    <string name="settings_rescan_complete">اكتمل إعادة الفحص</string>
+    <string name="settings_rescan_failed">فشل إعادة الفحص: %1$s</string>
+    <string name="settings_about">حول</string>
+    <string name="settings_app_version">إصدار التطبيق</string>
+    <string name="settings_loading_daemon_info">جارٍ تحميل معلومات الخادم…</string>
+    <string name="settings_connection">الاتصال</string>
+    <string name="settings_server_connection">اتصال الخادم</string>
+    <string name="settings_connected_remote">متصل بالخادم البعيد على %1$s:%2$d</string>
+    <string name="settings_connected_local">متصل بالخادم المحلي</string>
+    <string name="settings_disconnected">تم قطع الاتصال بالخادم</string>
+    <string name="settings_forget_server">نسيان الخادم</string>
+    <string name="settings_reconnected">تمت إعادة الاتصال بنجاح</string>
+    <string name="settings_reconnect_failed">فشلت إعادة الاتصال</string>
+    <string name="settings_reconnect">إعادة الاتصال</string>
+    <string name="settings_scan">فحص</string>
+    <string name="settings_full_rescan">إعادة الفحص الكاملة</string>
+    <string name="settings_full_rescan_desc">إعادة فهرسة جميع المجلدات المراقبة، واستخراج البيانات الوصفية وإنشاء الصور المصغرة لأي مقاطع فيديو جديدة أو متغيرة.</string>
+    <string name="settings_full_scan_complete">اكتمل الفحص الكامل</string>
+    <string name="settings_scan_failed">فشل الفحص: %1$s</string>
+    <string name="settings_scanning">جارٍ الفحص…</string>
+    <string name="settings_start_full_scan">بدء الفحص الكامل</string>
+    <string name="settings_collapse">طي</string>
+    <string name="settings_expand">توسيع</string>
+    <string name="settings_last_scanned">آخر فحص: %1$s</string>
+    <string name="settings_never_scanned">لم يُفحص قط</string>
+    <string name="settings_non_recursive"> (غير تعاودي)</string>
+    <string name="settings_disabled"> (معطل)</string>
+    <string name="settings_rescan_path">إعادة فحص %1$s</string>
+    <string name="settings_daemon_version">إصدار الخادم</string>
+    <string name="settings_videos_indexed">مقاطع الفيديو المفهرسة</string>
+    <string name="settings_cache_size">حجم ذاكرة التخزين المؤقت</string>
+    <string name="settings_uptime">وقت التشغيل</string>
+    <string name="settings_loading">جارٍ التحميل…</string>
+    <plurals name="settings_location_video_count">
+        <item quantity="zero">لا مقاطع فيديو</item>
+        <item quantity="one">مقطع فيديو واحد</item>
+        <item quantity="two">مقطعا فيديو</item>
+        <item quantity="few">%1$d مقاطع فيديو</item>
+        <item quantity="many">%1$d مقطع فيديو</item>
+        <item quantity="other">%1$d مقطع فيديو</item>
+    </plurals>
+
+    <!-- ── Detail ───────────────────────────────────────────────────────── -->
+    <string name="detail_title">التفاصيل</string>
+    <string name="detail_share">مشاركة</string>
+    <string name="detail_share_subject">مشاركة %1$s</string>
+    <string name="detail_video_not_found">لم يُعثر على الفيديو</string>
+    <string name="detail_section_file_info">معلومات الملف</string>
+    <string name="detail_section_video">الفيديو</string>
+    <string name="detail_section_audio">الصوت</string>
+    <string name="detail_section_capture">الالتقاط</string>
+    <string name="detail_field_filename">اسم الملف</string>
+    <string name="detail_field_path">المسار</string>
+    <string name="detail_field_size">الحجم</string>
+    <string name="detail_field_indexed">مفهرس</string>
+    <string name="detail_field_online">متصل</string>
+    <string name="detail_value_online_yes">نعم</string>
+    <string name="detail_value_online_no">لا (غير متصل)</string>
+    <string name="detail_field_resolution">الدقة</string>
+    <string name="detail_field_codec">الترميز</string>
+    <string name="detail_field_fps">إطار/ث</string>
+    <string name="detail_field_bitrate">معدل البت</string>
+    <string name="detail_field_frames">الإطارات</string>
+    <string name="detail_field_hdr">HDR</string>
+    <string name="detail_value_yes">نعم</string>
+    <string name="detail_field_color_space">فضاء اللون</string>
+    <string name="detail_field_resolution_status">حالة الدقة</string>
+    <string name="detail_value_full_resolution">الدقة الكاملة</string>
+    <string name="detail_value_not_full_resolution">ليست الدقة الكاملة</string>
+    <string name="detail_field_channels">القنوات</string>
+    <string name="detail_field_sample_rate">معدل أخذ العينات</string>
+    <string name="detail_value_sample_rate">%1$d هرتز</string>
+    <string name="detail_field_date">التاريخ</string>
+    <string name="detail_field_camera">الكاميرا</string>
+    <string name="detail_field_camera_internal">الكاميرا (داخلية)</string>
+    <string name="detail_field_lens">العدسة</string>
+    <string name="detail_field_iso">ISO</string>
+    <string name="detail_value_iso">ISO %1$d</string>
+    <string name="detail_field_aperture">فتحة العدسة</string>
+    <string name="detail_field_exposure">التعرض</string>
+    <string name="detail_field_focal_length">البعد البؤري</string>
+    <string name="detail_field_exposure_mode">وضع التعرض</string>
+    <string name="detail_field_exposure_program">برنامج التعرض</string>
+    <string name="detail_field_white_balance">توازن الأبيض</string>
+    <string name="detail_em_dash">—</string>
+    <string name="detail_section_location">الموقع</string>
+    <string name="detail_field_gps">GPS</string>
+    <string name="detail_field_altitude">الارتفاع</string>
+    <string name="detail_value_altitude">%1$.1f م</string>
+    <string name="detail_no_location">لا يوجد موقع</string>
+    <string name="detail_change_location">تغيير الموقع…</string>
+    <string name="detail_set_location">تعيين الموقع…</string>
+    <string name="detail_remove_location">إزالة الموقع</string>
+    <string name="detail_show_on_map">عرض على الخريطة</string>
+    <string name="detail_set_location_title">تعيين الموقع</string>
+    <string name="detail_drag_to_position">اسحب الخريطة لتحديد موضع الدبوس.</string>
+    <string name="detail_write_location_to_file">كتابة الموقع في الملف</string>
+    <string name="detail_write_location_desc">يُضمِّن أيضًا علامة GPS في ملف الفيديو، وليس في الكتالوج فقط.</string>
+    <string name="detail_section_tags">الوسوم</string>
+    <string name="detail_add_tag">إضافة وسم</string>
+    <string name="detail_no_tags">لا توجد وسوم</string>
+    <string name="detail_remove_tag">إزالة %1$s</string>
+    <string name="detail_add_tag_title">إضافة وسم</string>
+    <string name="detail_all_tags_applied">جميع الوسوم مطبّقة بالفعل.</string>
+    <string name="detail_section_notes">الملاحظات</string>
+    <string name="detail_edit">تحرير</string>
+    <string name="detail_no_notes">لا توجد ملاحظات</string>
+    <string name="detail_section_rating">التقييم</string>
+    <string name="detail_rating_out_of_five">%1$d / 5</string>
+    <string name="detail_section_color_label">تسمية اللون</string>
+    <string name="detail_color_label_none">بلا</string>
+    <string name="detail_color_label_selected">%1$s محدد</string>
+    <string name="detail_section_proxies">الوكلاء</string>
+    <string name="detail_proxy_auto">تلقائي</string>
+    <string name="detail_audio_channels_mono">1 (أحادي)</string>
+    <string name="detail_audio_channels_stereo">2 (ستيريو)</string>
+    <string name="detail_audio_channels_51">صوت محيطي 5.1</string>
+    <string name="detail_audio_channels_71">صوت محيطي 7.1</string>
+    <plurals name="detail_star_count">
+        <item quantity="zero">لا نجوم</item>
+        <item quantity="one">نجمة واحدة</item>
+        <item quantity="two">نجمتان</item>
+        <item quantity="few">%1$d نجوم</item>
+        <item quantity="many">%1$d نجمة</item>
+        <item quantity="other">%1$d نجمة</item>
+    </plurals>
+
+    <!-- ── Filter bar ───────────────────────────────────────────────────── -->
+    <string name="filter_filters">المرشحات</string>
+    <string name="filter_clear_all">مسح الكل</string>
+    <string name="filter_remove_filter">إزالة المرشح</string>
+    <string name="filter_sort_ascending">ترتيب تصاعدي</string>
+    <string name="filter_sort_descending">ترتيب تنازلي</string>
+    <string name="filter_filters_and_sort">المرشحات والترتيب</string>
+    <string name="filter_done">تم</string>
+    <string name="filter_search">بحث</string>
+    <string name="filter_search_placeholder">البحث في أسماء الملفات والملاحظات…</string>
+    <string name="filter_clear_search">مسح البحث</string>
+    <string name="filter_minimum_rating">الحد الأدنى للتقييم</string>
+    <string name="filter_any">أي</string>
+    <string name="filter_rating_plus">%1$d+</string>
+    <string name="filter_keywords">الكلمات المفتاحية</string>
+    <string name="filter_all">الكل</string>
+    <string name="filter_tag_with_count">%1$s (%2$d)</string>
+    <string name="filter_collections">المجموعات</string>
+    <string name="filter_collection_with_count">%1$s (%2$d)</string>
+    <string name="filter_sort">ترتيب</string>
+    <string name="filter_change_sort_field">تغيير حقل الترتيب</string>
+    <string name="filter_sort_ascending_reverse">ترتيب تصاعدي — انقر للعكس</string>
+    <string name="filter_sort_descending_reverse">ترتيب تنازلي — انقر للعكس</string>
+    <string name="filter_ascending">تصاعدي</string>
+    <string name="filter_descending">تنازلي</string>
+
+    <!-- ── Sort field names ─────────────────────────────────────────────── -->
+    <string name="sort_date_indexed">تاريخ الفهرسة</string>
+    <string name="sort_date_captured">تاريخ الالتقاط</string>
+    <string name="sort_filename">اسم الملف</string>
+    <string name="sort_file_size">حجم الملف</string>
+    <string name="sort_duration">المدة</string>
+    <string name="sort_rating">التقييم</string>
+    <string name="sort_frame_rate">معدل الإطارات</string>
+    <string name="sort_codec">الترميز</string>
+    <string name="sort_camera">الكاميرا</string>
+
+    <!-- ── Cards / badges ───────────────────────────────────────────────── -->
+    <string name="card_no_thumbnail">لا توجد صورة مصغرة</string>
+    <string name="card_offline">غير متصل</string>
+    <string name="card_selected">محدد</string>
+    <string name="card_full_resolution">الدقة الكاملة</string>
+    <string name="card_not_full_resolution">ليست الدقة الكاملة</string>
+    <string name="card_has_audio">لديه مسار صوتي</string>
+    <string name="card_file_offline">الملف غير متصل</string>
+    <string name="card_star">%1$d نجمة</string>
+    <plurals name="card_keyword_count">
+        <item quantity="zero">لا كلمات مفتاحية</item>
+        <item quantity="one">كلمة مفتاحية واحدة</item>
+        <item quantity="two">كلمتان مفتاحيتان</item>
+        <item quantity="few">%1$d كلمات مفتاحية</item>
+        <item quantity="many">%1$d كلمة مفتاحية</item>
+        <item quantity="other">%1$d كلمة مفتاحية</item>
+    </plurals>
+    <plurals name="card_proxy_count">
+        <item quantity="zero">لا وكلاء متاحون</item>
+        <item quantity="one">وكيل واحد متاح</item>
+        <item quantity="two">وكيلان متاحان</item>
+        <item quantity="few">%1$d وكلاء متاحون</item>
+        <item quantity="many">%1$d وكيلاً متاحًا</item>
+        <item quantity="other">%1$d وكيل متاح</item>
+    </plurals>
+    <plurals name="card_stack_count">
+        <item quantity="zero">مجموعة فارغة</item>
+        <item quantity="one">مجموعة من عنصر واحد</item>
+        <item quantity="two">مجموعة من عنصرين</item>
+        <item quantity="few">مجموعة من %1$d عناصر</item>
+        <item quantity="many">مجموعة من %1$d عنصرًا</item>
+        <item quantity="other">مجموعة من %1$d عنصر</item>
+    </plurals>
+
+    <!-- ── Video player ─────────────────────────────────────────────────── -->
+    <string name="player_no_stream">لا يوجد بث متاح</string>
+    <string name="player_play">تشغيل</string>
+    <string name="player_pause">إيقاف مؤقت</string>
+    <string name="player_volume">مستوى الصوت</string>
+    <string name="player_quality">الجودة</string>
+    <string name="player_full_screen">ملء الشاشة</string>
+    <string name="player_exit_full_screen">الخروج من ملء الشاشة</string>
+    <string name="player_retry">إعادة المحاولة</string>
+    <string name="player_selected">محدد</string>
+    <string name="player_cancel">إلغاء</string>
+    <string name="player_playback_error">خطأ في التشغيل</string>
+
+    <!-- ── ViewModel errors (snackbars) ─────────────────────────────────── -->
+    <string name="err_load_more_videos">فشل تحميل مزيد من مقاطع الفيديو: %1$s</string>
+    <string name="err_load_videos">فشل تحميل مقاطع الفيديو: %1$s</string>
+    <string name="err_load_metadata">فشل تحميل البيانات الوصفية: %1$s</string>
+    <string name="err_video_not_found">لم يُعثر على الفيديو</string>
+    <string name="err_update_notes">فشل تحديث الملاحظات</string>
+    <string name="err_update_notes_detail">فشل تحديث الملاحظات: %1$s</string>
+    <string name="err_add_tag">فشل إضافة الوسم</string>
+    <string name="err_add_tag_detail">فشل إضافة الوسم: %1$s</string>
+    <string name="err_remove_tag">فشل إزالة الوسم</string>
+    <string name="err_remove_tag_detail">فشل إزالة الوسم: %1$s</string>
+    <string name="err_update_rating">فشل تحديث التقييم: %1$s</string>
+    <string name="err_update_color_label">فشل تحديث تسمية اللون: %1$s</string>
+    <string name="err_update_location">فشل تحديث الموقع</string>
+    <string name="err_update_location_detail">فشل تحديث الموقع: %1$s</string>
+    <string name="err_remove_location">فشل إزالة الموقع</string>
+    <string name="err_remove_location_detail">فشل إزالة الموقع: %1$s</string>
+    <string name="err_add_to_collection">فشل الإضافة إلى المجموعة</string>
+    <string name="err_add_to_collection_detail">فشل الإضافة إلى المجموعة: %1$s</string>
+    <string name="err_remove_from_collection">فشل الإزالة من المجموعة</string>
+    <string name="err_remove_from_collection_detail">فشل الإزالة من المجموعة: %1$s</string>
+    <string name="scan_target_default">المكتبة</string>
+    <string name="scan_scanning_target">جارٍ فحص %1$s…</string>
+    <string name="pairing_a_device">جهاز</string>
+
+</resources>

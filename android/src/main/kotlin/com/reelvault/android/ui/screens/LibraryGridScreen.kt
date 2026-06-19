@@ -29,10 +29,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.reelvault.android.R
 import com.reelvault.android.ui.components.ThumbnailImage
 import com.reelvault.android.viewmodel.GridViewModel
 import com.reelvault.data.models.Collection
@@ -131,13 +135,13 @@ fun LibraryGridScreen(
     if (incomingPairing != null) {
         AlertDialog(
             onDismissRequest = { vm.dismissIncomingPairing() },
-            title = { Text("Incoming Pairing Request") },
-            text = { Text("${incomingPairing} wants to connect to this library. Allow?") },
+            title = { Text(stringResource(R.string.grid_incoming_pairing_title)) },
+            text = { Text(stringResource(R.string.grid_incoming_pairing_message, incomingPairing ?: "")) },
             confirmButton = {
-                TextButton(onClick = { vm.dismissIncomingPairing() }) { Text("Allow") }
+                TextButton(onClick = { vm.dismissIncomingPairing() }) { Text(stringResource(R.string.grid_allow)) }
             },
             dismissButton = {
-                TextButton(onClick = { vm.dismissIncomingPairing() }) { Text("Deny") }
+                TextButton(onClick = { vm.dismissIncomingPairing() }) { Text(stringResource(R.string.grid_deny)) }
             }
         )
     }
@@ -398,13 +402,13 @@ private fun LibraryTopAppBar(
             onActiveChange = { if (!it) onSearchActiveChange(false) },
             leadingIcon = {
                 IconButton(onClick = { onSearchActiveChange(false) }) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Close search")
+                    Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.grid_close_search))
                 }
             },
-            placeholder = { Text("Search videos…") },
+            placeholder = { Text(stringResource(R.string.grid_search_videos_hint)) },
             trailingIcon = if (searchText.isNotEmpty()) {
                 { IconButton(onClick = { onSearchTextChange("") }) {
-                    Icon(Icons.Default.Clear, contentDescription = "Clear")
+                    Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.common_clear))
                 } }
             } else null,
             modifier = Modifier.fillMaxWidth(),
@@ -413,31 +417,31 @@ private fun LibraryTopAppBar(
         TopAppBar(
             title = {
                 if (isMultiSelect) {
-                    Text("$multiSelectCount selected")
+                    Text(stringResource(R.string.grid_selected_count, multiSelectCount))
                 } else {
-                    Text("ReelVault")
+                    Text(stringResource(R.string.app_name))
                 }
             },
             navigationIcon = {
                 if (isMultiSelect) {
                     IconButton(onClick = onClearMultiSelect) {
-                        Icon(Icons.Default.Close, contentDescription = "Clear selection")
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.grid_clear_selection))
                     }
                 } else {
                     IconButton(onClick = onOpenDrawer) {
-                        Icon(Icons.Default.Menu, contentDescription = "Open library panel")
+                        Icon(Icons.Default.Menu, contentDescription = stringResource(R.string.grid_open_library_panel))
                     }
                 }
             },
             actions = {
                 // Search
                 IconButton(onClick = { onSearchActiveChange(true) }) {
-                    Icon(Icons.Default.Search, contentDescription = "Search")
+                    Icon(Icons.Default.Search, contentDescription = stringResource(R.string.grid_search))
                 }
                 // Sort
                 Box {
                     IconButton(onClick = onShowSortMenu) {
-                        Icon(Icons.Default.Sort, contentDescription = "Sort")
+                        Icon(Icons.Default.Sort, contentDescription = stringResource(R.string.grid_sort))
                     }
                     SortDropdownMenu(
                         expanded = showSortMenu,
@@ -449,31 +453,31 @@ private fun LibraryTopAppBar(
                 IconButton(onClick = onToggleViewMode) {
                     Icon(
                         imageVector = if (viewMode == "grid") Icons.Default.ViewList else Icons.Default.GridView,
-                        contentDescription = if (viewMode == "grid") "Switch to list view" else "Switch to grid view",
+                        contentDescription = if (viewMode == "grid") stringResource(R.string.grid_switch_to_list_view) else stringResource(R.string.grid_switch_to_grid_view),
                     )
                 }
                 // Overflow menu
                 Box {
                     IconButton(onClick = onShowOverflowMenu) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.grid_more_options))
                     }
                     DropdownMenu(
                         expanded = showOverflowMenu,
                         onDismissRequest = onDismissOverflowMenu,
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Map") },
+                            text = { Text(stringResource(R.string.grid_map)) },
                             leadingIcon = { Icon(Icons.Default.Map, contentDescription = null) },
                             onClick = { onDismissOverflowMenu(); onOpenMap() },
                         )
                         DropdownMenuItem(
-                            text = { Text("Settings") },
+                            text = { Text(stringResource(R.string.grid_settings)) },
                             leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
                             onClick = { onDismissOverflowMenu(); onOpenSettings() },
                         )
                         HorizontalDivider()
                         DropdownMenuItem(
-                            text = { Text("Disconnect") },
+                            text = { Text(stringResource(R.string.grid_disconnect)) },
                             leadingIcon = { Icon(Icons.Default.ExitToApp, contentDescription = null) },
                             onClick = { onDismissOverflowMenu(); onDisconnect() },
                         )
@@ -492,26 +496,26 @@ private fun SortDropdownMenu(
 ) {
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         Text(
-            text = "Sort by",
+            text = stringResource(R.string.grid_sort_by),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
         )
         val options = listOf(
-            "indexed_at" to "Date Indexed",
-            "creation_date" to "Date Captured",
-            "filename" to "Filename",
-            "size_bytes" to "File Size",
-            "duration_ms" to "Duration",
-            "rating" to "Rating",
+            "indexed_at" to stringResource(R.string.sort_date_indexed),
+            "creation_date" to stringResource(R.string.sort_date_captured),
+            "filename" to stringResource(R.string.sort_filename),
+            "size_bytes" to stringResource(R.string.sort_file_size),
+            "duration_ms" to stringResource(R.string.sort_duration),
+            "rating" to stringResource(R.string.sort_rating),
         )
         options.forEach { (field, label) ->
             DropdownMenuItem(
-                text = { Text("$label ↑") },
+                text = { Text(stringResource(R.string.grid_sort_ascending_arrow, label)) },
                 onClick = { onDismiss(); onSetSort(field, true) },
             )
             DropdownMenuItem(
-                text = { Text("$label ↓") },
+                text = { Text(stringResource(R.string.grid_sort_descending_arrow, label)) },
                 onClick = { onDismiss(); onSetSort(field, false) },
             )
         }
@@ -543,17 +547,17 @@ private fun LibrarySidebarContent(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                text = "Library",
+                text = stringResource(R.string.grid_library),
                 style = MaterialTheme.typography.titleMedium,
             )
             Row {
                 if (activeTagId.isNotEmpty() || activeCollectionId != null) {
                     TextButton(onClick = onClearFilters) {
-                        Text("Clear filters")
+                        Text(stringResource(R.string.grid_clear_filters))
                     }
                 }
                 IconButton(onClick = onClose) {
-                    Icon(Icons.Default.Close, contentDescription = "Close")
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.grid_close))
                 }
             }
         }
@@ -563,7 +567,7 @@ private fun LibrarySidebarContent(
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             // ── Catalog switcher ───────────────────────────────────────
             item {
-                SidebarSectionHeader("Catalog")
+                SidebarSectionHeader(stringResource(R.string.grid_catalog))
             }
             item {
                 NavigationDrawerItem(
@@ -575,7 +579,7 @@ private fun LibrarySidebarContent(
                             tint = MaterialTheme.colorScheme.primary,
                         )
                     },
-                    label = { Text("Remote Library") },
+                    label = { Text(stringResource(R.string.grid_remote_library)) },
                     selected = true,
                     onClick = { onClose() },
                     modifier = Modifier.padding(horizontal = 8.dp),
@@ -590,7 +594,7 @@ private fun LibrarySidebarContent(
                             modifier = Modifier.size(18.dp),
                         )
                     },
-                    label = { Text("Local Videos") },
+                    label = { Text(stringResource(R.string.grid_local_videos)) },
                     selected = false,
                     onClick = { onClose(); onOpenLocalMedia() },
                     modifier = Modifier.padding(horizontal = 8.dp),
@@ -608,7 +612,7 @@ private fun LibrarySidebarContent(
                             modifier = Modifier.size(18.dp),
                         )
                     },
-                    label = { Text("All Videos") },
+                    label = { Text(stringResource(R.string.grid_all_videos)) },
                     selected = activeTagId.isEmpty() && activeCollectionId == null,
                     onClick = { onClearFilters() },
                     modifier = Modifier.padding(horizontal = 8.dp),
@@ -618,7 +622,7 @@ private fun LibrarySidebarContent(
             // ── Library Locations ──────────────────────────────────────
             if (libraryLocations.isNotEmpty()) {
                 item {
-                    SidebarSectionHeader("Locations")
+                    SidebarSectionHeader(stringResource(R.string.grid_locations))
                 }
                 items(libraryLocations) { loc ->
                     // Last path segment only, e.g. "/volume1/Videos" -> "Videos".
@@ -639,8 +643,9 @@ private fun LibrarySidebarContent(
                             Column {
                                 Text(displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 if (loc.videoCount > 0) {
+                                    val locCount = loc.videoCount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
                                     Text(
-                                        "${loc.videoCount} video${if (loc.videoCount == 1L) "" else "s"}",
+                                        pluralStringResource(R.plurals.grid_location_video_count, locCount, locCount),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
@@ -658,7 +663,7 @@ private fun LibrarySidebarContent(
             // ── Tags ───────────────────────────────────────────────────
             if (tags.isNotEmpty()) {
                 item { HorizontalDivider() }
-                item { SidebarSectionHeader("Keywords") }
+                item { SidebarSectionHeader(stringResource(R.string.grid_keywords)) }
                 items(tags) { tag ->
                     NavigationDrawerItem(
                         icon = {
@@ -704,7 +709,7 @@ private fun LibrarySidebarContent(
             // ── Collections ────────────────────────────────────────────
             if (collections.isNotEmpty()) {
                 item { HorizontalDivider() }
-                item { SidebarSectionHeader("Collections") }
+                item { SidebarSectionHeader(stringResource(R.string.grid_collections)) }
                 items(collections) { collection ->
                     NavigationDrawerItem(
                         icon = {
@@ -1039,12 +1044,12 @@ private fun AndroidVideoCard(
                         ) {
                             Icon(
                                 Icons.Default.CloudOff,
-                                contentDescription = "Offline",
+                                contentDescription = stringResource(R.string.card_offline),
                                 modifier = Modifier.size(14.dp),
                                 tint = Color.White,
                             )
                             Text(
-                                "Offline",
+                                stringResource(R.string.card_offline),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color.White,
                             )
@@ -1067,7 +1072,7 @@ private fun AndroidVideoCard(
                     ) {
                         Icon(
                             Icons.Default.Check,
-                            contentDescription = "Selected",
+                            contentDescription = stringResource(R.string.card_selected),
                             modifier = Modifier.size(14.dp),
                             tint = MaterialTheme.colorScheme.onPrimary,
                         )
@@ -1098,7 +1103,7 @@ private fun AndroidVideoCard(
                         if (filled) {
                             Icon(
                                 Icons.Default.Star,
-                                contentDescription = "$pos star",
+                                contentDescription = stringResource(R.string.card_star, pos),
                                 modifier = Modifier.size(12.dp),
                                 tint = Color.White,
                             )
@@ -1168,7 +1173,7 @@ private fun VideoListRow(
                 ) {
                     Icon(
                         Icons.Default.CloudOff,
-                        contentDescription = "Offline",
+                        contentDescription = stringResource(R.string.card_offline),
                         modifier = Modifier.size(16.dp),
                         tint = Color.White,
                     )
@@ -1224,7 +1229,7 @@ private fun VideoListRow(
             if (isSelected || isMultiSelected) {
                 Icon(
                     Icons.Default.CheckCircle,
-                    contentDescription = "Selected",
+                    contentDescription = stringResource(R.string.card_selected),
                     modifier = Modifier.size(20.dp),
                     tint = MaterialTheme.colorScheme.primary,
                 )
@@ -1320,10 +1325,11 @@ private fun LibraryStatusBar(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             // Video count
-            val countLabel = when {
-                totalCount == 0L -> "No videos"
-                totalCount == 1L -> "1 video"
-                else -> "$totalCount videos"
+            val countLabel = if (totalCount == 0L) {
+                stringResource(R.string.grid_no_videos)
+            } else {
+                val countInt = totalCount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+                pluralStringResource(R.plurals.grid_video_count, countInt, countInt)
             }
             Text(
                 text = countLabel,
@@ -1364,7 +1370,7 @@ private fun LibraryStatusBar(
                             )
                             Icon(
                                 Icons.Default.Close,
-                                contentDescription = "Clear location filter",
+                                contentDescription = stringResource(R.string.grid_clear_location_filter),
                                 modifier = Modifier.size(12.dp),
                                 tint = MaterialTheme.colorScheme.onSecondaryContainer,
                             )
@@ -1430,12 +1436,12 @@ private fun PostIndexProgressBar(pip: PostIndexProgress) {
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
-                    text = pip.phase.ifEmpty { "Processing…" },
+                    text = pip.phase.ifEmpty { stringResource(R.string.grid_processing) },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = "${pip.percent.toInt()}%",
+                    text = stringResource(R.string.grid_percent, pip.percent.toInt()),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -1484,10 +1490,10 @@ private fun EmptyLibraryMessage(
             )
             Text(
                 text = when {
-                    searchQuery.isNotEmpty() -> "No videos match \"$searchQuery\""
-                    filterTagId.isNotEmpty() -> "No videos with this keyword"
-                    selectedCollectionId != null -> "This collection is empty"
-                    else -> "No videos in library"
+                    searchQuery.isNotEmpty() -> stringResource(R.string.grid_no_videos_match_search, searchQuery)
+                    filterTagId.isNotEmpty() -> stringResource(R.string.grid_no_videos_with_keyword)
+                    selectedCollectionId != null -> stringResource(R.string.grid_collection_empty)
+                    else -> stringResource(R.string.grid_no_videos_in_library)
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1496,7 +1502,7 @@ private fun EmptyLibraryMessage(
                 selectedCollectionId == null && !hasActiveFilter
             ) {
                 Text(
-                    text = "Add a library location in Settings to get started.",
+                    text = stringResource(R.string.grid_empty_add_location_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 )
@@ -1504,12 +1510,12 @@ private fun EmptyLibraryMessage(
             // When a filter is hiding everything, offer a one-tap reset.
             if (hasActiveFilter) {
                 Text(
-                    text = "…or no videos match the current filter",
+                    text = stringResource(R.string.grid_empty_no_match_filter),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 )
                 Button(onClick = onResetFilter) {
-                    Text("Reset filter")
+                    Text(stringResource(R.string.grid_reset_filter))
                 }
             }
         }

@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ── Common ───────────────────────────────────────────────────────── -->
+    <string name="common_back">뒤로</string>
+    <string name="common_cancel">취소</string>
+    <string name="common_save">저장</string>
+    <string name="common_done">완료</string>
+    <string name="common_clear">지우기</string>
+    <string name="common_selected">선택됨</string>
+    <string name="common_offline">오프라인</string>
+    <string name="common_unavailable">사용 불가</string>
+    <string name="common_unknown_error">알 수 없는 오류</string>
+
+    <!-- ── Connection flow ──────────────────────────────────────────────── -->
+    <string name="conn_reconnecting_to">%1$s에 다시 연결 중…</string>
+    <string name="conn_connecting_to">%1$s에 연결 중…</string>
+    <string name="conn_connecting">연결 중…</string>
+    <string name="conn_pairing_with">%1$s와 페어링 중…</string>
+    <string name="conn_could_not_connect_named">%1$s에 연결할 수 없습니다. 데몬이 실행 중인지 확인하고 다시 시도하세요.</string>
+    <string name="conn_could_not_connect_simple">%1$s에 연결할 수 없습니다.</string>
+    <string name="conn_pairing_rejected">페어링 거부됨 — 코드를 확인하고 다시 시도하세요.</string>
+    <string name="conn_looking_for_servers">ReelVault 서버를 찾는 중…</string>
+    <string name="conn_scanning_network">로컬 네트워크 검색 중</string>
+    <string name="conn_connect_title">ReelVault에 연결</string>
+    <string name="conn_rescan">다시 검색</string>
+    <string name="conn_no_servers_found">서버를 찾을 수 없음</string>
+    <string name="conn_no_servers_hint">이 Wi-Fi 네트워크의 컴퓨터에서 --remote 옵션으로 ReelVault 코어 데몬을 시작한 후 다시 검색하세요.</string>
+    <string name="conn_available_servers">사용 가능한 서버</string>
+    <string name="conn_enter_address_manually">주소 직접 입력</string>
+    <string name="conn_browse_local_videos">로컬 동영상 탐색</string>
+    <string name="conn_requires_pairing">페어링 필요</string>
+    <string name="conn_enter_pairing_code">페어링 코드 입력</string>
+    <string name="conn_pair_with">%1$s와 페어링</string>
+    <string name="conn_pairing_instructions">ReelVault가 실행 중인 컴퓨터에서 파일 ▸ 새 기기 페어링을 선택하면 6자리 코드가 표시됩니다(헤드리스 서버는 로그에도 기록됩니다). 아래에 입력하세요 — 한 번만 하면 됩니다.</string>
+    <string name="conn_pin_placeholder">000000</string>
+    <string name="conn_pair_button">페어링</string>
+    <string name="conn_connect_manually">수동으로 연결</string>
+    <string name="conn_host_label">호스트 또는 IP 주소</string>
+    <string name="conn_host_placeholder">192.168.1.100</string>
+    <string name="conn_grpc_port_label">gRPC 포트</string>
+    <string name="conn_grpc_port_placeholder">50051</string>
+    <string name="conn_fingerprint_label">인증서 지문 (SHA-256, 선택 사항)</string>
+    <string name="conn_fingerprint_placeholder">abcd1234…</string>
+    <string name="conn_fetch">가져오기</string>
+    <string name="conn_could_not_reach">%1$s:%2$d에 연결할 수 없습니다 — 호스트와 데몬 실행 여부를 확인하세요.</string>
+    <string name="conn_connect_button">연결</string>
+    <string name="conn_retry">다시 시도</string>
+    <string name="conn_enter_address">주소 입력</string>
+
+    <!-- ── Library grid ─────────────────────────────────────────────────── -->
+    <string name="grid_incoming_pairing_title">페어링 요청 수신</string>
+    <string name="grid_incoming_pairing_message">%1$s이(가) 이 라이브러리에 연결하려고 합니다. 허용하시겠습니까?</string>
+    <string name="grid_allow">허용</string>
+    <string name="grid_deny">거부</string>
+    <string name="grid_close_search">검색 닫기</string>
+    <string name="grid_search_videos_hint">동영상 검색…</string>
+    <string name="grid_selected_count">%1$d개 선택됨</string>
+    <string name="grid_clear_selection">선택 해제</string>
+    <string name="grid_open_library_panel">라이브러리 패널 열기</string>
+    <string name="grid_search">검색</string>
+    <string name="grid_sort">정렬</string>
+    <string name="grid_switch_to_list_view">목록 보기로 전환</string>
+    <string name="grid_switch_to_grid_view">격자 보기로 전환</string>
+    <string name="grid_more_options">더 보기</string>
+    <string name="grid_map">지도</string>
+    <string name="grid_settings">설정</string>
+    <string name="grid_disconnect">연결 해제</string>
+    <string name="grid_sort_by">정렬 기준</string>
+    <string name="grid_sort_ascending_arrow">%1$s ↑</string>
+    <string name="grid_sort_descending_arrow">%1$s ↓</string>
+    <string name="grid_library">라이브러리</string>
+    <string name="grid_clear_filters">필터 지우기</string>
+    <string name="grid_close">닫기</string>
+    <string name="grid_catalog">카탈로그</string>
+    <string name="grid_remote_library">원격 라이브러리</string>
+    <string name="grid_local_videos">로컬 동영상</string>
+    <string name="grid_all_videos">모든 동영상</string>
+    <string name="grid_locations">위치</string>
+    <string name="grid_keywords">키워드</string>
+    <string name="grid_collections">컬렉션</string>
+    <string name="grid_no_videos">동영상 없음</string>
+    <string name="grid_processing">처리 중…</string>
+    <string name="grid_percent">%1$d%%</string>
+    <string name="grid_no_videos_match_search">\"%1$s\"과(와) 일치하는 동영상이 없습니다</string>
+    <string name="grid_no_videos_with_keyword">이 키워드를 가진 동영상이 없습니다</string>
+    <string name="grid_collection_empty">이 컬렉션은 비어 있습니다</string>
+    <string name="grid_no_videos_in_library">라이브러리에 동영상이 없습니다</string>
+    <string name="grid_empty_add_location_hint">시작하려면 설정에서 라이브러리 위치를 추가하세요.</string>
+    <string name="grid_empty_no_match_filter">…또는 현재 필터에 일치하는 동영상이 없습니다</string>
+    <string name="grid_reset_filter">필터 초기화</string>
+    <string name="grid_clear_location_filter">위치 필터 지우기</string>
+    <string name="grid_star_count">%1$d점</string>
+    <plurals name="grid_video_count">
+        <item quantity="other">동영상 %1$d개</item>
+    </plurals>
+    <plurals name="grid_location_video_count">
+        <item quantity="other">동영상 %1$d개</item>
+    </plurals>
+
+    <!-- ── Map ──────────────────────────────────────────────────────────── -->
+    <string name="map_title">지도</string>
+    <string name="map_load_failed">지도 데이터를 불러오지 못했습니다: %1$s</string>
+    <string name="map_unknown_error">알 수 없는 오류</string>
+    <string name="map_no_geotagged">지오태그된 동영상이 없습니다.\nGPS 메타데이터가 있는 동영상이 지도에 표시됩니다.</string>
+    <string name="map_geotagged_count">%1$d개 지오태그됨</string>
+    <plurals name="map_marker_video_count">
+        <item quantity="other">동영상 %1$d개</item>
+    </plurals>
+
+    <!-- ── Local media ──────────────────────────────────────────────────── -->
+    <string name="local_selected_count">%1$d개 선택됨</string>
+    <string name="local_title">로컬 동영상</string>
+    <string name="local_clear_selection">선택 해제</string>
+    <string name="local_upload_to_server">서버에 업로드</string>
+    <string name="local_select_all">모두 선택</string>
+    <string name="local_upload_failed">업로드 실패: %1$s</string>
+    <string name="local_no_videos_found">기기에서 동영상을 찾을 수 없습니다</string>
+    <string name="local_not_connected_hint">연결되지 않음 — 동영상을 업로드하려면 ReelVault 서버에 연결하세요</string>
+    <string name="local_uploaded">업로드됨</string>
+    <string name="local_video_access_denied">동영상 접근 거부됨</string>
+    <string name="local_permission_hint">로컬 동영상을 탐색하려면 설정 → 앱 → ReelVault → 권한에서 \"동영상\" 권한을 허용하세요.</string>
+    <plurals name="local_uploaded_count">
+        <item quantity="other">동영상 %1$d개 업로드됨</item>
+    </plurals>
+    <plurals name="local_selected_upload_hint">
+        <item quantity="other">동영상 %1$d개 선택됨 — ↑을 탭하여 서버에 업로드</item>
+    </plurals>
+
+    <!-- ── Settings ─────────────────────────────────────────────────────── -->
+    <string name="settings_title">설정</string>
+    <string name="settings_back">뒤로</string>
+    <string name="settings_library_locations">라이브러리 위치</string>
+    <string name="settings_no_watched_folders">감시 폴더 없음</string>
+    <string name="settings_rescan_complete">재스캔 완료</string>
+    <string name="settings_rescan_failed">재스캔 실패: %1$s</string>
+    <string name="settings_about">정보</string>
+    <string name="settings_app_version">앱 버전</string>
+    <string name="settings_loading_daemon_info">데몬 정보 불러오는 중…</string>
+    <string name="settings_connection">연결</string>
+    <string name="settings_server_connection">서버 연결</string>
+    <string name="settings_connected_remote">%1$s:%2$d의 원격 데몬에 연결됨</string>
+    <string name="settings_connected_local">로컬 데몬에 연결됨</string>
+    <string name="settings_disconnected">서버 연결 해제됨</string>
+    <string name="settings_forget_server">서버 지우기</string>
+    <string name="settings_reconnected">다시 연결됨</string>
+    <string name="settings_reconnect_failed">다시 연결 실패</string>
+    <string name="settings_reconnect">다시 연결</string>
+    <string name="settings_scan">스캔</string>
+    <string name="settings_full_rescan">전체 재스캔</string>
+    <string name="settings_full_rescan_desc">감시 중인 모든 폴더를 다시 인덱싱하고, 새로 추가되거나 변경된 동영상의 메타데이터를 추출하고 썸네일을 생성합니다.</string>
+    <string name="settings_full_scan_complete">전체 스캔 완료</string>
+    <string name="settings_scan_failed">스캔 실패: %1$s</string>
+    <string name="settings_scanning">스캔 중…</string>
+    <string name="settings_start_full_scan">전체 스캔 시작</string>
+    <string name="settings_collapse">접기</string>
+    <string name="settings_expand">펼치기</string>
+    <string name="settings_last_scanned">마지막 스캔: %1$s</string>
+    <string name="settings_never_scanned">스캔한 적 없음</string>
+    <string name="settings_non_recursive"> (비재귀)</string>
+    <string name="settings_disabled"> (비활성화됨)</string>
+    <string name="settings_rescan_path">%1$s 재스캔</string>
+    <string name="settings_daemon_version">데몬 버전</string>
+    <string name="settings_videos_indexed">인덱싱된 동영상</string>
+    <string name="settings_cache_size">캐시 크기</string>
+    <string name="settings_uptime">실행 시간</string>
+    <string name="settings_loading">불러오는 중…</string>
+    <plurals name="settings_location_video_count">
+        <item quantity="other">동영상 %1$d개</item>
+    </plurals>
+
+    <!-- ── Detail ───────────────────────────────────────────────────────── -->
+    <string name="detail_title">세부 정보</string>
+    <string name="detail_share">공유</string>
+    <string name="detail_share_subject">%1$s 공유</string>
+    <string name="detail_video_not_found">동영상을 찾을 수 없습니다</string>
+    <string name="detail_section_file_info">파일 정보</string>
+    <string name="detail_section_video">동영상</string>
+    <string name="detail_section_audio">오디오</string>
+    <string name="detail_section_capture">촬영</string>
+    <string name="detail_field_filename">파일명</string>
+    <string name="detail_field_path">경로</string>
+    <string name="detail_field_size">크기</string>
+    <string name="detail_field_indexed">인덱싱됨</string>
+    <string name="detail_field_online">온라인</string>
+    <string name="detail_value_online_yes">예</string>
+    <string name="detail_value_online_no">아니요 (오프라인)</string>
+    <string name="detail_field_resolution">해상도</string>
+    <string name="detail_field_codec">코덱</string>
+    <string name="detail_field_fps">FPS</string>
+    <string name="detail_field_bitrate">비트레이트</string>
+    <string name="detail_field_frames">프레임</string>
+    <string name="detail_field_hdr">HDR</string>
+    <string name="detail_value_yes">예</string>
+    <string name="detail_field_color_space">색 공간</string>
+    <string name="detail_field_resolution_status">해상도 상태</string>
+    <string name="detail_value_full_resolution">전체 해상도</string>
+    <string name="detail_value_not_full_resolution">전체 해상도 아님</string>
+    <string name="detail_field_channels">채널</string>
+    <string name="detail_field_sample_rate">샘플 레이트</string>
+    <string name="detail_value_sample_rate">%1$d Hz</string>
+    <string name="detail_field_date">날짜</string>
+    <string name="detail_field_camera">카메라</string>
+    <string name="detail_field_camera_internal">카메라 (내부)</string>
+    <string name="detail_field_lens">렌즈</string>
+    <string name="detail_field_iso">ISO</string>
+    <string name="detail_value_iso">ISO %1$d</string>
+    <string name="detail_field_aperture">조리개</string>
+    <string name="detail_field_exposure">노출</string>
+    <string name="detail_field_focal_length">초점 거리</string>
+    <string name="detail_field_exposure_mode">노출 모드</string>
+    <string name="detail_field_exposure_program">노출 프로그램</string>
+    <string name="detail_field_white_balance">화이트 밸런스</string>
+    <string name="detail_em_dash">—</string>
+    <string name="detail_section_location">위치</string>
+    <string name="detail_field_gps">GPS</string>
+    <string name="detail_field_altitude">고도</string>
+    <string name="detail_value_altitude">%1$.1f m</string>
+    <string name="detail_no_location">위치 없음</string>
+    <string name="detail_change_location">위치 변경…</string>
+    <string name="detail_set_location">위치 설정…</string>
+    <string name="detail_remove_location">위치 제거</string>
+    <string name="detail_show_on_map">지도에서 보기</string>
+    <string name="detail_set_location_title">위치 설정</string>
+    <string name="detail_drag_to_position">지도를 드래그하여 핀 위치를 설정하세요.</string>
+    <string name="detail_write_location_to_file">파일에 위치 쓰기</string>
+    <string name="detail_write_location_desc">카탈로그뿐만 아니라 동영상 파일에도 GPS 태그를 삽입합니다.</string>
+    <string name="detail_section_tags">태그</string>
+    <string name="detail_add_tag">태그 추가</string>
+    <string name="detail_no_tags">태그 없음</string>
+    <string name="detail_remove_tag">%1$s 제거</string>
+    <string name="detail_add_tag_title">태그 추가</string>
+    <string name="detail_all_tags_applied">모든 태그가 이미 적용되어 있습니다.</string>
+    <string name="detail_section_notes">메모</string>
+    <string name="detail_edit">편집</string>
+    <string name="detail_no_notes">메모 없음</string>
+    <string name="detail_section_rating">평점</string>
+    <string name="detail_rating_out_of_five">%1$d / 5</string>
+    <string name="detail_section_color_label">색상 레이블</string>
+    <string name="detail_color_label_none">없음</string>
+    <string name="detail_color_label_selected">%1$s 선택됨</string>
+    <string name="detail_section_proxies">프록시</string>
+    <string name="detail_proxy_auto">자동</string>
+    <string name="detail_audio_channels_mono">1 (모노)</string>
+    <string name="detail_audio_channels_stereo">2 (스테레오)</string>
+    <string name="detail_audio_channels_51">5.1 서라운드</string>
+    <string name="detail_audio_channels_71">7.1 서라운드</string>
+    <plurals name="detail_star_count">
+        <item quantity="other">%1$d점</item>
+    </plurals>
+
+    <!-- ── Filter bar ───────────────────────────────────────────────────── -->
+    <string name="filter_filters">필터</string>
+    <string name="filter_clear_all">모두 지우기</string>
+    <string name="filter_remove_filter">필터 제거</string>
+    <string name="filter_sort_ascending">오름차순 정렬</string>
+    <string name="filter_sort_descending">내림차순 정렬</string>
+    <string name="filter_filters_and_sort">필터 &amp; 정렬</string>
+    <string name="filter_done">완료</string>
+    <string name="filter_search">검색</string>
+    <string name="filter_search_placeholder">파일명, 메모 검색…</string>
+    <string name="filter_clear_search">검색 지우기</string>
+    <string name="filter_minimum_rating">최소 평점</string>
+    <string name="filter_any">모두</string>
+    <string name="filter_rating_plus">%1$d점 이상</string>
+    <string name="filter_keywords">키워드</string>
+    <string name="filter_all">전체</string>
+    <string name="filter_tag_with_count">%1$s (%2$d)</string>
+    <string name="filter_collections">컬렉션</string>
+    <string name="filter_collection_with_count">%1$s (%2$d)</string>
+    <string name="filter_sort">정렬</string>
+    <string name="filter_change_sort_field">정렬 기준 변경</string>
+    <string name="filter_sort_ascending_reverse">오름차순 정렬 — 탭하여 반전</string>
+    <string name="filter_sort_descending_reverse">내림차순 정렬 — 탭하여 반전</string>
+    <string name="filter_ascending">오름차순</string>
+    <string name="filter_descending">내림차순</string>
+
+    <!-- ── Sort field names ─────────────────────────────────────────────── -->
+    <string name="sort_date_indexed">인덱싱 날짜</string>
+    <string name="sort_date_captured">촬영 날짜</string>
+    <string name="sort_filename">파일명</string>
+    <string name="sort_file_size">파일 크기</string>
+    <string name="sort_duration">재생 시간</string>
+    <string name="sort_rating">평점</string>
+    <string name="sort_frame_rate">프레임 속도</string>
+    <string name="sort_codec">코덱</string>
+    <string name="sort_camera">카메라</string>
+
+    <!-- ── Cards / badges ───────────────────────────────────────────────── -->
+    <string name="card_no_thumbnail">썸네일 없음</string>
+    <string name="card_offline">오프라인</string>
+    <string name="card_selected">선택됨</string>
+    <string name="card_full_resolution">전체 해상도</string>
+    <string name="card_not_full_resolution">전체 해상도 아님</string>
+    <string name="card_has_audio">오디오 트랙 있음</string>
+    <string name="card_file_offline">파일 오프라인</string>
+    <string name="card_star">%1$d점</string>
+    <plurals name="card_keyword_count">
+        <item quantity="other">키워드 %1$d개</item>
+    </plurals>
+    <plurals name="card_proxy_count">
+        <item quantity="other">프록시 %1$d개 사용 가능</item>
+    </plurals>
+    <plurals name="card_stack_count">
+        <item quantity="other">%1$d개 묶음</item>
+    </plurals>
+
+    <!-- ── Video player ─────────────────────────────────────────────────── -->
+    <string name="player_no_stream">스트림을 사용할 수 없습니다</string>
+    <string name="player_play">재생</string>
+    <string name="player_pause">일시 정지</string>
+    <string name="player_volume">볼륨</string>
+    <string name="player_quality">품질</string>
+    <string name="player_full_screen">전체 화면</string>
+    <string name="player_exit_full_screen">전체 화면 종료</string>
+    <string name="player_retry">다시 시도</string>
+    <string name="player_selected">선택됨</string>
+    <string name="player_cancel">취소</string>
+    <string name="player_playback_error">재생 오류</string>
+
+    <!-- ── ViewModel errors (snackbars) ─────────────────────────────────── -->
+    <string name="err_load_more_videos">더 많은 동영상을 불러오지 못했습니다: %1$s</string>
+    <string name="err_load_videos">동영상을 불러오지 못했습니다: %1$s</string>
+    <string name="err_load_metadata">메타데이터를 불러오지 못했습니다: %1$s</string>
+    <string name="err_video_not_found">동영상을 찾을 수 없습니다</string>
+    <string name="err_update_notes">메모를 업데이트할 수 없습니다</string>
+    <string name="err_update_notes_detail">메모를 업데이트할 수 없습니다: %1$s</string>
+    <string name="err_add_tag">태그를 추가할 수 없습니다</string>
+    <string name="err_add_tag_detail">태그를 추가할 수 없습니다: %1$s</string>
+    <string name="err_remove_tag">태그를 제거할 수 없습니다</string>
+    <string name="err_remove_tag_detail">태그를 제거할 수 없습니다: %1$s</string>
+    <string name="err_update_rating">평점을 업데이트할 수 없습니다: %1$s</string>
+    <string name="err_update_color_label">색상 레이블을 업데이트할 수 없습니다: %1$s</string>
+    <string name="err_update_location">위치를 업데이트할 수 없습니다</string>
+    <string name="err_update_location_detail">위치를 업데이트할 수 없습니다: %1$s</string>
+    <string name="err_remove_location">위치를 제거할 수 없습니다</string>
+    <string name="err_remove_location_detail">위치를 제거할 수 없습니다: %1$s</string>
+    <string name="err_add_to_collection">컬렉션에 추가할 수 없습니다</string>
+    <string name="err_add_to_collection_detail">컬렉션에 추가할 수 없습니다: %1$s</string>
+    <string name="err_remove_from_collection">컬렉션에서 제거할 수 없습니다</string>
+    <string name="err_remove_from_collection_detail">컬렉션에서 제거할 수 없습니다: %1$s</string>
+    <string name="scan_target_default">라이브러리</string>
+    <string name="scan_scanning_target">%1$s 스캔 중…</string>
+    <string name="pairing_a_device">기기</string>
+
+</resources>
