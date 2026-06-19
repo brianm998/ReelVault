@@ -18,9 +18,10 @@ import java.io.FileOutputStream
  * Downloads a remote video file to the app's internal share-cache and exposes
  * it via [FileProvider], matching iOS ShareExportModel.prepare() behaviour.
  *
- * The server's `/download/:id` endpoint streams the raw original (or a proxy at
- * [heightPx] when non-zero). The file is cached under `getCacheDir()/shared_videos/`
- * and overwritten on each share so stale files don't accumulate.
+ * The server's `/video/:id` endpoint streams the raw original (or a proxy at
+ * [heightPx] when non-zero, passed as a `?height=` query parameter). The file
+ * is cached under `getCacheDir()/shared_videos/` and overwritten on each share
+ * so stale files don't accumulate.
  *
  * The FileProvider authority is `<applicationId>.fileprovider` and is declared in
  * AndroidManifest.xml together with `res/xml/file_paths.xml`.
@@ -45,12 +46,12 @@ object VideoShareManager {
             val ep = RemoteConnection.endpoint
                 ?: throw IllegalStateException("Not connected to a remote server")
 
-            // Build the media endpoint URL.  Use the same /download/:id/:height route
-            // that the daemon exposes (height 0 → daemon picks the best available source).
-            val url = if (heightPx > 0) {
-                "https://${ep.host}:${ep.mediaPort}/download/$videoId/$heightPx"
-            } else {
-                "https://${ep.host}:${ep.mediaPort}/download/$videoId"
+            // Build the media endpoint URL.  The real daemon route is GET /video/:id
+            // with an optional ?height= query parameter (mirroring iOS MediaClient
+            // renditionURL).  /download/:id does not exist and returns 404.
+            val url = buildString {
+                append("https://${ep.host}:${ep.mediaPort}/video/$videoId")
+                if (heightPx > 0) append("?height=$heightPx")
             }
 
             val okHttpClient = PinnedTls.pinnedHttpClient(ep.fingerprintHex)
@@ -65,10 +66,12 @@ object VideoShareManager {
                 throw Exception("Download failed: HTTP ${response.code}")
             }
 
-            // Sanitise the filename so it is safe on the filesystem.
+            // Sanitise the filename so it is safe on the filesystem.  Prefix with
+            // the video ID so that two selected videos with the same filename don't
+            // overwrite each other's cache file during a batch share.
             val safeName = filename.replace(Regex("[^A-Za-z0-9._\\-]"), "_")
             val cacheDir = File(context.cacheDir, CACHE_SUBDIR).also { it.mkdirs() }
-            val destFile = File(cacheDir, safeName)
+            val destFile = File(cacheDir, "${videoId}_$safeName")
 
             response.body?.use { body ->
                 FileOutputStream(destFile).use { out ->
