@@ -186,8 +186,24 @@ data class VideoMetadata(
     /** Total frame count (ffprobe nb_frames), or 0 when the container didn't
      *  report one — [frameCountFormatted] then estimates from duration × fps. */
     val frameCount: Long = 0,
+    /** Raw ffprobe transfer / primaries (e.g. "smpte2084", "bt2020").
+     *  [dynamicRange] is the friendly derived label ("HDR (HLG)", "Log (S-Log3)",
+     *  "RAW", "SDR"); empty when unknown. */
+    val colorTransfer: String = "",
+    val colorPrimaries: String = "",
+    val dynamicRange: String = "",
+    /** SMPTE start timecode ("HH:MM:SS:FF"); empty if the clip has no tmcd track. */
+    val timecode: String = "",
+    /** Sensor capture frame rate; 0 when unknown. Above [fps] → slow-motion
+     *  (see [slowMotionLabel]). */
+    val captureFps: Double = 0.0,
 ) {
     val resolution: String get() = "$width x $height"
+
+    /** "240 → 30 fps" when captured faster than playback (slow-motion), else
+     *  null. The 1 fps margin avoids false positives from rounding. */
+    val slowMotionLabel: String? get() =
+        if (captureFps > fps + 1 && fps > 0) "${Math.round(captureFps)} → ${Math.round(fps)} fps" else null
     val durationFormatted: String get() {
         val seconds = durationMs / 1000
         val hours = seconds / 3600

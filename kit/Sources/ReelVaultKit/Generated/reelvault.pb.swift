@@ -925,6 +925,39 @@ public nonisolated struct Reelvault_VideoMetadata: @unchecked Sendable {
     set {_uniqueStorage()._frameCount = newValue}
   }
 
+  /// Color / dynamic-range. `color_transfer` (EOTF, e.g. "bt709", "smpte2084",
+  /// "arib-std-b67") and `color_primaries` ("bt709", "bt2020") are the raw
+  /// ffprobe values; `dynamic_range` is the friendly derived label the clients
+  /// display and filter on ("SDR", "HDR (PQ)", "HDR (HLG)", "Log (S-Log3)",
+  /// "RAW"). All empty when the clip carries no color signal.
+  public var colorTransfer: String {
+    get {_storage._colorTransfer}
+    set {_uniqueStorage()._colorTransfer = newValue}
+  }
+
+  public var colorPrimaries: String {
+    get {_storage._colorPrimaries}
+    set {_uniqueStorage()._colorPrimaries = newValue}
+  }
+
+  public var dynamicRange: String {
+    get {_storage._dynamicRange}
+    set {_uniqueStorage()._dynamicRange = newValue}
+  }
+
+  /// SMPTE start timecode from the tmcd track ("HH:MM:SS:FF"); empty if none.
+  public var timecode: String {
+    get {_storage._timecode}
+    set {_uniqueStorage()._timecode = newValue}
+  }
+
+  /// Sensor capture frame rate. 0 when unknown. When > fps the clip is
+  /// slow-motion (clients derive the "240 → 30 fps" badge from capture_fps/fps).
+  public var captureFps: Double {
+    get {_storage._captureFps}
+    set {_uniqueStorage()._captureFps = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3474,7 +3507,7 @@ nonisolated extension Reelvault_GetMetadataRequest: SwiftProtobuf.Message, Swift
 
 nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".VideoMetadata"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0\u{1}rating\0\u{3}color_label\0\u{3}camera_display_name\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}exposure_mode\0\u{3}exposure_program\0\u{3}white_balance\0\u{3}full_resolution\0\u{3}frame_count\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0\u{1}rating\0\u{3}color_label\0\u{3}camera_display_name\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}exposure_mode\0\u{3}exposure_program\0\u{3}white_balance\0\u{3}full_resolution\0\u{3}frame_count\0\u{3}color_transfer\0\u{3}color_primaries\0\u{3}dynamic_range\0\u{1}timecode\0\u{3}capture_fps\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -3517,6 +3550,11 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
     var _whiteBalance: String = String()
     var _fullResolution: Reelvault_FullResolutionStatus = .unspecified
     var _frameCount: Int64 = 0
+    var _colorTransfer: String = String()
+    var _colorPrimaries: String = String()
+    var _dynamicRange: String = String()
+    var _timecode: String = String()
+    var _captureFps: Double = 0
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3567,6 +3605,11 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
       _whiteBalance = source._whiteBalance
       _fullResolution = source._fullResolution
       _frameCount = source._frameCount
+      _colorTransfer = source._colorTransfer
+      _colorPrimaries = source._colorPrimaries
+      _dynamicRange = source._dynamicRange
+      _timecode = source._timecode
+      _captureFps = source._captureFps
     }
   }
 
@@ -3625,6 +3668,11 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
         case 38: try { try decoder.decodeSingularStringField(value: &_storage._whiteBalance) }()
         case 39: try { try decoder.decodeSingularEnumField(value: &_storage._fullResolution) }()
         case 40: try { try decoder.decodeSingularInt64Field(value: &_storage._frameCount) }()
+        case 41: try { try decoder.decodeSingularStringField(value: &_storage._colorTransfer) }()
+        case 42: try { try decoder.decodeSingularStringField(value: &_storage._colorPrimaries) }()
+        case 43: try { try decoder.decodeSingularStringField(value: &_storage._dynamicRange) }()
+        case 44: try { try decoder.decodeSingularStringField(value: &_storage._timecode) }()
+        case 45: try { try decoder.decodeSingularDoubleField(value: &_storage._captureFps) }()
         default: break
         }
       }
@@ -3753,6 +3801,21 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
       if _storage._frameCount != 0 {
         try visitor.visitSingularInt64Field(value: _storage._frameCount, fieldNumber: 40)
       }
+      if !_storage._colorTransfer.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._colorTransfer, fieldNumber: 41)
+      }
+      if !_storage._colorPrimaries.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._colorPrimaries, fieldNumber: 42)
+      }
+      if !_storage._dynamicRange.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._dynamicRange, fieldNumber: 43)
+      }
+      if !_storage._timecode.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._timecode, fieldNumber: 44)
+      }
+      if _storage._captureFps.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._captureFps, fieldNumber: 45)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -3802,6 +3865,11 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
         if _storage._whiteBalance != rhs_storage._whiteBalance {return false}
         if _storage._fullResolution != rhs_storage._fullResolution {return false}
         if _storage._frameCount != rhs_storage._frameCount {return false}
+        if _storage._colorTransfer != rhs_storage._colorTransfer {return false}
+        if _storage._colorPrimaries != rhs_storage._colorPrimaries {return false}
+        if _storage._dynamicRange != rhs_storage._dynamicRange {return false}
+        if _storage._timecode != rhs_storage._timecode {return false}
+        if _storage._captureFps != rhs_storage._captureFps {return false}
         return true
       }
       if !storagesAreEqual {return false}

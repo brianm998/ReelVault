@@ -272,6 +272,13 @@ fun DetailScreen(
                     if (metadata.value!!.hdr) {
                         MetadataItem("HDR", "Yes")
                     }
+                    if (metadata.value!!.dynamicRange.isNotEmpty()) {
+                        MetadataItem("Dynamic Range", metadata.value!!.dynamicRange)
+                    }
+                    metadata.value!!.slowMotionLabel?.let { MetadataItem("Capture Rate", it) }
+                    if (metadata.value!!.timecode.isNotEmpty()) {
+                        MetadataItem("Timecode", metadata.value!!.timecode)
+                    }
 
                     when (metadata.value!!.fullResolution) {
                         FullResolutionStatus.Full ->

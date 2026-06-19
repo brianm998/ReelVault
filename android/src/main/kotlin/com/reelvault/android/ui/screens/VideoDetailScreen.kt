@@ -323,6 +323,9 @@ private fun DetailContent(
                 metadata.frameCountFormatted?.let { MetadataRow(stringResource(R.string.detail_field_frames), it) }
                 if (metadata.hdr) MetadataRow(stringResource(R.string.detail_field_hdr), stringResource(R.string.detail_value_yes))
                 if (metadata.colorSpace.isNotEmpty()) MetadataRow(stringResource(R.string.detail_field_color_space), metadata.colorSpace)
+                if (metadata.dynamicRange.isNotEmpty()) MetadataRow(stringResource(R.string.detail_field_dynamic_range), metadata.dynamicRange)
+                metadata.slowMotionLabel?.let { MetadataRow(stringResource(R.string.detail_field_capture_rate), it) }
+                if (metadata.timecode.isNotEmpty()) MetadataRow(stringResource(R.string.detail_field_timecode), metadata.timecode)
                 when (metadata.fullResolution) {
                     FullResolutionStatus.Full ->
                         MetadataRow(stringResource(R.string.detail_field_resolution_status), stringResource(R.string.detail_value_full_resolution))

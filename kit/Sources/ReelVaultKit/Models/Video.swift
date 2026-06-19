@@ -301,8 +301,27 @@ public struct VideoMetadata: Identifiable, Sendable {
     /// Total frame count (ffprobe nb_frames), or 0 when the container didn't
     /// report one — `frameCountFormatted` then estimates from duration × fps.
     public let frameCount: Int64
+    /// Raw ffprobe transfer characteristic / color primaries (e.g. "smpte2084",
+    /// "bt2020"). `dynamicRange` is the friendly label derived from them
+    /// ("HDR (HLG)", "Log (S-Log3)", "RAW", "SDR"); empty when unknown.
+    public let colorTransfer: String
+    public let colorPrimaries: String
+    public let dynamicRange: String
+    /// SMPTE start timecode ("HH:MM:SS:FF"); empty if the clip has no tmcd track.
+    public let timecode: String
+    /// Sensor capture frame rate; 0 when unknown. When meaningfully above `fps`
+    /// the clip is slow-motion (see `slowMotionLabel`).
+    public let captureFps: Double
 
     public var resolution: String { "\(width)×\(height)" }
+
+    /// "240 → 30 fps" when the clip was captured faster than it plays back
+    /// (slow-motion), otherwise nil. The 1 fps margin avoids false positives
+    /// from rounding (e.g. 29.97 vs 30).
+    public var slowMotionLabel: String? {
+        guard captureFps > fps + 1, fps > 0 else { return nil }
+        return "\(Int(captureFps.rounded())) → \(Int(fps.rounded())) fps"
+    }
 
     public var durationFormatted: String {
         let totalSeconds = durationMs / 1000

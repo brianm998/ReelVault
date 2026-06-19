@@ -210,6 +210,9 @@
     <string name="detail_field_hdr">HDR</string>
     <string name="detail_value_yes">Yes</string>
     <string name="detail_field_color_space">Color Space</string>
+    <string name="detail_field_dynamic_range">Dynamic Range</string>
+    <string name="detail_field_capture_rate">Capture Rate</string>
+    <string name="detail_field_timecode">Timecode</string>
     <string name="detail_field_resolution_status">Resolution Status</string>
     <string name="detail_value_full_resolution">Full resolution</string>
     <string name="detail_value_not_full_resolution">Not full resolution</string>

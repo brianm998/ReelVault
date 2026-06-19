@@ -277,6 +277,11 @@ class VideoRepository(private val channelFactory: ChannelFactory) {
             whiteBalance = proto.whiteBalance,
             fullResolution = FullResolutionStatus.fromWire(proto.fullResolutionValue),
             frameCount = proto.frameCount,
+            colorTransfer = proto.colorTransfer,
+            colorPrimaries = proto.colorPrimaries,
+            dynamicRange = proto.dynamicRange,
+            timecode = proto.timecode,
+            captureFps = proto.captureFps,
         )
     }
 

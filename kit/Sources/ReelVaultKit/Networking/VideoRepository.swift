@@ -1414,7 +1414,12 @@ public class VideoRepository: ObservableObject {
             exposureProgram: p.exposureProgram,
             whiteBalance: p.whiteBalance,
             fullResolution: FullResolutionStatus.from(wire: Int(p.fullResolution.rawValue)),
-            frameCount: p.frameCount
+            frameCount: p.frameCount,
+            colorTransfer: p.colorTransfer,
+            colorPrimaries: p.colorPrimaries,
+            dynamicRange: p.dynamicRange,
+            timecode: p.timecode,
+            captureFps: p.captureFps
         )
     }
 
