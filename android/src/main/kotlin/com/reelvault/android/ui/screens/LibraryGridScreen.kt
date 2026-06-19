@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.reelvault.android.R
+import com.reelvault.android.ui.components.LibraryFilterBar
 import com.reelvault.android.ui.components.ThumbnailImage
 import com.reelvault.android.viewmodel.GridViewModel
 import com.reelvault.data.models.Collection
@@ -227,6 +228,13 @@ fun LibraryGridScreen(
                         showOverflowMenu = showOverflowMenu,
                         onShowOverflowMenu = { showOverflowMenu = true },
                         onDismissOverflowMenu = { showOverflowMenu = false },
+                    )
+                    // Filter chip bar — always shown so the user can access
+                    // rating/colour/attribute filters at a glance.
+                    LibraryFilterBar(
+                        viewModel = vm,
+                        tags = tags,
+                        collections = collections,
                     )
                     // Loading indicator sits directly below the app bar so it
                     // does not shift content in the main column.

@@ -290,6 +290,29 @@
     <string name="filter_ascending">Ascending</string>
     <string name="filter_descending">Descending</string>
 
+    <!-- Colour label filter -->
+    <string name="filter_color_label">COLOR LABEL</string>
+
+    <!-- Attribute filters -->
+    <string name="filter_attributes">ATTRIBUTES</string>
+    <string name="filter_attr_location">Location</string>
+    <string name="filter_attr_keywords">Keywords</string>
+    <string name="filter_attr_proxies">Proxies</string>
+    <string name="filter_attr_full_res">Full Resolution</string>
+    <string name="filter_attr_audio">Audio</string>
+    <!-- "Has" / "Doesn\'t have" chip labels in the attribute tri-state row -->
+    <string name="filter_attr_yes">Has</string>
+    <string name="filter_attr_no_label">No</string>
+    <!-- Active-filter chip labels: "Has Location", "No Proxies", etc. -->
+    <string name="filter_attr_has">Has %1$s</string>
+    <string name="filter_attr_no">No %1$s</string>
+
+    <!-- Orientation filter -->
+    <string name="filter_orientation">ORIENTATION</string>
+    <string name="filter_orientation_any">Any</string>
+    <string name="filter_orientation_portrait">Portrait</string>
+    <string name="filter_orientation_landscape">Landscape</string>
+
     <!-- ── Sort field names ─────────────────────────────────────────────── -->
     <string name="sort_date_indexed">Date Indexed</string>
     <string name="sort_date_captured">Date Captured</string>

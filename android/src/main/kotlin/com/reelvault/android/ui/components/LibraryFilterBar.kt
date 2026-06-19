@@ -3,6 +3,8 @@
 
 package com.reelvault.android.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -58,13 +61,18 @@ import androidx.compose.runtime.setValue
 import android.content.Context
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.reelvault.android.R
+import com.reelvault.android.ui.theme.swatch
 import com.reelvault.android.viewmodel.GridViewModel
+import com.reelvault.data.models.AttributeFilterState
 import com.reelvault.data.models.Collection
+import com.reelvault.data.models.ColorLabel
+import com.reelvault.data.models.OrientationFilterState
 import com.reelvault.data.models.Tag
 import kotlinx.coroutines.launch
 
@@ -75,12 +83,17 @@ import kotlinx.coroutines.launch
  * Chip layout (left to right):
  *   1. "Filters" assist chip with a FilterList icon — opens the bottom sheet.
  *   2. One [InputChip] per active filter (tag name, collection name, keyword,
- *      minimum rating, colour label). Each chip has an X to dismiss it.
+ *      minimum rating, colour label, attribute filters). Each chip has an X
+ *      to dismiss it.
  *   3. A "Clear all" chip when two or more filters are active.
  *
  * The bottom sheet gives access to:
  *   - Full-text keyword search
  *   - Minimum star rating (1–5)
+ *   - Colour label picker (None / Red / Yellow / Green / Blue / Purple)
+ *   - Attribute tri-states (has location / keywords / proxies / full-resolution
+ *     / audio)
+ *   - Orientation (Any / Portrait / Landscape)
  *   - Tag picker (all tags in the catalog)
  *   - Collection picker
  *   - Sort field + direction
@@ -104,9 +117,20 @@ fun LibraryFilterBar(
     val currentSortField by viewModel.currentSortField.collectAsState()
     val currentSortAscending by viewModel.currentSortAscending.collectAsState()
 
+    // Attribute filters
+    val filterHasLocation by viewModel.filterHasLocation.collectAsState()
+    val filterHasKeywords by viewModel.filterHasKeywords.collectAsState()
+    val filterHasProxies by viewModel.filterHasProxies.collectAsState()
+    val filterFullResolution by viewModel.filterFullResolution.collectAsState()
+    val filterHasAudio by viewModel.filterHasAudio.collectAsState()
+    val filterOrientation by viewModel.filterOrientation.collectAsState()
+
     val activeTag = remember(filterTagId, tags) { tags.firstOrNull { it.id == filterTagId } }
     val activeCollection = remember(selectedCollectionId, collections) {
         collections.firstOrNull { it.id == selectedCollectionId }
+    }
+    val activeColorLabel = remember(filterColorLabel) {
+        if (filterColorLabel.isEmpty()) null else ColorLabel.from(filterColorLabel)
     }
 
     // Count active filters to offer "Clear all" when multiple are set.
@@ -116,6 +140,12 @@ fun LibraryFilterBar(
         filterMinRating > 0,
         filterColorLabel.isNotEmpty(),
         selectedCollectionId != null,
+        filterHasLocation != AttributeFilterState.Any,
+        filterHasKeywords != AttributeFilterState.Any,
+        filterHasProxies != AttributeFilterState.Any,
+        filterFullResolution != AttributeFilterState.Any,
+        filterHasAudio != AttributeFilterState.Any,
+        filterOrientation != OrientationFilterState.Any,
     ).count { it }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
@@ -192,10 +222,49 @@ fun LibraryFilterBar(
                 }
 
                 // ── Colour label chip ──────────────────────────────────────
-                if (filterColorLabel.isNotEmpty()) {
+                if (activeColorLabel != null && activeColorLabel != ColorLabel.None) {
                     ActiveFilterChip(
-                        label = filterColorLabel.replaceFirstChar { it.uppercase() },
+                        label = activeColorLabel.displayName,
+                        leadingDot = activeColorLabel.swatch,
                         onRemove = { viewModel.setColorLabelFilter("") },
+                    )
+                }
+
+                // ── Attribute chips ────────────────────────────────────────
+                if (filterHasLocation != AttributeFilterState.Any) {
+                    ActiveFilterChip(
+                        label = attrChipLabel(filterHasLocation, stringResource(R.string.filter_attr_location)),
+                        onRemove = { viewModel.setHasLocationFilter(AttributeFilterState.Any) },
+                    )
+                }
+                if (filterHasKeywords != AttributeFilterState.Any) {
+                    ActiveFilterChip(
+                        label = attrChipLabel(filterHasKeywords, stringResource(R.string.filter_attr_keywords)),
+                        onRemove = { viewModel.setHasKeywordsFilter(AttributeFilterState.Any) },
+                    )
+                }
+                if (filterHasProxies != AttributeFilterState.Any) {
+                    ActiveFilterChip(
+                        label = attrChipLabel(filterHasProxies, stringResource(R.string.filter_attr_proxies)),
+                        onRemove = { viewModel.setHasProxiesFilter(AttributeFilterState.Any) },
+                    )
+                }
+                if (filterFullResolution != AttributeFilterState.Any) {
+                    ActiveFilterChip(
+                        label = attrChipLabel(filterFullResolution, stringResource(R.string.filter_attr_full_res)),
+                        onRemove = { viewModel.setFullResolutionFilter(AttributeFilterState.Any) },
+                    )
+                }
+                if (filterHasAudio != AttributeFilterState.Any) {
+                    ActiveFilterChip(
+                        label = attrChipLabel(filterHasAudio, stringResource(R.string.filter_attr_audio)),
+                        onRemove = { viewModel.setHasAudioFilter(AttributeFilterState.Any) },
+                    )
+                }
+                if (filterOrientation != OrientationFilterState.Any) {
+                    ActiveFilterChip(
+                        label = orientationLabel(filterOrientation),
+                        onRemove = { viewModel.setOrientationFilter(OrientationFilterState.Any) },
                     )
                 }
 
@@ -209,13 +278,7 @@ fun LibraryFilterBar(
                 // ── Clear-all chip ─────────────────────────────────────────
                 if (activeFilterCount >= 2) {
                     AssistChip(
-                        onClick = {
-                            viewModel.clearSearch()
-                            viewModel.setTagFilter("")
-                            viewModel.setCollectionFilter(null)
-                            viewModel.setMinRatingFilter(0)
-                            viewModel.setColorLabelFilter("")
-                        },
+                        onClick = { viewModel.clearAllFilters() },
                         label = { Text(stringResource(R.string.filter_clear_all)) },
                         colors = AssistChipDefaults.assistChipColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
@@ -244,12 +307,34 @@ fun LibraryFilterBar(
                 selectedCollectionId = selectedCollectionId,
                 currentSortField = currentSortField,
                 currentSortAscending = currentSortAscending,
+                filterHasLocation = filterHasLocation,
+                filterHasKeywords = filterHasKeywords,
+                filterHasProxies = filterHasProxies,
+                filterFullResolution = filterFullResolution,
+                filterHasAudio = filterHasAudio,
+                filterOrientation = filterOrientation,
                 onDismiss = {
                     scope.launch { sheetState.hide() }.invokeOnCompletion { showSheet = false }
                 },
             )
         }
     }
+}
+
+// ── Helpers for chip labels ───────────────────────────────────────────────────
+
+@Composable
+private fun attrChipLabel(state: AttributeFilterState, attrName: String): String = when (state) {
+    AttributeFilterState.Yes -> stringResource(R.string.filter_attr_has, attrName)
+    AttributeFilterState.No -> stringResource(R.string.filter_attr_no, attrName)
+    AttributeFilterState.Any -> attrName
+}
+
+@Composable
+private fun orientationLabel(state: OrientationFilterState): String = when (state) {
+    OrientationFilterState.Portrait -> stringResource(R.string.filter_orientation_portrait)
+    OrientationFilterState.Landscape -> stringResource(R.string.filter_orientation_landscape)
+    OrientationFilterState.Any -> stringResource(R.string.filter_orientation_any)
 }
 
 // ── Active filter chip (name + X dismiss button) ─────────────────────────────
@@ -259,16 +344,30 @@ fun LibraryFilterBar(
 private fun ActiveFilterChip(
     label: String,
     onRemove: () -> Unit,
+    leadingDot: Color? = null,
 ) {
     InputChip(
         selected = true,
         onClick = {},
         label = {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                maxLines = 1,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                if (leadingDot != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(leadingDot),
+                    )
+                }
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1,
+                )
+            }
         },
         trailingIcon = {
             IconButton(
@@ -331,6 +430,12 @@ private fun FilterSheetContent(
     selectedCollectionId: String?,
     currentSortField: String,
     currentSortAscending: Boolean,
+    filterHasLocation: AttributeFilterState,
+    filterHasKeywords: AttributeFilterState,
+    filterHasProxies: AttributeFilterState,
+    filterFullResolution: AttributeFilterState,
+    filterHasAudio: AttributeFilterState,
+    filterOrientation: OrientationFilterState,
     onDismiss: () -> Unit,
 ) {
     Column(
@@ -424,6 +529,104 @@ private fun FilterSheetContent(
                             )
                             Text(stringResource(R.string.filter_rating_plus, pos))
                         }
+                    },
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // ── Colour label ───────────────────────────────────────────────────
+        Text(
+            text = stringResource(R.string.filter_color_label),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 6.dp),
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ColorLabel.values().forEach { label ->
+                val isSelected = if (label == ColorLabel.None) filterColorLabel.isEmpty()
+                                 else filterColorLabel == label.raw
+                ColorLabelChip(
+                    label = label,
+                    isSelected = isSelected,
+                    onClick = {
+                        viewModel.setColorLabelFilter(if (isSelected) "" else label.raw)
+                    },
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // ── Attribute tri-state filters ────────────────────────────────────
+        Text(
+            text = stringResource(R.string.filter_attributes),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 6.dp),
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            AttributeTriStateRow(
+                label = stringResource(R.string.filter_attr_location),
+                state = filterHasLocation,
+                onSetState = { viewModel.setHasLocationFilter(it) },
+            )
+            AttributeTriStateRow(
+                label = stringResource(R.string.filter_attr_keywords),
+                state = filterHasKeywords,
+                onSetState = { viewModel.setHasKeywordsFilter(it) },
+            )
+            AttributeTriStateRow(
+                label = stringResource(R.string.filter_attr_proxies),
+                state = filterHasProxies,
+                onSetState = { viewModel.setHasProxiesFilter(it) },
+            )
+            AttributeTriStateRow(
+                label = stringResource(R.string.filter_attr_full_res),
+                state = filterFullResolution,
+                onSetState = { viewModel.setFullResolutionFilter(it) },
+            )
+            AttributeTriStateRow(
+                label = stringResource(R.string.filter_attr_audio),
+                state = filterHasAudio,
+                onSetState = { viewModel.setHasAudioFilter(it) },
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // ── Orientation ────────────────────────────────────────────────────
+        Text(
+            text = stringResource(R.string.filter_orientation),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 6.dp),
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OrientationFilterState.values().forEach { state ->
+                FilterChip(
+                    selected = filterOrientation == state,
+                    onClick = {
+                        viewModel.setOrientationFilter(if (filterOrientation == state) OrientationFilterState.Any else state)
+                    },
+                    label = {
+                        Text(
+                            text = when (state) {
+                                OrientationFilterState.Any -> stringResource(R.string.filter_orientation_any)
+                                OrientationFilterState.Portrait -> stringResource(R.string.filter_orientation_portrait)
+                                OrientationFilterState.Landscape -> stringResource(R.string.filter_orientation_landscape)
+                            },
+                        )
                     },
                 )
             }
@@ -528,6 +731,90 @@ private fun FilterSheetContent(
         )
 
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+// ── Colour-label chip ─────────────────────────────────────────────────────────
+
+@Composable
+private fun ColorLabelChip(
+    label: ColorLabel,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    val swatch = label.swatch
+    FilterChip(
+        selected = isSelected,
+        onClick = onClick,
+        label = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                if (label != ColorLabel.None) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(swatch)
+                            .border(
+                                width = if (isSelected) 0.dp else 0.5.dp,
+                                color = Color.Black.copy(alpha = 0.2f),
+                                shape = CircleShape,
+                            ),
+                    )
+                }
+                Text(
+                    text = label.displayName,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
+        },
+    )
+}
+
+// ── Attribute tri-state row ───────────────────────────────────────────────────
+
+/**
+ * A labelled row with three [FilterChip]s for the tri-state attribute filter:
+ * Any / Has / Doesn't have. Tapping a selected chip resets it to Any.
+ */
+@Composable
+private fun AttributeTriStateRow(
+    label: String,
+    state: AttributeFilterState,
+    onSetState: (AttributeFilterState) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
+        FilterChip(
+            selected = state == AttributeFilterState.Any,
+            onClick = { onSetState(AttributeFilterState.Any) },
+            label = { Text(stringResource(R.string.filter_any), style = MaterialTheme.typography.labelSmall) },
+        )
+        FilterChip(
+            selected = state == AttributeFilterState.Yes,
+            onClick = {
+                onSetState(if (state == AttributeFilterState.Yes) AttributeFilterState.Any else AttributeFilterState.Yes)
+            },
+            label = { Text(stringResource(R.string.filter_attr_yes), style = MaterialTheme.typography.labelSmall) },
+        )
+        FilterChip(
+            selected = state == AttributeFilterState.No,
+            onClick = {
+                onSetState(if (state == AttributeFilterState.No) AttributeFilterState.Any else AttributeFilterState.No)
+            },
+            label = { Text(stringResource(R.string.filter_attr_no_label), style = MaterialTheme.typography.labelSmall) },
+        )
     }
 }
 

@@ -184,6 +184,31 @@ class GridViewModel(
     private var collectionId: String? = null
     private var locationPathFilter: String = ""
 
+    // ── Attribute / orientation / audio filter state ──────────────────────
+    // Independent (user-set) attribute filters exposed in the filter sheet.
+    // These are combined with smart-collection attribute filters (OR? No —
+    // combined via tightest constraint) in the listVideos call: if a smart
+    // collection says Yes and the user says Any, Yes wins; same semantics as
+    // the desktop AttributeFilterState.merge helper.
+
+    private val _filterHasLocation = MutableStateFlow(AttributeFilterState.Any)
+    val filterHasLocation: StateFlow<AttributeFilterState> = _filterHasLocation.asStateFlow()
+
+    private val _filterHasKeywords = MutableStateFlow(AttributeFilterState.Any)
+    val filterHasKeywords: StateFlow<AttributeFilterState> = _filterHasKeywords.asStateFlow()
+
+    private val _filterHasProxies = MutableStateFlow(AttributeFilterState.Any)
+    val filterHasProxies: StateFlow<AttributeFilterState> = _filterHasProxies.asStateFlow()
+
+    private val _filterFullResolution = MutableStateFlow(AttributeFilterState.Any)
+    val filterFullResolution: StateFlow<AttributeFilterState> = _filterFullResolution.asStateFlow()
+
+    private val _filterHasAudio = MutableStateFlow(AttributeFilterState.Any)
+    val filterHasAudio: StateFlow<AttributeFilterState> = _filterHasAudio.asStateFlow()
+
+    private val _filterOrientation = MutableStateFlow(OrientationFilterState.Any)
+    val filterOrientation: StateFlow<OrientationFilterState> = _filterOrientation.asStateFlow()
+
     // ── Smart collection expanded filter state ────────────────────────────
     // When a smart collection is selected, its filterJson is parsed and these
     // fields are populated instead of sending collectionId to the daemon.
@@ -247,11 +272,11 @@ class GridViewModel(
                     filterMinRating = _filterMinRating.value,
                     filterColorLabel = _filterColorLabel.value,
                     searchQuery = _searchQuery.value,
-                    metadataFilters = smartMetadataFilters,
-                    hasLocation = smartHasLocation,
-                    hasKeywords = smartHasKeywords,
-                    hasProxies = smartHasProxies,
-                    fullResolution = smartFullResolution,
+                    metadataFilters = mergedMetadataFilters(),
+                    hasLocation = mergeAttr(smartHasLocation, _filterHasLocation.value),
+                    hasKeywords = mergeAttr(smartHasKeywords, _filterHasKeywords.value),
+                    hasProxies = mergeAttr(smartHasProxies, _filterHasProxies.value),
+                    fullResolution = mergeAttr(smartFullResolution, _filterFullResolution.value),
                 )
                 val existing = _videos.value
                 val merged = existing + newVideos.filter { n -> existing.none { it.id == n.id } }
@@ -514,11 +539,48 @@ class GridViewModel(
         reloadFromTop(showSpinner = true)
     }
 
+    fun setHasLocationFilter(state: AttributeFilterState) {
+        if (_filterHasLocation.value == state) return
+        _filterHasLocation.value = state
+        reloadFromTop(showSpinner = true)
+    }
+
+    fun setHasKeywordsFilter(state: AttributeFilterState) {
+        if (_filterHasKeywords.value == state) return
+        _filterHasKeywords.value = state
+        reloadFromTop(showSpinner = true)
+    }
+
+    fun setHasProxiesFilter(state: AttributeFilterState) {
+        if (_filterHasProxies.value == state) return
+        _filterHasProxies.value = state
+        reloadFromTop(showSpinner = true)
+    }
+
+    fun setFullResolutionFilter(state: AttributeFilterState) {
+        if (_filterFullResolution.value == state) return
+        _filterFullResolution.value = state
+        reloadFromTop(showSpinner = true)
+    }
+
+    fun setHasAudioFilter(state: AttributeFilterState) {
+        if (_filterHasAudio.value == state) return
+        _filterHasAudio.value = state
+        reloadFromTop(showSpinner = true)
+    }
+
+    fun setOrientationFilter(state: OrientationFilterState) {
+        if (_filterOrientation.value == state) return
+        _filterOrientation.value = state
+        reloadFromTop(showSpinner = true)
+    }
+
     /**
      * True when any library filter is currently narrowing the grid (search,
-     * keyword, geo location, library path, min rating, colour). Excludes the
-     * collection selection — an empty collection has its own message and isn't
-     * a "filter". Drives the empty-state "Reset filter" affordance.
+     * keyword, geo location, library path, min rating, colour, attributes,
+     * orientation). Excludes the collection selection — an empty collection
+     * has its own message and isn't a "filter". Drives the empty-state
+     * "Reset filter" affordance.
      */
     fun hasActiveLibraryFilter(): Boolean =
         _searchQuery.value.isNotEmpty() ||
@@ -526,7 +588,13 @@ class GridViewModel(
             _filterLocation.value != null ||
             _filterMinRating.value > 0 ||
             _filterColorLabel.value.isNotEmpty() ||
-            locationPathFilter.isNotEmpty()
+            locationPathFilter.isNotEmpty() ||
+            _filterHasLocation.value != AttributeFilterState.Any ||
+            _filterHasKeywords.value != AttributeFilterState.Any ||
+            _filterHasProxies.value != AttributeFilterState.Any ||
+            _filterFullResolution.value != AttributeFilterState.Any ||
+            _filterHasAudio.value != AttributeFilterState.Any ||
+            _filterOrientation.value != OrientationFilterState.Any
 
     /**
      * Clear every active library filter at once and reload. Leaves the
@@ -542,6 +610,12 @@ class GridViewModel(
         if (_filterMinRating.value != 0) { _filterMinRating.value = 0; changed = true }
         if (_filterColorLabel.value.isNotEmpty()) { _filterColorLabel.value = ""; changed = true }
         if (locationPathFilter.isNotEmpty()) { locationPathFilter = ""; changed = true }
+        if (_filterHasLocation.value != AttributeFilterState.Any) { _filterHasLocation.value = AttributeFilterState.Any; changed = true }
+        if (_filterHasKeywords.value != AttributeFilterState.Any) { _filterHasKeywords.value = AttributeFilterState.Any; changed = true }
+        if (_filterHasProxies.value != AttributeFilterState.Any) { _filterHasProxies.value = AttributeFilterState.Any; changed = true }
+        if (_filterFullResolution.value != AttributeFilterState.Any) { _filterFullResolution.value = AttributeFilterState.Any; changed = true }
+        if (_filterHasAudio.value != AttributeFilterState.Any) { _filterHasAudio.value = AttributeFilterState.Any; changed = true }
+        if (_filterOrientation.value != OrientationFilterState.Any) { _filterOrientation.value = OrientationFilterState.Any; changed = true }
         if (changed) reloadFromTop(showSpinner = true)
     }
 
@@ -644,6 +718,12 @@ class GridViewModel(
         _searchQuery.value = ""
         _filterMinRating.value = 0
         _filterColorLabel.value = ""
+        _filterHasLocation.value = AttributeFilterState.Any
+        _filterHasKeywords.value = AttributeFilterState.Any
+        _filterHasProxies.value = AttributeFilterState.Any
+        _filterFullResolution.value = AttributeFilterState.Any
+        _filterHasAudio.value = AttributeFilterState.Any
+        _filterOrientation.value = OrientationFilterState.Any
         _selectedVideoId.value = null
         _videos.value = emptyList()
         _totalCount.value = 0L
@@ -660,6 +740,38 @@ class GridViewModel(
     // ─────────────────────────────────────────────────────────────────────
     // Internal helpers
     // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Combine a smart-collection attribute state with a user-set attribute
+     * state. When both are [AttributeFilterState.Any] the result is Any;
+     * otherwise the tightest non-Any state wins (smart or user, whichever
+     * is set). If they disagree (one says Yes, the other No) the smart
+     * collection wins — that's a rare edge case and matches the desktop.
+     */
+    private fun mergeAttr(smart: AttributeFilterState, user: AttributeFilterState): AttributeFilterState =
+        when {
+            smart != AttributeFilterState.Any -> smart
+            else -> user
+        }
+
+    /**
+     * Merge the smart-collection metadata filters with user-set derived
+     * attribute metadata filters (has_audio, orientation). The smart
+     * collection's list already contains its own has_audio/orientation
+     * entries; user-set ones append when the smart list doesn't already
+     * cover the same key.
+     */
+    private fun mergedMetadataFilters(): List<MetadataFilter> {
+        val derived = derivedAttributeMetadataFilters(
+            _filterHasAudio.value,
+            _filterOrientation.value,
+        )
+        if (derived.isEmpty()) return smartMetadataFilters
+        // Skip derived keys that the smart collection already covers.
+        val smartKeys = smartMetadataFilters.map { it.key }.toSet()
+        val extra = derived.filter { it.key !in smartKeys }
+        return smartMetadataFilters + extra
+    }
 
     private fun handleCatalogEvent(event: CatalogEvent) {
         when (event.kind) {
@@ -754,11 +866,11 @@ class GridViewModel(
                     filterMinRating = _filterMinRating.value,
                     filterColorLabel = _filterColorLabel.value,
                     searchQuery = _searchQuery.value,
-                    metadataFilters = smartMetadataFilters,
-                    hasLocation = smartHasLocation,
-                    hasKeywords = smartHasKeywords,
-                    hasProxies = smartHasProxies,
-                    fullResolution = smartFullResolution,
+                    metadataFilters = mergedMetadataFilters(),
+                    hasLocation = mergeAttr(smartHasLocation, _filterHasLocation.value),
+                    hasKeywords = mergeAttr(smartHasKeywords, _filterHasKeywords.value),
+                    hasProxies = mergeAttr(smartHasProxies, _filterHasProxies.value),
+                    fullResolution = mergeAttr(smartFullResolution, _filterFullResolution.value),
                 )
                 _videos.value = videosList
                 _totalCount.value = totalCount
