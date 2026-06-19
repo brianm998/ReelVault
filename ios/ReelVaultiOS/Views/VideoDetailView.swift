@@ -104,6 +104,10 @@ final class StreamPlayer: ObservableObject {
     @Published var isPlaying: Bool = false
     private var timeObserverToken: Any?
     private var rateObservation: NSKeyValueObservation?
+    /// Non-published reference to whichever AVPlayer the current time observer
+    /// is installed on — used only in deinit (where @Published `player` is not
+    /// accessible from a nonisolated context).
+    private var observedPlayer: AVPlayer?
     private var preparedVideoId: String?
     /// The height the current player item was prepared at, so changing the
     /// rendition forces a re-prepare instead of a no-op.
@@ -462,6 +466,12 @@ final class StreamPlayer: ObservableObject {
     }
 
     deinit {
+        // Remove the time observer and KVO before the player releases.
+        // Use `observedPlayer` (not `@Published player`) — deinit is nonisolated.
+        if let token = timeObserverToken, let p = observedPlayer {
+            p.removeTimeObserver(token)
+        }
+        rateObservation?.invalidate()
         // Release a held Files bookmark scope if the player is torn down without
         // a resetIfDifferent (e.g. the detail view simply disappears).
         scopedPlaybackURL?.stopAccessingSecurityScopedResource()
@@ -554,6 +564,9 @@ final class StreamPlayer: ObservableObject {
     /// alive (the HLS segments 502 if it deallocs mid-playback).
     func leaveScreen() {
         player?.pause()
+        // Always remove the time observer and KVO so they don't keep firing
+        // after the screen disappears, regardless of whether a player was built.
+        migrateTimeObserver(from: player, to: nil)
         if player == nil {
             prepareTask?.cancel()
             prepareTask = nil
@@ -677,6 +690,7 @@ final class StreamPlayer: ObservableObject {
             old.removeTimeObserver(token)
             timeObserverToken = nil
         }
+        observedPlayer = nil
         rateObservation?.invalidate()
         rateObservation = nil
         guard let p = newPlayer else {
@@ -685,6 +699,7 @@ final class StreamPlayer: ObservableObject {
             isPlaying = false
             return
         }
+        observedPlayer = p
         // Periodic observer fires ~10x/s while the clock is running.
         let interval = CMTime(seconds: 0.1, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
         timeObserverToken = p.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self, weak p] time in
@@ -1034,7 +1049,9 @@ struct FrameStepControlBar: View {
                 Spacer()
 
                 // FPS readout — informs the user what "1 frame" means.
-                Text(String(format: "%.2gfps", fps))
+                // Use up to 3 significant digits so common rates (23.976,
+                // 29.97, 59.94, 120) render without spurious rounding.
+                Text(formatFps(fps))
                     .font(.system(size: 10, design: .monospaced))
                     .foregroundStyle(.secondary)
                     .frame(width: 52, alignment: .trailing)
@@ -1058,6 +1075,20 @@ struct FrameStepControlBar: View {
         let sec = s % 60
         if h > 0 { return String(format: "%d:%02d:%02d", h, m, sec) }
         return String(format: "%d:%02d", m, sec)
+    }
+
+    /// Format an FPS value with up to 3 significant digits, dropping a trailing
+    /// ".0" for whole numbers. 23.976 → "23.976fps", 29.97 → "29.97fps",
+    /// 30.0 → "30fps", 120.0 → "120fps".
+    private func formatFps(_ f: Double) -> String {
+        let rounded = (f * 1000).rounded() / 1000
+        if rounded == rounded.rounded() {
+            return "\(Int(rounded))fps"
+        }
+        // Trim trailing zeros up to 3 decimal places.
+        let s = String(format: "%.3f", rounded)
+        let trimmed = s.replacingOccurrences(of: "\\.?0+$", with: "", options: .regularExpression)
+        return "\(trimmed)fps"
     }
 }
 
@@ -1085,10 +1116,13 @@ struct FullScreenFrameStepOverlay: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             // Invisible tap area — tap anywhere to reveal the controls.
+            // Only hit-test when the controls are hidden so we don't block
+            // the native VideoPlayer's own transport controls when visible.
             Color.clear
                 .contentShape(Rectangle())
                 .onTapGesture { revealControls() }
                 .ignoresSafeArea()
+                .allowsHitTesting(!visible)
 
             if visible {
                 VStack(spacing: 10) {
@@ -1453,6 +1487,9 @@ private struct ProxyResolutionSheet: View {
                     Button("Create") {
                         onConfirm(selectedHeight)
                     }
+                    // Disable Create when the chosen height is >= the source
+                    // height (would be an upscale, not a proxy downscale).
+                    .disabled(sourceVideo.height > 0 && selectedHeight >= sourceVideo.height)
                 }
             }
         }
@@ -1492,9 +1529,14 @@ private struct ProxyResolutionSheet: View {
     }
 
     private var defaultPick: Int {
-        if sourceVideo.height > 720 { return 720 }
-        if let smaller = presets.first(where: { $0 < sourceVideo.height }) { return smaller }
-        return 720
+        // Pick the largest preset that is strictly smaller than the source,
+        // so the initial selection is always a valid downscale. For a source
+        // with no height info (0) or one smaller than every preset, fall back
+        // to the smallest preset (540p).
+        if sourceVideo.height > 0 {
+            if let pick = presets.first(where: { $0 < sourceVideo.height }) { return pick }
+        }
+        return presets.last ?? 540
     }
 
     private func presetLabel(_ h: Int) -> String {
