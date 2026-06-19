@@ -5,6 +5,7 @@ package com.reelvault.android.ui.screens
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -35,11 +36,13 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import com.reelvault.android.ui.components.ProxyRendition
 import com.reelvault.android.ui.components.VideoPlayer
 import com.reelvault.android.ui.theme.swatch
 import com.reelvault.android.ui.theme.dimmed
 import com.reelvault.android.R
+import com.reelvault.android.data.VideoShareManager
 import com.reelvault.android.viewmodel.DetailViewModel
 import com.reelvault.data.models.ColorLabel
 import com.reelvault.data.models.FullResolutionStatus
@@ -68,6 +71,7 @@ fun VideoDetailScreen(
     onShowOnMap: ((Double, Double) -> Unit)? = null,
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val vm: DetailViewModel = viewModel(
         key = "detail_$videoId",
         factory = DetailViewModel.Factory(repository, context),
@@ -78,6 +82,9 @@ fun VideoDetailScreen(
     val error by vm.error.collectAsStateWithLifecycle()
     val notes by vm.notes.collectAsStateWithLifecycle()
     val thumbnail by vm.thumbnail.collectAsStateWithLifecycle()
+
+    // Share state: true while downloading the video for hand-off.
+    var isSharing by remember { mutableStateOf(false) }
 
     // Load on first composition.
     LaunchedEffect(videoId) {
@@ -124,11 +131,39 @@ fun VideoDetailScreen(
                 },
                 actions = {
                     if (metadata != null) {
-                        IconButton(onClick = { shareVideo(context, metadata!!) }) {
-                            Icon(
-                                imageVector = Icons.Default.Share,
-                                contentDescription = stringResource(R.string.detail_share),
-                            )
+                        if (isSharing) {
+                            // Show a spinner while the file is being downloaded.
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .padding(12.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.fillMaxSize(),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                        } else {
+                            IconButton(
+                                onClick = {
+                                    val meta = metadata ?: return@IconButton
+                                    scope.launch {
+                                        isSharing = true
+                                        shareVideo(context, meta) { msg ->
+                                            // Surface download errors in the snackbar.
+                                            snackbarHostState.showSnackbar(msg)
+                                        }
+                                        isSharing = false
+                                    }
+                                },
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = stringResource(R.string.detail_share),
+                                )
+                            }
                         }
                     }
                 },
@@ -1194,11 +1229,43 @@ private fun ProxyRow(proxy: VideoRepository.ProxyInfo) {
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-private fun shareVideo(context: Context, metadata: VideoMetadata) {
+/**
+ * Download the video from the daemon and fire the system share sheet with the
+ * actual media file attached as EXTRA_STREAM — matching iOS ShareExportModel.prepare().
+ *
+ * When no remote connection is active, shows an informative snackbar instead.
+ * On network/IO failure, calls [onError] with a human-readable message so the
+ * caller can surface it (e.g. in a Snackbar).
+ *
+ * Must be called from a coroutine (suspend).
+ */
+private suspend fun shareVideo(
+    context: Context,
+    metadata: VideoMetadata,
+    onError: suspend (String) -> Unit,
+) {
+    if (!com.reelvault.data.remote.RemoteConnection.isRemote) {
+        // No daemon connection — nothing to download.
+        onError(context.getString(R.string.detail_share_no_connection))
+        return
+    }
+    val fileUri: Uri = try {
+        VideoShareManager.shareUri(
+            context = context,
+            videoId = metadata.id,
+            filename = metadata.filename,
+        )
+    } catch (e: Exception) {
+        onError(context.getString(R.string.detail_share_failed, e.message ?: context.getString(R.string.common_unknown_error)))
+        return
+    }
+    val mimeType = VideoShareManager.mimeTypeFor(metadata.filename)
     val shareIntent = Intent(Intent.ACTION_SEND).apply {
-        type = "video/*"
+        type = mimeType
         putExtra(Intent.EXTRA_SUBJECT, metadata.filename)
-        putExtra(Intent.EXTRA_TEXT, metadata.path)
+        putExtra(Intent.EXTRA_STREAM, fileUri)
+        // Grant the receiving app read access to the FileProvider URI.
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
     context.startActivity(
         Intent.createChooser(

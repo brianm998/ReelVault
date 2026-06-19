@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    FileProvider paths for editor hand-off (share/export).
+
+    Downloaded video files are written to the app's internal cache directory and
+    exposed via FileProvider so a receiving editor can open them with READ permission.
+    No external-storage paths are exposed — the cache is private to the app.
+-->
+<paths>
+    <!-- Internal cache dir: Context.getCacheDir() -->
+    <cache-path name="shared_videos" path="shared_videos/" />
+</paths>

@@ -247,6 +247,9 @@
     <string name="detail_color_label_selected">%1$s selected</string>
     <string name="detail_section_proxies">PROXIES</string>
     <string name="detail_proxy_auto">Auto</string>
+    <string name="detail_share_preparing">Preparing file for sharing…</string>
+    <string name="detail_share_failed">Could not download video for sharing: %1$s</string>
+    <string name="detail_share_no_connection">Not connected to a server — cannot share the remote video.</string>
     <string name="detail_audio_channels_mono">1 (Mono)</string>
     <string name="detail_audio_channels_stereo">2 (Stereo)</string>
     <string name="detail_audio_channels_51">5.1 Surround</string>
