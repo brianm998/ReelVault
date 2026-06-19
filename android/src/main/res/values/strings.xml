@@ -337,6 +337,20 @@
     <string name="card_has_audio">Has an audio track</string>
     <string name="card_file_offline">File offline</string>
     <string name="card_star">%1$d star</string>
+    <!-- Rating / label context menu on card long-press -->
+    <string name="card_menu_rating">Rating</string>
+    <string name="card_menu_rating_none">None</string>
+    <string name="card_menu_color_label">Color Label</string>
+    <string name="card_menu_label_none">None</string>
+    <string name="card_menu_label_red">Red</string>
+    <string name="card_menu_label_yellow">Yellow</string>
+    <string name="card_menu_label_green">Green</string>
+    <string name="card_menu_label_blue">Blue</string>
+    <string name="card_menu_label_purple">Purple</string>
+    <string name="card_set_rating_desc">Set %1$d-star rating</string>
+    <string name="card_clear_rating_desc">Clear rating</string>
+    <string name="card_set_color_label_desc">Set color label: %1$s</string>
+    <string name="card_clear_color_label_desc">Clear color label</string>
     <plurals name="card_keyword_count">
         <item quantity="one">%1$d keyword</item>
         <item quantity="other">%1$d keywords</item>

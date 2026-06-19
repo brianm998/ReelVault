@@ -40,7 +40,9 @@ import com.reelvault.android.R
 import com.reelvault.android.ui.components.LibraryFilterBar
 import com.reelvault.android.ui.components.ThumbnailImage
 import com.reelvault.android.viewmodel.GridViewModel
+import com.reelvault.android.ui.theme.swatch
 import com.reelvault.data.models.Collection
+import com.reelvault.data.models.ColorLabel
 import com.reelvault.data.models.GridStatKey
 import com.reelvault.data.models.LibraryLocation
 import com.reelvault.data.models.defaultGridTopSlots
@@ -341,6 +343,16 @@ fun LibraryGridScreen(
                                     multiSelectedIds = setOf(video.id)
                                     vm.selectVideo(video.id)
                                 },
+                                onSetRating = { video, rating ->
+                                    val ids = if (multiSelectedIds.isNotEmpty()) multiSelectedIds.toList()
+                                              else listOf(video.id)
+                                    vm.setRating(ids, rating)
+                                },
+                                onSetColorLabel = { video, label ->
+                                    val ids = if (multiSelectedIds.isNotEmpty()) multiSelectedIds.toList()
+                                              else listOf(video.id)
+                                    vm.setColorLabel(ids, label)
+                                },
                             )
                         } else {
                             ListContent(
@@ -367,6 +379,16 @@ fun LibraryGridScreen(
                                 onLongPress = { video ->
                                     multiSelectedIds = setOf(video.id)
                                     vm.selectVideo(video.id)
+                                },
+                                onSetRating = { video, rating ->
+                                    val ids = if (multiSelectedIds.isNotEmpty()) multiSelectedIds.toList()
+                                              else listOf(video.id)
+                                    vm.setRating(ids, rating)
+                                },
+                                onSetColorLabel = { video, label ->
+                                    val ids = if (multiSelectedIds.isNotEmpty()) multiSelectedIds.toList()
+                                              else listOf(video.id)
+                                    vm.setColorLabel(ids, label)
                                 },
                             )
                         }
@@ -789,6 +811,8 @@ private fun GridContent(
     onRefresh: () -> Unit,
     onTap: (VideoSummary) -> Unit,
     onLongPress: (VideoSummary) -> Unit,
+    onSetRating: (VideoSummary, Int) -> Unit,
+    onSetColorLabel: (VideoSummary, String) -> Unit,
 ) {
     val gridState = rememberLazyGridState()
     // Trigger pagination near the end of the list.
@@ -835,6 +859,8 @@ private fun GridContent(
                     repository = repository,
                     onTap = { onTap(video) },
                     onLongPress = { onLongPress(video) },
+                    onSetRating = { rating -> onSetRating(video, rating) },
+                    onSetColorLabel = { label -> onSetColorLabel(video, label) },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -859,6 +885,8 @@ private fun ListContent(
     onRefresh: () -> Unit,
     onTap: (VideoSummary) -> Unit,
     onLongPress: (VideoSummary) -> Unit,
+    onSetRating: (VideoSummary, Int) -> Unit,
+    onSetColorLabel: (VideoSummary, String) -> Unit,
 ) {
     val listState = rememberLazyListState()
 
@@ -902,6 +930,8 @@ private fun ListContent(
                     repository = repository,
                     onTap = { onTap(video) },
                     onLongPress = { onLongPress(video) },
+                    onSetRating = { rating -> onSetRating(video, rating) },
+                    onSetColorLabel = { label -> onSetColorLabel(video, label) },
                 )
                 HorizontalDivider(thickness = 0.5.dp)
             }
@@ -978,6 +1008,8 @@ private fun AndroidVideoCard(
     repository: VideoRepository,
     onTap: () -> Unit,
     onLongPress: () -> Unit,
+    onSetRating: (Int) -> Unit,
+    onSetColorLabel: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val borderColor = when {
@@ -1003,12 +1035,18 @@ private fun AndroidVideoCard(
         else -> Color(0xFF474747)
     }
 
+    // Context menu state — shown on long-press.
+    var showContextMenu by remember { mutableStateOf(false) }
+
     Box(
         modifier = modifier
             .border(borderWidth, borderColor)
             .combinedClickable(
                 onClick = onTap,
-                onLongClick = onLongPress,
+                onLongClick = {
+                    onLongPress()
+                    showContextMenu = true
+                },
             )
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -1095,7 +1133,9 @@ private fun AndroidVideoCard(
 
             HorizontalDivider(color = Color.Black.copy(alpha = 0.35f), thickness = 1.dp)
 
-            // ── Bottom rating band ─────────────────────────────────────
+            // ── Bottom rating band (tappable stars) ────────────────────
+            // Tap a star to set that rating; tap the current star to clear
+            // (toggle back to 0) — mirrors the iOS and desktop behaviour.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1107,16 +1147,29 @@ private fun AndroidVideoCard(
                 for (pos in 1..5) {
                     val filled = pos <= video.rating
                     Box(
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clickable {
+                                // Tap current star to clear; tap any other to set.
+                                onSetRating(if (video.rating == pos) 0 else pos)
+                            },
                         contentAlignment = Alignment.Center,
                     ) {
                         if (filled) {
-                            Icon(
-                                Icons.Default.Star,
-                                contentDescription = stringResource(R.string.card_star, pos),
-                                modifier = Modifier.size(12.dp),
-                                tint = Color.White,
-                            )
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.Star,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = Color(0xFF1F1F1F),
+                                )
+                                Icon(
+                                    Icons.Default.Star,
+                                    contentDescription = stringResource(R.string.card_star, pos),
+                                    modifier = Modifier.size(12.dp),
+                                    tint = Color.White,
+                                )
+                            }
                         } else {
                             Box(
                                 modifier = Modifier
@@ -1130,6 +1183,22 @@ private fun AndroidVideoCard(
                 }
             }
         }
+
+        // ── Long-press context menu (rating + color label) ─────────────
+        // Anchored to the top-start of the card so it doesn't clip off screen.
+        VideoCardContextMenu(
+            video = video,
+            expanded = showContextMenu,
+            onDismiss = { showContextMenu = false },
+            onSetRating = { rating ->
+                onSetRating(rating)
+                showContextMenu = false
+            },
+            onSetColorLabel = { label ->
+                onSetColorLabel(label)
+                showContextMenu = false
+            },
+        )
     }
 }
 
@@ -1143,6 +1212,8 @@ private fun VideoListRow(
     repository: VideoRepository,
     onTap: () -> Unit,
     onLongPress: () -> Unit,
+    onSetRating: (Int) -> Unit,
+    onSetColorLabel: (String) -> Unit,
 ) {
     val background = when {
         isSelected -> MaterialTheme.colorScheme.primaryContainer
@@ -1150,11 +1221,20 @@ private fun VideoListRow(
         else -> MaterialTheme.colorScheme.surface
     }
 
+    var showContextMenu by remember { mutableStateOf(false) }
+
+    Box {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(background)
-            .combinedClickable(onClick = onTap, onLongClick = onLongPress)
+            .combinedClickable(
+                onClick = onTap,
+                onLongClick = {
+                    onLongPress()
+                    showContextMenu = true
+                },
+            )
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -1258,7 +1338,129 @@ private fun VideoListRow(
             }
             AndroidCardStatusBadges(video = video)
         }
+    } // Row
+
+        // Long-press context menu anchored to the row.
+        VideoCardContextMenu(
+            video = video,
+            expanded = showContextMenu,
+            onDismiss = { showContextMenu = false },
+            onSetRating = { rating ->
+                onSetRating(rating)
+                showContextMenu = false
+            },
+            onSetColorLabel = { label ->
+                onSetColorLabel(label)
+                showContextMenu = false
+            },
+        )
+    } // Box
+}
+
+// ── Long-press context menu: rating + color label ─────────────────────────────
+//
+// Mirrors the iOS VideoCardMenu and the desktop's right-click context menu.
+// Appears on a long-press of a grid card or list row; applies to the
+// target video (or to every video in an active multi-select set, which the
+// caller computes before forwarding here via onSetRating/onSetColorLabel).
+//
+// Rating sub-menu: 0 (none) through 5 stars; the current value gets a
+// checkmark dot. Tapping the current rating clears it (0), matching
+// Lightroom and the iOS/desktop clients.
+//
+// Colour-label sub-menu: None + 5 Lightroom colours. A coloured dot precedes
+// each label name (menu-item icons can't be tinted per-item in Material3,
+// so a unicode circle is used instead — matching the iOS approach).
+
+@Composable
+private fun VideoCardContextMenu(
+    video: VideoSummary,
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    onSetRating: (Int) -> Unit,
+    onSetColorLabel: (String) -> Unit,
+) {
+    val colorLabelEnum = ColorLabel.from(video.colorLabel)
+
+    // Single flat DropdownMenu with two labelled sections.
+    // Cascading sub-menus are not idiomatic on Android — a flat list with
+    // section headers reads better on a touch screen and avoids the awkward
+    // two-layer overlay pattern.
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss,
+    ) {
+        // ── Rating section header ─────────────────────────────────────
+        Text(
+            text = stringResource(R.string.card_menu_rating).uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 2.dp),
+        )
+        // 5 down to 0 — descending order (highest at top) mirrors the iOS
+        // Picker and keeps the most-useful values closest to the long-press.
+        for (n in 5 downTo 0) {
+            val isCurrentRating = video.rating == n
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        if (n == 0) stringResource(R.string.card_menu_rating_none)
+                        else "★".repeat(n)
+                    )
+                },
+                leadingIcon = if (isCurrentRating) {
+                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                } else null,
+                onClick = {
+                    // Tap current rating to clear it (Lightroom toggle semantics).
+                    onSetRating(if (isCurrentRating) 0 else n)
+                },
+            )
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+        // ── Color label section header ────────────────────────────────
+        Text(
+            text = stringResource(R.string.card_menu_color_label).uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 12.dp, top = 4.dp, bottom = 2.dp),
+        )
+        for (label in ColorLabel.values()) {
+            val isCurrent = colorLabelEnum == label
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        when (label) {
+                            ColorLabel.None   -> stringResource(R.string.card_menu_label_none)
+                            ColorLabel.Red    -> "${colorDot(label)} ${stringResource(R.string.card_menu_label_red)}"
+                            ColorLabel.Yellow -> "${colorDot(label)} ${stringResource(R.string.card_menu_label_yellow)}"
+                            ColorLabel.Green  -> "${colorDot(label)} ${stringResource(R.string.card_menu_label_green)}"
+                            ColorLabel.Blue   -> "${colorDot(label)} ${stringResource(R.string.card_menu_label_blue)}"
+                            ColorLabel.Purple -> "${colorDot(label)} ${stringResource(R.string.card_menu_label_purple)}"
+                        }
+                    )
+                },
+                leadingIcon = if (isCurrent) {
+                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                } else null,
+                onClick = { onSetColorLabel(label.raw) },
+            )
+        }
     }
+}
+
+/** Unicode circle used as a per-item colour dot in the colour-label menu.
+ *  Material3 doesn't support per-item icon tinting, so a unicode emoji
+ *  is the cleanest cross-version option — matches the iOS VideoCardMenu. */
+private fun colorDot(label: ColorLabel): String = when (label) {
+    ColorLabel.None   -> "⚪"
+    ColorLabel.Red    -> "🔴"
+    ColorLabel.Yellow -> "🟡"
+    ColorLabel.Green  -> "🟢"
+    ColorLabel.Blue   -> "🔵"
+    ColorLabel.Purple -> "🟣"
 }
 
 // ── Shared card status badges (keyword / proxy / full-resolution / audio) ────

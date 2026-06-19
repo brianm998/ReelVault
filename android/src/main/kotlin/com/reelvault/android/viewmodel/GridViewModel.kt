@@ -620,6 +620,54 @@ class GridViewModel(
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // Public API: per-card rating + color label
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Apply a 0..5 star [rating] to [videoIds]. Optimistically updates the
+     * in-memory video list so the stars repaint without a round-trip, then
+     * persists via the repository. Mirrors the kit GridViewModel.setRating.
+     */
+    fun setRating(videoIds: List<String>, rating: Int) {
+        val clamped = rating.coerceIn(0, 5)
+        val ids = videoIds.filter { it.isNotEmpty() }.toSet()
+        if (ids.isEmpty()) return
+        // Optimistic update.
+        _videos.value = _videos.value.map { v ->
+            if (v.id in ids) v.copy(rating = clamped) else v
+        }
+        viewModelScope.launch {
+            try {
+                repository.updateVideoRating(ids.toList(), clamped)
+            } catch (e: Exception) {
+                _error.value = appContext.getString(R.string.err_update_rating, e.message ?: "")
+                // No rollback — a background reload will restore the real value.
+            }
+        }
+    }
+
+    /**
+     * Apply a colour [label] ("red", "yellow", "green", "blue", "purple") or
+     * "" to clear, for [videoIds]. Optimistically updates the in-memory list,
+     * then persists. Mirrors the kit GridViewModel.setColorLabel.
+     */
+    fun setColorLabel(videoIds: List<String>, label: String) {
+        val ids = videoIds.filter { it.isNotEmpty() }.toSet()
+        if (ids.isEmpty()) return
+        // Optimistic update.
+        _videos.value = _videos.value.map { v ->
+            if (v.id in ids) v.copy(colorLabel = label) else v
+        }
+        viewModelScope.launch {
+            try {
+                repository.updateVideoColorLabel(ids.toList(), label)
+            } catch (e: Exception) {
+                _error.value = appContext.getString(R.string.err_update_color_label, e.message ?: "")
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // Public API: view mode
     // ─────────────────────────────────────────────────────────────────────
 
