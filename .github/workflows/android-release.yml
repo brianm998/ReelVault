@@ -1,20 +1,37 @@
 name: Android Release
 
-# Builds, signs, and uploads a release AAB to the Google Play internal testing
-# track, then attaches it as a GitHub release artifact.
-# Triggered when a version tag (e.g. v0.2.0) is pushed.
+# Builds, signs, and uploads a release AAB to the Google Play *internal* testing
+# track, then attaches it as a GitHub release artifact. The internal track is
+# the Play analog of TestFlight: testers get the build instantly with no review,
+# and you promote it to closed/open/production manually in the Play Console —
+# the same shape as the iOS pipeline (ios-testflight.yml), which uploads to
+# TestFlight for manual promotion to an App Store submission.
+#
+# Triggered by:
+#   • a shared version tag   (v0.2.0)        — releases every client at once
+#   • an Android-only tag    (android-v0.2.0) — ships just Android
+#   • manual run             (workflow_dispatch)
 #
 # Required secrets:
-#   KEYSTORE_BASE64          base64-encoded JKS/PKCS12 keystore file
-#   KEYSTORE_PASSWORD        keystore store password
-#   KEY_ALIAS                signing key alias inside the keystore
-#   KEY_PASSWORD             signing key password
-#   PLAY_SERVICE_ACCOUNT_JSON  Google Play service account JSON (plain text)
+#   KEYSTORE_BASE64            base64-encoded JKS/PKCS12 keystore file
+#   KEYSTORE_PASSWORD          keystore store password
+#   KEY_ALIAS                  signing key alias inside the keystore
+#   KEY_PASSWORD               signing key password
+#   PLAY_SERVICE_ACCOUNT_JSON  Google Play service account JSON (plain text),
+#                              granted "Release to testing tracks" in the
+#                              Play Console for com.reelvault.android
+#
+# One-time manual prerequisites (Google Play has no API to bootstrap an app):
+#   1. Create the app in the Play Console and upload the FIRST AAB by hand —
+#      the API cannot create the listing or publish the first release.
+#   2. Link the service account and grant it release permissions (above).
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - 'v*'
+      - 'android-v*'
 
 jobs:
   release:
@@ -37,11 +54,18 @@ jobs:
           key: release-android-gradle-${{ hashFiles('shared/build.gradle.kts', 'android/build.gradle.kts') }}
           restore-keys: release-android-gradle-
 
-      # Decode the base64 keystore to a temp file that Gradle will read.
+      # Decode the base64 keystore to a temp file that Gradle's signingConfig
+      # reads via $KEYSTORE_FILE. Fail fast with a clear message if the secret
+      # is absent (mirrors the iOS workflow's cert guard) — otherwise Gradle
+      # silently produces an unsigned AAB that Play later rejects.
       - name: Decode keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
+          if [[ -z "$KEYSTORE_BASE64" ]]; then
+            echo "::error::KEYSTORE_BASE64 not set — cannot sign the release AAB."
+            exit 1
+          fi
           KEYSTORE_PATH="$RUNNER_TEMP/reelvault-release.jks"
           echo "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
           echo "KEYSTORE_FILE=$KEYSTORE_PATH" >> "$GITHUB_ENV"
@@ -59,12 +83,16 @@ jobs:
         if: always()
         run: rm -f "$RUNNER_TEMP/reelvault-release.jks"
 
+      # Upload to the internal track. R8/ProGuard is enabled, so ship the
+      # mapping.txt too (Android analog of iOS dSYM upload) — without it Play
+      # crash stacks stay obfuscated.
       - name: Upload to Google Play (internal track)
-        uses: r0adkll/upload-google-play@v3
+        uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.reelvault.android
           releaseFiles: android/build/outputs/bundle/release/*.aab
+          mappingFile: android/build/outputs/mapping/release/mapping.txt
           track: internal
           status: completed
 
