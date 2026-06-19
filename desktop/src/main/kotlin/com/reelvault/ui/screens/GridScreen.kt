@@ -306,6 +306,13 @@ fun GridScreen(
                             modifier = Modifier.widthIn(max = 280.dp)
                         )
                     }
+                    // When a filter is hiding everything, offer a one-click reset.
+                    if (viewModel.hasActiveLibraryFilter()) {
+                        Spacer(modifier = Modifier.height(ReelVaultSpacing.Medium))
+                        Button(onClick = { viewModel.clearLibraryFilter() }) {
+                            Text("Reset filter")
+                        }
+                    }
                 }
             } else {
                 LazyVerticalGrid(

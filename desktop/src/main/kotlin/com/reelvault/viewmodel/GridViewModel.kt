@@ -1635,6 +1635,10 @@ class GridViewModel(
     fun clearLibraryFilter() {
         var changed = false
         if (_searchQuery.value.isNotEmpty()) { _searchQuery.value = ""; changed = true }
+        // The keyword/tag filter counts as an active library filter
+        // (hasActiveLibraryFilter), so clearing must drop it too — otherwise a
+        // tag-only filter survives "Clear" / the empty-state "Reset filter".
+        if (_filterTagId.value.isNotEmpty()) { _filterTagId.value = ""; filterTags = emptyList(); changed = true }
         if (_filterMinRating.value != 0) { _filterMinRating.value = 0; changed = true }
         if (_filterColorLabel.value.isNotEmpty()) { _filterColorLabel.value = ""; changed = true }
         if (_filterLocation.value != null) { _filterLocation.value = null; changed = true }
@@ -2598,7 +2602,7 @@ class GridViewModel(
 
     /** Whether any Library Filter constraint (text / attribute / metadata /
      *  keyword / map proximity) is currently narrowing the grid. */
-    private fun hasActiveLibraryFilter(): Boolean {
+    fun hasActiveLibraryFilter(): Boolean {
         val anyAttr = com.reelvault.data.models.AttributeFilterState.Any
         return _searchQuery.value.isNotEmpty() ||
             _filterMinRating.value > 0 ||

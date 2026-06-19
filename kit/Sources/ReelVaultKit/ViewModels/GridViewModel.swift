@@ -1404,7 +1404,7 @@ public class GridViewModel: ObservableObject {
 
     /// Whether any Library Filter constraint (text / attribute / metadata /
     /// keyword / map proximity) is currently narrowing the grid.
-    private func hasActiveLibraryFilter() -> Bool {
+    public func hasActiveLibraryFilter() -> Bool {
         !searchQuery.isEmpty ||
             filterMinRating > 0 ||
             !filterColorLabel.isEmpty ||
@@ -1635,6 +1635,10 @@ public class GridViewModel: ObservableObject {
     public func clearLibraryFilter() {
         var changed = false
         if !searchQuery.isEmpty { searchQuery = ""; changed = true }
+        // The keyword/tag filter counts as an active library filter
+        // (hasActiveLibraryFilter), so clearing must drop it too — otherwise a
+        // tag-only filter survives "Clear" / the empty-state "Reset filter".
+        if !filterTagId.isEmpty { filterTagId = ""; changed = true }
         if filterMinRating != 0 { filterMinRating = 0; changed = true }
         if !filterColorLabel.isEmpty { filterColorLabel = ""; changed = true }
         if filterLocation != nil { filterLocation = nil; changed = true }

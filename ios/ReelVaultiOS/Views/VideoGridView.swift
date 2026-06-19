@@ -99,12 +99,8 @@ struct VideoGridView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.top, 80)
                         } else {
-                            ContentUnavailableView(
-                                "No videos",
-                                systemImage: "film",
-                                description: Text("The connected catalog is empty, or no videos match the current filter.")
-                            )
-                            .padding(.top, 80)
+                            NoVideosView(grid: grid, systemImage: "film")
+                                .padding(.top, 80)
                         }
                     } else {
                         let rows = stackRenderedVideos(grid)
@@ -485,6 +481,26 @@ struct CardTapActions: ViewModifier {
                 .onTapGesture(count: 1) { onActivate() }
         } else {
             content.onTapGesture { onActivate() }
+        }
+    }
+}
+
+/// Empty-state for the grid and list. When a library filter is hiding every
+/// video, it offers a "Reset filter" button so the user can clear the filter
+/// without hunting through the filter bar.
+struct NoVideosView: View {
+    @ObservedObject var grid: GridViewModel
+    var systemImage: String = "film"
+
+    var body: some View {
+        ContentUnavailableView {
+            Label("No videos", systemImage: systemImage)
+        } description: {
+            Text("The connected catalog is empty, or no videos match the current filter.")
+        } actions: {
+            if grid.hasActiveLibraryFilter() {
+                Button("Reset filter") { grid.clearLibraryFilter() }
+            }
         }
     }
 }

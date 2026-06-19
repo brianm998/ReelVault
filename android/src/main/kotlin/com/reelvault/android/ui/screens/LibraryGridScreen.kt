@@ -293,6 +293,8 @@ fun LibraryGridScreen(
                             searchQuery = searchQuery,
                             filterTagId = filterTagId,
                             selectedCollectionId = selectedCollectionId,
+                            hasActiveFilter = vm.hasActiveLibraryFilter(),
+                            onResetFilter = { vm.clearAllFilters() },
                         )
                     }
 
@@ -1458,6 +1460,8 @@ private fun EmptyLibraryMessage(
     searchQuery: String,
     filterTagId: String,
     selectedCollectionId: String?,
+    hasActiveFilter: Boolean,
+    onResetFilter: () -> Unit,
 ) {
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -1488,12 +1492,25 @@ private fun EmptyLibraryMessage(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (searchQuery.isEmpty() && filterTagId.isEmpty() && selectedCollectionId == null) {
+            if (searchQuery.isEmpty() && filterTagId.isEmpty() &&
+                selectedCollectionId == null && !hasActiveFilter
+            ) {
                 Text(
                     text = "Add a library location in Settings to get started.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 )
+            }
+            // When a filter is hiding everything, offer a one-tap reset.
+            if (hasActiveFilter) {
+                Text(
+                    text = "…or no videos match the current filter",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                )
+                Button(onClick = onResetFilter) {
+                    Text("Reset filter")
+                }
             }
         }
     }

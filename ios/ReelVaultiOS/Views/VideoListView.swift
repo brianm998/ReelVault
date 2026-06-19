@@ -22,10 +22,7 @@ struct VideoListView: View {
                 // Loading, not empty — see VideoGridView / GridViewModel.hasLoadedOnce.
                 ProgressView().frame(maxWidth: .infinity).padding(.top, 80)
             } else {
-                ContentUnavailableView(
-                    "No videos", systemImage: "list.bullet",
-                    description: Text("The connected catalog is empty, or no videos match the current filter.")
-                )
+                NoVideosView(grid: grid, systemImage: "list.bullet")
             }
         } else {
             let rows = stackRenderedVideos(grid)

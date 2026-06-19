@@ -254,6 +254,11 @@ struct GridView: View {
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 280)
             }
+            // When a filter is hiding everything, offer a one-click reset.
+            if viewModel.hasActiveLibraryFilter() {
+                Button("Reset filter") { viewModel.clearLibraryFilter() }
+                    .padding(.top, 4)
+            }
         }
     }
 

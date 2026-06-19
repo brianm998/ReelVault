@@ -394,6 +394,37 @@ class GridViewModel(
         reloadFromTop(showSpinner = true)
     }
 
+    /**
+     * True when any library filter is currently narrowing the grid (search,
+     * keyword, geo location, library path, min rating, colour). Excludes the
+     * collection selection — an empty collection has its own message and isn't
+     * a "filter". Drives the empty-state "Reset filter" affordance.
+     */
+    fun hasActiveLibraryFilter(): Boolean =
+        _searchQuery.value.isNotEmpty() ||
+            _filterTagId.value.isNotEmpty() ||
+            _filterLocation.value != null ||
+            _filterMinRating.value > 0 ||
+            _filterColorLabel.value.isNotEmpty() ||
+            locationPathFilter.isNotEmpty()
+
+    /**
+     * Clear every active library filter at once and reload. Leaves the
+     * collection selection intact (mirrors desktop/iOS clearLibraryFilter).
+     */
+    fun clearAllFilters() {
+        var changed = false
+        if (_searchQuery.value.isNotEmpty()) { _searchQuery.value = ""; changed = true }
+        if (_filterTagId.value.isNotEmpty()) { _filterTagId.value = ""; filterTags = emptyList(); changed = true }
+        if (_filterLocation.value != null) {
+            _filterLocation.value = null; _filterLocationLabel.value = null; changed = true
+        }
+        if (_filterMinRating.value != 0) { _filterMinRating.value = 0; changed = true }
+        if (_filterColorLabel.value.isNotEmpty()) { _filterColorLabel.value = ""; changed = true }
+        if (locationPathFilter.isNotEmpty()) { locationPathFilter = ""; changed = true }
+        if (changed) reloadFromTop(showSpinner = true)
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     // Public API: view mode
     // ─────────────────────────────────────────────────────────────────────
