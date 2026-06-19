@@ -124,6 +124,7 @@ fun LibraryGridScreen(
     var showBatchOrganize by remember { mutableStateOf(false) }
     // Sharing state: true while downloading video files for the share sheet.
     var isBatchSharing by remember { mutableStateOf(false) }
+    var batchShareCount by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
 
     // ── Stacking state ───────────────────────────────────────────────────
@@ -276,6 +277,7 @@ fun LibraryGridScreen(
                             val ids = multiSelectedIds.toList()
                             val selectedVideos = videos.filter { it.id in multiSelectedIds }
                             if (selectedVideos.isEmpty()) return@LibraryTopAppBar
+                            batchShareCount = selectedVideos.size
                             isBatchSharing = true
                             scope.launch {
                                 try {
@@ -459,7 +461,13 @@ fun LibraryGridScreen(
                                     }
                                 },
                                 onLongPress = { video ->
-                                    multiSelectedIds = setOf(video.id)
+                                    multiSelectedIds = if (isMultiSelect) {
+                                        multiSelectedIds.toMutableSet().also {
+                                            if (video.id in it) it.remove(video.id) else it.add(video.id)
+                                        }
+                                    } else {
+                                        setOf(video.id)
+                                    }
                                     vm.selectVideo(video.id)
                                 },
                                 onSetRating = { video, rating ->
@@ -501,7 +509,13 @@ fun LibraryGridScreen(
                                     }
                                 },
                                 onLongPress = { video ->
-                                    multiSelectedIds = setOf(video.id)
+                                    multiSelectedIds = if (isMultiSelect) {
+                                        multiSelectedIds.toMutableSet().also {
+                                            if (video.id in it) it.remove(video.id) else it.add(video.id)
+                                        }
+                                    } else {
+                                        setOf(video.id)
+                                    }
                                     vm.selectVideo(video.id)
                                 },
                                 onSetRating = { video, rating ->
@@ -587,7 +601,7 @@ fun LibraryGridScreen(
             AlertDialog(
                 onDismissRequest = {},
                 confirmButton = {},
-                title = { Text(stringResource(R.string.batch_share_preparing)) },
+                title = { Text(stringResource(R.string.batch_share_preparing, batchShareCount)) },
                 text = {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -2775,8 +2789,13 @@ private fun StackMembersSheet(
                                 TextButton(
                                     onClick = {
                                         vm.removeFromStack(member.id, groupId)
-                                        members = members.filter { it.id != member.id }
-                                        if (members.size <= 1) onDismiss()
+                                        val remaining = members.filter { it.id != member.id }
+                                        members = remaining
+                                        if (remaining.size <= 1) {
+                                            onDismiss()
+                                        } else if (member.id == preferredId) {
+                                            preferredId = remaining.first().id
+                                        }
                                     },
                                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                                 ) {
