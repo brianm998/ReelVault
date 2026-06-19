@@ -44,6 +44,7 @@ import com.reelvault.android.ui.theme.dimmed
 import com.reelvault.android.R
 import com.reelvault.android.data.VideoShareManager
 import com.reelvault.android.viewmodel.DetailViewModel
+import com.reelvault.data.models.Collection
 import com.reelvault.data.models.ColorLabel
 import com.reelvault.data.models.FullResolutionStatus
 import com.reelvault.data.models.GridStatKey
@@ -101,6 +102,16 @@ fun VideoDetailScreen(
     var allTags by remember { mutableStateOf<List<com.reelvault.data.models.Tag>>(emptyList()) }
     LaunchedEffect(Unit) {
         allTags = repository.listTags()
+    }
+
+    // All collections (needed for the Collections section).
+    var allCollections by remember { mutableStateOf<List<Collection>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        try {
+            allCollections = repository.listCollections()
+        } catch (_: Exception) {
+            // Non-fatal — the section will show "No collections yet."
+        }
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -221,6 +232,7 @@ fun VideoDetailScreen(
                     thumbnail = thumbnail,
                     proxies = proxies,
                     allTags = allTags,
+                    allCollections = allCollections,
                     repository = repository,
                     vm = vm,
                     onShowOnMap = onShowOnMap,
@@ -243,6 +255,7 @@ private fun DetailContent(
     thumbnail: ByteArray?,
     proxies: List<VideoRepository.ProxyInfo>,
     allTags: List<com.reelvault.data.models.Tag>,
+    allCollections: List<Collection>,
     repository: VideoRepository,
     vm: DetailViewModel,
     onShowOnMap: ((Double, Double) -> Unit)?,
@@ -404,6 +417,21 @@ private fun DetailContent(
             ColorLabelSection(
                 colorLabel = ColorLabel.from(metadata.colorLabel),
                 onSetColorLabel = { vm.setColorLabel(it.raw) },
+            )
+        }
+
+        // ── Collections ───────────────────────────────────────────────────
+        item {
+            CollectionsSection(
+                metadata = metadata,
+                allCollections = allCollections,
+                onToggle = { collectionId, isMember ->
+                    if (isMember) {
+                        vm.removeFromCollection(collectionId)
+                    } else {
+                        vm.addToCollection(collectionId)
+                    }
+                },
             )
         }
 
@@ -1331,6 +1359,95 @@ private fun ProxyRow(proxy: VideoRepository.ProxyInfo) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Collections section
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Editable collection membership — toggle the video in/out of each manual
+ * collection (smart collections are rule-driven, so they're not listed here).
+ * Mirrors the iOS CollectionsSection in DetailSections.swift.
+ *
+ * Current membership is read from [metadata.collections] (refreshed by
+ * [DetailViewModel] after every toggle), so the checkmarks update immediately
+ * after a successful add/remove round-trip.
+ *
+ * @param onToggle Called with (collectionId, isMember) where [isMember] is the
+ *   state *before* the toggle — the ViewModel decides add vs. remove.
+ */
+@Composable
+private fun CollectionsSection(
+    metadata: VideoMetadata,
+    allCollections: List<Collection>,
+    onToggle: (collectionId: String, isMember: Boolean) -> Unit,
+) {
+    val manualCollections = remember(allCollections) { allCollections.filter { !it.isSmart } }
+    val memberIds = remember(metadata.collections) { metadata.collections.toSet() }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = stringResource(R.string.detail_section_collections),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+
+            if (manualCollections.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.detail_no_collections),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                manualCollections.forEach { collection ->
+                    val isMember = collection.id in memberIds
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onToggle(collection.id, isMember) }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = if (isMember) {
+                                Icons.Default.CheckCircle
+                            } else {
+                                Icons.Default.RadioButtonUnchecked
+                            },
+                            contentDescription = stringResource(
+                                R.string.detail_collection_toggle,
+                                collection.name,
+                            ),
+                            modifier = Modifier.size(20.dp),
+                            tint = if (isMember) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = collection.name,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+            }
         }
     }
 }

@@ -256,6 +256,9 @@
     <string name="detail_color_label_selected">%1$s selected</string>
     <string name="detail_section_proxies">PROXIES</string>
     <string name="detail_proxy_auto">Auto</string>
+    <string name="detail_section_collections">COLLECTIONS</string>
+    <string name="detail_no_collections">No collections yet.</string>
+    <string name="detail_collection_toggle">Toggle collection membership: %1$s</string>
     <string name="detail_share_preparing">Preparing file for sharing…</string>
     <string name="detail_share_failed">Could not download video for sharing: %1$s</string>
     <string name="detail_share_no_connection">Not connected to a server — cannot share the remote video.</string>
