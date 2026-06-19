@@ -14,10 +14,14 @@ import ReelVaultKit
 ///    (shown only when connected to a remote daemon; backed by the server's
 ///    `max_native_playback_height` / `proxy_target_height` config keys via
 ///    `VideoRepository.getConfig` / `updateConfig`)
+///  - Live Updates — file-watcher knobs (enabled toggle, write-settle ms,
+///    poll-interval ms); shown only when connected; mirrors macOS
+///    `WatchSettingsDialog` via `VideoRepository.getWatchSettings` /
+///    `updateWatchSettings`.
 struct SettingsView: View {
     /// Non-nil while connected to a remote daemon. Nil in local/offline mode,
-    /// which means the Playback & Proxies section is hidden — there is no server
-    /// config to read or write.
+    /// which means the Playback & Proxies and Live Updates sections are hidden —
+    /// there is no server config to read or write.
     var connection: AppRouter.ConnectionInfo? = nil
 
     @Environment(\.dismiss) private var dismiss
@@ -28,6 +32,7 @@ struct SettingsView: View {
                 AppearanceSection()
                 if connection != nil {
                     PlaybackSection()
+                    LiveUpdatesSection()
                 }
             }
             .navigationTitle("Settings")
@@ -137,6 +142,138 @@ private struct PlaybackSection: View {
             maxNativePlaybackHeight: maxNative,
             proxyTargetHeight: proxy
         )
+        saving = false
+    }
+}
+
+// MARK: - Live Updates section
+
+/// File-watcher knobs that mirror macOS `WatchSettingsDialog`. Three controls:
+///  - "Enable live updates" master toggle. When off the daemon doesn't run a
+///    watcher and the user must `Scan Library` manually.
+///  - "Write-settle delay" — size-stability gate keeping the indexer from
+///    grabbing a half-written recording (1–60 s).
+///  - "Poll fallback interval" — manual readdir cadence for NFS / SMB paths
+///    where OS events don't fire (0–300 s; 0 = disabled).
+///
+/// Values are loaded from the daemon when the section appears and saved back
+/// immediately when a control changes. A brief "Saving…" spinner appears in
+/// the section header during the round-trip.
+private struct LiveUpdatesSection: View {
+    @State private var settings: WatchSettings = .default
+    @State private var loading = true
+    @State private var saving = false
+
+    var body: some View {
+        Section {
+            if loading {
+                HStack {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Loading…")
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                // Master enable toggle
+                Toggle(isOn: $settings.enabled) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Enable live updates")
+                        Text("When off, new files appear only after \"Scan Library\".")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .onChange(of: settings.enabled) { _, _ in
+                    Task { await save() }
+                }
+                .disabled(saving)
+
+                // Write-settle slider (1–60 s)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Write-settle delay")
+                        Spacer()
+                        Text(settleLabel)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                    Slider(
+                        value: Binding(
+                            get: { Double(settings.writeSettleMs) / 1000.0 },
+                            set: { settings.writeSettleMs = Int64($0 * 1000.0) }
+                        ),
+                        in: 1...60,
+                        step: 1
+                    )
+                    .onChange(of: settings.writeSettleMs) { _, _ in
+                        Task { await save() }
+                    }
+                    .disabled(!settings.enabled || saving)
+                }
+                .opacity(settings.enabled ? 1 : 0.4)
+
+                // Poll-fallback slider (0–300 s)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Poll fallback interval")
+                        Spacer()
+                        Text(pollLabel)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                    Slider(
+                        value: Binding(
+                            get: { Double(settings.pollIntervalMs) / 1000.0 },
+                            set: { settings.pollIntervalMs = Int64($0 * 1000.0) }
+                        ),
+                        in: 0...300,
+                        step: 5
+                    )
+                    .onChange(of: settings.pollIntervalMs) { _, _ in
+                        Task { await save() }
+                    }
+                    .disabled(!settings.enabled || saving)
+                }
+                .opacity(settings.enabled ? 1 : 0.4)
+            }
+        } header: {
+            HStack {
+                Text("Live Updates")
+                if saving {
+                    Spacer()
+                    ProgressView()
+                        .controlSize(.mini)
+                }
+            }
+        } footer: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Write-settle delay prevents indexing a recording while the camera or upload tool is still writing it. 5 s is fine for most workflows.")
+                Text("Poll fallback is used for network mounts (SMB, NFS, SAN) where filesystem events don't fire. 0 disables it.")
+            }
+            .foregroundStyle(.secondary)
+        }
+        .task { await loadSettings() }
+    }
+
+    private var settleLabel: String {
+        let s = max(1, Int(settings.writeSettleMs / 1000))
+        return "\(s) s"
+    }
+
+    private var pollLabel: String {
+        let s = Int(settings.pollIntervalMs / 1000)
+        return s == 0 ? "Off" : "\(s) s"
+    }
+
+    private func loadSettings() async {
+        loading = true
+        settings = await VideoRepository.shared.getWatchSettings()
+        loading = false
+    }
+
+    private func save() async {
+        saving = true
+        _ = await VideoRepository.shared.updateWatchSettings(settings)
         saving = false
     }
 }
