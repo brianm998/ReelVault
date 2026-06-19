@@ -666,7 +666,8 @@ impl ReelVaultService {
                     "SELECT video_id, duration_ms, width, height, fps, codec_video, codec_audio,
                             creation_date, camera_model, gps_latitude, gps_longitude,
                             lens_model, iso, aperture, exposure_time_s, focal_length_mm,
-                            bitrate, COALESCE(frame_count, 0)
+                            bitrate, COALESCE(frame_count, 0),
+                            dynamic_range, timecode_start, capture_fps
                      FROM metadata WHERE video_id IN ({ph})"
                 )) {
                     if let Ok(rows) = stmt.query_map(
@@ -692,6 +693,9 @@ impl ReelVaultService {
                                     focal_length_mm: row.get::<_, Option<f64>>(15)?,
                                     bitrate: row.get::<_, i64>(16)?,
                                     frame_count: row.get::<_, i64>(17)?,
+                                    dynamic_range: row.get::<_, Option<String>>(18)?,
+                                    timecode: row.get::<_, Option<String>>(19)?,
+                                    capture_fps: row.get::<_, Option<f64>>(20)?,
                                 },
                             ))
                         },
@@ -946,6 +950,9 @@ impl ReelVaultService {
                     is_online,
                     bitrate: m.bitrate,
                     frame_count: m.frame_count,
+                    dynamic_range: m.dynamic_range.unwrap_or_default(),
+                    timecode: m.timecode.unwrap_or_default(),
+                    capture_fps: m.capture_fps.unwrap_or(0.0),
                 }
             })
             .collect()
@@ -984,6 +991,9 @@ struct MetaFields {
     focal_length_mm: Option<f64>,
     bitrate: i64,
     frame_count: i64,
+    dynamic_range: Option<String>,
+    timecode: Option<String>,
+    capture_fps: Option<f64>,
 }
 
 /// Chunk size for `IN (?,…)` lists — comfortably below SQLite's bind-variable

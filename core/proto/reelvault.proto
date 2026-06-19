@@ -333,6 +333,15 @@ message VideoSummary {
   // bitrate/iso/etc. above — so the grid's configurable "Frame count" stat slot
   // renders without a per-video VideoMetadata round-trip.
   int64 frame_count = 36;
+  // Color / dynamic-range + timecode + capture rate, surfaced on the summary
+  // (like the EXIF subset above) so the grid and the iOS inspector render them
+  // without a per-video VideoMetadata round-trip. `dynamic_range` is the
+  // friendly label ("SDR"/"HDR (HLG)"/"Log (S-Log3)"/"RAW"); `timecode` is the
+  // SMPTE start ("HH:MM:SS:FF"); `capture_fps` > fps means slow-motion. Empty/0
+  // when absent.
+  string dynamic_range = 37;
+  string timecode = 38;
+  double capture_fps = 39;
 }
 
 enum FullResolutionStatus {

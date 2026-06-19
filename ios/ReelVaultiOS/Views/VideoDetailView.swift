@@ -1335,6 +1335,15 @@ struct VideoMetadataSection: View {
             if video.durationMs > 0 {
                 detailRow("Duration", video.durationFormatted)
             }
+            if !video.dynamicRange.isEmpty {
+                detailRow("Dynamic Range", video.dynamicRange)
+            }
+            if let slowmo = video.slowMotionLabel {
+                detailRow("Capture Rate", slowmo)
+            }
+            if !video.timecode.isEmpty {
+                detailRow("Timecode", video.timecode)
+            }
             if !video.cameraDisplayName.isEmpty {
                 detailRow("Camera", video.cameraDisplayName)
             }

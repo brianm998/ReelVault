@@ -623,6 +623,27 @@ public nonisolated struct Reelvault_VideoSummary: @unchecked Sendable {
     set {_uniqueStorage()._frameCount = newValue}
   }
 
+  /// Color / dynamic-range + timecode + capture rate, surfaced on the summary
+  /// (like the EXIF subset above) so the grid and the iOS inspector render them
+  /// without a per-video VideoMetadata round-trip. `dynamic_range` is the
+  /// friendly label ("SDR"/"HDR (HLG)"/"Log (S-Log3)"/"RAW"); `timecode` is the
+  /// SMPTE start ("HH:MM:SS:FF"); `capture_fps` > fps means slow-motion. Empty/0
+  /// when absent.
+  public var dynamicRange: String {
+    get {_storage._dynamicRange}
+    set {_uniqueStorage()._dynamicRange = newValue}
+  }
+
+  public var timecode: String {
+    get {_storage._timecode}
+    set {_uniqueStorage()._timecode = newValue}
+  }
+
+  public var captureFps: Double {
+    get {_storage._captureFps}
+    set {_uniqueStorage()._captureFps = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3046,7 +3067,7 @@ nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftP
 
 nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".VideoSummary"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0\u{3}proxy_count\0\u{3}proxy_of\0\u{3}playable_natively\0\u{1}rating\0\u{3}color_label\0\u{3}camera_model\0\u{3}camera_display_name\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}lens_model\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}full_resolution\0\u{3}is_online\0\u{1}bitrate\0\u{3}frame_count\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0\u{3}proxy_count\0\u{3}proxy_of\0\u{3}playable_natively\0\u{1}rating\0\u{3}color_label\0\u{3}camera_model\0\u{3}camera_display_name\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}lens_model\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}full_resolution\0\u{3}is_online\0\u{1}bitrate\0\u{3}frame_count\0\u{3}dynamic_range\0\u{1}timecode\0\u{3}capture_fps\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -3085,6 +3106,9 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
     var _isOnline: Bool = false
     var _bitrate: Int64 = 0
     var _frameCount: Int64 = 0
+    var _dynamicRange: String = String()
+    var _timecode: String = String()
+    var _captureFps: Double = 0
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3131,6 +3155,9 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
       _isOnline = source._isOnline
       _bitrate = source._bitrate
       _frameCount = source._frameCount
+      _dynamicRange = source._dynamicRange
+      _timecode = source._timecode
+      _captureFps = source._captureFps
     }
   }
 
@@ -3185,6 +3212,9 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
         case 34: try { try decoder.decodeSingularBoolField(value: &_storage._isOnline) }()
         case 35: try { try decoder.decodeSingularInt64Field(value: &_storage._bitrate) }()
         case 36: try { try decoder.decodeSingularInt64Field(value: &_storage._frameCount) }()
+        case 37: try { try decoder.decodeSingularStringField(value: &_storage._dynamicRange) }()
+        case 38: try { try decoder.decodeSingularStringField(value: &_storage._timecode) }()
+        case 39: try { try decoder.decodeSingularDoubleField(value: &_storage._captureFps) }()
         default: break
         }
       }
@@ -3301,6 +3331,15 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
       if _storage._frameCount != 0 {
         try visitor.visitSingularInt64Field(value: _storage._frameCount, fieldNumber: 36)
       }
+      if !_storage._dynamicRange.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._dynamicRange, fieldNumber: 37)
+      }
+      if !_storage._timecode.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._timecode, fieldNumber: 38)
+      }
+      if _storage._captureFps.bitPattern != 0 {
+        try visitor.visitSingularDoubleField(value: _storage._captureFps, fieldNumber: 39)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -3346,6 +3385,9 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
         if _storage._isOnline != rhs_storage._isOnline {return false}
         if _storage._bitrate != rhs_storage._bitrate {return false}
         if _storage._frameCount != rhs_storage._frameCount {return false}
+        if _storage._dynamicRange != rhs_storage._dynamicRange {return false}
+        if _storage._timecode != rhs_storage._timecode {return false}
+        if _storage._captureFps != rhs_storage._captureFps {return false}
         return true
       }
       if !storagesAreEqual {return false}

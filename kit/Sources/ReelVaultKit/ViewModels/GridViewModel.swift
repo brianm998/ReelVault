@@ -2731,7 +2731,8 @@ public class GridViewModel: ObservableObject {
                     exposureTimeS: v.exposureTimeS, focalLengthMm: v.focalLengthMm,
                     fullResolution: v.fullResolution,
                     isOnline: v.isOnline,
-                    frameCount: v.frameCount
+                    frameCount: v.frameCount,
+                    dynamicRange: v.dynamicRange, timecode: v.timecode, captureFps: v.captureFps
                 )
             }
             return v

@@ -1373,7 +1373,10 @@ public class VideoRepository: ObservableObject {
             focalLengthMm: p.focalLengthMm,
             fullResolution: FullResolutionStatus.from(wire: Int(p.fullResolution.rawValue)),
             isOnline: p.isOnline,
-            frameCount: p.frameCount
+            frameCount: p.frameCount,
+            dynamicRange: p.dynamicRange,
+            timecode: p.timecode,
+            captureFps: p.captureFps
         )
     }
 

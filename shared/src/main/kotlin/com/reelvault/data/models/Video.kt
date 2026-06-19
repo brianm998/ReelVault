@@ -87,8 +87,18 @@ data class VideoSummary(
      *  back to estimating from duration × fps. Surfaced on the summary so the
      *  grid's "Frame count" stat slot renders without a per-video round-trip. */
     val frameCount: Long = 0,
+    /** Friendly dynamic-range label ("SDR"/"HDR (HLG)"/"Log (S-Log3)"/"RAW"),
+     *  SMPTE start timecode, and sensor capture fps — surfaced on the summary
+     *  (like the EXIF subset above) so the grid and inspector render them
+     *  without a per-video VideoMetadata round-trip. Empty/0 when absent. */
+    val dynamicRange: String = "",
+    val timecode: String = "",
+    val captureFps: Double = 0.0,
 ) {
     val isInGroup: Boolean get() = groupId.isNotEmpty() && groupSize > 1
+    /** "240 → 30 fps" when captured faster than playback (slow-motion), else null. */
+    val slowMotionLabel: String? get() =
+        if (captureFps > fps + 1 && fps > 0) "${Math.round(captureFps)} → ${Math.round(fps)} fps" else null
     val hasProxies: Boolean get() = proxyCount > 0
     val isProxy: Boolean get() = proxyOf.isNotEmpty()
     val hasLocation: Boolean get() = gpsLatitude != 0.0 || gpsLongitude != 0.0

@@ -101,8 +101,21 @@ public struct VideoSummary: Identifiable, Hashable, Sendable {
     /// back to estimating from duration × fps. Surfaced on the summary so the
     /// grid's "Frame count" stat slot renders without a per-video round-trip.
     public let frameCount: Int64
+    /// Friendly dynamic-range label ("SDR"/"HDR (HLG)"/"Log (S-Log3)"/"RAW"),
+    /// SMPTE start timecode, and sensor capture fps — surfaced on the summary
+    /// (like the EXIF subset above) so the grid and the iOS inspector render
+    /// them without a per-video VideoMetadata round-trip. Defaulted so the
+    /// `with*` copy helpers and other constructors don't all need updating.
+    public var dynamicRange: String = ""
+    public var timecode: String = ""
+    public var captureFps: Double = 0
 
     public var isInGroup: Bool { !groupId.isEmpty && groupSize > 1 }
+    /// "240 → 30 fps" when captured faster than playback (slow-motion), else nil.
+    public var slowMotionLabel: String? {
+        guard captureFps > fps + 1, fps > 0 else { return nil }
+        return "\(Int(captureFps.rounded())) → \(Int(fps.rounded())) fps"
+    }
     public var hasProxies: Bool { proxyCount > 0 }
     public var isProxy: Bool { !proxyOf.isEmpty }
     public var hasLocation: Bool { abs(gpsLatitude) > 1e-6 || abs(gpsLongitude) > 1e-6 }
@@ -172,7 +185,8 @@ public struct VideoSummary: Identifiable, Hashable, Sendable {
             exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm,
             fullResolution: fullResolution,
             isOnline: isOnline,
-            frameCount: frameCount
+            frameCount: frameCount,
+            dynamicRange: dynamicRange, timecode: timecode, captureFps: captureFps
         )
     }
 
@@ -196,7 +210,8 @@ public struct VideoSummary: Identifiable, Hashable, Sendable {
             exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm,
             fullResolution: fullResolution,
             isOnline: isOnline,
-            frameCount: frameCount
+            frameCount: frameCount,
+            dynamicRange: dynamicRange, timecode: timecode, captureFps: captureFps
         )
     }
 
@@ -220,7 +235,8 @@ public struct VideoSummary: Identifiable, Hashable, Sendable {
             exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm,
             fullResolution: fullResolution,
             isOnline: isOnline,
-            frameCount: frameCount
+            frameCount: frameCount,
+            dynamicRange: dynamicRange, timecode: timecode, captureFps: captureFps
         )
     }
 
@@ -244,7 +260,8 @@ public struct VideoSummary: Identifiable, Hashable, Sendable {
             exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm,
             fullResolution: fullResolution,
             isOnline: isOnline,
-            frameCount: frameCount
+            frameCount: frameCount,
+            dynamicRange: dynamicRange, timecode: timecode, captureFps: captureFps
         )
     }
 }
