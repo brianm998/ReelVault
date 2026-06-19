@@ -2,6 +2,7 @@
 // Copyright (C) 2026 ReelVault Contributors
 
 import AVFoundation
+import CoreLocation
 import CoreMedia
 import Foundation
 import ImageIO
@@ -170,13 +171,20 @@ enum NativeMedia {
                     streams.append(s)
                 }
 
+                // Camera/date/GPS/lens — harvested from the container & track
+                // metadata into the same `com.apple.quicktime.*` tag names
+                // ffprobe emits on desktop, so the core's extractor populates
+                // the identical columns on-device. Without this, local-mode
+                // clips showed only codec/dimensions while the same clip looked
+                // fully tagged once uploaded to a daemon.
+                let tags = await formatTags(for: asset, kind: kind, srcId: srcId)
+
                 // `duration` and `bit_rate` keys must be present (the core's
                 // FFProbeFormat deserializer has no default for them); other
                 // fields are optional. bit_rate is unknown here → null.
-                let root: [String: Any] = [
-                    "streams": streams,
-                    "format": ["duration": durationSecs, "bit_rate": NSNull()],
-                ]
+                var format: [String: Any] = ["duration": durationSecs, "bit_rate": NSNull()]
+                if !tags.isEmpty { format["tags"] = tags }
+                let root: [String: Any] = ["streams": streams, "format": format]
                 let data = try JSONSerialization.data(withJSONObject: root)
                 return String(decoding: data, as: UTF8.self)
             } catch {
@@ -205,6 +213,81 @@ enum NativeMedia {
         case "lpcm", "sowt", "in24", "fl32": return "pcm"
         default: return fourcc.isEmpty ? nil : fourcc
         }
+    }
+
+    /// Harvest the container/track metadata the core's extractor reads —
+    /// camera make/model, capture date, GPS, lens, iris f-number — into
+    /// ffprobe-shaped `format.tags`, keyed by the same `com.apple.quicktime.*`
+    /// names ffprobe emits on desktop. The desktop daemon gets these from real
+    /// ffprobe; on-device the native backend has to synthesize them or the
+    /// local catalog shows only codec/dimensions (the gap this closes).
+    ///
+    /// Two sources are merged:
+    ///   - AVAsset metadata (movie-level: make/model/software/creationdate/
+    ///     location) plus the **video track's** metadata, which is where
+    ///     iPhones record `com.apple.quicktime.camera.lens_model` (and the
+    ///     iris f-number) — exactly the per-track keys ffprobe drops, so the
+    ///     native path actually recovers *more* than ffprobe does.
+    ///   - The PHAsset (Photos sources), authoritative for capture date and
+    ///     location and a backstop when an edited AVAsset has dropped them.
+    private static func formatTags(for asset: AVAsset, kind: Int32, srcId: String) async -> [String: String] {
+        var tags: [String: String] = [:]
+        func set(_ key: String, _ value: String?) {
+            guard let v = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !v.isEmpty, tags[key] == nil else { return }
+            tags[key] = v
+        }
+
+        // Movie-level + video-track keyed metadata. The QuickTime metadata
+        // keyspace exposes each item's reverse-DNS key as the suffix of its
+        // identifier ("mdta/com.apple.quicktime.make" → the key we want).
+        var items = (try? await asset.load(.metadata)) ?? []
+        if let v = try? await asset.loadTracks(withMediaType: .video).first {
+            items += (try? await v.load(.metadata)) ?? []
+        }
+        for item in items {
+            guard let raw = item.identifier?.rawValue else { continue }
+            let key = String(raw.split(separator: "/", maxSplits: 1, omittingEmptySubsequences: false).last ?? "")
+            guard key.hasPrefix("com.apple.quicktime.") else { continue }
+            if let value = try? await item.load(.stringValue), let value {
+                set(key, value)
+            }
+        }
+
+        // Capture date as `creation_time` in UTC RFC3339 — the first form the
+        // core's extractor parses (and what ffprobe writes), so an on-device
+        // date matches the daemon's to the millisecond. The QuickTime
+        // `com.apple.quicktime.creationdate` string we harvested above carries
+        // a colon-less offset ("-0700") the core's RFC3339 parser rejects, so
+        // we emit the normalized UTC form instead of relying on it.
+        var capture: Date?
+        let common = (try? await asset.load(.commonMetadata)) ?? []
+        for item in common + items where item.commonKey == .commonKeyCreationDate {
+            if let d = try? await item.load(.dateValue), let d { capture = d; break }
+        }
+
+        if kind == 1,
+           let ph = PHAsset.fetchAssets(withLocalIdentifiers: [srcId], options: nil).firstObject {
+            if capture == nil { capture = ph.creationDate }
+            if tags["com.apple.quicktime.location.ISO6709"] == nil, let loc = ph.location {
+                set("com.apple.quicktime.location.ISO6709", Self.iso6709(from: loc))
+            }
+        }
+
+        if let capture {
+            let f = ISO8601DateFormatter()
+            f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            f.timeZone = TimeZone(identifier: "UTC")
+            set("creation_time", f.string(from: capture))
+        }
+        return tags
+    }
+
+    /// Format a CLLocation as the ISO 6709 string QuickTime uses
+    /// (`±DD.dddddd±DDD.dddddd±AAA.aaa/`), matching `parse_iso6709` in the core.
+    private static func iso6709(from loc: CLLocation) -> String {
+        String(format: "%+.6f%+.6f%+.3f/",
+               loc.coordinate.latitude, loc.coordinate.longitude, loc.altitude)
     }
 
     // MARK: - extract_frame
