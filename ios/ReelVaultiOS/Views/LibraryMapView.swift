@@ -208,40 +208,40 @@ struct MapLocationPanel: View {
                                 viewMode = .detail
                             },
                             onSetRating: { grid.setRating($0, for: [video.id]) },
-                            onSetColorLabel: { grid.setColorLabel($0, for: [video.id]) }
+                            onSetColorLabel: { grid.setColorLabel($0, for: [video.id]) },
+                            // Pass map-panel actions via extraMenuItems so they are
+                            // merged into VideoCardView's single .contextMenu rather
+                            // than overriding it with a second one (SwiftUI discards
+                            // the inner menu when an outer .contextMenu is present).
+                            extraMenuItems: AnyView(Group {
+                                // --- Navigation ---
+                                Button("Open in Grid") {
+                                    grid.selectVideo(video)
+                                    grid.filterToVideosLocation([video.id])
+                                    viewMode = .grid
+                                }
+                                Button("Open in List") {
+                                    grid.selectVideo(video)
+                                    grid.filterToVideosLocation([video.id])
+                                    viewMode = .list
+                                }
+                                Button("Open in Detail") {
+                                    grid.selectVideo(video)
+                                    viewMode = .detail
+                                }
+                                // --- Location editing ---
+                                // Every card in this panel has a GPS location by
+                                // definition (it came from the map cluster), so
+                                // always offer Update + Remove.
+                                Divider()
+                                Button("Update Location\u{2026}") {
+                                    locationPickerVideo = video
+                                }
+                                Button("Remove Location", role: .destructive) {
+                                    grid.clearVideoLocations(videoIds: [video.id])
+                                }
+                            })
                         )
-                        // Per-card context menu: open modes + location editing.
-                        // Layered on top of VideoCardView's own menu so the
-                        // map-panel actions appear first (Open in …), followed by
-                        // the standard rating / colour-label items from the card.
-                        .contextMenu {
-                            // --- Navigation ---
-                            Button("Open in Grid") {
-                                grid.selectVideo(video)
-                                grid.filterToVideosLocation([video.id])
-                                viewMode = .grid
-                            }
-                            Button("Open in List") {
-                                grid.selectVideo(video)
-                                grid.filterToVideosLocation([video.id])
-                                viewMode = .list
-                            }
-                            Button("Open in Detail") {
-                                grid.selectVideo(video)
-                                viewMode = .detail
-                            }
-                            // --- Location editing ---
-                            // Every card in this panel has a GPS location by
-                            // definition (it came from the map cluster), so
-                            // always offer Update + Remove.
-                            Divider()
-                            Button("Update Location\u{2026}") {
-                                locationPickerVideo = video
-                            }
-                            Button("Remove Location", role: .destructive) {
-                                grid.clearVideoLocations(videoIds: [video.id])
-                            }
-                        }
                         .onAppear { grid.loadThumbnail(videoId: video.id) }
                     }
                 }

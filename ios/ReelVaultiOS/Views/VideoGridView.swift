@@ -247,6 +247,11 @@ struct VideoCardView: View {
     var onPromote: () -> Void = {}
     var onRemoveFromStack: () -> Void = {}
     var onUnstack: () -> Void = {}
+    /// Optional extra context-menu items appended (after a Divider) to the
+    /// built-in rating / colour-label / stack items. Use this instead of
+    /// stacking a second .contextMenu on the card — SwiftUI silently discards
+    /// an inner .contextMenu when an outer one is present.
+    var extraMenuItems: AnyView? = nil
 
     private let bandColor = Color(white: 0.11)   // card chrome (dark)
     private let dividerColor = Color.black.opacity(0.6)
@@ -283,6 +288,10 @@ struct VideoCardView: View {
                 onSetRating: onSetRating, onSetColorLabel: onSetColorLabel,
                 onCombine: onCombine, onPromote: onPromote,
                 onRemoveFromStack: onRemoveFromStack, onUnstack: onUnstack)
+            if let extraMenuItems {
+                Divider()
+                extraMenuItems
+            }
         }
     }
 
