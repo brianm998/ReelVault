@@ -10,6 +10,9 @@ import ReelVaultKit
 ///
 /// Sections:
 ///  - Appearance — accent color + scrub-frame count (always shown)
+///  - Library — auto-tag timelapses toggle + default filename→capture-date
+///    inference method; shown only when connected; mirrors macOS
+///    `LibrarySettingsDialog` via `VideoRepository.getConfig` / `updateConfig`.
 ///  - Playback & Proxies — inline-playback ceiling + default proxy height
 ///    (shown only when connected to a remote daemon; backed by the server's
 ///    `max_native_playback_height` / `proxy_target_height` config keys via
@@ -23,8 +26,8 @@ import ReelVaultKit
 ///    `VideoRepository.listCameraNameMappings` / `listLensNameMappings`).
 struct SettingsView: View {
     /// Non-nil while connected to a remote daemon. Nil in local/offline mode,
-    /// which means the Playback & Proxies, Live Updates, and Metadata sections
-    /// are hidden — there is no server config to read or write.
+    /// which means the Library, Playback & Proxies, Live Updates, and Metadata
+    /// sections are hidden — there is no server config to read or write.
     var connection: AppRouter.ConnectionInfo? = nil
 
     @Environment(\.dismiss) private var dismiss
@@ -34,6 +37,7 @@ struct SettingsView: View {
             Form {
                 AppearanceSection()
                 if connection != nil {
+                    LibrarySettingsSection()
                     PlaybackSection()
                     LiveUpdatesSection()
                     MetadataNamesSection()
@@ -47,6 +51,134 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Library section
+
+/// Catalog-wide auto-tagging and filename → capture-date inference settings,
+/// mirroring macOS `LibrarySettingsDialog`. Shown only when connected to a
+/// daemon; relies on `VideoRepository.getConfig` / `updateConfig` for the
+/// `auto_tag_timelapses` flag, and `FilenameDateInference` (UserDefaults) for
+/// the default capture-date inference method.
+///
+/// Changes to the inference prefs are saved immediately when the user toggles
+/// or changes the pickers (no explicit Save button, matching the iOS pattern).
+/// The timelapse toggle also saves immediately. A brief "Saving…" spinner
+/// appears in the section header during any server round-trip.
+private struct LibrarySettingsSection: View {
+    // --- daemon config ---
+    @State private var autoTagTimelapses: Bool = true
+    @State private var loading = true
+    @State private var saving = false
+
+    // --- local inference prefs ---
+    @State private var inferEnabled: Bool = FilenameDateInference.defaultEnabled()
+    @State private var inferFormat: String = FilenameDateInference.savedFormat()
+    @State private var inferPosition: String = FilenameDateInference.savedPosition()
+
+    var body: some View {
+        Section {
+            if loading {
+                HStack {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Loading…")
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                // Auto-tag timelapses
+                Toggle(isOn: $autoTagTimelapses) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Auto-tag timelapses")
+                        Text(
+                            "Tags videos whose recorded resolution exceeds the " +
+                            "camera's max in-camera video resolution as \"timelapse\". " +
+                            "Removing the tag manually is permanent."
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
+                }
+                .onChange(of: autoTagTimelapses) { _, newValue in
+                    Task { await saveTimelapse(newValue) }
+                }
+                .disabled(saving)
+
+                // Default filename → capture-date inference
+                Toggle(isOn: $inferEnabled) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Infer capture date from filename")
+                        Text(
+                            "When a video has no embedded date, read one from its " +
+                            "filename. Applied on library scans and offered as the " +
+                            "default in the Set Capture Date sheet."
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
+                }
+                .onChange(of: inferEnabled) { _, _ in saveInferencePref() }
+
+                if inferEnabled {
+                    // Format picker
+                    Picker("Date format", selection: $inferFormat) {
+                        ForEach(FilenameDateInference.formats, id: \.value) { opt in
+                            Text(opt.label).tag(opt.value)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: inferFormat) { _, _ in saveInferencePref() }
+
+                    // Position picker
+                    Picker("Position in name", selection: $inferPosition) {
+                        ForEach(FilenameDateInference.positions, id: \.value) { opt in
+                            Text(opt.label).tag(opt.value)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: inferPosition) { _, _ in saveInferencePref() }
+                }
+            }
+        } header: {
+            HStack {
+                Text("Library")
+                if saving {
+                    Spacer()
+                    ProgressView()
+                        .controlSize(.mini)
+                }
+            }
+        } footer: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Auto-tagging and detection settings apply catalog-wide.")
+                Text("The filename inference default is shared with the Set Capture Date sheet and the Add Library dialog.")
+            }
+            .foregroundStyle(.secondary)
+        }
+        .task { await loadSettings() }
+    }
+
+    private func loadSettings() async {
+        loading = true
+        if let cfg = await VideoRepository.shared.getConfig() {
+            autoTagTimelapses = cfg.autoTagTimelapses
+        }
+        loading = false
+    }
+
+    private func saveTimelapse(_ value: Bool) async {
+        saving = true
+        _ = await VideoRepository.shared.updateConfig(autoTagTimelapses: value)
+        saving = false
+    }
+
+    private func saveInferencePref() {
+        FilenameDateInference.saveDefault(
+            enabled: inferEnabled,
+            format: inferFormat,
+            position: inferPosition
+        )
     }
 }
 
