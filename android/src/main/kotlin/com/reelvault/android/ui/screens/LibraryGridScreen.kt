@@ -104,6 +104,7 @@ fun LibraryGridScreen(
     val selectedCollectionId by vm.selectedCollectionId.collectAsStateWithLifecycle()
     val selectedCollectionIsSmart by vm.selectedCollectionIsSmart.collectAsStateWithLifecycle()
     val filterLocationLabel by vm.filterLocationLabel.collectAsStateWithLifecycle()
+    val topSlots by vm.topSlots.collectAsStateWithLifecycle()
 
     // ── Local UI state ───────────────────────────────────────────────────
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -115,6 +116,7 @@ fun LibraryGridScreen(
     val isMultiSelect = multiSelectedIds.isNotEmpty()
     var showOverflowMenu by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
+    var showCardStats by remember { mutableStateOf(false) }
 
     // ── Batch action dialog state ────────────────────────────────────────
     var showBatchOrganize by remember { mutableStateOf(false) }
@@ -141,6 +143,7 @@ fun LibraryGridScreen(
         vm.loadLibraryLocations()
         vm.loadTags()
         vm.loadCollections()
+        vm.loadGridSettings()
         vm.startCatalogEventStream()
     }
     DisposableEffect(Unit) {
@@ -233,6 +236,7 @@ fun LibraryGridScreen(
                         },
                         onOpenSettings = onOpenSettings,
                         onOpenMap = onOpenMap,
+                        onOpenCardStats = { showCardStats = true },
                         onDisconnect = onDisconnect,
                         onClearMultiSelect = { multiSelectedIds = emptySet() },
                         showSortMenu = showSortMenu,
@@ -384,6 +388,8 @@ fun LibraryGridScreen(
                                 selectedVideoId = selectedVideoId,
                                 multiSelectedIds = multiSelectedIds,
                                 hasMore = hasMore,
+                                topSlots = topSlots,
+                                onUpdateGridTopSlot = { idx, key -> vm.updateGridTopSlot(idx, key) },
                                 onLoadMore = { vm.loadMore() },
                                 onRefresh = { vm.loadVideos() },
                                 onTap = { video ->
@@ -483,6 +489,15 @@ fun LibraryGridScreen(
             )
         }
 
+        // ── Card stats config sheet ─────────────────────────────────────────
+        if (showCardStats) {
+            TopSlotsConfigSheet(
+                topSlots = topSlots,
+                onUpdateSlot = { idx, key -> vm.updateGridTopSlot(idx, key) },
+                onDismiss = { showCardStats = false },
+            )
+        }
+
         // ── Batch sharing progress indicator ────────────────────────────────
         if (isBatchSharing) {
             AlertDialog(
@@ -518,6 +533,7 @@ private fun LibraryTopAppBar(
     onToggleViewMode: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenMap: () -> Unit,
+    onOpenCardStats: () -> Unit = {},
     onDisconnect: () -> Unit,
     onClearMultiSelect: () -> Unit,
     showSortMenu: Boolean,
@@ -629,6 +645,11 @@ private fun LibraryTopAppBar(
                                 text = { Text(stringResource(R.string.grid_map)) },
                                 leadingIcon = { Icon(Icons.Default.Map, contentDescription = null) },
                                 onClick = { onDismissOverflowMenu(); onOpenMap() },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.grid_card_stats)) },
+                                leadingIcon = { Icon(Icons.Default.GridView, contentDescription = null) },
+                                onClick = { onDismissOverflowMenu(); onOpenCardStats() },
                             )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.grid_settings)) },
@@ -936,6 +957,8 @@ private fun GridContent(
     selectedVideoId: String?,
     multiSelectedIds: Set<String>,
     hasMore: Boolean,
+    topSlots: List<String> = defaultGridTopSlots,
+    onUpdateGridTopSlot: (Int, String) -> Unit = { _, _ -> },
     onLoadMore: () -> Unit,
     onRefresh: () -> Unit,
     onTap: (VideoSummary) -> Unit,
@@ -986,6 +1009,8 @@ private fun GridContent(
                     isSelected = isSelected,
                     isMultiSelected = isMultiSelected,
                     repository = repository,
+                    topSlots = topSlots,
+                    onUpdateGridTopSlot = onUpdateGridTopSlot,
                     onTap = { onTap(video) },
                     onLongPress = { onLongPress(video) },
                     onSetRating = { rating -> onSetRating(video, rating) },
@@ -1083,12 +1108,19 @@ private fun ListContent(
 
 // Top band of the grid card: four metadata stats laid out 2×2 (slot 0 = top-
 // left/emphasized, 1 = bottom-left, 2 = top-right, 3 = bottom-right), using the
-// shared GridStatKey slots — matching iOS and the two desktop clients (which
-// previously showed four where Android showed only duration + resolution).
+// shared GridStatKey slots — matching iOS and the two desktop clients.
+// Each cell is tappable: a DropdownMenu lets the user pick a new stat key for
+// that slot, applying catalog-wide (via onUpdateSlot).
 @Composable
-private fun CardTopStatBand(video: VideoSummary, backgroundColor: Color) {
-    val slots = remember {
-        val s = defaultGridTopSlots.toMutableList()
+private fun CardTopStatBand(
+    video: VideoSummary,
+    backgroundColor: Color,
+    topSlots: List<String> = defaultGridTopSlots,
+    onUpdateSlot: (Int, String) -> Unit = { _, _ -> },
+    selected: Boolean = false,
+) {
+    val paddedSlots = remember(topSlots) {
+        val s = topSlots.toMutableList()
         while (s.size < 4) s.add("")
         s.take(4)
     }
@@ -1101,32 +1133,114 @@ private fun CardTopStatBand(video: VideoSummary, backgroundColor: Color) {
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
-            CardStatCell(video, slots[0], leading = true, emphasized = true)
-            CardStatCell(video, slots[2], leading = false, emphasized = false)
+            CardStatCell(
+                video = video,
+                key = paddedSlots[0],
+                slotIndex = 0,
+                leading = true,
+                emphasized = true,
+                selected = selected,
+                onPick = onUpdateSlot,
+            )
+            CardStatCell(
+                video = video,
+                key = paddedSlots[2],
+                slotIndex = 2,
+                leading = false,
+                emphasized = false,
+                selected = selected,
+                onPick = onUpdateSlot,
+            )
         }
         Row(modifier = Modifier.fillMaxWidth()) {
-            CardStatCell(video, slots[1], leading = true, emphasized = false)
-            CardStatCell(video, slots[3], leading = false, emphasized = false)
+            CardStatCell(
+                video = video,
+                key = paddedSlots[1],
+                slotIndex = 1,
+                leading = true,
+                emphasized = false,
+                selected = selected,
+                onPick = onUpdateSlot,
+            )
+            CardStatCell(
+                video = video,
+                key = paddedSlots[3],
+                slotIndex = 3,
+                leading = false,
+                emphasized = false,
+                selected = selected,
+                onPick = onUpdateSlot,
+            )
         }
     }
 }
 
+/**
+ * One cell in the card's top stat band.
+ *
+ * Tapping the cell opens a [DropdownMenu] with all [GridStatKey] choices —
+ * the same picker the desktop shows on right-click. The chosen key is applied
+ * catalog-wide via [onPick](slotIndex, GridStatKey.raw).
+ *
+ * An empty/unset slot displays "—" so the user can discover the tap target,
+ * matching the desktop StatCell behaviour.
+ */
 @Composable
 private fun RowScope.CardStatCell(
     video: VideoSummary,
     key: String,
+    slotIndex: Int,
     leading: Boolean,
     emphasized: Boolean,
+    selected: Boolean = false,
+    onPick: (Int, String) -> Unit = { _, _ -> },
 ) {
-    Text(
-        text = GridStatKey.fromRaw(key).valueFor(video),
-        style = if (emphasized) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall,
-        color = Color.White.copy(alpha = if (emphasized) 0.92f else 0.72f),
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        textAlign = if (leading) TextAlign.Start else TextAlign.End,
-        modifier = Modifier.weight(1f),
-    )
+    val stat = GridStatKey.fromRaw(key)
+    val value = stat.valueFor(video)
+    val displayed = if (value.isEmpty()) "—" else value
+
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .clickable { expanded = true },
+        contentAlignment = if (leading) Alignment.CenterStart else Alignment.CenterEnd,
+    ) {
+        Text(
+            text = displayed,
+            style = if (emphasized) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall,
+            color = when {
+                stat == GridStatKey.None ->
+                    if (selected) Color.Black.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.45f)
+                selected -> Color.Black
+                else -> Color.White.copy(alpha = if (emphasized) 0.92f else 0.72f)
+            },
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = if (leading) TextAlign.Start else TextAlign.End,
+        )
+        // Slot picker dropdown — same choices as the desktop StatCell right-click menu.
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            GridStatKey.values().forEach { choice ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            if (choice == stat) "✓ ${choice.displayName}"
+                            else choice.displayName
+                        )
+                    },
+                    onClick = {
+                        onPick(slotIndex, choice.raw)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -1135,6 +1249,8 @@ private fun AndroidVideoCard(
     isSelected: Boolean,
     isMultiSelected: Boolean,
     repository: VideoRepository,
+    topSlots: List<String> = defaultGridTopSlots,
+    onUpdateGridTopSlot: (Int, String) -> Unit = { _, _ -> },
     onTap: () -> Unit,
     onLongPress: () -> Unit,
     onSetRating: (Int) -> Unit,
@@ -1180,7 +1296,13 @@ private fun AndroidVideoCard(
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             // ── Top stat band (2×2 configurable slots) ─────────────────
-            CardTopStatBand(video = video, backgroundColor = topBandColor)
+            CardTopStatBand(
+                video = video,
+                backgroundColor = topBandColor,
+                topSlots = topSlots,
+                onUpdateSlot = onUpdateGridTopSlot,
+                selected = isSelected || isMultiSelected,
+            )
 
             HorizontalDivider(color = Color.Black.copy(alpha = 0.35f), thickness = 1.dp)
 
@@ -1578,6 +1700,110 @@ private fun VideoCardContextMenu(
             )
         }
     }
+}
+
+// ── Card stats configuration sheet ───────────────────────────────────────────
+//
+// A bottom sheet (ModalBottomSheet) that lets the user pick which GridStatKey
+// shows in each of the four top-of-card slots. Writes catalog-wide — changes
+// show immediately on every card. Mirrors iOS TopSlotsConfigSheet and the
+// desktop StatCell right-click menu.
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun TopSlotsConfigSheet(
+    topSlots: List<String>,
+    onUpdateSlot: (Int, String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val paddedSlots = remember(topSlots) {
+        val s = topSlots.toMutableList()
+        while (s.size < 4) s.add("")
+        s.take(4)
+    }
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.card_stats_sheet_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = stringResource(R.string.card_stats_sheet_subtitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            for (i in 0..3) {
+                SlotPickerRow(
+                    slotNumber = i + 1,
+                    currentKey = paddedSlots[i],
+                    onPick = { newKey -> onUpdateSlot(i, newKey) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SlotPickerRow(
+    slotNumber: Int,
+    currentKey: String,
+    onPick: (String) -> Unit,
+) {
+    val currentStat = GridStatKey.fromRaw(currentKey)
+    var expanded by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = stringResource(R.string.card_stats_slot_label, slotNumber),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Box {
+            OutlinedButton(onClick = { expanded = true }) {
+                Text(
+                    text = currentStat.displayName,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.widthIn(max = 160.dp),
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                GridStatKey.values().forEach { choice ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                if (choice == currentStat) "✓ ${choice.displayName}"
+                                else choice.displayName
+                            )
+                        },
+                        onClick = {
+                            onPick(choice.raw)
+                            expanded = false
+                        },
+                    )
+                }
+            }
+        }
+    }
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 }
 
 /** Unicode circle used as a per-item colour dot in the colour-label menu.

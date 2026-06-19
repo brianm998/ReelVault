@@ -64,6 +64,8 @@
     <string name="grid_switch_to_grid_view">Switch to grid view</string>
     <string name="grid_more_options">More options</string>
     <string name="grid_map">Map</string>
+    <string name="grid_card_stats">Card Stats</string>
+    <string name="grid_configure_card_stats">Configure card stats</string>
     <string name="grid_settings">Settings</string>
     <string name="grid_disconnect">Disconnect</string>
     <string name="grid_sort_by">Sort by</string>
@@ -331,6 +333,34 @@
     <string name="sort_codec">Codec</string>
     <string name="sort_camera">Camera</string>
 
+    <!-- ── Card stats configuration ─────────────────────────────────────── -->
+    <string name="card_stats_sheet_title">Card Stats</string>
+    <string name="card_stats_sheet_subtitle">Choose the four stats shown at the top of each card.</string>
+    <string name="card_stats_slot_label">Slot %1$d</string>
+    <!-- GridStatKey display names (must match shared GridStatKey.displayName) -->
+    <string name="grid_stat_none">(empty)</string>
+    <string name="grid_stat_filename">Filename</string>
+    <string name="grid_stat_file_size">File size</string>
+    <string name="grid_stat_resolution">Resolution</string>
+    <string name="grid_stat_pixel_dimensions">Pixel dimensions</string>
+    <string name="grid_stat_duration">Duration</string>
+    <string name="grid_stat_video_codec">Video codec</string>
+    <string name="grid_stat_audio_codec">Audio codec</string>
+    <string name="grid_stat_fps">FPS</string>
+    <string name="grid_stat_frame_count">Frame count</string>
+    <string name="grid_stat_bitrate">Bitrate</string>
+    <string name="grid_stat_camera">Camera</string>
+    <string name="grid_stat_lens">Lens</string>
+    <string name="grid_stat_capture_date">Capture date</string>
+    <string name="grid_stat_capture_year">Capture year</string>
+    <string name="grid_stat_iso">ISO</string>
+    <string name="grid_stat_aperture">Aperture</string>
+    <string name="grid_stat_exposure">Exposure</string>
+    <string name="grid_stat_focal_length">Focal length</string>
+    <string name="grid_stat_location">Location</string>
+    <!-- stat cell tap hint -->
+    <string name="card_stat_tap_to_change">Tap to change slot</string>
+
     <!-- ── Cards / badges ───────────────────────────────────────────────── -->
     <string name="card_no_thumbnail">No thumbnail</string>
     <string name="card_offline">Offline</string>
@@ -403,6 +433,8 @@
     <string name="err_remove_from_collection_detail">Failed to remove from collection: %1$s</string>
     <string name="err_apply_keyword">Failed to create/apply keyword \'%1$s\'</string>
     <string name="err_apply_keyword_detail">Apply keyword failed: %1$s</string>
+    <string name="err_load_grid_settings">Failed to load card-stats configuration: %1$s</string>
+    <string name="err_save_grid_settings">Failed to save card-stats configuration: %1$s</string>
     <string name="scan_target_default">library</string>
     <string name="scan_scanning_target">Scanning %1$s…</string>
     <string name="pairing_a_device">A device</string>

@@ -20,6 +20,7 @@ import com.reelvault.data.models.PostIndexProgress
 import com.reelvault.data.models.SmartCollectionFilters
 import com.reelvault.data.models.Tag
 import com.reelvault.data.models.VideoSummary
+import com.reelvault.data.models.defaultGridTopSlots
 import com.reelvault.data.models.derivedAttributeMetadataFilters
 import com.reelvault.data.models.METADATA_NEGATE_PREFIX
 import com.reelvault.data.models.METADATA_VALUE_SEPARATOR
@@ -109,6 +110,12 @@ class GridViewModel(
     )
     /** "grid" or "list". Persisted across process restarts via SharedPreferences. */
     val viewMode: StateFlow<String> = _viewMode.asStateFlow()
+
+    // ── Top-of-card stat slots (loaded from catalog via GridSettings RPC) ─
+    // Four [GridStatKey.raw] strings (padded/truncated to exactly 4).
+    // Defaults to [defaultGridTopSlots] until [loadGridSettings] answers.
+    private val _topSlots = MutableStateFlow(defaultGridTopSlots)
+    val topSlots: StateFlow<List<String>> = _topSlots.asStateFlow()
 
     // ── Sort (persisted) ──────────────────────────────────────────────────
 
@@ -231,6 +238,7 @@ class GridViewModel(
     private var catalogEventsJob: Job? = null
     private var watcherRefreshJob: Job? = null
     private var postIndexClearJob: Job? = null
+    private var gridSettingsSaveJob: Job? = null
 
     // ─────────────────────────────────────────────────────────────────────
     // Public API: loading
@@ -730,6 +738,59 @@ class GridViewModel(
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // Public API: grid layout settings (top-of-card stat slots)
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Fetch the saved 4-slot configuration from the catalog server.
+     * Falls back to [defaultGridTopSlots] when the RPC fails so the grid
+     * never starts broken. Mirrors desktop GridViewModel.loadGridSettings().
+     */
+    fun loadGridSettings() {
+        viewModelScope.launch {
+            try {
+                val raw = repository.getGridSettings()
+                _topSlots.value = normaliseSlots(raw)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Non-fatal — defaults remain intact.
+            }
+        }
+    }
+
+    /**
+     * Update one slot's stat key and persist the full set to the catalog.
+     * The local [topSlots] update is immediate (the cards repaint at once);
+     * the persistence RPC is debounced (500 ms) so rapid slot changes
+     * collapse to a single write — mirrors desktop GridViewModel.updateGridTopSlot().
+     */
+    fun updateGridTopSlot(slotIndex: Int, statKey: String) {
+        if (slotIndex !in 0..3) return
+        val current = normaliseSlots(_topSlots.value).toMutableList()
+        current[slotIndex] = statKey
+        _topSlots.value = current.toList()
+        gridSettingsSaveJob?.cancel()
+        gridSettingsSaveJob = viewModelScope.launch {
+            delay(500)
+            try {
+                repository.updateGridSettings(_topSlots.value)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _error.value = appContext.getString(R.string.err_save_grid_settings, e.message ?: "")
+            }
+        }
+    }
+
+    /** Pad / truncate any list to exactly four slot entries. */
+    private fun normaliseSlots(raw: List<String>): List<String> {
+        val padded = raw.toMutableList()
+        while (padded.size < 4) padded.add("")
+        return padded.take(4)
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // Public API: catalog events
     // ─────────────────────────────────────────────────────────────────────
 
@@ -834,6 +895,9 @@ class GridViewModel(
         _postIndexProgress.value = null
         _liveUpdatesEnabled.value = true
         currentPage = 0
+        gridSettingsSaveJob?.cancel()
+        gridSettingsSaveJob = null
+        _topSlots.value = defaultGridTopSlots
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -1002,6 +1066,7 @@ class GridViewModel(
     override fun onCleared() {
         super.onCleared()
         stopCatalogEventStream()
+        gridSettingsSaveJob?.cancel()
     }
 
     // ─────────────────────────────────────────────────────────────────────
