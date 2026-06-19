@@ -85,6 +85,7 @@
     <string name="grid_no_videos_match_search">No videos match \"%1$s\"</string>
     <string name="grid_no_videos_with_keyword">No videos with this keyword</string>
     <string name="grid_collection_empty">This collection is empty</string>
+    <string name="grid_smart_collection_empty">No videos match this smart collection</string>
     <string name="grid_no_videos_in_library">No videos in library</string>
     <string name="grid_empty_add_location_hint">Add a library location in Settings to get started.</string>
     <string name="grid_empty_no_match_filter">…or no videos match the current filter</string>

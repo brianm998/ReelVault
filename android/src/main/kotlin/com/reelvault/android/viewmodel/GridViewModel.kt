@@ -9,13 +9,20 @@ import com.reelvault.android.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.reelvault.data.models.AttributeFilterState
 import com.reelvault.data.models.CatalogEvent
 import com.reelvault.data.models.CatalogEventKind
 import com.reelvault.data.models.Collection
 import com.reelvault.data.models.LibraryLocation
+import com.reelvault.data.models.MetadataFilter
+import com.reelvault.data.models.OrientationFilterState
 import com.reelvault.data.models.PostIndexProgress
+import com.reelvault.data.models.SmartCollectionFilters
 import com.reelvault.data.models.Tag
 import com.reelvault.data.models.VideoSummary
+import com.reelvault.data.models.derivedAttributeMetadataFilters
+import com.reelvault.data.models.METADATA_NEGATE_PREFIX
+import com.reelvault.data.models.METADATA_VALUE_SEPARATOR
 import com.reelvault.data.repository.VideoRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.isActive
@@ -122,6 +129,12 @@ class GridViewModel(
     private val _selectedCollectionId = MutableStateFlow<String?>(null)
     val selectedCollectionId: StateFlow<String?> = _selectedCollectionId.asStateFlow()
 
+    /** True when the currently-selected collection is a smart collection (its
+     *  filters have been expanded client-side; no collectionId is sent to the
+     *  daemon). Drives the empty-state message in the grid. */
+    private val _selectedCollectionIsSmart = MutableStateFlow(false)
+    val selectedCollectionIsSmart: StateFlow<Boolean> = _selectedCollectionIsSmart.asStateFlow()
+
     private val _filterMinRating = MutableStateFlow(0)
     val filterMinRating: StateFlow<Int> = _filterMinRating.asStateFlow()
 
@@ -171,6 +184,24 @@ class GridViewModel(
     private var collectionId: String? = null
     private var locationPathFilter: String = ""
 
+    // ── Smart collection expanded filter state ────────────────────────────
+    // When a smart collection is selected, its filterJson is parsed and these
+    // fields are populated instead of sending collectionId to the daemon.
+    // Mirrors the desktop GridViewModel's applySmartFiltersToBar logic.
+
+    /** The id of the smart collection currently driving the filter state, or
+     *  null when the user is viewing a manual collection or no collection. */
+    private var activeSmartCollectionId: String? = null
+
+    /** Metadata column constraints expanded from the active smart collection.
+     *  Sent to the daemon as generic metadataFilters. */
+    private var smartMetadataFilters = emptyList<MetadataFilter>()
+
+    private var smartHasLocation = AttributeFilterState.Any
+    private var smartHasKeywords = AttributeFilterState.Any
+    private var smartHasProxies = AttributeFilterState.Any
+    private var smartFullResolution = AttributeFilterState.Any
+
     private var listLoadJob: Job? = null
     private var catalogEventsJob: Job? = null
     private var watcherRefreshJob: Job? = null
@@ -216,6 +247,11 @@ class GridViewModel(
                     filterMinRating = _filterMinRating.value,
                     filterColorLabel = _filterColorLabel.value,
                     searchQuery = _searchQuery.value,
+                    metadataFilters = smartMetadataFilters,
+                    hasLocation = smartHasLocation,
+                    hasKeywords = smartHasKeywords,
+                    hasProxies = smartHasProxies,
+                    fullResolution = smartFullResolution,
                 )
                 val existing = _videos.value
                 val merged = existing + newVideos.filter { n -> existing.none { it.id == n.id } }
@@ -331,12 +367,94 @@ class GridViewModel(
         reloadFromTop(showSpinner = true)
     }
 
-    /** Narrow to videos in [id]. Null clears the collection filter. */
+    /** Narrow to videos in [id]. Null clears the collection filter.
+     *
+     *  For smart collections the daemon never parses filter_json — member rows
+     *  don't exist — so we parse it client-side and expand its criteria into the
+     *  individual ListVideos filter params, matching the desktop/iOS behaviour. */
     fun setCollectionFilter(id: String?) {
         if (_selectedCollectionId.value == id) return
+        // Clear any previous smart-collection filter state.
+        clearSmartCollectionFilters()
         _selectedCollectionId.value = id
-        collectionId = id
+        val col = _collections.value.firstOrNull { it.id == id }
+        if (col != null && col.isSmart && col.filterJson.isNotBlank()) {
+            // Smart collection: expand its filters into individual params so the
+            // daemon receives a normal ListVideos request without a collectionId.
+            val f = SmartCollectionFilters.fromJson(col.filterJson)
+            applySmartFilters(id!!, f)
+        } else {
+            // Manual collection (or clearing): send the id to the daemon.
+            collectionId = id
+        }
         reloadFromTop(showSpinner = true)
+    }
+
+    /** Parse a [SmartCollectionFilters] and store its criteria into the internal
+     *  filter fields that are forwarded to every ListVideos call. Does NOT trigger
+     *  a reload — the caller is responsible. */
+    private fun applySmartFilters(id: String, f: SmartCollectionFilters) {
+        activeSmartCollectionId = id
+        _selectedCollectionIsSmart.value = true
+        collectionId = null  // Smart: never send collectionId to the daemon.
+
+        // Tag IDs travel via filterTags; the grid/count paths both use them.
+        filterTags = f.tagIds
+
+        // Geo filter.
+        if (f.hasGeo) {
+            _filterLocation.value = Triple(f.geoLat, f.geoLon, f.geoRadiusKm)
+        }
+
+        // Location path(s) — join with newline like the desktop does.
+        if (f.locationPaths.isNotEmpty()) {
+            locationPathFilter = f.locationPaths.joinToString("\n")
+        }
+
+        // Rating and color label.
+        if (f.minRating > 0) _filterMinRating.value = f.minRating
+        if (f.colorLabel.isNotEmpty()) _filterColorLabel.value = f.colorLabel
+
+        // Search query from the saved filter.
+        if (f.searchQuery.isNotEmpty()) _searchQuery.value = f.searchQuery
+
+        // Tri-state attribute filters.
+        smartHasLocation = f.hasLocation
+        smartHasKeywords = f.hasKeywords
+        smartHasProxies = f.hasProxies
+        smartFullResolution = f.fullResolution
+
+        // Metadata column constraints (camera, lens, codec, year, ISO, …) plus
+        // the derived has-audio / orientation filters that ride as MetadataFilters.
+        smartMetadataFilters = f.columns
+            .filter { it.values.isNotEmpty() }
+            .map { col ->
+                val value = col.values.joinToString(METADATA_VALUE_SEPARATOR)
+                val wire = if (col.negate) METADATA_NEGATE_PREFIX + value else value
+                MetadataFilter(col.key, wire)
+            } + derivedAttributeMetadataFilters(f.hasAudio, f.orientation)
+    }
+
+    /** Reset all smart-collection-expanded filter fields back to their defaults.
+     *  Called whenever a new collection is selected (to avoid stale state leaking
+     *  from the previous smart collection into the next selection). */
+    private fun clearSmartCollectionFilters() {
+        if (activeSmartCollectionId == null) return
+        activeSmartCollectionId = null
+        _selectedCollectionIsSmart.value = false
+        filterTags = emptyList()
+        _filterTagId.value = ""
+        _filterLocation.value = null
+        _filterLocationLabel.value = null
+        locationPathFilter = ""
+        _filterMinRating.value = 0
+        _filterColorLabel.value = ""
+        _searchQuery.value = ""
+        smartHasLocation = AttributeFilterState.Any
+        smartHasKeywords = AttributeFilterState.Any
+        smartHasProxies = AttributeFilterState.Any
+        smartFullResolution = AttributeFilterState.Any
+        smartMetadataFilters = emptyList()
     }
 
     /** Narrow to videos within [path]. Empty string shows all. */
@@ -515,6 +633,13 @@ class GridViewModel(
         _filterTagId.value = ""
         collectionId = null
         _selectedCollectionId.value = null
+        _selectedCollectionIsSmart.value = false
+        activeSmartCollectionId = null
+        smartMetadataFilters = emptyList()
+        smartHasLocation = AttributeFilterState.Any
+        smartHasKeywords = AttributeFilterState.Any
+        smartHasProxies = AttributeFilterState.Any
+        smartFullResolution = AttributeFilterState.Any
         locationPathFilter = ""
         _searchQuery.value = ""
         _filterMinRating.value = 0
@@ -629,6 +754,11 @@ class GridViewModel(
                     filterMinRating = _filterMinRating.value,
                     filterColorLabel = _filterColorLabel.value,
                     searchQuery = _searchQuery.value,
+                    metadataFilters = smartMetadataFilters,
+                    hasLocation = smartHasLocation,
+                    hasKeywords = smartHasKeywords,
+                    hasProxies = smartHasProxies,
+                    fullResolution = smartFullResolution,
                 )
                 _videos.value = videosList
                 _totalCount.value = totalCount

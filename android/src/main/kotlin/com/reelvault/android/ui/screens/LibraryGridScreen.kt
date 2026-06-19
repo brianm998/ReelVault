@@ -93,6 +93,7 @@ fun LibraryGridScreen(
     val postIndexProgress by vm.postIndexProgress.collectAsStateWithLifecycle()
     val filterTagId by vm.filterTagId.collectAsStateWithLifecycle()
     val selectedCollectionId by vm.selectedCollectionId.collectAsStateWithLifecycle()
+    val selectedCollectionIsSmart by vm.selectedCollectionIsSmart.collectAsStateWithLifecycle()
     val filterLocationLabel by vm.filterLocationLabel.collectAsStateWithLifecycle()
 
     // ── Local UI state ───────────────────────────────────────────────────
@@ -297,6 +298,7 @@ fun LibraryGridScreen(
                             searchQuery = searchQuery,
                             filterTagId = filterTagId,
                             selectedCollectionId = selectedCollectionId,
+                            selectedCollectionIsSmart = selectedCollectionIsSmart,
                             hasActiveFilter = vm.hasActiveLibraryFilter(),
                             onResetFilter = { vm.clearAllFilters() },
                         )
@@ -1466,6 +1468,7 @@ private fun EmptyLibraryMessage(
     searchQuery: String,
     filterTagId: String,
     selectedCollectionId: String?,
+    selectedCollectionIsSmart: Boolean = false,
     hasActiveFilter: Boolean,
     onResetFilter: () -> Unit,
 ) {
@@ -1492,6 +1495,8 @@ private fun EmptyLibraryMessage(
                 text = when {
                     searchQuery.isNotEmpty() -> stringResource(R.string.grid_no_videos_match_search, searchQuery)
                     filterTagId.isNotEmpty() -> stringResource(R.string.grid_no_videos_with_keyword)
+                    selectedCollectionId != null && selectedCollectionIsSmart ->
+                        stringResource(R.string.grid_smart_collection_empty)
                     selectedCollectionId != null -> stringResource(R.string.grid_collection_empty)
                     else -> stringResource(R.string.grid_no_videos_in_library)
                 },
