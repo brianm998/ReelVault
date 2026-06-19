@@ -1772,16 +1772,32 @@ struct GlobalKeyboardShortcuts: ViewModifier {
                 return event  // not editing → let escape propagate (closes sheets etc.)
             }
 
+            // Tab (no modifiers) → toggle the side panels. Handled BEFORE the
+            // isEditingTextField guard (like Escape above) so a search field that
+            // still holds first-responder doesn't swallow it. Clicking the grid
+            // doesn't blur the top-bar search field (the grid isn't a focusable
+            // control), so its field editor could stay first responder and the
+            // guard below would pass Tab through — the "Tab seems dead in grid
+            // mode until you click away / toggle full screen" bug. Inside a
+            // sheet/dialog we leave Tab alone so it still moves between fields.
+            if event.keyCode == 48 && mods.isEmpty {
+                let inSheet = NSApp.keyWindow?.isSheet ?? false
+                if !inSheet {
+                    if isEditingTextField() {
+                        // Blur the stuck field so the other plain-key shortcuts
+                        // (g/l/d/space/arrows) start working again too.
+                        NSApp.keyWindow?.makeFirstResponder(nil)
+                    }
+                    onTab()
+                    return nil  // consume
+                }
+                return event  // in a sheet: let Tab navigate between fields
+            }
+
             // For all other shortcuts, don't steal keys while the user is typing —
             // we'd block normal text input otherwise.
             if isEditingTextField() {
                 return event
-            }
-
-            // Tab (no modifiers) → toggle panels
-            if event.keyCode == 48 && mods.isEmpty {
-                onTab()
-                return nil  // consume
             }
 
             // Cmd+G → group selected
