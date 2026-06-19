@@ -616,8 +616,12 @@ private fun LibrarySidebarContent(
                     SidebarSectionHeader("Locations")
                 }
                 items(libraryLocations) { loc ->
-                    val displayName = loc.path.substringAfterLast('/')
-                        .ifEmpty { loc.path }
+                    // Last path segment only, e.g. "/volume1/Videos" -> "Videos".
+                    // Trim a trailing slash first so "/volume1/Videos/" doesn't
+                    // fall through to the full path. Matches desktop/iOS/macOS.
+                    val trimmed = loc.path.trimEnd('/')
+                    val displayName = trimmed.substringAfterLast('/', missingDelimiterValue = trimmed)
+                        .ifEmpty { "/" }
                     NavigationDrawerItem(
                         icon = {
                             Icon(
