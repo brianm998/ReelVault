@@ -29,13 +29,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.reelvault.android.ui.components.ThumbnailImage
 import com.reelvault.android.viewmodel.GridViewModel
 import com.reelvault.data.models.Collection
+import com.reelvault.data.models.GridStatKey
 import com.reelvault.data.models.LibraryLocation
+import com.reelvault.data.models.defaultGridTopSlots
 import com.reelvault.data.models.PostIndexProgress
 import com.reelvault.data.models.Tag
 import com.reelvault.data.models.VideoSummary
@@ -901,6 +904,54 @@ private fun ListContent(
 // Android-appropriate affordances: Coil for async image loading, ripple for
 // press feedback, no drag-out.
 
+// Top band of the grid card: four metadata stats laid out 2×2 (slot 0 = top-
+// left/emphasized, 1 = bottom-left, 2 = top-right, 3 = bottom-right), using the
+// shared GridStatKey slots — matching iOS and the two desktop clients (which
+// previously showed four where Android showed only duration + resolution).
+@Composable
+private fun CardTopStatBand(video: VideoSummary, backgroundColor: Color) {
+    val slots = remember {
+        val s = defaultGridTopSlots.toMutableList()
+        while (s.size < 4) s.add("")
+        s.take(4)
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(36.dp)
+            .background(backgroundColor)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            CardStatCell(video, slots[0], leading = true, emphasized = true)
+            CardStatCell(video, slots[2], leading = false, emphasized = false)
+        }
+        Row(modifier = Modifier.fillMaxWidth()) {
+            CardStatCell(video, slots[1], leading = true, emphasized = false)
+            CardStatCell(video, slots[3], leading = false, emphasized = false)
+        }
+    }
+}
+
+@Composable
+private fun RowScope.CardStatCell(
+    video: VideoSummary,
+    key: String,
+    leading: Boolean,
+    emphasized: Boolean,
+) {
+    Text(
+        text = GridStatKey.fromRaw(key).valueFor(video),
+        style = if (emphasized) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelSmall,
+        color = Color.White.copy(alpha = if (emphasized) 0.92f else 0.72f),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        textAlign = if (leading) TextAlign.Start else TextAlign.End,
+        modifier = Modifier.weight(1f),
+    )
+}
+
 @Composable
 private fun AndroidVideoCard(
     video: VideoSummary,
@@ -943,29 +994,8 @@ private fun AndroidVideoCard(
             )
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // ── Top stat band ──────────────────────────────────────────
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(28.dp)
-                    .background(topBandColor)
-                    .padding(horizontal = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text = video.durationFormatted,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.92f),
-                    maxLines = 1,
-                )
-                Text(
-                    text = video.resolution,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.72f),
-                    maxLines = 1,
-                )
-            }
+            // ── Top stat band (2×2 configurable slots) ─────────────────
+            CardTopStatBand(video = video, backgroundColor = topBandColor)
 
             HorizontalDivider(color = Color.Black.copy(alpha = 0.35f), thickness = 1.dp)
 
