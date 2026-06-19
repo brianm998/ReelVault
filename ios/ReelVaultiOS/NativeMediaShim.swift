@@ -163,6 +163,13 @@ enum NativeMedia {
                         "r_frame_rate": "\(Int((Double(fps) * 1000).rounded()))/1000",
                     ]
                     if let codec = try? await codecName(of: v) { s["codec_name"] = codec }
+                    // Color transfer / primaries — so the core's HDR + dynamic-range
+                    // classification works on-device too (e.g. iPhone 16 Pro HLG
+                    // flags as HDR in Local Library mode, matching the daemon).
+                    if let color = try? await colorTags(of: v) {
+                        if let trc = color.transfer { s["color_transfer"] = trc }
+                        if let prim = color.primaries { s["color_primaries"] = prim }
+                    }
                     streams.append(s)
                 }
                 if let a = try await asset.loadTracks(withMediaType: .audio).first {
@@ -213,6 +220,33 @@ enum NativeMedia {
         case "lpcm", "sowt", "in24", "fl32": return "pcm"
         default: return fourcc.isEmpty ? nil : fourcc
         }
+    }
+
+    /// Map a video track's CoreMedia color attachments to the ffmpeg-style
+    /// transfer/primaries strings the core's extractor classifies on
+    /// (`is_hdr_transfer` keys on smpte2084/arib-std-b67; `classify_dynamic_range`
+    /// uses both). Returns nils when the track carries no color tags.
+    static func colorTags(of track: AVAssetTrack) async throws -> (transfer: String?, primaries: String?) {
+        guard let desc = try await track.load(.formatDescriptions).first else { return (nil, nil) }
+        func ext(_ key: CFString) -> String? {
+            CMFormatDescriptionGetExtension(desc, extensionKey: key) as? String
+        }
+        let transfer: String? = {
+            guard let t = ext(kCMFormatDescriptionExtension_TransferFunction) else { return nil }
+            if t == (kCMFormatDescriptionTransferFunction_ITU_R_709_2 as String) { return "bt709" }
+            if t == (kCMFormatDescriptionTransferFunction_SMPTE_ST_2084_PQ as String) { return "smpte2084" }
+            if t == (kCMFormatDescriptionTransferFunction_ITU_R_2100_HLG as String) { return "arib-std-b67" }
+            if t == (kCMFormatDescriptionTransferFunction_SMPTE_ST_428_1 as String) { return "smpte428" }
+            return nil
+        }()
+        let primaries: String? = {
+            guard let p = ext(kCMFormatDescriptionExtension_ColorPrimaries) else { return nil }
+            if p == (kCMFormatDescriptionColorPrimaries_ITU_R_709_2 as String) { return "bt709" }
+            if p == (kCMFormatDescriptionColorPrimaries_ITU_R_2020 as String) { return "bt2020" }
+            if p == (kCMFormatDescriptionColorPrimaries_P3_D65 as String) { return "smpte432" }
+            return nil
+        }()
+        return (transfer, primaries)
     }
 
     /// Harvest the container/track metadata the core's extractor reads —
