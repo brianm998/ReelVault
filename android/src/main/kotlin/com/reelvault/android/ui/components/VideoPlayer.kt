@@ -16,6 +16,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -83,10 +84,17 @@ fun VideoPlayer(
                     .createMediaSource(MediaItem.fromUri(streamUrl))
                 player.setMediaSource(mediaSource)
                 player.prepare()
-                player.playWhenReady = true
+                // Do NOT autoplay — buffering to STATE_READY shows the first
+                // frame as a poster behind a centred play button; playback only
+                // begins when the user taps it. Matches the iOS detail view.
+                player.playWhenReady = false
             }
         }
     }
+
+    // True once the user has tapped the big centred play button. Tied to
+    // streamUrl so a brand-new video starts paused with the poster again.
+    var userStartedPlayback by remember(streamUrl) { mutableStateOf(false) }
     DisposableEffect(exoPlayer) {
         onDispose { exoPlayer.release() }
     }
@@ -254,6 +262,32 @@ fun VideoPlayer(
             )
         }
 
+        // Poster-state play button: shown over the first frame until the user
+        // chooses to start playback (no autoplay).
+        val showPlayButton = streamUrl != null && playerError == null &&
+            !userStartedPlayback && playbackState != Player.STATE_BUFFERING
+        if (showPlayButton) {
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .background(Color.Black.copy(alpha = 0.45f), CircleShape)
+                    .clickable {
+                        exoPlayer.play()
+                        userStartedPlayback = true
+                        controlsVisible = true
+                        lastTapTimeMs = System.currentTimeMillis()
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = "Play",
+                    tint = Color.White,
+                    modifier = Modifier.size(44.dp),
+                )
+            }
+        }
+
         if (playerError != null) {
             ErrorOverlay(
                 message = playerError!!.localizedMessage ?: "Playback error",
@@ -266,7 +300,7 @@ fun VideoPlayer(
         }
 
         AnimatedVisibility(
-            visible = controlsVisible && playerError == null && streamUrl != null,
+            visible = controlsVisible && playerError == null && streamUrl != null && userStartedPlayback,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.BottomCenter),

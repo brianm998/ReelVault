@@ -5,7 +5,6 @@ package com.reelvault.android.ui.screens
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -27,9 +26,11 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.reelvault.android.ui.components.ProxyRendition
@@ -60,6 +61,8 @@ fun VideoDetailScreen(
     videoId: String,
     repository: VideoRepository,
     onBack: () -> Unit,
+    /** "Show on Map" — focus the in-app map on (lat, lon). No-op host hides the button. */
+    onShowOnMap: ((Double, Double) -> Unit)? = null,
 ) {
     val vm: DetailViewModel = viewModel(
         key = "detail_$videoId",
@@ -183,6 +186,7 @@ fun VideoDetailScreen(
                     allTags = allTags,
                     repository = repository,
                     vm = vm,
+                    onShowOnMap = onShowOnMap,
                     modifier = Modifier.padding(innerPadding),
                 )
             }
@@ -204,6 +208,7 @@ private fun DetailContent(
     allTags: List<com.reelvault.data.models.Tag>,
     repository: VideoRepository,
     vm: DetailViewModel,
+    onShowOnMap: ((Double, Double) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -319,10 +324,15 @@ private fun DetailContent(
         }
 
         // ── Location ──────────────────────────────────────────────────────
-        if (metadata.gpsLatitude != 0.0 || metadata.gpsLongitude != 0.0) {
-            item {
-                LocationSection(metadata = metadata)
-            }
+        item {
+            LocationSection(
+                metadata = metadata,
+                onSetLocation = { lat, lon, writeToFile ->
+                    vm.setVideoLocation(lat, lon, writeToFile)
+                },
+                onRemoveLocation = { vm.clearVideoLocation() },
+                onShowOnMap = onShowOnMap,
+            )
         }
 
         // ── Tags / Keywords ───────────────────────────────────────────────
@@ -505,9 +515,14 @@ private fun MetadataRow(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun LocationSection(metadata: VideoMetadata) {
-    val context = LocalContext.current
-    val coordString = "%.6f, %.6f".format(metadata.gpsLatitude, metadata.gpsLongitude)
+private fun LocationSection(
+    metadata: VideoMetadata,
+    onSetLocation: (lat: Double, lon: Double, writeToFile: Boolean) -> Unit,
+    onRemoveLocation: () -> Unit,
+    onShowOnMap: ((Double, Double) -> Unit)?,
+) {
+    val hasLocation = metadata.gpsLatitude != 0.0 || metadata.gpsLongitude != 0.0
+    var showPicker by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -523,61 +538,225 @@ private fun LocationSection(metadata: VideoMetadata) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.height(6.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "GPS",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(0.4f),
-                )
-                // Tappable coordinates — open in Maps.
-                Text(
-                    text = coordString,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        textDecoration = TextDecoration.Underline,
-                    ),
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .weight(0.6f)
-                        .clickable {
-                            openInMaps(context, metadata.gpsLatitude, metadata.gpsLongitude)
-                        },
-                )
-            }
-            if (metadata.gpsAltitude != 0.0) {
+
+            if (hasLocation) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 2.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(
-                        text = "Altitude",
+                        text = "GPS",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(0.4f),
                     )
                     Text(
-                        text = "%.1f m".format(metadata.gpsAltitude),
+                        text = "%.6f, %.6f".format(metadata.gpsLatitude, metadata.gpsLongitude),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(0.6f),
                     )
                 }
+                if (metadata.gpsAltitude != 0.0) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 2.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = "Altitude",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(0.4f),
+                        )
+                        Text(
+                            text = "%.1f m".format(metadata.gpsAltitude),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(0.6f),
+                        )
+                    }
+                }
+            } else {
+                Text(
+                    text = "No location",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Action buttons mirror the iOS LocationButtonsSection.
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                LocationActionButton(
+                    text = if (hasLocation) "Change location…" else "Set location…",
+                    icon = Icons.Default.EditLocationAlt,
+                    onClick = { showPicker = true },
+                )
+                if (hasLocation) {
+                    LocationActionButton(
+                        text = "Remove location",
+                        icon = Icons.Default.WrongLocation,
+                        destructive = true,
+                        onClick = onRemoveLocation,
+                    )
+                    if (onShowOnMap != null) {
+                        LocationActionButton(
+                            text = "Show on Map",
+                            icon = Icons.Default.Map,
+                            onClick = { onShowOnMap(metadata.gpsLatitude, metadata.gpsLongitude) },
+                        )
+                    }
+                }
             }
         }
     }
+
+    if (showPicker) {
+        LocationPickerSheet(
+            initial = if (hasLocation) metadata.gpsLatitude to metadata.gpsLongitude else null,
+            onApply = { lat, lon, writeToFile ->
+                onSetLocation(lat, lon, writeToFile)
+                showPicker = false
+            },
+            onDismiss = { showPicker = false },
+        )
+    }
 }
 
-private fun openInMaps(context: Context, lat: Double, lon: Double) {
-    val uri = Uri.parse("geo:$lat,$lon?q=$lat,$lon")
-    val intent = Intent(Intent.ACTION_VIEW, uri)
-    if (intent.resolveActivity(context.packageManager) != null) {
-        context.startActivity(intent)
+@Composable
+private fun LocationActionButton(
+    text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+    destructive: Boolean = false,
+) {
+    val tint = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+    OutlinedButton(onClick = onClick) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = tint,
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(text = text, color = tint)
+    }
+}
+
+/**
+ * Map-based location picker: drag the map under a fixed centre pin to choose a
+ * point, optionally write it into the file, Save. The Android counterpart of the
+ * iOS [LocationPickerSheet] (OSMDroid instead of MapKit).
+ */
+@Composable
+private fun LocationPickerSheet(
+    initial: Pair<Double, Double>?,
+    onApply: (lat: Double, lon: Double, writeToFile: Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val start = initial ?: (20.0 to 0.0)
+    var center by remember { mutableStateOf(start) }
+    var writeToFile by remember { mutableStateOf(false) }
+    var mapViewRef by remember { mutableStateOf<org.osmdroid.views.MapView?>(null) }
+
+    DisposableEffect(Unit) { onDispose { mapViewRef?.onDetach() } }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    Text("Set Location", style = MaterialTheme.typography.titleMedium)
+                    TextButton(onClick = { onApply(center.first, center.second, writeToFile) }) {
+                        Text("Save")
+                    }
+                }
+
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    AndroidView(
+                        modifier = Modifier.fillMaxSize(),
+                        factory = { ctx ->
+                            org.osmdroid.config.Configuration.getInstance().apply {
+                                userAgentValue = "ReelVault/1.0 (android)"
+                                load(ctx, ctx.getSharedPreferences("osmdroid", Context.MODE_PRIVATE))
+                            }
+                            org.osmdroid.views.MapView(ctx).apply {
+                                setTileSource(org.osmdroid.tileprovider.tilesource.TileSourceFactory.MAPNIK)
+                                setUseDataConnection(true)
+                                setMultiTouchControls(true)
+                                isTilesScaledToDpi = true
+                                controller.setZoom(if (initial != null) 14.0 else 2.0)
+                                controller.setCenter(org.osmdroid.util.GeoPoint(start.first, start.second))
+                                addMapListener(object : org.osmdroid.events.MapListener {
+                                    override fun onScroll(event: org.osmdroid.events.ScrollEvent?): Boolean {
+                                        val c = mapCenter
+                                        center = c.latitude to c.longitude
+                                        return false
+                                    }
+                                    override fun onZoom(event: org.osmdroid.events.ZoomEvent?): Boolean = false
+                                })
+                                mapViewRef = this
+                            }
+                        },
+                    )
+                    // Fixed crosshair pin: the map moves under it; the tip marks
+                    // the chosen point (offset so the tip, not the glyph centre,
+                    // sits on the map centre). Non-interactive so drags reach the map.
+                    Icon(
+                        imageVector = Icons.Default.Place,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .size(40.dp)
+                            .offset(y = (-20).dp),
+                    )
+                }
+
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "%.5f, %.5f".format(center.first, center.second),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                    Text(
+                        text = "Drag the map to position the pin.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = writeToFile, onCheckedChange = { writeToFile = it })
+                        Column {
+                            Text(
+                                text = "Write location into the file",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            Text(
+                                text = "Also embeds the GPS tag in the video file, not just the catalog.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

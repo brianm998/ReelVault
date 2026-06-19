@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.reelvault.android.viewmodel.GridViewModel
 import com.reelvault.data.models.LocationFilterGroup
 import com.reelvault.data.models.NamedLocation
@@ -236,6 +237,8 @@ fun LibraryMapScreen(
     onBack: () -> Unit,
 ) {
     val accentArgb = MaterialTheme.colorScheme.primary.toArgb()
+    // "Show on Map" focus request from the detail view, if any.
+    val mapFocus by grid.mapFocus.collectAsStateWithLifecycle()
 
     // Configure OSMDroid: user-agent must be set before tiles are requested.
     LaunchedEffect(Unit) {
@@ -266,7 +269,13 @@ fun LibraryMapScreen(
     // Hold a reference so we can call onDetach when the composable leaves.
     var mapViewRef by remember { mutableStateOf<MapView?>(null) }
     DisposableEffect(Unit) {
-        onDispose { mapViewRef?.onDetach() }
+        onDispose {
+            mapViewRef?.onDetach()
+            // Drop any unconsumed "Show on Map" focus so it can't hijack a later
+            // (normal) map open — e.g. if this visit ended on the empty/error
+            // state, MapContent never composed to consume it.
+            grid.clearMapFocus()
+        }
     }
 
     Scaffold(
@@ -312,6 +321,8 @@ fun LibraryMapScreen(
                 else -> MapContent(
                     groups = groups,
                     accentArgb = accentArgb,
+                    focus = mapFocus,
+                    onFocusConsumed = { grid.clearMapFocus() },
                     onSelectGroup = { group ->
                         grid.setGeoLocationFilter(
                             latitude = group.latitude,
@@ -353,9 +364,16 @@ fun LibraryMapScreen(
 private fun MapContent(
     groups: List<LocationFilterGroup>,
     accentArgb: Int,
+    focus: Triple<Double, Double, Double>?,
+    onFocusConsumed: () -> Unit,
     onSelectGroup: (LocationFilterGroup) -> Unit,
     onMapViewCreated: (MapView) -> Unit,
 ) {
+    // Plain (non-snapshot) holder so positioning the camera doesn't trigger
+    // recomposition. We auto-fit to all markers exactly once; a "Show on Map"
+    // focus always wins and recenters on its point.
+    val positioned = remember { booleanArrayOf(false) }
+
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { ctx ->
@@ -404,17 +422,28 @@ private fun MapContent(
             }
             mapView.overlays.add(folder)
 
-            // Zoom to fit all markers once the map has a valid layout.
+            // Position the camera once the map has a valid layout. A "Show on
+            // Map" focus recenters on its point; otherwise auto-fit all markers
+            // (only the first time, so later marker refreshes don't yank the view).
             mapView.post {
-                if (groups.size == 1) {
-                    mapView.controller.setZoom(14.0)
-                    mapView.controller.setCenter(GeoPoint(groups[0].latitude, groups[0].longitude))
-                } else {
-                    val lats = groups.map { it.latitude }
-                    val lons = groups.map { it.longitude }
-                    val box = BoundingBox(lats.max(), lons.max(), lats.min(), lons.min())
-                    // borderSize = 80px gives comfortable padding around the outermost pins.
-                    mapView.zoomToBoundingBox(box, /* animated = */ true, /* borderSize = */ 80)
+                val f = focus
+                if (f != null) {
+                    mapView.controller.setZoom(15.0)
+                    mapView.controller.setCenter(GeoPoint(f.first, f.second))
+                    positioned[0] = true
+                    onFocusConsumed()
+                } else if (!positioned[0]) {
+                    if (groups.size == 1) {
+                        mapView.controller.setZoom(14.0)
+                        mapView.controller.setCenter(GeoPoint(groups[0].latitude, groups[0].longitude))
+                    } else {
+                        val lats = groups.map { it.latitude }
+                        val lons = groups.map { it.longitude }
+                        val box = BoundingBox(lats.max(), lons.max(), lats.min(), lons.min())
+                        // borderSize = 80px gives comfortable padding around the outermost pins.
+                        mapView.zoomToBoundingBox(box, /* animated = */ true, /* borderSize = */ 80)
+                    }
+                    positioned[0] = true
                 }
             }
 

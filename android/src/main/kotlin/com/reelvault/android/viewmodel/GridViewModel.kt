@@ -139,6 +139,14 @@ class GridViewModel(
     private val _filterLocationLabel = MutableStateFlow<String?>(null)
     val filterLocationLabel: StateFlow<String?> = _filterLocationLabel.asStateFlow()
 
+    // ── Map focus ("Show on Map") ──────────────────────────────────────────
+    // Set by the detail view's "Show on Map" action; the map screen consumes it
+    // to recenter the camera on that point, then clears it. (lat, lon, radiusKm).
+    // Mirrors iOS GridViewModel.mapFocus — an in-app focus, not Apple/Google Maps.
+
+    private val _mapFocus = MutableStateFlow<Triple<Double, Double, Double>?>(null)
+    val mapFocus: StateFlow<Triple<Double, Double, Double>?> = _mapFocus.asStateFlow()
+
     // ── Catalog events ────────────────────────────────────────────────────
 
     private val _liveUpdatesEnabled = MutableStateFlow(true)
@@ -360,6 +368,20 @@ class GridViewModel(
         reloadFromTop(showSpinner = true)
     }
 
+    /**
+     * Ask the map to recenter on ([latitude], [longitude]) — the detail view's
+     * "Show on Map" action. The map consumes this on its next composition and
+     * calls [clearMapFocus].
+     */
+    fun setMapFocus(latitude: Double, longitude: Double, radiusKm: Double = 1.0) {
+        _mapFocus.value = Triple(latitude, longitude, radiusKm)
+    }
+
+    /** Clear a consumed map-focus request. */
+    fun clearMapFocus() {
+        _mapFocus.value = null
+    }
+
     fun setMinRatingFilter(n: Int) {
         if (_filterMinRating.value == n) return
         _filterMinRating.value = n
@@ -455,6 +477,7 @@ class GridViewModel(
         stopCatalogEventStream()
         _filterLocation.value = null
         _filterLocationLabel.value = null
+        _mapFocus.value = null
         filterTags = emptyList()
         _filterTagId.value = ""
         collectionId = null

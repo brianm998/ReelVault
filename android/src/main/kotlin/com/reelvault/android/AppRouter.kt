@@ -89,7 +89,15 @@ fun AppRouter() {
             VideoDetailScreen(
                 videoId = videoId,
                 repository = app.videoRepository,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onShowOnMap = { lat, lon ->
+                    gridViewModel.setMapFocus(lat, lon)
+                    // Replace Detail with Map so "back" from the map returns to
+                    // the grid (and a marker tap there filters the grid as usual).
+                    navController.navigate(Screen.Map.route) {
+                        popUpTo(Screen.Detail.route) { inclusive = true }
+                    }
+                },
             )
         }
         composable(Screen.Settings.route) {

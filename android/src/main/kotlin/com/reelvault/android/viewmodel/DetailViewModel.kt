@@ -197,6 +197,54 @@ class DetailViewModel(
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // Public API: location
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Set the GPS location of the currently-loaded video. When [writeToFile]
+     * is true the daemon also embeds the GPS tag into the video file (no
+     * re-encode). Optimistically updates [metadata]; reloads on completion so
+     * the inspector reflects the persisted value. Mirrors iOS
+     * GridViewModel.setVideoLocations.
+     */
+    fun setVideoLocation(latitude: Double, longitude: Double, writeToFile: Boolean = false) {
+        val videoId = _metadata.value?.id ?: return
+        // Optimistic local update.
+        _metadata.value = _metadata.value?.copy(gpsLatitude = latitude, gpsLongitude = longitude)
+        viewModelScope.launch {
+            try {
+                val ok = repository.updateVideoLocation(
+                    videoId, latitude, longitude, writeToFile = writeToFile,
+                )
+                if (!ok) _error.value = "Failed to update location"
+                loadMetadata(videoId)
+            } catch (e: Exception) {
+                _error.value = "Failed to update location: ${e.message}"
+                loadMetadata(videoId)
+            }
+        }
+    }
+
+    /**
+     * Remove the GPS location of the currently-loaded video (sends lat/lon 0,
+     * which the daemon interprets as "no location"). Reloads on completion.
+     */
+    fun clearVideoLocation() {
+        val videoId = _metadata.value?.id ?: return
+        _metadata.value = _metadata.value?.copy(gpsLatitude = 0.0, gpsLongitude = 0.0, gpsAltitude = 0.0)
+        viewModelScope.launch {
+            try {
+                val ok = repository.updateVideoLocation(videoId, 0.0, 0.0)
+                if (!ok) _error.value = "Failed to remove location"
+                loadMetadata(videoId)
+            } catch (e: Exception) {
+                _error.value = "Failed to remove location: ${e.message}"
+                loadMetadata(videoId)
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // Public API: collections
     // ─────────────────────────────────────────────────────────────────────
 
