@@ -46,6 +46,7 @@ struct ContentView: View {
     @State private var showAppearanceSettingsSheet = false
     @State private var showLibrarySettingsSheet = false
     @State private var showOpenCatalogSheet = false
+    @State private var showForgetServerConfirm = false
     // Wrapper that gives the proxy-picker sheet an Identifiable item
     // to bind to (sheet(item:) requires that). We don't need a real
     // model here — the video summary is enough to derive everything
@@ -796,6 +797,17 @@ struct ContentView: View {
                 } label: {
                     Label("Switch Library…", systemImage: "arrow.left.arrow.right")
                 }
+                // Only shown while connected to a remote server — clears the
+                // pairing token from the Keychain and self-revokes server-side
+                // so the next connection to this server re-pairs from scratch.
+                if remoteConnection.mediaEndpoint != nil {
+                    Divider()
+                    Button(role: .destructive) {
+                        showForgetServerConfirm = true
+                    } label: {
+                        Label("Forget This Server…", systemImage: "key.slash")
+                    }
+                }
             } label: {
                 Image(systemName: remoteConnection.mediaEndpoint == nil ? "desktopcomputer" : "network")
             }
@@ -805,6 +817,18 @@ struct ContentView: View {
             .help(remoteConnection.mediaEndpoint == nil
                   ? "Library is on this computer. Switch to a remote ReelVault server…"
                   : "Connected to a remote ReelVault server. Switch library…")
+            .confirmationDialog(
+                "Forget this server?",
+                isPresented: $showForgetServerConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Forget & Re-pair", role: .destructive) {
+                    Task { await forgetCurrentServer() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Clears this device's pairing token. You'll need to enter a new pairing code to reconnect.")
+            }
 
             // Settings — every preference collapsed into one gear menu so the
             // top bar isn't a row of mystery glyphs. Playback, Library, and
@@ -1472,6 +1496,41 @@ struct ContentView: View {
         var choices: [MacServerChoice] = [.local(port: 50051)]
         choices.append(contentsOf: remotes.map { .remote($0) })
         connectionState = .picker(choices)
+    }
+
+    /// Forget the pairing token for the currently-connected remote server, revoke
+    /// it server-side (best-effort), clear the remembered default, tear down the
+    /// live connection, and return to the library-selection picker. Mirrors
+    /// `AppRouter.forgetCurrentServer()` in the iOS client.
+    private func forgetCurrentServer() async {
+        // Capture the endpoint before clearing anything so the async revoke
+        // still has the credentials it needs.
+        if let ep = RemoteConnection.shared.mediaEndpoint,
+           let fp = ep.fingerprintHex, let token = ep.bearerToken {
+            let host = ep.host; let mediaPort = ep.mediaPort
+            Task {
+                await PairingClient().revoke(host: host, mediaPort: mediaPort,
+                                             fingerprintHex: fp, token: token)
+            }
+            // Drop the Keychain token keyed by this server's fingerprint.
+            TokenStore.delete(for: fp)
+        }
+        // Also clear the stored default's token in case it differs from the
+        // live endpoint (e.g. a stale entry from a previous session).
+        if let def = StoredDefaultServer.load(), let fp = def.fingerprintHex {
+            let storedToken = TokenStore.load(for: fp) ?? ""
+            Task {
+                await PairingClient().revoke(host: def.host, mediaPort: def.mediaPort,
+                                             fingerprintHex: fp, token: storedToken)
+            }
+            TokenStore.delete(for: fp)
+        }
+        StoredDefaultServer.clear()
+        RemoteConnection.shared.mediaEndpoint = nil
+        // Tear down the live (now-unauthorized) gRPC connection.
+        await VideoRepository.shared.disconnect()
+        // Return to library selection.
+        await switchLibrary()
     }
 
     /// Act on a user's (or auto) choice, optionally remembering it as the default.

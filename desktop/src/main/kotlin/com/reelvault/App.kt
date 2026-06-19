@@ -1269,6 +1269,43 @@ fun ReelVaultApp(
         }
     }
 
+    // Forget the pairing token for the currently-connected remote server, revoke
+    // it server-side (best-effort), clear the remembered default, tear down the
+    // live connection, and return to the library-selection picker. Mirrors
+    // AppRouter.forgetCurrentServer() in the iOS client.
+    fun forgetServer() {
+        scope.launch {
+            val ep = RemoteConnection.endpoint
+            if (ep != null) {
+                // Best-effort server-side revoke; don't await — we clear locally
+                // regardless. Fire-and-forget on IO.
+                launch(Dispatchers.IO) {
+                    pairingClient.revoke(ep.host, ep.mediaPort, ep.fingerprintHex, ep.token)
+                }
+                tokenStore.clear(ep.fingerprintHex)
+            }
+            // Also clear any stored default's token in case it differs from the
+            // live endpoint (e.g. a stale entry from a previous session).
+            val def = defaultStore.load()
+            val defFp = def?.fingerprintHex
+            if (defFp != null) {
+                val storedToken = tokenStore.get(defFp)
+                if (storedToken != null) {
+                    launch(Dispatchers.IO) {
+                        pairingClient.revoke(def.host, def.mediaPort, defFp, storedToken)
+                    }
+                    tokenStore.clear(defFp)
+                }
+            }
+            defaultStore.clear()
+            RemoteConnection.endpoint = null
+            // Tear down the live (now-unauthorized) gRPC connection.
+            withContext(Dispatchers.IO) { repository.disconnect() }
+            // Return to library selection (re-scan + picker).
+            switchLibrary()
+        }
+    }
+
     LaunchedEffect(Unit) { attemptConnect() }
 
     // Check for updates at startup and every 24 h. A null result (network
@@ -1325,6 +1362,7 @@ fun ReelVaultApp(
                         onOpenRecent = { path -> openCatalog(path) },
                         onPairDevice = { showPairDeviceDialog = true },
                         onSwitchLibrary = { switchLibrary() },
+                        onForgetServer = { forgetServer() },
                         isRemoteSource = RemoteConnection.isRemote,
                         catalogIsOpen = currentCatalog.isOpen,
                         catalogName = currentCatalog.name,
@@ -2982,6 +3020,10 @@ fun ReelVaultTopBar(
     /** Re-scans Wi-Fi + loopback and lets the user move between the local and a
      *  remote library at runtime (mirrors macOS "Switch Library…"). */
     onSwitchLibrary: () -> Unit = {},
+    /** Revokes the pairing token server-side and clears it locally, then
+     *  disconnects and returns to discovery — the destructive counterpart of
+     *  "Switch Library" (only offered when connected to a remote server). */
+    onForgetServer: () -> Unit = {},
     /** Whether the current catalog is served by a remote daemon (drives the
      *  library-source icon: network vs. this-computer). */
     isRemoteSource: Boolean = false,
@@ -3001,6 +3043,44 @@ fun ReelVaultTopBar(
     onProxyBannerClick: () -> Unit = {},
 ) {
     var showFileMenu by remember { mutableStateOf(false) }
+    var showForgetServerConfirm by remember { mutableStateOf(false) }
+
+    if (showForgetServerConfirm) {
+        AlertDialog(
+            onDismissRequest = { showForgetServerConfirm = false },
+            icon = {
+                Icon(
+                    Icons.Default.VpnKeyOff,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { Text("Forget this server?") },
+            text = {
+                Text(
+                    "Clears this device's pairing token. You'll need to enter a new " +
+                    "pairing code to reconnect.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showForgetServerConfirm = false
+                        onForgetServer()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) { Text("Forget & Re-pair") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showForgetServerConfirm = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     TopAppBar(
         title = {
@@ -3100,6 +3180,27 @@ fun ReelVaultTopBar(
                                 )
                             }
                         )
+                        // Only shown while connected to a remote server — clears the
+                        // pairing token and self-revokes server-side so the next
+                        // connection to this server re-pairs from scratch.
+                        if (isRemoteSource) {
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "Forget This Server…",
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                },
+                                onClick = { showFileMenu = false; showForgetServerConfirm = true },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.VpnKeyOff,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            )
+                        }
                         if (recents.isNotEmpty()) {
                             HorizontalDivider()
                             Text(
