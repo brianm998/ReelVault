@@ -30,7 +30,8 @@ struct DetailModeView: View {
                                             onDoubleTap: { fullScreen = true })
                         OfflineDownloadButton(video: video, endpoint: connection)
                         MetadataEditorSection(grid: grid, videoId: video.id)
-                        VideoMetadataSection(video: video, refreshTick: grid.catalogChangeTick)
+                        VideoMetadataSection(video: video, refreshTick: grid.catalogChangeTick,
+                                             grid: grid)
                         VideoDetailExtras(grid: grid, video: video)
                         LocationButtonsSection(grid: grid, videoId: video.id, onShowOnMap: onShowOnMap)
                         CaptureDateButtonSection(grid: grid, videoId: video.id)

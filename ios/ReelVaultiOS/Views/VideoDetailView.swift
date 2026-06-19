@@ -36,7 +36,8 @@ struct VideoDetailView: View {
                 // and newly-created proxies; refreshTick re-fetches the list.
                 VideoMetadataSection(
                     video: grid.videos.first(where: { $0.id == video.id }) ?? video,
-                    refreshTick: grid.catalogChangeTick)
+                    refreshTick: grid.catalogChangeTick,
+                    grid: grid)
                 VideoDetailExtras(grid: grid,
                                   video: grid.videos.first(where: { $0.id == video.id }) ?? video)
                 LocationButtonsSection(grid: grid, videoId: video.id, onShowOnMap: onShowOnMap)
@@ -831,20 +832,60 @@ struct VideoMetadataSection: View {
     /// Drop the "Details" headline when hosted inside a CollapsibleSection (which
     /// supplies its own header) — the inspector does this.
     var showHeader: Bool = true
+    /// When supplied, enables proxy management actions: break-link per row and
+    /// "Create proxy…" when none exist. Pass the shared GridViewModel from the
+    /// parent detail/inspector view. nil = read-only (legacy behaviour).
+    var grid: GridViewModel? = nil
     @State private var proxies: [VideoRepository.ProxyInfo] = []
+    /// Bumped after a break-link to force the proxy list to reload, independent of
+    /// the catalog-wide refreshTick (which fires after a server round-trip that may
+    /// race the list refresh).
+    @State private var proxyRefreshNonce = 0
+    /// True while waiting for a break-link call to return, to keep the button from
+    /// being tapped twice.
+    @State private var isBreakingLink = false
+    /// Proxy creation sheet: the video we're about to create a proxy for.
+    @State private var createProxyTarget: VideoSummary? = nil
+    /// Active proxy-generation state for this video (forwarded from GridViewModel).
+    private var activeProxyCreation: GridViewModel.ProxyCreationState? {
+        grid?.activeProxyCreations[video.id]
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             detailsGroup
             StatusBadgeList(video: video)
-            if !proxies.isEmpty { proxiesGroup }
+            if !proxies.isEmpty || activeProxyCreation != nil {
+                proxiesGroup
+            }
+            // "Create proxy…" — only when the video has no proxies yet, no job is
+            // running, a GridViewModel is wired in (so we can kick off the job),
+            // and this video is not itself a proxy of something else.
+            if proxies.isEmpty, activeProxyCreation == nil, grid != nil, !video.isProxy {
+                Button {
+                    createProxyTarget = video
+                } label: {
+                    Label("Create proxy…", systemImage: "film.stack")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("Create a lower-resolution proxy for this video")
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         // Proxy details aren't on VideoSummary (only a count) — fetch the list
         // for the selected video, same as the macOS inspector. Re-fetch when the
-        // catalog changes (refreshTick) so newly-created proxies show live.
-        .task(id: "\(video.id)#\(refreshTick)") {
+        // catalog changes (refreshTick) or after a local break-link (nonce).
+        .task(id: "\(video.id)#\(refreshTick)#\(proxyRefreshNonce)") {
             proxies = (try? await VideoRepository.shared.listProxies(videoId: video.id)) ?? []
+        }
+        .sheet(item: $createProxyTarget) { target in
+            ProxyResolutionSheet(sourceVideo: target) { height in
+                createProxyTarget = nil
+                grid?.startProxyCreation(videoId: target.id, targetHeight: height)
+            } onCancel: {
+                createProxyTarget = nil
+            }
         }
     }
 
@@ -877,13 +918,73 @@ struct VideoMetadataSection: View {
 
     private var proxiesGroup: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Proxies (\(proxies.count))").font(.headline)
-            ForEach(proxies) { proxy in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(proxy.filename).font(.callout).lineLimit(1)
-                    Text(Self.proxyDetail(proxy)).font(.caption).foregroundStyle(.secondary)
+            // In-progress creation banner — shown above the proxy list (or alone
+            // when no proxies exist yet) so the user can track the job progress.
+            if let state = activeProxyCreation {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(state.message.isEmpty ? "Generating proxy…" : state.message)
+                            .font(.caption)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        if state.progressPercent > 0 {
+                            Text("\(Int(state.progressPercent))%")
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    if state.progressPercent > 0 {
+                        ProgressView(value: state.progressPercent, total: 100)
+                            .progressViewStyle(.linear)
+                    } else {
+                        ProgressView().progressViewStyle(.linear)
+                    }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(10)
+                .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+            }
+
+            if !proxies.isEmpty {
+                Text("Proxies (\(proxies.count))").font(.headline)
+                ForEach(proxies) { proxy in
+                    HStack(alignment: .center, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(proxy.filename).font(.callout).lineLimit(1)
+                            Text(Self.proxyDetail(proxy)).font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 0)
+                        // Break-link button — mirrored from the macOS inspector's
+                        // "link.badge.minus" button. Always shown so the user can
+                        // correct false auto-detections without a context menu.
+                        if grid != nil {
+                            Button {
+                                guard !isBreakingLink else { return }
+                                isBreakingLink = true
+                                let masterId = video.id
+                                let proxyId = proxy.id
+                                Task {
+                                    let ok = await VideoRepository.shared.removeProxyLink(
+                                        masterId: masterId, proxyId: proxyId)
+                                    if ok {
+                                        grid?.loadVideos()
+                                        proxyRefreshNonce += 1
+                                    }
+                                    isBreakingLink = false
+                                }
+                            } label: {
+                                Image(systemName: "link.badge.minus")
+                                    .foregroundStyle(.secondary)
+                                    .font(.system(size: 18))
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(isBreakingLink)
+                            .accessibilityLabel("Break proxy link for \(proxy.filename)")
+                            .help("Break this proxy link. The proxy file stays in the catalog; only the relationship with this master is removed.")
+                        }
+                    }
+                    .padding(.vertical, 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
         }
     }
@@ -908,6 +1009,110 @@ struct VideoMetadataSection: View {
             Spacer(minLength: 0)
         }
         .font(.callout)
+    }
+}
+
+/// iOS-native resolution picker sheet for creating a proxy. Matches the macOS
+/// ProxyResolutionDialog's presets and default-pick logic but uses iOS sheet
+/// presentation (no fixed frame, standard form layout).
+private struct ProxyResolutionSheet: View {
+    let sourceVideo: VideoSummary
+    let onConfirm: (Int) -> Void
+    let onCancel: () -> Void
+
+    private let presets: [Int] = [2160, 1440, 1080, 720, 540]
+    @State private var selectedHeight: Int = 720
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Text(sourceVideo.filename)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .truncationMode(.middle)
+                } header: {
+                    Text("Video")
+                }
+
+                Section {
+                    ForEach(presets, id: \.self) { h in
+                        presetRow(h)
+                    }
+                } header: {
+                    Text("Target resolution")
+                }
+            }
+            .navigationTitle("Create Proxy")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: onCancel)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Create") {
+                        onConfirm(selectedHeight)
+                    }
+                }
+            }
+        }
+        .onAppear { selectedHeight = defaultPick }
+    }
+
+    @ViewBuilder private func presetRow(_ h: Int) -> some View {
+        let disabled = sourceVideo.height > 0 && h >= sourceVideo.height
+        Button {
+            if !disabled { selectedHeight = h }
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(presetLabel(h))
+                        .foregroundStyle(disabled ? Color.secondary : Color.primary)
+                    if disabled {
+                        Text("≥ source (\(sourceVideo.height)p)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text(presetDetail(h))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                if selectedHeight == h && !disabled {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(Color.accentColor)
+                        .fontWeight(.semibold)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+    }
+
+    private var defaultPick: Int {
+        if sourceVideo.height > 720 { return 720 }
+        if let smaller = presets.first(where: { $0 < sourceVideo.height }) { return smaller }
+        return 720
+    }
+
+    private func presetLabel(_ h: Int) -> String {
+        switch h {
+        case 2160: return "2160p — 4K UHD"
+        case 1440: return "1440p — QHD"
+        case 1080: return "1080p — Full HD"
+        case 720:  return "720p — HD"
+        case 540:  return "540p — qHD"
+        default:   return "\(h)p"
+        }
+    }
+
+    private func presetDetail(_ h: Int) -> String {
+        let pixels = Double(h * h * 16) / 9.0
+        let baseline = Double(1080 * 1080 * 16) / 9.0
+        return String(format: "%.0f%% of 1080p", (pixels / baseline) * 100.0)
     }
 }
 

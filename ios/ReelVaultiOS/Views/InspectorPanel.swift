@@ -37,7 +37,8 @@ struct InspectorPanel: View {
                         MetadataEditorSection(grid: grid, videoId: video.id)
                     }
                     CollapsibleSection("Details") {
-                        VideoMetadataSection(video: video, refreshTick: refreshTick, showHeader: false)
+                        VideoMetadataSection(video: video, refreshTick: refreshTick,
+                                             showHeader: false, grid: grid)
                     }
                     CollapsibleSection("EXIF") { ExifSection(video: video) }
                     CollapsibleSection("Collections") { CollectionsSection(grid: grid, videoId: video.id) }
