@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 ReelVault Contributors
 
+import CoreLocation
 import MapKit
 import SwiftUI
 import ReelVaultKit
@@ -134,10 +135,7 @@ struct MapModePad: View {
             if let selected {
                 Divider()
                 MapLocationPanel(grid: grid, cluster: selected,
-                                 onOpen: { video in
-                                     grid.selectVideo(video)
-                                     viewMode = .detail
-                                 },
+                                 viewMode: $viewMode,
                                  onClose: { self.selected = nil })
                     .frame(width: 300)
                     .transition(.move(edge: .trailing))
@@ -150,13 +148,22 @@ struct MapModePad: View {
 /// The trailing panel for a tapped map cluster on iPad: the place name (or
 /// "Location") plus a grid of full video cards, matching the macOS
 /// `MapVideoListPanel`. iPhone routes through the grid instead of this panel.
+///
+/// Per-card context menu (long-press): Open in Grid / List / Detail;
+/// Update Location… / Remove Location — mirroring macOS `MapVideoListPanel`.
+/// Header context menu: Open all in Grid / Open all in List.
 struct MapLocationPanel: View {
     @ObservedObject var grid: GridViewModel
     let cluster: LocationFilterGroup
-    var onOpen: (VideoSummary) -> Void
+    /// Bound to the parent's view mode so context-menu navigation items can
+    /// switch the whole library view to Grid / List / Detail mode.
+    @Binding var viewMode: LibraryViewMode
     var onClose: () -> Void
 
     private let columns = [GridItem(.adaptive(minimum: 120), spacing: 8)]
+
+    /// Video whose location is being edited via the "Update Location…" picker.
+    @State private var locationPickerVideo: VideoSummary?
 
     var body: some View {
         let members = grid.mapClusterMembers(cluster)
@@ -167,6 +174,19 @@ struct MapLocationPanel: View {
                         .font(.headline).lineLimit(2)
                     Text("\(members.count) video\(members.count == 1 ? "" : "s")")
                         .font(.caption).foregroundStyle(.secondary)
+                }
+                // Header context menu: open the whole cluster in Grid or List.
+                .contextMenu {
+                    if !members.isEmpty {
+                        Button("Open all in Grid") {
+                            grid.filterToVideosLocation(members.map(\.id))
+                            viewMode = .grid
+                        }
+                        Button("Open all in List") {
+                            grid.filterToVideosLocation(members.map(\.id))
+                            viewMode = .list
+                        }
+                    }
                 }
                 Spacer(minLength: 0)
                 Button(action: onClose) { Image(systemName: "xmark.circle.fill") }
@@ -185,9 +205,43 @@ struct MapLocationPanel: View {
                             isSelected: grid.selectedVideoId == video.id,
                             onActivate: {
                                 grid.selectVideo(video)
-                                onOpen(video)
-                            }
+                                viewMode = .detail
+                            },
+                            onSetRating: { grid.setRating($0, for: [video.id]) },
+                            onSetColorLabel: { grid.setColorLabel($0, for: [video.id]) }
                         )
+                        // Per-card context menu: open modes + location editing.
+                        // Layered on top of VideoCardView's own menu so the
+                        // map-panel actions appear first (Open in …), followed by
+                        // the standard rating / colour-label items from the card.
+                        .contextMenu {
+                            // --- Navigation ---
+                            Button("Open in Grid") {
+                                grid.selectVideo(video)
+                                grid.filterToVideosLocation([video.id])
+                                viewMode = .grid
+                            }
+                            Button("Open in List") {
+                                grid.selectVideo(video)
+                                grid.filterToVideosLocation([video.id])
+                                viewMode = .list
+                            }
+                            Button("Open in Detail") {
+                                grid.selectVideo(video)
+                                viewMode = .detail
+                            }
+                            // --- Location editing ---
+                            // Every card in this panel has a GPS location by
+                            // definition (it came from the map cluster), so
+                            // always offer Update + Remove.
+                            Divider()
+                            Button("Update Location\u{2026}") {
+                                locationPickerVideo = video
+                            }
+                            Button("Remove Location", role: .destructive) {
+                                grid.clearVideoLocations(videoIds: [video.id])
+                            }
+                        }
                         .onAppear { grid.loadThumbnail(videoId: video.id) }
                     }
                 }
@@ -195,5 +249,21 @@ struct MapLocationPanel: View {
             }
         }
         .background(.bar)
+        // Location picker sheet: presented when the user taps "Update Location…"
+        // on a card's context menu.
+        .sheet(item: $locationPickerVideo) { video in
+            LocationPickerSheet(
+                initial: video.hasLocation
+                    ? CLLocationCoordinate2D(latitude: video.gpsLatitude,
+                                             longitude: video.gpsLongitude)
+                    : grid.videoLocations.first.map {
+                        CLLocationCoordinate2D(latitude: $0.latitude,
+                                               longitude: $0.longitude)
+                    }
+            ) { lat, lon, writeToFile in
+                grid.setVideoLocations(videoIds: [video.id], latitude: lat,
+                                       longitude: lon, writeToFile: writeToFile)
+            }
+        }
     }
 }
