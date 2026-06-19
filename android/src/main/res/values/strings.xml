@@ -332,6 +332,14 @@
     <string name="sort_frame_rate">Frame Rate</string>
     <string name="sort_codec">Codec</string>
     <string name="sort_camera">Camera</string>
+    <string name="sort_resolution">Resolution</string>
+    <string name="sort_bitrate">Bitrate</string>
+    <string name="sort_lens">Lens</string>
+    <string name="sort_iso">ISO</string>
+    <string name="sort_aperture">Aperture</string>
+    <string name="sort_exposure_time">Exposure Time</string>
+    <string name="sort_focal_length">Focal Length</string>
+    <string name="sort_keyword">Keyword</string>
 
     <!-- ── Card stats configuration ─────────────────────────────────────── -->
     <string name="card_stats_sheet_title">Card Stats</string>

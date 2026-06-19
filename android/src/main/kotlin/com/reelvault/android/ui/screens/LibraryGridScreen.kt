@@ -684,12 +684,23 @@ private fun SortDropdownMenu(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
         )
         val options = listOf(
-            "indexed_at" to stringResource(R.string.sort_date_indexed),
+            "indexed_at"    to stringResource(R.string.sort_date_indexed),
             "creation_date" to stringResource(R.string.sort_date_captured),
-            "filename" to stringResource(R.string.sort_filename),
-            "size_bytes" to stringResource(R.string.sort_file_size),
-            "duration_ms" to stringResource(R.string.sort_duration),
-            "rating" to stringResource(R.string.sort_rating),
+            "filename"      to stringResource(R.string.sort_filename),
+            "size_bytes"    to stringResource(R.string.sort_file_size),
+            "duration_ms"   to stringResource(R.string.sort_duration),
+            "resolution"    to stringResource(R.string.sort_resolution),
+            "fps"           to stringResource(R.string.sort_frame_rate),
+            "codec"         to stringResource(R.string.sort_codec),
+            "bitrate"       to stringResource(R.string.sort_bitrate),
+            "camera"        to stringResource(R.string.sort_camera),
+            "lens"          to stringResource(R.string.sort_lens),
+            "iso"           to stringResource(R.string.sort_iso),
+            "aperture"      to stringResource(R.string.sort_aperture),
+            "exposure_time" to stringResource(R.string.sort_exposure_time),
+            "focal_length"  to stringResource(R.string.sort_focal_length),
+            "keyword"       to stringResource(R.string.sort_keyword),
+            "rating"        to stringResource(R.string.sort_rating),
         )
         options.forEach { (field, label) ->
             DropdownMenuItem(

@@ -833,10 +833,18 @@ private fun SortPicker(
         "filename"       to sortFieldDisplayName("filename", context),
         "size_bytes"     to sortFieldDisplayName("size_bytes", context),
         "duration_ms"    to sortFieldDisplayName("duration_ms", context),
-        "rating"         to sortFieldDisplayName("rating", context),
+        "resolution"     to sortFieldDisplayName("resolution", context),
         "fps"            to sortFieldDisplayName("fps", context),
         "codec"          to sortFieldDisplayName("codec", context),
+        "bitrate"        to sortFieldDisplayName("bitrate", context),
         "camera"         to sortFieldDisplayName("camera", context),
+        "lens"           to sortFieldDisplayName("lens", context),
+        "iso"            to sortFieldDisplayName("iso", context),
+        "aperture"       to sortFieldDisplayName("aperture", context),
+        "exposure_time"  to sortFieldDisplayName("exposure_time", context),
+        "focal_length"   to sortFieldDisplayName("focal_length", context),
+        "keyword"        to sortFieldDisplayName("keyword", context),
+        "rating"         to sortFieldDisplayName("rating", context),
     )
 
     var menuExpanded by remember { mutableStateOf(false) }
@@ -876,8 +884,12 @@ private fun SortPicker(
                         onClick = {
                             // Clicking the current field flips direction; a new
                             // field gets the default direction for that key.
+                            // Text-based fields default ascending (A→Z); numeric
+                            // and date-based fields default descending (largest first).
                             val newAscending = if (field == currentField) !ascending
-                                              else (field == "filename" || field == "camera" || field == "codec")
+                                              else (field == "filename" || field == "camera" ||
+                                                    field == "codec"    || field == "lens"   ||
+                                                    field == "keyword")
                             onSetSort(field, newAscending)
                             menuExpanded = false
                         },
@@ -913,9 +925,17 @@ private fun sortFieldDisplayName(field: String, context: Context): String = when
     "filename"      -> context.getString(R.string.sort_filename)
     "size_bytes"    -> context.getString(R.string.sort_file_size)
     "duration_ms"   -> context.getString(R.string.sort_duration)
-    "rating"        -> context.getString(R.string.sort_rating)
+    "resolution"    -> context.getString(R.string.sort_resolution)
     "fps"           -> context.getString(R.string.sort_frame_rate)
     "codec"         -> context.getString(R.string.sort_codec)
+    "bitrate"       -> context.getString(R.string.sort_bitrate)
     "camera"        -> context.getString(R.string.sort_camera)
+    "lens"          -> context.getString(R.string.sort_lens)
+    "iso"           -> context.getString(R.string.sort_iso)
+    "aperture"      -> context.getString(R.string.sort_aperture)
+    "exposure_time" -> context.getString(R.string.sort_exposure_time)
+    "focal_length"  -> context.getString(R.string.sort_focal_length)
+    "keyword"       -> context.getString(R.string.sort_keyword)
+    "rating"        -> context.getString(R.string.sort_rating)
     else            -> field.replaceFirstChar { it.uppercase() }
 }
