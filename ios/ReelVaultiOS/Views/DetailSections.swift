@@ -62,12 +62,23 @@ struct ExifSection: View {
     let video: VideoSummary
 
     var body: some View {
-        let rows = rows
-        if rows.isEmpty {
+        let hasCamera = !video.cameraModel.isEmpty
+        let hasOtherRows = !video.lensModel.isEmpty
+            || video.focalLengthMm > 0
+            || video.aperture > 0
+            || video.exposureTimeS > 0
+            || video.iso > 0
+        if !hasCamera && !hasOtherRows {
             Text("No camera metadata.").font(.callout).foregroundStyle(.secondary)
         } else {
             VStack(alignment: .leading, spacing: 6) {
-                ForEach(rows, id: \.0) { label, value in
+                if hasCamera {
+                    CameraExifRow(
+                        internalName: video.cameraModel,
+                        displayName: video.cameraDisplayName
+                    )
+                }
+                ForEach(otherRows, id: \.0) { label, value in
                     HStack(alignment: .top) {
                         Text(label).foregroundStyle(.secondary).frame(width: 100, alignment: .leading)
                         Text(value).textSelection(.enabled)
@@ -79,9 +90,8 @@ struct ExifSection: View {
         }
     }
 
-    private var rows: [(String, String)] {
+    private var otherRows: [(String, String)] {
         var out: [(String, String)] = []
-        if !video.cameraDisplayName.isEmpty { out.append(("Camera", video.cameraDisplayName)) }
         if !video.lensModel.isEmpty { out.append(("Lens", video.lensModel)) }
         if video.focalLengthMm > 0 { out.append(("Focal length", String(format: "%.0f mm", video.focalLengthMm))) }
         if video.aperture > 0 { out.append(("Aperture", String(format: "f/%.1f", video.aperture))) }
@@ -92,6 +102,49 @@ struct ExifSection: View {
 
     private func shutter(_ s: Double) -> String {
         s >= 1 ? String(format: "%.1f s", s) : "1/\(Int((1 / s).rounded())) s"
+    }
+}
+
+/// Camera-model row that shows the marketing name (e.g. "Sony a7R III") with a
+/// small ⓘ button to reveal the internal model code (e.g. "SONY ILCE-7RM3") and
+/// back. Mirrors the macOS CameraMetadataRow. When no mapping exists (display
+/// name equals internal name), falls back to a plain row with no toggle.
+private struct CameraExifRow: View {
+    let internalName: String
+    let displayName: String
+    @State private var showInternal: Bool = false
+
+    private var hasMarketing: Bool {
+        !displayName.isEmpty && displayName != internalName
+    }
+
+    var body: some View {
+        HStack(alignment: .top) {
+            Text("Camera")
+                .foregroundStyle(.secondary)
+                .frame(width: 100, alignment: .leading)
+            if hasMarketing {
+                HStack(spacing: 6) {
+                    Text(showInternal ? internalName : displayName)
+                        .textSelection(.enabled)
+                    Button {
+                        showInternal.toggle()
+                    } label: {
+                        Image(systemName: showInternal ? "info.circle.fill" : "info.circle")
+                            .foregroundStyle(.secondary)
+                            .font(.system(size: 14))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(showInternal
+                        ? "Switch to marketing name"
+                        : "Show internal model code (\(internalName))")
+                }
+            } else {
+                Text(internalName).textSelection(.enabled)
+            }
+            Spacer(minLength: 0)
+        }
+        .font(.callout)
     }
 }
 
