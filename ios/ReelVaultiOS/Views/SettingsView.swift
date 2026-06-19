@@ -42,6 +42,7 @@ struct SettingsView: View {
                     LiveUpdatesSection()
                     MetadataNamesSection()
                 }
+                HelpLinkSection()
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -503,6 +504,22 @@ private struct AppearanceSection: View {
         } footer: {
             Text("How many still frames ReelVault samples per video for the hover scrub preview. Changes take effect the next time an un-sampled card is hovered.")
                 .foregroundStyle(.secondary)
+        }
+    }
+}
+
+// MARK: - Help section
+
+/// A single "ReelVault Help" navigation row that pushes HelpView. Placed at the
+/// bottom of Settings so it's always visible regardless of connection state.
+private struct HelpLinkSection: View {
+    var body: some View {
+        Section {
+            NavigationLink {
+                HelpView()
+            } label: {
+                Label("ReelVault Help", systemImage: "questionmark.circle")
+            }
         }
     }
 }
