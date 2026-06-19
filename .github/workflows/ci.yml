@@ -65,6 +65,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # shared/ targets Java 17; desktop/ targets Java 21.
+      # Install 17 first so Gradle's toolchain resolver can find it, then
+      # install 21 last so JAVA_HOME points to the newer JDK by default.
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
       - uses: actions/setup-java@v4
         with:
           java-version: '21'
