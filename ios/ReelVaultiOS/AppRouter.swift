@@ -33,13 +33,30 @@ final class AppRouter: ObservableObject {
         var bearerToken: String?
     }
 
-    @Published var phase: Phase = .discovering
+    @Published var phase: Phase
     @Published var discovered: [DiscoveredServer] = []
     @Published var connection: ConnectionInfo?
     /// True while an on-device (Local) ingest pass is running. Drives the
     /// "keep the app open" banner — on-device ingest only progresses in the
     /// foreground (no background task), so the user shouldn't leave mid-pass.
     @Published var isIngesting = false
+
+    init() {
+        // Compute the correct initial phase from persisted state so the first
+        // rendered frame is already on the right screen — no flash of
+        // "Looking for a server…" when we know where to go.
+        if UserDefaults.standard.bool(forKey: "ios.prefersLocalLibrary") {
+            phase = .startingLocal
+        } else if let data = UserDefaults.standard.data(forKey: Self.lastServerKey),
+                  let s = try? JSONDecoder().decode(StoredServer.self, from: data),
+                  TokenStore.load(for: s.fingerprintHex) != nil {
+            phase = .connecting(DiscoveredServer(
+                name: s.host, host: s.host, grpcPort: s.grpcPort, mediaPort: s.mediaPort,
+                fingerprintHex: s.fingerprintHex, requiresPairing: true, source: .manual))
+        } else {
+            phase = .discovering
+        }
+    }
 
     /// Remembers the user's last library choice so a relaunch returns to it
     /// instead of always auto-discovering a LAN server. Set when On-Device

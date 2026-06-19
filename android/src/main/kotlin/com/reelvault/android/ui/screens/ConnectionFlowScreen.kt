@@ -93,21 +93,35 @@ fun ConnectionFlowScreen(
     // Mutable snapshot of the discovered-server list (added/removed by NSD).
     val discovered = remember { mutableStateListOf<DiscoveredServer>() }
 
-    var state by remember { mutableStateOf<ConnectionState>(ConnectionState.Discovering) }
+    // Load saved credentials synchronously on first composition so the initial
+    // state is correct from the very first frame — no flash of "Discovering"
+    // when we have a stored server and token.
+    val initialSaved: Pair<DefaultServerPrefs.Entry, String>? = remember {
+        val entry = DefaultServerPrefs(context).load() ?: return@remember null
+        val fp = entry.fingerprintHex ?: return@remember null
+        val token = tokenStorage.get(fp) ?: return@remember null
+        entry to token
+    }
+
+    var state by remember {
+        mutableStateOf<ConnectionState>(
+            if (initialSaved != null)
+                ConnectionState.Connecting(
+                    context.getString(R.string.conn_reconnecting_to, initialSaved.first.host)
+                )
+            else
+                ConnectionState.Discovering
+        )
+    }
     // True while we are attempting a saved-credential auto-connect; NSD callbacks
     // skip state transitions until we finish so they don't interrupt the attempt.
-    var autoConnecting by remember { mutableStateOf(false) }
+    var autoConnecting by remember { mutableStateOf(initialSaved != null) }
 
     // ── Auto-connect with saved credentials ───────────────────────────────────
 
     LaunchedEffect(Unit) {
-        val prefs = DefaultServerPrefs(context)
-        val saved = prefs.load() ?: return@LaunchedEffect
+        val (saved, token) = initialSaved ?: return@LaunchedEffect
         val fp = saved.fingerprintHex ?: return@LaunchedEffect
-        val token = tokenStorage.get(fp) ?: return@LaunchedEffect
-
-        autoConnecting = true
-        state = ConnectionState.Connecting(context.getString(R.string.conn_reconnecting_to, saved.host))
         RemoteConnection.endpoint = RemoteConnection.Endpoint(
             host = saved.host,
             mediaPort = saved.mediaPort,

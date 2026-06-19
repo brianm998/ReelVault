@@ -42,4 +42,14 @@ class DefaultServerPrefs(context: Context) {
     fun clear() {
         prefs.edit().clear().apply()
     }
+
+    fun saveLastMode(mode: String) {
+        prefs.edit().putString("lastMode", mode).apply()
+    }
+
+    fun loadLastMode(): String? = prefs.getString("lastMode", null)
+
+    fun clearLastMode() {
+        prefs.edit().remove("lastMode").apply()
+    }
 }

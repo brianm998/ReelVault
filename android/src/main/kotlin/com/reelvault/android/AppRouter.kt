@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.reelvault.android.data.DefaultServerPrefs
 import com.reelvault.android.ui.screens.*
 import com.reelvault.android.ui.screens.OfflineLibraryScreen
 import com.reelvault.android.viewmodel.GridViewModel
@@ -40,9 +41,19 @@ fun AppRouter() {
         factory = GridViewModel.Factory(app.videoRepository, context)
     )
 
+    // Persist the user's last destination so we can return there on relaunch.
+    val prefs = remember { DefaultServerPrefs(context) }
+    // Read synchronously — SharedPreferences, no I/O wait.
+    val startDestination = remember {
+        when (prefs.loadLastMode()) {
+            "local" -> Screen.LocalMedia.route
+            else -> Screen.Connection.route
+        }
+    }
+
     NavHost(
         navController = navController,
-        startDestination = Screen.Connection.route
+        startDestination = startDestination
     ) {
         composable(Screen.Connection.route) {
             ConnectionFlowScreen(
@@ -50,12 +61,14 @@ fun AppRouter() {
                 pairingClient = app.pairingClient,
                 tokenStorage = app.tokenStorage,
                 onConnected = {
+                    prefs.saveLastMode("remote")
                     isConnected = true
                     navController.navigate(Screen.Grid.route) {
                         popUpTo(Screen.Connection.route) { inclusive = true }
                     }
                 },
                 onBrowseLocalMedia = {
+                    prefs.saveLastMode("local")
                     navController.navigate(Screen.LocalMedia.route) {
                         popUpTo(Screen.Connection.route) { inclusive = false }
                     }
@@ -84,6 +97,7 @@ fun AppRouter() {
                     // Activity-scoped VM outlives the connection — wipe the old
                     // session's filters/state so the next connection starts clean.
                     gridViewModel.resetForNewSession()
+                    prefs.clearLastMode()
                     isConnected = false
                     navController.navigate(Screen.Connection.route) {
                         popUpTo(0) { inclusive = true }
@@ -119,6 +133,7 @@ fun AppRouter() {
                     // return to the connection flow (identical to onDisconnect but
                     // credentials have already been cleared by the settings screen).
                     gridViewModel.resetForNewSession()
+                    prefs.clearLastMode()
                     isConnected = false
                     navController.navigate(Screen.Connection.route) {
                         popUpTo(0) { inclusive = true }
@@ -135,7 +150,13 @@ fun AppRouter() {
         }
         composable(Screen.LocalMedia.route) {
             LocalMediaScreen(
-                onBack = { navController.popBackStack() }
+                onBack = {
+                    // If LocalMedia was the start destination there's nothing to
+                    // pop back to — navigate to the connection screen instead.
+                    if (!navController.popBackStack()) {
+                        navController.navigate(Screen.Connection.route)
+                    }
+                }
             )
         }
         composable(Screen.OfflineLibrary.route) {
