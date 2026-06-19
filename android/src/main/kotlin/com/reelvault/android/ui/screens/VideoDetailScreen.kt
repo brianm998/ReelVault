@@ -37,8 +37,10 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
+import com.reelvault.android.ui.components.DetailGraphsSection
 import com.reelvault.android.ui.components.ProxyRendition
 import com.reelvault.android.ui.components.VideoPlayer
+import com.reelvault.android.viewmodel.GridViewModel
 import com.reelvault.android.ui.theme.swatch
 import com.reelvault.android.ui.theme.dimmed
 import com.reelvault.android.R
@@ -67,6 +69,9 @@ import com.reelvault.data.repository.VideoRepository
 fun VideoDetailScreen(
     videoId: String,
     repository: VideoRepository,
+    /** Shared grid view-model: provides the scrub-frame and loudness caches for
+     *  the Visuals graphs section. Optional — omit in preview/test contexts. */
+    gridViewModel: GridViewModel? = null,
     onBack: () -> Unit,
     /** "Show on Map" — focus the in-app map on (lat, lon). No-op host hides the button. */
     onShowOnMap: ((Double, Double) -> Unit)? = null,
@@ -235,6 +240,7 @@ fun VideoDetailScreen(
                     allCollections = allCollections,
                     repository = repository,
                     vm = vm,
+                    gridViewModel = gridViewModel,
                     onShowOnMap = onShowOnMap,
                     modifier = Modifier.padding(innerPadding),
                 )
@@ -258,6 +264,7 @@ private fun DetailContent(
     allCollections: List<Collection>,
     repository: VideoRepository,
     vm: DetailViewModel,
+    gridViewModel: GridViewModel?,
     onShowOnMap: ((Double, Double) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
@@ -441,6 +448,36 @@ private fun DetailContent(
                 ProxiesSection(proxies = proxies)
             }
         }
+
+        // ── Visuals (brightness / colour / RGB / loudness graphs) ─────────
+        // Only added when the GridViewModel is available (i.e. the normal app
+        // flow, not a preview or test host that omits it).
+        if (gridViewModel != null) {
+            item {
+                VisualsCard(videoId = videoId, gridViewModel = gridViewModel)
+            }
+        }
+    }
+}
+
+/** Wraps [DetailGraphsSection] in the same Card chrome as the other detail
+ *  sections for visual consistency. */
+@Composable
+private fun VisualsCard(videoId: String, gridViewModel: GridViewModel) {
+    androidx.compose.material3.Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+        elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        DetailGraphsSection(
+            videoId = videoId,
+            viewModel = gridViewModel,
+            modifier = Modifier.padding(12.dp),
+        )
     }
 }
 

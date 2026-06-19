@@ -496,4 +496,14 @@
         <item quantity="one">Organize %1$d video</item>
         <item quantity="other">Organize %1$d videos</item>
     </plurals>
+
+    <!-- ── Visuals / Graphs section (detail view) ─────────────────────── -->
+    <string name="detail_section_visuals">VISUALS</string>
+    <string name="detail_graphs_brightness">Brightness</string>
+    <string name="detail_graphs_color_over_time">Color over time</string>
+    <string name="detail_graphs_rgb_channels">RGB channels</string>
+    <string name="detail_graphs_loudness">Loudness</string>
+    <string name="detail_graphs_analyzing_audio">Analyzing audio…</string>
+    <string name="detail_graphs_analyzing_frames">Analyzing frames…</string>
+    <string name="detail_graphs_select_video">Select a video</string>
 </resources>

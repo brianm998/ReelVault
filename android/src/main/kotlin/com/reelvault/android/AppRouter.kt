@@ -89,6 +89,7 @@ fun AppRouter() {
             VideoDetailScreen(
                 videoId = videoId,
                 repository = app.videoRepository,
+                gridViewModel = gridViewModel,
                 onBack = { navController.popBackStack() },
                 onShowOnMap = { lat, lon ->
                     gridViewModel.setMapFocus(lat, lon)

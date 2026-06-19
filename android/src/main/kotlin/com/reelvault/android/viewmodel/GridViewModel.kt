@@ -269,6 +269,66 @@ class GridViewModel(
     private var smartHasProxies = AttributeFilterState.Any
     private var smartFullResolution = AttributeFilterState.Any
 
+    // ── Scrub frames + loudness (detail view graphs) ──────────────────────
+    // Mirrors the desktop GridViewModel's scrub-frame and loudness caches.
+    // Keyed by videoId; populated lazily the first time the detail view for
+    // that video is opened. Cached for the session (no eviction) to avoid
+    // redundant round-trips — the daemon caches its side too.
+
+    private val _scrubFrames = MutableStateFlow<Map<String, List<ByteArray?>>>(emptyMap())
+    val scrubFrames: StateFlow<Map<String, List<ByteArray?>>> = _scrubFrames.asStateFlow()
+
+    private val _hiResScrubFrames = MutableStateFlow<Map<String, List<ByteArray?>>>(emptyMap())
+    val hiResScrubFrames: StateFlow<Map<String, List<ByteArray?>>> = _hiResScrubFrames.asStateFlow()
+
+    /** Normalized momentary loudness series (0..1), or empty if no audio. A
+     *  *missing* key means the fetch is still in flight; an empty list means the
+     *  video has no audio track. Both states render differently in the graph. */
+    private val _audioLoudness = MutableStateFlow<Map<String, List<Float>>>(emptyMap())
+    val audioLoudness: StateFlow<Map<String, List<Float>>> = _audioLoudness.asStateFlow()
+
+    private val scrubLoading = mutableSetOf<String>()
+    private val audioLoudnessLoading = mutableSetOf<String>()
+
+    /** Fetch (once) the scrub-frame strip for [videoId] and cache it. */
+    fun loadScrubFrames(videoId: String) {
+        if (_scrubFrames.value.containsKey(videoId)) return
+        if (videoId in scrubLoading) return
+        scrubLoading.add(videoId)
+        viewModelScope.launch {
+            try {
+                val frames = repository.getScrubFrames(videoId, count = 10)
+                if (frames.any { it != null }) {
+                    _scrubFrames.value = _scrubFrames.value + (videoId to frames)
+                }
+            } finally {
+                scrubLoading.remove(videoId)
+            }
+        }
+    }
+
+    /** Fetch (once) the audio loudness series for [videoId] and cache it.
+     *  Stores an empty list on success when the video has no audio — this
+     *  distinguishes "loaded, no audio" from "still in flight" (absent key). */
+    fun loadAudioLoudness(videoId: String) {
+        if (_audioLoudness.value.containsKey(videoId)) return
+        if (videoId in audioLoudnessLoading) return
+        audioLoudnessLoading.add(videoId)
+        viewModelScope.launch {
+            try {
+                val series = repository.getAudioLoudness(videoId)
+                _audioLoudness.value = _audioLoudness.value + (videoId to series)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Non-fatal: mark as loaded-but-empty so the UI stops spinning.
+                _audioLoudness.value = _audioLoudness.value + (videoId to emptyList())
+            } finally {
+                audioLoudnessLoading.remove(videoId)
+            }
+        }
+    }
+
     private var listLoadJob: Job? = null
     private var catalogEventsJob: Job? = null
     private var watcherRefreshJob: Job? = null
@@ -1081,6 +1141,12 @@ class GridViewModel(
         locationsRefreshJob = null
         _videoLocations.value = emptyList()
         _isLoadingVideoLocations.value = false
+        // Clear per-video media caches so the next session starts clean.
+        _scrubFrames.value = emptyMap()
+        _hiResScrubFrames.value = emptyMap()
+        _audioLoudness.value = emptyMap()
+        scrubLoading.clear()
+        audioLoudnessLoading.clear()
     }
 
     // ─────────────────────────────────────────────────────────────────────
