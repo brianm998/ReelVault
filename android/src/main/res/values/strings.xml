@@ -148,6 +148,10 @@
     <string name="settings_connected_local">Connected to local daemon</string>
     <string name="settings_disconnected">Disconnected from server</string>
     <string name="settings_forget_server">Forget Server</string>
+    <string name="settings_forget_server_confirm_title">Forget This Server?</string>
+    <string name="settings_forget_server_confirm_body">This will clear your saved credentials and return to the connection screen. You will need to re-pair to reconnect.</string>
+    <string name="settings_forget_server_confirm_action">Forget</string>
+    <string name="settings_server_forgotten">Server forgotten</string>
     <string name="settings_reconnected">Reconnected successfully</string>
     <string name="settings_reconnect_failed">Reconnect failed</string>
     <string name="settings_reconnect">Reconnect</string>

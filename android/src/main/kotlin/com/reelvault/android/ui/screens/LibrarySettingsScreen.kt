@@ -67,7 +67,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.reelvault.android.BuildConfig
 import com.reelvault.android.R
+import com.reelvault.android.data.DefaultServerPrefs
 import com.reelvault.data.models.LibraryLocation
+import com.reelvault.data.remote.PairingClient
+import com.reelvault.data.remote.RemoteConnection
+import com.reelvault.data.remote.TokenStorage
 import com.reelvault.data.repository.VideoRepository
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -95,11 +99,96 @@ import java.util.Locale
 @Composable
 fun LibrarySettingsScreen(
     repository: VideoRepository,
+    pairingClient: PairingClient,
+    tokenStorage: TokenStorage,
     onBack: () -> Unit,
+    onForget: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
+
+    // ── Forget-server confirmation dialog ─────────────────────────────────
+    var showForgetConfirm by remember { mutableStateOf(false) }
+
+    if (showForgetConfirm) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showForgetConfirm = false },
+            title = { Text(stringResource(R.string.settings_forget_server_confirm_title)) },
+            text = { Text(stringResource(R.string.settings_forget_server_confirm_body)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showForgetConfirm = false
+                        scope.launch {
+                            // Capture credentials BEFORE clearing them so the
+                            // async revoke still has what it needs.
+                            val endpoint = RemoteConnection.endpoint
+                            val prefs = DefaultServerPrefs(context)
+                            val saved = prefs.load()
+
+                            // Best-effort server-side revoke (mirrors iOS forgetCurrentServer).
+                            if (endpoint != null) {
+                                try {
+                                    pairingClient.revoke(
+                                        host = endpoint.host,
+                                        mediaPort = endpoint.mediaPort,
+                                        fingerprintHex = endpoint.fingerprintHex,
+                                        token = endpoint.token,
+                                    )
+                                } catch (_: Exception) { /* best-effort */ }
+                            }
+                            // Also revoke the saved-prefs credentials if they differ from
+                            // the live endpoint (e.g. connection failed but prefs still set).
+                            if (saved != null) {
+                                val fp = saved.fingerprintHex
+                                if (fp != null && fp != endpoint?.fingerprintHex) {
+                                    val savedToken = tokenStorage.get(fp)
+                                    if (savedToken != null) {
+                                        try {
+                                            pairingClient.revoke(
+                                                host = saved.host,
+                                                mediaPort = saved.mediaPort,
+                                                fingerprintHex = fp,
+                                                token = savedToken,
+                                            )
+                                        } catch (_: Exception) { /* best-effort */ }
+                                    }
+                                }
+                            }
+
+                            // Clear the live endpoint token from storage.
+                            if (endpoint != null) {
+                                tokenStorage.clear(endpoint.fingerprintHex)
+                            }
+                            // Clear any saved-prefs token too.
+                            saved?.fingerprintHex?.let { tokenStorage.clear(it) }
+
+                            // Wipe the remembered server so auto-connect won't fire.
+                            prefs.clear()
+
+                            // Disconnect the live gRPC channel.
+                            repository.disconnect()
+                            RemoteConnection.endpoint = null
+
+                            // Navigate to the connection flow.
+                            onForget()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) {
+                    Text(stringResource(R.string.settings_forget_server_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showForgetConfirm = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
+        )
+    }
 
     // ── Section expand/collapse state ─────────────────────────────────────
     var locationsExpanded by remember { mutableStateOf(true) }
@@ -323,12 +412,7 @@ fun LibrarySettingsScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 OutlinedButton(
-                                    onClick = {
-                                        scope.launch {
-                                            repository.disconnect()
-                                            snackbar.showSnackbar(context.getString(R.string.settings_disconnected))
-                                        }
-                                    },
+                                    onClick = { showForgetConfirm = true },
                                     colors = ButtonDefaults.outlinedButtonColors(
                                         contentColor = MaterialTheme.colorScheme.error,
                                     ),

@@ -103,7 +103,19 @@ fun AppRouter() {
         composable(Screen.Settings.route) {
             LibrarySettingsScreen(
                 repository = app.videoRepository,
-                onBack = { navController.popBackStack() }
+                pairingClient = app.pairingClient,
+                tokenStorage = app.tokenStorage,
+                onBack = { navController.popBackStack() },
+                onForget = {
+                    // Wipe grid state left over from the abandoned session, then
+                    // return to the connection flow (identical to onDisconnect but
+                    // credentials have already been cleared by the settings screen).
+                    gridViewModel.resetForNewSession()
+                    isConnected = false
+                    navController.navigate(Screen.Connection.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
             )
         }
         composable(Screen.Map.route) {
