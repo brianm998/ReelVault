@@ -9,6 +9,16 @@ struct ReelVaultApp: App {
     @StateObject private var router = AppRouter()
     @Environment(\.scenePhase) private var scenePhase
 
+    /// Persisted accent scheme — "blue" or "purple". Matches the macOS
+    /// `accentScheme` key so the preference is consistent across Apple clients.
+    /// Changing this rewires `.tint()` on the root view so every `.accentColor`
+    /// / `.tint` reference across the whole app picks up the new value immediately.
+    @AppStorage("accentScheme") private var accentScheme: String = "purple"
+
+    private var resolvedTint: Color {
+        accentScheme == "blue" ? .blue : Color(red: 0.733, green: 0.525, blue: 0.988)
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
@@ -23,8 +33,9 @@ struct ReelVaultApp: App {
                 // backgrounds and white text. `.dark` makes the system
                 // background/label colors resolve to their dark variants.
                 .preferredColorScheme(.dark)
-                // ReelVault purple accent (matches the desktop client's default).
-                .tint(Color(red: 0.733, green: 0.525, blue: 0.988))
+                // Accent color driven by the persisted scheme (blue or purple).
+                // Default is purple — the classic ReelVault palette.
+                .tint(resolvedTint)
                 // `--autostart-local` (passed by `xcrun simctl launch` in the
                 // simulator test harness) jumps straight into on-device Local
                 // Library mode, skipping LAN discovery so the embedded core can

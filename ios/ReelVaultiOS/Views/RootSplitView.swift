@@ -211,6 +211,7 @@ private struct RegularLayout: View {
     /// dismissed panel stays hidden across selections — it only reappears when the
     /// user swipes back in from the right edge.
     @State private var inspectorHidden = false
+    @State private var showSettings = false
 
     var body: some View {
         // Two-column split (library | main). The metadata inspector is a small
@@ -316,6 +317,15 @@ private struct RegularLayout: View {
                 ToolbarItemGroup(placement: .topBarLeading) {
                     NavHistoryButtons(history: history, goBack: goBack, goForward: goForward)
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showSettings = true } label: {
+                        Image(systemName: "gear")
+                    }
+                    .help("Settings")
+                }
+            }
+            .sheet(isPresented: $showSettings) {
+                SettingsView()
             }
         }
         // The grid reflows narrower when the inspector opens on a selection, or
@@ -387,6 +397,7 @@ private struct CompactLayout: View {
 
     @State private var pushedVideo: VideoSummary?
     @State private var showLibrary = false
+    @State private var showSettings = false
 
     var body: some View {
         NavigationStack {
@@ -408,6 +419,15 @@ private struct CompactLayout: View {
                     ToolbarItemGroup(placement: .topBarLeading) {
                         NavHistoryButtons(history: history, goBack: goBack, goForward: goForward)
                     }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { showSettings = true } label: {
+                            Image(systemName: "gear")
+                        }
+                        .help("Settings")
+                    }
+                }
+                .sheet(isPresented: $showSettings) {
+                    SettingsView()
                 }
         }
         // When the detail view is popped (pushedVideo → nil), scroll the grid back
