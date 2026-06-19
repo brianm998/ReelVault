@@ -37,6 +37,11 @@ struct LibraryGridScreen: View {
     @State private var showUploadToServer = false
     @State private var uploadTargets: [VideoSummary] = []
     @State private var uploadEndpoint: MediaClient.Endpoint?
+    /// Batch-organize sheet: rate, label, keyword, and add-to-collection over
+    /// all selected videos. IDs are captured at tap time so the count is stable
+    /// while the sheet is open.
+    @State private var showBatchOrganize = false
+    @State private var batchOrganizeIds: [String] = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -58,6 +63,9 @@ struct LibraryGridScreen: View {
                                     serverName: router.pairedServerHost ?? "the server",
                                     videos: uploadTargets)
             }
+        }
+        .sheet(isPresented: $showBatchOrganize) {
+            BatchOrganizeSheet(grid: grid, videoIds: batchOrganizeIds)
         }
         // Local mode (no server): import videos from the Files app via a
         // security-scoped bookmark (D7). Remote mode uses ImportSheet (upload).
@@ -208,6 +216,17 @@ struct LibraryGridScreen: View {
                     }
                     .disabled(grid.selectedVideoIds.isEmpty)
                 }
+            }
+            // Batch organize: rating / color label / keywords / collections over
+            // all selected videos. Matches macOS multi-selection context menu.
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    batchOrganizeIds = grid.selectedVideoIds
+                    showBatchOrganize = true
+                } label: {
+                    Label("Organize", systemImage: "tag")
+                }
+                .disabled(grid.selectedVideoIds.isEmpty)
             }
             ToolbarItem(placement: .topBarLeading) {
                 Button("Cancel") {

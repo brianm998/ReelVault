@@ -107,6 +107,14 @@ struct VideoGridView: View {
                         LazyVGrid(columns: columns, spacing: spacing) {
                             ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
                                 let video = row.video
+                                // When in Select mode and this card is part of the
+                                // multi-selection, rating/label apply to the whole
+                                // selection — matching the macOS context-menu behaviour.
+                                let batchIds: [String] = {
+                                    let sel = grid.selectedVideoIds
+                                    return (selecting && sel.contains(video.id) && sel.count > 1)
+                                        ? sel : [video.id]
+                                }()
                                 VideoCardView(
                                     video: video,
                                     image: grid.thumbnails[video.id],
@@ -123,8 +131,8 @@ struct VideoGridView: View {
                                         }
                                     },
                                     onDoubleTap: doubleTapHandler(for: video),
-                                    onSetRating: { grid.setRating($0, for: [video.id]) },
-                                    onSetColorLabel: { grid.setColorLabel($0, for: [video.id]) },
+                                    onSetRating: { grid.setRating($0, for: batchIds) },
+                                    onSetColorLabel: { grid.setColorLabel($0, for: batchIds) },
                                     isStackMember: row.isMember,
                                     selectedCount: grid.selectedVideoIds.count,
                                     onToggleExpand: { grid.toggleStackExpansion(video.groupId) },
