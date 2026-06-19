@@ -42,6 +42,8 @@ struct LibraryGridScreen: View {
         VStack(spacing: 0) {
             LibraryTopBar(grid: grid, thumbnailWidth: $thumbnailWidth)
             Divider()
+            scanStatusBanner
+            scanResultBanner
             content
         }
         .toolbar { toolbarContent }
@@ -100,6 +102,55 @@ struct LibraryGridScreen: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(offline.lastError ?? "")
+        }
+    }
+
+    /// Thin progress strip shown while a scan or rescan is running.
+    @ViewBuilder private var scanStatusBanner: some View {
+        if let status = grid.scanStatus {
+            HStack(spacing: 8) {
+                ProgressView()
+                    .scaleEffect(0.75)
+                Text(status)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color.accentColor.opacity(0.12))
+        }
+    }
+
+    /// Dismissable result banner shown once a scan completes (success or failure).
+    @ViewBuilder private var scanResultBanner: some View {
+        if let result = grid.scanResult {
+            HStack(spacing: 8) {
+                Image(systemName: result.success
+                      ? (result.videosFound == 0 ? "exclamationmark.triangle" : "checkmark.circle.fill")
+                      : "xmark.octagon.fill")
+                    .foregroundStyle(result.success
+                        ? (result.videosFound == 0 ? Color.orange : Color.green)
+                        : Color.red)
+                Text(result.message)
+                    .font(.caption)
+                    .lineLimit(2)
+                Spacer()
+                Button {
+                    grid.clearScanResult()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Dismiss")
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(result.success
+                ? (result.videosFound == 0 ? Color.orange.opacity(0.12) : Color.green.opacity(0.12))
+                : Color.red.opacity(0.12))
         }
     }
 

@@ -157,18 +157,55 @@ struct LibrarySidebar: View {
     }
 
     private var locationsSection: some View {
-        Section("Folders") {
+        Section {
             ForEach(grid.libraryLocations) { loc in
                 Label {
                     HStack {
                         Text(folderName(loc.path)).lineLimit(1)
                         Spacer()
                         countBadge(loc.videoCount)
+                        // Rescan spinner while this location is being rescanned;
+                        // otherwise a per-row rescan button (always visible on touch
+                        // targets, unlike macOS which hover-reveals it).
+                        if grid.rescanningPaths.contains(loc.path) {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                                .frame(width: 20, height: 20)
+                        } else {
+                            Button {
+                                grid.rescanLibrary(path: loc.path)
+                            } label: {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Rescan \(folderName(loc.path))")
+                        }
                     }
                 } icon: {
                     Image(systemName: "folder")
                 }
                 .tag(LibrarySection.location(loc.path))
+            }
+        } header: {
+            HStack {
+                Text("Folders")
+                Spacer()
+                // "Scan All" — queues a rescan of every library location.
+                // Hidden while any rescan is already running.
+                if grid.rescanningPaths.isEmpty {
+                    Button {
+                        for loc in grid.libraryLocations {
+                            grid.rescanLibrary(path: loc.path)
+                        }
+                    } label: {
+                        Label("Scan All", systemImage: "arrow.clockwise")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.tint)
+                }
             }
         }
     }
