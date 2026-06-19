@@ -325,7 +325,7 @@ private struct RegularLayout: View {
                 }
             }
             .sheet(isPresented: $showSettings) {
-                SettingsView()
+                SettingsView(connection: connection)
             }
         }
         // The grid reflows narrower when the inspector opens on a selection, or
@@ -427,7 +427,7 @@ private struct CompactLayout: View {
                     }
                 }
                 .sheet(isPresented: $showSettings) {
-                    SettingsView()
+                    SettingsView(connection: connection)
                 }
         }
         // When the detail view is popped (pushedVideo → nil), scroll the grid back
