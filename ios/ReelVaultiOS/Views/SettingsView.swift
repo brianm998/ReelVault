@@ -294,12 +294,18 @@ private struct PlaybackSection: View {
 ///    where OS events don't fire (0–300 s; 0 = disabled).
 ///
 /// Values are loaded from the daemon when the section appears and saved back
-/// immediately when a control changes. A brief "Saving…" spinner appears in
-/// the section header during the round-trip.
+/// only when the user *finishes* dragging a slider (onEditingChanged completion)
+/// or toggles the master switch. This decouples the continuous drag from the
+/// network commit so the control is never disabled mid-drag and the daemon isn't
+/// restarted on every intermediate value.
 private struct LiveUpdatesSection: View {
     @State private var settings: WatchSettings = .default
     @State private var loading = true
     @State private var saving = false
+
+    // Local draft values bound to the sliders — committed on editing-ended.
+    @State private var settleSeconds: Double = 5
+    @State private var pollSeconds: Double = 0
 
     var body: some View {
         Section {
@@ -311,7 +317,7 @@ private struct LiveUpdatesSection: View {
                         .foregroundStyle(.secondary)
                 }
             } else {
-                // Master enable toggle
+                // Master enable toggle — commits immediately (it's not a slider).
                 Toggle(isOn: $settings.enabled) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Enable live updates")
@@ -323,9 +329,10 @@ private struct LiveUpdatesSection: View {
                 .onChange(of: settings.enabled) { _, _ in
                     Task { await save() }
                 }
-                .disabled(saving)
 
-                // Write-settle slider (1–60 s)
+                // Write-settle slider (1–60 s).
+                // Bound to the local draft; committed only on editing-ended so
+                // the control stays enabled throughout the drag.
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text("Write-settle delay")
@@ -335,21 +342,21 @@ private struct LiveUpdatesSection: View {
                             .monospacedDigit()
                     }
                     Slider(
-                        value: Binding(
-                            get: { Double(settings.writeSettleMs) / 1000.0 },
-                            set: { settings.writeSettleMs = Int64($0 * 1000.0) }
-                        ),
+                        value: $settleSeconds,
                         in: 1...60,
-                        step: 1
+                        step: 1,
+                        onEditingChanged: { editing in
+                            if !editing {
+                                settings.writeSettleMs = Int64(settleSeconds * 1000.0)
+                                Task { await save() }
+                            }
+                        }
                     )
-                    .onChange(of: settings.writeSettleMs) { _, _ in
-                        Task { await save() }
-                    }
-                    .disabled(!settings.enabled || saving)
+                    .disabled(!settings.enabled)
                 }
                 .opacity(settings.enabled ? 1 : 0.4)
 
-                // Poll-fallback slider (0–300 s)
+                // Poll-fallback slider (0–300 s).
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text("Poll fallback interval")
@@ -359,17 +366,17 @@ private struct LiveUpdatesSection: View {
                             .monospacedDigit()
                     }
                     Slider(
-                        value: Binding(
-                            get: { Double(settings.pollIntervalMs) / 1000.0 },
-                            set: { settings.pollIntervalMs = Int64($0 * 1000.0) }
-                        ),
+                        value: $pollSeconds,
                         in: 0...300,
-                        step: 5
+                        step: 5,
+                        onEditingChanged: { editing in
+                            if !editing {
+                                settings.pollIntervalMs = Int64(pollSeconds * 1000.0)
+                                Task { await save() }
+                            }
+                        }
                     )
-                    .onChange(of: settings.pollIntervalMs) { _, _ in
-                        Task { await save() }
-                    }
-                    .disabled(!settings.enabled || saving)
+                    .disabled(!settings.enabled)
                 }
                 .opacity(settings.enabled ? 1 : 0.4)
             }
@@ -393,18 +400,23 @@ private struct LiveUpdatesSection: View {
     }
 
     private var settleLabel: String {
-        let s = max(1, Int(settings.writeSettleMs / 1000))
+        let s = max(1, Int(settleSeconds))
         return "\(s) s"
     }
 
     private var pollLabel: String {
-        let s = Int(settings.pollIntervalMs / 1000)
+        let s = Int(pollSeconds)
         return s == 0 ? "Off" : "\(s) s"
     }
 
     private func loadSettings() async {
         loading = true
-        settings = await VideoRepository.shared.getWatchSettings()
+        let loaded = await VideoRepository.shared.getWatchSettings()
+        settings = loaded
+        // Initialise the draft slider values from the loaded settings so the
+        // slider thumbs start at the correct position.
+        settleSeconds = max(1, Double(loaded.writeSettleMs) / 1000.0)
+        pollSeconds   = Double(loaded.pollIntervalMs) / 1000.0
         loading = false
     }
 
@@ -449,7 +461,9 @@ private struct MetadataNamesSection: View {
 /// via `@AppStorage`; no Save button needed.
 private struct AppearanceSection: View {
     /// Raw string persisted in UserDefaults: "blue" or "purple".
-    @AppStorage("accentScheme") private var accentScheme: String = "blue"
+    /// Default must match `ReelVaultApp.accentScheme` ("purple") so the
+    /// selected-checkmark is correct on a fresh install.
+    @AppStorage("accentScheme") private var accentScheme: String = "purple"
 
     /// Number of scrub frames fetched per video. 0 means "use the default (10)".
     @AppStorage("scrubFrameCount") private var scrubFrameCount: Int = 10

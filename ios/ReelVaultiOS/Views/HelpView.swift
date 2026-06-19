@@ -4,17 +4,13 @@
 import SwiftUI
 import ReelVaultKit
 
-/// In-app help reference. Presented as a sheet from Settings (gear icon) on
-/// both iPhone and iPad. Organised into collapsible sections identical to the
-/// macOS HelpView so the content stays in sync. Static copy — no server
-/// connection required.
+/// In-app help reference. Pushed from the Settings NavigationStack via a
+/// NavigationLink (HelpLinkSection). Must NOT contain its own NavigationStack —
+/// the parent already provides nav chrome.
 struct HelpView: View {
-    @Environment(\.dismiss) private var dismiss
-
     var body: some View {
-        NavigationStack {
-            ScrollView(.vertical) {
-                VStack(alignment: .leading, spacing: 0) {
+        ScrollView(.vertical) {
+            VStack(alignment: .leading, spacing: 0) {
 
                     HelpSection(icon: "film.stack", title: "What is ReelVault?") {
                         HelpParagraph("""
@@ -209,12 +205,6 @@ struct HelpView: View {
             }
             .navigationTitle("ReelVault Help")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                }
-            }
-        }
     }
 }
 
