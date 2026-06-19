@@ -57,6 +57,12 @@ struct InspectorPanel: View {
                 .padding()
             }
             .background(.bar)
+        } else if let col = activeSmartCollection {
+            // A smart collection is selected but no video is picked — show its
+            // filter rules in place of the generic "no selection" placeholder,
+            // mirroring the macOS detail panel's placeholder behaviour.
+            SmartCollectionCriteriaView(grid: grid, collection: col)
+                .background(.bar)
         } else {
             ContentUnavailableView(
                 "No selection",
@@ -65,5 +71,13 @@ struct InspectorPanel: View {
             )
             .background(.bar)
         }
+    }
+
+    /// The currently-selected smart collection, if any — used to populate the
+    /// inspector placeholder when no video card is selected.
+    private var activeSmartCollection: Collection? {
+        guard let id = grid.selectedCollectionId else { return nil }
+        guard let col = grid.collections.first(where: { $0.id == id }), col.isSmart else { return nil }
+        return col
     }
 }

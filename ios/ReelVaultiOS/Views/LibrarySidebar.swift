@@ -37,6 +37,8 @@ struct LibrarySidebar: View {
     @State private var showSmartCollectionSheet = false
     @State private var smartCollectionName = ""
     @State private var collectionToDelete: Collection? = nil
+    /// Smart collection whose rules the user wants to view/edit (shown as a sheet).
+    @State private var criteriaCollection: Collection? = nil
 
     var body: some View {
         List(selection: Binding<LibrarySection?>(
@@ -97,6 +99,12 @@ struct LibrarySidebar: View {
                 showSmartCollectionSheet = false
             } onCancel: {
                 showSmartCollectionSheet = false
+            }
+        }
+        // Smart collection criteria / rules sheet.
+        .sheet(item: $criteriaCollection) { col in
+            SmartCollectionCriteriaSheet(grid: grid, collection: col) {
+                criteriaCollection = nil
             }
         }
     }
@@ -286,6 +294,14 @@ struct LibrarySidebar: View {
                             collectionToDelete = col
                         } label: {
                             Label("Delete", systemImage: "trash")
+                        }
+                        if col.isSmart {
+                            Button {
+                                criteriaCollection = col
+                            } label: {
+                                Label("View Rules", systemImage: "sparkles")
+                            }
+                            .tint(.indigo)
                         }
                     }
                 }
