@@ -31,6 +31,13 @@ struct LibrarySidebar: View {
     @EnvironmentObject private var router: AppRouter
     @State private var showForgetServerConfirm = false
 
+    // Collection management state
+    @State private var showNewCollectionAlert = false
+    @State private var newCollectionName = ""
+    @State private var showSmartCollectionSheet = false
+    @State private var smartCollectionName = ""
+    @State private var collectionToDelete: Collection? = nil
+
     var body: some View {
         List(selection: Binding<LibrarySection?>(
             get: { selection },
@@ -42,7 +49,7 @@ struct LibrarySidebar: View {
             viewSection
             sourcesSection
             if !grid.libraryLocations.isEmpty { locationsSection }
-            if !grid.collections.isEmpty { collectionsSection }
+            collectionsSection
             if !grid.tags.isEmpty { tagsSection }
         }
         .listStyle(.sidebar)
@@ -51,6 +58,46 @@ struct LibrarySidebar: View {
             grid.loadLibraryLocations()
             grid.loadCollections()
             grid.loadTags()
+        }
+        // New empty collection — name prompt.
+        .alert("New Collection", isPresented: $showNewCollectionAlert) {
+            TextField("Collection name", text: $newCollectionName)
+            Button("Create") {
+                let name = newCollectionName.trimmingCharacters(in: .whitespaces)
+                if !name.isEmpty { grid.createCollection(name: name, isSmart: false) }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        // Delete collection — confirmation.
+        .confirmationDialog(
+            "Delete Collection?",
+            isPresented: Binding(
+                get: { collectionToDelete != nil },
+                set: { if !$0 { collectionToDelete = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: collectionToDelete
+        ) { col in
+            Button("Delete \"\(col.name)\"", role: .destructive) {
+                grid.deleteCollection(id: col.id)
+                collectionToDelete = nil
+            }
+            Button("Cancel", role: .cancel) { collectionToDelete = nil }
+        } message: { col in
+            Text("\"\(col.name)\" will be permanently deleted. The videos in it will not be affected.")
+        }
+        // Smart collection — name sheet.
+        .sheet(isPresented: $showSmartCollectionSheet) {
+            SmartCollectionNameSheet(name: $smartCollectionName) { name in
+                grid.createCollection(
+                    name: name,
+                    isSmart: true,
+                    filterJson: grid.buildSmartCollectionFilterJson()
+                )
+                showSmartCollectionSheet = false
+            } onCancel: {
+                showSmartCollectionSheet = false
+            }
         }
     }
 
@@ -211,23 +258,64 @@ struct LibrarySidebar: View {
     }
 
     private var collectionsSection: some View {
-        Section("Collections") {
-            ForEach(grid.collections) { col in
-                Label {
-                    HStack {
-                        Text(col.name).lineLimit(1)
-                        Spacer()
-                        // Smart collections have no stored members, so the
-                        // server reports 0; the shared view-model resolves their
-                        // real count client-side into `smartCollectionCounts`.
-                        countBadge(col.isSmart
-                            ? (grid.smartCollectionCounts[col.id] ?? 0)
-                            : col.videoCount)
+        Section {
+            if grid.collections.isEmpty {
+                Text("No collections yet")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .listRowBackground(Color.clear)
+            } else {
+                ForEach(grid.collections) { col in
+                    Label {
+                        HStack {
+                            Text(col.name).lineLimit(1)
+                            Spacer()
+                            // Smart collections have no stored members, so the
+                            // server reports 0; the shared view-model resolves their
+                            // real count client-side into `smartCollectionCounts`.
+                            countBadge(col.isSmart
+                                ? (grid.smartCollectionCounts[col.id] ?? 0)
+                                : col.videoCount)
+                        }
+                    } icon: {
+                        Image(systemName: col.isSmart ? "sparkles" : "rectangle.stack")
                     }
-                } icon: {
-                    Image(systemName: col.isSmart ? "gearshape.2" : "rectangle.stack")
+                    .tag(LibrarySection.collection(col.id))
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button(role: .destructive) {
+                            collectionToDelete = col
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
                 }
-                .tag(LibrarySection.collection(col.id))
+            }
+        } header: {
+            HStack(spacing: 8) {
+                Text("Collections")
+                Spacer()
+                // Create empty collection.
+                Button {
+                    newCollectionName = ""
+                    showNewCollectionAlert = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Create collection")
+                // Save current filters as a smart collection.
+                // Always available so users can also create a smart collection
+                // with no filters (matches everything — useful as a scratch pad).
+                Button {
+                    smartCollectionName = ""
+                    showSmartCollectionSheet = true
+                } label: {
+                    Image(systemName: "sparkles")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Save current filter as smart collection")
             }
         }
     }
@@ -269,5 +357,44 @@ struct LibrarySidebar: View {
             green: Double((value >> 8) & 0xFF) / 255,
             blue: Double(value & 0xFF) / 255
         )
+    }
+}
+
+// MARK: - Smart Collection Naming Sheet
+
+/// Sheet presented when the user taps the sparkles button to save the current
+/// filter bar as a named smart collection. Mirrors the macOS `SmartCollectionNameSheet`.
+private struct SmartCollectionNameSheet: View {
+    @Binding var name: String
+    let onSave: (String) -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Collection name", text: $name)
+                        .autocorrectionDisabled()
+                } footer: {
+                    Text("Captures the current filter settings as a smart collection that updates automatically.")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("Save as Smart Collection")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: onCancel)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        let trimmed = name.trimmingCharacters(in: .whitespaces)
+                        if !trimmed.isEmpty { onSave(trimmed) }
+                    }
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 }
