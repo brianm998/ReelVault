@@ -762,6 +762,136 @@ class GridViewModel(
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // Public API: stacking / grouping
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Combine the currently multi-selected [videoIds] into a single stack.
+     * The first item in [videoIds] is used as the preferred representative
+     * (matches desktop behaviour where the anchor/first selected wins).
+     * Reloads the grid on success and clears the selection.
+     * Mirrors desktop GridViewModel.groupSelectedVideos.
+     */
+    fun groupSelectedVideos(
+        videoIds: List<String>,
+        onSuccess: (String) -> Unit = {},
+        onError: (String) -> Unit = {},
+    ) {
+        if (videoIds.size < 2) {
+            val msg = appContext.getString(R.string.stack_select_at_least_two)
+            _error.value = msg
+            onError(msg)
+            return
+        }
+        val preferred = videoIds.first()
+        viewModelScope.launch {
+            try {
+                val group = repository.createGroup(videoIds, name = "", preferredVideoId = preferred)
+                if (group != null) {
+                    val stackSize = group.size
+                    val msg = appContext.resources.getQuantityString(
+                        R.plurals.stack_combined_message, stackSize, stackSize
+                    )
+                    onSuccess(msg)
+                    loadVideos()
+                } else {
+                    val msg = appContext.getString(R.string.stack_combine_failed)
+                    _error.value = msg
+                    onError(msg)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                val msg = appContext.getString(R.string.stack_combine_error, e.message ?: "")
+                _error.value = msg
+                onError(msg)
+            }
+        }
+    }
+
+    /**
+     * Remove [videoId] from its stack (group). The card's [groupId] is used
+     * to refresh the representative list after the operation.
+     * Mirrors desktop GridViewModel.removeFromStack.
+     */
+    fun removeFromStack(videoId: String, groupId: String) {
+        if (videoId.isEmpty() || groupId.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                if (repository.ungroupVideo(videoId)) {
+                    loadVideos()
+                } else {
+                    _error.value = appContext.getString(R.string.stack_remove_failed)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _error.value = appContext.getString(R.string.stack_remove_error, e.message ?: "")
+            }
+        }
+    }
+
+    /**
+     * Dissolve an entire stack — ungroup every member so each becomes a
+     * standalone video again. Mirrors desktop GridViewModel.unstackGroup.
+     */
+    fun unstackGroup(groupId: String) {
+        if (groupId.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                val (members, _) = repository.listGroupMembers(groupId)
+                members.forEach { member -> repository.ungroupVideo(member.id) }
+                loadVideos()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _error.value = appContext.getString(R.string.stack_unstack_error, e.message ?: "")
+            }
+        }
+    }
+
+    /**
+     * Promote [videoId] to be the preferred (representative) member of its
+     * stack. Mirrors desktop GridViewModel.setStackMaster.
+     */
+    fun setStackMaster(videoId: String, groupId: String) {
+        if (videoId.isEmpty() || groupId.isEmpty()) return
+        // Optimistic update so the stack badge ticks to the new preferred ID.
+        _videos.value = _videos.value.map { v ->
+            if (v.groupId == groupId) v.copy(groupPreferredId = videoId) else v
+        }
+        viewModelScope.launch {
+            try {
+                if (!repository.setGroupPreferred(groupId, videoId)) {
+                    _error.value = appContext.getString(R.string.stack_promote_failed)
+                    loadVideos() // Revert optimistic update.
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _error.value = appContext.getString(R.string.stack_promote_error, e.message ?: "")
+                loadVideos()
+            }
+        }
+    }
+
+    /**
+     * Fetch the members of stack [groupId]. Used by the stack-members sheet.
+     * Returns a list of [VideoSummary] and the preferred video id, or an
+     * empty pair on failure.
+     */
+    suspend fun loadGroupMembers(groupId: String): Pair<List<com.reelvault.data.models.VideoSummary>, String> {
+        return try {
+            repository.listGroupMembers(groupId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            _error.value = appContext.getString(R.string.stack_load_members_error, e.message ?: "")
+            Pair(emptyList(), "")
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // Public API: view mode
     // ─────────────────────────────────────────────────────────────────────
 

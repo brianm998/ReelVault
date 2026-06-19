@@ -126,6 +126,14 @@ fun LibraryGridScreen(
     var isBatchSharing by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
+    // ── Stacking state ───────────────────────────────────────────────────
+    // stackMembersForVideo: the VideoSummary whose stack badge was tapped,
+    // used to open the StackMembersSheet.
+    var stackMembersForVideo by remember { mutableStateOf<VideoSummary?>(null) }
+    // Snackbar host state reused for stacking success feedback.
+    // (snackbarHostState is declared below, but we reference it here via
+    //  the lambda captures; Kotlin captures the reference, not the value.)
+
     // ── Adaptive min-card-width from density setting ────────────────────
     // Density 1..5 maps to a minimum card width (dp) passed to GridCells.Adaptive.
     // The grid reflows its column count automatically to fill available width.
@@ -252,6 +260,17 @@ fun LibraryGridScreen(
                         showOverflowMenu = showOverflowMenu,
                         onShowOverflowMenu = { showOverflowMenu = true },
                         onDismissOverflowMenu = { showOverflowMenu = false },
+                        onCombineIntoStack = {
+                            val ids = multiSelectedIds.toList()
+                            vm.groupSelectedVideos(
+                                videoIds = ids,
+                                onSuccess = { msg ->
+                                    multiSelectedIds = emptySet()
+                                    scope.launch { snackbarHostState.showSnackbar(msg) }
+                                },
+                                onError = { /* vm already set _error */ },
+                            )
+                        },
                         onBatchOrganize = { showBatchOrganize = true },
                         onBatchShare = {
                             val ids = multiSelectedIds.toList()
@@ -386,6 +405,33 @@ fun LibraryGridScreen(
                     }
 
                     else -> {
+                        // ── Shared stacking lambdas ────────────────────────
+                        // Defined once and passed to both grid and list content
+                        // so that the logic is not duplicated.
+                        // ── Stacking lambdas ──────────────────────────────────
+                        val onStackBadgeClick: (VideoSummary) -> Unit = { video ->
+                            stackMembersForVideo = video
+                        }
+                        val onRemoveFromStack: (String, String) -> Unit = { videoId, groupId ->
+                            vm.removeFromStack(videoId, groupId)
+                        }
+                        val onUnstack: (String) -> Unit = { groupId ->
+                            vm.unstackGroup(groupId)
+                        }
+                        val onSetStackMaster: (String, String) -> Unit = { videoId, groupId ->
+                            vm.setStackMaster(videoId, groupId)
+                        }
+                        val onCombineIntoStack: () -> Unit = combineIntoStack@{
+                            val ids = multiSelectedIds.toList()
+                            if (ids.size < 2) return@combineIntoStack
+                            vm.groupSelectedVideos(
+                                videoIds = ids,
+                                onSuccess = { msg ->
+                                    multiSelectedIds = emptySet()
+                                    scope.launch { snackbarHostState.showSnackbar(msg) }
+                                },
+                            )
+                        }
                         if (viewMode == "grid") {
                             GridContent(
                                 videos = videos,
@@ -426,6 +472,11 @@ fun LibraryGridScreen(
                                               else listOf(video.id)
                                     vm.setColorLabel(ids, label)
                                 },
+                                onStackBadgeClick = onStackBadgeClick,
+                                onRemoveFromStack = onRemoveFromStack,
+                                onUnstack = onUnstack,
+                                onSetStackMaster = onSetStackMaster,
+                                onCombineIntoStack = onCombineIntoStack,
                             )
                         } else {
                             ListContent(
@@ -463,6 +514,10 @@ fun LibraryGridScreen(
                                               else listOf(video.id)
                                     vm.setColorLabel(ids, label)
                                 },
+                                onRemoveFromStack = onRemoveFromStack,
+                                onUnstack = onUnstack,
+                                onSetStackMaster = onSetStackMaster,
+                                onCombineIntoStack = onCombineIntoStack,
                             )
                         }
                     }
@@ -492,6 +547,20 @@ fun LibraryGridScreen(
                     vm.addToCollection(multiSelectedIds.toList(), collectionId)
                     showBatchOrganize = false
                 },
+            )
+        }
+
+        // ── Stack members sheet ──────────────────────────────────────────────
+        // Shown when the user taps a stack badge on a grid card.  Displays all
+        // members of the stack with Promote and Remove actions, mirroring the
+        // desktop inspector panel's "Versions" section behaviour on a touch
+        // device.
+        stackMembersForVideo?.let { stackVideo ->
+            StackMembersSheet(
+                groupId = stackVideo.groupId,
+                vm = vm,
+                repository = repository,
+                onDismiss = { stackMembersForVideo = null },
             )
         }
 
@@ -562,6 +631,7 @@ private fun LibraryTopAppBar(
     onBatchOrganize: () -> Unit = {},
     onBatchShare: () -> Unit = {},
     isBatchSharing: Boolean = false,
+    onCombineIntoStack: () -> Unit = {},
 ) {
     if (searchActive) {
         // Expanded search bar replaces the full app bar.
@@ -607,6 +677,15 @@ private fun LibraryTopAppBar(
             actions = {
                 if (isMultiSelect) {
                     // ── Multi-select batch actions ───────────────────────
+                    // Combine into stack (2+ selected)
+                    if (multiSelectCount >= 2) {
+                        IconButton(onClick = onCombineIntoStack) {
+                            Icon(
+                                Icons.Default.Layers,
+                                contentDescription = stringResource(R.string.stack_combine_into_stack),
+                            )
+                        }
+                    }
                     // Share
                     IconButton(
                         onClick = onBatchShare,
@@ -997,6 +1076,11 @@ private fun GridContent(
     onLongPress: (VideoSummary) -> Unit,
     onSetRating: (VideoSummary, Int) -> Unit,
     onSetColorLabel: (VideoSummary, String) -> Unit,
+    onStackBadgeClick: ((VideoSummary) -> Unit)? = null,
+    onRemoveFromStack: ((videoId: String, groupId: String) -> Unit)? = null,
+    onUnstack: ((groupId: String) -> Unit)? = null,
+    onSetStackMaster: ((videoId: String, groupId: String) -> Unit)? = null,
+    onCombineIntoStack: (() -> Unit)? = null,
 ) {
     val gridState = rememberLazyGridState()
     // Trigger pagination near the end of the list.
@@ -1051,6 +1135,12 @@ private fun GridContent(
                     onLongPress = { onLongPress(video) },
                     onSetRating = { rating -> onSetRating(video, rating) },
                     onSetColorLabel = { label -> onSetColorLabel(video, label) },
+                    multiSelectCount = multiSelectedIds.size,
+                    onStackBadgeClick = if (onStackBadgeClick != null) { { onStackBadgeClick(video) } } else null,
+                    onRemoveFromStack = onRemoveFromStack,
+                    onUnstack = onUnstack,
+                    onSetStackMaster = onSetStackMaster,
+                    onCombineIntoStack = onCombineIntoStack,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -1077,6 +1167,10 @@ private fun ListContent(
     onLongPress: (VideoSummary) -> Unit,
     onSetRating: (VideoSummary, Int) -> Unit,
     onSetColorLabel: (VideoSummary, String) -> Unit,
+    onRemoveFromStack: ((videoId: String, groupId: String) -> Unit)? = null,
+    onUnstack: ((groupId: String) -> Unit)? = null,
+    onSetStackMaster: ((videoId: String, groupId: String) -> Unit)? = null,
+    onCombineIntoStack: (() -> Unit)? = null,
 ) {
     val listState = rememberLazyListState()
 
@@ -1122,6 +1216,11 @@ private fun ListContent(
                     onLongPress = { onLongPress(video) },
                     onSetRating = { rating -> onSetRating(video, rating) },
                     onSetColorLabel = { label -> onSetColorLabel(video, label) },
+                    multiSelectCount = multiSelectedIds.size,
+                    onRemoveFromStack = onRemoveFromStack,
+                    onUnstack = onUnstack,
+                    onSetStackMaster = onSetStackMaster,
+                    onCombineIntoStack = onCombineIntoStack,
                 )
                 HorizontalDivider(thickness = 0.5.dp)
             }
@@ -1291,6 +1390,13 @@ private fun AndroidVideoCard(
     onLongPress: () -> Unit,
     onSetRating: (Int) -> Unit,
     onSetColorLabel: (String) -> Unit,
+    // ── Stacking actions ─────────────────────────────────────────────────
+    multiSelectCount: Int = 0,
+    onStackBadgeClick: (() -> Unit)? = null,
+    onRemoveFromStack: ((videoId: String, groupId: String) -> Unit)? = null,
+    onUnstack: ((groupId: String) -> Unit)? = null,
+    onSetStackMaster: ((videoId: String, groupId: String) -> Unit)? = null,
+    onCombineIntoStack: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val borderColor = when {
@@ -1392,12 +1498,49 @@ private fun AndroidVideoCard(
                     }
                 }
 
+                // ── Stack / group badge (top-start) ──────────────────────
+                // Mirrors the badge in the standalone VideoCard component.
+                // Tapping the badge opens the StackMembersSheet so the user
+                // can see all members and promote/remove them from the grid.
+                if (video.isInGroup) {
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(start = 6.dp, top = 4.dp)
+                            .then(
+                                if (onStackBadgeClick != null)
+                                    Modifier.clickable { onStackBadgeClick() }
+                                else Modifier
+                            ),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+                        shape = MaterialTheme.shapes.small,
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Layers,
+                                contentDescription = pluralStringResource(R.plurals.card_stack_count, video.groupSize, video.groupSize),
+                                modifier = Modifier.size(12.dp),
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                            )
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Text(
+                                text = "${video.groupSize}",
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                    }
+                }
+
                 // Multi-select checkbox overlay — top-start corner.
                 if (isSelected || isMultiSelected) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopStart)
-                            .padding(6.dp)
+                            .padding(start = if (video.isInGroup) 34.dp else 6.dp, top = 4.dp)
                             .size(20.dp)
                             .background(
                                 MaterialTheme.colorScheme.primary,
@@ -1471,7 +1614,7 @@ private fun AndroidVideoCard(
             }
         }
 
-        // ── Long-press context menu (rating + color label) ─────────────
+        // ── Long-press context menu (rating + color label + stacking) ───
         // Anchored to the top-start of the card so it doesn't clip off screen.
         VideoCardContextMenu(
             video = video,
@@ -1485,6 +1628,11 @@ private fun AndroidVideoCard(
                 onSetColorLabel(label)
                 showContextMenu = false
             },
+            onRemoveFromStack = onRemoveFromStack,
+            onUnstack = onUnstack,
+            onSetStackMaster = onSetStackMaster,
+            multiSelectCount = multiSelectCount,
+            onCombineIntoStack = onCombineIntoStack,
         )
     }
 }
@@ -1501,6 +1649,11 @@ private fun VideoListRow(
     onLongPress: () -> Unit,
     onSetRating: (Int) -> Unit,
     onSetColorLabel: (String) -> Unit,
+    multiSelectCount: Int = 0,
+    onRemoveFromStack: ((videoId: String, groupId: String) -> Unit)? = null,
+    onUnstack: ((groupId: String) -> Unit)? = null,
+    onSetStackMaster: ((videoId: String, groupId: String) -> Unit)? = null,
+    onCombineIntoStack: (() -> Unit)? = null,
 ) {
     val background = when {
         isSelected -> MaterialTheme.colorScheme.primaryContainer
@@ -1640,6 +1793,11 @@ private fun VideoListRow(
                 onSetColorLabel(label)
                 showContextMenu = false
             },
+            onRemoveFromStack = onRemoveFromStack,
+            onUnstack = onUnstack,
+            onSetStackMaster = onSetStackMaster,
+            multiSelectCount = multiSelectCount,
+            onCombineIntoStack = onCombineIntoStack,
         )
     } // Box
 }
@@ -1666,10 +1824,18 @@ private fun VideoCardContextMenu(
     onDismiss: () -> Unit,
     onSetRating: (Int) -> Unit,
     onSetColorLabel: (String) -> Unit,
+    // ── Stacking actions ─────────────────────────────────────────────────
+    // When the long-pressed card is in a stack, callers supply these.
+    onRemoveFromStack: ((videoId: String, groupId: String) -> Unit)? = null,
+    onUnstack: ((groupId: String) -> Unit)? = null,
+    onSetStackMaster: ((videoId: String, groupId: String) -> Unit)? = null,
+    // When 2+ cards are selected and the user long-pressed one of them.
+    multiSelectCount: Int = 0,
+    onCombineIntoStack: (() -> Unit)? = null,
 ) {
     val colorLabelEnum = ColorLabel.from(video.colorLabel)
 
-    // Single flat DropdownMenu with two labelled sections.
+    // Single flat DropdownMenu with labelled sections.
     // Cascading sub-menus are not idiomatic on Android — a flat list with
     // section headers reads better on a touch screen and avoids the awkward
     // two-layer overlay pattern.
@@ -1677,6 +1843,64 @@ private fun VideoCardContextMenu(
         expanded = expanded,
         onDismissRequest = onDismiss,
     ) {
+        // ── Stack section ─────────────────────────────────────────────
+        // Only shown when relevant stacking actions are available. Mirrors the
+        // desktop and iOS context-menu stack section: per-card operations
+        // (Remove, Unstack, Promote) appear when the pressed card is in a
+        // stack; Combine appears when 2+ cards are selected.
+        val hasStackActions = (video.isInGroup && (onRemoveFromStack != null || onUnstack != null)) ||
+            (video.isInGroup && video.id != video.groupPreferredId && onSetStackMaster != null) ||
+            (multiSelectCount >= 2 && onCombineIntoStack != null)
+        if (hasStackActions) {
+            Text(
+                text = stringResource(R.string.stack_section_header).uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 2.dp),
+            )
+            if (video.isInGroup && onRemoveFromStack != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.stack_remove_from_stack)) },
+                    leadingIcon = { Icon(Icons.Default.Deselect, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    onClick = {
+                        onRemoveFromStack(video.id, video.groupId)
+                        onDismiss()
+                    },
+                )
+            }
+            if (video.isInGroup && onUnstack != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.stack_unstack)) },
+                    leadingIcon = { Icon(Icons.Default.Layers, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    onClick = {
+                        onUnstack(video.groupId)
+                        onDismiss()
+                    },
+                )
+            }
+            if (video.isInGroup && video.id != video.groupPreferredId && onSetStackMaster != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.stack_promote_to_leader)) },
+                    leadingIcon = { Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    onClick = {
+                        onSetStackMaster(video.id, video.groupId)
+                        onDismiss()
+                    },
+                )
+            }
+            if (multiSelectCount >= 2 && onCombineIntoStack != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.stack_combine_into_stack)) },
+                    leadingIcon = { Icon(Icons.Default.Layers, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                    onClick = {
+                        onCombineIntoStack()
+                        onDismiss()
+                    },
+                )
+            }
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        }
+
         // ── Rating section header ─────────────────────────────────────
         Text(
             text = stringResource(R.string.card_menu_rating).uppercase(),
@@ -2423,4 +2647,153 @@ private fun BatchOrganizeSheet(
             }
         },
     )
+}
+
+// ── Stack members sheet ───────────────────────────────────────────────────────
+//
+// Shown when the user taps the stack-count badge on a grid card. Fetches the
+// full member list for the group, then lists each member with:
+//   • A thumbnail (ThumbnailImage)
+//   • The filename
+//   • A "Leader" chip when this member is the preferred representative
+//   • A "Promote" button (shown for non-preferred members)
+//   • A "Remove" button to extract this member from the stack
+//
+// Mirrors the desktop inspector's "Versions" section and the iOS detail view's
+// stack panel, adapted for Android's ModalBottomSheet affordance.
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun StackMembersSheet(
+    groupId: String,
+    vm: GridViewModel,
+    repository: VideoRepository,
+    onDismiss: () -> Unit,
+) {
+    // Members are loaded asynchronously from the repository.
+    var members by remember { mutableStateOf<List<VideoSummary>>(emptyList()) }
+    var preferredId by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(groupId) {
+        isLoading = true
+        val (m, pId) = vm.loadGroupMembers(groupId)
+        members = m
+        preferredId = pId
+        isLoading = false
+    }
+
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 32.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.stack_members_title),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(80.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    items(members, key = { it.id }) { member ->
+                        val isPreferred = member.id == preferredId
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            // Thumbnail
+                            Box(
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Color(0xFF474747)),
+                            ) {
+                                ThumbnailImage(
+                                    videoId = member.id,
+                                    repository = repository,
+                                    size = "small",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+                            // Filename + Leader chip
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = member.filename,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                if (isPreferred) {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Surface(
+                                        shape = RoundedCornerShape(50),
+                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.stack_members_preferred_label),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                        )
+                                    }
+                                }
+                            }
+                            // Actions: Promote (non-preferred only) + Remove
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                if (!isPreferred) {
+                                    TextButton(
+                                        onClick = {
+                                            vm.setStackMaster(member.id, groupId)
+                                            preferredId = member.id  // Optimistic
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.stack_members_promote_action),
+                                            style = MaterialTheme.typography.labelSmall,
+                                        )
+                                    }
+                                }
+                                TextButton(
+                                    onClick = {
+                                        vm.removeFromStack(member.id, groupId)
+                                        members = members.filter { it.id != member.id }
+                                        if (members.size <= 1) onDismiss()
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.stack_members_remove_action),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                }
+                            }
+                        }
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

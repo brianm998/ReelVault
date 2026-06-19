@@ -457,6 +457,30 @@
     <string name="grid_density_sheet_subtitle">Drag to adjust how many columns fit on screen.</string>
     <string name="grid_density_menu_item">Thumbnail Size</string>
 
+    <!-- ── Stacking / grouping ────────────────────────────────────────── -->
+    <string name="stack_combine_into_stack">Combine into stack</string>
+    <string name="stack_select_at_least_two">Select at least 2 videos to create a stack</string>
+    <string name="stack_combine_failed">Failed to create stack</string>
+    <string name="stack_combine_error">Stack failed: %1$s</string>
+    <string name="stack_remove_from_stack">Remove from stack</string>
+    <string name="stack_remove_failed">Failed to remove from stack</string>
+    <string name="stack_remove_error">Remove failed: %1$s</string>
+    <string name="stack_unstack">Unstack</string>
+    <string name="stack_unstack_error">Unstack failed: %1$s</string>
+    <string name="stack_promote_to_leader">Promote to leader</string>
+    <string name="stack_promote_failed">Failed to promote video</string>
+    <string name="stack_promote_error">Promote failed: %1$s</string>
+    <string name="stack_load_members_error">Could not load stack members: %1$s</string>
+    <string name="stack_members_title">Stack members</string>
+    <string name="stack_members_preferred_label">Leader</string>
+    <string name="stack_members_promote_action">Promote</string>
+    <string name="stack_members_remove_action">Remove</string>
+    <string name="stack_section_header">Stack</string>
+    <plurals name="stack_combined_message">
+        <item quantity="one">Combined into a stack of %1$d video</item>
+        <item quantity="other">Combined into a stack of %1$d videos</item>
+    </plurals>
+
     <!-- ── Batch actions (multi-select top bar) ───────────────────────── -->
     <string name="batch_organize">Organize selected videos</string>
     <string name="batch_share">Share selected videos</string>
