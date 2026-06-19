@@ -5,6 +5,8 @@
 
 package com.reelvault.android.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,6 +18,8 @@ import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -32,11 +36,13 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.reelvault.android.R
+import com.reelvault.android.data.VideoShareManager
 import com.reelvault.android.ui.components.LibraryFilterBar
 import com.reelvault.android.ui.components.ThumbnailImage
 import com.reelvault.android.viewmodel.GridViewModel
@@ -109,6 +115,12 @@ fun LibraryGridScreen(
     val isMultiSelect = multiSelectedIds.isNotEmpty()
     var showOverflowMenu by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
+
+    // ── Batch action dialog state ────────────────────────────────────────
+    var showBatchOrganize by remember { mutableStateOf(false) }
+    // Sharing state: true while downloading video files for the share sheet.
+    var isBatchSharing by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     // ── Screen width for responsive column count ─────────────────────────
     val configuration = LocalConfiguration.current
@@ -230,6 +242,55 @@ fun LibraryGridScreen(
                         showOverflowMenu = showOverflowMenu,
                         onShowOverflowMenu = { showOverflowMenu = true },
                         onDismissOverflowMenu = { showOverflowMenu = false },
+                        onBatchOrganize = { showBatchOrganize = true },
+                        onBatchShare = {
+                            val ids = multiSelectedIds.toList()
+                            val selectedVideos = videos.filter { it.id in multiSelectedIds }
+                            if (selectedVideos.isEmpty()) return@LibraryTopAppBar
+                            isBatchSharing = true
+                            scope.launch {
+                                try {
+                                    val uris = ArrayList<Uri>()
+                                    for (video in selectedVideos) {
+                                        try {
+                                            val uri = VideoShareManager.shareUri(
+                                                context = context,
+                                                videoId = video.id,
+                                                filename = video.filename,
+                                            )
+                                            uris.add(uri)
+                                        } catch (_: Exception) {
+                                            // Skip files that fail to download.
+                                        }
+                                    }
+                                    if (uris.isEmpty()) {
+                                        snackbarHostState.showSnackbar(
+                                            context.getString(R.string.batch_share_failed)
+                                        )
+                                    } else if (uris.size == 1) {
+                                        val mimeType = VideoShareManager.mimeTypeFor(selectedVideos.first().filename)
+                                        val intent = Intent(Intent.ACTION_SEND).apply {
+                                            type = mimeType
+                                            putExtra(Intent.EXTRA_STREAM, uris[0])
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+                                        context.startActivity(Intent.createChooser(intent,
+                                            context.getString(R.string.batch_share_title, ids.size)))
+                                    } else {
+                                        val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                                            type = "video/*"
+                                            putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+                                        context.startActivity(Intent.createChooser(intent,
+                                            context.getString(R.string.batch_share_title, ids.size)))
+                                    }
+                                } finally {
+                                    isBatchSharing = false
+                                }
+                            }
+                        },
+                        isBatchSharing = isBatchSharing,
                     )
                     // Filter chip bar — always shown so the user can access
                     // rating/colour/attribute filters at a glance.
@@ -396,6 +457,49 @@ fun LibraryGridScreen(
                 }
             }
         }
+
+        // ── Batch organize sheet (rating / color label / keyword / collection) ─
+        if (showBatchOrganize) {
+            BatchOrganizeSheet(
+                videoIds = multiSelectedIds.toList(),
+                tags = tags,
+                collections = collections,
+                onDismiss = { showBatchOrganize = false },
+                onSetRating = { rating ->
+                    vm.setRating(multiSelectedIds.toList(), rating)
+                    showBatchOrganize = false
+                },
+                onSetColorLabel = { label ->
+                    vm.setColorLabel(multiSelectedIds.toList(), label)
+                    showBatchOrganize = false
+                },
+                onApplyKeyword = { keyword ->
+                    vm.applyKeyword(keyword, multiSelectedIds.toList())
+                },
+                onAddToCollection = { collectionId ->
+                    vm.addToCollection(multiSelectedIds.toList(), collectionId)
+                    showBatchOrganize = false
+                },
+            )
+        }
+
+        // ── Batch sharing progress indicator ────────────────────────────────
+        if (isBatchSharing) {
+            AlertDialog(
+                onDismissRequest = {},
+                confirmButton = {},
+                title = { Text(stringResource(R.string.batch_share_preparing)) },
+                text = {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        Text(stringResource(R.string.detail_share_preparing))
+                    }
+                },
+            )
+        }
     }
 }
 
@@ -423,6 +527,9 @@ private fun LibraryTopAppBar(
     showOverflowMenu: Boolean,
     onShowOverflowMenu: () -> Unit,
     onDismissOverflowMenu: () -> Unit,
+    onBatchOrganize: () -> Unit = {},
+    onBatchShare: () -> Unit = {},
+    isBatchSharing: Boolean = false,
 ) {
     if (searchActive) {
         // Expanded search bar replaces the full app bar.
@@ -466,53 +573,75 @@ private fun LibraryTopAppBar(
                 }
             },
             actions = {
-                // Search
-                IconButton(onClick = { onSearchActiveChange(true) }) {
-                    Icon(Icons.Default.Search, contentDescription = stringResource(R.string.grid_search))
-                }
-                // Sort
-                Box {
-                    IconButton(onClick = onShowSortMenu) {
-                        Icon(Icons.Default.Sort, contentDescription = stringResource(R.string.grid_sort))
-                    }
-                    SortDropdownMenu(
-                        expanded = showSortMenu,
-                        onDismiss = onDismissSortMenu,
-                        onSetSort = onSetSort,
-                    )
-                }
-                // Grid / List toggle
-                IconButton(onClick = onToggleViewMode) {
-                    Icon(
-                        imageVector = if (viewMode == "grid") Icons.Default.ViewList else Icons.Default.GridView,
-                        contentDescription = if (viewMode == "grid") stringResource(R.string.grid_switch_to_list_view) else stringResource(R.string.grid_switch_to_grid_view),
-                    )
-                }
-                // Overflow menu
-                Box {
-                    IconButton(onClick = onShowOverflowMenu) {
-                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.grid_more_options))
-                    }
-                    DropdownMenu(
-                        expanded = showOverflowMenu,
-                        onDismissRequest = onDismissOverflowMenu,
+                if (isMultiSelect) {
+                    // ── Multi-select batch actions ───────────────────────
+                    // Share
+                    IconButton(
+                        onClick = onBatchShare,
+                        enabled = !isBatchSharing,
                     ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.grid_map)) },
-                            leadingIcon = { Icon(Icons.Default.Map, contentDescription = null) },
-                            onClick = { onDismissOverflowMenu(); onOpenMap() },
+                        Icon(
+                            Icons.Default.Share,
+                            contentDescription = stringResource(R.string.batch_share),
                         )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.grid_settings)) },
-                            leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                            onClick = { onDismissOverflowMenu(); onOpenSettings() },
+                    }
+                    // Organize: rating / color label / keyword / collection
+                    IconButton(onClick = onBatchOrganize) {
+                        Icon(
+                            Icons.Default.Sell,
+                            contentDescription = stringResource(R.string.batch_organize),
                         )
-                        HorizontalDivider()
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.grid_disconnect)) },
-                            leadingIcon = { Icon(Icons.Default.ExitToApp, contentDescription = null) },
-                            onClick = { onDismissOverflowMenu(); onDisconnect() },
+                    }
+                } else {
+                    // ── Normal actions ───────────────────────────────────
+                    // Search
+                    IconButton(onClick = { onSearchActiveChange(true) }) {
+                        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.grid_search))
+                    }
+                    // Sort
+                    Box {
+                        IconButton(onClick = onShowSortMenu) {
+                            Icon(Icons.Default.Sort, contentDescription = stringResource(R.string.grid_sort))
+                        }
+                        SortDropdownMenu(
+                            expanded = showSortMenu,
+                            onDismiss = onDismissSortMenu,
+                            onSetSort = onSetSort,
                         )
+                    }
+                    // Grid / List toggle
+                    IconButton(onClick = onToggleViewMode) {
+                        Icon(
+                            imageVector = if (viewMode == "grid") Icons.Default.ViewList else Icons.Default.GridView,
+                            contentDescription = if (viewMode == "grid") stringResource(R.string.grid_switch_to_list_view) else stringResource(R.string.grid_switch_to_grid_view),
+                        )
+                    }
+                    // Overflow menu
+                    Box {
+                        IconButton(onClick = onShowOverflowMenu) {
+                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.grid_more_options))
+                        }
+                        DropdownMenu(
+                            expanded = showOverflowMenu,
+                            onDismissRequest = onDismissOverflowMenu,
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.grid_map)) },
+                                leadingIcon = { Icon(Icons.Default.Map, contentDescription = null) },
+                                onClick = { onDismissOverflowMenu(); onOpenMap() },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.grid_settings)) },
+                                leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                                onClick = { onDismissOverflowMenu(); onOpenSettings() },
+                            )
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.grid_disconnect)) },
+                                leadingIcon = { Icon(Icons.Default.ExitToApp, contentDescription = null) },
+                                onClick = { onDismissOverflowMenu(); onDisconnect() },
+                            )
+                        }
                     }
                 }
             }
@@ -1735,4 +1864,241 @@ private fun EmptyLibraryMessage(
             }
         }
     }
+}
+
+// ── Batch organize sheet ─────────────────────────────────────────────────────
+//
+// Full-screen bottom sheet shown when the user taps the "Organize" action button
+// in multi-select mode. Mirrors iOS BatchOrganizeSheet and the macOS multi-select
+// context menu: rating, color label, keyword, and collection sections.
+//
+// Each action either:
+//   • fires immediately and closes the sheet (rating, color label, collection),
+//   • or stays open to allow multiple keywords to be added in sequence (keyword).
+
+@Composable
+private fun BatchOrganizeSheet(
+    videoIds: List<String>,
+    tags: List<Tag>,
+    collections: List<Collection>,
+    onDismiss: () -> Unit,
+    onSetRating: (Int) -> Unit,
+    onSetColorLabel: (String) -> Unit,
+    onApplyKeyword: (String) -> Unit,
+    onAddToCollection: (String) -> Unit,
+) {
+    val count = videoIds.size
+    val manualCollections = remember(collections) { collections.filter { !it.isSmart } }
+    var newKeyword by remember { mutableStateOf("") }
+
+    // Use ModalBottomSheet if a sheet host is available; fall back to an AlertDialog
+    // on smaller devices or when the Sheet API is unavailable. We use AlertDialog
+    // (always works) wrapped in a scrollable Column to keep the implementation simple
+    // and avoid needing a BottomSheetScaffold that would complicate the parent layout.
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.common_done))
+            }
+        },
+        title = {
+            Text(
+                pluralStringResource(R.plurals.batch_organize_title, count, count),
+            )
+        },
+        text = {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
+            ) {
+                // ── Rating ─────────────────────────────────────────────
+                item {
+                    Text(
+                        text = stringResource(R.string.card_menu_rating).uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+                    )
+                }
+                item {
+                    // Inline star row: tap to set rating (0 = clear)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        // No-rating chip
+                        FilterChip(
+                            selected = false,
+                            onClick = { onSetRating(0) },
+                            label = { Text(stringResource(R.string.card_menu_rating_none)) },
+                        )
+                        for (n in 1..5) {
+                            FilterChip(
+                                selected = false,
+                                onClick = { onSetRating(n) },
+                                label = { Text("★".repeat(n)) },
+                            )
+                        }
+                    }
+                }
+
+                item { HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp)) }
+
+                // ── Color label ────────────────────────────────────────
+                item {
+                    Text(
+                        text = stringResource(R.string.card_menu_color_label).uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
+                    )
+                }
+                items(ColorLabel.values()) { label ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                when (label) {
+                                    ColorLabel.None   -> stringResource(R.string.card_menu_label_none)
+                                    ColorLabel.Red    -> "${colorDot(label)} ${stringResource(R.string.card_menu_label_red)}"
+                                    ColorLabel.Yellow -> "${colorDot(label)} ${stringResource(R.string.card_menu_label_yellow)}"
+                                    ColorLabel.Green  -> "${colorDot(label)} ${stringResource(R.string.card_menu_label_green)}"
+                                    ColorLabel.Blue   -> "${colorDot(label)} ${stringResource(R.string.card_menu_label_blue)}"
+                                    ColorLabel.Purple -> "${colorDot(label)} ${stringResource(R.string.card_menu_label_purple)}"
+                                }
+                            )
+                        },
+                        onClick = { onSetColorLabel(label.raw) },
+                    )
+                }
+
+                item { HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp)) }
+
+                // ── Keywords ───────────────────────────────────────────
+                item {
+                    Text(
+                        text = stringResource(R.string.grid_keywords).uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
+                    )
+                }
+                item {
+                    // Text field to type a new keyword + Add button
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        OutlinedTextField(
+                            value = newKeyword,
+                            onValueChange = { newKeyword = it },
+                            placeholder = { Text(stringResource(R.string.batch_add_keyword_hint)) },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = {
+                                val k = newKeyword.trim()
+                                if (k.isNotEmpty()) {
+                                    onApplyKeyword(k)
+                                    newKeyword = ""
+                                }
+                            }),
+                        )
+                        TextButton(
+                            onClick = {
+                                val k = newKeyword.trim()
+                                if (k.isNotEmpty()) {
+                                    onApplyKeyword(k)
+                                    newKeyword = ""
+                                }
+                            },
+                            enabled = newKeyword.trim().isNotEmpty(),
+                        ) {
+                            Text(stringResource(R.string.detail_tag_picker_add_button))
+                        }
+                    }
+                }
+                // Existing keyword chips — tap to apply to all selected
+                if (tags.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = stringResource(R.string.batch_existing_keywords),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
+                        )
+                    }
+                    items(tags) { tag ->
+                        DropdownMenuItem(
+                            text = {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Icon(
+                                        Icons.Default.Sell,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(tag.name)
+                                }
+                            },
+                            trailingIcon = {
+                                Icon(
+                                    Icons.Default.Add,
+                                    contentDescription = stringResource(R.string.batch_apply_keyword, tag.name),
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            },
+                            onClick = { onApplyKeyword(tag.name) },
+                        )
+                    }
+                }
+
+                // ── Collections ────────────────────────────────────────
+                if (manualCollections.isNotEmpty()) {
+                    item { HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp)) }
+                    item {
+                        Text(
+                            text = stringResource(R.string.batch_add_to_collection).uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
+                        )
+                    }
+                    items(manualCollections) { col ->
+                        DropdownMenuItem(
+                            text = {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Icon(
+                                        Icons.Default.Collections,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(col.name)
+                                }
+                            },
+                            trailingIcon = {
+                                Icon(
+                                    Icons.Default.Add,
+                                    contentDescription = stringResource(R.string.batch_add_to_collection_name, col.name),
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            },
+                            onClick = { onAddToCollection(col.id) },
+                        )
+                    }
+                }
+            }
+        },
+    )
 }

@@ -667,6 +667,57 @@ class GridViewModel(
         }
     }
 
+    /**
+     * Create or reuse a tag [keyword] and apply it to every video in [videoIds].
+     * Optimistically adds the tag name to the in-memory video list so the keyword
+     * badge appears immediately. Mirrors desktop GridViewModel.applyKeyword and
+     * iOS kit GridViewModel.applyKeyword.
+     */
+    fun applyKeyword(keyword: String, videoIds: List<String>, onComplete: () -> Unit = {}) {
+        val name = keyword.trim()
+        if (name.isEmpty() || videoIds.isEmpty()) return
+        val ids = videoIds.filter { it.isNotEmpty() }.toSet()
+        if (ids.isEmpty()) return
+        // Optimistic update — add the name to the tag list so the badge appears.
+        _videos.value = _videos.value.map { v ->
+            if (v.id in ids && name !in v.tags) v.copy(tags = v.tags + name) else v
+        }
+        viewModelScope.launch {
+            try {
+                val tag = repository.createTag(name)
+                if (tag == null) {
+                    _error.value = appContext.getString(R.string.err_apply_keyword, name)
+                    return@launch
+                }
+                if (!repository.tagVideos(ids.toList(), tag.id)) {
+                    _error.value = appContext.getString(R.string.err_apply_keyword, name)
+                    return@launch
+                }
+                loadTags()
+                onComplete()
+            } catch (e: Exception) {
+                _error.value = appContext.getString(R.string.err_apply_keyword_detail, e.message ?: "")
+            }
+        }
+    }
+
+    /**
+     * Add [videoIds] to the manual collection identified by [collectionId].
+     * Mirrors desktop GridViewModel.addToCollection.
+     */
+    fun addToCollection(videoIds: List<String>, collectionId: String) {
+        if (videoIds.isEmpty() || collectionId.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                if (!repository.addToCollection(videoIds, collectionId)) {
+                    _error.value = appContext.getString(R.string.err_add_to_collection)
+                }
+            } catch (e: Exception) {
+                _error.value = appContext.getString(R.string.err_add_to_collection_detail, e.message ?: "")
+            }
+        }
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     // Public API: view mode
     // ─────────────────────────────────────────────────────────────────────
