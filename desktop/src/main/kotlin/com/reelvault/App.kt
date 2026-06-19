@@ -653,6 +653,10 @@ fun ReelVaultApp(
     val detailViewModel = remember { DetailViewModel(repository) }
     val launcher = remember { ServerLauncher() }
     val recents = remember { RecentCatalogs.Default }
+    // Browser-style back/forward across the session's browse locations
+    // (view mode + source filters + selected video). Mirrors the iOS client;
+    // cleared when the open catalog changes.
+    val history = remember { com.reelvault.viewmodel.NavHistory() }
 
     // Per-view-mode panel state — width + open/closed flag for each of
     // (Grid, List, Detail). Lightroom keeps these independent across
@@ -759,6 +763,50 @@ fun ReelVaultApp(
         }
     }
     LaunchedEffect(viewMode) { if (viewMode != ViewMode.DETAIL && detailFullscreen) detailFullscreen = false }
+
+    // ── Session navigation history (browser-style back/forward) ─────────────
+    // Record each distinct browse location — view mode + source filters
+    // (collection / tag / location paths) + the selected video. record() dedups
+    // against the cursor, so a back/forward restore re-applying the same state
+    // adds nothing; navigating somewhere new after a back truncates the forward
+    // path. Facet filters (rating/colour/geo/search/attributes) are intentionally
+    // excluded, matching iOS/Android.
+    val navCollectionId by gridViewModel.selectedCollectionId.collectAsState()
+    val navTagId by gridViewModel.filterTagId.collectAsState()
+    val navLocationPaths by gridViewModel.selectedLocationPaths.collectAsState()
+    val navSelectedVideoId by gridViewModel.selectedVideoId.collectAsState()
+    val currentNav = com.reelvault.viewmodel.NavState(
+        viewMode = viewMode,
+        locationPaths = navLocationPaths,
+        collectionId = navCollectionId,
+        tagId = navTagId,
+        videoId = navSelectedVideoId,
+    )
+    LaunchedEffect(currentNav) { history.record(currentNav) }
+    val navCanGoBack by history.canGoBack.collectAsState()
+    val navCanGoForward by history.canGoForward.collectAsState()
+
+    // Re-apply a history entry. Collection first: selecting a smart collection
+    // rewrites the tag/location filters, so the explicit writes that follow pin
+    // them to exactly the recorded values. The single resulting currentNav change
+    // dedups against the entry we just moved to (no new entry recorded).
+    fun restoreNav(s: com.reelvault.viewmodel.NavState) {
+        gridViewModel.setCollection(s.collectionId)
+        gridViewModel.setTagFilter(s.tagId)
+        gridViewModel.setLocationPaths(s.locationPaths)
+        gridViewModel.restoreSelectedVideo(s.videoId)
+        viewMode = s.viewMode
+        // Drive the detail inspector for the restored selection. The grid/list/
+        // arrow-key selection paths do this on a normal selection; nothing else
+        // re-drives it for a history restore.
+        s.videoId?.let { id ->
+            gridViewModel.videos.value.firstOrNull { it.id == id }
+                ?.let { detailViewModel.setCurrentVideo(it) }
+            detailViewModel.loadMetadata(id)
+        }
+    }
+    val onHistoryBack: () -> Unit = { history.goBack()?.let { restoreNav(it) } }
+    val onHistoryForward: () -> Unit = { history.goForward()?.let { restoreNav(it) } }
 
     // Per-view-mode panel state accessors. The 4 maps above store every
     // view-mode's values; these `val`s + helper funcs read/write the
@@ -972,6 +1020,9 @@ fun ReelVaultApp(
 
     /** Load library data after a successful catalog open. */
     fun loadAfterCatalogOpened() {
+        // A newly-opened catalog has its own browse history — the previous one's
+        // recorded video ids no longer resolve here.
+        history.clear()
         gridViewModel.loadVideos()
         gridViewModel.loadLibraryLocations()
         gridViewModel.loadTags()
@@ -1015,6 +1066,7 @@ fun ReelVaultApp(
             repository.closeCatalog()
             currentCatalog = CatalogInfo.Closed
             gridViewModel.clearState()
+            history.clear()
             openDialogIsStartup = false
             showOpenCatalogDialog = true
         }
@@ -1372,6 +1424,10 @@ fun ReelVaultApp(
                         accentScheme = accentScheme,
                         proxyBanner = detailViewModel.proxyBanner.collectAsState().value,
                         onProxyBannerClick = { detailViewModel.requestScrollToProxies() },
+                        canGoBack = navCanGoBack,
+                        canGoForward = navCanGoForward,
+                        onHistoryBack = onHistoryBack,
+                        onHistoryForward = onHistoryForward,
                     )
 
                     // Horizontal border separating the top bar from the content
@@ -3041,6 +3097,11 @@ fun ReelVaultTopBar(
     /** Clicking the proxy-playback indicator scrolls the right detail panel
      *  to the proxy list so the user can see which proxy is playing (#13b). */
     onProxyBannerClick: () -> Unit = {},
+    /** Browser-style back/forward across the session navigation history. */
+    canGoBack: Boolean = false,
+    canGoForward: Boolean = false,
+    onHistoryBack: () -> Unit = {},
+    onHistoryForward: () -> Unit = {},
 ) {
     var showFileMenu by remember { mutableStateOf(false) }
     var showForgetServerConfirm by remember { mutableStateOf(false) }
@@ -3233,6 +3294,17 @@ fun ReelVaultTopBar(
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.width(ReelVaultSpacing.Small))
+
+                // Browser-style back/forward across the session's browse history,
+                // at the leading edge (mirrors the iOS/macOS toolbar placement).
+                com.reelvault.ui.components.NavHistoryButtons(
+                    canGoBack = canGoBack,
+                    canGoForward = canGoForward,
+                    onBack = onHistoryBack,
+                    onForward = onHistoryForward,
+                )
 
                 // Search field + filter dropdowns now live in the Library
                 // Filter bar (LibraryFilterBar), below the top bar and inside

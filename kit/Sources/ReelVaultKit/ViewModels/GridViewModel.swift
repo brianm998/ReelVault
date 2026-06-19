@@ -878,6 +878,14 @@ public class GridViewModel: ObservableObject {
         reloadForFilterChange()
     }
 
+    /// Replace the location-source selection with an exact list of paths. Used by
+    /// the back/forward navigation history to round-trip a multi-folder selection
+    /// losslessly (the per-click `toggle`/`range` helpers can't restore an
+    /// arbitrary set). The selection's anchor follows the last path.
+    public func setLocationPaths(_ paths: [String]) {
+        applyLocationSelection(paths, anchor: paths.last)
+    }
+
     // MARK: - Collections
 
     public func loadCollections() {

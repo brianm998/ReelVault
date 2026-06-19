@@ -9,6 +9,9 @@ import CoreLocation
 struct ContentView: View {
     @StateObject private var gridViewModel = GridViewModel()
     @StateObject private var detailViewModel = DetailViewModel()
+    /// Browser-style back/forward across the session's browse locations
+    /// (view mode + source filters + selected video). Mirrors the iOS client.
+    @StateObject private var history = NavigationHistory()
     /// Observed so the top-bar library-source control reflects local vs remote.
     @ObservedObject private var remoteConnection = RemoteConnection.shared
     @State private var connectionState: ConnectionState = .connecting
@@ -507,6 +510,51 @@ struct ContentView: View {
                 }
             }
         }
+        // Record each distinct browse location (view mode + source + selected
+        // video). A back/forward restore re-applies the same state, which dedups
+        // (no new entry); navigating somewhere new *after* a back truncates the
+        // forward path and starts a fresh branch.
+        .onChange(of: currentNav) { _, new in history.record(new) }
+        .onAppear { history.record(currentNav) }
+        // A different catalog means the recorded video ids no longer resolve —
+        // start its history fresh.
+        .onChange(of: currentCatalog.path) { _, _ in history.reset() }
+    }
+
+    /// The current browse location, as recorded in history.
+    private var currentNav: NavState {
+        NavState(viewMode: viewMode,
+                 locationPaths: gridViewModel.selectedLocationPaths,
+                 collectionId: gridViewModel.selectedCollectionId,
+                 tagId: gridViewModel.filterTagId,
+                 selectedVideoId: gridViewModel.selectedVideoId)
+    }
+
+    private func goBack() { if let s = history.goBack() { restore(s) } }
+    private func goForward() { if let s = history.goForward() { restore(s) } }
+
+    /// Re-apply a history entry. Set everything synchronously so the single
+    /// resulting `currentNav` change dedups against the entry we just moved to
+    /// (rather than recording a new one). Collection first: selecting a smart
+    /// collection rewrites the tag/location filters, so the explicit writes that
+    /// follow must pin them to exactly the recorded values.
+    private func restore(_ s: NavState) {
+        gridViewModel.setCollectionFilter(s.collectionId)
+        gridViewModel.setTagFilter(s.tagId)
+        gridViewModel.setLocationPaths(s.locationPaths)
+        viewMode = s.viewMode
+        gridViewModel.selectedVideoId = s.selectedVideoId
+        // Sync the cached summary + detail metadata for the restored selection so
+        // the loupe and inspector show the right video. The grid/list/arrow-key
+        // selection paths do this on a normal selection; nothing else re-drives it
+        // for a history restore.
+        if let id = s.selectedVideoId {
+            if let summary = gridViewModel.videos.first(where: { $0.id == id }) {
+                gridViewModel.selectedVideo = summary
+                detailViewModel.setCurrentVideo(summary)
+            }
+            detailViewModel.loadMetadata(videoId: id)
+        }
     }
 
     /// Present the location-picker sheet for `videoIds`, framed on `initial`
@@ -690,6 +738,10 @@ struct ContentView: View {
                         .help("Open catalog: \(currentCatalog.path)")
                 }
             }
+
+            // Browser-style back/forward across the session's browse history,
+            // at the leading edge (mirrors the iOS toolbar placement).
+            NavHistoryButtons(history: history, goBack: goBack, goForward: goForward)
 
             // Search field + filter dropdowns now live in the Library Filter
             // bar (LibraryFilterBar), below the top bar in the centre column.

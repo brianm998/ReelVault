@@ -1043,6 +1043,18 @@ class GridViewModel(
         logger.info("Range-select: ${rangeIds.size} videos, target=${target.filename}")
     }
 
+    /** Restore the single selection to [id] (or clear it when null) for the
+     *  back/forward navigation history. Resolves the [VideoSummary] from the
+     *  currently-loaded grid when present so the inspector/detail view have it;
+     *  the id alone still drives selection if the card hasn't loaded yet. */
+    fun restoreSelectedVideo(id: String?) {
+        if (id == null) { clearSelection(); return }
+        _selectedVideoIds.value = listOf(id)
+        _anchorVideoId.value = id
+        _selectedVideoId.value = id
+        _videos.value.firstOrNull { it.id == id }?.let { _selectedVideo.value = it }
+    }
+
     fun clearSelection() {
         _selectedVideoId.value = null
         _selectedVideo.value = null
@@ -1428,6 +1440,14 @@ class GridViewModel(
         _selectedLocationPath.value = paths.firstOrNull() ?: ""
         if (!keepAnchor) locationAnchorPath = anchor
         reloadForFilterChange()
+    }
+
+    /** Replace the location-source selection with an exact list of paths. Used by
+     *  the back/forward navigation history to round-trip a multi-folder selection
+     *  losslessly (the per-click `toggle`/`range` helpers can't restore an
+     *  arbitrary set). The selection's anchor follows the last path. */
+    fun setLocationPaths(paths: List<String>) {
+        applyLocationSelection(paths, anchor = paths.lastOrNull())
     }
 
     /** Load (or refresh) the full list of keywords/tags with their usage counts. */
