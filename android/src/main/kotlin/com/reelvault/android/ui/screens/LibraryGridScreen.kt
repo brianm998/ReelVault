@@ -44,6 +44,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.reelvault.android.R
 import com.reelvault.android.data.VideoShareManager
 import com.reelvault.android.ui.components.LibraryFilterBar
+import com.reelvault.android.ui.components.NavHistoryButtons
 import com.reelvault.android.ui.components.ThumbnailImage
 import com.reelvault.android.viewmodel.GridViewModel
 import com.reelvault.android.ui.theme.swatch
@@ -83,6 +84,12 @@ fun LibraryGridScreen(
     onOpenMap: () -> Unit,
     onDisconnect: () -> Unit,
     onOpenLocalMedia: () -> Unit = {},
+    // Session back/forward history (browser-style). Driven by AppRouter, which
+    // owns the NavController; the chevrons live in the top bar.
+    canGoBack: Boolean = false,
+    canGoForward: Boolean = false,
+    onHistoryBack: () -> Unit = {},
+    onHistoryForward: () -> Unit = {},
 ) {
     // ── Collect state ────────────────────────────────────────────────────
     val videos by vm.videos.collectAsStateWithLifecycle()
@@ -233,6 +240,10 @@ fun LibraryGridScreen(
                         viewMode = viewMode,
                         isMultiSelect = isMultiSelect,
                         multiSelectCount = multiSelectedIds.size,
+                        canGoBack = canGoBack,
+                        canGoForward = canGoForward,
+                        onHistoryBack = onHistoryBack,
+                        onHistoryForward = onHistoryForward,
                         onOpenDrawer = { scope.launch { drawerState.open() } },
                         onSearchActiveChange = { active ->
                             searchActive = active
@@ -625,6 +636,10 @@ private fun LibraryTopAppBar(
     viewMode: String,
     isMultiSelect: Boolean,
     multiSelectCount: Int,
+    canGoBack: Boolean,
+    canGoForward: Boolean,
+    onHistoryBack: () -> Unit,
+    onHistoryForward: () -> Unit,
     onOpenDrawer: () -> Unit,
     onSearchActiveChange: (Boolean) -> Unit,
     onSearchTextChange: (String) -> Unit,
@@ -719,6 +734,13 @@ private fun LibraryTopAppBar(
                     }
                 } else {
                     // ── Normal actions ───────────────────────────────────
+                    // Browser-style back/forward across the session's browse path.
+                    NavHistoryButtons(
+                        canGoBack = canGoBack,
+                        canGoForward = canGoForward,
+                        onBack = onHistoryBack,
+                        onForward = onHistoryForward,
+                    )
                     // Search
                     IconButton(onClick = { onSearchActiveChange(true) }) {
                         Icon(Icons.Default.Search, contentDescription = stringResource(R.string.grid_search))

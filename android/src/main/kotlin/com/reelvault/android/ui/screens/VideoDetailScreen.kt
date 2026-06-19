@@ -14,8 +14,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -73,12 +75,22 @@ fun VideoDetailScreen(
     /** Shared grid view-model: provides the scrub-frame and loudness caches for
      *  the Visuals graphs section. Optional — omit in preview/test contexts. */
     gridViewModel: GridViewModel? = null,
+    /** Leave Detail. Wired to the session history-back in the app (the nav-arrow
+     *  and system back both walk the history), so it is more than a plain pop. */
     onBack: () -> Unit,
+    /** Session forward (browser-style). Enabled only when [canGoForward]. */
+    canGoForward: Boolean = false,
+    onHistoryForward: () -> Unit = {},
     /** "Show on Map" — focus the in-app map on (lat, lon). No-op host hides the button. */
     onShowOnMap: ((Double, Double) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    // System back leaves Detail through the session history (same as the
+    // nav-arrow), so it can't strand a phantom grid entry. onBack falls back to
+    // a plain pop when the history is empty (e.g. after process death).
+    BackHandler { onBack() }
     val vm: DetailViewModel = viewModel(
         key = "detail_$videoId",
         factory = DetailViewModel.Factory(repository, context),
@@ -147,6 +159,14 @@ fun VideoDetailScreen(
                     }
                 },
                 actions = {
+                    // Session forward chevron (back is the nav-arrow above).
+                    IconButton(onClick = onHistoryForward, enabled = canGoForward) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = stringResource(R.string.nav_history_forward),
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
                     if (metadata != null) {
                         if (isSharing) {
                             // Show a spinner while the file is being downloaded.

@@ -11,12 +11,14 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Satellite
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.CircularProgressIndicator
@@ -288,10 +290,22 @@ private fun buildMarkerGlyph(
 fun LibraryMapScreen(
     repository: VideoRepository,
     grid: GridViewModel,
+    /** Pop back to the grid (used by a cluster tap, which also applies a geo
+     *  facet filter). Distinct from the nav-arrow/system-back, which walk the
+     *  session history. */
     onBack: () -> Unit,
+    /** Session history back/forward (browser-style). The nav-arrow and system
+     *  back walk the history; the forward chevron is enabled when [canGoForward]. */
+    onHistoryBack: () -> Unit = {},
+    onHistoryForward: () -> Unit = {},
+    canGoForward: Boolean = false,
 ) {
     val accentArgb = MaterialTheme.colorScheme.primary.toArgb()
     val context = LocalContext.current
+
+    // System back leaves the map through the session history (same as the
+    // nav-arrow) so it can't strand a phantom grid entry.
+    BackHandler { onHistoryBack() }
     // "Show on Map" focus request from the detail view, if any.
     val mapFocus by grid.mapFocus.collectAsStateWithLifecycle()
 
@@ -343,10 +357,19 @@ fun LibraryMapScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.map_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = onHistoryBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.common_back),
+                        )
+                    }
+                },
+                actions = {
+                    // Session forward chevron (back is the nav-arrow above).
+                    IconButton(onClick = onHistoryForward, enabled = canGoForward) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = stringResource(R.string.nav_history_forward),
                         )
                     }
                 },

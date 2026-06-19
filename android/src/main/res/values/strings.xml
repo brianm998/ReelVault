@@ -3,6 +3,8 @@
 
     <!-- ── Common ───────────────────────────────────────────────────────── -->
     <string name="common_back">Back</string>
+    <string name="nav_history_back">Back</string>
+    <string name="nav_history_forward">Forward</string>
     <string name="common_cancel">Cancel</string>
     <string name="common_save">Save</string>
     <string name="common_done">Done</string>

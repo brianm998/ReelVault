@@ -117,6 +117,21 @@ class GridViewModel(
     /** "grid" or "list". Persisted across process restarts via SharedPreferences. */
     val viewMode: StateFlow<String> = _viewMode.asStateFlow()
 
+    // ── Navigation history (browser-style back/forward) ───────────────────
+    // Activity-scoped → survives rotation; wiped in resetForNewSession(). The
+    // recording trigger + restore funnel live in AppRouter (it owns the
+    // NavController); this VM holds the stack and the restore-suppression latch.
+    val navHistory = NavHistory()
+    val canGoBack: StateFlow<Boolean> get() = navHistory.canGoBack
+    val canGoForward: StateFlow<Boolean> get() = navHistory.canGoForward
+    /** Target of an in-flight back/forward restore. While set, observer-driven
+     *  [recordNav] calls are absorbed (a restore must not push a new entry); it
+     *  is cleared the instant the settled state matches the target. Every
+     *  back/forward step changes at least one recorded field, so a matching
+     *  observer fire always arrives — the latch cannot stick (the failure mode
+     *  of a fire-counting flag). */
+    private var restoreExpected: NavEntry? = null
+
     // ── Grid density ──────────────────────────────────────────────────────
     // Integer in 1..5 (1 = many small columns, 5 = few large columns).
     // Maps to a minimum card width (dp) used with GridCells.Adaptive so the
@@ -228,7 +243,15 @@ class GridViewModel(
     private var currentPage = 0
     private var filterTags = emptyList<String>()
     private var collectionId: String? = null
-    private var locationPathFilter: String = ""
+    // Backed by an observable flow so the navigation-history recorder (AppRouter)
+    // can watch source changes. The computed `var` keeps every existing read/write
+    // site working unchanged while mirroring into the flow automatically — no
+    // assignment site can be missed.
+    private val _locationPathFlow = MutableStateFlow("")
+    val locationPathFlow: StateFlow<String> = _locationPathFlow.asStateFlow()
+    private var locationPathFilter: String
+        get() = _locationPathFlow.value
+        set(value) { _locationPathFlow.value = value }
 
     // ── Attribute / orientation / audio filter state ──────────────────────
     // Independent (user-set) attribute filters exposed in the filter sheet.
@@ -490,6 +513,54 @@ class GridViewModel(
     fun clearSelection() {
         _selectedVideoId.value = null
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Public API: navigation history (back/forward). See [NavHistory].
+
+    /** The active grid source filters (collection + tag + location together —
+     *  Android allows them to combine, unlike iOS's single section). */
+    fun currentNavSource(): NavSource =
+        NavSource(_selectedCollectionId.value, _filterTagId.value, locationPathFilter)
+
+    /** Build the entry for a settled browse route from live state. [viewMode] is
+     *  only meaningful for GRID, so it is normalised to "" elsewhere — a
+     *  Detail/Map entry then compares equal regardless of the grid/list toggle. */
+    private fun snapshotEntry(route: NavRoute, videoId: String?): NavEntry =
+        NavEntry(route, currentNavSource(),
+                 if (route == NavRoute.GRID) _viewMode.value else "", videoId)
+
+    /** Record a settled browse location, unless a restore is in flight — then
+     *  the fire is absorbed (and the latch released once the target is reached). */
+    fun recordNav(route: NavRoute, videoId: String?) {
+        val e = snapshotEntry(route, videoId)
+        val expected = restoreExpected
+        if (expected != null) {
+            if (e == expected) restoreExpected = null
+            return
+        }
+        navHistory.record(e)
+    }
+
+    /** Re-apply the non-route part of an entry (source + grid/list + selection),
+     *  routing through the existing setters so the smart-collection snapshot
+     *  machinery runs identically to user-driven navigation. The collection is
+     *  resolved FIRST because setCollectionFilter rewrites locationPathFilter. */
+    fun applyEntryState(e: NavEntry) {
+        val s = e.source
+        // Collection first: setCollectionFilter expands smart-collection filters
+        // (and rewrites tag/location); the explicit tag/location writes that
+        // follow then pin them to exactly the recorded values.
+        setCollectionFilter(s.collectionId)
+        setTagFilter(s.tagId)
+        setLocationFilter(s.locationPath)
+        if (e.route == NavRoute.GRID) setViewMode(e.viewMode)
+        if (e.videoId != null) selectVideo(e.videoId)
+    }
+
+    /** Move the history cursor back/forward and latch the target so the resulting
+     *  observer fires are absorbed. Returns null at the ends of the history. */
+    fun consumeBack(): NavEntry? = navHistory.goBack()?.also { restoreExpected = it }
+    fun consumeForward(): NavEntry? = navHistory.goForward()?.also { restoreExpected = it }
 
     // ─────────────────────────────────────────────────────────────────────
     // Public API: sort
@@ -1186,6 +1257,8 @@ class GridViewModel(
     fun resetForNewSession() {
         listLoadJob?.cancel()
         stopCatalogEventStream()
+        navHistory.clear()
+        restoreExpected = null
         _filterLocation.value = null
         _filterLocationLabel.value = null
         _mapFocus.value = null

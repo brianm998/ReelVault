@@ -5,7 +5,9 @@ package com.reelvault.android
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -13,6 +15,10 @@ import com.reelvault.android.data.DefaultServerPrefs
 import com.reelvault.android.ui.screens.*
 import com.reelvault.android.ui.screens.OfflineLibraryScreen
 import com.reelvault.android.viewmodel.GridViewModel
+import com.reelvault.android.viewmodel.NavEntry
+import com.reelvault.android.viewmodel.NavRoute
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
 
 sealed class Screen(val route: String) {
     object Connection : Screen("connection")
@@ -51,6 +57,64 @@ fun AppRouter() {
         }
     }
 
+    // ── Session navigation history (browser-style back/forward) ─────────────
+    // Three passive observers record a new browse location whenever the user
+    // lands on a grid/detail/map destination, toggles grid<->list, or picks a
+    // different source. recordNav() dedups (so returning to where you were adds
+    // nothing) and absorbs restore-driven fires (so the chevrons don't pollute
+    // the history). Detail/Map are SEPARATE NavController destinations, so we
+    // observe the back-stack route rather than an iOS-style single view mode.
+    val canGoBack by gridViewModel.canGoBack.collectAsStateWithLifecycle()
+    val canGoForward by gridViewModel.canGoForward.collectAsStateWithLifecycle()
+
+    LaunchedEffect(navController) {
+        navController.currentBackStackEntryFlow.collect { entry ->
+            when (entry.destination.route) {
+                Screen.Grid.route   -> gridViewModel.recordNav(NavRoute.GRID, null)
+                Screen.Map.route    -> gridViewModel.recordNav(NavRoute.MAP, null)
+                Screen.Detail.route -> gridViewModel.recordNav(
+                    NavRoute.DETAIL, entry.arguments?.getString("videoId"))
+                else -> { /* Connection / Settings / LocalMedia / Offline: not browse */ }
+            }
+        }
+    }
+    LaunchedEffect(navController) {
+        // A grid<->list toggle is a new browse location (iOS records it too).
+        gridViewModel.viewMode.drop(1).collect {
+            if (navController.currentDestination?.route == Screen.Grid.route)
+                gridViewModel.recordNav(NavRoute.GRID, null)
+        }
+    }
+    LaunchedEffect(navController) {
+        // A sidebar source pick / clear, while browsing the grid.
+        combine(
+            gridViewModel.selectedCollectionId,
+            gridViewModel.filterTagId,
+            gridViewModel.locationPathFlow,
+        ) { _, _, _ -> Unit }
+            .drop(1)  // ignore the initial conflated replay
+            .collect {
+                if (navController.currentDestination?.route == Screen.Grid.route)
+                    gridViewModel.recordNav(NavRoute.GRID, null)
+            }
+    }
+
+    // The single funnel every chevron / history-back goes through: apply the
+    // entry's VM state, then drive the NavController to its 2-level target shape.
+    fun applyEntry(e: NavEntry) {
+        gridViewModel.applyEntryState(e)
+        navigateToBrowseRoute(navController, e)
+    }
+    // Chevron back: walk history; on Detail/Map after process death (empty
+    // history) fall back to a plain pop so the back button can never freeze.
+    val onHistoryBack: () -> Unit = {
+        val e = gridViewModel.consumeBack()
+        if (e != null) applyEntry(e) else navController.popBackStack()
+    }
+    val onHistoryForward: () -> Unit = {
+        gridViewModel.consumeForward()?.let { applyEntry(it) }
+    }
+
     NavHost(
         navController = navController,
         startDestination = startDestination
@@ -84,11 +148,26 @@ fun AppRouter() {
             LibraryGridScreen(
                 repository = app.videoRepository,
                 vm = gridViewModel,
+                canGoBack = canGoBack,
+                canGoForward = canGoForward,
+                onHistoryBack = onHistoryBack,
+                onHistoryForward = onHistoryForward,
                 onVideoSelected = { videoId ->
-                    navController.navigate(Screen.Detail.createRoute(videoId))
+                    // Keep the back stack at the 2-level shape [Grid, overlay] so
+                    // the NavController stack and the session history never diverge
+                    // in depth (the rich history lives in NavHistory, not here).
+                    navController.navigate(Screen.Detail.createRoute(videoId)) {
+                        popUpTo(Screen.Grid.route) { inclusive = false }
+                        launchSingleTop = true
+                    }
                 },
                 onOpenSettings = { navController.navigate(Screen.Settings.route) },
-                onOpenMap = { navController.navigate(Screen.Map.route) },
+                onOpenMap = {
+                    navController.navigate(Screen.Map.route) {
+                        popUpTo(Screen.Grid.route) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                },
                 onOpenLocalMedia = {
                     navController.navigate(Screen.LocalMedia.route)
                 },
@@ -111,13 +190,19 @@ fun AppRouter() {
                 videoId = videoId,
                 repository = app.videoRepository,
                 gridViewModel = gridViewModel,
-                onBack = { navController.popBackStack() },
+                // The nav-arrow / system back go through the history so leaving
+                // Detail moves the cursor (no phantom grid entry, no desync).
+                onBack = onHistoryBack,
+                canGoForward = canGoForward,
+                onHistoryForward = onHistoryForward,
                 onShowOnMap = { lat, lon ->
                     gridViewModel.setMapFocus(lat, lon)
-                    // Replace Detail with Map so "back" from the map returns to
-                    // the grid (and a marker tap there filters the grid as usual).
+                    // Map sits directly on Grid (2-level shape). History still
+                    // records […, Detail(X), Map], so chevron-back from the map
+                    // returns to Detail(X) while system back goes to the grid.
                     navController.navigate(Screen.Map.route) {
-                        popUpTo(Screen.Detail.route) { inclusive = true }
+                        popUpTo(Screen.Grid.route) { inclusive = false }
+                        launchSingleTop = true
                     }
                 },
             )
@@ -145,7 +230,15 @@ fun AppRouter() {
             LibraryMapScreen(
                 repository = app.videoRepository,
                 grid = gridViewModel,
+                // Cluster tap → pop back to the grid. The geo filter it applies
+                // is a facet (intentionally not part of the recorded source, per
+                // iOS parity), so the resulting grid entry matches the one behind
+                // the map and chevron-back from it returns to the map.
                 onBack = { navController.popBackStack() },
+                // Nav-arrow / system back: walk the session history instead.
+                onHistoryBack = onHistoryBack,
+                onHistoryForward = onHistoryForward,
+                canGoForward = canGoForward,
             )
         }
         composable(Screen.LocalMedia.route) {
@@ -163,6 +256,33 @@ fun AppRouter() {
             OfflineLibraryScreen(
                 onBack = { navController.popBackStack() }
             )
+        }
+    }
+}
+
+/**
+ * Drive the NavController to the destination a restored [NavEntry] lives on,
+ * idempotently and to the 2-level shape `[Grid, (Detail|Map)?]`. Source/view-mode
+ * are applied separately (in the VM) before this runs, so a GRID target only has
+ * to pop any overlay; Detail/Map navigate over Grid unless already showing.
+ */
+private fun navigateToBrowseRoute(nav: NavController, e: NavEntry) {
+    when (e.route) {
+        NavRoute.GRID -> nav.popBackStack(Screen.Grid.route, /* inclusive = */ false)
+        NavRoute.DETAIL -> {
+            val vid = e.videoId ?: return  // malformed entry; nothing to show
+            val already = nav.currentDestination?.route == Screen.Detail.route &&
+                nav.currentBackStackEntry?.arguments?.getString("videoId") == vid
+            if (!already) nav.navigate(Screen.Detail.createRoute(vid)) {
+                popUpTo(Screen.Grid.route) { inclusive = false }
+                launchSingleTop = true
+            }
+        }
+        NavRoute.MAP -> {
+            if (nav.currentDestination?.route != Screen.Map.route) nav.navigate(Screen.Map.route) {
+                popUpTo(Screen.Grid.route) { inclusive = false }
+                launchSingleTop = true
+            }
         }
     }
 }
