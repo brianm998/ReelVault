@@ -54,6 +54,7 @@ import com.reelvault.data.repository.VideoRepository
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.BoundingBox
+import org.osmdroid.util.MapTileIndex
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.FolderOverlay
@@ -70,10 +71,10 @@ import kotlin.math.sqrt
 /**
  * Esri World Imagery satellite tile source. Mirrors the desktop's
  * ReelVaultSatelliteTileFactoryInfo — same endpoint, same tile path
- * `/{z}/{y}/{x}` (y before x, unlike OSM).
+ * `/{z}/{y}/{x}` (y before x, unlike OSM's default {z}/{x}/{y}).
  * Attribution: Esri, Maxar, Earthstar Geographics, and the GIS community.
  */
-private val ESRI_SATELLITE_SOURCE = XYTileSource(
+private val ESRI_SATELLITE_SOURCE = object : XYTileSource(
     "EsriWorldImagery",
     /* minZoom = */ 0,
     /* maxZoom = */ 19,
@@ -82,7 +83,13 @@ private val ESRI_SATELLITE_SOURCE = XYTileSource(
     /* baseUrls = */ arrayOf(
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/"
     ),
-)
+) {
+    // ArcGIS tile path convention is /{z}/{y}/{x}, not OSMDroid's default /{z}/{x}/{y}.
+    override fun getTileURLString(pMapTileIndex: Long): String =
+        "${baseUrl}${MapTileIndex.getZoom(pMapTileIndex)}" +
+            "/${MapTileIndex.getY(pMapTileIndex)}" +
+            "/${MapTileIndex.getX(pMapTileIndex)}"
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SharedPreferences persistence (mirrors desktop MapViewPrefs)
@@ -297,6 +304,9 @@ fun LibraryMapScreen(
     // rather than the unfiltered listVideosWithLocations() RPC.
     val locations by grid.videoLocations.collectAsStateWithLifecycle()
     val isLoading by grid.isLoadingVideoLocations.collectAsStateWithLifecycle()
+    // Gate the empty-state text on this flag so it doesn't flash before the
+    // first load completes (mirrors the grid's hasLoadedOnce pattern).
+    val hasLoadedLocationOnce by grid.hasLoadedLocationOnce.collectAsStateWithLifecycle()
 
     var named by remember { mutableStateOf<List<NamedLocation>>(emptyList()) }
     var loadError by remember { mutableStateOf<String?>(null) }
@@ -359,7 +369,7 @@ fun LibraryMapScreen(
                         .padding(24.dp),
                 )
 
-                locations.isEmpty() -> Text(
+                hasLoadedLocationOnce && locations.isEmpty() -> Text(
                     text = stringResource(R.string.map_no_geotagged),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

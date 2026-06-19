@@ -202,6 +202,10 @@ class GridViewModel(
     /** True while the filtered locations load is in flight. */
     val isLoadingVideoLocations: StateFlow<Boolean> = _isLoadingVideoLocations.asStateFlow()
 
+    private val _hasLoadedLocationOnce = MutableStateFlow(false)
+    /** True after the first [loadVideoLocationsFilteredAsync] completes (success or error). */
+    val hasLoadedLocationOnce: StateFlow<Boolean> = _hasLoadedLocationOnce.asStateFlow()
+
     private var locationsRefreshJob: Job? = null
 
     // ── Catalog events ────────────────────────────────────────────────────
@@ -1141,6 +1145,7 @@ class GridViewModel(
         locationsRefreshJob = null
         _videoLocations.value = emptyList()
         _isLoadingVideoLocations.value = false
+        _hasLoadedLocationOnce.value = false
         // Clear per-video media caches so the next session starts clean.
         _scrubFrames.value = emptyMap()
         _hiResScrubFrames.value = emptyMap()
@@ -1276,6 +1281,7 @@ class GridViewModel(
             // Non-fatal — map keeps its last known locations.
         } finally {
             _isLoadingVideoLocations.value = false
+            _hasLoadedLocationOnce.value = true
         }
     }
 
