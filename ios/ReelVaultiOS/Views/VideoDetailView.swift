@@ -40,6 +40,7 @@ struct VideoDetailView: View {
                 VideoDetailExtras(grid: grid,
                                   video: grid.videos.first(where: { $0.id == video.id }) ?? video)
                 LocationButtonsSection(grid: grid, videoId: video.id, onShowOnMap: onShowOnMap)
+                CaptureDateButtonSection(grid: grid, videoId: video.id)
                 DetailGraphsView(grid: grid, videoId: video.id)
             }
             .padding()

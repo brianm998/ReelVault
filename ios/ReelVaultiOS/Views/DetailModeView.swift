@@ -33,6 +33,7 @@ struct DetailModeView: View {
                         VideoMetadataSection(video: video, refreshTick: grid.catalogChangeTick)
                         VideoDetailExtras(grid: grid, video: video)
                         LocationButtonsSection(grid: grid, videoId: video.id, onShowOnMap: onShowOnMap)
+                        CaptureDateButtonSection(grid: grid, videoId: video.id)
                         DetailGraphsView(grid: grid, videoId: video.id)
                     }
                     .padding()

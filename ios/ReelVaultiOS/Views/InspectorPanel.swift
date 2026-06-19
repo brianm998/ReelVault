@@ -46,6 +46,9 @@ struct InspectorPanel: View {
                         LocationButtonsSection(grid: grid, videoId: video.id, showHeader: false,
                                                onShowOnMap: onShowOnMap)
                     }
+                    CollapsibleSection("Capture Date") {
+                        CaptureDateButtonSection(grid: grid, videoId: video.id, showHeader: false)
+                    }
                     CollapsibleSection("Visuals") {
                         DetailGraphsView(grid: grid, videoId: video.id, showHeader: false)
                     }
