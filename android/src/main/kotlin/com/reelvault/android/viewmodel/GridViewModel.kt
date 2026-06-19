@@ -264,6 +264,26 @@ class GridViewModel(
      *  null when the user is viewing a manual collection or no collection. */
     private var activeSmartCollectionId: String? = null
 
+    /** Snapshot of the live filter bar taken just before a smart collection
+     *  overwrote it, so leaving the smart collection restores the user's
+     *  previous filter rather than clearing everything. */
+    private data class FilterSnapshot(
+        val tags: List<String>,
+        val tagId: String,
+        val searchQuery: String,
+        val minRating: Int,
+        val colorLabel: String,
+        val geo: Triple<Double, Double, Double>?,
+        val locationPath: String,
+        val hasLocation: AttributeFilterState,
+        val hasKeywords: AttributeFilterState,
+        val hasProxies: AttributeFilterState,
+        val fullResolution: AttributeFilterState,
+        val hasAudio: AttributeFilterState,
+        val orientation: OrientationFilterState,
+    )
+    private var preSmartFilterSnapshot: FilterSnapshot? = null
+
     /** Metadata column constraints expanded from the active smart collection.
      *  Sent to the daemon as generic metadataFilters. */
     private var smartMetadataFilters = emptyList<MetadataFilter>()
@@ -506,11 +526,30 @@ class GridViewModel(
      *  individual ListVideos filter params, matching the desktop/iOS behaviour. */
     fun setCollectionFilter(id: String?) {
         if (_selectedCollectionId.value == id) return
-        // Clear any previous smart-collection filter state.
+        // Leaving whatever we were viewing: if it was a smart collection, undo
+        // the filters it injected so they don't linger into the next view.
         clearSmartCollectionFilters()
         _selectedCollectionId.value = id
         val col = _collections.value.firstOrNull { it.id == id }
         if (col != null && col.isSmart && col.filterJson.isNotBlank()) {
+            // Snapshot the current (pre-smart-collection) manual filter so
+            // leaving the smart collection can restore it. clearSmartCollectionFilters
+            // ran above, so the live state here is the user's own manual filter.
+            preSmartFilterSnapshot = FilterSnapshot(
+                tags = filterTags,
+                tagId = _filterTagId.value,
+                searchQuery = _searchQuery.value,
+                minRating = _filterMinRating.value,
+                colorLabel = _filterColorLabel.value,
+                geo = _filterLocation.value,
+                locationPath = locationPathFilter,
+                hasLocation = _filterHasLocation.value,
+                hasKeywords = _filterHasKeywords.value,
+                hasProxies = _filterHasProxies.value,
+                fullResolution = _filterFullResolution.value,
+                hasAudio = _filterHasAudio.value,
+                orientation = _filterOrientation.value,
+            )
             // Smart collection: expand its filters into individual params so the
             // daemon receives a normal ListVideos request without a collectionId.
             val f = SmartCollectionFilters.fromJson(col.filterJson)
@@ -522,39 +561,52 @@ class GridViewModel(
         reloadFromTop(showSpinner = true)
     }
 
-    /** Parse a [SmartCollectionFilters] and store its criteria into the internal
-     *  filter fields that are forwarded to every ListVideos call. Does NOT trigger
-     *  a reload — the caller is responsible. */
+    /** Parse a [SmartCollectionFilters] and write its criteria into ALL of the
+     *  individual filter fields that are forwarded to every ListVideos call,
+     *  unconditionally overwriting any pre-existing manual filter state so the
+     *  grid shows exactly the smart collection's contents (mirrors desktop/iOS
+     *  applySmartFiltersToBar). Does NOT trigger a reload — the caller is
+     *  responsible. */
     private fun applySmartFilters(id: String, f: SmartCollectionFilters) {
         activeSmartCollectionId = id
         _selectedCollectionIsSmart.value = true
         collectionId = null  // Smart: never send collectionId to the daemon.
 
         // Tag IDs travel via filterTags; the grid/count paths both use them.
+        // Always assigned (even empty) so a previous manual tag filter is cleared.
         filterTags = f.tagIds
+        _filterTagId.value = f.tagIds.firstOrNull() ?: ""
 
-        // Geo filter.
-        if (f.hasGeo) {
-            _filterLocation.value = Triple(f.geoLat, f.geoLon, f.geoRadiusKm)
-        }
+        // Geo filter — null when the collection has no geo constraint so an
+        // existing manual geo filter is cleared rather than left active.
+        _filterLocation.value = if (f.hasGeo) Triple(f.geoLat, f.geoLon, f.geoRadiusKm) else null
+        _filterLocationLabel.value = null
 
         // Location path(s) — join with newline like the desktop does.
-        if (f.locationPaths.isNotEmpty()) {
-            locationPathFilter = f.locationPaths.joinToString("\n")
-        }
+        // Empty string clears any previous manual library-folder filter.
+        locationPathFilter = f.locationPaths.joinToString("\n")
 
-        // Rating and color label.
-        if (f.minRating > 0) _filterMinRating.value = f.minRating
-        if (f.colorLabel.isNotEmpty()) _filterColorLabel.value = f.colorLabel
+        // Rating and color label — always set so a manual filter is zeroed out
+        // when the smart collection doesn't constrain those fields.
+        _filterMinRating.value = f.minRating
+        _filterColorLabel.value = f.colorLabel
 
         // Search query from the saved filter.
-        if (f.searchQuery.isNotEmpty()) _searchQuery.value = f.searchQuery
+        _searchQuery.value = f.searchQuery
 
-        // Tri-state attribute filters.
+        // Tri-state attribute filters — always assigned (Any = unconstrained).
         smartHasLocation = f.hasLocation
         smartHasKeywords = f.hasKeywords
         smartHasProxies = f.hasProxies
         smartFullResolution = f.fullResolution
+        // The user-side copies must also be reset to Any so mergeAttr picks up
+        // the smart value cleanly (a leftover user Yes/No would further narrow).
+        _filterHasLocation.value = AttributeFilterState.Any
+        _filterHasKeywords.value = AttributeFilterState.Any
+        _filterHasProxies.value = AttributeFilterState.Any
+        _filterFullResolution.value = AttributeFilterState.Any
+        _filterHasAudio.value = AttributeFilterState.Any
+        _filterOrientation.value = OrientationFilterState.Any
 
         // Metadata column constraints (camera, lens, codec, year, ISO, …) plus
         // the derived has-audio / orientation filters that ride as MetadataFilters.
@@ -567,26 +619,57 @@ class GridViewModel(
             } + derivedAttributeMetadataFilters(f.hasAudio, f.orientation)
     }
 
-    /** Reset all smart-collection-expanded filter fields back to their defaults.
-     *  Called whenever a new collection is selected (to avoid stale state leaking
-     *  from the previous smart collection into the next selection). */
+    /** Undo the filter fields a smart collection expanded into the bar. Restores
+     *  the snapshot captured when the smart collection was entered, so the user
+     *  returns to exactly the filter they had before. Falls back to clearing all
+     *  filters when there is no snapshot (e.g. the smart collection was the first
+     *  thing selected). No-op when no smart collection is currently applied. */
     private fun clearSmartCollectionFilters() {
         if (activeSmartCollectionId == null) return
         activeSmartCollectionId = null
         _selectedCollectionIsSmart.value = false
-        filterTags = emptyList()
-        _filterTagId.value = ""
-        _filterLocation.value = null
-        _filterLocationLabel.value = null
-        locationPathFilter = ""
-        _filterMinRating.value = 0
-        _filterColorLabel.value = ""
-        _searchQuery.value = ""
+        // Always clear the smart-only backing vars regardless of snapshot.
         smartHasLocation = AttributeFilterState.Any
         smartHasKeywords = AttributeFilterState.Any
         smartHasProxies = AttributeFilterState.Any
         smartFullResolution = AttributeFilterState.Any
         smartMetadataFilters = emptyList()
+        val snap = preSmartFilterSnapshot
+        preSmartFilterSnapshot = null
+        if (snap != null) {
+            // Restore the manual filter state that was active before the smart
+            // collection overwrote it.
+            filterTags = snap.tags
+            _filterTagId.value = snap.tagId
+            _searchQuery.value = snap.searchQuery
+            _filterMinRating.value = snap.minRating
+            _filterColorLabel.value = snap.colorLabel
+            _filterLocation.value = snap.geo
+            _filterLocationLabel.value = null
+            locationPathFilter = snap.locationPath
+            _filterHasLocation.value = snap.hasLocation
+            _filterHasKeywords.value = snap.hasKeywords
+            _filterHasProxies.value = snap.hasProxies
+            _filterFullResolution.value = snap.fullResolution
+            _filterHasAudio.value = snap.hasAudio
+            _filterOrientation.value = snap.orientation
+        } else {
+            // No snapshot — reset manual filter fields to defaults.
+            filterTags = emptyList()
+            _filterTagId.value = ""
+            _filterLocation.value = null
+            _filterLocationLabel.value = null
+            locationPathFilter = ""
+            _filterMinRating.value = 0
+            _filterColorLabel.value = ""
+            _searchQuery.value = ""
+            _filterHasLocation.value = AttributeFilterState.Any
+            _filterHasKeywords.value = AttributeFilterState.Any
+            _filterHasProxies.value = AttributeFilterState.Any
+            _filterFullResolution.value = AttributeFilterState.Any
+            _filterHasAudio.value = AttributeFilterState.Any
+            _filterOrientation.value = OrientationFilterState.Any
+        }
     }
 
     /** Narrow to videos within [path]. Empty string shows all. */
