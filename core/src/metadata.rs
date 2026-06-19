@@ -167,6 +167,36 @@ impl MetadataExtractor {
             }
         }
 
+        // QuickTime *keyed* metadata (moov[/trak]/meta → keys → ilst).
+        // ffprobe lifts the movie-level keys into format.tags (make/model/
+        // creationdate/location, handled above), but drops the per-track
+        // keys where iPhones record the lens — so read them natively here.
+        // Empty for `photos://` pseudo-paths and other non-file sources: on
+        // iOS the native backend fills format.tags itself, so the extract_*
+        // tag lookups above already covered those.
+        let qt = crate::quicktime::read_quicktime_metadata(video_path);
+
+        // Lens, last in the priority chain: ffprobe tags → XMP (both above)
+        // → the per-track QuickTime key. On the daemon path the first two are
+        // empty for iPhone clips, so this is what actually populates it.
+        if lens_model.is_none() {
+            lens_model = qt.get("com.apple.quicktime.camera.lens_model").cloned();
+        }
+
+        // GPS. iPhone clips embed `com.apple.quicktime.location.ISO6709`,
+        // which the old extractor ignored entirely — camera-original location
+        // never reached the catalog, only a manual UpdateVideoLocation did.
+        // Prefer the ffprobe tag; fall back to the natively-parsed key.
+        let (gps_latitude, gps_longitude, gps_altitude) =
+            Self::extract_location(&format.tags)
+                .or_else(|| Self::extract_location(&video_stream.tags))
+                .or_else(|| {
+                    qt.get("com.apple.quicktime.location.ISO6709")
+                        .and_then(|s| parse_iso6709(s))
+                })
+                .map(|(la, lo, al)| (Some(la), Some(lo), al))
+                .unwrap_or((None, None, None));
+
         // Recover a missing make prefix. Some files carry only the model
         // (a sidecar wrote `tiff:Model` but no make, and ffprobe had none
         // either), leaving a bare code like "ILCE-7SM2". When that code
@@ -194,7 +224,12 @@ impl MetadataExtractor {
         let final_iso = xmp.as_ref().and_then(|x| x.iso)
             .or_else(|| Self::udta_int(&format.tags, &video_stream.tags, ISO_KEYS));
         let final_aperture = xmp.as_ref().and_then(|x| x.aperture)
-            .or_else(|| Self::udta_rational(&format.tags, &video_stream.tags, FNUMBER_KEYS));
+            .or_else(|| Self::udta_rational(&format.tags, &video_stream.tags, FNUMBER_KEYS))
+            // iPhone per-track key, formatted "F1.78" — strip the leading F.
+            .or_else(|| {
+                qt.get("com.apple.quicktime.camera.lens_irisfnumber")
+                    .and_then(|s| crate::xmp::parse_rational(s.trim_start_matches(['F', 'f'])))
+            });
         let final_exposure_time_s = xmp.as_ref().and_then(|x| x.exposure_time_s)
             .or_else(|| Self::udta_rational(&format.tags, &video_stream.tags, EXPOSURE_TIME_KEYS));
         let final_focal_length_mm = xmp.as_ref().and_then(|x| x.focal_length_mm)
@@ -245,9 +280,10 @@ impl MetadataExtractor {
             "INSERT INTO metadata
              (video_id, duration_ms, frame_count, codec_video, codec_audio, width, height, fps, bitrate,
               color_space, hdr, audio_channels, audio_sample_rate, creation_date, camera_model,
-              lens_model, iso, aperture, exposure_time_s, focal_length_mm,
+              lens_model, gps_latitude, gps_longitude, gps_altitude,
+              iso, aperture, exposure_time_s, focal_length_mm,
               exposure_mode, exposure_program, white_balance, metadata_json)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(video_id) DO UPDATE SET
              duration_ms=excluded.duration_ms,
              frame_count=excluded.frame_count,
@@ -263,6 +299,13 @@ impl MetadataExtractor {
              creation_date=excluded.creation_date,
              camera_model=excluded.camera_model,
              lens_model=excluded.lens_model,
+             -- Refresh GPS from the file when it carries a location, but keep
+             -- an existing value when it doesn't, so a re-index can't wipe a
+             -- location the user set manually via UpdateVideoLocation (whose
+             -- file write may not have stuck on a read-only source).
+             gps_latitude=COALESCE(excluded.gps_latitude, gps_latitude),
+             gps_longitude=COALESCE(excluded.gps_longitude, gps_longitude),
+             gps_altitude=COALESCE(excluded.gps_altitude, gps_altitude),
              iso=excluded.iso,
              aperture=excluded.aperture,
              exposure_time_s=excluded.exposure_time_s,
@@ -293,6 +336,9 @@ impl MetadataExtractor {
                 creation_date,
                 camera_model,
                 lens_model,
+                gps_latitude,
+                gps_longitude,
+                gps_altitude,
                 final_iso,
                 final_aperture,
                 final_exposure_time_s,
@@ -540,11 +586,36 @@ impl MetadataExtractor {
     }
 
     /// Look for lens info in various tag formats used by different cameras.
+    /// `com.apple.quicktime.camera.lens_model` is the real iPhone key (a
+    /// *per-track* keyed-metadata entry); ffprobe drops it, so on the daemon
+    /// path it arrives via [`crate::quicktime`], but the iOS native backend
+    /// synthesizes it straight into `format.tags`, so accept it here too.
     fn extract_lens(tags: &Option<FFProbeTagMap>) -> Option<String> {
         Self::extract_tag(tags, "lens_model")
+            .or_else(|| Self::extract_tag(tags, "com.apple.quicktime.camera.lens_model"))
             .or_else(|| Self::extract_tag(tags, "com.apple.quicktime.lens.model"))
             .or_else(|| Self::extract_tag(tags, "lens"))
             .or_else(|| Self::extract_tag(tags, "lensmodel"))
+    }
+
+    /// GPS location from a QuickTime ISO 6709 tag. iPhone clips carry
+    /// `com.apple.quicktime.location.ISO6709` (ffprobe surfaces it in
+    /// `format.tags`); some non-Apple muxers write a bare `location`.
+    /// Matched case-insensitively because ffprobe preserves the tag's
+    /// mixed-case `ISO6709` spelling. Returns (latitude, longitude, optional
+    /// altitude in metres).
+    fn extract_location(tags: &Option<FFProbeTagMap>) -> Option<(f64, f64, Option<f64>)> {
+        let map = tags.as_ref()?;
+        let raw = map
+            .iter()
+            .find(|(k, _)| {
+                let k = k.to_ascii_lowercase();
+                k.ends_with("location.iso6709")
+                    || k == "location"
+                    || k == "com.apple.quicktime.location"
+            })
+            .map(|(_, v)| v.clone())?;
+        parse_iso6709(&raw)
     }
 
     fn extract_creation_date(tags: &Option<FFProbeTagMap>) -> Option<i64> {
@@ -920,6 +991,33 @@ pub(crate) fn merge_make_model(
     )
 }
 
+/// Parse an ISO 6709 location string into `(latitude, longitude, optional
+/// altitude)`. QuickTime/iPhone uses signed decimal degrees with a trailing
+/// slash, e.g. `+37.8952-122.0480+069.173/` (altitude in metres) or
+/// `+37.8126-122.1204/` (no altitude). Each component is introduced by a
+/// mandatory `+`/`-`, which is how we tokenise — the sign is the delimiter.
+/// Returns `None` unless at least a lat/lon pair parses.
+pub(crate) fn parse_iso6709(s: &str) -> Option<(f64, f64, Option<f64>)> {
+    let t = s.trim().trim_end_matches('/');
+    let mut tokens: Vec<String> = Vec::new();
+    let mut cur = String::new();
+    for (i, c) in t.char_indices() {
+        if (c == '+' || c == '-') && i != 0 && !cur.is_empty() {
+            tokens.push(std::mem::take(&mut cur));
+        }
+        cur.push(c);
+    }
+    if !cur.is_empty() {
+        tokens.push(cur);
+    }
+    let lat: f64 = tokens.first()?.parse().ok()?;
+    let lon: f64 = tokens.get(1)?.parse().ok()?;
+    // A trailing CRS suffix (rare) lands on the altitude token and makes it
+    // unparseable — fine, we just drop altitude in that case.
+    let alt: Option<f64> = tokens.get(2).and_then(|s| s.parse().ok());
+    Some((lat, lon, alt))
+}
+
 /// Extract an audio loudness-over-time series for the detail view's volume
 /// graph. Runs ffmpeg's EBU R128 meter over the file's audio and reads the
 /// momentary-loudness (`M:`) value it logs (~10 per second), then averages
@@ -1045,6 +1143,59 @@ mod tests {
         assert_eq!(
             merge_make_model(None, Some("ILCE-9"), None, None),
             Some("ILCE-9".to_string())
+        );
+    }
+
+    #[test]
+    fn parse_iso6709_decimal_with_and_without_altitude() {
+        let (la, lo, al) = parse_iso6709("+37.8952-122.0480+069.173/").unwrap();
+        assert!((la - 37.8952).abs() < 1e-9);
+        assert!((lo + 122.0480).abs() < 1e-9);
+        assert!((al.unwrap() - 69.173).abs() < 1e-6);
+
+        // No altitude component (iPhone X clips, and our own writer when alt=0).
+        let (la, lo, al) = parse_iso6709("+37.8126-122.1204/").unwrap();
+        assert!((la - 37.8126).abs() < 1e-9);
+        assert!((lo + 122.1204).abs() < 1e-9);
+        assert!(al.is_none());
+
+        // Negative altitude (below sea level) must keep its sign.
+        let (_, _, al) = parse_iso6709("+10.0+20.0-5.5/").unwrap();
+        assert!((al.unwrap() + 5.5).abs() < 1e-6);
+
+        assert!(parse_iso6709("garbage").is_none());
+        assert!(parse_iso6709("+37.8/").is_none()); // lon missing
+    }
+
+    #[test]
+    fn extract_location_finds_mixed_case_quicktime_key() {
+        // ffprobe preserves the tag's uppercase `ISO6709`; the lookup is
+        // case-insensitive so it still resolves.
+        let t = tags(&[(
+            "com.apple.quicktime.location.ISO6709",
+            "+37.8952-122.0480+069.173/",
+        )]);
+        let (la, lo, al) = MetadataExtractor::extract_location(&t).unwrap();
+        assert!((la - 37.8952).abs() < 1e-6);
+        assert!((lo + 122.0480).abs() < 1e-6);
+        assert!((al.unwrap() - 69.173).abs() < 1e-3);
+
+        // Bare `location` from a non-Apple muxer.
+        assert!(MetadataExtractor::extract_location(&tags(&[("location", "+10.0-20.0/")])).is_some());
+
+        // Nothing location-shaped → None.
+        assert!(MetadataExtractor::extract_location(&tags(&[("make", "Apple")])).is_none());
+    }
+
+    #[test]
+    fn extract_lens_accepts_iphone_camera_key() {
+        let t = tags(&[(
+            "com.apple.quicktime.camera.lens_model",
+            "iPhone 16 Pro back camera 6.765mm f/1.78",
+        )]);
+        assert_eq!(
+            MetadataExtractor::extract_lens(&t).as_deref(),
+            Some("iPhone 16 Pro back camera 6.765mm f/1.78")
         );
     }
 

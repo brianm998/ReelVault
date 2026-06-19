@@ -27,6 +27,7 @@ pub mod camera_names;
 pub mod full_resolution;
 pub mod sensor_cache;
 pub mod xmp;
+pub mod quicktime;
 pub mod metadata_keys;
 
 /// C-ABI entry point that boots the core in-process inside the iOS app
