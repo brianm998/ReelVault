@@ -2276,6 +2276,71 @@ public class GridViewModel: ObservableObject {
 
     public func clearScanResult() { scanResult = nil }
 
+    /// Rescan every known library location in sequence, aggregating progress
+    /// into the shared `scanStatus`/`scanResult`. Calling `rescanLibrary(path:)`
+    /// once per location from the UI races all of those Tasks against each other
+    /// and they all stomp on `scanStatus`/`scanResult`; this method avoids that.
+    public func rescanAllLibraries() {
+        let paths = libraryLocations.map { $0.path }
+        guard !paths.isEmpty else { return }
+        Task {
+            scanResult = nil
+            var totalFound = 0
+            var totalIndexed = 0
+            var failures = 0
+            for (idx, path) in paths.enumerated() {
+                rescanningPaths.insert(path)
+                scanStatus = "Rescanning \(idx + 1)/\(paths.count): \(URL(fileURLWithPath: path).lastPathComponent)…"
+                defer { rescanningPaths.remove(path) }
+                do {
+                    var peakFound = 0
+                    var peakIndexed = 0
+                    var errorMessage: String?
+                    var tick = 0
+                    for try await progress in repository.scanLibrary(
+                        locationPath: path,
+                        autoGroup: true,
+                        filenameDateFormat: "",
+                        filenameDatePosition: ""
+                    ) {
+                        if progress.status == "error" {
+                            errorMessage = progress.currentFile
+                        } else {
+                            peakFound = max(peakFound, progress.videosFound)
+                            peakIndexed = max(peakIndexed, progress.videosIndexed)
+                            scanStatus = "Rescanning \(idx + 1)/\(paths.count): \(progress.status) \(peakIndexed)/\(peakFound)"
+                        }
+                        tick += 1
+                        if tick % 12 == 0 { loadVideos(); loadLibraryLocations() }
+                    }
+                    loadVideos(); loadLibraryLocations()
+                    if errorMessage != nil { failures += 1 } else {
+                        totalFound += max(peakFound, peakIndexed)
+                        totalIndexed += peakIndexed
+                    }
+                } catch {
+                    failures += 1
+                }
+            }
+            if failures > 0 {
+                scanResult = ScanResult(
+                    success: false,
+                    message: "\(failures) of \(paths.count) location(s) failed to rescan",
+                    videosFound: totalFound,
+                    videosIndexed: totalIndexed
+                )
+            } else {
+                scanResult = ScanResult(
+                    success: true,
+                    message: "Rescanned \(paths.count) location(s): \(totalFound) videos found, \(totalIndexed) indexed",
+                    videosFound: totalFound,
+                    videosIndexed: totalIndexed
+                )
+            }
+            scanStatus = nil
+        }
+    }
+
     // MARK: - Selection (plain / shift / cmd-click semantics)
 
     public func selectVideo(_ video: VideoSummary) {

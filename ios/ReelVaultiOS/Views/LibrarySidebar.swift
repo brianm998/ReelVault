@@ -251,9 +251,7 @@ struct LibrarySidebar: View {
                 // Hidden while any rescan is already running.
                 if grid.rescanningPaths.isEmpty {
                     Button {
-                        for loc in grid.libraryLocations {
-                            grid.rescanLibrary(path: loc.path)
-                        }
+                        grid.rescanAllLibraries()
                     } label: {
                         Label("Scan All", systemImage: "arrow.clockwise")
                             .font(.caption)

@@ -16,16 +16,26 @@ import ReelVaultKit
 /// confirmation alert, matching the macOS pattern.
 struct SmartCollectionCriteriaView: View {
     @ObservedObject var grid: GridViewModel
+    /// The collection as it existed when the sheet/panel was opened. Used only as
+    /// a seed: `liveCollection` re-looks it up from `grid.collections` by name on
+    /// every render so subsequent removals (which delete + re-create the collection
+    /// with a new ID) operate on the current object rather than the stale one.
     let collection: Collection
 
     @State private var pendingCriterion: SmartCriterionRow?
 
+    /// The current version of the collection from the live list, keyed by name.
+    /// Falls back to the seed `collection` while the reload is in flight.
+    private var liveCollection: Collection {
+        grid.collections.first(where: { $0.name == collection.name && $0.isSmart }) ?? collection
+    }
+
     var body: some View {
-        let criteria = grid.smartCollectionCriteria(collection)
+        let criteria = grid.smartCollectionCriteria(liveCollection)
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(collection.name)
+                    Text(liveCollection.name)
                         .font(.headline)
                     Text("Smart collection — videos are gathered automatically by these rules:")
                         .font(.caption)
@@ -85,12 +95,12 @@ struct SmartCollectionCriteriaView: View {
                presenting: pendingCriterion
         ) { row in
             Button("Remove", role: .destructive) {
-                grid.removeSmartCollectionCriterion(collection, row.criterion)
+                grid.removeSmartCollectionCriterion(liveCollection, row.criterion)
                 pendingCriterion = nil
             }
             Button("Cancel", role: .cancel) { pendingCriterion = nil }
         } message: { row in
-            Text("Remove \"\(row.label): \(row.value)\" from smart collection \"\(collection.name)\"? This changes what the collection gathers.")
+            Text("Remove \"\(row.label): \(row.value)\" from smart collection \"\(liveCollection.name)\"? This changes what the collection gathers.")
         }
     }
 }
