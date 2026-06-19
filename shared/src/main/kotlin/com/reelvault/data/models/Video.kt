@@ -102,8 +102,12 @@ data class VideoSummary(
     val audioTrackCount: Int = 0,
     /** True for stereoscopic MV-HEVC (Apple Vision Pro "spatial") video. */
     val spatial: Boolean = false,
+    /** Spherical/360 projection ("equirectangular", …); empty if not 360. */
+    val projection: String = "",
 ) {
     val isInGroup: Boolean get() = groupId.isNotEmpty() && groupSize > 1
+    /** True when the clip is 360°/spherical. */
+    val is360: Boolean get() = projection.isNotEmpty()
     /** "240 → 30 fps" when captured faster than playback (slow-motion), else null. */
     val slowMotionLabel: String? get() =
         if (captureFps > fps + 1 && fps > 0) "${Math.round(captureFps)} → ${Math.round(fps)} fps" else null
@@ -226,8 +230,12 @@ data class VideoMetadata(
     val audioTrackCount: Int = 0,
     /** True for stereoscopic MV-HEVC (Apple Vision Pro "spatial") video. */
     val spatial: Boolean = false,
+    /** Spherical/360 projection ("equirectangular", …); empty if not 360. */
+    val projection: String = "",
 ) {
     val resolution: String get() = "$width x $height"
+    /** True when the clip is 360°/spherical. */
+    val is360: Boolean get() = projection.isNotEmpty()
 
     /** "240 → 30 fps" when captured faster than playback (slow-motion), else
      *  null. The 1 fps margin avoids false positives from rounding. */

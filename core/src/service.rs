@@ -402,7 +402,7 @@ impl ReelVaultService {
                     iso, aperture, exposure_time_s, focal_length_mm,
                     exposure_mode, exposure_program, white_balance,
                     color_transfer, color_primaries, dynamic_range, timecode_start, capture_fps,
-                    bit_depth, audio_bit_depth, audio_language, audio_track_count, spatial
+                    bit_depth, audio_bit_depth, audio_language, audio_track_count, spatial, projection
                  FROM metadata WHERE video_id = ?",
                 [video_id],
                 |row| {
@@ -441,6 +441,7 @@ impl ReelVaultService {
                         row.get::<_, Option<String>>(31)?,
                         row.get::<_, Option<i32>>(32)?,
                         row.get::<_, i32>(33)? != 0,
+                        row.get::<_, Option<String>>(34)?,
                     ))
                 },
             )
@@ -464,11 +465,11 @@ impl ReelVaultService {
              iso, aperture, exposure_time_s, focal_length_mm,
              exposure_mode, exposure_program, white_balance,
              color_transfer, color_primaries, dynamic_range, timecode_start, capture_fps,
-             bit_depth, audio_bit_depth, audio_language, audio_track_count, spatial) =
+             bit_depth, audio_bit_depth, audio_language, audio_track_count, spatial, projection) =
             row.unwrap_or((0, None, None, 0, 0, 0.0, 0, None, false, 0, 0, None, None, None, None, None, None,
                            None, None, None, None, None, None, None,
                            None, None, None, None, None,
-                           None, None, None, None, false));
+                           None, None, None, None, false, None));
 
         let camera_model_str = camera_model.unwrap_or_default();
         // Resolve marketing name with the user's custom overrides
@@ -530,6 +531,7 @@ impl ReelVaultService {
             audio_language: audio_language.unwrap_or_default(),
             audio_track_count: audio_track_count.unwrap_or(0),
             spatial,
+            projection: projection.unwrap_or_default(),
             tags,
             collections: db.get_video_collections(video_id).unwrap_or_default(),
             notes,
@@ -681,7 +683,7 @@ impl ReelVaultService {
                             lens_model, iso, aperture, exposure_time_s, focal_length_mm,
                             bitrate, COALESCE(frame_count, 0),
                             dynamic_range, timecode_start, capture_fps,
-                            bit_depth, audio_bit_depth, audio_language, audio_track_count, spatial
+                            bit_depth, audio_bit_depth, audio_language, audio_track_count, spatial, projection
                      FROM metadata WHERE video_id IN ({ph})"
                 )) {
                     if let Ok(rows) = stmt.query_map(
@@ -715,6 +717,7 @@ impl ReelVaultService {
                                     audio_language: row.get::<_, Option<String>>(23)?,
                                     audio_track_count: row.get::<_, Option<i32>>(24)?,
                                     spatial: row.get::<_, Option<i32>>(25)?.unwrap_or(0) != 0,
+                                    projection: row.get::<_, Option<String>>(26)?,
                                 },
                             ))
                         },
@@ -977,6 +980,7 @@ impl ReelVaultService {
                     audio_language: m.audio_language.unwrap_or_default(),
                     audio_track_count: m.audio_track_count.unwrap_or(0),
                     spatial: m.spatial,
+                    projection: m.projection.unwrap_or_default(),
                 }
             })
             .collect()
@@ -1023,6 +1027,7 @@ struct MetaFields {
     audio_language: Option<String>,
     audio_track_count: Option<i32>,
     spatial: bool,
+    projection: Option<String>,
 }
 
 /// Chunk size for `IN (?,…)` lists — comfortably below SQLite's bind-variable

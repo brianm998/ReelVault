@@ -224,6 +224,9 @@ struct DetailView: View {
                 if metadata.spatial {
                     MetadataItemView(label: "Spatial Video", value: "Yes")
                 }
+                if metadata.is360 {
+                    MetadataItemView(label: "360° Video", value: metadata.projection.capitalized)
+                }
                 if !metadata.dynamicRange.isEmpty {
                     MetadataItemView(label: "Dynamic Range", value: metadata.dynamicRange)
                 }

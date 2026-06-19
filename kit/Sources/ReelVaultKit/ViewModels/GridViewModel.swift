@@ -2735,7 +2735,7 @@ public class GridViewModel: ObservableObject {
                     dynamicRange: v.dynamicRange, timecode: v.timecode, captureFps: v.captureFps,
                     bitDepth: v.bitDepth, audioBitDepth: v.audioBitDepth,
                     audioLanguage: v.audioLanguage, audioTrackCount: v.audioTrackCount,
-                    spatial: v.spatial
+                    spatial: v.spatial, projection: v.projection
                 )
             }
             return v

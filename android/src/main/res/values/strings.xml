@@ -209,6 +209,7 @@
     <string name="detail_field_frames">Frames</string>
     <string name="detail_field_hdr">HDR</string>
     <string name="detail_field_spatial">Spatial Video</string>
+    <string name="detail_field_360">360° Video</string>
     <string name="detail_value_yes">Yes</string>
     <string name="detail_field_color_space">Color Space</string>
     <string name="detail_field_dynamic_range">Dynamic Range</string>

@@ -352,6 +352,8 @@ message VideoSummary {
   int32 audio_track_count = 43;
   // True for stereoscopic MV-HEVC (Apple Vision Pro "spatial") video.
   bool spatial = 44;
+  // Spherical/360 projection ("equirectangular", …); empty if not 360.
+  string projection = 45;
 }
 
 enum FullResolutionStatus {
@@ -487,6 +489,8 @@ message VideoMetadata {
   int32 audio_track_count = 49;
   // True for stereoscopic MV-HEVC (Apple Vision Pro "spatial") video.
   bool spatial = 50;
+  // Spherical/360 projection ("equirectangular", "cubemap", …); empty if not 360.
+  string projection = 51;
 }
 
 message GetThumbnailRequest {

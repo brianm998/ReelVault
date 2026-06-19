@@ -118,8 +118,12 @@ public struct VideoSummary: Identifiable, Hashable, Sendable {
     public var audioTrackCount: Int = 0
     /// True for stereoscopic MV-HEVC (Apple Vision Pro "spatial") video.
     public var spatial: Bool = false
+    /// Spherical/360 projection ("equirectangular", …); empty if not 360.
+    public var projection: String = ""
 
     public var isInGroup: Bool { !groupId.isEmpty && groupSize > 1 }
+    /// True when the clip is 360°/spherical (carries a projection).
+    public var is360: Bool { !projection.isEmpty }
     /// "240 → 30 fps" when captured faster than playback (slow-motion), else nil.
     public var slowMotionLabel: String? {
         guard captureFps > fps + 1, fps > 0 else { return nil }
@@ -201,7 +205,7 @@ public struct VideoSummary: Identifiable, Hashable, Sendable {
             dynamicRange: dynamicRange, timecode: timecode, captureFps: captureFps,
             bitDepth: bitDepth, audioBitDepth: audioBitDepth,
             audioLanguage: audioLanguage, audioTrackCount: audioTrackCount,
-            spatial: spatial
+            spatial: spatial, projection: projection
         )
     }
 
@@ -229,7 +233,7 @@ public struct VideoSummary: Identifiable, Hashable, Sendable {
             dynamicRange: dynamicRange, timecode: timecode, captureFps: captureFps,
             bitDepth: bitDepth, audioBitDepth: audioBitDepth,
             audioLanguage: audioLanguage, audioTrackCount: audioTrackCount,
-            spatial: spatial
+            spatial: spatial, projection: projection
         )
     }
 
@@ -257,7 +261,7 @@ public struct VideoSummary: Identifiable, Hashable, Sendable {
             dynamicRange: dynamicRange, timecode: timecode, captureFps: captureFps,
             bitDepth: bitDepth, audioBitDepth: audioBitDepth,
             audioLanguage: audioLanguage, audioTrackCount: audioTrackCount,
-            spatial: spatial
+            spatial: spatial, projection: projection
         )
     }
 
@@ -285,7 +289,7 @@ public struct VideoSummary: Identifiable, Hashable, Sendable {
             dynamicRange: dynamicRange, timecode: timecode, captureFps: captureFps,
             bitDepth: bitDepth, audioBitDepth: audioBitDepth,
             audioLanguage: audioLanguage, audioTrackCount: audioTrackCount,
-            spatial: spatial
+            spatial: spatial, projection: projection
         )
     }
 }
@@ -362,8 +366,12 @@ public struct VideoMetadata: Identifiable, Sendable {
     public let audioTrackCount: Int
     /// True for stereoscopic MV-HEVC (Apple Vision Pro "spatial") video.
     public let spatial: Bool
+    /// Spherical/360 projection ("equirectangular", …); empty if not 360.
+    public let projection: String
 
     public var resolution: String { "\(width)×\(height)" }
+    /// True when the clip is 360°/spherical (carries a projection).
+    public var is360: Bool { !projection.isEmpty }
 
     /// "240 → 30 fps" when the clip was captured faster than it plays back
     /// (slow-motion), otherwise nil. The 1 fps margin avoids false positives

@@ -674,6 +674,12 @@ public nonisolated struct Reelvault_VideoSummary: @unchecked Sendable {
     set {_uniqueStorage()._spatial = newValue}
   }
 
+  /// Spherical/360 projection ("equirectangular", …); empty if not 360.
+  public var projection: String {
+    get {_storage._projection}
+    set {_uniqueStorage()._projection = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -1036,6 +1042,12 @@ public nonisolated struct Reelvault_VideoMetadata: @unchecked Sendable {
   public var spatial: Bool {
     get {_storage._spatial}
     set {_uniqueStorage()._spatial = newValue}
+  }
+
+  /// Spherical/360 projection ("equirectangular", "cubemap", …); empty if not 360.
+  public var projection: String {
+    get {_storage._projection}
+    set {_uniqueStorage()._projection = newValue}
   }
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
@@ -3126,7 +3138,7 @@ nonisolated extension Reelvault_ListVideosRequest: SwiftProtobuf.Message, SwiftP
 
 nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".VideoSummary"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0\u{3}proxy_count\0\u{3}proxy_of\0\u{3}playable_natively\0\u{1}rating\0\u{3}color_label\0\u{3}camera_model\0\u{3}camera_display_name\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}lens_model\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}full_resolution\0\u{3}is_online\0\u{1}bitrate\0\u{3}frame_count\0\u{3}dynamic_range\0\u{1}timecode\0\u{3}capture_fps\0\u{3}bit_depth\0\u{3}audio_bit_depth\0\u{3}audio_language\0\u{3}audio_track_count\0\u{1}spatial\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{3}codec_video\0\u{3}codec_audio\0\u{1}fps\0\u{3}size_bytes\0\u{3}indexed_at\0\u{3}creation_date\0\u{1}tags\0\u{3}has_thumbnail\0\u{3}group_id\0\u{3}group_size\0\u{3}group_preferred_id\0\u{3}group_preferred_path\0\u{3}proxy_count\0\u{3}proxy_of\0\u{3}playable_natively\0\u{1}rating\0\u{3}color_label\0\u{3}camera_model\0\u{3}camera_display_name\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}lens_model\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}full_resolution\0\u{3}is_online\0\u{1}bitrate\0\u{3}frame_count\0\u{3}dynamic_range\0\u{1}timecode\0\u{3}capture_fps\0\u{3}bit_depth\0\u{3}audio_bit_depth\0\u{3}audio_language\0\u{3}audio_track_count\0\u{1}spatial\0\u{1}projection\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -3173,6 +3185,7 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
     var _audioLanguage: String = String()
     var _audioTrackCount: Int32 = 0
     var _spatial: Bool = false
+    var _projection: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3227,6 +3240,7 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
       _audioLanguage = source._audioLanguage
       _audioTrackCount = source._audioTrackCount
       _spatial = source._spatial
+      _projection = source._projection
     }
   }
 
@@ -3289,6 +3303,7 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
         case 42: try { try decoder.decodeSingularStringField(value: &_storage._audioLanguage) }()
         case 43: try { try decoder.decodeSingularInt32Field(value: &_storage._audioTrackCount) }()
         case 44: try { try decoder.decodeSingularBoolField(value: &_storage._spatial) }()
+        case 45: try { try decoder.decodeSingularStringField(value: &_storage._projection) }()
         default: break
         }
       }
@@ -3429,6 +3444,9 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
       if _storage._spatial != false {
         try visitor.visitSingularBoolField(value: _storage._spatial, fieldNumber: 44)
       }
+      if !_storage._projection.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._projection, fieldNumber: 45)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -3482,6 +3500,7 @@ nonisolated extension Reelvault_VideoSummary: SwiftProtobuf.Message, SwiftProtob
         if _storage._audioLanguage != rhs_storage._audioLanguage {return false}
         if _storage._audioTrackCount != rhs_storage._audioTrackCount {return false}
         if _storage._spatial != rhs_storage._spatial {return false}
+        if _storage._projection != rhs_storage._projection {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -3643,7 +3662,7 @@ nonisolated extension Reelvault_GetMetadataRequest: SwiftProtobuf.Message, Swift
 
 nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".VideoMetadata"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0\u{1}rating\0\u{3}color_label\0\u{3}camera_display_name\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}exposure_mode\0\u{3}exposure_program\0\u{3}white_balance\0\u{3}full_resolution\0\u{3}frame_count\0\u{3}color_transfer\0\u{3}color_primaries\0\u{3}dynamic_range\0\u{1}timecode\0\u{3}capture_fps\0\u{3}bit_depth\0\u{3}audio_bit_depth\0\u{3}audio_language\0\u{3}audio_track_count\0\u{1}spatial\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0\u{1}rating\0\u{3}color_label\0\u{3}camera_display_name\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}exposure_mode\0\u{3}exposure_program\0\u{3}white_balance\0\u{3}full_resolution\0\u{3}frame_count\0\u{3}color_transfer\0\u{3}color_primaries\0\u{3}dynamic_range\0\u{1}timecode\0\u{3}capture_fps\0\u{3}bit_depth\0\u{3}audio_bit_depth\0\u{3}audio_language\0\u{3}audio_track_count\0\u{1}spatial\0\u{1}projection\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -3696,6 +3715,7 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
     var _audioLanguage: String = String()
     var _audioTrackCount: Int32 = 0
     var _spatial: Bool = false
+    var _projection: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3756,6 +3776,7 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
       _audioLanguage = source._audioLanguage
       _audioTrackCount = source._audioTrackCount
       _spatial = source._spatial
+      _projection = source._projection
     }
   }
 
@@ -3824,6 +3845,7 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
         case 48: try { try decoder.decodeSingularStringField(value: &_storage._audioLanguage) }()
         case 49: try { try decoder.decodeSingularInt32Field(value: &_storage._audioTrackCount) }()
         case 50: try { try decoder.decodeSingularBoolField(value: &_storage._spatial) }()
+        case 51: try { try decoder.decodeSingularStringField(value: &_storage._projection) }()
         default: break
         }
       }
@@ -3982,6 +4004,9 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
       if _storage._spatial != false {
         try visitor.visitSingularBoolField(value: _storage._spatial, fieldNumber: 50)
       }
+      if !_storage._projection.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._projection, fieldNumber: 51)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4041,6 +4066,7 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
         if _storage._audioLanguage != rhs_storage._audioLanguage {return false}
         if _storage._audioTrackCount != rhs_storage._audioTrackCount {return false}
         if _storage._spatial != rhs_storage._spatial {return false}
+        if _storage._projection != rhs_storage._projection {return false}
         return true
       }
       if !storagesAreEqual {return false}

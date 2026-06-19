@@ -240,6 +240,7 @@ class VideoRepository(private val channelFactory: ChannelFactory) {
             audioLanguage = proto.audioLanguage,
             audioTrackCount = proto.audioTrackCount,
             spatial = proto.spatial,
+            projection = proto.projection,
         )
     }
 
@@ -295,6 +296,7 @@ class VideoRepository(private val channelFactory: ChannelFactory) {
             audioLanguage = proto.audioLanguage,
             audioTrackCount = proto.audioTrackCount,
             spatial = proto.spatial,
+            projection = proto.projection,
         )
     }
 

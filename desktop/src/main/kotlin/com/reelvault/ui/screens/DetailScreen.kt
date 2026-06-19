@@ -283,6 +283,9 @@ fun DetailScreen(
                     if (metadata.value!!.spatial) {
                         MetadataItem("Spatial Video", "Yes")
                     }
+                    if (metadata.value!!.is360) {
+                        MetadataItem("360° Video", metadata.value!!.projection.replaceFirstChar { it.uppercase() })
+                    }
                     if (metadata.value!!.dynamicRange.isNotEmpty()) {
                         MetadataItem("Dynamic Range", metadata.value!!.dynamicRange)
                     }

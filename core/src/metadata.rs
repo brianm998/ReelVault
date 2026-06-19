@@ -316,6 +316,15 @@ impl MetadataExtractor {
         // Spatial (stereoscopic MV-HEVC, Apple Vision Pro) video.
         let spatial = Self::is_spatial(video_stream, &format.tags);
 
+        // 360° / spherical video. ffprobe reports it as a "Spherical Mapping"
+        // side-data entry on the video stream with the projection; store the
+        // projection (NULL = not 360). Verified against a GSpherical-tagged clip.
+        let projection = video_stream.side_data_list.as_ref().and_then(|sds| {
+            sds.iter()
+                .find(|sd| sd.side_data_type.as_deref() == Some("Spherical Mapping"))
+                .map(|sd| sd.projection.clone().unwrap_or_else(|| "spherical".to_string()))
+        });
+
         // Color space + HDR. ffprobe reports the transfer characteristic on the
         // video stream; an HDR EOTF (PQ/HLG/DCI) is what makes a clip HDR — both
         // the FX3 ProRes and the iPhone 16 Pro (HLG) footage land here, where
@@ -361,14 +370,14 @@ impl MetadataExtractor {
         conn.execute(
             "INSERT INTO metadata
              (video_id, duration_ms, frame_count, codec_video, codec_audio, width, height, fps, bitrate,
-              color_space, color_transfer, color_primaries, dynamic_range, hdr, bit_depth, spatial,
+              color_space, color_transfer, color_primaries, dynamic_range, hdr, bit_depth, spatial, projection,
               capture_fps, timecode_start,
               audio_channels, audio_sample_rate, audio_bit_depth, audio_language, audio_track_count,
               creation_date, camera_model,
               lens_model, gps_latitude, gps_longitude, gps_altitude,
               iso, aperture, exposure_time_s, focal_length_mm,
               exposure_mode, exposure_program, white_balance, metadata_json)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(video_id) DO UPDATE SET
              duration_ms=excluded.duration_ms,
              frame_count=excluded.frame_count,
@@ -385,6 +394,7 @@ impl MetadataExtractor {
              hdr=excluded.hdr,
              bit_depth=excluded.bit_depth,
              spatial=excluded.spatial,
+             projection=excluded.projection,
              capture_fps=excluded.capture_fps,
              timecode_start=excluded.timecode_start,
              audio_channels=excluded.audio_channels,
@@ -432,6 +442,7 @@ impl MetadataExtractor {
                 hdr,
                 bit_depth,
                 spatial,
+                projection,
                 capture_fps,
                 timecode_start,
                 audio_channels,
@@ -1136,6 +1147,11 @@ pub struct FFProbeSideData {
     /// Rotation in degrees derived from the display matrix. Present only for
     /// `side_data_type = "Display Matrix"` entries.
     pub rotation: Option<i32>,
+    /// Spherical projection ("equirectangular", "cubemap", …). Present only for
+    /// `side_data_type = "Spherical Mapping"` entries — i.e. 360° video. ffmpeg
+    /// normalizes both the GSpherical (v1 XMP) and sv3d (v2 box) markers here.
+    #[serde(default)]
+    pub projection: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
