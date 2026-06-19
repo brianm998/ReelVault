@@ -176,6 +176,22 @@ impl MetadataExtractor {
         // tag lookups above already covered those.
         let qt = crate::quicktime::read_quicktime_metadata(video_path);
 
+        // GoPro GPMF telemetry track (`gpmd`). GoPro stores GPS and the camera
+        // name *only* in this binary track — never in the container tags ffprobe
+        // surfaces — so without reading it a GoPro clip shows no location and no
+        // camera. Gate on the stream actually being present so we don't reopen
+        // every (non-GoPro) file. Empty for `photos://` and other non-file
+        // sources (read_gpmf can't open them → empty).
+        let has_gpmf = probe_output
+            .streams
+            .iter()
+            .any(|s| s.codec_tag_string.as_deref() == Some("gpmd"));
+        let gpmf = if has_gpmf {
+            crate::gpmf::read_gpmf(video_path)
+        } else {
+            crate::gpmf::GpmfMetadata::default()
+        };
+
         // Lens, last in the priority chain: ffprobe tags → XMP (both above)
         // → the per-track QuickTime key. On the daemon path the first two are
         // empty for iPhone clips, so this is what actually populates it.
@@ -194,6 +210,8 @@ impl MetadataExtractor {
                     qt.get("com.apple.quicktime.location.ISO6709")
                         .and_then(|s| parse_iso6709(s))
                 })
+                // GoPro: a representative GPS fix from the GPMF track.
+                .or(gpmf.gps)
                 .map(|(la, lo, al)| (Some(la), Some(lo), al))
                 .unwrap_or((None, None, None));
 
@@ -206,6 +224,23 @@ impl MetadataExtractor {
         // siblings instead of forming a duplicate. No-op for anything
         // that already has a make or doesn't match a known body.
         camera_model = camera_model.map(|c| crate::camera_names::recover_make_prefix(&c));
+
+        // GoPro: the camera name lives in the GPMF `DVNM` (e.g. "Hero6 Black"),
+        // not in any container tag — so this is the only source. Prefix "GoPro "
+        // for the bare HERO/Fusion/MAX names so it groups under the brand; names
+        // that already include it (e.g. "GoPro Karma v1.0") are left alone.
+        if camera_model.is_none() {
+            camera_model = gpmf.device_name.clone().map(|n| {
+                let low = n.to_ascii_lowercase();
+                if low.contains("gopro") {
+                    n
+                } else if low.starts_with("hero") || low.starts_with("fusion") || low.starts_with("max") {
+                    format!("GoPro {n}")
+                } else {
+                    n
+                }
+            });
+        }
 
         // Photo-EXIF columns. Two independent sources, in priority order:
         //   1. The XMP packet (richer; written by tools that follow the
@@ -1058,6 +1093,9 @@ pub struct FFProbeStream {
     pub index: Option<i32>,
     pub codec_type: Option<String>,
     pub codec_name: Option<String>,
+    /// Container codec tag (e.g. "gpmd" for the GoPro GPMF telemetry track).
+    /// Used to gate the native GPMF read so non-GoPro files aren't reopened.
+    pub codec_tag_string: Option<String>,
     pub width: Option<i32>,
     pub height: Option<i32>,
     pub r_frame_rate: Option<String>,
