@@ -38,6 +38,9 @@ private const val PREF_SORT_FIELD = "sortField"
 private const val PREF_SORT_ASCENDING = "sortAscending"
 private const val PREF_VIEW_MODE = "viewMode"
 private const val DEFAULT_VIEW_MODE = "grid"
+private const val PREF_GRID_DENSITY = "gridDensity"
+/** Default density step (3 of 5) keeps roughly the same card size as before. */
+private const val DEFAULT_GRID_DENSITY = 3
 
 private const val POST_INDEX_LINGER_MS = 3_500L
 
@@ -110,6 +113,18 @@ class GridViewModel(
     )
     /** "grid" or "list". Persisted across process restarts via SharedPreferences. */
     val viewMode: StateFlow<String> = _viewMode.asStateFlow()
+
+    // ── Grid density ──────────────────────────────────────────────────────
+    // Integer in 1..5 (1 = many small columns, 5 = few large columns).
+    // Maps to a minimum card width (dp) used with GridCells.Adaptive so the
+    // grid reflows its column count in real time as the user drags the slider.
+    // Persisted across process restarts.
+
+    private val _gridDensity = MutableStateFlow(
+        prefs.getInt(PREF_GRID_DENSITY, DEFAULT_GRID_DENSITY).coerceIn(1, 5)
+    )
+    /** Grid density step: 1 (smallest / most columns) to 5 (largest / fewest columns). */
+    val gridDensity: StateFlow<Int> = _gridDensity.asStateFlow()
 
     // ── Top-of-card stat slots (loaded from catalog via GridSettings RPC) ─
     // Four [GridStatKey.raw] strings (padded/truncated to exactly 4).
@@ -735,6 +750,18 @@ class GridViewModel(
         if (_viewMode.value == mode) return
         _viewMode.value = mode
         prefs.edit().putString(PREF_VIEW_MODE, mode).apply()
+    }
+
+    /**
+     * Set the grid density step in 1..5 and persist to SharedPreferences.
+     * 1 = smallest cards / most columns, 5 = largest cards / fewest columns.
+     * The screen maps this to a minimum card width passed to [GridCells.Adaptive].
+     */
+    fun setGridDensity(density: Int) {
+        val clamped = density.coerceIn(1, 5)
+        if (_gridDensity.value == clamped) return
+        _gridDensity.value = clamped
+        prefs.edit().putInt(PREF_GRID_DENSITY, clamped).apply()
     }
 
     // ─────────────────────────────────────────────────────────────────────

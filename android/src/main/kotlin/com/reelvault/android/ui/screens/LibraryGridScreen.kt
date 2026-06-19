@@ -105,6 +105,7 @@ fun LibraryGridScreen(
     val selectedCollectionIsSmart by vm.selectedCollectionIsSmart.collectAsStateWithLifecycle()
     val filterLocationLabel by vm.filterLocationLabel.collectAsStateWithLifecycle()
     val topSlots by vm.topSlots.collectAsStateWithLifecycle()
+    val gridDensity by vm.gridDensity.collectAsStateWithLifecycle()
 
     // ── Local UI state ───────────────────────────────────────────────────
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -117,6 +118,7 @@ fun LibraryGridScreen(
     var showOverflowMenu by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
     var showCardStats by remember { mutableStateOf(false) }
+    var showDensitySheet by remember { mutableStateOf(false) }
 
     // ── Batch action dialog state ────────────────────────────────────────
     var showBatchOrganize by remember { mutableStateOf(false) }
@@ -124,18 +126,21 @@ fun LibraryGridScreen(
     var isBatchSharing by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    // ── Screen width for responsive column count ─────────────────────────
-    val configuration = LocalConfiguration.current
-    val screenWidthDp = configuration.screenWidthDp
-    // In single-pane mode on phones the drawer occupies the full screen; on
-    // tablets (>= TABLET_WIDTH_DP) the drawer slides in from the side at 280 dp,
-    // so effective grid width shrinks when the drawer is open. We use the
-    // device screen width for the column decision — open/closed is handled
-    // by Material's DrawerLayout, which reflowstis content automatically.
-    val gridColumns = when {
-        screenWidthDp >= WIDE_TABLET_WIDTH_DP -> 4
-        screenWidthDp >= TABLET_WIDTH_DP -> 3
-        else -> 2
+    // ── Adaptive min-card-width from density setting ────────────────────
+    // Density 1..5 maps to a minimum card width (dp) passed to GridCells.Adaptive.
+    // The grid reflows its column count automatically to fill available width.
+    // These values were chosen so the default (density 3) yields roughly the
+    // same column count as the previous fixed-column behaviour on each device class:
+    //   phones (~360 dp): density 3 → minCardWidth 140 dp → ~2 columns
+    //   small tablets (~800 dp): density 3 → ~5 columns (was 3 fixed → now more
+    //     with adaptive, which is an improvement)
+    // The user can pinch from 1 (many small cards) to 5 (few large cards).
+    val gridMinCardWidthDp = when (gridDensity) {
+        1 -> 90
+        2 -> 120
+        3 -> 160
+        4 -> 220
+        else -> 300  // 5
     }
     // ── Initial data load + event stream ────────────────────────────────
     LaunchedEffect(Unit) {
@@ -237,6 +242,7 @@ fun LibraryGridScreen(
                         onOpenSettings = onOpenSettings,
                         onOpenMap = onOpenMap,
                         onOpenCardStats = { showCardStats = true },
+                        onOpenDensity = { showDensitySheet = true },
                         onDisconnect = onDisconnect,
                         onClearMultiSelect = { multiSelectedIds = emptySet() },
                         showSortMenu = showSortMenu,
@@ -383,7 +389,7 @@ fun LibraryGridScreen(
                         if (viewMode == "grid") {
                             GridContent(
                                 videos = videos,
-                                columns = gridColumns,
+                                minCardWidthDp = gridMinCardWidthDp,
                                 repository = repository,
                                 selectedVideoId = selectedVideoId,
                                 multiSelectedIds = multiSelectedIds,
@@ -498,6 +504,15 @@ fun LibraryGridScreen(
             )
         }
 
+        // ── Grid density / thumbnail-size sheet ─────────────────────────────
+        if (showDensitySheet) {
+            GridDensitySheet(
+                density = gridDensity,
+                onDensityChange = { vm.setGridDensity(it) },
+                onDismiss = { showDensitySheet = false },
+            )
+        }
+
         // ── Batch sharing progress indicator ────────────────────────────────
         if (isBatchSharing) {
             AlertDialog(
@@ -534,6 +549,7 @@ private fun LibraryTopAppBar(
     onOpenSettings: () -> Unit,
     onOpenMap: () -> Unit,
     onOpenCardStats: () -> Unit = {},
+    onOpenDensity: () -> Unit = {},
     onDisconnect: () -> Unit,
     onClearMultiSelect: () -> Unit,
     showSortMenu: Boolean,
@@ -650,6 +666,11 @@ private fun LibraryTopAppBar(
                                 text = { Text(stringResource(R.string.grid_card_stats)) },
                                 leadingIcon = { Icon(Icons.Default.GridView, contentDescription = null) },
                                 onClick = { onDismissOverflowMenu(); onOpenCardStats() },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.grid_density_menu_item)) },
+                                leadingIcon = { Icon(Icons.Default.PhotoSizeSelectLarge, contentDescription = null) },
+                                onClick = { onDismissOverflowMenu(); onOpenDensity() },
                             )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.grid_settings)) },
@@ -963,7 +984,7 @@ private fun SidebarSectionHeader(title: String) {
 @Composable
 private fun GridContent(
     videos: List<VideoSummary>,
-    columns: Int,
+    minCardWidthDp: Int,
     repository: VideoRepository,
     selectedVideoId: String?,
     multiSelectedIds: Set<String>,
@@ -984,7 +1005,7 @@ private fun GridContent(
             val info = gridState.layoutInfo
             val totalItems = info.totalItemsCount
             val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: 0
-            hasMore && totalItems > 0 && lastVisible >= totalItems - columns * 2
+            hasMore && totalItems > 0 && lastVisible >= totalItems - 8
         }
     }
     LaunchedEffect(shouldLoadMore.value) {
@@ -1001,7 +1022,11 @@ private fun GridContent(
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyVerticalGrid(
-            columns = GridCells.Fixed(columns),
+            // Adaptive layout: the grid flows as many columns as fit given the
+            // minimum card width. The user-controlled density maps to minCardWidthDp
+            // so adjusting the slider instantly reflows the entire grid without
+            // an explicit reload — mirroring the iOS/desktop adaptive grid.
+            columns = GridCells.Adaptive(minSize = minCardWidthDp.dp),
             state = gridState,
             modifier = Modifier.nestedScroll(pullRefreshState.nestedScrollConnection).fillMaxSize(),
             // A small gutter so cards don't sit flush against each other / the edges.
@@ -1815,6 +1840,66 @@ private fun SlotPickerRow(
         }
     }
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+}
+
+// ── Grid density bottom sheet ─────────────────────────────────────────────────
+//
+// A ModalBottomSheet with a horizontal slider (1..5) and small/large photo
+// icons at either end — matching the iOS LibraryTopBar thumbnailSlider and the
+// desktop BottomBar thumbnail-size slider aesthetics.
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun GridDensitySheet(
+    density: Int,
+    onDensityChange: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 40.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.grid_density_sheet_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = stringResource(R.string.grid_density_sheet_subtitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PhotoSizeSelectSmall,
+                    contentDescription = stringResource(R.string.grid_density_smaller),
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Slider(
+                    value = density.toFloat(),
+                    onValueChange = { onDensityChange(it.toInt().coerceIn(1, 5)) },
+                    valueRange = 1f..5f,
+                    steps = 3,  // 5 positions → 3 intermediate steps
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    imageVector = Icons.Default.PhotoSizeSelectLarge,
+                    contentDescription = stringResource(R.string.grid_density_larger),
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
 }
 
 /** Unicode circle used as a per-item colour dot in the colour-label menu.

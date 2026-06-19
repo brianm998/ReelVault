@@ -447,6 +447,14 @@
     <string name="scan_scanning_target">Scanning %1$s…</string>
     <string name="pairing_a_device">A device</string>
 
+    <!-- ── Grid density / thumbnail size ────────────────────────────── -->
+    <string name="grid_density_label">Thumbnail Size</string>
+    <string name="grid_density_smaller">Smaller thumbnails</string>
+    <string name="grid_density_larger">Larger thumbnails</string>
+    <string name="grid_density_sheet_title">Thumbnail Size</string>
+    <string name="grid_density_sheet_subtitle">Drag to adjust how many columns fit on screen.</string>
+    <string name="grid_density_menu_item">Thumbnail Size</string>
+
     <!-- ── Batch actions (multi-select top bar) ───────────────────────── -->
     <string name="batch_organize">Organize selected videos</string>
     <string name="batch_share">Share selected videos</string>
