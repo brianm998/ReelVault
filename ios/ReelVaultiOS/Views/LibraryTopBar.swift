@@ -207,9 +207,14 @@ struct LibraryFilterSheet: View {
     /// Metadata-facet filtering: one or more columns, each a metadata key
     /// (camera/lens/codec/year/iso/…) with multi-selectable values. Bound to the
     /// shared GridViewModel's metadataColumns/facetColumns (same as macOS).
+    /// Each non-location column also exposes an "is / is not" toggle that calls
+    /// `setMetadataColumnNegate` — mirroring the macOS MetadataColumnView control.
     @ViewBuilder private var metadataSection: some View {
         Section("Metadata") {
             ForEach(Array(grid.metadataColumns.enumerated()), id: \.element.id) { index, column in
+                let isLocation = column.key == locationMetadataKey
+
+                // Field key picker
                 Picker("Field", selection: Binding(
                     get: { column.key },
                     set: { grid.setMetadataColumnKey(at: index, key: $0) }
@@ -219,6 +224,22 @@ struct LibraryFilterSheet: View {
                         Text(info.displayName).tag(info.key)
                     }
                 }
+
+                // "is / is not" negate toggle — hidden for the Location (geo) column
+                // and before a field has been chosen, matching macOS behaviour.
+                if !isLocation && !column.key.isEmpty {
+                    Picker("Match", selection: Binding(
+                        get: { column.negate },
+                        set: { grid.setMetadataColumnNegate(at: index, negate: $0) }
+                    )) {
+                        Text("is").tag(false)
+                        Text("is not").tag(true)
+                    }
+                    .pickerStyle(.menu)
+                    .foregroundStyle(column.negate ? Color.accentColor : Color.primary)
+                }
+
+                // Value checklist
                 if let facet = grid.facetColumn(at: index), !facet.values.isEmpty {
                     ForEach(facet.values, id: \.token) { value in
                         Button {
@@ -237,6 +258,7 @@ struct LibraryFilterSheet: View {
                 } else if !column.key.isEmpty {
                     Text("No values").font(.caption).foregroundStyle(.secondary)
                 }
+
                 if grid.metadataColumns.count > 1 {
                     Button("Remove Field", role: .destructive) { grid.removeMetadataColumn(at: index) }
                 }
