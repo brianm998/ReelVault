@@ -14,6 +14,7 @@ struct DetailModeView: View {
     var onShowOnMap: () -> Void = {}
     @StateObject private var stream = StreamPlayer()
     @State private var fullScreen = false
+    @State private var stepFrames = 20
 
     private var video: VideoSummary? {
         grid.videos.first(where: { $0.id == grid.selectedVideoId }) ?? grid.selectedVideo
@@ -24,10 +25,14 @@ struct DetailModeView: View {
             if let video {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        StreamingPlayerView(stream: stream, video: video, endpoint: connection,
-                                            refreshTick: grid.catalogChangeTick,
-                                            isFullScreenActive: fullScreen,
-                                            onDoubleTap: { fullScreen = true })
+                        VStack(spacing: 4) {
+                            StreamingPlayerView(stream: stream, video: video, endpoint: connection,
+                                                refreshTick: grid.catalogChangeTick,
+                                                isFullScreenActive: fullScreen,
+                                                onDoubleTap: { fullScreen = true })
+                            FrameStepControlBar(stream: stream, video: video, endpoint: connection,
+                                                stepFrames: $stepFrames)
+                        }
                         OfflineDownloadButton(video: video, endpoint: connection)
                         MetadataEditorSection(grid: grid, videoId: video.id)
                         VideoMetadataSection(video: video, refreshTick: grid.catalogChangeTick,
@@ -50,7 +55,8 @@ struct DetailModeView: View {
                     }
                 }
                 .fullScreenCover(isPresented: $fullScreen) {
-                    FullScreenPlayer(stream: stream, video: video, endpoint: connection)
+                    FullScreenPlayer(stream: stream, video: video, endpoint: connection,
+                                     stepFrames: $stepFrames)
                 }
             } else {
                 ContentUnavailableView(
@@ -67,10 +73,16 @@ struct DetailModeView: View {
 /// button — matching the system video full-screen gesture). Reuses the SAME
 /// `StreamPlayer` as the inline detail player (one AVPlayer → no doubled, offset
 /// audio), just rendered full-bleed and auto-playing.
+///
+/// Frame-step controls appear as a semi-transparent auto-hiding overlay at the
+/// bottom — tap anywhere to reveal them (they hide after 3 s of inactivity).
 struct FullScreenPlayer: View {
     @ObservedObject var stream: StreamPlayer
     let video: VideoSummary
     let endpoint: AppRouter.ConnectionInfo?
+    /// Shared step-size with the inline control bar so the user's setting
+    /// persists between inline and full-screen mode.
+    @Binding var stepFrames: Int
     @Environment(\.dismiss) private var dismiss
     /// Live downward drag distance — moves the player with the finger and fades
     /// the backdrop so the swipe reads as an interactive dismissal.
@@ -87,6 +99,10 @@ struct FullScreenPlayer: View {
                                 onDoubleTap: { dismiss() })
                 .ignoresSafeArea()
                 .offset(y: dragOffset)
+
+            // Frame-step overlay — auto-hides; tap anywhere to reveal.
+            FullScreenFrameStepOverlay(stream: stream, video: video, endpoint: endpoint,
+                                       stepFrames: $stepFrames, onDismiss: { dismiss() })
         }
         .statusBarHidden(true)
         // simultaneousGesture so the player's own transport controls keep

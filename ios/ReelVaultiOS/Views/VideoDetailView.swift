@@ -22,14 +22,19 @@ struct VideoDetailView: View {
     var onShowOnMap: (() -> Void)? = nil
     @StateObject private var stream = StreamPlayer()
     @State private var fullScreen = false
+    @State private var stepFrames = 20
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                StreamingPlayerView(stream: stream, video: video, endpoint: mediaEndpoint,
-                                    refreshTick: grid.catalogChangeTick,
-                                    isFullScreenActive: fullScreen,
-                                    onDoubleTap: { fullScreen = true })
+                VStack(spacing: 4) {
+                    StreamingPlayerView(stream: stream, video: video, endpoint: mediaEndpoint,
+                                        refreshTick: grid.catalogChangeTick,
+                                        isFullScreenActive: fullScreen,
+                                        onDoubleTap: { fullScreen = true })
+                    FrameStepControlBar(stream: stream, video: video, endpoint: mediaEndpoint,
+                                        stepFrames: $stepFrames)
+                }
                 OfflineDownloadButton(video: video, endpoint: mediaEndpoint)
                 MetadataEditorSection(grid: grid, videoId: video.id)
                 // Prefer the live grid row so the proxy-count badge tracks edits
@@ -61,7 +66,8 @@ struct VideoDetailView: View {
         .fullScreenCover(isPresented: $fullScreen) {
             // Shares the SAME StreamPlayer as the inline view → one AVPlayer, no
             // doubled/offset audio (the K4 fix).
-            FullScreenPlayer(stream: stream, video: video, endpoint: mediaEndpoint)
+            FullScreenPlayer(stream: stream, video: video, endpoint: mediaEndpoint,
+                             stepFrames: $stepFrames)
         }
     }
 }
@@ -71,7 +77,9 @@ struct VideoDetailView: View {
 /// same video never plays twice at once (which produced doubled, offset audio).
 @MainActor
 final class StreamPlayer: ObservableObject {
-    @Published var player: AVPlayer?
+    @Published var player: AVPlayer? {
+        didSet { migrateTimeObserver(from: oldValue, to: player) }
+    }
     @Published var isPreparing = false
     @Published var error: String?
     /// While preparing a sub-realtime HLS re-encode, an ETA like
@@ -86,6 +94,16 @@ final class StreamPlayer: ObservableObject {
     /// `presentationSize` once the video track loads — so the picker can show the
     /// resolved quality (e.g. "Auto (720p)") rather than just "Auto".
     @Published var playingHeight: Int?
+    /// Current playhead position (seconds), updated ~10x/s while playing.
+    /// Used by the frame-step control bar's time readout and scrubber.
+    @Published var currentTimeSec: Double = 0
+    /// Duration of the current item (seconds); 0 until the item loads.
+    @Published var durationSec: Double = 0
+    /// True while the player is in the `.playing` rate state (rate > 0).
+    /// Updated in the same periodic observer that drives `currentTimeSec`.
+    @Published var isPlaying: Bool = false
+    private var timeObserverToken: Any?
+    private var rateObservation: NSKeyValueObservation?
     private var preparedVideoId: String?
     /// The height the current player item was prepared at, so changing the
     /// rendition forces a re-prepare instead of a no-op.
@@ -618,6 +636,76 @@ final class StreamPlayer: ObservableObject {
 
     func pause() { player?.pause() }
 
+    // MARK: - Frame-accurate seeking
+
+    /// Step the playhead by `frames` frames (negative = backward) using the
+    /// video's actual FPS from `video.fps` (defaulting to 30). Mirrors
+    /// macOS's `stepFrames(by:for:)` with the same zero-tolerance seek.
+    /// Mounts the player (paused, at the start) if it hasn't been started yet,
+    /// so the user can step before pressing play — matching macOS behaviour.
+    func stepFrame(by frames: Int, video: VideoSummary, endpoint: AppRouter.ConnectionInfo?) {
+        if player == nil { prepare(video: video, endpoint: endpoint, autoPlay: false) }
+        guard let p = player else { return }
+        // Pause while stepping so successive button taps don't fight the playhead.
+        p.pause()
+        isPlaying = false
+        let fps = video.fps > 0 ? video.fps : 30.0
+        let deltaSec = Double(frames) / fps
+        let maxSec = durationSec > 0 ? durationSec : Double(video.durationMs) / 1000.0
+        let target = (currentTimeSec + deltaSec).clamped(to: 0...max(maxSec, 0))
+        let t = CMTime(seconds: target, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+        p.seek(to: t, toleranceBefore: .zero, toleranceAfter: .zero)
+    }
+
+    /// Seek to an absolute position (seconds) with zero tolerance — used by the
+    /// inline scrubber in the frame-step control bar.
+    func seekTo(_ seconds: Double) {
+        guard let p = player else { return }
+        let t = CMTime(seconds: seconds, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+        p.seek(to: t, toleranceBefore: .zero, toleranceAfter: .zero)
+    }
+
+    // MARK: - Time observer lifecycle
+
+    /// Install a periodic time observer on `newPlayer`, removing the one on
+    /// `oldPlayer`. Called from the `player` property's `didSet`, so the
+    /// observer tracks whichever AVPlayer is currently active — including the
+    /// rebuilt player after a VOD upgrade.
+    private func migrateTimeObserver(from oldPlayer: AVPlayer?, to newPlayer: AVPlayer?) {
+        // Remove the old observer first.
+        if let token = timeObserverToken, let old = oldPlayer {
+            old.removeTimeObserver(token)
+            timeObserverToken = nil
+        }
+        rateObservation?.invalidate()
+        rateObservation = nil
+        guard let p = newPlayer else {
+            currentTimeSec = 0
+            durationSec = 0
+            isPlaying = false
+            return
+        }
+        // Periodic observer fires ~10x/s while the clock is running.
+        let interval = CMTime(seconds: 0.1, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+        timeObserverToken = p.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self, weak p] time in
+            guard let self, let p else { return }
+            MainActor.assumeIsolated {
+                self.currentTimeSec = time.seconds.isFinite ? time.seconds : 0
+                if let item = p.currentItem {
+                    let dur = item.duration.seconds
+                    if dur.isFinite && dur > 0 { self.durationSec = dur }
+                }
+            }
+        }
+        // KVO on `rate` for play/pause state (more reliable than timeControlStatus
+        // for the initial case where we haven't started yet).
+        rateObservation = p.observe(\.rate, options: [.new, .initial]) { [weak self] _, change in
+            guard let self else { return }
+            let rate = change.newValue ?? 0
+            Task { @MainActor in self.isPlaying = rate > 0 }
+        }
+    }
+
     /// Target playback height: the device's native pixel height, capped at 1440
     /// so a no-proxy fallback still transcodes down to a Wi-Fi-friendly size.
     static func streamHeight() -> Int {
@@ -817,6 +905,317 @@ struct RenditionPicker: View {
                 Text(title)
             }
         }
+    }
+}
+
+// MARK: - Frame-step control bar
+
+/// Compact playback control bar shown below the video player in the iOS detail
+/// view. Provides: ±1-frame and ±N-frame step buttons, a play/pause button, a
+/// time scrubber with current/total readouts, and a configurable step size.
+/// Mirrors the macOS `DetailLoupeView` `ControlBar` but uses iOS idioms
+/// (compact layout, no mouse hover).
+///
+/// Frame stepping uses zero-tolerance AVPlayer seeks — the same math as the
+/// macOS implementation — so frames are precise rather than keyframe-snapped.
+struct FrameStepControlBar: View {
+    @ObservedObject var stream: StreamPlayer
+    let video: VideoSummary
+    let endpoint: AppRouter.ConnectionInfo?
+    /// Configurable ±N step size (default 20, user-adjustable via –/+ buttons).
+    @Binding var stepFrames: Int
+
+    private var fps: Double { video.fps > 0 ? video.fps : 30.0 }
+    private var maxSec: Double {
+        let dur = stream.durationSec > 0 ? stream.durationSec : Double(video.durationMs) / 1000.0
+        return max(dur, 0.1)
+    }
+
+    var body: some View {
+        VStack(spacing: 6) {
+            // Scrubber row — current time / slider / duration.
+            HStack(spacing: 6) {
+                Text(formatTime(stream.currentTimeSec))
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 52, alignment: .trailing)
+                Slider(
+                    value: Binding(
+                        get: { min(stream.currentTimeSec, maxSec) },
+                        set: { stream.seekTo($0) }
+                    ),
+                    in: 0...maxSec
+                )
+                .disabled(stream.player == nil)
+                Text(formatTime(maxSec))
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 52, alignment: .leading)
+            }
+            // Transport row: step ←N, ←1, play/pause, →1, →N, then step-size ±.
+            HStack(spacing: 0) {
+                // Step-size adjuster — sits at the leading edge.
+                HStack(spacing: 4) {
+                    Button { stepFrames = max(1, stepFrames - 5) } label: {
+                        Image(systemName: "minus")
+                            .font(.caption2.weight(.semibold))
+                            .frame(width: 28, height: 28)
+                            .background(Color(.systemFill), in: RoundedRectangle(cornerRadius: 6))
+                    }
+                    .buttonStyle(.plain)
+                    Text("\(stepFrames)")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 30)
+                        .help("Step size (frames). Tap –/+ to adjust.")
+                    Button { stepFrames = min(600, stepFrames + 5) } label: {
+                        Image(systemName: "plus")
+                            .font(.caption2.weight(.semibold))
+                            .frame(width: 28, height: 28)
+                            .background(Color(.systemFill), in: RoundedRectangle(cornerRadius: 6))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .accessibilityLabel("Step size: \(stepFrames) frames")
+
+                Spacer()
+
+                // ←N
+                Button { stream.stepFrame(by: -stepFrames, video: video, endpoint: endpoint) } label: {
+                    Image(systemName: "gobackward")
+                        .font(.system(size: 18))
+                        .frame(width: 40, height: 36)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Step back \(stepFrames) frames")
+
+                // ←1
+                Button { stream.stepFrame(by: -1, video: video, endpoint: endpoint) } label: {
+                    Image(systemName: "backward.frame")
+                        .font(.system(size: 18))
+                        .frame(width: 40, height: 36)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Step back 1 frame")
+
+                // Play / Pause
+                Button {
+                    if let p = stream.player {
+                        if p.rate > 0 { p.pause() } else { p.play() }
+                    } else {
+                        stream.prepare(video: video, endpoint: endpoint)
+                    }
+                } label: {
+                    Image(systemName: stream.isPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 24))
+                        .frame(width: 44, height: 36)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(stream.isPlaying ? "Pause" : "Play")
+
+                // →1
+                Button { stream.stepFrame(by: 1, video: video, endpoint: endpoint) } label: {
+                    Image(systemName: "forward.frame")
+                        .font(.system(size: 18))
+                        .frame(width: 40, height: 36)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Step forward 1 frame")
+
+                // →N
+                Button { stream.stepFrame(by: stepFrames, video: video, endpoint: endpoint) } label: {
+                    Image(systemName: "goforward")
+                        .font(.system(size: 18))
+                        .frame(width: 40, height: 36)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Step forward \(stepFrames) frames")
+
+                Spacer()
+
+                // FPS readout — informs the user what "1 frame" means.
+                Text(String(format: "%.2gfps", fps))
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 52, alignment: .trailing)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.regularMaterial)
+        .overlay(
+            Rectangle()
+                .frame(height: 0.5)
+                .foregroundStyle(Color(.separator)),
+            alignment: .top
+        )
+    }
+
+    private func formatTime(_ seconds: Double) -> String {
+        let s = Int(max(0, seconds))
+        let h = s / 3600
+        let m = (s % 3600) / 60
+        let sec = s % 60
+        if h > 0 { return String(format: "%d:%02d:%02d", h, m, sec) }
+        return String(format: "%d:%02d", m, sec)
+    }
+}
+
+/// Auto-hiding floating frame-step overlay for the full-screen player.
+/// Shown on first appear and on every tap; auto-hides after 3 s of inactivity.
+/// Mirrors macOS's `FullscreenControlBar` but in iOS style (capsule, tap to reveal).
+struct FullScreenFrameStepOverlay: View {
+    @ObservedObject var stream: StreamPlayer
+    let video: VideoSummary
+    let endpoint: AppRouter.ConnectionInfo?
+    @Binding var stepFrames: Int
+    /// Called when the user taps the dismiss ("×") button or the overlay's
+    /// enclosing full-screen cover is asked to close.
+    var onDismiss: () -> Void
+
+    @State private var visible = true
+    @State private var hideTask: Task<Void, Never>? = nil
+
+    private var fps: Double { video.fps > 0 ? video.fps : 30.0 }
+    private var maxSec: Double {
+        let dur = stream.durationSec > 0 ? stream.durationSec : Double(video.durationMs) / 1000.0
+        return max(dur, 0.1)
+    }
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            // Invisible tap area — tap anywhere to reveal the controls.
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture { revealControls() }
+                .ignoresSafeArea()
+
+            if visible {
+                VStack(spacing: 10) {
+                    // Scrubber row.
+                    HStack(spacing: 8) {
+                        Text(formatTime(stream.currentTimeSec))
+                            .font(.system(size: 11, design: .monospaced))
+                        Slider(
+                            value: Binding(
+                                get: { min(stream.currentTimeSec, maxSec) },
+                                set: { stream.seekTo($0) }
+                            ),
+                            in: 0...maxSec
+                        )
+                        .disabled(stream.player == nil)
+                        Text(formatTime(maxSec))
+                            .font(.system(size: 11, design: .monospaced))
+                    }
+
+                    // Transport row.
+                    HStack(spacing: 4) {
+                        // Step-size ± (compact).
+                        HStack(spacing: 2) {
+                            Button { stepFrames = max(1, stepFrames - 5) } label: {
+                                Image(systemName: "minus").font(.caption2)
+                                    .frame(width: 26, height: 26)
+                                    .background(Color.white.opacity(0.15), in: Circle())
+                            }
+                            .buttonStyle(.plain)
+                            Text("\(stepFrames)f")
+                                .font(.system(size: 11, design: .monospaced))
+                                .frame(width: 30)
+                            Button { stepFrames = min(600, stepFrames + 5) } label: {
+                                Image(systemName: "plus").font(.caption2)
+                                    .frame(width: 26, height: 26)
+                                    .background(Color.white.opacity(0.15), in: Circle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        Spacer()
+
+                        // ←N
+                        Button { stream.stepFrame(by: -stepFrames, video: video, endpoint: endpoint) } label: {
+                            Image(systemName: "gobackward").font(.system(size: 20))
+                        }
+                        .buttonStyle(.plain)
+                        // ←1
+                        Button { stream.stepFrame(by: -1, video: video, endpoint: endpoint) } label: {
+                            Image(systemName: "backward.frame").font(.system(size: 20))
+                        }
+                        .buttonStyle(.plain)
+                        // Play/Pause
+                        Button {
+                            if let p = stream.player {
+                                if p.rate > 0 { p.pause() } else { p.play() }
+                            } else {
+                                stream.prepare(video: video, endpoint: endpoint)
+                            }
+                            revealControls()
+                        } label: {
+                            Image(systemName: stream.isPlaying ? "pause.fill" : "play.fill")
+                                .font(.system(size: 28))
+                        }
+                        .buttonStyle(.plain)
+                        // →1
+                        Button { stream.stepFrame(by: 1, video: video, endpoint: endpoint) } label: {
+                            Image(systemName: "forward.frame").font(.system(size: 20))
+                        }
+                        .buttonStyle(.plain)
+                        // →N
+                        Button { stream.stepFrame(by: stepFrames, video: video, endpoint: endpoint) } label: {
+                            Image(systemName: "goforward").font(.system(size: 20))
+                        }
+                        .buttonStyle(.plain)
+
+                        Spacer()
+
+                        // Close full screen.
+                        Button(action: onDismiss) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 22))
+                                .symbolRenderingMode(.palette)
+                                .foregroundStyle(.white, .white.opacity(0.25))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
+                .background(.ultraThinMaterial.opacity(0.85), in: RoundedRectangle(cornerRadius: 18))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 40)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: visible)
+        .onAppear { armHideTimer() }
+    }
+
+    private func revealControls() {
+        visible = true
+        armHideTimer()
+    }
+
+    private func armHideTimer() {
+        hideTask?.cancel()
+        hideTask = Task {
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            if !Task.isCancelled { visible = false }
+        }
+    }
+
+    private func formatTime(_ seconds: Double) -> String {
+        let s = Int(max(0, seconds))
+        let h = s / 3600
+        let m = (s % 3600) / 60
+        let sec = s % 60
+        if h > 0 { return String(format: "%d:%02d:%02d", h, m, sec) }
+        return String(format: "%d:%02d", m, sec)
+    }
+}
+
+private extension Comparable {
+    func clamped(to range: ClosedRange<Self>) -> Self {
+        min(max(self, range.lowerBound), range.upperBound)
     }
 }
 
