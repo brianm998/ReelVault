@@ -477,7 +477,7 @@ private fun DetailContent(
                         gpsLongitude = metadata.gpsLongitude,
                     )
                 }
-                OfflineDownloadSection(video = videoSummary)
+                OfflineDownloadSection(video = videoSummary, repository = repository)
             }
         }
 

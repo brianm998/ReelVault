@@ -112,9 +112,12 @@ object OfflineLibrary {
      * first. All network and file I/O runs on [Dispatchers.IO]; the flows are
      * updated from the IO dispatcher after completion.
      *
+     * @param thumbnailBytes Optional poster image bytes to save alongside the
+     *   video. Callers should fetch these via gRPC (VideoRepository.getThumbnailOrNull)
+     *   before calling download — there is no HTTP thumbnail endpoint.
      * @throws IllegalStateException if no remote endpoint is set.
      */
-    suspend fun download(video: VideoSummary, height: Int) {
+    suspend fun download(video: VideoSummary, height: Int, thumbnailBytes: ByteArray? = null) {
         require(initialised) { "OfflineLibrary.init() not called" }
         if (_downloading.value.contains(video.id)) return
 
@@ -132,11 +135,11 @@ object OfflineLibrary {
 
                 val destFile = File(dir, fileName)
 
-                // Download the video via /download/:id or /download/:id/:height.
-                val url = if (height > 0) {
-                    "https://${ep.host}:${ep.mediaPort}/download/${video.id}/$height"
-                } else {
-                    "https://${ep.host}:${ep.mediaPort}/download/${video.id}"
+                // Download the video via GET /video/:id?height=<h> (same route as
+                // VideoShareManager).  /download/:id does not exist → 404.
+                val url = buildString {
+                    append("https://${ep.host}:${ep.mediaPort}/video/${video.id}")
+                    if (height > 0) append("?height=$height")
                 }
 
                 val client = PinnedTls.pinnedHttpClient(ep.fingerprintHex)
@@ -158,29 +161,17 @@ object OfflineLibrary {
 
                 val sizeBytes = destFile.length()
 
-                // Poster thumbnail (best-effort): fetch via /thumbnail/:id.
+                // Poster thumbnail: persist bytes supplied by the caller (fetched
+                // via gRPC before this call).  There is no HTTP /thumbnail endpoint.
                 var savedThumb: String? = null
-                try {
-                    val thumbUrl = "https://${ep.host}:${ep.mediaPort}/thumbnail/${video.id}"
-                    val thumbReq = Request.Builder()
-                        .url(thumbUrl)
-                        .header("Authorization", "Bearer ${ep.token}")
-                        .get()
-                        .build()
-                    val thumbResp = client.newCall(thumbReq).execute()
-                    if (thumbResp.isSuccessful) {
+                if (thumbnailBytes != null && thumbnailBytes.isNotEmpty()) {
+                    try {
                         val thumbFile = File(dir, thumbName)
-                        thumbResp.body?.use { body ->
-                            FileOutputStream(thumbFile).use { out ->
-                                body.byteStream().copyTo(out)
-                            }
-                        }
-                        if (thumbFile.exists() && thumbFile.length() > 0) {
-                            savedThumb = thumbName
-                        }
+                        FileOutputStream(thumbFile).use { it.write(thumbnailBytes) }
+                        savedThumb = thumbName
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to save thumbnail for ${video.id}: ${e.message}")
                     }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Thumbnail download failed for ${video.id}: ${e.message}")
                 }
 
                 val entry = Entry(

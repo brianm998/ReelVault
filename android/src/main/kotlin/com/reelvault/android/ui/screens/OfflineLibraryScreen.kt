@@ -37,8 +37,10 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import androidx.activity.compose.BackHandler
 import com.reelvault.android.R
 import com.reelvault.android.data.OfflineLibrary
+import com.reelvault.data.repository.VideoRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -71,6 +73,12 @@ fun OfflineLibraryScreen(
 
     // Navigation state: which entry is being viewed in the detail screen.
     var selectedEntry by remember { mutableStateOf<OfflineLibrary.Entry?>(null) }
+
+    // Intercept the system Back button when the detail screen is shown so it
+    // returns to the grid instead of exiting the offline library entirely.
+    BackHandler(enabled = selectedEntry != null) {
+        selectedEntry = null
+    }
 
     if (selectedEntry != null) {
         OfflineDetailScreen(
@@ -494,20 +502,14 @@ private fun OfflineMetaRow(label: String, value: String) {
 @Composable
 fun OfflineDownloadSection(
     video: com.reelvault.data.models.VideoSummary,
+    repository: VideoRepository,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
     val entries by OfflineLibrary.entries.collectAsStateWithLifecycle()
     val downloading by OfflineLibrary.downloading.collectAsStateWithLifecycle()
     val lastError by OfflineLibrary.lastError.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
     var showQualityDialog by remember { mutableStateOf(false) }
-
-    LaunchedEffect(lastError) {
-        val msg = lastError ?: return@LaunchedEffect
-        snackbarHostState.showSnackbar(msg)
-        OfflineLibrary.clearError()
-    }
 
     val isDownloaded = entries.any { it.id == video.id }
     val isDownloading = downloading.contains(video.id)
@@ -525,6 +527,17 @@ fun OfflineDownloadSection(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            // Inline error display — the Scaffold that owns a SnackbarHost is
+            // outside this composable, so a SnackbarHostState here would be orphaned.
+            if (lastError != null) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = lastError!!,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                LaunchedEffect(lastError) { OfflineLibrary.clearError() }
+            }
             Spacer(Modifier.height(8.dp))
 
             when {
@@ -606,7 +619,12 @@ fun OfflineDownloadSection(
                         modifier = Modifier.fillMaxWidth(),
                         onClick = {
                             showQualityDialog = false
-                            scope.launch { OfflineLibrary.download(video, height = 0) }
+                            scope.launch {
+                                val thumb = runCatching {
+                                    repository.getThumbnailOrNull(video.id, "medium")
+                                }.getOrNull()
+                                OfflineLibrary.download(video, height = 0, thumbnailBytes = thumb)
+                            }
                         },
                     ) {
                         Text(
@@ -618,7 +636,12 @@ fun OfflineDownloadSection(
                         modifier = Modifier.fillMaxWidth(),
                         onClick = {
                             showQualityDialog = false
-                            scope.launch { OfflineLibrary.download(video, height = 720) }
+                            scope.launch {
+                                val thumb = runCatching {
+                                    repository.getThumbnailOrNull(video.id, "medium")
+                                }.getOrNull()
+                                OfflineLibrary.download(video, height = 720, thumbnailBytes = thumb)
+                            }
                         },
                     ) {
                         Text(
