@@ -28,8 +28,11 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.PhotoSizeSelectLarge
+import androidx.compose.material.icons.filled.PhotoSizeSelectSmall
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Slider
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
@@ -149,8 +152,12 @@ fun LibraryFilterBar(
     ).count { it }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val sortSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     var showSheet by remember { mutableStateOf(false) }
+    var showSortSheet by remember { mutableStateOf(false) }
+
+    val gridDensity by viewModel.gridDensity.collectAsState()
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -159,8 +166,13 @@ fun LibraryFilterBar(
     ) {
         Column {
             Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+            // ── Scrollable chip row ─────────────────────────────────────
+            Row(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .weight(1f)
                     .horizontalScroll(rememberScrollState())
                     .padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -272,7 +284,7 @@ fun LibraryFilterBar(
                 SortChip(
                     sortField = currentSortField,
                     ascending = currentSortAscending,
-                    onClick = { showSheet = true },
+                    onClick = { showSortSheet = true },
                 )
 
                 // ── Clear-all chip ─────────────────────────────────────────
@@ -286,7 +298,35 @@ fun LibraryFilterBar(
                         ),
                     )
                 }
+            } // end scrollable chip row
+
+            // ── Thumbnail size slider (always visible, right of chips) ──
+            Row(
+                modifier = Modifier.padding(end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PhotoSizeSelectSmall,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Slider(
+                    value = gridDensity.toFloat(),
+                    onValueChange = { viewModel.setGridDensity(it.toInt().coerceIn(1, 5)) },
+                    valueRange = 1f..5f,
+                    steps = 3,
+                    modifier = Modifier.width(100.dp),
+                )
+                Icon(
+                    imageVector = Icons.Default.PhotoSizeSelectLarge,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
+            } // end outer Row
         }
     }
 
@@ -317,6 +357,36 @@ fun LibraryFilterBar(
                     scope.launch { sheetState.hide() }.invokeOnCompletion { showSheet = false }
                 },
             )
+        }
+    }
+
+    // ── Sort-only bottom sheet (opened from the sort chip) ─────────────────
+    if (showSortSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showSortSheet = false },
+            sheetState = sortSheetState,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.filter_sort),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+                SortPicker(
+                    currentField = currentSortField,
+                    ascending = currentSortAscending,
+                    onSetSort = { field, asc ->
+                        viewModel.setSort(field, asc)
+                        scope.launch { sortSheetState.hide() }.invokeOnCompletion { showSortSheet = false }
+                    },
+                )
+            }
         }
     }
 }
