@@ -256,8 +256,20 @@ impl MetadataExtractor {
             .and_then(|s| s.sample_rate.as_ref().map(|r| r.parse::<i32>().unwrap_or(0)))
             .unwrap_or(0);
 
-        // Color space
+        // Color space + HDR. ffprobe reports the transfer characteristic on the
+        // video stream; an HDR EOTF (PQ/HLG/DCI) is what makes a clip HDR — both
+        // the FX3 ProRes and the iPhone 16 Pro (HLG) footage land here, where
+        // the old code hardcoded hdr=0.
         let color_space = video_stream.color_space.clone();
+        let color_transfer = video_stream.color_transfer.clone();
+        let color_primaries = video_stream.color_primaries.clone();
+        let hdr = Self::is_hdr_transfer(color_transfer.as_deref());
+
+        // Start timecode (tmcd track) and sensor capture fps (slow-motion).
+        let timecode_start = Self::extract_timecode(&format.tags)
+            .or_else(|| Self::extract_timecode(&video_stream.tags));
+        let capture_fps = Self::extract_capture_fps(&format.tags)
+            .or_else(|| Self::extract_capture_fps(&video_stream.tags));
 
         // Frame count from video stream (fall back to duration*fps if missing)
         let frame_count: i64 = video_stream
@@ -279,11 +291,12 @@ impl MetadataExtractor {
         conn.execute(
             "INSERT INTO metadata
              (video_id, duration_ms, frame_count, codec_video, codec_audio, width, height, fps, bitrate,
-              color_space, hdr, audio_channels, audio_sample_rate, creation_date, camera_model,
+              color_space, color_transfer, color_primaries, hdr, capture_fps, timecode_start,
+              audio_channels, audio_sample_rate, creation_date, camera_model,
               lens_model, gps_latitude, gps_longitude, gps_altitude,
               iso, aperture, exposure_time_s, focal_length_mm,
               exposure_mode, exposure_program, white_balance, metadata_json)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(video_id) DO UPDATE SET
              duration_ms=excluded.duration_ms,
              frame_count=excluded.frame_count,
@@ -294,6 +307,11 @@ impl MetadataExtractor {
              fps=excluded.fps,
              bitrate=excluded.bitrate,
              color_space=excluded.color_space,
+             color_transfer=excluded.color_transfer,
+             color_primaries=excluded.color_primaries,
+             hdr=excluded.hdr,
+             capture_fps=excluded.capture_fps,
+             timecode_start=excluded.timecode_start,
              audio_channels=excluded.audio_channels,
              audio_sample_rate=excluded.audio_sample_rate,
              creation_date=excluded.creation_date,
@@ -330,7 +348,11 @@ impl MetadataExtractor {
                 fps,
                 bitrate,
                 color_space,
-                0, // HDR - TODO: detect HDR
+                color_transfer,
+                color_primaries,
+                hdr,
+                capture_fps,
+                timecode_start,
                 audio_channels,
                 audio_sample_rate,
                 creation_date,
@@ -573,16 +595,47 @@ impl MetadataExtractor {
         tags.as_ref().and_then(|t| t.get(key).cloned())
     }
 
-    /// The camera make tag, accepting the QuickTime-namespaced variant.
+    /// The camera make tag. `com.apple.proapps.manufacturer` comes FIRST: pro
+    /// recorders (Atomos, Ninja) write themselves into the bare `make` tag while
+    /// stashing the *real* camera in the ProApps keys — so an FX3-via-Atomos
+    /// clip must report "Sony", not "Atomos".
     fn extract_make(tags: &Option<FFProbeTagMap>) -> Option<String> {
-        Self::extract_tag(tags, "make")
+        Self::extract_tag(tags, "com.apple.proapps.manufacturer")
+            .or_else(|| Self::extract_tag(tags, "make"))
             .or_else(|| Self::extract_tag(tags, "com.apple.quicktime.make"))
     }
 
-    /// The camera model tag, accepting the QuickTime-namespaced variant.
+    /// The camera model tag. `com.apple.proapps.modelname` first, for the same
+    /// recorder reason as [`extract_make`] (it holds e.g. "ILME-FX3").
     fn extract_model(tags: &Option<FFProbeTagMap>) -> Option<String> {
-        Self::extract_tag(tags, "model")
+        Self::extract_tag(tags, "com.apple.proapps.modelname")
+            .or_else(|| Self::extract_tag(tags, "model"))
             .or_else(|| Self::extract_tag(tags, "com.apple.quicktime.model"))
+    }
+
+    /// SMPTE timecode of the clip's first frame, e.g. "23:34:44:16". ffprobe
+    /// surfaces it as `format.tags["timecode"]` (lifted from the `tmcd` track);
+    /// some muxers put it on the video stream instead.
+    fn extract_timecode(tags: &Option<FFProbeTagMap>) -> Option<String> {
+        Self::extract_tag(tags, "timecode")
+    }
+
+    /// Sensor capture frame rate (`com.apple.quicktime.capture-fps`). Present on
+    /// iPhone slow-motion clips, where it exceeds the playback `fps` — clients
+    /// derive "slow-motion" from `capture_fps > fps`.
+    fn extract_capture_fps(tags: &Option<FFProbeTagMap>) -> Option<f64> {
+        Self::extract_tag(tags, "com.apple.quicktime.capture-fps")
+            .and_then(|s| s.trim().parse::<f64>().ok())
+            .filter(|f| f.is_finite() && *f > 0.0)
+    }
+
+    /// Classify a clip as HDR from its transfer characteristic (EOTF). PQ
+    /// (`smpte2084`, HDR10/Dolby Vision base layer), HLG (`arib-std-b67`), and
+    /// DCI (`smpte428`) are the HDR transfers; everything else (bt709,
+    /// smpte170m, linear ProRes RAW, …) is treated as SDR. Mirrors the
+    /// HDR-transfer set `thumbnails.rs` uses to decide tone-mapping.
+    fn is_hdr_transfer(transfer: Option<&str>) -> bool {
+        matches!(transfer, Some("smpte2084") | Some("arib-std-b67") | Some("smpte428"))
     }
 
     /// Look for lens info in various tag formats used by different cameras.
@@ -653,8 +706,16 @@ impl MetadataExtractor {
         for key in keys {
             for tags in [format_tags, stream_tags] {
                 if let Some(s) = Self::extract_tag(tags, key) {
-                    if let Ok(n) = s.trim().parse::<i64>() {
+                    let t = s.trim();
+                    if let Ok(n) = t.parse::<i64>() {
                         return Some(n);
+                    }
+                    // ProApps writes ExposureIndex as a float string
+                    // ("800.000000"); accept and truncate.
+                    if let Ok(f) = t.parse::<f64>() {
+                        if f.is_finite() {
+                            return Some(f as i64);
+                        }
                     }
                 }
             }
@@ -725,11 +786,15 @@ impl MetadataExtractor {
 const ISO_KEYS: &[&str] = &[
     "iso", "iso_speed", "iso_speed_ratings", "isospeed",
     "com.apple.quicktime.iso", "exif_iso",
+    // ProApps (Atomos/pro cameras) records the exposure index here.
+    "com.apple.proapps.exif.{Exif}.ExposureIndex",
 ];
 const FNUMBER_KEYS: &[&str] = &[
     "fnumber", "f_number", "aperture", "apertureval",
     "com.apple.quicktime.fnumber", "com.apple.quicktime.aperture",
     "exif_fnumber",
+    // ProApps clip f-number, e.g. "8.000000".
+    "com.apple.proapps.exif.{Exif}.FNumber",
 ];
 const EXPOSURE_TIME_KEYS: &[&str] = &[
     "exposure_time", "exposuretime", "shutter_speed", "shutter_speed_value",
@@ -878,6 +943,11 @@ pub struct FFProbeStream {
     pub height: Option<i32>,
     pub r_frame_rate: Option<String>,
     pub color_space: Option<String>,
+    /// Transfer characteristic (EOTF) and color primaries. The presence of an
+    /// HDR transfer (`smpte2084` = PQ, `arib-std-b67` = HLG, `smpte428`) is how
+    /// we classify a clip as HDR; primaries (`bt2020`, …) refine the label.
+    pub color_transfer: Option<String>,
+    pub color_primaries: Option<String>,
     pub channels: Option<i32>,
     pub sample_rate: Option<String>,
     pub tags: Option<FFProbeTagMap>,
@@ -1185,6 +1255,51 @@ mod tests {
 
         // Nothing location-shaped → None.
         assert!(MetadataExtractor::extract_location(&tags(&[("make", "Apple")])).is_none());
+    }
+
+    #[test]
+    fn extract_make_model_prefer_proapps_over_recorder() {
+        // Atomos recorder writes itself into `make`, the real camera into the
+        // ProApps keys — the camera must win.
+        let t = tags(&[
+            ("make", "Atomos"),
+            ("com.apple.proapps.manufacturer", "Sony"),
+            ("com.apple.proapps.modelname", "ILME-FX3"),
+        ]);
+        assert_eq!(MetadataExtractor::extract_make(&t).as_deref(), Some("Sony"));
+        assert_eq!(MetadataExtractor::extract_model(&t).as_deref(), Some("ILME-FX3"));
+        // No ProApps keys → falls back to the plain tags (unchanged behaviour).
+        let t2 = tags(&[("make", "Apple"), ("model", "iPhone X")]);
+        assert_eq!(MetadataExtractor::extract_make(&t2).as_deref(), Some("Apple"));
+        assert_eq!(MetadataExtractor::extract_model(&t2).as_deref(), Some("iPhone X"));
+    }
+
+    #[test]
+    fn hdr_classified_from_transfer() {
+        assert!(MetadataExtractor::is_hdr_transfer(Some("smpte2084"))); // PQ
+        assert!(MetadataExtractor::is_hdr_transfer(Some("arib-std-b67"))); // HLG
+        assert!(!MetadataExtractor::is_hdr_transfer(Some("bt709")));
+        assert!(!MetadataExtractor::is_hdr_transfer(Some("linear"))); // ProRes RAW
+        assert!(!MetadataExtractor::is_hdr_transfer(None));
+    }
+
+    #[test]
+    fn timecode_and_capture_fps_and_proapps_exif() {
+        let t = tags(&[
+            ("timecode", "23:34:44:16"),
+            ("com.apple.quicktime.capture-fps", "240"),
+            ("com.apple.proapps.exif.{Exif}.FNumber", "8.000000"),
+            ("com.apple.proapps.exif.{Exif}.ExposureIndex", "800.000000"),
+        ]);
+        assert_eq!(MetadataExtractor::extract_timecode(&t).as_deref(), Some("23:34:44:16"));
+        assert_eq!(MetadataExtractor::extract_capture_fps(&t), Some(240.0));
+        // ProApps f-number parses through FNUMBER_KEYS …
+        assert_eq!(
+            MetadataExtractor::udta_rational(&t, &None, FNUMBER_KEYS),
+            Some(8.0)
+        );
+        // … and the float-formatted exposure index truncates to an ISO int.
+        assert_eq!(MetadataExtractor::udta_int(&t, &None, ISO_KEYS), Some(800));
     }
 
     #[test]

@@ -391,6 +391,12 @@ impl Database {
             ("metadata.exposure_mode",    "ALTER TABLE metadata ADD COLUMN exposure_mode TEXT"),
             ("metadata.exposure_program", "ALTER TABLE metadata ADD COLUMN exposure_program TEXT"),
             ("metadata.white_balance",    "ALTER TABLE metadata ADD COLUMN white_balance TEXT"),
+            // Color/HDR + timecode + slow-motion. NULL on older catalogs until
+            // re-indexed; hdr keeps its 0 default, recomputed from color_transfer.
+            ("metadata.color_transfer",   "ALTER TABLE metadata ADD COLUMN color_transfer TEXT"),
+            ("metadata.color_primaries",  "ALTER TABLE metadata ADD COLUMN color_primaries TEXT"),
+            ("metadata.capture_fps",      "ALTER TABLE metadata ADD COLUMN capture_fps REAL"),
+            ("metadata.timecode_start",   "ALTER TABLE metadata ADD COLUMN timecode_start TEXT"),
             ("idx_metadata_iso",          "CREATE INDEX IF NOT EXISTS idx_metadata_iso ON metadata(iso)"),
             ("idx_metadata_aperture",     "CREATE INDEX IF NOT EXISTS idx_metadata_aperture ON metadata(aperture)"),
             ("idx_metadata_exposure_time","CREATE INDEX IF NOT EXISTS idx_metadata_exposure_time ON metadata(exposure_time_s)"),

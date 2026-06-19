@@ -57,7 +57,11 @@ CREATE TABLE IF NOT EXISTS metadata (
   fps REAL,
   bitrate INTEGER,
   color_space TEXT,
-  hdr INTEGER DEFAULT 0,
+  color_transfer TEXT,   -- transfer characteristic / EOTF (bt709, smpte2084=PQ, arib-std-b67=HLG)
+  color_primaries TEXT,  -- color primaries (bt709, bt2020, …)
+  hdr INTEGER DEFAULT 0,  -- derived: 1 when color_transfer is an HDR EOTF
+  capture_fps REAL,       -- sensor capture rate; > fps means slow-motion
+  timecode_start TEXT,    -- SMPTE start timecode from the tmcd track ("HH:MM:SS:FF")
   audio_channels INTEGER,
   audio_sample_rate INTEGER,
   creation_date TIMESTAMP,
