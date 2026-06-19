@@ -780,6 +780,7 @@ impl MetadataExtractor {
     ///      = "0,1") — the MV-HEVC multi-view marker ffprobe surfaces; a 2D clip
     ///      leaves it empty.
     ///   2. An explicit `com.apple.quicktime.spatial.*` container tag.
+    ///
     /// Verified against a real iPhone 16 Pro spatial clip (both signals present).
     fn is_spatial(video_stream: &FFProbeStream, format_tags: &Option<FFProbeTagMap>) -> bool {
         let multiview = video_stream

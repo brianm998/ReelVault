@@ -87,13 +87,13 @@ fn read_head(path: &Path, cap: usize) -> std::io::Result<String> {
 
 /// Parse DJI telemetry from SRT text, taking the first informative record.
 pub fn parse_srt(text: &str) -> DjiTelemetry {
-    let mut out = DjiTelemetry::default();
-    out.gps = parse_gps(text);
-    out.iso = first_capture(text, r"(?i)\biso\s*[:=]\s*(\d+)").and_then(|s| s.parse().ok());
-    out.aperture = parse_aperture(text);
-    out.exposure_time_s = parse_shutter(text);
-    out.creation_date_ms = parse_datetime(text);
-    out
+    DjiTelemetry {
+        gps: parse_gps(text),
+        iso: first_capture(text, r"(?i)\biso\s*[:=]\s*(\d+)").and_then(|s| s.parse().ok()),
+        aperture: parse_aperture(text),
+        exposure_time_s: parse_shutter(text),
+        creation_date_ms: parse_datetime(text),
+    }
 }
 
 /// Compile `pat` and return the first capture group, if any.
