@@ -8,6 +8,8 @@ import coil.Coil
 import coil.ImageLoader
 import com.reelvault.android.data.AndroidTokenStorage
 import com.reelvault.android.data.OkHttpChannelFactory
+import com.reelvault.android.util.MainThreadWatchdog
+import com.reelvault.android.util.OsmConfig
 import com.reelvault.data.remote.PairingClient
 import com.reelvault.data.remote.PinnedTls
 import com.reelvault.data.remote.RemoteConnection
@@ -30,6 +32,13 @@ class ReelVaultApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        // Configure OSMDroid once, up front, with an internal-storage cache so
+        // the map/picker views never run load()'s slow volume probe on the UI
+        // thread (which froze the screen — see OsmConfig).
+        OsmConfig.ensureInitialized(this)
+        // Debug-only: log the main thread's stack whenever it stalls, so a
+        // future freeze / black screen is diagnosable from logcat.
+        if (BuildConfig.DEBUG) MainThreadWatchdog.start()
         setupCoil()
     }
 

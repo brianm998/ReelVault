@@ -691,10 +691,9 @@ private fun LocationPickerSheet(
                     AndroidView(
                         modifier = Modifier.fillMaxSize(),
                         factory = { ctx ->
-                            org.osmdroid.config.Configuration.getInstance().apply {
-                                userAgentValue = "ReelVault/1.0 (android)"
-                                load(ctx, ctx.getSharedPreferences("osmdroid", Context.MODE_PRIVATE))
-                            }
+                            // Configured once at app startup; this guard is cheap.
+                            // (Avoids load()'s main-thread storage probe — see OsmConfig.)
+                            com.reelvault.android.util.OsmConfig.ensureInitialized(ctx)
                             org.osmdroid.views.MapView(ctx).apply {
                                 setTileSource(org.osmdroid.tileprovider.tilesource.TileSourceFactory.MAPNIK)
                                 setUseDataConnection(true)

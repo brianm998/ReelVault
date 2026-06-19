@@ -38,12 +38,12 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.reelvault.android.util.OsmConfig
 import com.reelvault.android.viewmodel.GridViewModel
 import com.reelvault.data.models.LocationFilterGroup
 import com.reelvault.data.models.NamedLocation
 import com.reelvault.data.models.VideoLocation
 import com.reelvault.data.repository.VideoRepository
-import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
@@ -240,13 +240,6 @@ fun LibraryMapScreen(
     // "Show on Map" focus request from the detail view, if any.
     val mapFocus by grid.mapFocus.collectAsStateWithLifecycle()
 
-    // Configure OSMDroid: user-agent must be set before tiles are requested.
-    LaunchedEffect(Unit) {
-        Configuration.getInstance().apply {
-            userAgentValue = "ReelVault/1.0 (android)"
-        }
-    }
-
     var locations by remember { mutableStateOf<List<VideoLocation>>(emptyList()) }
     var named by remember { mutableStateOf<List<NamedLocation>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -377,11 +370,9 @@ private fun MapContent(
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { ctx ->
-            // Load persisted OSMDroid prefs (tile cache path etc.) then create the view.
-            Configuration.getInstance().load(
-                ctx,
-                ctx.getSharedPreferences("osmdroid", android.content.Context.MODE_PRIVATE),
-            )
+            // OSMDroid is configured once at app startup (OsmConfig); this guard
+            // is cheap and just ensures it ran before the first MapView inflates.
+            OsmConfig.ensureInitialized(ctx)
 
             MapView(ctx).apply {
                 setTileSource(TileSourceFactory.MAPNIK)   // OpenStreetMap
