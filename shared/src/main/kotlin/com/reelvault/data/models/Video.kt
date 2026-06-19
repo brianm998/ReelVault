@@ -100,6 +100,8 @@ data class VideoSummary(
     val audioBitDepth: Int = 0,
     val audioLanguage: String = "",
     val audioTrackCount: Int = 0,
+    /** True for stereoscopic MV-HEVC (Apple Vision Pro "spatial") video. */
+    val spatial: Boolean = false,
 ) {
     val isInGroup: Boolean get() = groupId.isNotEmpty() && groupSize > 1
     /** "240 → 30 fps" when captured faster than playback (slow-motion), else null. */
@@ -222,6 +224,8 @@ data class VideoMetadata(
     val audioBitDepth: Int = 0,
     val audioLanguage: String = "",
     val audioTrackCount: Int = 0,
+    /** True for stereoscopic MV-HEVC (Apple Vision Pro "spatial") video. */
+    val spatial: Boolean = false,
 ) {
     val resolution: String get() = "$width x $height"
 

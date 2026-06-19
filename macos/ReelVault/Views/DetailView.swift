@@ -221,6 +221,9 @@ struct DetailView: View {
                 if metadata.hdr {
                     MetadataItemView(label: "HDR", value: "Yes")
                 }
+                if metadata.spatial {
+                    MetadataItemView(label: "Spatial Video", value: "Yes")
+                }
                 if !metadata.dynamicRange.isEmpty {
                     MetadataItemView(label: "Dynamic Range", value: metadata.dynamicRange)
                 }

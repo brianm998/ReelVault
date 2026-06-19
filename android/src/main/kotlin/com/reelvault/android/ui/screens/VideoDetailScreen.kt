@@ -323,6 +323,7 @@ private fun DetailContent(
                 MetadataRow(stringResource(R.string.detail_field_bitrate), metadata.bitrateFormatted)
                 metadata.frameCountFormatted?.let { MetadataRow(stringResource(R.string.detail_field_frames), it) }
                 if (metadata.hdr) MetadataRow(stringResource(R.string.detail_field_hdr), stringResource(R.string.detail_value_yes))
+                if (metadata.spatial) MetadataRow(stringResource(R.string.detail_field_spatial), stringResource(R.string.detail_value_yes))
                 if (metadata.colorSpace.isNotEmpty()) MetadataRow(stringResource(R.string.detail_field_color_space), metadata.colorSpace)
                 if (metadata.dynamicRange.isNotEmpty()) MetadataRow(stringResource(R.string.detail_field_dynamic_range), metadata.dynamicRange)
                 metadata.slowMotionLabel?.let { MetadataRow(stringResource(R.string.detail_field_capture_rate), it) }

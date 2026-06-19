@@ -280,6 +280,9 @@ fun DetailScreen(
                     if (metadata.value!!.hdr) {
                         MetadataItem("HDR", "Yes")
                     }
+                    if (metadata.value!!.spatial) {
+                        MetadataItem("Spatial Video", "Yes")
+                    }
                     if (metadata.value!!.dynamicRange.isNotEmpty()) {
                         MetadataItem("Dynamic Range", metadata.value!!.dynamicRange)
                     }

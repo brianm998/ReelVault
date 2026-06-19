@@ -1380,7 +1380,8 @@ public class VideoRepository: ObservableObject {
             bitDepth: Int(p.bitDepth),
             audioBitDepth: Int(p.audioBitDepth),
             audioLanguage: p.audioLanguage,
-            audioTrackCount: Int(p.audioTrackCount)
+            audioTrackCount: Int(p.audioTrackCount),
+            spatial: p.spatial
         )
     }
 
@@ -1430,7 +1431,8 @@ public class VideoRepository: ObservableObject {
             bitDepth: Int(p.bitDepth),
             audioBitDepth: Int(p.audioBitDepth),
             audioLanguage: p.audioLanguage,
-            audioTrackCount: Int(p.audioTrackCount)
+            audioTrackCount: Int(p.audioTrackCount),
+            spatial: p.spatial
         )
     }
 

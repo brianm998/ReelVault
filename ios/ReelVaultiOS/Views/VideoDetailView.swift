@@ -1335,6 +1335,9 @@ struct VideoMetadataSection: View {
             if let bd = video.bitDepthLabel {
                 detailRow("Bit Depth", bd)
             }
+            if video.spatial {
+                detailRow("Spatial Video", "Yes")
+            }
             if video.durationMs > 0 {
                 detailRow("Duration", video.durationFormatted)
             }

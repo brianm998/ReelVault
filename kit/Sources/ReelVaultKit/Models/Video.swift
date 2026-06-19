@@ -116,6 +116,8 @@ public struct VideoSummary: Identifiable, Hashable, Sendable {
     public var audioBitDepth: Int = 0
     public var audioLanguage: String = ""
     public var audioTrackCount: Int = 0
+    /// True for stereoscopic MV-HEVC (Apple Vision Pro "spatial") video.
+    public var spatial: Bool = false
 
     public var isInGroup: Bool { !groupId.isEmpty && groupSize > 1 }
     /// "240 → 30 fps" when captured faster than playback (slow-motion), else nil.
@@ -198,7 +200,8 @@ public struct VideoSummary: Identifiable, Hashable, Sendable {
             frameCount: frameCount,
             dynamicRange: dynamicRange, timecode: timecode, captureFps: captureFps,
             bitDepth: bitDepth, audioBitDepth: audioBitDepth,
-            audioLanguage: audioLanguage, audioTrackCount: audioTrackCount
+            audioLanguage: audioLanguage, audioTrackCount: audioTrackCount,
+            spatial: spatial
         )
     }
 
@@ -225,7 +228,8 @@ public struct VideoSummary: Identifiable, Hashable, Sendable {
             frameCount: frameCount,
             dynamicRange: dynamicRange, timecode: timecode, captureFps: captureFps,
             bitDepth: bitDepth, audioBitDepth: audioBitDepth,
-            audioLanguage: audioLanguage, audioTrackCount: audioTrackCount
+            audioLanguage: audioLanguage, audioTrackCount: audioTrackCount,
+            spatial: spatial
         )
     }
 
@@ -252,7 +256,8 @@ public struct VideoSummary: Identifiable, Hashable, Sendable {
             frameCount: frameCount,
             dynamicRange: dynamicRange, timecode: timecode, captureFps: captureFps,
             bitDepth: bitDepth, audioBitDepth: audioBitDepth,
-            audioLanguage: audioLanguage, audioTrackCount: audioTrackCount
+            audioLanguage: audioLanguage, audioTrackCount: audioTrackCount,
+            spatial: spatial
         )
     }
 
@@ -279,7 +284,8 @@ public struct VideoSummary: Identifiable, Hashable, Sendable {
             frameCount: frameCount,
             dynamicRange: dynamicRange, timecode: timecode, captureFps: captureFps,
             bitDepth: bitDepth, audioBitDepth: audioBitDepth,
-            audioLanguage: audioLanguage, audioTrackCount: audioTrackCount
+            audioLanguage: audioLanguage, audioTrackCount: audioTrackCount,
+            spatial: spatial
         )
     }
 }
@@ -354,6 +360,8 @@ public struct VideoMetadata: Identifiable, Sendable {
     public let audioBitDepth: Int
     public let audioLanguage: String
     public let audioTrackCount: Int
+    /// True for stereoscopic MV-HEVC (Apple Vision Pro "spatial") video.
+    public let spatial: Bool
 
     public var resolution: String { "\(width)×\(height)" }
 
