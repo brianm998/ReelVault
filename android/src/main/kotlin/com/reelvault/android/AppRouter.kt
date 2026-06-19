@@ -10,6 +10,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.reelvault.android.ui.screens.*
+import com.reelvault.android.ui.screens.OfflineLibraryScreen
 import com.reelvault.android.viewmodel.GridViewModel
 
 sealed class Screen(val route: String) {
@@ -21,6 +22,7 @@ sealed class Screen(val route: String) {
     object Settings : Screen("settings")
     object Map : Screen("map")
     object LocalMedia : Screen("local_media")
+    object OfflineLibrary : Screen("offline_library")
 }
 
 @Composable
@@ -55,6 +57,11 @@ fun AppRouter() {
                 },
                 onBrowseLocalMedia = {
                     navController.navigate(Screen.LocalMedia.route) {
+                        popUpTo(Screen.Connection.route) { inclusive = false }
+                    }
+                },
+                onBrowseOfflineLibrary = {
+                    navController.navigate(Screen.OfflineLibrary.route) {
                         popUpTo(Screen.Connection.route) { inclusive = false }
                     }
                 },
@@ -128,6 +135,11 @@ fun AppRouter() {
         }
         composable(Screen.LocalMedia.route) {
             LocalMediaScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.OfflineLibrary.route) {
+            OfflineLibraryScreen(
                 onBack = { navController.popBackStack() }
             )
         }

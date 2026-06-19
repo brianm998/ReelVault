@@ -506,4 +506,23 @@
     <string name="detail_graphs_analyzing_audio">Analyzing audio…</string>
     <string name="detail_graphs_analyzing_frames">Analyzing frames…</string>
     <string name="detail_graphs_select_video">Select a video</string>
+
+    <!-- ── Offline library ────────────────────────────────────────────── -->
+    <string name="offline_title">Downloaded</string>
+    <string name="offline_empty_title">No Downloads</string>
+    <string name="offline_empty_desc">While connected to a server, choose "Download for Offline" on a video to watch it here without a connection.</string>
+    <string name="offline_section_title">Offline</string>
+    <string name="offline_available_offline">Available offline</string>
+    <string name="offline_downloading">Downloading…</string>
+    <string name="offline_download_button">Download for Offline</string>
+    <string name="offline_quality_title">Download quality</string>
+    <string name="offline_quality_original">Original</string>
+    <string name="offline_quality_720p">720p (smaller)</string>
+    <string name="offline_remove_download">Remove Download</string>
+    <string name="offline_remove_title">Remove Download?</string>
+    <string name="offline_remove_body">"%1$s" will be deleted from this device.</string>
+    <string name="offline_remove_confirm">Remove</string>
+    <string name="offline_file_missing">This download is missing from the device.</string>
+    <string name="offline_downloaded_quality">Downloaded as</string>
+    <string name="offline_browse_downloads">Browse Downloads</string>
 </resources>

@@ -83,6 +83,7 @@ fun ConnectionFlowScreen(
     tokenStorage: TokenStorage,
     onConnected: () -> Unit,
     onBrowseLocalMedia: () -> Unit = {},
+    onBrowseOfflineLibrary: () -> Unit = {},
 ) {
     // We need a Context to build the NSD-backed discovery — pull it from the
     // Compose LocalContext rather than threading it through as a parameter.
@@ -249,6 +250,7 @@ fun ConnectionFlowScreen(
                 state = ConnectionState.Discovering
             },
             onBrowseLocalMedia = onBrowseLocalMedia,
+            onBrowseOfflineLibrary = onBrowseOfflineLibrary,
         )
 
         is ConnectionState.EnterPin -> EnterPinView(
@@ -332,6 +334,7 @@ private fun ChooseServerView(
     onEnterManually: () -> Unit,
     onRetry: () -> Unit,
     onBrowseLocalMedia: () -> Unit = {},
+    onBrowseOfflineLibrary: () -> Unit = {},
 ) {
     Scaffold(
         topBar = {
@@ -421,6 +424,21 @@ private fun ChooseServerView(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.conn_browse_local_videos))
+                }
+            }
+
+            item {
+                OutlinedButton(
+                    onClick = onBrowseOfflineLibrary,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(
+                        Icons.Default.DownloadForOffline,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.offline_browse_downloads))
                 }
             }
         }

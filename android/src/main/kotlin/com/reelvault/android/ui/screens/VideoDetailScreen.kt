@@ -45,6 +45,7 @@ import com.reelvault.android.ui.theme.swatch
 import com.reelvault.android.ui.theme.dimmed
 import com.reelvault.android.R
 import com.reelvault.android.data.VideoShareManager
+import com.reelvault.android.data.OfflineLibrary
 import com.reelvault.android.viewmodel.DetailViewModel
 import com.reelvault.data.models.Collection
 import com.reelvault.data.models.ColorLabel
@@ -446,6 +447,37 @@ private fun DetailContent(
         if (proxies.isNotEmpty()) {
             item {
                 ProxiesSection(proxies = proxies)
+            }
+        }
+
+        // ── Offline download ──────────────────────────────────────────────
+        // Only shown when connected to a remote daemon so the user can
+        // download a copy for offline viewing.
+        if (RemoteConnection.isRemote) {
+            item {
+                val videoSummary = remember(metadata) {
+                    com.reelvault.data.models.VideoSummary(
+                        id = metadata.id,
+                        filename = metadata.filename,
+                        path = metadata.path,
+                        durationMs = metadata.durationMs,
+                        width = metadata.width,
+                        height = metadata.height,
+                        codecVideo = metadata.codecVideo,
+                        codecAudio = metadata.codecAudio,
+                        fps = metadata.fps,
+                        sizeBytes = metadata.sizeBytes,
+                        indexedAt = metadata.indexedAt,
+                        creationDate = metadata.creationDate,
+                        tags = metadata.tags,
+                        isOnline = metadata.isOnline,
+                        rating = metadata.rating,
+                        colorLabel = metadata.colorLabel,
+                        gpsLatitude = metadata.gpsLatitude,
+                        gpsLongitude = metadata.gpsLongitude,
+                    )
+                }
+                OfflineDownloadSection(video = videoSummary)
             }
         }
 
