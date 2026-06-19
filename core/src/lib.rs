@@ -28,6 +28,7 @@ pub mod full_resolution;
 pub mod sensor_cache;
 pub mod xmp;
 pub mod quicktime;
+pub mod gpmf;
 pub mod metadata_keys;
 
 /// Platform-agnostic in-process embed logic (loopback gRPC boot, ingest, prune),

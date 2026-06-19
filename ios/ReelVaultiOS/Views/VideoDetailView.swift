@@ -1332,8 +1332,35 @@ struct VideoMetadataSection: View {
             if !video.codecVideo.isEmpty {
                 detailRow("Codec", video.codecVideo)
             }
+            if let bd = video.bitDepthLabel {
+                detailRow("Bit Depth", bd)
+            }
+            if video.spatial {
+                detailRow("Spatial Video", "Yes")
+            }
+            if video.is360 {
+                detailRow("360° Video", video.projection.capitalized)
+            }
             if video.durationMs > 0 {
                 detailRow("Duration", video.durationFormatted)
+            }
+            if !video.dynamicRange.isEmpty {
+                detailRow("Dynamic Range", video.dynamicRange)
+            }
+            if let slowmo = video.slowMotionLabel {
+                detailRow("Capture Rate", slowmo)
+            }
+            if !video.timecode.isEmpty {
+                detailRow("Timecode", video.timecode)
+            }
+            if let abd = video.audioBitDepthLabel {
+                detailRow("Audio Bit Depth", abd)
+            }
+            if !video.audioLanguage.isEmpty {
+                detailRow("Audio Language", video.audioLanguage)
+            }
+            if video.audioTrackCount > 1 {
+                detailRow("Audio Tracks", String(video.audioTrackCount))
             }
             if !video.cameraDisplayName.isEmpty {
                 detailRow("Camera", video.cameraDisplayName)

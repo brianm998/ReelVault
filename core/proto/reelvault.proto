@@ -333,6 +333,27 @@ message VideoSummary {
   // bitrate/iso/etc. above — so the grid's configurable "Frame count" stat slot
   // renders without a per-video VideoMetadata round-trip.
   int64 frame_count = 36;
+  // Color / dynamic-range + timecode + capture rate, surfaced on the summary
+  // (like the EXIF subset above) so the grid and the iOS inspector render them
+  // without a per-video VideoMetadata round-trip. `dynamic_range` is the
+  // friendly label ("SDR"/"HDR (HLG)"/"Log (S-Log3)"/"RAW"); `timecode` is the
+  // SMPTE start ("HH:MM:SS:FF"); `capture_fps` > fps means slow-motion. Empty/0
+  // when absent.
+  string dynamic_range = 37;
+  string timecode = 38;
+  double capture_fps = 39;
+  // Coded video bit depth (8/10/12/16; 0 unknown), PCM audio depth (0 when
+  // compressed), primary audio language ("" when und), and audio-track count.
+  // Carried on the summary like the EXIF subset so the grid/iOS inspector
+  // render them without a per-video round-trip.
+  int32 bit_depth = 40;
+  int32 audio_bit_depth = 41;
+  string audio_language = 42;
+  int32 audio_track_count = 43;
+  // True for stereoscopic MV-HEVC (Apple Vision Pro "spatial") video.
+  bool spatial = 44;
+  // Spherical/360 projection ("equirectangular", …); empty if not 360.
+  string projection = 45;
 }
 
 enum FullResolutionStatus {
@@ -459,6 +480,17 @@ message VideoMetadata {
   // Sensor capture frame rate. 0 when unknown. When > fps the clip is
   // slow-motion (clients derive the "240 → 30 fps" badge from capture_fps/fps).
   double capture_fps = 45;
+  // Coded video bit depth (8/10/12/16); 0 when unknown.
+  int32 bit_depth = 46;
+  // Audio: PCM sample depth (0 for compressed/unknown), primary-track language
+  // (empty when "und"/absent), and total audio-track count.
+  int32 audio_bit_depth = 47;
+  string audio_language = 48;
+  int32 audio_track_count = 49;
+  // True for stereoscopic MV-HEVC (Apple Vision Pro "spatial") video.
+  bool spatial = 50;
+  // Spherical/360 projection ("equirectangular", "cubemap", …); empty if not 360.
+  string projection = 51;
 }
 
 message GetThumbnailRequest {

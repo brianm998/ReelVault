@@ -259,8 +259,16 @@ fun DetailScreen(
                     MetadataItem("FPS", "%.2f".format(metadata.value!!.fps))
                     metadata.value!!.frameCountFormatted?.let { MetadataItem("Frames", it) }
                     MetadataItem("Video Codec", metadata.value!!.codecVideo.ifEmpty { "—" })
+                    metadata.value!!.bitDepthLabel?.let { MetadataItem("Bit Depth", it) }
                     if (metadata.value!!.codecAudio.isNotEmpty()) {
                         MetadataItem("Audio Codec", metadata.value!!.codecAudio)
+                    }
+                    metadata.value!!.audioBitDepthLabel?.let { MetadataItem("Audio Bit Depth", it) }
+                    if (metadata.value!!.audioLanguage.isNotEmpty()) {
+                        MetadataItem("Audio Language", metadata.value!!.audioLanguage)
+                    }
+                    if (metadata.value!!.audioTrackCount > 1) {
+                        MetadataItem("Audio Tracks", metadata.value!!.audioTrackCount.toString())
                     }
                     MetadataItem("Bitrate", metadata.value!!.bitrateFormatted)
                     MetadataItem("Size", metadata.value!!.sizeFormatted)
@@ -271,6 +279,12 @@ fun DetailScreen(
 
                     if (metadata.value!!.hdr) {
                         MetadataItem("HDR", "Yes")
+                    }
+                    if (metadata.value!!.spatial) {
+                        MetadataItem("Spatial Video", "Yes")
+                    }
+                    if (metadata.value!!.is360) {
+                        MetadataItem("360° Video", metadata.value!!.projection.replaceFirstChar { it.uppercase() })
                     }
                     if (metadata.value!!.dynamicRange.isNotEmpty()) {
                         MetadataItem("Dynamic Range", metadata.value!!.dynamicRange)

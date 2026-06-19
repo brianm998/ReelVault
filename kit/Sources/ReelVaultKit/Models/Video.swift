@@ -101,8 +101,37 @@ public struct VideoSummary: Identifiable, Hashable, Sendable {
     /// back to estimating from duration × fps. Surfaced on the summary so the
     /// grid's "Frame count" stat slot renders without a per-video round-trip.
     public let frameCount: Int64
+    /// Friendly dynamic-range label ("SDR"/"HDR (HLG)"/"Log (S-Log3)"/"RAW"),
+    /// SMPTE start timecode, and sensor capture fps — surfaced on the summary
+    /// (like the EXIF subset above) so the grid and the iOS inspector render
+    /// them without a per-video VideoMetadata round-trip. Defaulted so the
+    /// `with*` copy helpers and other constructors don't all need updating.
+    public var dynamicRange: String = ""
+    public var timecode: String = ""
+    public var captureFps: Double = 0
+    /// Coded video bit depth, PCM audio depth, primary audio language, and audio
+    /// track count — surfaced on the summary so the grid/iOS inspector render
+    /// them without a per-video round-trip. Defaulted (see the Tier-1 fields).
+    public var bitDepth: Int = 0
+    public var audioBitDepth: Int = 0
+    public var audioLanguage: String = ""
+    public var audioTrackCount: Int = 0
+    /// True for stereoscopic MV-HEVC (Apple Vision Pro "spatial") video.
+    public var spatial: Bool = false
+    /// Spherical/360 projection ("equirectangular", …); empty if not 360.
+    public var projection: String = ""
 
     public var isInGroup: Bool { !groupId.isEmpty && groupSize > 1 }
+    /// True when the clip is 360°/spherical (carries a projection).
+    public var is360: Bool { !projection.isEmpty }
+    /// "240 → 30 fps" when captured faster than playback (slow-motion), else nil.
+    public var slowMotionLabel: String? {
+        guard captureFps > fps + 1, fps > 0 else { return nil }
+        return "\(Int(captureFps.rounded())) → \(Int(fps.rounded())) fps"
+    }
+    /// "10-bit" / "24-bit" labels, or nil when unknown.
+    public var bitDepthLabel: String? { bitDepth > 0 ? "\(bitDepth)-bit" : nil }
+    public var audioBitDepthLabel: String? { audioBitDepth > 0 ? "\(audioBitDepth)-bit" : nil }
     public var hasProxies: Bool { proxyCount > 0 }
     public var isProxy: Bool { !proxyOf.isEmpty }
     public var hasLocation: Bool { abs(gpsLatitude) > 1e-6 || abs(gpsLongitude) > 1e-6 }
@@ -172,7 +201,11 @@ public struct VideoSummary: Identifiable, Hashable, Sendable {
             exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm,
             fullResolution: fullResolution,
             isOnline: isOnline,
-            frameCount: frameCount
+            frameCount: frameCount,
+            dynamicRange: dynamicRange, timecode: timecode, captureFps: captureFps,
+            bitDepth: bitDepth, audioBitDepth: audioBitDepth,
+            audioLanguage: audioLanguage, audioTrackCount: audioTrackCount,
+            spatial: spatial, projection: projection
         )
     }
 
@@ -196,7 +229,11 @@ public struct VideoSummary: Identifiable, Hashable, Sendable {
             exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm,
             fullResolution: fullResolution,
             isOnline: isOnline,
-            frameCount: frameCount
+            frameCount: frameCount,
+            dynamicRange: dynamicRange, timecode: timecode, captureFps: captureFps,
+            bitDepth: bitDepth, audioBitDepth: audioBitDepth,
+            audioLanguage: audioLanguage, audioTrackCount: audioTrackCount,
+            spatial: spatial, projection: projection
         )
     }
 
@@ -220,7 +257,11 @@ public struct VideoSummary: Identifiable, Hashable, Sendable {
             exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm,
             fullResolution: fullResolution,
             isOnline: isOnline,
-            frameCount: frameCount
+            frameCount: frameCount,
+            dynamicRange: dynamicRange, timecode: timecode, captureFps: captureFps,
+            bitDepth: bitDepth, audioBitDepth: audioBitDepth,
+            audioLanguage: audioLanguage, audioTrackCount: audioTrackCount,
+            spatial: spatial, projection: projection
         )
     }
 
@@ -244,7 +285,11 @@ public struct VideoSummary: Identifiable, Hashable, Sendable {
             exposureTimeS: exposureTimeS, focalLengthMm: focalLengthMm,
             fullResolution: fullResolution,
             isOnline: isOnline,
-            frameCount: frameCount
+            frameCount: frameCount,
+            dynamicRange: dynamicRange, timecode: timecode, captureFps: captureFps,
+            bitDepth: bitDepth, audioBitDepth: audioBitDepth,
+            audioLanguage: audioLanguage, audioTrackCount: audioTrackCount,
+            spatial: spatial, projection: projection
         )
     }
 }
@@ -312,8 +357,21 @@ public struct VideoMetadata: Identifiable, Sendable {
     /// Sensor capture frame rate; 0 when unknown. When meaningfully above `fps`
     /// the clip is slow-motion (see `slowMotionLabel`).
     public let captureFps: Double
+    /// Coded video bit depth (8/10/12/16; 0 unknown), PCM audio depth (0 when
+    /// compressed/unknown), primary audio language ("" when und), and the number
+    /// of audio tracks.
+    public let bitDepth: Int
+    public let audioBitDepth: Int
+    public let audioLanguage: String
+    public let audioTrackCount: Int
+    /// True for stereoscopic MV-HEVC (Apple Vision Pro "spatial") video.
+    public let spatial: Bool
+    /// Spherical/360 projection ("equirectangular", …); empty if not 360.
+    public let projection: String
 
     public var resolution: String { "\(width)×\(height)" }
+    /// True when the clip is 360°/spherical (carries a projection).
+    public var is360: Bool { !projection.isEmpty }
 
     /// "240 → 30 fps" when the clip was captured faster than it plays back
     /// (slow-motion), otherwise nil. The 1 fps margin avoids false positives
@@ -322,6 +380,9 @@ public struct VideoMetadata: Identifiable, Sendable {
         guard captureFps > fps + 1, fps > 0 else { return nil }
         return "\(Int(captureFps.rounded())) → \(Int(fps.rounded())) fps"
     }
+    /// "10-bit" / "24-bit" labels, or nil when the depth is unknown.
+    public var bitDepthLabel: String? { bitDepth > 0 ? "\(bitDepth)-bit" : nil }
+    public var audioBitDepthLabel: String? { audioBitDepth > 0 ? "\(audioBitDepth)-bit" : nil }
 
     public var durationFormatted: String {
         let totalSeconds = durationMs / 1000

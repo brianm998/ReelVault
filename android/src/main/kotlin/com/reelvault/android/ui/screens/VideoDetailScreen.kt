@@ -320,10 +320,13 @@ private fun DetailContent(
             MetadataSection(title = stringResource(R.string.detail_section_video)) {
                 MetadataRow(stringResource(R.string.detail_field_resolution), metadata.resolution)
                 MetadataRow(stringResource(R.string.detail_field_codec), metadata.codecVideo.ifEmpty { stringResource(R.string.detail_em_dash) })
+                metadata.bitDepthLabel?.let { MetadataRow(stringResource(R.string.detail_field_bit_depth), it) }
                 if (metadata.fps > 0) MetadataRow(stringResource(R.string.detail_field_fps), "%.3f".format(metadata.fps))
                 MetadataRow(stringResource(R.string.detail_field_bitrate), metadata.bitrateFormatted)
                 metadata.frameCountFormatted?.let { MetadataRow(stringResource(R.string.detail_field_frames), it) }
                 if (metadata.hdr) MetadataRow(stringResource(R.string.detail_field_hdr), stringResource(R.string.detail_value_yes))
+                if (metadata.spatial) MetadataRow(stringResource(R.string.detail_field_spatial), stringResource(R.string.detail_value_yes))
+                if (metadata.is360) MetadataRow(stringResource(R.string.detail_field_360), metadata.projection.replaceFirstChar { it.uppercase() })
                 if (metadata.colorSpace.isNotEmpty()) MetadataRow(stringResource(R.string.detail_field_color_space), metadata.colorSpace)
                 if (metadata.dynamicRange.isNotEmpty()) MetadataRow(stringResource(R.string.detail_field_dynamic_range), metadata.dynamicRange)
                 metadata.slowMotionLabel?.let { MetadataRow(stringResource(R.string.detail_field_capture_rate), it) }
@@ -348,6 +351,13 @@ private fun DetailContent(
                     }
                     if (metadata.audioSampleRate > 0) {
                         MetadataRow(stringResource(R.string.detail_field_sample_rate), stringResource(R.string.detail_value_sample_rate, metadata.audioSampleRate))
+                    }
+                    metadata.audioBitDepthLabel?.let { MetadataRow(stringResource(R.string.detail_field_audio_bit_depth), it) }
+                    if (metadata.audioLanguage.isNotEmpty()) {
+                        MetadataRow(stringResource(R.string.detail_field_audio_language), metadata.audioLanguage)
+                    }
+                    if (metadata.audioTrackCount > 1) {
+                        MetadataRow(stringResource(R.string.detail_field_audio_tracks), metadata.audioTrackCount.toString())
                     }
                 }
             }

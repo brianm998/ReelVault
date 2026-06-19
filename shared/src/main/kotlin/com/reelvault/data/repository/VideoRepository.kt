@@ -232,6 +232,15 @@ class VideoRepository(private val channelFactory: ChannelFactory) {
             fullResolution = FullResolutionStatus.fromWire(proto.fullResolutionValue),
             isOnline = proto.isOnline,
             frameCount = proto.frameCount,
+            dynamicRange = proto.dynamicRange,
+            timecode = proto.timecode,
+            captureFps = proto.captureFps,
+            bitDepth = proto.bitDepth,
+            audioBitDepth = proto.audioBitDepth,
+            audioLanguage = proto.audioLanguage,
+            audioTrackCount = proto.audioTrackCount,
+            spatial = proto.spatial,
+            projection = proto.projection,
         )
     }
 
@@ -282,6 +291,12 @@ class VideoRepository(private val channelFactory: ChannelFactory) {
             dynamicRange = proto.dynamicRange,
             timecode = proto.timecode,
             captureFps = proto.captureFps,
+            bitDepth = proto.bitDepth,
+            audioBitDepth = proto.audioBitDepth,
+            audioLanguage = proto.audioLanguage,
+            audioTrackCount = proto.audioTrackCount,
+            spatial = proto.spatial,
+            projection = proto.projection,
         )
     }
 

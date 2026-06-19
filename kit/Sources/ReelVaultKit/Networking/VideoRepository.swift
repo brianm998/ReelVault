@@ -1373,7 +1373,16 @@ public class VideoRepository: ObservableObject {
             focalLengthMm: p.focalLengthMm,
             fullResolution: FullResolutionStatus.from(wire: Int(p.fullResolution.rawValue)),
             isOnline: p.isOnline,
-            frameCount: p.frameCount
+            frameCount: p.frameCount,
+            dynamicRange: p.dynamicRange,
+            timecode: p.timecode,
+            captureFps: p.captureFps,
+            bitDepth: Int(p.bitDepth),
+            audioBitDepth: Int(p.audioBitDepth),
+            audioLanguage: p.audioLanguage,
+            audioTrackCount: Int(p.audioTrackCount),
+            spatial: p.spatial,
+            projection: p.projection
         )
     }
 
@@ -1419,7 +1428,13 @@ public class VideoRepository: ObservableObject {
             colorPrimaries: p.colorPrimaries,
             dynamicRange: p.dynamicRange,
             timecode: p.timecode,
-            captureFps: p.captureFps
+            captureFps: p.captureFps,
+            bitDepth: Int(p.bitDepth),
+            audioBitDepth: Int(p.audioBitDepth),
+            audioLanguage: p.audioLanguage,
+            audioTrackCount: Int(p.audioTrackCount),
+            spatial: p.spatial,
+            projection: p.projection
         )
     }
 
