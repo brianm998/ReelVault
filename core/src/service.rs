@@ -401,7 +401,8 @@ impl ReelVaultService {
                     gps_altitude,
                     iso, aperture, exposure_time_s, focal_length_mm,
                     exposure_mode, exposure_program, white_balance,
-                    color_transfer, color_primaries, dynamic_range, timecode_start, capture_fps
+                    color_transfer, color_primaries, dynamic_range, timecode_start, capture_fps,
+                    bit_depth, audio_bit_depth, audio_language, audio_track_count
                  FROM metadata WHERE video_id = ?",
                 [video_id],
                 |row| {
@@ -435,6 +436,10 @@ impl ReelVaultService {
                         row.get::<_, Option<String>>(26)?,
                         row.get::<_, Option<String>>(27)?,
                         row.get::<_, Option<f64>>(28)?,
+                        row.get::<_, Option<i32>>(29)?,
+                        row.get::<_, Option<i32>>(30)?,
+                        row.get::<_, Option<String>>(31)?,
+                        row.get::<_, Option<i32>>(32)?,
                     ))
                 },
             )
@@ -457,10 +462,12 @@ impl ReelVaultService {
              camera_model, lens_model, gps_lat, gps_lon, gps_alt,
              iso, aperture, exposure_time_s, focal_length_mm,
              exposure_mode, exposure_program, white_balance,
-             color_transfer, color_primaries, dynamic_range, timecode_start, capture_fps) =
+             color_transfer, color_primaries, dynamic_range, timecode_start, capture_fps,
+             bit_depth, audio_bit_depth, audio_language, audio_track_count) =
             row.unwrap_or((0, None, None, 0, 0, 0.0, 0, None, false, 0, 0, None, None, None, None, None, None,
                            None, None, None, None, None, None, None,
-                           None, None, None, None, None));
+                           None, None, None, None, None,
+                           None, None, None, None));
 
         let camera_model_str = camera_model.unwrap_or_default();
         // Resolve marketing name with the user's custom overrides
@@ -517,6 +524,10 @@ impl ReelVaultService {
             dynamic_range: dynamic_range.unwrap_or_default(),
             timecode: timecode_start.unwrap_or_default(),
             capture_fps: capture_fps.unwrap_or(0.0),
+            bit_depth: bit_depth.unwrap_or(0),
+            audio_bit_depth: audio_bit_depth.unwrap_or(0),
+            audio_language: audio_language.unwrap_or_default(),
+            audio_track_count: audio_track_count.unwrap_or(0),
             tags,
             collections: db.get_video_collections(video_id).unwrap_or_default(),
             notes,
@@ -667,7 +678,8 @@ impl ReelVaultService {
                             creation_date, camera_model, gps_latitude, gps_longitude,
                             lens_model, iso, aperture, exposure_time_s, focal_length_mm,
                             bitrate, COALESCE(frame_count, 0),
-                            dynamic_range, timecode_start, capture_fps
+                            dynamic_range, timecode_start, capture_fps,
+                            bit_depth, audio_bit_depth, audio_language, audio_track_count
                      FROM metadata WHERE video_id IN ({ph})"
                 )) {
                     if let Ok(rows) = stmt.query_map(
@@ -696,6 +708,10 @@ impl ReelVaultService {
                                     dynamic_range: row.get::<_, Option<String>>(18)?,
                                     timecode: row.get::<_, Option<String>>(19)?,
                                     capture_fps: row.get::<_, Option<f64>>(20)?,
+                                    bit_depth: row.get::<_, Option<i32>>(21)?,
+                                    audio_bit_depth: row.get::<_, Option<i32>>(22)?,
+                                    audio_language: row.get::<_, Option<String>>(23)?,
+                                    audio_track_count: row.get::<_, Option<i32>>(24)?,
                                 },
                             ))
                         },
@@ -953,6 +969,10 @@ impl ReelVaultService {
                     dynamic_range: m.dynamic_range.unwrap_or_default(),
                     timecode: m.timecode.unwrap_or_default(),
                     capture_fps: m.capture_fps.unwrap_or(0.0),
+                    bit_depth: m.bit_depth.unwrap_or(0),
+                    audio_bit_depth: m.audio_bit_depth.unwrap_or(0),
+                    audio_language: m.audio_language.unwrap_or_default(),
+                    audio_track_count: m.audio_track_count.unwrap_or(0),
                 }
             })
             .collect()
@@ -994,6 +1014,10 @@ struct MetaFields {
     dynamic_range: Option<String>,
     timecode: Option<String>,
     capture_fps: Option<f64>,
+    bit_depth: Option<i32>,
+    audio_bit_depth: Option<i32>,
+    audio_language: Option<String>,
+    audio_track_count: Option<i32>,
 }
 
 /// Chunk size for `IN (?,…)` lists — comfortably below SQLite's bind-variable

@@ -61,10 +61,14 @@ CREATE TABLE IF NOT EXISTS metadata (
   color_primaries TEXT,  -- color primaries (bt709, bt2020, …)
   dynamic_range TEXT,    -- derived facet label: "SDR" / "HDR (PQ)" / "HDR (HLG)" / "Log (S-Log3)" / "RAW"
   hdr INTEGER DEFAULT 0,  -- derived: 1 when color_transfer is an HDR EOTF
+  bit_depth INTEGER,      -- coded video bit depth (8/10/12/16)
   capture_fps REAL,       -- sensor capture rate; > fps means slow-motion
   timecode_start TEXT,    -- SMPTE start timecode from the tmcd track ("HH:MM:SS:FF")
   audio_channels INTEGER,
   audio_sample_rate INTEGER,
+  audio_bit_depth INTEGER,      -- PCM sample depth (24 for pro recorders); NULL for compressed
+  audio_language TEXT,          -- primary audio track language (BCP-47/ISO code); NULL when "und"
+  audio_track_count INTEGER,    -- number of audio tracks (iPhone spatial clips have 2)
   creation_date TIMESTAMP,
   camera_model TEXT,
   lens_model TEXT,

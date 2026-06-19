@@ -255,6 +255,28 @@ impl MetadataExtractor {
         let audio_sample_rate = audio_stream
             .and_then(|s| s.sample_rate.as_ref().map(|r| r.parse::<i32>().unwrap_or(0)))
             .unwrap_or(0);
+        // Audio bit depth (PCM only — 24 for the FX3; 0/None for compressed AAC),
+        // primary-track language (skip the "und" placeholder), and total audio
+        // track count (the iPhone 16 Pro ships a stereo + a 4-channel spatial
+        // track, so > 1 is real and worth surfacing).
+        let audio_bit_depth = audio_stream
+            .and_then(|s| {
+                s.bits_per_raw_sample.as_ref().and_then(|v| v.trim().parse::<i32>().ok())
+                    .or(s.bits_per_sample)
+            })
+            .filter(|&b| b > 0);
+        let audio_language = audio_stream
+            .and_then(|s| s.tags.as_ref().and_then(|t| t.get("language").cloned()))
+            .map(|l| l.trim().to_string())
+            .filter(|l| !l.is_empty() && l != "und");
+        let audio_track_count = probe_output
+            .streams
+            .iter()
+            .filter(|s| s.codec_type.as_deref() == Some("audio"))
+            .count() as i32;
+
+        // Coded video bit depth (8 / 10 / 12 …) for grading workflows.
+        let bit_depth = Self::video_bit_depth(video_stream);
 
         // Color space + HDR. ffprobe reports the transfer characteristic on the
         // video stream; an HDR EOTF (PQ/HLG/DCI) is what makes a clip HDR — both
@@ -301,12 +323,14 @@ impl MetadataExtractor {
         conn.execute(
             "INSERT INTO metadata
              (video_id, duration_ms, frame_count, codec_video, codec_audio, width, height, fps, bitrate,
-              color_space, color_transfer, color_primaries, dynamic_range, hdr, capture_fps, timecode_start,
-              audio_channels, audio_sample_rate, creation_date, camera_model,
+              color_space, color_transfer, color_primaries, dynamic_range, hdr, bit_depth,
+              capture_fps, timecode_start,
+              audio_channels, audio_sample_rate, audio_bit_depth, audio_language, audio_track_count,
+              creation_date, camera_model,
               lens_model, gps_latitude, gps_longitude, gps_altitude,
               iso, aperture, exposure_time_s, focal_length_mm,
               exposure_mode, exposure_program, white_balance, metadata_json)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(video_id) DO UPDATE SET
              duration_ms=excluded.duration_ms,
              frame_count=excluded.frame_count,
@@ -321,9 +345,13 @@ impl MetadataExtractor {
              color_primaries=excluded.color_primaries,
              dynamic_range=excluded.dynamic_range,
              hdr=excluded.hdr,
+             bit_depth=excluded.bit_depth,
              capture_fps=excluded.capture_fps,
              timecode_start=excluded.timecode_start,
              audio_channels=excluded.audio_channels,
+             audio_bit_depth=excluded.audio_bit_depth,
+             audio_language=excluded.audio_language,
+             audio_track_count=excluded.audio_track_count,
              audio_sample_rate=excluded.audio_sample_rate,
              creation_date=excluded.creation_date,
              camera_model=excluded.camera_model,
@@ -363,10 +391,14 @@ impl MetadataExtractor {
                 color_primaries,
                 dynamic_range,
                 hdr,
+                bit_depth,
                 capture_fps,
                 timecode_start,
                 audio_channels,
                 audio_sample_rate,
+                audio_bit_depth,
+                audio_language,
+                audio_track_count,
                 creation_date,
                 camera_model,
                 lens_model,
@@ -648,6 +680,19 @@ impl MetadataExtractor {
     /// HDR-transfer set `thumbnails.rs` uses to decide tone-mapping.
     fn is_hdr_transfer(transfer: Option<&str>) -> bool {
         matches!(transfer, Some("smpte2084") | Some("arib-std-b67") | Some("smpte428"))
+    }
+
+    /// Coded video bit depth (8 / 10 / 12 / 16). Prefers ffprobe's
+    /// `bits_per_raw_sample` (authoritative; "12" for ProRes RAW), falling back
+    /// to inferring from the pixel format ("yuv420p10le" → 10, plain
+    /// "yuv420p" → 8). `None` for float/RAW formats and the genuinely unknown.
+    fn video_bit_depth(s: &FFProbeStream) -> Option<i32> {
+        if let Some(b) = s.bits_per_raw_sample.as_ref().and_then(|v| v.trim().parse::<i32>().ok()) {
+            if b > 0 {
+                return Some(b);
+            }
+        }
+        bit_depth_from_pix_fmt(s.pix_fmt.as_deref())
     }
 
     /// The camera's log OETF, when a recorder/camera records one (Atomos writes
@@ -994,6 +1039,14 @@ pub struct FFProbeStream {
     pub height: Option<i32>,
     pub r_frame_rate: Option<String>,
     pub color_space: Option<String>,
+    /// Pixel format (e.g. "yuv420p10le"); the fallback source for video bit
+    /// depth when `bits_per_raw_sample` is absent.
+    pub pix_fmt: Option<String>,
+    /// Coded bit depth. ffprobe emits it as a *string* ("12" for ProRes RAW).
+    pub bits_per_raw_sample: Option<String>,
+    /// Audio sample bit depth for PCM (24 for the FX3); 0/absent for
+    /// compressed audio (AAC).
+    pub bits_per_sample: Option<i32>,
     /// Transfer characteristic (EOTF) and color primaries. The presence of an
     /// HDR transfer (`smpte2084` = PQ, `arib-std-b67` = HLG, `smpte428`) is how
     /// we classify a clip as HDR; primaries (`bt2020`, …) refine the label.
@@ -1110,6 +1163,38 @@ pub(crate) fn merge_make_model(
         primary_make.or(fallback_make),
         primary_model.or(fallback_model),
     )
+}
+
+/// Infer coded bit depth from an ffmpeg pixel-format name. Handles the common
+/// 10/12/16-bit planar formats (the digit appears in the name, e.g.
+/// "yuv420p10le", "p010le", "yuv444p12le") and treats standard 8-bit planar
+/// formats as 8. Float/RAW formats ("gbrpf32le") and unrecognized names → None.
+fn bit_depth_from_pix_fmt(pix: Option<&str>) -> Option<i32> {
+    let p = pix?.to_ascii_lowercase();
+    if p.contains("f32") || p.contains("f16") {
+        return None; // scene-linear float (ProRes RAW develop) — not a coded depth
+    }
+    // The component depth is the digits trailing the last 'p' plane marker, once
+    // the endianness suffix is stripped: "yuv420p10le" → 10, "p010le" → 10,
+    // "yuv420p" → 8. This avoids matching incidental digits in names like "nv12"
+    // (8-bit) or "rgb24".
+    let s = p.trim_end_matches("le").trim_end_matches("be");
+    if let Some(idx) = s.rfind('p') {
+        let tail = &s[idx + 1..];
+        if let Ok(n) = tail.parse::<i32>() {
+            if n >= 8 {
+                return Some(n);
+            }
+        }
+        return Some(8); // plane marker present, no depth suffix → 8-bit planar
+    }
+    // No 'p' plane marker: common named 8-bit packed formats.
+    if p.starts_with("nv") || p.starts_with("rgb") || p.starts_with("bgr")
+        || p.starts_with("gray") || p.starts_with("uyvy") || p.starts_with("yuyv")
+    {
+        return Some(8);
+    }
+    None
 }
 
 /// Normalize a camera log-curve identifier into its conventional spelling
@@ -1345,6 +1430,19 @@ mod tests {
         let t2 = tags(&[("make", "Apple"), ("model", "iPhone X")]);
         assert_eq!(MetadataExtractor::extract_make(&t2).as_deref(), Some("Apple"));
         assert_eq!(MetadataExtractor::extract_model(&t2).as_deref(), Some("iPhone X"));
+    }
+
+    #[test]
+    fn bit_depth_from_pix_fmt_cases() {
+        assert_eq!(bit_depth_from_pix_fmt(Some("yuv420p10le")), Some(10)); // iPhone HEVC
+        assert_eq!(bit_depth_from_pix_fmt(Some("yuv444p12le")), Some(12));
+        assert_eq!(bit_depth_from_pix_fmt(Some("p010le")), Some(10));
+        assert_eq!(bit_depth_from_pix_fmt(Some("yuv420p")), Some(8));
+        assert_eq!(bit_depth_from_pix_fmt(Some("nv12")), Some(8)); // "12" is the name, not depth
+        assert_eq!(bit_depth_from_pix_fmt(Some("yuv420p16le")), Some(16));
+        assert_eq!(bit_depth_from_pix_fmt(Some("rgb24")), Some(8));
+        assert_eq!(bit_depth_from_pix_fmt(Some("gbrpf32le")), None); // ProRes RAW float develop
+        assert_eq!(bit_depth_from_pix_fmt(None), None);
     }
 
     #[test]
