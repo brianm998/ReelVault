@@ -18,10 +18,13 @@ import ReelVaultKit
 ///    poll-interval ms); shown only when connected; mirrors macOS
 ///    `WatchSettingsDialog` via `VideoRepository.getWatchSettings` /
 ///    `updateWatchSettings`.
+///  - Metadata — Camera Names and Lens Names editors (shown only when connected;
+///    mirrors macOS `CameraNamesView` / `LensNamesView` via
+///    `VideoRepository.listCameraNameMappings` / `listLensNameMappings`).
 struct SettingsView: View {
     /// Non-nil while connected to a remote daemon. Nil in local/offline mode,
-    /// which means the Playback & Proxies and Live Updates sections are hidden —
-    /// there is no server config to read or write.
+    /// which means the Playback & Proxies, Live Updates, and Metadata sections
+    /// are hidden — there is no server config to read or write.
     var connection: AppRouter.ConnectionInfo? = nil
 
     @Environment(\.dismiss) private var dismiss
@@ -33,6 +36,7 @@ struct SettingsView: View {
                 if connection != nil {
                     PlaybackSection()
                     LiveUpdatesSection()
+                    MetadataNamesSection()
                 }
             }
             .navigationTitle("Settings")
@@ -275,6 +279,33 @@ private struct LiveUpdatesSection: View {
         saving = true
         _ = await VideoRepository.shared.updateWatchSettings(settings)
         saving = false
+    }
+}
+
+// MARK: - Metadata Names section
+
+/// Navigation links to the Camera Names and Lens Names editors, mirroring
+/// macOS `CameraNamesView` / `LensNamesView`. Only shown when connected to a
+/// daemon (the data lives in the catalog, not on-device).
+private struct MetadataNamesSection: View {
+    var body: some View {
+        Section {
+            NavigationLink {
+                CameraNamesView()
+            } label: {
+                Label("Camera Names", systemImage: "camera.metering.matrix")
+            }
+
+            NavigationLink {
+                LensNamesView()
+            } label: {
+                Label("Lens Names", systemImage: "camera.aperture")
+            }
+        } header: {
+            Text("Metadata")
+        } footer: {
+            Text("Rename internal camera codes to marketing-friendly names, and create short aliases for verbose lens strings. Changes apply to every metadata surface in ReelVault.")
+        }
     }
 }
 
