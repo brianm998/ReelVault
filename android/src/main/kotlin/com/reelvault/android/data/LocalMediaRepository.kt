@@ -8,16 +8,8 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
-import com.reelvault.data.remote.PinnedTls
-import com.reelvault.data.remote.RemoteConnection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.MultipartBody
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.asRequestBody
-import java.io.File
-import java.io.FileOutputStream
 
 data class LocalVideo(
     val id: Long,
@@ -74,46 +66,5 @@ class LocalMediaRepository(private val context: Context) {
             }
         }
         videos
-    }
-
-    /**
-     * Uploads [video] to the currently connected remote daemon's `/upload`
-     * endpoint. Copies the video to a temp file first (ContentProvider URIs
-     * are not directly seekable by OkHttp), then streams it as multipart.
-     *
-     * Returns `true` on HTTP 2xx, throws on network/IO errors.
-     */
-    suspend fun uploadToServer(video: LocalVideo): Boolean = withContext(Dispatchers.IO) {
-        val ep = RemoteConnection.endpoint
-            ?: throw IllegalStateException("Not connected to a remote server")
-
-        // Copy to a temp file so OkHttp can read it with a seekable source.
-        val tmpFile = File(context.cacheDir, "upload_${video.id}.tmp")
-        try {
-            context.contentResolver.openInputStream(video.uri)?.use { input ->
-                FileOutputStream(tmpFile).use { output -> input.copyTo(output) }
-            } ?: throw IllegalStateException("Could not open ${video.uri}")
-
-            val okHttpClient = PinnedTls.pinnedHttpClient(ep.fingerprintHex)
-            val requestBody = MultipartBody.Builder()
-                .setType(MultipartBody.FORM)
-                .addFormDataPart(
-                    "file",
-                    video.displayName,
-                    tmpFile.asRequestBody(video.mimeType.toMediaType()),
-                )
-                .build()
-
-            val request = Request.Builder()
-                .url("https://${ep.host}:${ep.mediaPort}/upload")
-                .header("Authorization", "Bearer ${ep.token}")
-                .post(requestBody)
-                .build()
-
-            val response = okHttpClient.newCall(request).execute()
-            response.use { it.isSuccessful }
-        } finally {
-            tmpFile.delete()
-        }
     }
 }

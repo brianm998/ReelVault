@@ -42,7 +42,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.reelvault.android.R
+import com.reelvault.android.data.MediaStoreIngest
 import com.reelvault.android.data.VideoShareManager
+import com.reelvault.android.data.lastPairedUploadEndpoint
 import com.reelvault.android.ui.components.LibraryFilterBar
 import com.reelvault.android.ui.components.NavHistoryButtons
 import com.reelvault.android.ui.components.ThumbnailImage
@@ -83,7 +85,11 @@ fun LibraryGridScreen(
     onOpenSettings: () -> Unit,
     onOpenMap: () -> Unit,
     onDisconnect: () -> Unit,
+    // Catalog source switching. [isLocal] true = on-device (embedded core) mode;
+    // [onOpenLocalMedia] switches server→local, [onSwitchToServer] local→server.
+    isLocal: Boolean = false,
     onOpenLocalMedia: () -> Unit = {},
+    onSwitchToServer: () -> Unit = {},
     // Session back/forward history (browser-style). Driven by AppRouter, which
     // owns the NavController; the chevrons live in the top bar.
     canGoBack: Boolean = false,
@@ -113,6 +119,8 @@ fun LibraryGridScreen(
     val filterLocationLabel by vm.filterLocationLabel.collectAsStateWithLifecycle()
     val topSlots by vm.topSlots.collectAsStateWithLifecycle()
     val gridDensity by vm.gridDensity.collectAsStateWithLifecycle()
+    // On-device ingest progress (Local mode) — drives the "importing" banner.
+    val isIngesting by MediaStoreIngest.isIngesting.collectAsStateWithLifecycle()
 
     // ── Local UI state ───────────────────────────────────────────────────
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -133,6 +141,13 @@ fun LibraryGridScreen(
     var isBatchSharing by remember { mutableStateOf(false) }
     var batchShareCount by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
+
+    // ── Local→remote upload (Local mode + a server has been paired) ──────
+    val uploadEndpoint = remember(isLocal) {
+        if (isLocal) lastPairedUploadEndpoint(context) else null
+    }
+    var showUploadSheet by remember { mutableStateOf(false) }
+    var uploadTargets by remember { mutableStateOf<List<VideoSummary>>(emptyList()) }
 
     // ── Stacking state ───────────────────────────────────────────────────
     // stackMembersForVideo: the VideoSummary whose stack badge was tapped,
@@ -223,9 +238,14 @@ fun LibraryGridScreen(
                     scope.launch { drawerState.close() }
                 },
                 onClose = { scope.launch { drawerState.close() } },
+                isLocal = isLocal,
                 onOpenLocalMedia = {
                     scope.launch { drawerState.close() }
                     onOpenLocalMedia()
+                },
+                onSwitchToServer = {
+                    scope.launch { drawerState.close() }
+                    onSwitchToServer()
                 },
             )
         }
@@ -265,6 +285,16 @@ fun LibraryGridScreen(
                         onOpenDensity = { showDensitySheet = true },
                         onDisconnect = onDisconnect,
                         onClearMultiSelect = { multiSelectedIds = emptySet() },
+                        canUpload = uploadEndpoint != null,
+                        onUpload = {
+                            val selected = videos.filter { it.id in multiSelectedIds }
+                            if (selected.isNotEmpty()) {
+                                uploadTargets = selected
+                                multiSelectedIds = emptySet()
+                                vm.clearSelection()
+                                showUploadSheet = true
+                            }
+                        },
                         showSortMenu = showSortMenu,
                         onShowSortMenu = { showSortMenu = true },
                         onDismissSortMenu = { showSortMenu = false },
@@ -368,6 +398,28 @@ fun LibraryGridScreen(
                                 )
                                 Text(
                                     text = banner,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                )
+                            }
+                        }
+                    }
+                    // On-device ingest banner (Local mode) — mirrors iOS IngestBanner.
+                    if (isIngesting) {
+                        Surface(color = MaterialTheme.colorScheme.primaryContainer) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                                Text(
+                                    text = stringResource(R.string.local_importing_banner),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 )
@@ -607,6 +659,17 @@ fun LibraryGridScreen(
             )
         }
 
+        // ── Upload-to-server sheet (Local mode) ─────────────────────────────
+        if (showUploadSheet) {
+            uploadEndpoint?.let { ep ->
+                UploadToServerSheet(
+                    endpoint = ep,
+                    videos = uploadTargets,
+                    onDismiss = { showUploadSheet = false },
+                )
+            }
+        }
+
         // ── Batch sharing progress indicator ────────────────────────────────
         if (isBatchSharing) {
             AlertDialog(
@@ -650,6 +713,8 @@ private fun LibraryTopAppBar(
     onOpenDensity: () -> Unit = {},
     onDisconnect: () -> Unit,
     onClearMultiSelect: () -> Unit,
+    canUpload: Boolean = false,
+    onUpload: () -> Unit = {},
     showSortMenu: Boolean,
     onShowSortMenu: () -> Unit,
     onDismissSortMenu: () -> Unit,
@@ -706,6 +771,15 @@ private fun LibraryTopAppBar(
             actions = {
                 if (isMultiSelect) {
                     // ── Multi-select batch actions ───────────────────────
+                    // Upload to the paired server (Local mode only).
+                    if (canUpload) {
+                        IconButton(onClick = onUpload) {
+                            Icon(
+                                Icons.Default.CloudUpload,
+                                contentDescription = stringResource(R.string.upload_action),
+                            )
+                        }
+                    }
                     // Combine into stack (2+ selected)
                     if (multiSelectCount >= 2) {
                         IconButton(onClick = onCombineIntoStack) {
@@ -865,7 +939,9 @@ private fun LibrarySidebarContent(
     onSelectCollection: (String) -> Unit,
     onClearFilters: () -> Unit,
     onClose: () -> Unit,
+    isLocal: Boolean = false,
     onOpenLocalMedia: () -> Unit = {},
+    onSwitchToServer: () -> Unit = {},
 ) {
     ModalDrawerSheet(modifier = Modifier.width(300.dp)) {
         Row(
@@ -905,12 +981,13 @@ private fun LibrarySidebarContent(
                             Icons.Default.Cloud,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = if (!isLocal) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
-                    label = { Text(stringResource(R.string.grid_remote_library)) },
-                    selected = true,
-                    onClick = { onClose() },
+                    label = { Text(stringResource(R.string.grid_server_library)) },
+                    selected = !isLocal,
+                    onClick = { if (isLocal) onSwitchToServer() else onClose() },
                     modifier = Modifier.padding(horizontal = 8.dp),
                 )
             }
@@ -921,11 +998,13 @@ private fun LibrarySidebarContent(
                             Icons.Default.Smartphone,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp),
+                            tint = if (isLocal) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
-                    label = { Text(stringResource(R.string.grid_local_videos)) },
-                    selected = false,
-                    onClick = { onClose(); onOpenLocalMedia() },
+                    label = { Text(stringResource(R.string.local_this_device)) },
+                    selected = isLocal,
+                    onClick = { if (!isLocal) onOpenLocalMedia() else onClose() },
                     modifier = Modifier.padding(horizontal = 8.dp),
                 )
             }

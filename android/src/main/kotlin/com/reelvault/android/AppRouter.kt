@@ -5,13 +5,18 @@ package com.reelvault.android
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.reelvault.android.core.LocalCore
 import com.reelvault.android.data.DefaultServerPrefs
+import com.reelvault.android.data.MediaStoreIngest
 import com.reelvault.android.ui.screens.*
 import com.reelvault.android.ui.screens.OfflineLibraryScreen
 import com.reelvault.android.viewmodel.GridViewModel
@@ -28,7 +33,8 @@ sealed class Screen(val route: String) {
     }
     object Settings : Screen("settings")
     object Map : Screen("map")
-    object LocalMedia : Screen("local_media")
+    // Boots the embedded core for on-device (Local) mode, then hands off to Grid.
+    object LocalStart : Screen("local_start")
     object OfflineLibrary : Screen("offline_library")
 }
 
@@ -52,7 +58,7 @@ fun AppRouter() {
     // Read synchronously — SharedPreferences, no I/O wait.
     val startDestination = remember {
         when (prefs.loadLastMode()) {
-            "local" -> Screen.LocalMedia.route
+            "local" -> Screen.LocalStart.route
             else -> Screen.Connection.route
         }
     }
@@ -115,6 +121,22 @@ fun AppRouter() {
         gridViewModel.consumeForward()?.let { applyEntry(it) }
     }
 
+    // Foreground catch-up: re-run the cheap incremental MediaStore ingest when
+    // the app returns to the foreground while the on-device library is active
+    // (mirrors iOS scenePhase .active). No-op in remote mode.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val obs = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME &&
+                LocalCore.port > 0 && !app.videoRepository.isRemote
+            ) {
+                MediaStoreIngest.kickoff(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+    }
+
     NavHost(
         navController = navController,
         startDestination = startDestination
@@ -133,8 +155,8 @@ fun AppRouter() {
                 },
                 onBrowseLocalMedia = {
                     prefs.saveLastMode("local")
-                    navController.navigate(Screen.LocalMedia.route) {
-                        popUpTo(Screen.Connection.route) { inclusive = false }
+                    navController.navigate(Screen.LocalStart.route) {
+                        popUpTo(Screen.Connection.route) { inclusive = true }
                     }
                 },
                 onBrowseOfflineLibrary = {
@@ -168,11 +190,37 @@ fun AppRouter() {
                         launchSingleTop = true
                     }
                 },
+                isLocal = !app.videoRepository.isRemote,
                 onOpenLocalMedia = {
-                    navController.navigate(Screen.LocalMedia.route)
+                    // Catalog switcher: server → on-device library.
+                    app.videoRepository.disconnect()
+                    gridViewModel.resetForNewSession()
+                    prefs.saveLastMode("local")
+                    navController.navigate(Screen.LocalStart.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onSwitchToServer = {
+                    // Catalog switcher: on-device library → server (Connection
+                    // auto-reconnects to the last-paired server if creds exist).
+                    MediaStoreIngest.requestCancel()
+                    MediaStoreIngest.stopObserver(context)
+                    app.videoRepository.disconnect()
+                    LocalCore.stop()
+                    gridViewModel.resetForNewSession()
+                    prefs.saveLastMode("remote")
+                    isConnected = false
+                    navController.navigate(Screen.Connection.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
                 },
                 onDisconnect = {
+                    // Works for both modes: also stop the embedded core + ingest
+                    // if they were running (both no-ops when in remote mode).
+                    MediaStoreIngest.requestCancel()
+                    MediaStoreIngest.stopObserver(context)
                     app.videoRepository.disconnect()
+                    LocalCore.stop()
                     // Activity-scoped VM outlives the connection — wipe the old
                     // session's filters/state so the next connection starts clean.
                     gridViewModel.resetForNewSession()
@@ -241,15 +289,21 @@ fun AppRouter() {
                 canGoForward = canGoForward,
             )
         }
-        composable(Screen.LocalMedia.route) {
-            LocalMediaScreen(
-                onBack = {
-                    // If LocalMedia was the start destination there's nothing to
-                    // pop back to — navigate to the connection screen instead.
-                    if (!navController.popBackStack()) {
-                        navController.navigate(Screen.Connection.route)
+        composable(Screen.LocalStart.route) {
+            LocalStartScreen(
+                repository = app.videoRepository,
+                onStarted = {
+                    isConnected = true
+                    navController.navigate(Screen.Grid.route) {
+                        popUpTo(Screen.LocalStart.route) { inclusive = true }
                     }
-                }
+                },
+                onCancel = {
+                    prefs.clearLastMode()
+                    navController.navigate(Screen.Connection.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
             )
         }
         composable(Screen.OfflineLibrary.route) {

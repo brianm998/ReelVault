@@ -259,6 +259,16 @@ impl Config {
             dirs::cache_dir()
                 .ok_or_else(|| ReelVaultError::ConfigError("Could not find cache directory".to_string()))?
                 .join("ReelVault")
+        } else if cfg!(target_os = "android") {
+            // The Android app sandbox has no $HOME, so `dirs` can't resolve a
+            // cache dir. The embedded core sets XDG_CACHE_HOME to the app cache
+            // dir before load (and overrides thumbnail_cache_path immediately
+            // after), so honor that hint and fall back to the temp dir — this
+            // path must never error on Android.
+            std::env::var_os("XDG_CACHE_HOME")
+                .map(PathBuf::from)
+                .unwrap_or_else(std::env::temp_dir)
+                .join("ReelVault")
         } else {
             dirs::cache_dir()
                 .ok_or_else(|| ReelVaultError::ConfigError("Could not find cache directory".to_string()))?

@@ -1103,6 +1103,16 @@ where
             Ok(Some(value))
         }
 
+        // serde_json reports non-negative JSON integers via `visit_u64`, and
+        // org.json (the Android native backend) emits bit_rate/nb_frames as plain
+        // integers — accept those, clamping anything past i64::MAX.
+        fn visit_u64<E>(self, value: u64) -> std::result::Result<Option<i64>, E>
+        where
+            E: de::Error,
+        {
+            Ok(Some(value.min(i64::MAX as u64) as i64))
+        }
+
         fn visit_str<E>(self, value: &str) -> std::result::Result<Option<i64>, E>
         where
             E: de::Error,

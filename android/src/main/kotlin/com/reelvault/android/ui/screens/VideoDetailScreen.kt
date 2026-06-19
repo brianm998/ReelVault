@@ -3,9 +3,11 @@
 
 package com.reelvault.android.ui.screens
 
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.provider.MediaStore
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -563,9 +565,14 @@ private fun VideoPlayerSection(
         val h = if (metadata.height > 0) metadata.height.coerceAtMost(1080) else 1080
         "https://${ep.host}:${ep.mediaPort}/hls/$videoId/$h/index.m3u8"
     }
+    // Local (on-device) mode: no media server — play the original MediaStore video
+    // directly via its content:// URI (reconstructed from the `photos://<id>` row).
+    // Mirrors iOS StreamPlayer.prepareLocal.
+    val localUri: String? = if (remoteEndpoint == null) localPlaybackUri(metadata.path) else null
 
     VideoPlayer(
         streamUrl = hlsUrl,
+        localUri = localUri,
         authToken = remoteEndpoint?.token,
         renditions = proxiesToRenditions(proxies, videoId, remoteEndpoint),
         modifier = Modifier
@@ -606,6 +613,24 @@ private fun proxiesToRenditions(
         hlsUrl = "https://${ep.host}:${ep.mediaPort}/hls/$videoId/480/index.m3u8",
         heightPx = 480,
     )
+}
+
+/**
+ * Map a Local-mode row's `path` to a URI ExoPlayer can play directly. On-device
+ * rows are keyed `photos://<MediaStore _ID>` (see MediaStoreIngest); reconstruct
+ * the content:// URI from the id. Filesystem paths pass through. Mirrors iOS
+ * StreamPlayer.prepareLocal's `photos://` handling.
+ */
+private fun localPlaybackUri(path: String): String? {
+    return when {
+        path.startsWith("photos://") -> {
+            val id = path.removePrefix("photos://").toLongOrNull() ?: return null
+            ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id).toString()
+        }
+        path.startsWith("file://") -> path
+        path.startsWith("/") -> "file://$path"
+        else -> null
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -28,6 +28,8 @@ ios/DerivedData/
 ios/DerivedData*/
 # Embedded-core XCFramework is a build artifact (ios/build-core-xcframework.sh).
 ios/Frameworks/
+# Embedded-core native libs are build artifacts (android/build-core.sh).
+android/src/main/jniLibs/
 
 # IDE
 .vscode/

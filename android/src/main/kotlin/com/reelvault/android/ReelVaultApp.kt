@@ -6,6 +6,8 @@ package com.reelvault.android
 import android.app.Application
 import coil.Coil
 import coil.ImageLoader
+import com.reelvault.android.core.NativeMediaBridge
+import com.reelvault.android.core.ReelVaultCore
 import com.reelvault.android.data.AndroidTokenStorage
 import com.reelvault.android.data.OkHttpChannelFactory
 import com.reelvault.android.data.OfflineLibrary
@@ -39,6 +41,15 @@ class ReelVaultApp : Application() {
         OsmConfig.ensureInitialized(this)
         // Initialise the offline download library (loads the persisted index).
         OfflineLibrary.init(this)
+        // Register the native media backend for the embedded core BEFORE it does
+        // any media work (mirrors iOS NativeMedia.register()). Loads
+        // libreelvault_core.so; if it's missing (e.g. a build without the native
+        // step) the app still runs in remote-only mode.
+        try {
+            ReelVaultCore.nativeRegisterMediaBackend(NativeMediaBridge(applicationContext))
+        } catch (t: Throwable) {
+            android.util.Log.e("ReelVault", "embedded core native lib unavailable: $t")
+        }
         // Debug-only: log the main thread's stack whenever it stalls, so a
         // future freeze / black screen is diagnosable from logcat.
         if (BuildConfig.DEBUG) MainThreadWatchdog.start()

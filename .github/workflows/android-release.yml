@@ -54,6 +54,29 @@ jobs:
           key: release-android-gradle-${{ hashFiles('shared/build.gradle.kts', 'android/build.gradle.kts') }}
           restore-keys: release-android-gradle-
 
+      # ── Embedded Rust core (libreelvault_core.so) ───────────────────────────
+      # The native core is a gitignored build artifact (android/build-core.sh), so
+      # CI must cross-compile it for every ABI before Gradle packages the AAB —
+      # otherwise the on-device Local Library has no .so to load and the app runs
+      # remote-only. Mirrors the iOS pipeline rebuilding ReelVaultCore.xcframework.
+      - name: Set up Rust + Android targets
+        run: |
+          rustup target add aarch64-linux-android armv7-linux-androideabi \
+            x86_64-linux-android i686-linux-android
+          cargo install cargo-ndk
+
+      # Speeds up the (LTO, 4-ABI) cross-compile across runs; keyed on the core's
+      # Cargo.toml since Cargo.lock is gitignored.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+
+      # Builds release .so for arm64-v8a, armeabi-v7a, x86_64, x86 into
+      # android/src/main/jniLibs/<abi>/ (auto-detects the runner's NDK under
+      # $ANDROID_HOME/ndk). Release profile strips the libs so the AAB stays lean.
+      - name: Build embedded core (.so, all ABIs)
+        run: PROFILE=release bash android/build-core.sh
+
       # Decode the base64 keystore to a temp file that Gradle's signingConfig
       # reads via $KEYSTORE_FILE. Fail fast with a clear message if the secret
       # is absent (mirrors the iOS workflow's cert guard) — otherwise Gradle

@@ -71,32 +71,48 @@ fun VideoPlayer(
     modifier: Modifier = Modifier,
     renditions: List<ProxyRendition> = emptyList(),
     authToken: String? = null,
+    // Local (on-device) mode: a content:// or file:// URI played progressively
+    // instead of over HLS. When set, [streamUrl] is null. Mirrors iOS
+    // StreamPlayer.prepareLocal.
+    localUri: String? = null,
 ) {
     val context = LocalContext.current
+    // Either a remote HLS stream or a local progressive URI counts as "has media".
+    val hasMedia = streamUrl != null || localUri != null
 
     var isFullscreen by remember { mutableStateOf(false) }
 
-    // ── Player instance (recreated when streamUrl changes) ────────────
-    val exoPlayer = remember(streamUrl) {
+    // ── Player instance (recreated when the media source changes) ─────
+    val exoPlayer = remember(streamUrl, localUri) {
         ExoPlayer.Builder(context).build().also { player ->
-            if (streamUrl != null) {
-                Log.i("VideoPlayer", "Starting HLS: $streamUrl (token=${authToken?.take(8)}…)")
-                val dataSourceFactory = HlsTokenDataSourceFactory(authToken)
-                val mediaSource = HlsMediaSource.Factory(dataSourceFactory)
-                    .createMediaSource(MediaItem.fromUri(streamUrl))
-                player.setMediaSource(mediaSource)
-                player.prepare()
-                // Do NOT autoplay — buffering to STATE_READY shows the first
-                // frame as a poster behind a centred play button; playback only
-                // begins when the user taps it. Matches the iOS detail view.
-                player.playWhenReady = false
+            when {
+                localUri != null -> {
+                    Log.i("VideoPlayer", "Playing local: $localUri")
+                    // DefaultMediaSourceFactory resolves content:// / file:// and
+                    // demuxes the progressive container (mp4/mov/…).
+                    player.setMediaItem(MediaItem.fromUri(localUri))
+                    player.prepare()
+                    player.playWhenReady = false
+                }
+                streamUrl != null -> {
+                    Log.i("VideoPlayer", "Starting HLS: $streamUrl (token=${authToken?.take(8)}…)")
+                    val dataSourceFactory = HlsTokenDataSourceFactory(authToken)
+                    val mediaSource = HlsMediaSource.Factory(dataSourceFactory)
+                        .createMediaSource(MediaItem.fromUri(streamUrl))
+                    player.setMediaSource(mediaSource)
+                    player.prepare()
+                    // Do NOT autoplay — buffering to STATE_READY shows the first
+                    // frame as a poster behind a centred play button; playback only
+                    // begins when the user taps it. Matches the iOS detail view.
+                    player.playWhenReady = false
+                }
             }
         }
     }
 
-    // True once the user has tapped the big centred play button. Tied to
-    // streamUrl so a brand-new video starts paused with the poster again.
-    var userStartedPlayback by remember(streamUrl) { mutableStateOf(false) }
+    // True once the user has tapped the big centred play button. Tied to the
+    // media source so a brand-new video starts paused with the poster again.
+    var userStartedPlayback by remember(streamUrl, localUri) { mutableStateOf(false) }
     DisposableEffect(exoPlayer) {
         onDispose { exoPlayer.release() }
     }
@@ -220,7 +236,7 @@ fun VideoPlayer(
             },
         contentAlignment = Alignment.Center,
     ) {
-        if (streamUrl != null) {
+        if (hasMedia) {
             AndroidView(
                 factory = { ctx ->
                     PlayerView(ctx).apply {
@@ -235,7 +251,7 @@ fun VideoPlayer(
             )
         }
 
-        if (streamUrl == null) {
+        if (!hasMedia) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
@@ -255,7 +271,7 @@ fun VideoPlayer(
             }
         }
 
-        val isBuffering = streamUrl != null && playerError == null && playbackState == Player.STATE_BUFFERING
+        val isBuffering = hasMedia && playerError == null && playbackState == Player.STATE_BUFFERING
         if (isBuffering) {
             CircularProgressIndicator(
                 modifier = Modifier.size(48.dp),
@@ -266,7 +282,7 @@ fun VideoPlayer(
 
         // Poster-state play button: shown over the first frame until the user
         // chooses to start playback (no autoplay).
-        val showPlayButton = streamUrl != null && playerError == null &&
+        val showPlayButton = hasMedia && playerError == null &&
             !userStartedPlayback && playbackState != Player.STATE_BUFFERING
         if (showPlayButton) {
             Box(
@@ -302,7 +318,7 @@ fun VideoPlayer(
         }
 
         AnimatedVisibility(
-            visible = controlsVisible && playerError == null && streamUrl != null && userStartedPlayback,
+            visible = controlsVisible && playerError == null && hasMedia && userStartedPlayback,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -358,7 +374,7 @@ fun VideoPlayer(
     // ── Fullscreen dialog ─────────────────────────────────────────────
     // Shares `exoPlayer` — the inline AndroidView has already nulled its surface
     // via the `update` callback above, so only this Dialog's PlayerView is active.
-    if (isFullscreen && streamUrl != null) {
+    if (isFullscreen && hasMedia) {
         var fsControlsVisible by remember { mutableStateOf(true) }
         var fsLastTapMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
         var fsShowQuality by remember { mutableStateOf(false) }

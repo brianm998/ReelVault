@@ -11,8 +11,9 @@ readme = "../README.md"
 name = "reelvault_core"
 path = "src/lib.rs"
 # rlib for the desktop bins; staticlib so the iOS embed can link the core as a
-# single `.a` inside an XCFramework (see docs/IOS_CORE_PORT.md §8.1).
-crate-type = ["rlib", "staticlib"]
+# single `.a` inside an XCFramework (see docs/IOS_CORE_PORT.md §8.1); cdylib so
+# the Android app can bundle the core as `libreelvault_core.so` in jniLibs.
+crate-type = ["rlib", "staticlib", "cdylib"]
 
 [dependencies]
 # Async runtime
@@ -124,6 +125,12 @@ winapi = "0.3"
 # answer Stop/Shutdown controls and report status to the SCM (see win_service.rs).
 windows-service = "0.7"
 
+# Android embed (src/android.rs): JNI bridge so the Kotlin app boots the core
+# in-process and provides the native media backend. logcat output goes through
+# liblog (`-llog`) directly from src/embed.rs, so no extra logging crate.
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.21"
+
 # Development
 [dev-dependencies]
 criterion = "0.5"
@@ -146,3 +153,8 @@ path = "src/bin/cli.rs"
 opt-level = 3
 lto = true
 codegen-units = 1
+# Strip debug info + the local symbol table from release artifacts. Keeps the
+# exported dynamic symbols (the JNI `Java_*` / iOS `reelvault_*` entry points stay
+# resolvable), but shrinks the Android `libreelvault_core.so` from hundreds of MB
+# to a few — so the release AAB stays lean without depending on AGP/NDK stripping.
+strip = true

@@ -536,4 +536,23 @@
     <string name="offline_file_missing">This download is missing from the device.</string>
     <string name="offline_downloaded_quality">Downloaded as</string>
     <string name="offline_browse_downloads">Browse Downloads</string>
+
+    <!-- On-device (Local) library — embedded Rust core -->
+    <string name="local_starting">Starting on-device library…</string>
+    <string name="local_start_failed">Couldn\'t start the on-device library.</string>
+    <string name="local_permission_needed">ReelVault needs access to your videos to build an on-device library.</string>
+    <string name="local_importing_banner">Importing local videos — keep ReelVault open</string>
+    <string name="local_open_library">Open On-Device Library</string>
+    <string name="local_this_device">On This Device</string>
+    <string name="grid_server_library">Server</string>
+
+    <!-- Local → remote upload -->
+    <string name="upload_action">Upload to Server</string>
+    <string name="upload_title">Upload to %1$s</string>
+    <string name="upload_preparing">Preparing…</string>
+    <string name="upload_uploading">Uploading…</string>
+    <string name="upload_done">Uploaded</string>
+    <string name="upload_failed">Failed</string>
+    <string name="upload_skipped">%1$d skipped (not on-device files)</string>
+    <string name="upload_close">Close</string>
 </resources>
