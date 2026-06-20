@@ -31,9 +31,9 @@ ReelVault umożliwia:
 ## Architektura
 
 ```
-Desktop / macOS clients          iOS client (iPhone / iPad)
+Desktop / macOS clients          iOS / Android clients
    ↓ gRPC over loopback             ↓ gRPC + HTTPS media over the LAN
-   │                                │ (mDNS discovery · pinned TLS · paired)
+   │                                │ (mDNS/NSD discovery · pinned TLS · paired)
    └───────────────┬────────────────┘
                    ↓
         Rust Backend Daemon (reelvault-core)
@@ -63,6 +63,13 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
   parowaniu, przegląda przez gRPC i **streamuje** wideo (skalowane HLS) z serwera mediów
   demona. Zastępuje przeciąganie do edytora arkuszem udostępniania iOS i dodaje
   przesyłanie z Zdjęć / Plików. Zob. [`ios/README.md`](ios/README.md).
+
+- **Kotlin Compose Android client** (`android/`) — A **remote-only**
+  Android phone / tablet app. Connects to a daemon over the LAN (NSD
+  discovery), streams video via ExoPlayer, and replaces editor drag-out with
+  the Android share intent. Also embeds the full Rust core for on-device local
+  library access — browse, catalog, and upload footage directly from the
+  device. See [`android/README.md`](android/README.md).
 
 - **ReelVaultKit** (`kit/`) — lokalny pakiet SwiftPM ze współdzielonym kodem Swift
   używanym przez **oba** klienty Apple: modele, modele widoku, klient gRPC, wykrywanie,
@@ -96,7 +103,14 @@ zob. [`ios/README.md`](ios/README.md).
       kolekcje, stosy, filtry, status, konfiguracja, cykl życia katalogu).
 - [x] Katalog SQLite z trybem WAL + FTS5; dynamiczna wymiana katalogu w czasie działania przez
       `OpenCatalog` / `CloseCatalog`.
-- [x] Ekstrakcja metadanych FFprobe (kodek, rozdzielczość, FPS, bitrate, HDR,
+- [x] Rich metadata extraction via FFprobe + platform-native helpers: codec,
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera., rozdzielczość, FPS, bitrate, HDR,
       EXIF, GPS, kamera/obiektyw).
 - [x] Generowanie miniatur i klatek scrubowania w stylu Lightroom (10 klatek na
       wideo) z blokadami per wideo, aby unikać powielania pracy.
@@ -254,9 +268,8 @@ są w [`ios/README.md`](ios/README.md).
 
 ## Współtworzenie
 
-Wytyczne deweloperskie — zob. [`CLAUDE.md`](CLAUDE.md). Zapraszamy do zgłaszania pull
-requestów — prosimy o utrzymanie parytetu funkcji między oboma klientami oraz dodawanie
-nagłówków SPDX do nowych plików źródłowych (zob. Licencja poniżej).
+Wytyczne deweloperskie — zob. [`CLAUDE.md`](CLAUDE.md). Zapraszamy do zgłaszania pull requestów — prosimy o zachowanie parytetu funkcji we wszystkich czterech klientach tam, gdzie ma to zastosowanie
+(patrz CLAUDE.md w celu poznania uzasadnionych odchyleń specyficznych dla platformy) oraz dodanie nagłówków SPDX do wszelkich nowych plików źródłowych (zob. Licencja poniżej).
 
 ## Licencja
 

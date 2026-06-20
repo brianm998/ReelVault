@@ -22,9 +22,9 @@ ReelVault でできること：
 ## アーキテクチャ
 
 ```
-Desktop / macOS clients          iOS client (iPhone / iPad)
+Desktop / macOS clients          iOS / Android clients
    ↓ gRPC over loopback             ↓ gRPC + HTTPS media over the LAN
-   │                                │ (mDNS discovery · pinned TLS · paired)
+   │                                │ (mDNS/NSD discovery · pinned TLS · paired)
    └───────────────┬────────────────┘
                    ↓
         Rust Backend Daemon (reelvault-core)
@@ -39,6 +39,13 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 - **SwiftUI macOS クライアント** (`macos/`) — 同等の機能を持つネイティブ macOS アプリです。同じ自動起動フロー、本物の macOS ファイルメニュー（Commands グループ）、開いているカタログを追跡するリアクティブなウィンドウタイトルを備えています。
 
 - **SwiftUI iOS クライアント** (`ios/`) — **リモート専用**の iPhone / iPad アプリです。ローカルファイルアクセスはなく、デーモンも内蔵していません。Wi‑Fi（mDNS）を通じてデーモンを発見し、ワンタイムペアリング後に指紋固定された TLS チャンネルで接続し、gRPC でブラウズ、デーモンのメディアサーバーからビデオを**ストリーミング**（ダウンスケール HLS）します。エディターへのドラッグアウトの代わりに iOS の共有シートを使用し、写真/ファイルからのアップロードも追加されています。詳しくは [`ios/README.md`](ios/README.md) を参照してください。
+
+- **Kotlin Compose Android client** (`android/`) — A **remote-only**
+  Android phone / tablet app. Connects to a daemon over the LAN (NSD
+  discovery), streams video via ExoPlayer, and replaces editor drag-out with
+  the Android share intent. Also embeds the full Rust core for on-device local
+  library access — browse, catalog, and upload footage directly from the
+  device. See [`android/README.md`](android/README.md).
 
 - **ReelVaultKit** (`kit/`) — **両方**の Apple クライアントで共用されるローカル SwiftPM パッケージです。モデル、ビューモデル、gRPC クライアント、Discovery、固定 TLS、メディアキャッシュ/ストリーミング層が含まれています。
 
@@ -55,7 +62,21 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 **コア**
 - [x] 完全な RPC サーフェスを持つ gRPC デーモン（動画、検索、スキャン、タグ、コレクション、スタック、フィルター、ステータス、設定、カタログライフサイクル）。
 - [x] WAL モード + FTS5 の SQLite カタログ、`OpenCatalog` / `CloseCatalog` によるランタイムカタログのホットスワップ。
-- [x] FFprobe によるメタデータ抽出（コーデック、解像度、FPS、ビットレート、HDR、EXIF、GPS、カメラ/レンズ）。
+- [x] Rich metadata extraction via FFprobe + platform-native helpers: codec,
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera.
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera.
 - [x] サムネイルと Lightroom スタイルのスクラブフレーム生成（動画ごとに 10 フレーム）。動画ごとのロックにより処理の重複を排除。
 - [x] 並行 ffmpeg スロットル（デフォルトはホスト CPU 数）。大規模ライブラリのスキャンが SAN バックストレージを圧迫しないよう制御します。
 - [x] オプションの再帰と変種の自動グループ化を備えたライブラリスキャン。
@@ -174,7 +195,8 @@ make build            # iOS Simulator; or open ReelVault.xcodeproj to run on a d
 
 ## コントリビューション
 
-開発ガイドラインについては [`CLAUDE.md`](CLAUDE.md) を参照してください。プルリクエストを歓迎します — 2 つのクライアントの機能パリティを保ち、新しいソースファイルには SPDX ヘッダーを追加してください（下記ライセンス参照）。
+開発ガイドラインについては [`CLAUDE.md`](CLAUDE.md) を参照してください。プルリクエストを歓迎します — 適用可能な場合はすべての 4 つのクライアントの機能パリティを保ち
+（プラットフォームごとの正当な逸脱については CLAUDE.md を参照）、新しいソースファイルには SPDX ヘッダーを追加してください（下記ライセンス参照）。
 
 ## ライセンス
 

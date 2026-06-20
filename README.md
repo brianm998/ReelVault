@@ -1,6 +1,6 @@
 # ReelVault
 
-**Available in:** [العربية](README.ar.md) · [čeština](README.cs.md) · [Deutsch](README.de.md) · [Español](README.es.md) · [Français](README.fr.md) · [हिन्दी](README.hi.md) · [Bahasa Indonesia](README.id.md) · [Italiano](README.it.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Nederlands](README.nl.md) · [Polski](README.pl.md) · [Português (BR)](README.pt-BR.md) · [Русский](README.ru.md) · [ภาษาไทย](README.th.md) · [Türkçe](README.tr.md) · [Українська](README.uk.md) · [Tiếng Việt](README.vi.md) · [简体中文](README.zh-Hans.md)
+**Available in:** [العربية](README.ar.md) · [বাংলা](README.bn.md) · [čeština](README.cs.md) · [Deutsch](README.de.md) · [Español](README.es.md) · [Français](README.fr.md) · [हिन्दी](README.hi.md) · [Bahasa Indonesia](README.id.md) · [Italiano](README.it.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Nederlands](README.nl.md) · [Polski](README.pl.md) · [Português (BR)](README.pt-BR.md) · [Русский](README.ru.md) · [ภาษาไทย](README.th.md) · [Türkçe](README.tr.md) · [Українська](README.uk.md) · [اردو](README.ur.md) · [Tiếng Việt](README.vi.md) · [简体中文](README.zh-Hans.md)
 
 A cross-platform video cataloging application inspired by Lightroom — fast,
 native browsing of large video libraries.
@@ -34,9 +34,9 @@ ReelVault helps you:
 ## Architecture
 
 ```
-Desktop / macOS clients          iOS client (iPhone / iPad)
+Desktop / macOS clients          iOS / Android clients
    ↓ gRPC over loopback             ↓ gRPC + HTTPS media over the LAN
-   │                                │ (mDNS discovery · pinned TLS · paired)
+   │                                │ (mDNS/NSD discovery · pinned TLS · paired)
    └───────────────┬────────────────┘
                    ↓
         Rust Backend Daemon (reelvault-core)
@@ -67,6 +67,13 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
   daemon's media server. Replaces editor drag-out with the iOS share sheet and
   adds upload from Photos / Files. See [`ios/README.md`](ios/README.md).
 
+- **Kotlin Compose Android client** (`android/`) — A **remote-only**
+  Android phone / tablet app. Connects to a daemon over the LAN (NSD
+  discovery), streams video via ExoPlayer, and replaces editor drag-out with
+  the Android share intent. Also embeds the full Rust core for on-device local
+  library access — browse, catalog, and upload footage directly from the
+  device. See [`android/README.md`](android/README.md).
+
 - **ReelVaultKit** (`kit/`) — A local SwiftPM package of shared Swift used by
   **both** Apple clients: models, view-models, the gRPC client, discovery,
   pinned TLS, and the media cache/streaming layer.
@@ -86,11 +93,13 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 
 ## Project status
 
-**MVP is functional on macOS and Compose Desktop.** Both clients ship the
-same feature set; the macOS client adds native menu-bar commands and
-NSWorkspace-driven editor launches. A **remote-only iOS client** (iPhone /
-iPad) connects to a daemon over the LAN and streams video — browse, inspect,
-stack, share, and upload; see [`ios/README.md`](ios/README.md).
+**MVP is functional across all four clients.** The macOS and Kotlin Compose
+desktop clients share the full feature set; macOS adds native menu-bar commands
+and NSWorkspace-driven editor launches. The **iOS client** (iPhone / iPad) and
+the **Android client** each connect to a daemon over the LAN and stream video —
+browse, inspect, stack, share, and upload. Both mobile clients also embed the
+full Rust core for on-device local library access without a network connection.
+See [`ios/README.md`](ios/README.md) and [`android/README.md`](android/README.md).
 
 ### ✅ Done
 
@@ -99,8 +108,14 @@ stack, share, and upload; see [`ios/README.md`](ios/README.md).
       collections, stacks, filters, status, config, catalog lifecycle).
 - [x] SQLite catalog with WAL mode + FTS5; runtime catalog hot-swap via
       `OpenCatalog` / `CloseCatalog`.
-- [x] FFprobe metadata extraction (codec, resolution, FPS, bitrate, HDR,
-      EXIF, GPS, camera/lens).
+- [x] Rich metadata extraction via FFprobe + platform-native helpers: codec,
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera.
 - [x] Thumbnail and Lightroom-style scrub-frame generation (10 frames per
       video) with per-video locks to deduplicate work.
 - [x] Concurrent-ffmpeg throttle (defaults to host CPU count) to keep
@@ -138,6 +153,18 @@ stack, share, and upload; see [`ios/README.md`](ios/README.md).
 - [x] Hover-text help (tooltips on Kotlin via `TooltipArea`; SwiftUI via
       `.help(_:)`) on every interactive element and metadata field.
 - [x] Dark mode default; light/dark theme toggle.
+
+**Android client**
+- [x] Remote server connection via NSD (Network Service Discovery) and
+      gRPC over TLS with certificate pinning and one-time pairing.
+- [x] ExoPlayer-based HLS video streaming with quality picker.
+- [x] On-device local library via embedded Rust core (JNI / NDK).
+- [x] Browse, inspect metadata, tag, stack, rate, and set color labels.
+- [x] Share intent for editor hand-off (replaces drag-and-drop).
+- [x] Upload device footage to a paired server.
+- [x] Offline downloaded video library.
+- [x] GPS map view with OSMDroid and GPS track polyline.
+- [x] Back/forward navigation history.
 
 ### 🚧 Planned
 
@@ -243,6 +270,25 @@ device once with a 6-digit pairing code (generate it from a desktop client's
 Requires **iOS 18+** and **Xcode 16+**. Full details, including the streaming
 and pairing model, are in [`ios/README.md`](ios/README.md).
 
+### Run the Android client
+
+**Prerequisites:** Android NDK and `cargo-ndk` (for the embedded Rust core).
+
+```bash
+cd android
+./build-core.sh        # cross-compile the Rust core for Android ABIs
+./gradlew assembleDebug
+```
+
+Install the APK on a device or emulator. For remote-server access, start the
+daemon with `--remote` on a machine on the same Wi‑Fi and pair using the same
+6-digit flow as iOS. For on-device local library access, grant the app storage
+permission and the embedded daemon will index videos automatically.
+
+For Play Store releases, CI builds a signed APK on `v*` tags via
+`.github/workflows/android-release.yml`. See [`android/README.md`](android/README.md)
+for full build and signing instructions.
+
 ## Documentation
 
 - [`CLAUDE.md`](CLAUDE.md) — Project vision, architecture details, database
@@ -252,14 +298,18 @@ and pairing model, are in [`ios/README.md`](ios/README.md).
   Rust core's modules and RPC surface.
 - [`CLIENT_COMPARISON.md`](CLIENT_COMPARISON.md) — Side-by-side comparison
   of the Kotlin and SwiftUI clients.
-- [`ios/README.md`](ios/README.md) — The remote-only iOS (iPhone / iPad)
-  client: discovery, pairing, pinned TLS, and HLS streaming.
+- [`ios/README.md`](ios/README.md) — The iOS (iPhone / iPad) client:
+  discovery, pairing, pinned TLS, HLS streaming, and on-device library.
+- [`android/README.md`](android/README.md) — The Android client: NSD
+  discovery, ExoPlayer streaming, embedded Rust core, and Play Store
+  distribution.
 - [`macos/README.md`](macos/README.md) — The native macOS client.
 
 ## Contributing
 
 See [`CLAUDE.md`](CLAUDE.md) for development guidelines. Pull requests
-welcome — please keep the two clients in feature-parity, and add SPDX
+welcome — please keep all four clients in feature-parity where applicable
+(see CLAUDE.md for legitimate per-platform deviations), and add SPDX
 headers to any new source files (see License below).
 
 ## License

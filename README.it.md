@@ -22,9 +22,9 @@ ReelVault ti permette di:
 ## Architettura
 
 ```
-Desktop / macOS clients          iOS client (iPhone / iPad)
+Desktop / macOS clients          iOS / Android clients
    ↓ gRPC over loopback             ↓ gRPC + HTTPS media over the LAN
-   │                                │ (mDNS discovery · pinned TLS · paired)
+   │                                │ (mDNS/NSD discovery · pinned TLS · paired)
    └───────────────┬────────────────┘
                    ↓
         Rust Backend Daemon (reelvault-core)
@@ -39,6 +39,13 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 - **Client macOS SwiftUI** (`macos/`) — App macOS nativa con parità di funzionalità, lo stesso flusso di avvio automatico, un vero menu File di macOS (gruppo Commands) e un titolo di finestra reattivo che segue il catalogo aperto.
 
 - **Client iOS SwiftUI** (`ios/`) — Un'app iPhone / iPad **solo remota**. Non ha accesso a file locali e non incorpora un daemon: scopre un daemon via Wi-Fi (mDNS), si connette tramite un canale TLS con impronta digitale fissata dopo un accoppiamento una tantum, naviga via gRPC e **trasmette in streaming** il video (HLS ridimensionato) dal server media del daemon. Sostituisce il trascinamento verso gli editor con il foglio di condivisione iOS e aggiunge il caricamento da Foto / File. Vedi [`ios/README.md`](ios/README.md).
+
+- **Kotlin Compose Android client** (`android/`) — A **remote-only**
+  Android phone / tablet app. Connects to a daemon over the LAN (NSD
+  discovery), streams video via ExoPlayer, and replaces editor drag-out with
+  the Android share intent. Also embeds the full Rust core for on-device local
+  library access — browse, catalog, and upload footage directly from the
+  device. See [`android/README.md`](android/README.md).
 
 - **ReelVaultKit** (`kit/`) — Un pacchetto SwiftPM locale di codice Swift condiviso utilizzato da **entrambi** i client Apple: modelli, view-model, client gRPC, discovery, TLS fissato e il livello di cache/streaming media.
 
@@ -55,7 +62,14 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 **Nucleo**
 - [x] Daemon gRPC con superficie RPC completa (video, ricerca, scansione, tag, collezioni, pile, filtri, stato, configurazione, ciclo di vita del catalogo).
 - [x] Catalogo SQLite con modalità WAL + FTS5; scambio a caldo del catalogo a runtime tramite `OpenCatalog` / `CloseCatalog`.
-- [x] Estrazione metadati FFprobe (codec, risoluzione, FPS, bitrate, HDR, EXIF, GPS, camera/obiettivo).
+- [x] Rich metadata extraction via FFprobe + platform-native helpers: codec,
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera., risoluzione, FPS, bitrate, HDR, EXIF, GPS, camera/obiettivo).
 - [x] Generazione di miniature e fotogrammi di scrub stile Lightroom (10 fotogrammi per video) con lock per video per deduplicare il lavoro.
 - [x] Limitazione del ffmpeg concorrente (default: numero di CPU dell'host) per evitare di sovraccaricare lo storage SAN durante le scansioni di grandi librerie.
 - [x] Scansione della libreria con ricorsione opzionale e raggruppamento automatico delle varianti.
@@ -174,7 +188,8 @@ Al primo avvio l'app scopre il daemon tramite mDNS, autorizzi il dispositivo una
 
 ## Contribuire
 
-Vedi [`CLAUDE.md`](CLAUDE.md) per le linee guida allo sviluppo. Le pull request sono benvenute — mantieni la parità di funzionalità tra i due client e aggiungi intestazioni SPDX a qualsiasi nuovo file sorgente (vedi Licenza di seguito).
+Consulta [`CLAUDE.md`](CLAUDE.md) per le linee guida di sviluppo. Le pull request sono benvenute — mantieni la parità di funzionalità tra tutti e quattro i client dove applicabile
+(vedi CLAUDE.md per le deviazioni legittime per piattaforma) e aggiungi intestazioni SPDX ai nuovi file sorgente (vedi Licenza in basso).
 
 ## Licenza
 

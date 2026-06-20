@@ -22,9 +22,9 @@ ReelVault допомагає вам:
 ## Архітектура
 
 ```
-Desktop / macOS clients          iOS client (iPhone / iPad)
+Desktop / macOS clients          iOS / Android clients
    ↓ gRPC over loopback             ↓ gRPC + HTTPS media over the LAN
-   │                                │ (mDNS discovery · pinned TLS · paired)
+   │                                │ (mDNS/NSD discovery · pinned TLS · paired)
    └───────────────┬────────────────┘
                    ↓
         Rust Backend Daemon (reelvault-core)
@@ -39,6 +39,13 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 - **SwiftUI macOS-клієнт** (`macos/`) — нативний застосунок macOS з повним паритетом функцій, таким же потоком автозапуску, справжнім меню «Файл» macOS (група Commands) та реактивним заголовком вікна, що відстежує відкритий каталог.
 
 - **SwiftUI iOS-клієнт** (`ios/`) — застосунок iPhone / iPad **лише для віддаленого підключення**. Не має доступу до локальних файлів і не містить вбудованого демона: знаходить демон через Wi‑Fi (mDNS), підключається через TLS-канал з закріпленим відбитком після одноразового парування, переглядає через gRPC і **стримить** відео (HLS зі зниженою роздільною здатністю) з медіасервера демона. Замінює перетягування в редактор на листок обміну iOS та додає завантаження з «Фото» / «Файли». Дивіться [`ios/README.md`](ios/README.md).
+
+- **Kotlin Compose Android client** (`android/`) — A **remote-only**
+  Android phone / tablet app. Connects to a daemon over the LAN (NSD
+  discovery), streams video via ExoPlayer, and replaces editor drag-out with
+  the Android share intent. Also embeds the full Rust core for on-device local
+  library access — browse, catalog, and upload footage directly from the
+  device. See [`android/README.md`](android/README.md).
 
 - **ReelVaultKit** (`kit/`) — локальний пакет SwiftPM зі спільним Swift-кодом, що використовується **обома** клієнтами Apple: моделі, view-моделі, gRPC-клієнт, пошук, закріплений TLS та рівень кешування/стримінгу медіа.
 
@@ -55,7 +62,14 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 **Core**
 - [x] gRPC-демон з повною поверхнею RPC (відео, пошук, сканування, теги, колекції, стопки, фільтри, статус, конфігурація, життєвий цикл каталогу).
 - [x] Каталог SQLite з режимом WAL + FTS5; гаряче перемикання каталогу під час виконання через `OpenCatalog` / `CloseCatalog`.
-- [x] Витягування метаданих FFprobe (кодек, роздільна здатність, FPS, бітрейт, HDR, EXIF, GPS, камера/об'єктив).
+- [x] Rich metadata extraction via FFprobe + platform-native helpers: codec,
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera., роздільна здатність, FPS, бітрейт, HDR, EXIF, GPS, камера/об'єктив).
 - [x] Генерація мініатюр і скрабових кадрів у стилі Lightroom (10 кадрів на відео) із блокуванням для кожного відео, щоб уникнути дублювання роботи.
 - [x] Обмеження одночасного використання ffmpeg (за замовчуванням — кількість ядер процесора хоста) для захисту SAN-сховища від перевантаження під час сканування великих бібліотек.
 - [x] Сканування бібліотеки з опціональною рекурсією та автоматичним групуванням варіантів.
@@ -174,7 +188,8 @@ make build            # iOS Simulator; or open ReelVault.xcodeproj to run on a d
 
 ## Внесок
 
-Дивіться [`CLAUDE.md`](CLAUDE.md) для ознайомлення з рекомендаціями щодо розробки. Pull request вітаються — будь ласка, підтримуйте паритет функцій між двома клієнтами та додавайте заголовки SPDX до будь-яких нових вихідних файлів (дивіться Ліцензію нижче).
+Дивіться [`CLAUDE.md`](CLAUDE.md) для ознайомлення з рекомендаціями щодо розробки. Pull request вітаються — будь ласка, підтримуйте паритет функцій між усіма чотирма клієнтами, де це застосовно
+(допустимі відхилення для кожної платформи дивіться в CLAUDE.md), та додавайте заголовки SPDX до будь-яких нових вихідних файлів (дивіться Ліцензію нижче).
 
 ## Ліцензія
 

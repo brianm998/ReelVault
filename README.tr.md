@@ -31,9 +31,9 @@ ReelVault ile şunları yapabilirsiniz:
 ## Mimari
 
 ```
-Desktop / macOS clients          iOS client (iPhone / iPad)
+Desktop / macOS clients          iOS / Android clients
    ↓ gRPC over loopback             ↓ gRPC + HTTPS media over the LAN
-   │                                │ (mDNS discovery · pinned TLS · paired)
+   │                                │ (mDNS/NSD discovery · pinned TLS · paired)
    └───────────────┬────────────────┘
                    ↓
         Rust Backend Daemon (reelvault-core)
@@ -62,6 +62,13 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
   bağlanır, gRPC üzerinden tarar ve daemon'ın medya sunucusundan video **akışı** yapar
   (küçültülmüş HLS). Editöre sürüklemeyi iOS paylaşım sayfasıyla değiştirir ve Fotoğraflar /
   Dosyalar'dan yükleme ekler. Bkz. [`ios/README.md`](ios/README.md).
+
+- **Kotlin Compose Android client** (`android/`) — A **remote-only**
+  Android phone / tablet app. Connects to a daemon over the LAN (NSD
+  discovery), streams video via ExoPlayer, and replaces editor drag-out with
+  the Android share intent. Also embeds the full Rust core for on-device local
+  library access — browse, catalog, and upload footage directly from the
+  device. See [`android/README.md`](android/README.md).
 
 - **ReelVaultKit** (`kit/`) — **Her iki** Apple istemcisi tarafından kullanılan yerel bir
   SwiftPM paketi: modeller, görünüm modelleri, gRPC istemcisi, keşif, sabitlenmiş TLS ve
@@ -95,8 +102,21 @@ bkz. [`ios/README.md`](ios/README.md).
       koleksiyonlar, yığınlar, filtreler, durum, yapılandırma, katalog yaşam döngüsü).
 - [x] WAL modu + FTS5 ile SQLite kataloğu; `OpenCatalog` / `CloseCatalog` aracılığıyla
       çalışma zamanında katalog değişimi.
-- [x] FFprobe meta veri çıkarımı (codec, çözünürlük, FPS, bit hızı, HDR,
-      EXIF, GPS, kamera/lens).
+- [x] Rich metadata extraction via FFprobe + platform-native helpers: codec,
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera.
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera.
 - [x] Küçük resim ve Lightroom tarzı scrub karesi üretimi (video başına 10 kare),
       tekrarlanan işleri önlemek için video başına kilitlerle.
 - [x] Büyük kütüphane taramalarının SAN destekli depolamayı aşırı yüklememesi için
@@ -254,9 +274,8 @@ tam ayrıntılar için bkz. [`ios/README.md`](ios/README.md).
 
 ## Katkıda Bulunma
 
-Geliştirme yönergeleri için bkz. [`CLAUDE.md`](CLAUDE.md). Pull request'ler memnuniyetle
-karşılanır — lütfen iki istemci arasında özellik eşliğini koruyun ve yeni kaynak
-dosyalara SPDX başlıkları ekleyin (aşağıdaki Lisans bölümüne bakın).
+Geliştirme yönergeleri için bkz. [`CLAUDE.md`](CLAUDE.md). Pull request'ler memnuniyetle karşılanır — lütfen uygun olduğu yerlerde tüm dört istemcide özellik paritesini koruyun
+(platforma özgü meşru sapmalar için CLAUDE.md'ye bakın) ve yeni kaynak dosyalara SPDX başlıkları ekleyin (aşağıdaki Lisans bölümüne bakın).
 
 ## Lisans
 

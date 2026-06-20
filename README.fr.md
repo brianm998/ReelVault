@@ -22,9 +22,9 @@ ReelVault vous permet de :
 ## Architecture
 
 ```
-Desktop / macOS clients          iOS client (iPhone / iPad)
+Desktop / macOS clients          iOS / Android clients
    ↓ gRPC over loopback             ↓ gRPC + HTTPS media over the LAN
-   │                                │ (mDNS discovery · pinned TLS · paired)
+   │                                │ (mDNS/NSD discovery · pinned TLS · paired)
    └───────────────┬────────────────┘
                    ↓
         Rust Backend Daemon (reelvault-core)
@@ -40,6 +40,13 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 
 - **Client iOS SwiftUI** (`ios/`) — Une application iPhone / iPad **exclusivement distante**. Elle n'a pas d'accès aux fichiers locaux et n'embarque pas de démon : elle découvre un démon via Wi-Fi (mDNS), se connecte via un canal TLS épinglé par empreinte après un jumelage unique, navigue via gRPC et **diffuse** la vidéo (HLS redimensionnée) depuis le serveur média du démon. Remplace le glisser-déposer vers les éditeurs par la feuille de partage iOS et ajoute l'importation depuis Photos / Fichiers. Voir [`ios/README.md`](ios/README.md).
 
+- **Kotlin Compose Android client** (`android/`) — A **remote-only**
+  Android phone / tablet app. Connects to a daemon over the LAN (NSD
+  discovery), streams video via ExoPlayer, and replaces editor drag-out with
+  the Android share intent. Also embeds the full Rust core for on-device local
+  library access — browse, catalog, and upload footage directly from the
+  device. See [`android/README.md`](android/README.md).
+
 - **ReelVaultKit** (`kit/`) — Un package SwiftPM local de code Swift partagé utilisé par **les deux** clients Apple : modèles, view-models, client gRPC, découverte, TLS épinglé et la couche de cache/streaming média.
 
 - **Catalogue SQLite** — Base de données en mode WAL avec FTS5 pour la recherche plein texte. Le schéma est dans [`core/schema.sql`](core/schema.sql).
@@ -48,14 +55,23 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 
 ## État du projet
 
-**Le MVP est fonctionnel sur macOS et Compose Desktop.** Les deux clients offrent le même ensemble de fonctionnalités ; le client macOS ajoute des commandes natives dans la barre de menus et des lancements d'éditeurs via NSWorkspace. Un **client iOS exclusivement distant** (iPhone / iPad) se connecte à un démon via le réseau local et diffuse la vidéo — parcourir, inspecter, empiler, partager et importer ; voir [`ios/README.md`](ios/README.md).
+welcome — please keep all four clients in feature-parity where applicable
+(see CLAUDE.md for legitimate per-platform deviations), and add SPDX
+headers to any new source files (see License below).
 
 ### ✅ Réalisé
 
 **Noyau**
 - [x] Démon gRPC avec surface RPC complète (vidéos, recherche, scan, tags, collections, piles, filtres, statut, config, cycle de vie du catalogue).
 - [x] Catalogue SQLite avec mode WAL + FTS5 ; échange à chaud du catalogue à l'exécution via `OpenCatalog` / `CloseCatalog`.
-- [x] Extraction de métadonnées FFprobe (codec, résolution, FPS, débit, HDR, EXIF, GPS, caméra/objectif).
+- [x] Rich metadata extraction via FFprobe + platform-native helpers: codec,
+      resolution, FPS, bitrate, bit depth, HDR (from transfer characteristics),
+      color space, dynamic range / log profile, timecode, capture FPS, audio
+      tracks / language / sample rate / bit depth, EXIF, GPS track (per-frame
+      polyline), altitude, camera / lens model, ISO, aperture, exposure time,
+      focal length, white balance, exposure mode/program, spatial video, 360°
+      video. iPhone-specific QuickTime per-track metadata (lens, GPS, aperture)
+      parsed natively so recorder-wrapped clips expose the true camera., résolution, FPS, débit, HDR, EXIF, GPS, caméra/objectif).
 - [x] Génération de miniatures et de frames de scrub style Lightroom (10 frames par vidéo) avec verrous par vidéo pour éviter les doublons de travail.
 - [x] Limitation concurrente de ffmpeg (par défaut le nombre de CPU de la machine hôte) pour éviter de saturer le stockage SAN lors des scans de grandes bibliothèques.
 - [x] Scan de bibliothèque avec récursion optionnelle et regroupement automatique des variantes.
@@ -174,7 +190,8 @@ Au premier lancement, l'application découvre le démon via mDNS, vous autorisez
 
 ## Contribution
 
-Voir [`CLAUDE.md`](CLAUDE.md) pour les directives de développement. Les pull requests sont les bienvenues — veuillez maintenir la parité de fonctionnalités entre les deux clients et ajouter des en-têtes SPDX à tout nouveau fichier source (voir Licence ci-dessous).
+Voir [`CLAUDE.md`](CLAUDE.md) pour les directives de développement. Les pull requests sont les bienvenues — veuillez maintenir la parité de fonctionnalités entre les quatre clients là où c'est applicable
+(voir CLAUDE.md pour les déviations légitimes par plateforme), et ajouter des en-têtes SPDX à tout nouveau fichier source (voir Licence ci-dessous).
 
 ## Licence
 
