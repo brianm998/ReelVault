@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReelVault — Your whole video library, finally findable</title>
+  <meta name="description" content="ReelVault is a fast, native catalog for big video collections — find clips, track masters, and view them on every device.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:             #0d0d0d;
+      --surface:        #181818;
+      --surface-2:      #202020;
+      --border:         #2c2c2c;
+      --border-hover:   #3a3a3a;
+      --text:           #ebebeb;
+      --text-muted:     #888;
+      --text-dim:       #484848;
+      --accent:         #f09020;
+      --accent-hover:   #f4a035;
+      --accent-bg:      rgba(240,144,32,0.08);
+      --accent-border:  rgba(240,144,32,0.25);
+      --radius:         14px;
+      --radius-sm:      8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 20px 80px;
+      line-height: 1.4;
+    }
+
+    /* ── Page header (logo + download link) ────────────────────────────── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 880px;
+      margin-bottom: 10px;
+    }
+    .logo-wrap { display: flex; align-items: center; gap: 12px; }
+    .logo-icon { width: 42px; height: 42px; flex-shrink: 0; }
+    .logo-text { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; color: var(--text); }
+
+    .header-dl {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+      border: 1px solid var(--accent-border);
+      background: var(--accent-bg);
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      flex-shrink: 0;
+      transition: border-color 0.13s, background 0.13s;
+    }
+    .header-dl:hover { border-color: var(--accent); background: rgba(240,144,32,0.14); }
+
+    /* ── Hero ──────────────────────────────────────────────────────────── */
+    .hero {
+      max-width: 700px;
+      width: 100%;
+      text-align: center;
+      margin: 40px 0 12px;
+    }
+    .hero h1 {
+      font-size: 34px;
+      font-weight: 700;
+      letter-spacing: -0.8px;
+      line-height: 1.15;
+      margin-bottom: 16px;
+    }
+    .hero h1 .hl { color: var(--accent); }
+    .hero p {
+      font-size: 16px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+    .hero p strong { color: var(--text); font-weight: 600; }
+
+    /* ── CTA ───────────────────────────────────────────────────────────── */
+    .cta-row {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 28px 0 8px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 15px 26px;
+      font-size: 15px;
+      font-weight: 700;
+      border-radius: var(--radius);
+      text-decoration: none;
+      border: 1px solid transparent;
+      transition: background 0.13s, transform 0.1s, border-color 0.13s, color 0.13s;
+    }
+    .btn-primary { background: var(--accent); color: #0d0d0d; }
+    .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-ghost {
+      background: var(--surface-2);
+      color: var(--text-muted);
+      border-color: var(--border);
+      font-weight: 500;
+    }
+    .btn-ghost:hover { border-color: var(--border-hover); color: var(--text); }
+
+    .beta-note {
+      max-width: 560px;
+      margin: 16px auto 0;
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+    .beta-note .pill {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      border: 1px solid var(--accent-border);
+      background: var(--accent-bg);
+      border-radius: 999px;
+      padding: 2px 9px;
+      margin-right: 6px;
+    }
+
+    /* ── Section ───────────────────────────────────────────────────────── */
+    .section-label {
+      width: 100%;
+      max-width: 880px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin: 56px 0 16px;
+    }
+
+    /* ── Use-case grid ─────────────────────────────────────────────────── */
+    .grid {
+      width: 100%;
+      max-width: 880px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 680px) { .grid { grid-template-columns: 1fr; } }
+
+    .uc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      transition: border-color 0.13s, transform 0.1s;
+    }
+    .uc:hover { border-color: var(--border-hover); transform: translateY(-2px); }
+    .uc.span2 { grid-column: 1 / -1; }
+    .uc-icon { font-size: 26px; margin-bottom: 14px; line-height: 1; }
+    .uc-title { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+    .uc-desc { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+    .uc-desc strong { color: var(--text); font-weight: 600; }
+
+    /* ── More-uses chips ───────────────────────────────────────────────── */
+    .more {
+      width: 100%;
+      max-width: 880px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-top: 14px;
+    }
+    .more h3 { font-size: 15px; font-weight: 600; margin-bottom: 16px; }
+    .more ul { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; }
+    @media (max-width: 680px) { .more ul { grid-template-columns: 1fr; } }
+    .more li { font-size: 13.5px; color: var(--text-muted); line-height: 1.55; padding-left: 22px; position: relative; }
+    .more li::before { content: '▸'; color: var(--accent); position: absolute; left: 0; opacity: 0.7; }
+    .more li strong { color: var(--text); font-weight: 600; }
+
+    /* ── Closer ────────────────────────────────────────────────────────── */
+    .closer {
+      width: 100%;
+      max-width: 880px;
+      text-align: center;
+      margin-top: 56px;
+      padding: 40px 24px;
+      background: linear-gradient(180deg, var(--surface), var(--bg));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .closer h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 8px; }
+    .closer p { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; }
+
+    /* ── Footer ────────────────────────────────────────────────────────── */
+    footer { margin-top: 44px; font-size: 12px; color: var(--text-dim); text-align: center; }
+    footer a { color: var(--text-muted); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    footer .sep { margin: 0 6px; }
+  </style>
+</head>
+<body>
+
+  <div class="page-header">
+    <div class="logo-wrap">
+      <!-- Film reel icon -->
+      <svg class="logo-icon" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="21" cy="21" r="19" stroke="#f09020" stroke-width="2"/>
+        <circle cx="21" cy="21" r="6.5" stroke="#f09020" stroke-width="2"/>
+        <circle cx="21" cy="7"  r="3" fill="#f09020"/>
+        <circle cx="21" cy="35" r="3" fill="#f09020"/>
+        <circle cx="7"  cy="21" r="3" fill="#f09020"/>
+        <circle cx="35" cy="21" r="3" fill="#f09020"/>
+        <circle cx="11.3" cy="11.3" r="3" fill="#f09020"/>
+        <circle cx="30.7" cy="30.7" r="3" fill="#f09020"/>
+      </svg>
+      <span class="logo-text">ReelVault</span>
+    </div>
+    <a class="header-dl" href="index.html">Download →</a>
+  </div>
+
+  <!-- ── Hero ───────────────────────────────────────────────────────────── -->
+  <div class="hero">
+    <h1>Your whole video library,<br><span class="hl">finally findable.</span></h1>
+    <p>
+      ReelVault is a fast, native catalog for big video collections. It doesn't
+      edit — it <strong>organizes, finds, and shows off</strong> your footage,
+      then hands clips to the editor of your choice. Think Lightroom, but for video.
+    </p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="index.html">⬇  Download ReelVault</a>
+      <a class="btn btn-ghost" href="https://github.com/brianm998/ReelVault" target="_blank" rel="noopener">View on GitHub</a>
+    </div>
+    <div class="beta-note">
+      <span class="pill">Beta</span>
+      Desktop (macOS / Windows / Linux) and the Server are public releases.
+      <strong>Mobile is beta only</strong> — iOS via <strong>TestFlight</strong>,
+      Android via <strong>Google Play closed testing</strong>.
+    </div>
+  </div>
+
+  <!-- ── Use cases ──────────────────────────────────────────────────────── -->
+  <div class="section-label">WHAT YOU CAN DO WITH IT</div>
+  <div class="grid">
+
+    <div class="uc span2">
+      <div class="uc-icon">🎬</div>
+      <div class="uc-title">Find the right clip and drop it straight into your edit</div>
+      <div class="uc-desc">
+        Scroll thousands of clips with instant thumbnails. Filter by resolution,
+        codec, camera, date, location, or your own tags — then
+        <strong>drag the clip out of the grid right into Premiere, Resolve, or
+        Final Cut</strong> to build your master. No importing, no launching, no
+        fuss. (On phones and tablets it's the share sheet instead of drag.)
+      </div>
+    </div>
+
+    <div class="uc">
+      <div class="uc-icon">🏆</div>
+      <div class="uc-title">Keep track of your finished masters</div>
+      <div class="uc-desc">
+        Tag and collect delivered cuts in one <strong>“Masters”</strong> collection —
+        or a <em>smart</em> collection that gathers them automatically (“final
+        exports, this year, 4K+”). Search them in under a second, even across 100k
+        items. No more hunting through <code>Final_FINAL_v3.mov</code> folders.
+      </div>
+    </div>
+
+    <div class="uc">
+      <div class="uc-icon">📱</div>
+      <div class="uc-title">See how a master looks on every screen</div>
+      <div class="uc-desc">
+        Run ReelVault Server on one machine and open the same master on your
+        <strong>iPhone, iPad, Android phone, Android tablet, and any laptop</strong>
+        on the Wi-Fi. Play the exact file on each device to check how your delivery
+        reads in every presentation mode — before you ship it.
+      </div>
+    </div>
+
+    <div class="uc">
+      <div class="uc-icon">📸</div>
+      <div class="uc-title">Wrangle the family photos &amp; videos</div>
+      <div class="uc-desc">
+        Point it at your home archive and let it catalog birthdays, trips, and
+        holidays. Tag people and events, build collections per year, and find that
+        one clip from the lake in 2019 right on the <strong>map view</strong>. Your
+        library stays usable on every device — even offline.
+      </div>
+    </div>
+
+    <div class="uc">
+      <div class="uc-icon">✈️</div>
+      <div class="uc-title">Browse your clips away from the computer</div>
+      <div class="uc-desc">
+        Phones and tablets keep their <strong>own on-device catalog</strong> that
+        works with no network at all. Curate, tag, and review footage on the couch
+        or on a plane — then sync back to your desktop when you're home. Sync is
+        two-way, and each catalog stays fully usable on its own.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── More uses ──────────────────────────────────────────────────────── -->
+  <div class="more">
+    <h3>A few more it's great at</h3>
+    <ul>
+      <li><strong>Scout &amp; select on set</strong> — review the day's takes on an iPad over Wi-Fi while the originals stay on the cards or NAS.</li>
+      <li><strong>Cull duplicates &amp; proxies</strong> — spot redundant copies and oversized files before they eat your storage.</li>
+      <li><strong>Shared team vault</strong> — one always-on Server, everyone browses the same archive over the LAN (paired once, encrypted).</li>
+      <li><strong>Stock &amp; B-roll library</strong> — tag by mood, subject, and location so the right shot surfaces instantly next project.</li>
+    </ul>
+  </div>
+
+  <!-- ── Closer ─────────────────────────────────────────────────────────── -->
+  <div class="closer">
+    <h2>Browse 100k videos without lag. Find anything in under a second. Play it anywhere.</h2>
+    <p>Free, native, and local-first — no cloud, no subscription.</p>
+    <a class="btn btn-primary" href="index.html">⬇  Download ReelVault</a>
+  </div>
+
+  <footer>
+    <a href="index.html">Download</a>
+    <span class="sep">·</span>
+    <a href="https://github.com/brianm998/ReelVault" target="_blank" rel="noopener">GitHub</a>
+    <span class="sep">·</span>
+    <a href="https://github.com/brianm998/ReelVault/releases" target="_blank" rel="noopener">All releases</a>
+    <span class="sep">·</span>
+    <a href="https://github.com/brianm998/ReelVault/blob/develop/docs/BETA_TESTING.md" target="_blank" rel="noopener">Beta testing</a>
+  </footer>
+
+</body>
+</html>
