@@ -48,7 +48,7 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
   `GetCurrentCatalog`, поэтому один процесс демона может обслуживать несколько
   библиотек в течение всего своего срока работы.
 
-- **Kotlin Compose desktop client** (`desktop/`) — UI на Compose Multiplatform.
+- **Kotlin Compose desktop client** (`kotlin-desktop/`) — UI на Compose Multiplatform.
   Автоматически обнаруживает запущенный демон на `127.0.0.1:50051`; если он не запущен,
   самостоятельно запускает встроенный демон (используя порт, назначенный ОС, если
   50051 занят).
@@ -188,7 +188,7 @@ cargo build --release
 ### Запуск Kotlin Compose desktop client
 
 ```bash
-cd desktop
+cd kotlin-desktop
 ./gradlew run
 ```
 

@@ -34,7 +34,7 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 
 - **Rust-Kern** (`core/`) — Tonic-basierter gRPC-Daemon. Verwaltet den SQLite-Katalog, FFprobe-Metadatenextraktion, Miniaturbilder- und Scrub-Frame-Generierung, Scan/Indizierung, Suche und Filteraggregation. Unterstützt den Heiß-Tausch des aktiven Katalogs zur Laufzeit über die RPCs `OpenCatalog` / `CloseCatalog` / `GetCurrentCatalog`, sodass ein einzelner Daemon-Prozess während seiner Lebensdauer mehrere Bibliotheken bedienen kann.
 
-- **Kotlin Compose Desktop-Client** (`desktop/`) — Compose Multiplatform-Benutzeroberfläche. Erkennt automatisch einen laufenden Daemon auf `127.0.0.1:50051`; falls keiner läuft, startet der Client den mitgelieferten Daemon selbst (mit Rückfall auf einen vom Betriebssystem zugewiesenen Port, falls 50051 belegt ist).
+- **Kotlin Compose Desktop-Client** (`kotlin-desktop/`) — Compose Multiplatform-Benutzeroberfläche. Erkennt automatisch einen laufenden Daemon auf `127.0.0.1:50051`; falls keiner läuft, startet der Client den mitgelieferten Daemon selbst (mit Rückfall auf einen vom Betriebssystem zugewiesenen Port, falls 50051 belegt ist).
 
 - **SwiftUI macOS-Client** (`macos/`) — Native macOS-App mit identischem Funktionsumfang, demselben Auto-Start-Ablauf, einem echten macOS-Datei-Menü (Commands-Gruppe) und einem reaktiven Fenstertitel, der den geöffneten Katalog anzeigt.
 
@@ -123,7 +123,7 @@ Der Daemon gibt eine stabile `REELVAULT_LISTENING_ON=127.0.0.1:N`-Zeile auf der 
 ### Kotlin Compose Desktop-Client ausführen
 
 ```bash
-cd desktop
+cd kotlin-desktop
 ./gradlew run
 ```
 

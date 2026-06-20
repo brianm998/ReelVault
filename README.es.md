@@ -34,7 +34,7 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 
 - **Núcleo Rust** (`core/`) — Demonio gRPC basado en Tonic. Gestiona el catálogo SQLite, la extracción de metadatos con FFprobe, la generación de miniaturas y fotogramas de scrubbing, el escaneo/indexado, la búsqueda y la agregación de filtros. Soporta el intercambio en caliente del catálogo activo en tiempo de ejecución mediante las RPCs `OpenCatalog` / `CloseCatalog` / `GetCurrentCatalog`, de modo que un único proceso demonio puede servir múltiples bibliotecas durante su ciclo de vida.
 
-- **Cliente de escritorio Kotlin Compose** (`desktop/`) — Interfaz con Compose Multiplatform. Detecta automáticamente un demonio en ejecución en `127.0.0.1:50051`; si ninguno está activo, inicia el demonio incluido (recurriendo a un puerto asignado por el SO si el 50051 está ocupado).
+- **Cliente de escritorio Kotlin Compose** (`kotlin-desktop/`) — Interfaz con Compose Multiplatform. Detecta automáticamente un demonio en ejecución en `127.0.0.1:50051`; si ninguno está activo, inicia el demonio incluido (recurriendo a un puerto asignado por el SO si el 50051 está ocupado).
 
 - **Cliente macOS SwiftUI** (`macos/`) — Aplicación nativa macOS con paridad de funciones, el mismo flujo de arranque automático, un menú Archivo nativo de macOS (grupo de Commands) y un título de ventana reactivo que refleja el catálogo abierto.
 
@@ -123,7 +123,7 @@ El demonio imprime una línea estable `REELVAULT_LISTENING_ON=127.0.0.1:N` en la
 ### Ejecutar el cliente de escritorio Kotlin Compose
 
 ```bash
-cd desktop
+cd kotlin-desktop
 ./gradlew run
 ```
 

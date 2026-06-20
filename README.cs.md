@@ -34,7 +34,7 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 
 - **Rust core** (`core/`) — gRPC démon postavený na Tonic. Spravuje katalog SQLite, extrakci metadat přes FFprobe, generování náhledů a scrub-snímků, skenování/indexování, vyhledávání a agregaci filtrů. Podporuje za běhu hot-swap aktivního katalogu přes RPC: `OpenCatalog` / `CloseCatalog` / `GetCurrentCatalog`, takže jeden proces démona může za svůj životní cyklus obsloužit více knihoven.
 
-- **Kotlin Compose desktop klient** (`desktop/`) — UI Compose Multiplatform. Automaticky rozpozná běžící démon na `127.0.0.1:50051`; pokud žádný neběží, sám spustí přibalený démon (s přechodem na port přidělený OS, pokud je 50051 obsazen).
+- **Kotlin Compose desktop client** (`kotlin-desktop/`) — UI Compose Multiplatform. Automaticky rozpozná běžící démon na `127.0.0.1:50051`; pokud žádný neběží, sám spustí přibalený démon (s přechodem na port přidělený OS, pokud je 50051 obsazen).
 
 - **SwiftUI macOS klient** (`macos/`) — nativní macOS aplikace s paritou funkcí, se stejným tokem automatického spouštění, skutečnou nabídkou Soubor macOS (skupina Commands) a reaktivním názvem okna sledujícím otevřený katalog.
 
@@ -91,7 +91,7 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 
 - **Rust** (doporučeno 1.75+) — pro sestavení démona core.
 - **FFmpeg / FFprobe** — musí být na `PATH`. Používá se pro extrakci metadat a generování náhledů/scrub-snímků.
-- **JDK 17+** + Gradle (wrapper je přibalen) — pro Kotlin desktop klienta.
+- **JDK 17+** + Gradle (wrapper je přibalen) — pro Kotlin desktop clienta.
 - **Swift 5.9+ / Xcode 15+** — pro macOS klienta.
 - **Xcode 16+ (iOS 18 SDK) + [XcodeGen](https://github.com/yonaskolb/XcodeGen)**
   (`brew install xcodegen`) — pro iOS klienta.
@@ -120,10 +120,10 @@ Binární soubor se uloží do `core/target/release/reelvault-core`. Spusťte je
 
 Démon vypíše na stdout stabilní řádek `REELVAULT_LISTENING_ON=127.0.0.1:N`, který klienti analyzují pro nalezení přiděleného portu.
 
-### Spuštění Kotlin Compose desktop klienta
+### Spuštění Kotlin Compose desktop clienta
 
 ```bash
-cd desktop
+cd kotlin-desktop
 ./gradlew run
 ```
 
@@ -161,7 +161,7 @@ make project          # requires XcodeGen: brew install xcodegen
 make build            # iOS Simulator; or open ReelVault.xcodeproj to run on a device
 ```
 
-Při prvním spuštění aplikace nalezne démona přes mDNS, zařízení jednou autorizujete 6místným párovacím kódem (vygenerujte ho z **File → Pair a New Device** v desktop klientu nebo z logu démona), a pak procházejte + streamujte. Vyžaduje **iOS 18+** a **Xcode 16+**. Úplné podrobnosti včetně modelu streamování a párování jsou v [`ios/README.md`](ios/README.md).
+Při prvním spuštění aplikace nalezne démona přes mDNS, zařízení jednou autorizujete 6místným párovacím kódem (vygenerujte ho z **File → Pair a New Device** v desktop clientu nebo z logu démona), a pak procházejte + streamujte. Vyžaduje **iOS 18+** a **Xcode 16+**. Úplné podrobnosti včetně modelu streamování a párování jsou v [`ios/README.md`](ios/README.md).
 
 ## Dokumentace
 

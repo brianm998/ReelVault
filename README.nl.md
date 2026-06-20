@@ -49,7 +49,7 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
   `GetCurrentCatalog`, zodat één daemonproces meerdere bibliotheken kan bedienen gedurende
   zijn levensduur.
 
-- **Kotlin Compose desktop client** (`desktop/`) — Compose Multiplatform UI.
+- **Kotlin Compose desktop client** (`kotlin-desktop/`) — Compose Multiplatform UI.
   Detecteert automatisch een actieve daemon op `127.0.0.1:50051`; als er geen actief is,
   start het de meegeleverde daemon zelf (met een door het OS toegewezen poort als
   50051 bezet is).
@@ -189,7 +189,7 @@ stdout die clients gebruiken om de toegewezen poort te ontdekken.
 ### De Kotlin Compose desktop client uitvoeren
 
 ```bash
-cd desktop
+cd kotlin-desktop
 ./gradlew run
 ```
 

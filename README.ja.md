@@ -34,7 +34,7 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 
 - **Rust コア** (`core/`) — Tonic ベースの gRPC デーモンです。SQLite カタログ、FFprobe によるメタデータ抽出、サムネイル・スクラブフレーム生成、スキャン/インデックス、検索、フィルター集計を管理します。`OpenCatalog` / `CloseCatalog` / `GetCurrentCatalog` RPC を通じてランタイム中のアクティブカタログのホットスワップをサポートするため、単一のデーモンプロセスがその生存期間中に複数のライブラリを提供できます。
 
-- **Kotlin Compose デスクトップクライアント** (`desktop/`) — Compose Multiplatform UI です。`127.0.0.1:50051` で実行中のデーモンを自動検出します。実行中のデーモンがない場合は、バンドルされたデーモンを自動起動します（50051 が使用中の場合は OS が割り当てたポートにフォールバック）。
+- **Kotlin Compose デスクトップクライアント** (`kotlin-desktop/`) — Compose Multiplatform UI です。`127.0.0.1:50051` で実行中のデーモンを自動検出します。実行中のデーモンがない場合は、バンドルされたデーモンを自動起動します（50051 が使用中の場合は OS が割り当てたポートにフォールバック）。
 
 - **SwiftUI macOS クライアント** (`macos/`) — 同等の機能を持つネイティブ macOS アプリです。同じ自動起動フロー、本物の macOS ファイルメニュー（Commands グループ）、開いているカタログを追跡するリアクティブなウィンドウタイトルを備えています。
 
@@ -123,7 +123,7 @@ cargo build --release
 ### Kotlin Compose デスクトップクライアントの実行
 
 ```bash
-cd desktop
+cd kotlin-desktop
 ./gradlew run
 ```
 

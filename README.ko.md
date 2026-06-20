@@ -34,7 +34,7 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
 
 - **Rust 코어** (`core/`) — Tonic 기반 gRPC 데몬. SQLite 카탈로그, FFprobe 메타데이터 추출, 썸네일 및 스크럽 프레임 생성, 스캔/인덱싱, 검색, 필터 집계를 담당합니다. `OpenCatalog` / `CloseCatalog` / `GetCurrentCatalog` RPC를 통해 런타임에 활성 카탈로그를 핫스왑할 수 있어, 단일 데몬 프로세스가 수명 동안 여러 라이브러리를 처리할 수 있습니다.
 
-- **Kotlin Compose 데스크톱 클라이언트** (`desktop/`) — Compose Multiplatform UI. `127.0.0.1:50051`에서 실행 중인 데몬을 자동으로 감지하며, 실행 중인 것이 없으면 번들된 데몬을 직접 실행합니다(50051이 사용 중이면 OS 할당 포트로 폴백).
+- **Kotlin Compose 데스크톱 클라이언트** (`kotlin-desktop/`) — Compose Multiplatform UI. `127.0.0.1:50051`에서 실행 중인 데몬을 자동으로 감지하며, 실행 중인 것이 없으면 번들된 데몬을 직접 실행합니다(50051이 사용 중이면 OS 할당 포트로 폴백).
 
 - **SwiftUI macOS 클라이언트** (`macos/`) — 기능 동등성을 갖춘 네이티브 macOS 앱으로, 동일한 자동 실행 흐름, 진짜 macOS 파일 메뉴(Commands 그룹), 열린 카탈로그를 추적하는 반응형 창 제목을 제공합니다.
 
@@ -123,7 +123,7 @@ cargo build --release
 ### Kotlin Compose 데스크톱 클라이언트 실행
 
 ```bash
-cd desktop
+cd kotlin-desktop
 ./gradlew run
 ```
 

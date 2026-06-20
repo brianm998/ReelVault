@@ -47,7 +47,7 @@ Desktop / macOS clients          iOS client (iPhone / iPad)
   aracılığıyla çalışma zamanında aktif katalog değişimini destekler; böylece tek bir daemon
   süreci ömrü boyunca birden fazla kütüphaneye hizmet verebilir.
 
-- **Kotlin Compose desktop client** (`desktop/`) — Compose Multiplatform arayüzü.
+- **Kotlin Compose desktop client** (`kotlin-desktop/`) — Compose Multiplatform arayüzü.
   `127.0.0.1:50051` adresinde çalışan bir daemon'ı otomatik olarak algılar; eğer çalışan
   yoksa, paketlenmiş daemon'ı kendisi başlatır (50051 meşgulse işletim sisteminin atadığı
   porta geçer).
@@ -188,7 +188,7 @@ Daemon, istemcilerin atanan portu keşfetmek için ayrıştırdığı kararlı b
 ### Kotlin Compose Desktop Client'ı Çalıştırma
 
 ```bash
-cd desktop
+cd kotlin-desktop
 ./gradlew run
 ```
 
