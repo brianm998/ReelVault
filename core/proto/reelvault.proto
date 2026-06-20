@@ -512,6 +512,13 @@ message VideoMetadata {
   string rights = 58;
   repeated string keywords = 59;
   string headline = 60;
+  // Chapter tracks and embedded subtitle tracks. chapter_count is the number of
+  // chapters (0 when none); chapters_json is a JSON array of {title, start_ms,
+  // end_ms} objects (empty when none). subtitle_tracks is the count of subtitle
+  // streams (0 when none).
+  int32 chapter_count = 61;
+  string chapters_json = 62;
+  int32 subtitle_tracks = 63;
 }
 
 message GetThumbnailRequest {

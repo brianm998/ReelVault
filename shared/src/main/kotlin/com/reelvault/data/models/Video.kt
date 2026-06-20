@@ -258,6 +258,13 @@ data class VideoMetadata(
     val rights: String = "",
     val keywords: List<String> = emptyList(),
     val headline: String = "",
+    /** Chapter tracks and embedded subtitle tracks. chapterCount is the number of
+     *  chapters (0 when none); chaptersJson is a JSON array of {title, start_ms,
+     *  end_ms} objects (empty when none). subtitleTracks is the count of subtitle
+     *  streams (0 when none). */
+    val chapterCount: Int = 0,
+    val chaptersJson: String = "",
+    val subtitleTracks: Int = 0,
 ) {
     val resolution: String get() = "$width x $height"
     /** True when the clip is 360°/spherical. */

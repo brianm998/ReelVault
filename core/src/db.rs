@@ -480,6 +480,13 @@ impl Database {
             ("metadata.rights",         "ALTER TABLE metadata ADD COLUMN rights TEXT"),
             ("metadata.keywords",       "ALTER TABLE metadata ADD COLUMN keywords TEXT"),
             ("metadata.headline",       "ALTER TABLE metadata ADD COLUMN headline TEXT"),
+            // Chapter and subtitle track metadata. chapter_count is the number of
+            // chapters (0 when none); chapters_json is a JSON array of
+            // {title, start_ms, end_ms} objects (empty when none). subtitle_tracks
+            // is the count of subtitle streams (0 when none).
+            ("metadata.chapter_count",  "ALTER TABLE metadata ADD COLUMN chapter_count INTEGER DEFAULT 0"),
+            ("metadata.chapters_json",  "ALTER TABLE metadata ADD COLUMN chapters_json TEXT"),
+            ("metadata.subtitle_tracks", "ALTER TABLE metadata ADD COLUMN subtitle_tracks INTEGER DEFAULT 0"),
             // Multi-location tracking: one logical video may exist as copies in
             // multiple watched directories. `video_locations` records every
             // filesystem path for a video_id; tags/metadata/collections are

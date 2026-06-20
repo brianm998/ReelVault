@@ -307,6 +307,9 @@ class VideoRepository(private val channelFactory: ChannelFactory) {
             rights = proto.rights,
             keywords = proto.keywordsList.toList(),
             headline = proto.headline,
+            chapterCount = proto.chapterCount,
+            chaptersJson = proto.chaptersJson,
+            subtitleTracks = proto.subtitleTracks,
         )
     }
 

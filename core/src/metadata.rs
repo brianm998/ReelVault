@@ -374,6 +374,32 @@ impl MetadataExtractor {
             .filter(|s| s.codec_type.as_deref() == Some("audio"))
             .count() as i32;
 
+        // Chapters and subtitles. Chapter titles come from chapter tags.
+        let chapter_count = probe_output.chapters.len() as i32;
+        let chapters_json = if !probe_output.chapters.is_empty() {
+            let chapter_list: Vec<_> = probe_output.chapters.iter().filter_map(|ch| {
+                let start_ms = ch.start_time.map(|t| (t * 1000.0) as i64).unwrap_or(0);
+                let end_ms = ch.end_time.map(|t| (t * 1000.0) as i64).unwrap_or(0);
+                let title = ch.tags.as_ref()
+                    .and_then(|t| t.get("title"))
+                    .cloned()
+                    .unwrap_or_else(|| String::from("Chapter"));
+                Some(serde_json::json!({
+                    "title": title,
+                    "start_ms": start_ms,
+                    "end_ms": end_ms,
+                }))
+            }).collect();
+            serde_json::to_string(&chapter_list).ok()
+        } else {
+            None
+        };
+        let subtitle_tracks = probe_output
+            .streams
+            .iter()
+            .filter(|s| s.codec_type.as_deref() == Some("subtitle"))
+            .count() as i32;
+
         // Coded video bit depth (8 / 10 / 12 …) for grading workflows.
         let bit_depth = Self::video_bit_depth(video_stream);
 
@@ -441,8 +467,8 @@ impl MetadataExtractor {
               lens_model, gps_latitude, gps_longitude, gps_altitude, gps_track, gps_track_distance_m,
               iso, aperture, exposure_time_s, focal_length_mm,
               exposure_mode, exposure_program, white_balance, accel_magnitude, gyro_magnitude,
-              description, creator, rights, keywords, headline, metadata_json)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              description, creator, rights, keywords, headline, chapter_count, chapters_json, subtitle_tracks, metadata_json)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(video_id) DO UPDATE SET
              duration_ms=excluded.duration_ms,
              frame_count=excluded.frame_count,
@@ -493,6 +519,9 @@ impl MetadataExtractor {
              rights=excluded.rights,
              keywords=excluded.keywords,
              headline=excluded.headline,
+             chapter_count=excluded.chapter_count,
+             chapters_json=excluded.chapters_json,
+             subtitle_tracks=excluded.subtitle_tracks,
              metadata_json=excluded.metadata_json,
              -- Invalidate the lazily-cached loudness series: the file content may
              -- have changed (an in-place edit re-runs this UPSERT), so force a
@@ -546,6 +575,9 @@ impl MetadataExtractor {
                 iptc_rights,
                 iptc_keywords_json,
                 iptc_headline,
+                chapter_count,
+                chapters_json,
+                subtitle_tracks,
                 metadata_json
             ],
         )
@@ -1068,6 +1100,8 @@ const WHITE_BALANCE_KEYS: &[&str] = &[
 pub struct FFProbeOutput {
     pub streams: Vec<FFProbeStream>,
     pub format: FFProbeFormat,
+    #[serde(default)]
+    pub chapters: Vec<FFProbeChapter>,
 }
 
 fn deserialize_f64_from_str<'de, D>(deserializer: D) -> std::result::Result<Option<f64>, D::Error>
@@ -1255,6 +1289,15 @@ pub struct FFProbeFormat {
     pub size: Option<String>,
     #[serde(deserialize_with = "deserialize_i64_from_str")]
     pub bit_rate: Option<i64>,
+    pub tags: Option<FFProbeTagMap>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FFProbeChapter {
+    #[serde(deserialize_with = "deserialize_f64_from_str")]
+    pub start_time: Option<f64>,
+    #[serde(deserialize_with = "deserialize_f64_from_str")]
+    pub end_time: Option<f64>,
     pub tags: Option<FFProbeTagMap>,
 }
 

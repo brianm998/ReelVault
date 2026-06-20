@@ -1111,6 +1111,25 @@ public nonisolated struct Reelvault_VideoMetadata: @unchecked Sendable {
     set {_uniqueStorage()._headline = newValue}
   }
 
+  /// Chapter tracks and embedded subtitle tracks. chapter_count is the number of
+  /// chapters (0 when none); chapters_json is a JSON array of {title, start_ms,
+  /// end_ms} objects (empty when none). subtitle_tracks is the count of subtitle
+  /// streams (0 when none).
+  public var chapterCount: Int32 {
+    get {_storage._chapterCount}
+    set {_uniqueStorage()._chapterCount = newValue}
+  }
+
+  public var chaptersJson: String {
+    get {_storage._chaptersJson}
+    set {_uniqueStorage()._chaptersJson = newValue}
+  }
+
+  public var subtitleTracks: Int32 {
+    get {_storage._subtitleTracks}
+    set {_uniqueStorage()._subtitleTracks = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3730,7 +3749,7 @@ nonisolated extension Reelvault_GetMetadataRequest: SwiftProtobuf.Message, Swift
 
 nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".VideoMetadata"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0\u{1}rating\0\u{3}color_label\0\u{3}camera_display_name\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}exposure_mode\0\u{3}exposure_program\0\u{3}white_balance\0\u{3}full_resolution\0\u{3}frame_count\0\u{3}color_transfer\0\u{3}color_primaries\0\u{3}dynamic_range\0\u{1}timecode\0\u{3}capture_fps\0\u{3}bit_depth\0\u{3}audio_bit_depth\0\u{3}audio_language\0\u{3}audio_track_count\0\u{1}spatial\0\u{1}projection\0\u{3}gps_track\0\u{3}gps_track_distance_m\0\u{3}accel_magnitude\0\u{3}gyro_magnitude\0\u{1}description\0\u{1}creator\0\u{1}rights\0\u{1}keywords\0\u{1}headline\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0\u{1}rating\0\u{3}color_label\0\u{3}camera_display_name\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}exposure_mode\0\u{3}exposure_program\0\u{3}white_balance\0\u{3}full_resolution\0\u{3}frame_count\0\u{3}color_transfer\0\u{3}color_primaries\0\u{3}dynamic_range\0\u{1}timecode\0\u{3}capture_fps\0\u{3}bit_depth\0\u{3}audio_bit_depth\0\u{3}audio_language\0\u{3}audio_track_count\0\u{1}spatial\0\u{1}projection\0\u{3}gps_track\0\u{3}gps_track_distance_m\0\u{3}accel_magnitude\0\u{3}gyro_magnitude\0\u{1}description\0\u{1}creator\0\u{1}rights\0\u{1}keywords\0\u{1}headline\0\u{3}chapter_count\0\u{3}chapters_json\0\u{3}subtitle_tracks\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -3793,6 +3812,9 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
     var _rights: String = String()
     var _keywords: [String] = []
     var _headline: String = String()
+    var _chapterCount: Int32 = 0
+    var _chaptersJson: String = String()
+    var _subtitleTracks: Int32 = 0
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3863,6 +3885,9 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
       _rights = source._rights
       _keywords = source._keywords
       _headline = source._headline
+      _chapterCount = source._chapterCount
+      _chaptersJson = source._chaptersJson
+      _subtitleTracks = source._subtitleTracks
     }
   }
 
@@ -3941,6 +3966,9 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
         case 58: try { try decoder.decodeSingularStringField(value: &_storage._rights) }()
         case 59: try { try decoder.decodeRepeatedStringField(value: &_storage._keywords) }()
         case 60: try { try decoder.decodeSingularStringField(value: &_storage._headline) }()
+        case 61: try { try decoder.decodeSingularInt32Field(value: &_storage._chapterCount) }()
+        case 62: try { try decoder.decodeSingularStringField(value: &_storage._chaptersJson) }()
+        case 63: try { try decoder.decodeSingularInt32Field(value: &_storage._subtitleTracks) }()
         default: break
         }
       }
@@ -4129,6 +4157,15 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
       if !_storage._headline.isEmpty {
         try visitor.visitSingularStringField(value: _storage._headline, fieldNumber: 60)
       }
+      if _storage._chapterCount != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._chapterCount, fieldNumber: 61)
+      }
+      if !_storage._chaptersJson.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._chaptersJson, fieldNumber: 62)
+      }
+      if _storage._subtitleTracks != 0 {
+        try visitor.visitSingularInt32Field(value: _storage._subtitleTracks, fieldNumber: 63)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4198,6 +4235,9 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
         if _storage._rights != rhs_storage._rights {return false}
         if _storage._keywords != rhs_storage._keywords {return false}
         if _storage._headline != rhs_storage._headline {return false}
+        if _storage._chapterCount != rhs_storage._chapterCount {return false}
+        if _storage._chaptersJson != rhs_storage._chaptersJson {return false}
+        if _storage._subtitleTracks != rhs_storage._subtitleTracks {return false}
         return true
       }
       if !storagesAreEqual {return false}
