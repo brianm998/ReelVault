@@ -298,6 +298,7 @@ pub struct SyncManifestRow {
     pub is_derived: bool,
     pub proxy_of: Option<String>,
     pub has_streamable_proxy: bool,
+    pub deleted_at: Option<i64>,
 }
 
 #[derive(Debug, Clone)]
@@ -645,6 +646,9 @@ impl Database {
             // is_derived = 1 when this row is a derived/downscaled copy imported from
             // a peer; 0 for all originals.
             ("videos.is_derived", "ALTER TABLE videos ADD COLUMN is_derived INTEGER NOT NULL DEFAULT 0"),
+            // deleted_at: Unix milliseconds when this video was soft-deleted
+            // (tombstone). NULL means the video is live.
+            ("videos.deleted_at", "ALTER TABLE videos ADD COLUMN deleted_at INTEGER"),
             // marks_rev: monotonic counter bumped by triggers whenever any of the
             // user-editable marks (tags, collections, rating, color, notes) change.
             // Lets the sync engine detect mark-only changes without diffing every field.
@@ -1391,7 +1395,7 @@ impl Database {
         let conn = self.get_connection()?;
 
         let total: i64 = conn
-            .query_row("SELECT COUNT(*) FROM videos", [], |row| row.get(0))
+            .query_row("SELECT COUNT(*) FROM videos WHERE deleted_at IS NULL", [], |row| row.get(0))
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         let direction = if ascending { "ASC" } else { "DESC" };
@@ -1423,6 +1427,7 @@ impl Database {
         let sql = format!(
             "SELECT v.id, v.path, v.filename, v.volume_id, v.hash, v.file_size_bytes, v.indexed_at, v.is_online, v.is_derived
              FROM videos v LEFT JOIN metadata m ON v.id = m.video_id
+             WHERE v.deleted_at IS NULL
              ORDER BY {} LIMIT ? OFFSET ?",
             order_by
         );
@@ -1454,10 +1459,21 @@ impl Database {
 
     pub fn delete_video(&self, video_id: &str) -> Result<()> {
         let conn = self.get_connection()?;
+        let now_ms = chrono::Utc::now().timestamp_millis();
+        conn.execute(
+            "UPDATE videos SET deleted_at = ?1 WHERE id = ?2",
+            rusqlite::params![now_ms, video_id],
+        )
+        .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
 
-        conn.execute("DELETE FROM videos WHERE id = ?", [video_id])
+    /// Soft-delete a video that was deleted on the sync source: marks it
+    /// offline but keeps the catalog row so history and sync_links remain intact.
+    pub fn soft_delete_synced_video(&self, video_id: &str) -> Result<()> {
+        let conn = self.get_connection()?;
+        conn.execute("UPDATE videos SET is_online = 0 WHERE id = ?1", rusqlite::params![video_id])
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
-
         Ok(())
     }
 
@@ -2614,7 +2630,7 @@ impl Database {
             "SELECT COUNT(*) FROM videos v
              LEFT JOIN metadata m ON v.id = m.video_id
              LEFT JOIN video_user_marks um ON v.id = um.video_id
-             WHERE ({rep}){filter_sql}"
+             WHERE ({rep}){filter_sql} AND v.deleted_at IS NULL"
         );
         let count_params: Vec<&dyn rusqlite::ToSql> =
             bind.iter().map(|b| b.as_ref() as &dyn rusqlite::ToSql).collect();
@@ -2628,7 +2644,7 @@ impl Database {
              FROM videos v
              LEFT JOIN metadata m ON v.id = m.video_id
              LEFT JOIN video_user_marks um ON v.id = um.video_id
-             WHERE ({rep}){filter_sql}
+             WHERE ({rep}){filter_sql} AND v.deleted_at IS NULL
              ORDER BY {order_by} LIMIT ? OFFSET ?"
         );
 
@@ -4377,7 +4393,7 @@ impl Database {
                                 WHERE p.proxy_of = v.id) AS has_streamable_proxy";
         let sql = if cursor.is_empty() {
             format!(
-                "SELECT v.id, v.content_hash, v.marks_rev, vl.file_size_bytes, m.duration_ms, v.filename, m.width, m.height, COALESCE(m.codec_video,''), v.is_derived, v.proxy_of, {streamable_subq}
+                "SELECT v.id, v.content_hash, v.marks_rev, vl.file_size_bytes, m.duration_ms, v.filename, m.width, m.height, COALESCE(m.codec_video,''), v.is_derived, v.proxy_of, {streamable_subq}, v.deleted_at
                  FROM videos v
                  LEFT JOIN metadata m ON m.video_id = v.id
                  LEFT JOIN video_locations vl ON vl.video_id = v.id AND vl.is_online = 1
@@ -4386,7 +4402,7 @@ impl Database {
             )
         } else {
             format!(
-                "SELECT v.id, v.content_hash, v.marks_rev, vl.file_size_bytes, m.duration_ms, v.filename, m.width, m.height, COALESCE(m.codec_video,''), v.is_derived, v.proxy_of, {streamable_subq}
+                "SELECT v.id, v.content_hash, v.marks_rev, vl.file_size_bytes, m.duration_ms, v.filename, m.width, m.height, COALESCE(m.codec_video,''), v.is_derived, v.proxy_of, {streamable_subq}, v.deleted_at
                  FROM videos v
                  LEFT JOIN metadata m ON m.video_id = v.id
                  LEFT JOIN video_locations vl ON vl.video_id = v.id AND vl.is_online = 1
@@ -4409,6 +4425,7 @@ impl Database {
                 is_derived: row.get::<_, i32>(9)? != 0,
                 proxy_of: row.get::<_, Option<String>>(10)?,
                 has_streamable_proxy: row.get::<_, i32>(11)? != 0,
+                deleted_at: row.get::<_, Option<i64>>(12)?,
             })
         }).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         let mut out = Vec::new();

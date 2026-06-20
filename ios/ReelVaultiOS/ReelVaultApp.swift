@@ -28,6 +28,10 @@ struct ReelVaultApp: App {
                 // (no-op outside Local mode). Pairs with the live observer.
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active { router.foregroundCatchUp() }
+                    if phase == .active, router.canSync {
+                        // Trigger any auto-sync profiles when the app foregrounds.
+                        Task { await triggerAutoSync(router: router) }
+                    }
                 }
                 // Always dark, like the macOS + desktop clients: black/near-black
                 // backgrounds and white text. `.dark` makes the system
@@ -52,6 +56,32 @@ struct ReelVaultApp: App {
                     }
                 }
         }
+    }
+}
+
+/// Runs any auto-sync profiles once when the app foregrounds.
+/// Loads profiles from UserDefaults (same key the SyncProfileStore uses),
+/// filters to those with `autoSync == true`, and drives a one-shot SyncManager.
+@MainActor
+private func triggerAutoSync(router: AppRouter) async {
+    guard let data = UserDefaults.standard.data(forKey: "reelvault.syncProfiles"),
+          let profiles = try? JSONDecoder().decode([SyncProfile].self, from: data)
+    else { return }
+    let autoProfiles = profiles.filter { $0.autoSync }
+    guard !autoProfiles.isEmpty else { return }
+    guard let endpoint = router.lastPairedUploadEndpoint(),
+          let localPort = LocalCore.port
+    else { return }
+    let mgr = SyncManager(
+        localPort: localPort,
+        remoteHost: endpoint.host,
+        remotePort: endpoint.mediaPort,
+        remoteMediaPort: endpoint.mediaPort + 1,
+        token: endpoint.bearerToken ?? "",
+        fingerprint: endpoint.fingerprintHex ?? ""
+    )
+    for profile in autoProfiles {
+        await mgr.startSync(profile: profile)
     }
 }
 

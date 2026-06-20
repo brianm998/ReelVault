@@ -3160,6 +3160,9 @@ fun ReelVaultTopBar(
 ) {
     var showFileMenu by remember { mutableStateOf(false) }
     var showForgetServerConfirm by remember { mutableStateOf(false) }
+    var showSyncToRemote by remember { mutableStateOf(false) }
+    var showSyncFromRemote by remember { mutableStateOf(false) }
+    val hasPairedRemote = RemoteConnection.endpoint != null
 
     if (showForgetServerConfirm) {
         AlertDialog(
@@ -3195,6 +3198,19 @@ fun ReelVaultTopBar(
                     Text(Strings["ui_cancel"])
                 }
             }
+        )
+    }
+
+    if (showSyncToRemote) {
+        SyncSetupDialog(
+            direction = com.reelvault.sync.SyncDirection.TO_REMOTE,
+            onDismiss = { showSyncToRemote = false },
+        )
+    }
+    if (showSyncFromRemote) {
+        SyncSetupDialog(
+            direction = com.reelvault.sync.SyncDirection.FROM_REMOTE,
+            onDismiss = { showSyncFromRemote = false },
         )
     }
 
@@ -3318,18 +3334,17 @@ fun ReelVaultTopBar(
                             )
                         }
                         HorizontalDivider()
-                        // Catalog sync — disabled on desktop (no local catalog yet;
-                        // only the Android client embeds the Rust core for now).
+                        // Catalog sync — enabled when a remote daemon is paired.
                         DropdownMenuItem(
                             text = { Text("Sync to Remote…") },
-                            onClick = {},
-                            enabled = false,
+                            onClick = { showSyncToRemote = true; showFileMenu = false },
+                            enabled = hasPairedRemote,
                             leadingIcon = { Icon(Icons.Default.CloudUpload, contentDescription = null) },
                         )
                         DropdownMenuItem(
                             text = { Text("Sync from Remote…") },
-                            onClick = {},
-                            enabled = false,
+                            onClick = { showSyncFromRemote = true; showFileMenu = false },
+                            enabled = hasPairedRemote,
                             leadingIcon = { Icon(Icons.Default.CloudDownload, contentDescription = null) },
                         )
                         if (recents.isNotEmpty()) {

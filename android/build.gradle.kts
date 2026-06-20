@@ -143,6 +143,9 @@ dependencies {
     // Coil for thumbnail loading
     implementation("io.coil-kt:coil-compose:2.6.0")
 
+    // WorkManager for background periodic sync
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 

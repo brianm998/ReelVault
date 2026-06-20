@@ -20,6 +20,12 @@ impl SyncExecutor {
         Self { db }
     }
 
+    /// Soft-delete a video on behalf of a tombstone received from the sync source.
+    /// Sets `is_online = 0`; the catalog row stays intact.
+    pub fn soft_delete(&self, local_video_id: &str) -> crate::error::Result<()> {
+        self.db.soft_delete_synced_video(local_video_id)
+    }
+
     /// Record that `local_video_id` on this daemon corresponds to
     /// `remote_video_id` on `peer_key`. Call this after a successful file
     /// transfer or hash-adoption reconcile so subsequent syncs skip the
