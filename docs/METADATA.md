@@ -16,7 +16,8 @@ This document describes every piece of metadata ReelVault can extract from video
 8. [Field Priority Chains](#8-field-priority-chains)
 9. [Complete Field Reference](#9-complete-field-reference)
 10. [How Metadata Is Used in ReelVault](#10-how-metadata-is-used-in-reelvault)
-11. [Unsupported Metadata Types](#11-unsupported-metadata-types)
+11. [Supported Metadata Types (Recently Added)](#11-supported-metadata-types-recently-added)
+12. [Unsupported Metadata Types](#12-unsupported-metadata-types)
 
 ---
 
@@ -61,17 +62,24 @@ Video file
 ├── FFprobe (continued) ────────────────────────── chapters, subtitles, HDR
 │     → format.chapters: chapter count, titles, timestamps
 │     → streams[subtitle]: subtitle track count
-│     → side_data_list: Dolby Vision profile (DOVI record)
+│     → side_data_list: Dolby Vision profile (DOVI record), spherical/360°
+│                       projection, stereo mode
 │
 ├── DJI SRT sidecar (dji.rs) ────────────────────── drone telemetry
-│     → <clip>.SRT / <clip>.srt (whole file, not just head)
+│     → <clip>.SRT / <clip>.srt (sidecar preferred, whole file)
+│     → [fallback] embedded subtitle stream when sidecar absent
 │     → GPS, ISO, aperture, shutter speed, capture timestamp
 │     → full flight path (downsampled polyline + total distance)
+│
+├── Sony Professional XML sidecar (sony_xml.rs) ── production metadata
+│     → <clip>.XML (next to <clip>.MP4 or <clip>.MXF)
+│     → clip name, scene, take, ND filter, iris F-number, LUT name
 │
 └── Audio loudness (on-demand) ──────────────────── EBU R128
       → ffmpeg ebur128 filter, ametadata output
       → momentary-loudness series (M: values, ~10/s)
       → downsampled to 480 points for display
+      → ambisonics channel ordering (ACN / Furse-Malham)
 ```
 
 All extracted values flow into the `metadata` table in the SQLite catalog. Fields that appear in more than one source follow explicit **priority chains** (see [Section 8](#8-field-priority-chains)).
@@ -624,6 +632,54 @@ Chapters and subtitles are detail-only metadata (not on grid summary).
 | Dolby Vision profile | `dolby_vision_profile` INTEGER | 0–9 (Profile 4, 5, 8.1, 8.4, etc.); -1 absent |
 
 Detected from the DOVI side-data entry. Influences the `dynamic_range` label (e.g., "Dolby Vision (P8.4)").
+
+### 11.5 DJI SRT — Embedded Subtitle Track
+
+**Source:** `core/src/dji.rs` (embedded subtitle stream as fallback; existing sidecar.SRT preferred)
+
+When no sidecar `.SRT` file is found, DJI drone telemetry is detected and parsed from embedded subtitle streams. This handles files copied from a card reader without sidecars, or downloaded from cloud services where the sidecar is separated from the video.
+
+| Field | Storage | Notes |
+|---|---|---|
+| GPS (from embedded SRT) | `gps_latitude`, `gps_longitude`, `gps_altitude` | When sidecar absent |
+| ISO, aperture, shutter | `iso`, `aperture`, `exposure_time_s` | When sidecar absent |
+| Capture timestamp | `creation_date` | When sidecar absent |
+| Flight path | `gps_track`, `gps_track_distance_m` | Full clip polyline + ground distance |
+
+Uses ffmpeg to safely extract the first subtitle stream; recognizes DJI data patterns (`[iso`, `[latitude`, `GPS(`) before parsing. Falls back gracefully when subtitle is not DJI data.
+
+### 11.6 Sony Professional XML Sidecar
+
+**Source:** `core/src/sony_xml.rs` (`<clip>.XML` next to `<clip>.MP4` / `<clip>.MXF`)
+
+Sony VENICE, FX9, FX6, and FX3 cameras produce XML sidecars with production metadata used in broadcast and scripted workflows.
+
+| XML field | Storage | Notes |
+|---|---|---|
+| `<ClipName>` | `production_scene` (reused) | Clip identifier |
+| `Scene` attribute | `production_scene` | Scene number (e.g., "1") |
+| `Take` attribute | `production_take` | Take number (e.g., "3") |
+| `<NDFilter Value>` | `nd_filter` | Filter setting (e.g., "1/4", "1/8", "Auto") |
+| `<IrisFNumber>` | `iris_f_number` | Iris F-number (e.g., 2.8) |
+| `<LUT LUTName>` | `lut_name` | LUT name (e.g., "Venice_Look1.cube") |
+
+Parser uses simple regex/string search (no full XML parser dependency) for robustness. Empty when no sidecar or parser fails.
+
+### 11.7 Extended 360° / Spatial Audio Parameters
+
+**Source:** `core/src/metadata.rs` (ffprobe output + audio stream tags)
+
+For 360° / spherical video and spatial audio:
+
+| Field | Source | Storage | Notes |
+|---|---|---|---|
+| Stereo mode | container tags / stream tags | `stereo_mode` TEXT | "top-bottom", "left-right", "mono" for VR stereo packing |
+| Ambisonics mode | audio stream tags | `ambisonics_channel_order` TEXT | "ACN" or "Furse-Malham" channel ordering convention |
+| Initial heading | (future) | `spatial_initial_heading` REAL | Yaw angle in degrees (placeholder for future ffprobe) |
+| Initial pitch | (future) | `spatial_initial_pitch` REAL | Pitch angle in degrees (placeholder) |
+| Initial roll | (future) | `spatial_initial_roll` REAL | Roll angle in degrees (placeholder) |
+
+Currently extracts stereo mode and ambisonics from container metadata when present. Initial viewing angles (heading/pitch/roll) require proprietary metadata extensions not yet parsed by ffprobe; storage columns are prepared for future use.
 
 ---
 
