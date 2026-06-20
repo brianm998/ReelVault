@@ -471,6 +471,15 @@ impl Database {
             // full telemetry stream. NULL when no GPMF or no ACCL/GYRO stream.
             ("metadata.accel_magnitude", "ALTER TABLE metadata ADD COLUMN accel_magnitude BLOB"),
             ("metadata.gyro_magnitude",  "ALTER TABLE metadata ADD COLUMN gyro_magnitude BLOB"),
+            // IPTC Core / Editorial metadata from the XMP packet (Dublin Core +
+            // Photoshop namespaces). description, creator, rights, headline are
+            // single strings; keywords is a JSON array of strings extracted from
+            // dc:subject.
+            ("metadata.description",    "ALTER TABLE metadata ADD COLUMN description TEXT"),
+            ("metadata.creator",        "ALTER TABLE metadata ADD COLUMN creator TEXT"),
+            ("metadata.rights",         "ALTER TABLE metadata ADD COLUMN rights TEXT"),
+            ("metadata.keywords",       "ALTER TABLE metadata ADD COLUMN keywords TEXT"),
+            ("metadata.headline",       "ALTER TABLE metadata ADD COLUMN headline TEXT"),
             // Multi-location tracking: one logical video may exist as copies in
             // multiple watched directories. `video_locations` records every
             // filesystem path for a video_id; tags/metadata/collections are

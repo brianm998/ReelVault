@@ -250,6 +250,14 @@ data class VideoMetadata(
      *  values stored as little-endian bytes (empty when no GPMF or non-GoPro). */
     val accelMagnitude: ByteArray = ByteArray(0),
     val gyroMagnitude: ByteArray = ByteArray(0),
+    /** IPTC Core / Editorial metadata from the embedded XMP packet (Dublin Core +
+     *  Photoshop namespaces). All empty when not present. Keywords is a list
+     *  of free-form tags from dc:subject. */
+    val description: String = "",
+    val creator: String = "",
+    val rights: String = "",
+    val keywords: List<String> = emptyList(),
+    val headline: String = "",
 ) {
     val resolution: String get() = "$width x $height"
     /** True when the clip is 360°/spherical. */

@@ -1084,6 +1084,33 @@ public nonisolated struct Reelvault_VideoMetadata: @unchecked Sendable {
     set {_uniqueStorage()._gyroMagnitude = newValue}
   }
 
+  /// IPTC Core / Editorial metadata from the embedded XMP packet (Dublin Core +
+  /// Photoshop namespaces). All empty when not present.
+  public var description_p: String {
+    get {_storage._description_p}
+    set {_uniqueStorage()._description_p = newValue}
+  }
+
+  public var creator: String {
+    get {_storage._creator}
+    set {_uniqueStorage()._creator = newValue}
+  }
+
+  public var rights: String {
+    get {_storage._rights}
+    set {_uniqueStorage()._rights = newValue}
+  }
+
+  public var keywords: [String] {
+    get {_storage._keywords}
+    set {_uniqueStorage()._keywords = newValue}
+  }
+
+  public var headline: String {
+    get {_storage._headline}
+    set {_uniqueStorage()._headline = newValue}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3703,7 +3730,7 @@ nonisolated extension Reelvault_GetMetadataRequest: SwiftProtobuf.Message, Swift
 
 nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".VideoMetadata"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0\u{1}rating\0\u{3}color_label\0\u{3}camera_display_name\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}exposure_mode\0\u{3}exposure_program\0\u{3}white_balance\0\u{3}full_resolution\0\u{3}frame_count\0\u{3}color_transfer\0\u{3}color_primaries\0\u{3}dynamic_range\0\u{1}timecode\0\u{3}capture_fps\0\u{3}bit_depth\0\u{3}audio_bit_depth\0\u{3}audio_language\0\u{3}audio_track_count\0\u{1}spatial\0\u{1}projection\0\u{3}gps_track\0\u{3}gps_track_distance_m\0\u{3}accel_magnitude\0\u{3}gyro_magnitude\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}filename\0\u{1}path\0\u{3}size_bytes\0\u{3}duration_ms\0\u{1}width\0\u{1}height\0\u{1}fps\0\u{1}bitrate\0\u{3}codec_video\0\u{3}color_space\0\u{1}hdr\0\u{3}codec_audio\0\u{3}audio_channels\0\u{3}audio_sample_rate\0\u{3}creation_date\0\u{3}modification_date\0\u{3}indexed_at\0\u{3}camera_model\0\u{3}lens_model\0\u{3}gps_latitude\0\u{3}gps_longitude\0\u{3}gps_altitude\0\u{1}tags\0\u{1}collections\0\u{1}notes\0\u{3}volume_id\0\u{3}is_online\0\u{1}rating\0\u{3}color_label\0\u{3}camera_display_name\0\u{1}iso\0\u{1}aperture\0\u{3}exposure_time_s\0\u{3}focal_length_mm\0\u{3}exposure_mode\0\u{3}exposure_program\0\u{3}white_balance\0\u{3}full_resolution\0\u{3}frame_count\0\u{3}color_transfer\0\u{3}color_primaries\0\u{3}dynamic_range\0\u{1}timecode\0\u{3}capture_fps\0\u{3}bit_depth\0\u{3}audio_bit_depth\0\u{3}audio_language\0\u{3}audio_track_count\0\u{1}spatial\0\u{1}projection\0\u{3}gps_track\0\u{3}gps_track_distance_m\0\u{3}accel_magnitude\0\u{3}gyro_magnitude\0\u{1}description\0\u{1}creator\0\u{1}rights\0\u{1}keywords\0\u{1}headline\0")
 
   fileprivate class _StorageClass {
     var _id: String = String()
@@ -3761,6 +3788,11 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
     var _gpsTrackDistanceM: Double = 0
     var _accelMagnitude: Data = Data()
     var _gyroMagnitude: Data = Data()
+    var _description_p: String = String()
+    var _creator: String = String()
+    var _rights: String = String()
+    var _keywords: [String] = []
+    var _headline: String = String()
 
       // This property is used as the initial default value for new instances of the type.
       // The type itself is protecting the reference to its storage via CoW semantics.
@@ -3826,6 +3858,11 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
       _gpsTrackDistanceM = source._gpsTrackDistanceM
       _accelMagnitude = source._accelMagnitude
       _gyroMagnitude = source._gyroMagnitude
+      _description_p = source._description_p
+      _creator = source._creator
+      _rights = source._rights
+      _keywords = source._keywords
+      _headline = source._headline
     }
   }
 
@@ -3899,6 +3936,11 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
         case 53: try { try decoder.decodeSingularDoubleField(value: &_storage._gpsTrackDistanceM) }()
         case 54: try { try decoder.decodeSingularBytesField(value: &_storage._accelMagnitude) }()
         case 55: try { try decoder.decodeSingularBytesField(value: &_storage._gyroMagnitude) }()
+        case 56: try { try decoder.decodeSingularStringField(value: &_storage._description_p) }()
+        case 57: try { try decoder.decodeSingularStringField(value: &_storage._creator) }()
+        case 58: try { try decoder.decodeSingularStringField(value: &_storage._rights) }()
+        case 59: try { try decoder.decodeRepeatedStringField(value: &_storage._keywords) }()
+        case 60: try { try decoder.decodeSingularStringField(value: &_storage._headline) }()
         default: break
         }
       }
@@ -4072,6 +4114,21 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
       if !_storage._gyroMagnitude.isEmpty {
         try visitor.visitSingularBytesField(value: _storage._gyroMagnitude, fieldNumber: 55)
       }
+      if !_storage._description_p.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._description_p, fieldNumber: 56)
+      }
+      if !_storage._creator.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._creator, fieldNumber: 57)
+      }
+      if !_storage._rights.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._rights, fieldNumber: 58)
+      }
+      if !_storage._keywords.isEmpty {
+        try visitor.visitRepeatedStringField(value: _storage._keywords, fieldNumber: 59)
+      }
+      if !_storage._headline.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._headline, fieldNumber: 60)
+      }
     }
     try unknownFields.traverse(visitor: &visitor)
   }
@@ -4136,6 +4193,11 @@ nonisolated extension Reelvault_VideoMetadata: SwiftProtobuf.Message, SwiftProto
         if _storage._gpsTrackDistanceM != rhs_storage._gpsTrackDistanceM {return false}
         if _storage._accelMagnitude != rhs_storage._accelMagnitude {return false}
         if _storage._gyroMagnitude != rhs_storage._gyroMagnitude {return false}
+        if _storage._description_p != rhs_storage._description_p {return false}
+        if _storage._creator != rhs_storage._creator {return false}
+        if _storage._rights != rhs_storage._rights {return false}
+        if _storage._keywords != rhs_storage._keywords {return false}
+        if _storage._headline != rhs_storage._headline {return false}
         return true
       }
       if !storagesAreEqual {return false}

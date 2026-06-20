@@ -167,6 +167,18 @@ impl MetadataExtractor {
             }
         }
 
+        // Extract IPTC Core / Editorial metadata from the XMP packet.
+        let iptc_description = xmp.as_ref().and_then(|x| x.description.clone());
+        let iptc_creator = xmp.as_ref().and_then(|x| x.creator.clone());
+        let iptc_rights = xmp.as_ref().and_then(|x| x.rights.clone());
+        let iptc_keywords = xmp.as_ref().map(|x| x.keywords.clone()).unwrap_or_default();
+        let iptc_keywords_json = if iptc_keywords.is_empty() {
+            None
+        } else {
+            serde_json::to_string(&iptc_keywords).ok()
+        };
+        let iptc_headline = xmp.as_ref().and_then(|x| x.headline.clone());
+
         // QuickTime *keyed* metadata (moov[/trak]/meta → keys → ilst).
         // ffprobe lifts the movie-level keys into format.tags (make/model/
         // creationdate/location, handled above), but drops the per-track
@@ -428,8 +440,9 @@ impl MetadataExtractor {
               creation_date, camera_model,
               lens_model, gps_latitude, gps_longitude, gps_altitude, gps_track, gps_track_distance_m,
               iso, aperture, exposure_time_s, focal_length_mm,
-              exposure_mode, exposure_program, white_balance, accel_magnitude, gyro_magnitude, metadata_json)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              exposure_mode, exposure_program, white_balance, accel_magnitude, gyro_magnitude,
+              description, creator, rights, keywords, headline, metadata_json)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(video_id) DO UPDATE SET
              duration_ms=excluded.duration_ms,
              frame_count=excluded.frame_count,
@@ -475,6 +488,11 @@ impl MetadataExtractor {
              white_balance=excluded.white_balance,
              accel_magnitude=excluded.accel_magnitude,
              gyro_magnitude=excluded.gyro_magnitude,
+             description=excluded.description,
+             creator=excluded.creator,
+             rights=excluded.rights,
+             keywords=excluded.keywords,
+             headline=excluded.headline,
              metadata_json=excluded.metadata_json,
              -- Invalidate the lazily-cached loudness series: the file content may
              -- have changed (an in-place edit re-runs this UPSERT), so force a
@@ -523,6 +541,11 @@ impl MetadataExtractor {
                 final_white_balance,
                 accel_magnitude,
                 gyro_magnitude,
+                iptc_description,
+                iptc_creator,
+                iptc_rights,
+                iptc_keywords_json,
+                iptc_headline,
                 metadata_json
             ],
         )

@@ -84,6 +84,15 @@ pub struct XmpMetadata {
     pub white_balance: Option<String>,
     /// `exif:DateTimeOriginal` parsed into Unix milliseconds (UTC).
     pub date_time_original: Option<i64>,
+    /// IPTC Core / Editorial fields from the XMP packet.
+    /// Description, creator, and rights are from Dublin Core (`dc:*`);
+    /// headline is from Photoshop namespace (`photoshop:Headline`).
+    pub description: Option<String>,
+    pub creator: Option<String>,
+    pub rights: Option<String>,
+    /// Free-form keywords from `dc:subject` (a bag of strings).
+    pub keywords: Vec<String>,
+    pub headline: Option<String>,
 }
 
 impl XmpMetadata {
@@ -101,6 +110,11 @@ impl XmpMetadata {
             && self.exposure_program.is_none()
             && self.white_balance.is_none()
             && self.date_time_original.is_none()
+            && self.description.is_none()
+            && self.creator.is_none()
+            && self.rights.is_none()
+            && self.keywords.is_empty()
+            && self.headline.is_none()
     }
 }
 
@@ -280,6 +294,22 @@ fn parse_xmp(xml: &str) -> XmpMetadata {
         out.date_time_original = Some(v);
     }
 
+    // IPTC Core / Editorial fields (Dublin Core + Photoshop namespaces).
+    if let Some(v) = scrape(xml, "Description") {
+        out.description = Some(v);
+    }
+    if let Some(v) = scrape(xml, "Creator") {
+        out.creator = Some(v);
+    }
+    if let Some(v) = scrape(xml, "Rights") {
+        out.rights = Some(v);
+    }
+    // dc:subject is a bag of keywords — extract all <rdf:li> entries.
+    out.keywords = scrape_bag(xml, "Subject");
+    if let Some(v) = scrape(xml, "Headline") {
+        out.headline = Some(v);
+    }
+
     out
 }
 
@@ -343,6 +373,39 @@ fn scrape_iso(xml: &str) -> Option<i64> {
         .trim()
         .to_string();
     li.parse::<i64>().ok()
+}
+
+/// Extract all items from an `rdf:Bag` (used for dc:Subject keywords).
+/// Returns a Vec of all `<rdf:li>` text content, in order.
+fn scrape_bag(xml: &str, local_name: &str) -> Vec<String> {
+    let pat = format!(
+        r"<(?:[A-Za-z_][\w.-]*:)?{name}(?:\s[^>]*)?>(?s)(.*?)</(?:[A-Za-z_][\w.-]*:)?{name}\s*>",
+        name = regex::escape(local_name)
+    );
+    let outer = match Regex::new(&pat) {
+        Ok(re) => re,
+        Err(_) => return Vec::new(),
+    };
+    let inner = match outer.captures(xml) {
+        Some(caps) => caps.get(1).map(|m| m.as_str()).unwrap_or(""),
+        None => return Vec::new(),
+    };
+
+    let li_pat = r"<(?:[A-Za-z_][\w.-]*:)?li(?:\s[^>]*)?>\s*([^<]*?)\s*</(?:[A-Za-z_][\w.-]*:)?li\s*>";
+    let li_re = match Regex::new(li_pat) {
+        Ok(re) => re,
+        Err(_) => return Vec::new(),
+    };
+
+    li_re
+        .captures_iter(inner)
+        .filter_map(|caps| {
+            caps.get(1)
+                .map(|m| m.as_str().trim())
+                .filter(|s| !s.is_empty())
+                .map(|s| decode_entities(s))
+        })
+        .collect()
 }
 
 /// EXIF rationals are written as `num/den` (e.g. `1/4000`). Decimal

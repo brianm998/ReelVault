@@ -505,6 +505,13 @@ message VideoMetadata {
   // little-endian bytes (empty when no GPMF or non-GoPro).
   bytes accel_magnitude = 54;
   bytes gyro_magnitude = 55;
+  // IPTC Core / Editorial metadata from the embedded XMP packet (Dublin Core +
+  // Photoshop namespaces). All empty when not present.
+  string description = 56;
+  string creator = 57;
+  string rights = 58;
+  repeated string keywords = 59;
+  string headline = 60;
 }
 
 message GetThumbnailRequest {

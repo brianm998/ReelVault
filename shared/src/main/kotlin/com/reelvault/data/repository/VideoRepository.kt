@@ -302,6 +302,11 @@ class VideoRepository(private val channelFactory: ChannelFactory) {
             gpsTrackDistanceM = proto.gpsTrackDistanceM,
             accelMagnitude = proto.accelMagnitude.toByteArray(),
             gyroMagnitude = proto.gyroMagnitude.toByteArray(),
+            description = proto.description,
+            creator = proto.creator,
+            rights = proto.rights,
+            keywords = proto.keywordsList.toList(),
+            headline = proto.headline,
         )
     }
 
