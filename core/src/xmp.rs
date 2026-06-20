@@ -403,7 +403,7 @@ fn scrape_bag(xml: &str, local_name: &str) -> Vec<String> {
             caps.get(1)
                 .map(|m| m.as_str().trim())
                 .filter(|s| !s.is_empty())
-                .map(|s| decode_entities(s))
+                .map(decode_entities)
         })
         .collect()
 }

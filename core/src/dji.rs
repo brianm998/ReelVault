@@ -83,7 +83,7 @@ pub fn read_embedded_subtitle(video_path: &Path) -> DjiTelemetry {
 
     // Use ffmpeg to extract the first subtitle stream as SRT text
     let output = std::process::Command::new("ffmpeg")
-        .args(&["-i", path_str, "-map", "0:s:0", "-c:s", "srt", "-f", "srt", "-"])
+        .args(["-i", path_str, "-map", "0:s:0", "-c:s", "srt", "-f", "srt", "-"])
         .output();
 
     let Ok(output) = output else {

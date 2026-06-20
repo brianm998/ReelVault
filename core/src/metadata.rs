@@ -385,18 +385,18 @@ impl MetadataExtractor {
         // Chapters and subtitles. Chapter titles come from chapter tags.
         let chapter_count = probe_output.chapters.len() as i32;
         let chapters_json = if !probe_output.chapters.is_empty() {
-            let chapter_list: Vec<_> = probe_output.chapters.iter().filter_map(|ch| {
+            let chapter_list: Vec<_> = probe_output.chapters.iter().map(|ch| {
                 let start_ms = ch.start_time.map(|t| (t * 1000.0) as i64).unwrap_or(0);
                 let end_ms = ch.end_time.map(|t| (t * 1000.0) as i64).unwrap_or(0);
                 let title = ch.tags.as_ref()
                     .and_then(|t| t.get("title"))
                     .cloned()
                     .unwrap_or_else(|| String::from("Chapter"));
-                Some(serde_json::json!({
+                serde_json::json!({
                     "title": title,
                     "start_ms": start_ms,
                     "end_ms": end_ms,
-                }))
+                })
             }).collect();
             serde_json::to_string(&chapter_list).ok()
         } else {
