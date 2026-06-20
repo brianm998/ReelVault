@@ -1,0 +1,3 @@
+# iOS deployment target must match ios/project.yml deploymentTarget.iOS
+[env]
+IPHONEOS_DEPLOYMENT_TARGET = "18.0"
