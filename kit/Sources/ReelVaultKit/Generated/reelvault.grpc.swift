@@ -32,7 +32,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "ListVideos".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListVideos"
+                method: "ListVideos",
+                type: .unary
             )
         }
         /// Namespace for "SearchVideos" metadata.
@@ -44,7 +45,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "SearchVideos".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "SearchVideos"
+                method: "SearchVideos",
+                type: .unary
             )
         }
         /// Namespace for "GetMetadata" metadata.
@@ -56,7 +58,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "GetMetadata".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetMetadata"
+                method: "GetMetadata",
+                type: .unary
             )
         }
         /// Namespace for "GetThumbnail" metadata.
@@ -68,7 +71,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "GetThumbnail".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetThumbnail"
+                method: "GetThumbnail",
+                type: .serverStreaming
             )
         }
         /// Namespace for "AddLibraryLocation" metadata.
@@ -80,7 +84,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "AddLibraryLocation".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "AddLibraryLocation"
+                method: "AddLibraryLocation",
+                type: .unary
             )
         }
         /// Namespace for "RemoveLibraryLocation" metadata.
@@ -92,7 +97,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "RemoveLibraryLocation".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "RemoveLibraryLocation"
+                method: "RemoveLibraryLocation",
+                type: .unary
             )
         }
         /// Namespace for "ListLibraryLocations" metadata.
@@ -104,7 +110,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "ListLibraryLocations".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListLibraryLocations"
+                method: "ListLibraryLocations",
+                type: .unary
             )
         }
         /// Namespace for "ListSubdirectories" metadata.
@@ -116,7 +123,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "ListSubdirectories".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListSubdirectories"
+                method: "ListSubdirectories",
+                type: .unary
             )
         }
         /// Namespace for "ScanLibrary" metadata.
@@ -128,7 +136,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "ScanLibrary".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ScanLibrary"
+                method: "ScanLibrary",
+                type: .serverStreaming
             )
         }
         /// Namespace for "GetScanStatus" metadata.
@@ -140,7 +149,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "GetScanStatus".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetScanStatus"
+                method: "GetScanStatus",
+                type: .unary
             )
         }
         /// Namespace for "CreateTag" metadata.
@@ -152,7 +162,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "CreateTag".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "CreateTag"
+                method: "CreateTag",
+                type: .unary
             )
         }
         /// Namespace for "DeleteTag" metadata.
@@ -164,7 +175,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "DeleteTag".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "DeleteTag"
+                method: "DeleteTag",
+                type: .unary
             )
         }
         /// Namespace for "ListTags" metadata.
@@ -176,7 +188,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "ListTags".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListTags"
+                method: "ListTags",
+                type: .unary
             )
         }
         /// Namespace for "TagVideos" metadata.
@@ -188,7 +201,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "TagVideos".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "TagVideos"
+                method: "TagVideos",
+                type: .unary
             )
         }
         /// Namespace for "UntagVideos" metadata.
@@ -200,7 +214,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "UntagVideos".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UntagVideos"
+                method: "UntagVideos",
+                type: .unary
             )
         }
         /// Namespace for "CreateCollection" metadata.
@@ -212,7 +227,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "CreateCollection".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "CreateCollection"
+                method: "CreateCollection",
+                type: .unary
             )
         }
         /// Namespace for "DeleteCollection" metadata.
@@ -224,7 +240,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "DeleteCollection".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "DeleteCollection"
+                method: "DeleteCollection",
+                type: .unary
             )
         }
         /// Namespace for "ListCollections" metadata.
@@ -236,7 +253,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "ListCollections".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListCollections"
+                method: "ListCollections",
+                type: .unary
             )
         }
         /// Namespace for "AddToCollection" metadata.
@@ -248,7 +266,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "AddToCollection".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "AddToCollection"
+                method: "AddToCollection",
+                type: .unary
             )
         }
         /// Namespace for "RemoveFromCollection" metadata.
@@ -260,7 +279,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "RemoveFromCollection".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "RemoveFromCollection"
+                method: "RemoveFromCollection",
+                type: .unary
             )
         }
         /// Namespace for "UpdateVideoNotes" metadata.
@@ -272,7 +292,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "UpdateVideoNotes".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateVideoNotes"
+                method: "UpdateVideoNotes",
+                type: .unary
             )
         }
         /// Namespace for "DeleteVideo" metadata.
@@ -284,7 +305,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "DeleteVideo".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "DeleteVideo"
+                method: "DeleteVideo",
+                type: .unary
             )
         }
         /// Namespace for "ListGroupMembers" metadata.
@@ -296,7 +318,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "ListGroupMembers".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListGroupMembers"
+                method: "ListGroupMembers",
+                type: .unary
             )
         }
         /// Namespace for "CreateGroup" metadata.
@@ -308,7 +331,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "CreateGroup".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "CreateGroup"
+                method: "CreateGroup",
+                type: .unary
             )
         }
         /// Namespace for "UngroupVideo" metadata.
@@ -320,7 +344,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "UngroupVideo".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UngroupVideo"
+                method: "UngroupVideo",
+                type: .unary
             )
         }
         /// Namespace for "SetGroupPreferred" metadata.
@@ -332,7 +357,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "SetGroupPreferred".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "SetGroupPreferred"
+                method: "SetGroupPreferred",
+                type: .unary
             )
         }
         /// Namespace for "AutoGroupVideos" metadata.
@@ -344,7 +370,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "AutoGroupVideos".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "AutoGroupVideos"
+                method: "AutoGroupVideos",
+                type: .unary
             )
         }
         /// Namespace for "GenerateProxy" metadata.
@@ -356,7 +383,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "GenerateProxy".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GenerateProxy"
+                method: "GenerateProxy",
+                type: .serverStreaming
             )
         }
         /// Namespace for "ListProxies" metadata.
@@ -368,7 +396,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "ListProxies".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListProxies"
+                method: "ListProxies",
+                type: .unary
             )
         }
         /// Namespace for "SetProxyOf" metadata.
@@ -380,7 +409,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "SetProxyOf".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "SetProxyOf"
+                method: "SetProxyOf",
+                type: .unary
             )
         }
         /// Namespace for "RemoveProxyLink" metadata.
@@ -392,7 +422,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "RemoveProxyLink".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "RemoveProxyLink"
+                method: "RemoveProxyLink",
+                type: .unary
             )
         }
         /// Namespace for "DetectProxies" metadata.
@@ -404,7 +435,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "DetectProxies".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "DetectProxies"
+                method: "DetectProxies",
+                type: .unary
             )
         }
         /// Namespace for "AttachProxies" metadata.
@@ -416,7 +448,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "AttachProxies".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "AttachProxies"
+                method: "AttachProxies",
+                type: .unary
             )
         }
         /// Namespace for "GetFilterOptions" metadata.
@@ -428,7 +461,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "GetFilterOptions".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetFilterOptions"
+                method: "GetFilterOptions",
+                type: .unary
             )
         }
         /// Namespace for "GetMetadataFacets" metadata.
@@ -440,7 +474,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "GetMetadataFacets".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetMetadataFacets"
+                method: "GetMetadataFacets",
+                type: .unary
             )
         }
         /// Namespace for "GetStatus" metadata.
@@ -452,7 +487,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "GetStatus".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetStatus"
+                method: "GetStatus",
+                type: .unary
             )
         }
         /// Namespace for "GetConfig" metadata.
@@ -464,7 +500,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "GetConfig".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetConfig"
+                method: "GetConfig",
+                type: .unary
             )
         }
         /// Namespace for "UpdateConfig" metadata.
@@ -476,7 +513,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "UpdateConfig".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateConfig"
+                method: "UpdateConfig",
+                type: .unary
             )
         }
         /// Namespace for "StartPairing" metadata.
@@ -488,7 +526,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "StartPairing".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "StartPairing"
+                method: "StartPairing",
+                type: .unary
             )
         }
         /// Namespace for "OpenCatalog" metadata.
@@ -500,7 +539,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "OpenCatalog".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "OpenCatalog"
+                method: "OpenCatalog",
+                type: .unary
             )
         }
         /// Namespace for "CloseCatalog" metadata.
@@ -512,7 +552,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "CloseCatalog".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "CloseCatalog"
+                method: "CloseCatalog",
+                type: .unary
             )
         }
         /// Namespace for "GetCurrentCatalog" metadata.
@@ -524,7 +565,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "GetCurrentCatalog".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetCurrentCatalog"
+                method: "GetCurrentCatalog",
+                type: .unary
             )
         }
         /// Namespace for "UpdateVideoLocation" metadata.
@@ -536,7 +578,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "UpdateVideoLocation".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateVideoLocation"
+                method: "UpdateVideoLocation",
+                type: .unary
             )
         }
         /// Namespace for "ListVideosWithLocations" metadata.
@@ -548,7 +591,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "ListVideosWithLocations".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListVideosWithLocations"
+                method: "ListVideosWithLocations",
+                type: .unary
             )
         }
         /// Namespace for "ListNamedLocations" metadata.
@@ -560,7 +604,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "ListNamedLocations".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListNamedLocations"
+                method: "ListNamedLocations",
+                type: .unary
             )
         }
         /// Namespace for "UpsertNamedLocation" metadata.
@@ -572,7 +617,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "UpsertNamedLocation".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpsertNamedLocation"
+                method: "UpsertNamedLocation",
+                type: .unary
             )
         }
         /// Namespace for "DeleteNamedLocation" metadata.
@@ -584,7 +630,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "DeleteNamedLocation".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "DeleteNamedLocation"
+                method: "DeleteNamedLocation",
+                type: .unary
             )
         }
         /// Namespace for "UpdateVideoCaptureDate" metadata.
@@ -596,7 +643,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "UpdateVideoCaptureDate".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateVideoCaptureDate"
+                method: "UpdateVideoCaptureDate",
+                type: .unary
             )
         }
         /// Namespace for "UpdateVideoRating" metadata.
@@ -608,7 +656,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "UpdateVideoRating".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateVideoRating"
+                method: "UpdateVideoRating",
+                type: .unary
             )
         }
         /// Namespace for "UpdateVideoColorLabel" metadata.
@@ -620,7 +669,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "UpdateVideoColorLabel".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateVideoColorLabel"
+                method: "UpdateVideoColorLabel",
+                type: .unary
             )
         }
         /// Namespace for "GetGridSettings" metadata.
@@ -632,7 +682,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "GetGridSettings".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetGridSettings"
+                method: "GetGridSettings",
+                type: .unary
             )
         }
         /// Namespace for "UpdateGridSettings" metadata.
@@ -644,7 +695,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "UpdateGridSettings".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateGridSettings"
+                method: "UpdateGridSettings",
+                type: .unary
             )
         }
         /// Namespace for "SubscribeCatalogEvents" metadata.
@@ -656,7 +708,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "SubscribeCatalogEvents".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "SubscribeCatalogEvents"
+                method: "SubscribeCatalogEvents",
+                type: .serverStreaming
             )
         }
         /// Namespace for "GetWatchSettings" metadata.
@@ -668,7 +721,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "GetWatchSettings".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "GetWatchSettings"
+                method: "GetWatchSettings",
+                type: .unary
             )
         }
         /// Namespace for "UpdateWatchSettings" metadata.
@@ -680,7 +734,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "UpdateWatchSettings".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "UpdateWatchSettings"
+                method: "UpdateWatchSettings",
+                type: .unary
             )
         }
         /// Namespace for "ListCameraNameMappings" metadata.
@@ -692,7 +747,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "ListCameraNameMappings".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListCameraNameMappings"
+                method: "ListCameraNameMappings",
+                type: .unary
             )
         }
         /// Namespace for "SetCameraNameMapping" metadata.
@@ -704,7 +760,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "SetCameraNameMapping".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "SetCameraNameMapping"
+                method: "SetCameraNameMapping",
+                type: .unary
             )
         }
         /// Namespace for "ListLensNameMappings" metadata.
@@ -716,7 +773,8 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "ListLensNameMappings".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "ListLensNameMappings"
+                method: "ListLensNameMappings",
+                type: .unary
             )
         }
         /// Namespace for "SetLensNameMapping" metadata.
@@ -728,7 +786,125 @@ public enum Reelvault_ReelVault: Sendable {
             /// Descriptor for "SetLensNameMapping".
             public static let descriptor = GRPCCore.MethodDescriptor(
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
-                method: "SetLensNameMapping"
+                method: "SetLensNameMapping",
+                type: .unary
+            )
+        }
+        /// Namespace for "GetSyncManifest" metadata.
+        public enum GetSyncManifest: Sendable {
+            /// Request type for "GetSyncManifest".
+            public typealias Input = Reelvault_SyncManifestRequest
+            /// Response type for "GetSyncManifest".
+            public typealias Output = Reelvault_SyncManifestEntry
+            /// Descriptor for "GetSyncManifest".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "GetSyncManifest",
+                type: .serverStreaming
+            )
+        }
+        /// Namespace for "LookupByContentHash" metadata.
+        public enum LookupByContentHash: Sendable {
+            /// Request type for "LookupByContentHash".
+            public typealias Input = Reelvault_LookupByContentHashRequest
+            /// Response type for "LookupByContentHash".
+            public typealias Output = Reelvault_LookupByContentHashResponse
+            /// Descriptor for "LookupByContentHash".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "LookupByContentHash",
+                type: .unary
+            )
+        }
+        /// Namespace for "GetVideoCatalogData" metadata.
+        public enum GetVideoCatalogData: Sendable {
+            /// Request type for "GetVideoCatalogData".
+            public typealias Input = Reelvault_VideoCatalogDataRequest
+            /// Response type for "GetVideoCatalogData".
+            public typealias Output = Reelvault_VideoCatalogData
+            /// Descriptor for "GetVideoCatalogData".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "GetVideoCatalogData",
+                type: .unary
+            )
+        }
+        /// Namespace for "ApplyVideoCatalogData" metadata.
+        public enum ApplyVideoCatalogData: Sendable {
+            /// Request type for "ApplyVideoCatalogData".
+            public typealias Input = Reelvault_ApplyCatalogDataRequest
+            /// Response type for "ApplyVideoCatalogData".
+            public typealias Output = Reelvault_Response
+            /// Descriptor for "ApplyVideoCatalogData".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "ApplyVideoCatalogData",
+                type: .unary
+            )
+        }
+        /// Namespace for "PrepareRendition" metadata.
+        public enum PrepareRendition: Sendable {
+            /// Request type for "PrepareRendition".
+            public typealias Input = Reelvault_PrepareRenditionRequest
+            /// Response type for "PrepareRendition".
+            public typealias Output = Reelvault_PrepareRenditionProgress
+            /// Descriptor for "PrepareRendition".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "PrepareRendition",
+                type: .serverStreaming
+            )
+        }
+        /// Namespace for "ListSyncProfiles" metadata.
+        public enum ListSyncProfiles: Sendable {
+            /// Request type for "ListSyncProfiles".
+            public typealias Input = Reelvault_ListSyncProfilesRequest
+            /// Response type for "ListSyncProfiles".
+            public typealias Output = Reelvault_ListSyncProfilesResponse
+            /// Descriptor for "ListSyncProfiles".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "ListSyncProfiles",
+                type: .unary
+            )
+        }
+        /// Namespace for "UpsertSyncProfile" metadata.
+        public enum UpsertSyncProfile: Sendable {
+            /// Request type for "UpsertSyncProfile".
+            public typealias Input = Reelvault_UpsertSyncProfileRequest
+            /// Response type for "UpsertSyncProfile".
+            public typealias Output = Reelvault_SyncProfileResponse
+            /// Descriptor for "UpsertSyncProfile".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "UpsertSyncProfile",
+                type: .unary
+            )
+        }
+        /// Namespace for "DeleteSyncProfile" metadata.
+        public enum DeleteSyncProfile: Sendable {
+            /// Request type for "DeleteSyncProfile".
+            public typealias Input = Reelvault_DeleteSyncProfileRequest
+            /// Response type for "DeleteSyncProfile".
+            public typealias Output = Reelvault_Response
+            /// Descriptor for "DeleteSyncProfile".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "DeleteSyncProfile",
+                type: .unary
+            )
+        }
+        /// Namespace for "GetSyncRun" metadata.
+        public enum GetSyncRun: Sendable {
+            /// Request type for "GetSyncRun".
+            public typealias Input = Reelvault_GetSyncRunRequest
+            /// Response type for "GetSyncRun".
+            public typealias Output = Reelvault_SyncRunResponse
+            /// Descriptor for "GetSyncRun".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "GetSyncRun",
+                type: .unary
             )
         }
         /// Descriptors for all methods in the "reelvault.ReelVault" service.
@@ -791,7 +967,16 @@ public enum Reelvault_ReelVault: Sendable {
             ListCameraNameMappings.descriptor,
             SetCameraNameMapping.descriptor,
             ListLensNameMappings.descriptor,
-            SetLensNameMapping.descriptor
+            SetLensNameMapping.descriptor,
+            GetSyncManifest.descriptor,
+            LookupByContentHash.descriptor,
+            GetVideoCatalogData.descriptor,
+            ApplyVideoCatalogData.descriptor,
+            PrepareRendition.descriptor,
+            ListSyncProfiles.descriptor,
+            UpsertSyncProfile.descriptor,
+            DeleteSyncProfile.descriptor,
+            GetSyncRun.descriptor
         ]
     }
 }
@@ -1785,6 +1970,136 @@ extension Reelvault_ReelVault {
             request: GRPCCore.StreamingServerRequest<Reelvault_SetLensNameMappingRequest>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response>
+
+        /// Handle the "GetSyncManifest" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > --- Catalog Sync (Phase 0-5) ---
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Reelvault_SyncManifestRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Reelvault_SyncManifestEntry` messages.
+        func getSyncManifest(
+            request: GRPCCore.StreamingServerRequest<Reelvault_SyncManifestRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_SyncManifestEntry>
+
+        /// Handle the "LookupByContentHash" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Reelvault_LookupByContentHashRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Reelvault_LookupByContentHashResponse` messages.
+        func lookupByContentHash(
+            request: GRPCCore.StreamingServerRequest<Reelvault_LookupByContentHashRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_LookupByContentHashResponse>
+
+        /// Handle the "GetVideoCatalogData" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Reelvault_VideoCatalogDataRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Reelvault_VideoCatalogData` messages.
+        func getVideoCatalogData(
+            request: GRPCCore.StreamingServerRequest<Reelvault_VideoCatalogDataRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_VideoCatalogData>
+
+        /// Handle the "ApplyVideoCatalogData" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Reelvault_ApplyCatalogDataRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Reelvault_Response` messages.
+        func applyVideoCatalogData(
+            request: GRPCCore.StreamingServerRequest<Reelvault_ApplyCatalogDataRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response>
+
+        /// Handle the "PrepareRendition" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Reelvault_PrepareRenditionRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Reelvault_PrepareRenditionProgress` messages.
+        func prepareRendition(
+            request: GRPCCore.StreamingServerRequest<Reelvault_PrepareRenditionRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_PrepareRenditionProgress>
+
+        /// Handle the "ListSyncProfiles" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Reelvault_ListSyncProfilesRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Reelvault_ListSyncProfilesResponse` messages.
+        func listSyncProfiles(
+            request: GRPCCore.StreamingServerRequest<Reelvault_ListSyncProfilesRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ListSyncProfilesResponse>
+
+        /// Handle the "UpsertSyncProfile" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Reelvault_UpsertSyncProfileRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Reelvault_SyncProfileResponse` messages.
+        func upsertSyncProfile(
+            request: GRPCCore.StreamingServerRequest<Reelvault_UpsertSyncProfileRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_SyncProfileResponse>
+
+        /// Handle the "DeleteSyncProfile" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Reelvault_DeleteSyncProfileRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Reelvault_Response` messages.
+        func deleteSyncProfile(
+            request: GRPCCore.StreamingServerRequest<Reelvault_DeleteSyncProfileRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response>
+
+        /// Handle the "GetSyncRun" method.
+        ///
+        /// - Parameters:
+        ///   - request: A streaming request of `Reelvault_GetSyncRunRequest` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Reelvault_SyncRunResponse` messages.
+        func getSyncRun(
+            request: GRPCCore.StreamingServerRequest<Reelvault_GetSyncRunRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_SyncRunResponse>
     }
 
     /// Service protocol for the "reelvault.ReelVault" service.
@@ -2763,6 +3078,136 @@ extension Reelvault_ReelVault {
             request: GRPCCore.ServerRequest<Reelvault_SetLensNameMappingRequest>,
             context: GRPCCore.ServerContext
         ) async throws -> GRPCCore.ServerResponse<Reelvault_Response>
+
+        /// Handle the "GetSyncManifest" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > --- Catalog Sync (Phase 0-5) ---
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_SyncManifestRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Reelvault_SyncManifestEntry` messages.
+        func getSyncManifest(
+            request: GRPCCore.ServerRequest<Reelvault_SyncManifestRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_SyncManifestEntry>
+
+        /// Handle the "LookupByContentHash" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_LookupByContentHashRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Reelvault_LookupByContentHashResponse` message.
+        func lookupByContentHash(
+            request: GRPCCore.ServerRequest<Reelvault_LookupByContentHashRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Reelvault_LookupByContentHashResponse>
+
+        /// Handle the "GetVideoCatalogData" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_VideoCatalogDataRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Reelvault_VideoCatalogData` message.
+        func getVideoCatalogData(
+            request: GRPCCore.ServerRequest<Reelvault_VideoCatalogDataRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Reelvault_VideoCatalogData>
+
+        /// Handle the "ApplyVideoCatalogData" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_ApplyCatalogDataRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Reelvault_Response` message.
+        func applyVideoCatalogData(
+            request: GRPCCore.ServerRequest<Reelvault_ApplyCatalogDataRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Reelvault_Response>
+
+        /// Handle the "PrepareRendition" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_PrepareRenditionRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A streaming response of `Reelvault_PrepareRenditionProgress` messages.
+        func prepareRendition(
+            request: GRPCCore.ServerRequest<Reelvault_PrepareRenditionRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_PrepareRenditionProgress>
+
+        /// Handle the "ListSyncProfiles" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_ListSyncProfilesRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Reelvault_ListSyncProfilesResponse` message.
+        func listSyncProfiles(
+            request: GRPCCore.ServerRequest<Reelvault_ListSyncProfilesRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Reelvault_ListSyncProfilesResponse>
+
+        /// Handle the "UpsertSyncProfile" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_UpsertSyncProfileRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Reelvault_SyncProfileResponse` message.
+        func upsertSyncProfile(
+            request: GRPCCore.ServerRequest<Reelvault_UpsertSyncProfileRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Reelvault_SyncProfileResponse>
+
+        /// Handle the "DeleteSyncProfile" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_DeleteSyncProfileRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Reelvault_Response` message.
+        func deleteSyncProfile(
+            request: GRPCCore.ServerRequest<Reelvault_DeleteSyncProfileRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Reelvault_Response>
+
+        /// Handle the "GetSyncRun" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_GetSyncRunRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A response containing a single `Reelvault_SyncRunResponse` message.
+        func getSyncRun(
+            request: GRPCCore.ServerRequest<Reelvault_GetSyncRunRequest>,
+            context: GRPCCore.ServerContext
+        ) async throws -> GRPCCore.ServerResponse<Reelvault_SyncRunResponse>
     }
 
     /// Simple service protocol for the "reelvault.ReelVault" service.
@@ -3743,6 +4188,138 @@ extension Reelvault_ReelVault {
             request: Reelvault_SetLensNameMappingRequest,
             context: GRPCCore.ServerContext
         ) async throws -> Reelvault_Response
+
+        /// Handle the "GetSyncManifest" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > --- Catalog Sync (Phase 0-5) ---
+        ///
+        /// - Parameters:
+        ///   - request: A `Reelvault_SyncManifestRequest` message.
+        ///   - response: A response stream of `Reelvault_SyncManifestEntry` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        func getSyncManifest(
+            request: Reelvault_SyncManifestRequest,
+            response: GRPCCore.RPCWriter<Reelvault_SyncManifestEntry>,
+            context: GRPCCore.ServerContext
+        ) async throws
+
+        /// Handle the "LookupByContentHash" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Reelvault_LookupByContentHashRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Reelvault_LookupByContentHashResponse` to respond with.
+        func lookupByContentHash(
+            request: Reelvault_LookupByContentHashRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Reelvault_LookupByContentHashResponse
+
+        /// Handle the "GetVideoCatalogData" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Reelvault_VideoCatalogDataRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Reelvault_VideoCatalogData` to respond with.
+        func getVideoCatalogData(
+            request: Reelvault_VideoCatalogDataRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Reelvault_VideoCatalogData
+
+        /// Handle the "ApplyVideoCatalogData" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Reelvault_ApplyCatalogDataRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Reelvault_Response` to respond with.
+        func applyVideoCatalogData(
+            request: Reelvault_ApplyCatalogDataRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Reelvault_Response
+
+        /// Handle the "PrepareRendition" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Reelvault_PrepareRenditionRequest` message.
+        ///   - response: A response stream of `Reelvault_PrepareRenditionProgress` messages.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        func prepareRendition(
+            request: Reelvault_PrepareRenditionRequest,
+            response: GRPCCore.RPCWriter<Reelvault_PrepareRenditionProgress>,
+            context: GRPCCore.ServerContext
+        ) async throws
+
+        /// Handle the "ListSyncProfiles" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Reelvault_ListSyncProfilesRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Reelvault_ListSyncProfilesResponse` to respond with.
+        func listSyncProfiles(
+            request: Reelvault_ListSyncProfilesRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Reelvault_ListSyncProfilesResponse
+
+        /// Handle the "UpsertSyncProfile" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Reelvault_UpsertSyncProfileRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Reelvault_SyncProfileResponse` to respond with.
+        func upsertSyncProfile(
+            request: Reelvault_UpsertSyncProfileRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Reelvault_SyncProfileResponse
+
+        /// Handle the "DeleteSyncProfile" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Reelvault_DeleteSyncProfileRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Reelvault_Response` to respond with.
+        func deleteSyncProfile(
+            request: Reelvault_DeleteSyncProfileRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Reelvault_Response
+
+        /// Handle the "GetSyncRun" method.
+        ///
+        /// - Parameters:
+        ///   - request: A `Reelvault_GetSyncRunRequest` message.
+        ///   - context: Context providing information about the RPC.
+        /// - Throws: Any error which occurred during the processing of the request. Thrown errors
+        ///     of type `RPCError` are mapped to appropriate statuses. All other errors are converted
+        ///     to an internal error.
+        /// - Returns: A `Reelvault_SyncRunResponse` to respond with.
+        func getSyncRun(
+            request: Reelvault_GetSyncRunRequest,
+            context: GRPCCore.ServerContext
+        ) async throws -> Reelvault_SyncRunResponse
     }
 }
 
@@ -4399,6 +4976,105 @@ extension Reelvault_ReelVault.StreamingServiceProtocol {
                 )
             }
         )
+        router.registerHandler(
+            forMethod: Reelvault_ReelVault.Method.GetSyncManifest.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_SyncManifestRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_SyncManifestEntry>(),
+            handler: { request, context in
+                try await self.getSyncManifest(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Reelvault_ReelVault.Method.LookupByContentHash.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_LookupByContentHashRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_LookupByContentHashResponse>(),
+            handler: { request, context in
+                try await self.lookupByContentHash(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Reelvault_ReelVault.Method.GetVideoCatalogData.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_VideoCatalogDataRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_VideoCatalogData>(),
+            handler: { request, context in
+                try await self.getVideoCatalogData(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Reelvault_ReelVault.Method.ApplyVideoCatalogData.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_ApplyCatalogDataRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_Response>(),
+            handler: { request, context in
+                try await self.applyVideoCatalogData(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Reelvault_ReelVault.Method.PrepareRendition.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_PrepareRenditionRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_PrepareRenditionProgress>(),
+            handler: { request, context in
+                try await self.prepareRendition(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Reelvault_ReelVault.Method.ListSyncProfiles.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_ListSyncProfilesRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_ListSyncProfilesResponse>(),
+            handler: { request, context in
+                try await self.listSyncProfiles(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Reelvault_ReelVault.Method.UpsertSyncProfile.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_UpsertSyncProfileRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_SyncProfileResponse>(),
+            handler: { request, context in
+                try await self.upsertSyncProfile(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Reelvault_ReelVault.Method.DeleteSyncProfile.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_DeleteSyncProfileRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_Response>(),
+            handler: { request, context in
+                try await self.deleteSyncProfile(
+                    request: request,
+                    context: context
+                )
+            }
+        )
+        router.registerHandler(
+            forMethod: Reelvault_ReelVault.Method.GetSyncRun.descriptor,
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_GetSyncRunRequest>(),
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_SyncRunResponse>(),
+            handler: { request, context in
+                try await self.getSyncRun(
+                    request: request,
+                    context: context
+                )
+            }
+        )
     }
 }
 
@@ -5048,6 +5724,105 @@ extension Reelvault_ReelVault.ServiceProtocol {
         context: GRPCCore.ServerContext
     ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
         let response = try await self.setLensNameMapping(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    public func getSyncManifest(
+        request: GRPCCore.StreamingServerRequest<Reelvault_SyncManifestRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_SyncManifestEntry> {
+        let response = try await self.getSyncManifest(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return response
+    }
+
+    public func lookupByContentHash(
+        request: GRPCCore.StreamingServerRequest<Reelvault_LookupByContentHashRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_LookupByContentHashResponse> {
+        let response = try await self.lookupByContentHash(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    public func getVideoCatalogData(
+        request: GRPCCore.StreamingServerRequest<Reelvault_VideoCatalogDataRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_VideoCatalogData> {
+        let response = try await self.getVideoCatalogData(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    public func applyVideoCatalogData(
+        request: GRPCCore.StreamingServerRequest<Reelvault_ApplyCatalogDataRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
+        let response = try await self.applyVideoCatalogData(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    public func prepareRendition(
+        request: GRPCCore.StreamingServerRequest<Reelvault_PrepareRenditionRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_PrepareRenditionProgress> {
+        let response = try await self.prepareRendition(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return response
+    }
+
+    public func listSyncProfiles(
+        request: GRPCCore.StreamingServerRequest<Reelvault_ListSyncProfilesRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_ListSyncProfilesResponse> {
+        let response = try await self.listSyncProfiles(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    public func upsertSyncProfile(
+        request: GRPCCore.StreamingServerRequest<Reelvault_UpsertSyncProfileRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_SyncProfileResponse> {
+        let response = try await self.upsertSyncProfile(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    public func deleteSyncProfile(
+        request: GRPCCore.StreamingServerRequest<Reelvault_DeleteSyncProfileRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_Response> {
+        let response = try await self.deleteSyncProfile(
+            request: GRPCCore.ServerRequest(stream: request),
+            context: context
+        )
+        return GRPCCore.StreamingServerResponse(single: response)
+    }
+
+    public func getSyncRun(
+        request: GRPCCore.StreamingServerRequest<Reelvault_GetSyncRunRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_SyncRunResponse> {
+        let response = try await self.getSyncRun(
             request: GRPCCore.ServerRequest(stream: request),
             context: context
         )
@@ -5834,6 +6609,131 @@ extension Reelvault_ReelVault.SimpleServiceProtocol {
     ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
         return GRPCCore.ServerResponse<Reelvault_Response>(
             message: try await self.setLensNameMapping(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    public func getSyncManifest(
+        request: GRPCCore.ServerRequest<Reelvault_SyncManifestRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_SyncManifestEntry> {
+        return GRPCCore.StreamingServerResponse<Reelvault_SyncManifestEntry>(
+            metadata: [:],
+            producer: { writer in
+                try await self.getSyncManifest(
+                    request: request.message,
+                    response: writer,
+                    context: context
+                )
+                return [:]
+            }
+        )
+    }
+
+    public func lookupByContentHash(
+        request: GRPCCore.ServerRequest<Reelvault_LookupByContentHashRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Reelvault_LookupByContentHashResponse> {
+        return GRPCCore.ServerResponse<Reelvault_LookupByContentHashResponse>(
+            message: try await self.lookupByContentHash(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    public func getVideoCatalogData(
+        request: GRPCCore.ServerRequest<Reelvault_VideoCatalogDataRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Reelvault_VideoCatalogData> {
+        return GRPCCore.ServerResponse<Reelvault_VideoCatalogData>(
+            message: try await self.getVideoCatalogData(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    public func applyVideoCatalogData(
+        request: GRPCCore.ServerRequest<Reelvault_ApplyCatalogDataRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
+        return GRPCCore.ServerResponse<Reelvault_Response>(
+            message: try await self.applyVideoCatalogData(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    public func prepareRendition(
+        request: GRPCCore.ServerRequest<Reelvault_PrepareRenditionRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.StreamingServerResponse<Reelvault_PrepareRenditionProgress> {
+        return GRPCCore.StreamingServerResponse<Reelvault_PrepareRenditionProgress>(
+            metadata: [:],
+            producer: { writer in
+                try await self.prepareRendition(
+                    request: request.message,
+                    response: writer,
+                    context: context
+                )
+                return [:]
+            }
+        )
+    }
+
+    public func listSyncProfiles(
+        request: GRPCCore.ServerRequest<Reelvault_ListSyncProfilesRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Reelvault_ListSyncProfilesResponse> {
+        return GRPCCore.ServerResponse<Reelvault_ListSyncProfilesResponse>(
+            message: try await self.listSyncProfiles(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    public func upsertSyncProfile(
+        request: GRPCCore.ServerRequest<Reelvault_UpsertSyncProfileRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Reelvault_SyncProfileResponse> {
+        return GRPCCore.ServerResponse<Reelvault_SyncProfileResponse>(
+            message: try await self.upsertSyncProfile(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    public func deleteSyncProfile(
+        request: GRPCCore.ServerRequest<Reelvault_DeleteSyncProfileRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Reelvault_Response> {
+        return GRPCCore.ServerResponse<Reelvault_Response>(
+            message: try await self.deleteSyncProfile(
+                request: request.message,
+                context: context
+            ),
+            metadata: [:]
+        )
+    }
+
+    public func getSyncRun(
+        request: GRPCCore.ServerRequest<Reelvault_GetSyncRunRequest>,
+        context: GRPCCore.ServerContext
+    ) async throws -> GRPCCore.ServerResponse<Reelvault_SyncRunResponse> {
+        return GRPCCore.ServerResponse<Reelvault_SyncRunResponse>(
+            message: try await self.getSyncRun(
                 request: request.message,
                 context: context
             ),
@@ -7113,6 +8013,181 @@ extension Reelvault_ReelVault {
             deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
             options: GRPCCore.CallOptions,
             onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "GetSyncManifest" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > --- Catalog Sync (Phase 0-5) ---
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_SyncManifestRequest` message.
+        ///   - serializer: A serializer for `Reelvault_SyncManifestRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_SyncManifestEntry` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func getSyncManifest<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_SyncManifestRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_SyncManifestRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_SyncManifestEntry>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Reelvault_SyncManifestEntry>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "LookupByContentHash" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_LookupByContentHashRequest` message.
+        ///   - serializer: A serializer for `Reelvault_LookupByContentHashRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_LookupByContentHashResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func lookupByContentHash<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_LookupByContentHashRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_LookupByContentHashRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_LookupByContentHashResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_LookupByContentHashResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "GetVideoCatalogData" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_VideoCatalogDataRequest` message.
+        ///   - serializer: A serializer for `Reelvault_VideoCatalogDataRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_VideoCatalogData` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func getVideoCatalogData<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_VideoCatalogDataRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_VideoCatalogDataRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_VideoCatalogData>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_VideoCatalogData>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "ApplyVideoCatalogData" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_ApplyCatalogDataRequest` message.
+        ///   - serializer: A serializer for `Reelvault_ApplyCatalogDataRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func applyVideoCatalogData<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_ApplyCatalogDataRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_ApplyCatalogDataRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "PrepareRendition" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_PrepareRenditionRequest` message.
+        ///   - serializer: A serializer for `Reelvault_PrepareRenditionRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_PrepareRenditionProgress` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func prepareRendition<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_PrepareRenditionRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_PrepareRenditionRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_PrepareRenditionProgress>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Reelvault_PrepareRenditionProgress>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "ListSyncProfiles" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_ListSyncProfilesRequest` message.
+        ///   - serializer: A serializer for `Reelvault_ListSyncProfilesRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_ListSyncProfilesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func listSyncProfiles<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_ListSyncProfilesRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_ListSyncProfilesRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_ListSyncProfilesResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListSyncProfilesResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "UpsertSyncProfile" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_UpsertSyncProfileRequest` message.
+        ///   - serializer: A serializer for `Reelvault_UpsertSyncProfileRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_SyncProfileResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func upsertSyncProfile<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_UpsertSyncProfileRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_UpsertSyncProfileRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_SyncProfileResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_SyncProfileResponse>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "DeleteSyncProfile" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_DeleteSyncProfileRequest` message.
+        ///   - serializer: A serializer for `Reelvault_DeleteSyncProfileRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func deleteSyncProfile<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_DeleteSyncProfileRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_DeleteSyncProfileRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result
+        ) async throws -> Result where Result: Sendable
+
+        /// Call the "GetSyncRun" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_GetSyncRunRequest` message.
+        ///   - serializer: A serializer for `Reelvault_GetSyncRunRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_SyncRunResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        func getSyncRun<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_GetSyncRunRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_GetSyncRunRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_SyncRunResponse>,
+            options: GRPCCore.CallOptions,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_SyncRunResponse>) async throws -> Result
         ) async throws -> Result where Result: Sendable
     }
 
@@ -9036,6 +10111,276 @@ extension Reelvault_ReelVault {
                 onResponse: handleResponse
             )
         }
+
+        /// Call the "GetSyncManifest" method.
+        ///
+        /// > Source IDL Documentation:
+        /// >
+        /// > --- Catalog Sync (Phase 0-5) ---
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_SyncManifestRequest` message.
+        ///   - serializer: A serializer for `Reelvault_SyncManifestRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_SyncManifestEntry` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func getSyncManifest<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_SyncManifestRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_SyncManifestRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_SyncManifestEntry>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Reelvault_SyncManifestEntry>) async throws -> Result
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.serverStreaming(
+                request: request,
+                descriptor: Reelvault_ReelVault.Method.GetSyncManifest.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "LookupByContentHash" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_LookupByContentHashRequest` message.
+        ///   - serializer: A serializer for `Reelvault_LookupByContentHashRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_LookupByContentHashResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func lookupByContentHash<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_LookupByContentHashRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_LookupByContentHashRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_LookupByContentHashResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_LookupByContentHashResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Reelvault_ReelVault.Method.LookupByContentHash.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "GetVideoCatalogData" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_VideoCatalogDataRequest` message.
+        ///   - serializer: A serializer for `Reelvault_VideoCatalogDataRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_VideoCatalogData` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func getVideoCatalogData<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_VideoCatalogDataRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_VideoCatalogDataRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_VideoCatalogData>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_VideoCatalogData>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Reelvault_ReelVault.Method.GetVideoCatalogData.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "ApplyVideoCatalogData" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_ApplyCatalogDataRequest` message.
+        ///   - serializer: A serializer for `Reelvault_ApplyCatalogDataRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func applyVideoCatalogData<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_ApplyCatalogDataRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_ApplyCatalogDataRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Reelvault_ReelVault.Method.ApplyVideoCatalogData.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "PrepareRendition" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_PrepareRenditionRequest` message.
+        ///   - serializer: A serializer for `Reelvault_PrepareRenditionRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_PrepareRenditionProgress` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func prepareRendition<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_PrepareRenditionRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_PrepareRenditionRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_PrepareRenditionProgress>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Reelvault_PrepareRenditionProgress>) async throws -> Result
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.serverStreaming(
+                request: request,
+                descriptor: Reelvault_ReelVault.Method.PrepareRendition.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "ListSyncProfiles" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_ListSyncProfilesRequest` message.
+        ///   - serializer: A serializer for `Reelvault_ListSyncProfilesRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_ListSyncProfilesResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func listSyncProfiles<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_ListSyncProfilesRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_ListSyncProfilesRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_ListSyncProfilesResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListSyncProfilesResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Reelvault_ReelVault.Method.ListSyncProfiles.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "UpsertSyncProfile" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_UpsertSyncProfileRequest` message.
+        ///   - serializer: A serializer for `Reelvault_UpsertSyncProfileRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_SyncProfileResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func upsertSyncProfile<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_UpsertSyncProfileRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_UpsertSyncProfileRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_SyncProfileResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_SyncProfileResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Reelvault_ReelVault.Method.UpsertSyncProfile.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "DeleteSyncProfile" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_DeleteSyncProfileRequest` message.
+        ///   - serializer: A serializer for `Reelvault_DeleteSyncProfileRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_Response` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func deleteSyncProfile<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_DeleteSyncProfileRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_DeleteSyncProfileRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_Response>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Reelvault_ReelVault.Method.DeleteSyncProfile.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
+
+        /// Call the "GetSyncRun" method.
+        ///
+        /// - Parameters:
+        ///   - request: A request containing a single `Reelvault_GetSyncRunRequest` message.
+        ///   - serializer: A serializer for `Reelvault_GetSyncRunRequest` messages.
+        ///   - deserializer: A deserializer for `Reelvault_SyncRunResponse` messages.
+        ///   - options: Options to apply to this RPC.
+        ///   - handleResponse: A closure which handles the response, the result of which is
+        ///       returned to the caller. Returning from the closure will cancel the RPC if it
+        ///       hasn't already finished.
+        /// - Returns: The result of `handleResponse`.
+        public func getSyncRun<Result>(
+            request: GRPCCore.ClientRequest<Reelvault_GetSyncRunRequest>,
+            serializer: some GRPCCore.MessageSerializer<Reelvault_GetSyncRunRequest>,
+            deserializer: some GRPCCore.MessageDeserializer<Reelvault_SyncRunResponse>,
+            options: GRPCCore.CallOptions = .defaults,
+            onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_SyncRunResponse>) async throws -> Result = { response in
+                try response.message
+            }
+        ) async throws -> Result where Result: Sendable {
+            try await self.client.unary(
+                request: request,
+                descriptor: Reelvault_ReelVault.Method.GetSyncRun.descriptor,
+                serializer: serializer,
+                deserializer: deserializer,
+                options: options,
+                onResponse: handleResponse
+            )
+        }
     }
 }
 
@@ -10643,6 +11988,231 @@ extension Reelvault_ReelVault.ClientProtocol {
             request: request,
             serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_SetLensNameMappingRequest>(),
             deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_Response>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetSyncManifest" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > --- Catalog Sync (Phase 0-5) ---
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Reelvault_SyncManifestRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getSyncManifest<Result>(
+        request: GRPCCore.ClientRequest<Reelvault_SyncManifestRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Reelvault_SyncManifestEntry>) async throws -> Result
+    ) async throws -> Result where Result: Sendable {
+        try await self.getSyncManifest(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_SyncManifestRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_SyncManifestEntry>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "LookupByContentHash" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Reelvault_LookupByContentHashRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func lookupByContentHash<Result>(
+        request: GRPCCore.ClientRequest<Reelvault_LookupByContentHashRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_LookupByContentHashResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.lookupByContentHash(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_LookupByContentHashRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_LookupByContentHashResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetVideoCatalogData" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Reelvault_VideoCatalogDataRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getVideoCatalogData<Result>(
+        request: GRPCCore.ClientRequest<Reelvault_VideoCatalogDataRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_VideoCatalogData>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getVideoCatalogData(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_VideoCatalogDataRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_VideoCatalogData>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ApplyVideoCatalogData" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Reelvault_ApplyCatalogDataRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func applyVideoCatalogData<Result>(
+        request: GRPCCore.ClientRequest<Reelvault_ApplyCatalogDataRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.applyVideoCatalogData(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_ApplyCatalogDataRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_Response>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "PrepareRendition" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Reelvault_PrepareRenditionRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func prepareRendition<Result>(
+        request: GRPCCore.ClientRequest<Reelvault_PrepareRenditionRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Reelvault_PrepareRenditionProgress>) async throws -> Result
+    ) async throws -> Result where Result: Sendable {
+        try await self.prepareRendition(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_PrepareRenditionRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_PrepareRenditionProgress>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ListSyncProfiles" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Reelvault_ListSyncProfilesRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func listSyncProfiles<Result>(
+        request: GRPCCore.ClientRequest<Reelvault_ListSyncProfilesRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListSyncProfilesResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.listSyncProfiles(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_ListSyncProfilesRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_ListSyncProfilesResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpsertSyncProfile" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Reelvault_UpsertSyncProfileRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func upsertSyncProfile<Result>(
+        request: GRPCCore.ClientRequest<Reelvault_UpsertSyncProfileRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_SyncProfileResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.upsertSyncProfile(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_UpsertSyncProfileRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_SyncProfileResponse>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "DeleteSyncProfile" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Reelvault_DeleteSyncProfileRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func deleteSyncProfile<Result>(
+        request: GRPCCore.ClientRequest<Reelvault_DeleteSyncProfileRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.deleteSyncProfile(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_DeleteSyncProfileRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_Response>(),
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetSyncRun" method.
+    ///
+    /// - Parameters:
+    ///   - request: A request containing a single `Reelvault_GetSyncRunRequest` message.
+    ///   - options: Options to apply to this RPC.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getSyncRun<Result>(
+        request: GRPCCore.ClientRequest<Reelvault_GetSyncRunRequest>,
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_SyncRunResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        try await self.getSyncRun(
+            request: request,
+            serializer: GRPCProtobuf.ProtobufSerializer<Reelvault_GetSyncRunRequest>(),
+            deserializer: GRPCProtobuf.ProtobufDeserializer<Reelvault_SyncRunResponse>(),
             options: options,
             onResponse: handleResponse
         )
@@ -12488,6 +14058,267 @@ extension Reelvault_ReelVault.ClientProtocol {
             metadata: metadata
         )
         return try await self.setLensNameMapping(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetSyncManifest" method.
+    ///
+    /// > Source IDL Documentation:
+    /// >
+    /// > --- Catalog Sync (Phase 0-5) ---
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getSyncManifest<Result>(
+        _ message: Reelvault_SyncManifestRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Reelvault_SyncManifestEntry>) async throws -> Result
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Reelvault_SyncManifestRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getSyncManifest(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "LookupByContentHash" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func lookupByContentHash<Result>(
+        _ message: Reelvault_LookupByContentHashRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_LookupByContentHashResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Reelvault_LookupByContentHashRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.lookupByContentHash(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetVideoCatalogData" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getVideoCatalogData<Result>(
+        _ message: Reelvault_VideoCatalogDataRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_VideoCatalogData>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Reelvault_VideoCatalogDataRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getVideoCatalogData(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ApplyVideoCatalogData" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func applyVideoCatalogData<Result>(
+        _ message: Reelvault_ApplyCatalogDataRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Reelvault_ApplyCatalogDataRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.applyVideoCatalogData(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "PrepareRendition" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func prepareRendition<Result>(
+        _ message: Reelvault_PrepareRenditionRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.StreamingClientResponse<Reelvault_PrepareRenditionProgress>) async throws -> Result
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Reelvault_PrepareRenditionRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.prepareRendition(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "ListSyncProfiles" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func listSyncProfiles<Result>(
+        _ message: Reelvault_ListSyncProfilesRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_ListSyncProfilesResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Reelvault_ListSyncProfilesRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.listSyncProfiles(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "UpsertSyncProfile" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func upsertSyncProfile<Result>(
+        _ message: Reelvault_UpsertSyncProfileRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_SyncProfileResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Reelvault_UpsertSyncProfileRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.upsertSyncProfile(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "DeleteSyncProfile" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func deleteSyncProfile<Result>(
+        _ message: Reelvault_DeleteSyncProfileRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_Response>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Reelvault_DeleteSyncProfileRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.deleteSyncProfile(
+            request: request,
+            options: options,
+            onResponse: handleResponse
+        )
+    }
+
+    /// Call the "GetSyncRun" method.
+    ///
+    /// - Parameters:
+    ///   - message: request message to send.
+    ///   - metadata: Additional metadata to send, defaults to empty.
+    ///   - options: Options to apply to this RPC, defaults to `.defaults`.
+    ///   - handleResponse: A closure which handles the response, the result of which is
+    ///       returned to the caller. Returning from the closure will cancel the RPC if it
+    ///       hasn't already finished.
+    /// - Returns: The result of `handleResponse`.
+    public func getSyncRun<Result>(
+        _ message: Reelvault_GetSyncRunRequest,
+        metadata: GRPCCore.Metadata = [:],
+        options: GRPCCore.CallOptions = .defaults,
+        onResponse handleResponse: @Sendable @escaping (GRPCCore.ClientResponse<Reelvault_SyncRunResponse>) async throws -> Result = { response in
+            try response.message
+        }
+    ) async throws -> Result where Result: Sendable {
+        let request = GRPCCore.ClientRequest<Reelvault_GetSyncRunRequest>(
+            message: message,
+            metadata: metadata
+        )
+        return try await self.getSyncRun(
             request: request,
             options: options,
             onResponse: handleResponse
