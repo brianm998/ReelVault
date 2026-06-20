@@ -18,10 +18,14 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 PROTO_DIR="$HERE/../core/proto"
 OUT_DIR="$HERE/Sources/ReelVaultKit/Generated"
+PLUGIN_SWIFT="$HOME/.local/bin/protoc-gen-swift"
+PLUGIN_GRPC="$HOME/.local/bin/protoc-gen-grpc-swift"
 
 mkdir -p "$OUT_DIR"
 
 protoc \
+  --plugin=protoc-gen-swift="$PLUGIN_SWIFT" \
+  --plugin=protoc-gen-grpc-swift="$PLUGIN_GRPC" \
   --swift_out="$OUT_DIR" --swift_opt=Visibility=Public \
   --grpc-swift_out="$OUT_DIR" --grpc-swift_opt=Visibility=Public \
   -I "$PROTO_DIR" \
