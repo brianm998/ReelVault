@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import org.json.JSONArray
 import kotlin.math.max
 import kotlin.math.min
@@ -106,10 +105,13 @@ object MediaStoreIngest {
         todo.map { v ->
             async {
                 if (cancelRequested) return@async
-                sem.withPermit {
-                    if (cancelRequested) return@withPermit
+                sem.acquire()
+                try {
+                    if (cancelRequested) return@async
                     val rc = ReelVaultCore.nativeIngestMediaStore(v.id.toString(), v.displayName)
                     if (rc != 0) Log.w(TAG, "ingest ${v.id} (${v.displayName}) rc=$rc")
+                } finally {
+                    sem.release()
                 }
             }
         }.awaitAll()
