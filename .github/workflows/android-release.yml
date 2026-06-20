@@ -54,6 +54,39 @@ jobs:
           key: release-android-gradle-${{ hashFiles('shared/build.gradle.kts', 'android/build.gradle.kts') }}
           restore-keys: release-android-gradle-
 
+      # ── Build the embedded Rust core (.so) for each Android ABI ───────────
+      # The Kotlin app loads libreelvault_core.so via JNI for on-device Local
+      # Library mode. These .so files are gitignored build artifacts (like the
+      # iOS xcframework), so CI MUST build them before bundling — otherwise the
+      # AAB ships without the native core and the app crashes when it enters
+      # local mode. This is the Android analog of the iOS workflow's
+      # `make xcframework` step. The core's build.rs runs tonic_build, hence
+      # protoc; cargo-ndk cross-compiles against the runner's preinstalled NDK.
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android
+
+      - uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            core/target
+          key: release-android-core-${{ hashFiles('core/Cargo.toml') }}
+          restore-keys: release-android-core-
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk --locked
+
+      - name: Build embedded core (.so) for all ABIs
+        run: ./android/build-core.sh
+        env:
+          PROFILE: release
+
       # Decode the base64 keystore to a temp file that Gradle's signingConfig
       # reads via $KEYSTORE_FILE. Fail fast with a clear message if the secret
       # is absent (mirrors the iOS workflow's cert guard) — otherwise Gradle
