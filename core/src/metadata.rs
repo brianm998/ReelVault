@@ -224,20 +224,28 @@ impl MetadataExtractor {
             // GoPro: a representative GPS fix from the GPMF track.
             .or(gpmf.gps);
 
+        // Get the file extension for gating various sidecar lookups
+        let ext = video_path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_ascii_lowercase());
+
         // DJI drone telemetry from a sidecar `<clip>.SRT` (GPS + ISO/aperture/
         // shutter/date). Only looked for when nothing else gave us a location —
         // DJI clips never carry container GPS, so a GPS-bearing clip (iPhone,
         // GoPro) can't be one, and we skip the sidecar stat. Also gated to the
         // container extensions DJI produces.
         let dji = {
-            let ext = video_path
-                .extension()
-                .and_then(|e| e.to_str())
-                .map(|e| e.to_ascii_lowercase());
             let is_dji_container =
                 matches!(ext.as_deref(), Some("mp4") | Some("mov") | Some("lrv") | Some("m4v"));
             if gps_from_container.is_none() && is_dji_container {
-                crate::dji::read_sidecar(video_path)
+                // Try sidecar first, then embedded subtitle if no sidecar found
+                let sidecar_data = crate::dji::read_sidecar(video_path);
+                if !sidecar_data.is_empty() {
+                    sidecar_data
+                } else {
+                    crate::dji::read_embedded_subtitle(video_path)
+                }
             } else {
                 crate::dji::DjiTelemetry::default()
             }
@@ -427,6 +435,40 @@ impl MetadataExtractor {
             })
         });
 
+        // Sony Professional XML sidecar metadata (clip name, scene, take, ND filter,
+        // iris F-number, LUT name). Only looked for when the container is MP4/MOV.
+        let sony = if matches!(ext.as_deref(), Some("mp4") | Some("mov")) {
+            crate::sony_xml::read_sidecar(video_path)
+        } else {
+            crate::sony_xml::SonyXmlMetadata::default()
+        };
+        let production_scene = sony.scene.clone();
+        let production_take = sony.take.clone();
+        let nd_filter = sony.nd_filter.clone();
+        let iris_f_number = sony.iris_f_number;
+        let lut_name = sony.lut_name.clone();
+
+        // Extended 360° / spatial audio parameters. For now, extract only what
+        // ffprobe provides: stereo mode (from container/XMP) and ambisonics channel
+        // ordering (from audio stream tags). Initial viewing angles (heading/pitch/roll)
+        // would require proprietary metadata extensions not yet parsed by ffprobe.
+        let spatial_initial_heading: Option<f64> = None;
+        let spatial_initial_pitch: Option<f64> = None;
+        let spatial_initial_roll: Option<f64> = None;
+
+        // Stereo mode from container metadata or stream tags (top-bottom,
+        // left-right, mono). For 360° video this controls how left/right eyes are
+        // packed in the frame for 3D VR playback.
+        let stereo_mode = format.tags.as_ref()
+            .and_then(|t| t.get("stereo_mode").cloned())
+            .or_else(|| video_stream.tags.as_ref().and_then(|t| t.get("stereo_mode").cloned()));
+
+        // Ambisonics channel ordering from audio stream tags (ACN or Furse-Malham).
+        let ambisonics_channel_order = audio_stream
+            .and_then(|s| s.tags.as_ref().and_then(|t| t.get("ambisonics_channel_ordering").cloned()))
+            .or_else(|| audio_stream
+                .and_then(|s| s.tags.as_ref().and_then(|t| t.get("ambisonics_mode").cloned())));
+
         // Color space + HDR. ffprobe reports the transfer characteristic on the
         // video stream; an HDR EOTF (PQ/HLG/DCI) is what makes a clip HDR — both
         // the FX3 ProRes and the iPhone 16 Pro (HLG) footage land here, where
@@ -479,8 +521,10 @@ impl MetadataExtractor {
               lens_model, gps_latitude, gps_longitude, gps_altitude, gps_track, gps_track_distance_m,
               iso, aperture, exposure_time_s, focal_length_mm,
               exposure_mode, exposure_program, white_balance, accel_magnitude, gyro_magnitude,
-              description, creator, rights, keywords, headline, chapter_count, chapters_json, subtitle_tracks, dolby_vision_profile, metadata_json)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              description, creator, rights, keywords, headline, chapter_count, chapters_json, subtitle_tracks, dolby_vision_profile,
+              production_scene, production_take, nd_filter, iris_f_number, lut_name,
+              spatial_initial_heading, spatial_initial_pitch, spatial_initial_roll, stereo_mode, ambisonics_channel_order, metadata_json)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(video_id) DO UPDATE SET
              duration_ms=excluded.duration_ms,
              frame_count=excluded.frame_count,
@@ -535,6 +579,16 @@ impl MetadataExtractor {
              chapters_json=excluded.chapters_json,
              subtitle_tracks=excluded.subtitle_tracks,
              dolby_vision_profile=excluded.dolby_vision_profile,
+             production_scene=excluded.production_scene,
+             production_take=excluded.production_take,
+             nd_filter=excluded.nd_filter,
+             iris_f_number=excluded.iris_f_number,
+             lut_name=excluded.lut_name,
+             spatial_initial_heading=excluded.spatial_initial_heading,
+             spatial_initial_pitch=excluded.spatial_initial_pitch,
+             spatial_initial_roll=excluded.spatial_initial_roll,
+             stereo_mode=excluded.stereo_mode,
+             ambisonics_channel_order=excluded.ambisonics_channel_order,
              metadata_json=excluded.metadata_json,
              -- Invalidate the lazily-cached loudness series: the file content may
              -- have changed (an in-place edit re-runs this UPSERT), so force a
@@ -592,6 +646,16 @@ impl MetadataExtractor {
                 chapters_json,
                 subtitle_tracks,
                 dolby_vision_profile,
+                production_scene,
+                production_take,
+                nd_filter,
+                iris_f_number,
+                lut_name,
+                spatial_initial_heading,
+                spatial_initial_pitch,
+                spatial_initial_roll,
+                stereo_mode,
+                ambisonics_channel_order,
                 metadata_json
             ],
         )

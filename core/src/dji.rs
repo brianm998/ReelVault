@@ -72,6 +72,38 @@ pub fn read_sidecar(video_path: &Path) -> DjiTelemetry {
     DjiTelemetry::default()
 }
 
+/// When no sidecar is found, check for an embedded subtitle stream that
+/// contains DJI telemetry. Uses ffmpeg to extract the first subtitle stream
+/// and parses it as SRT. Returns empty if no subtitle exists or extraction fails.
+pub fn read_embedded_subtitle(video_path: &Path) -> DjiTelemetry {
+    let path_str = match video_path.to_str() {
+        Some(s) => s,
+        None => return DjiTelemetry::default(),
+    };
+
+    // Use ffmpeg to extract the first subtitle stream as SRT text
+    let output = std::process::Command::new("ffmpeg")
+        .args(&["-i", path_str, "-map", "0:s:0", "-c:s", "srt", "-f", "srt", "-"])
+        .output();
+
+    let Ok(output) = output else {
+        return DjiTelemetry::default();
+    };
+
+    if !output.status.success() {
+        return DjiTelemetry::default();
+    }
+
+    let text = String::from_utf8_lossy(&output.stdout);
+
+    // Only treat this as DJI telemetry if it contains recognizable DJI patterns
+    if text.contains("[iso") || text.contains("[latitude") || text.contains("GPS(") {
+        parse_srt(&text)
+    } else {
+        DjiTelemetry::default()
+    }
+}
+
 /// Read an entire file as lossy UTF-8.
 fn read_full(path: &Path) -> std::io::Result<String> {
     let bytes = std::fs::read(path)?;
