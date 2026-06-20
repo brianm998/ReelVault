@@ -29,17 +29,11 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    buildTypes {
-        release {
-            isMinifyEnabled = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.findByName("release")
-        }
-        debug {
-            applicationIdSuffix = ".debug"
-        }
-    }
-
+    // Declared BEFORE buildTypes on purpose: the Kotlin DSL evaluates these
+    // blocks in source order, and buildTypes.release references this config.
+    // If signingConfigs came after, signingConfigs.getByName("release") would
+    // not yet exist at that point and every release bundle would come out
+    // UNSIGNED (Play rejects unsigned bundles).
     signingConfigs {
         create("release") {
             val keystoreFile = System.getenv("KEYSTORE_FILE")
@@ -52,6 +46,21 @@ android {
                 this.keyAlias = keyAlias
                 this.keyPassword = keyPassword
             }
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Only attach signing when a keystore was supplied via env, so a
+            // signed release gets signed while unsigned dev/CI builds still run.
+            if (System.getenv("KEYSTORE_FILE") != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
+        debug {
+            applicationIdSuffix = ".debug"
         }
     }
 
