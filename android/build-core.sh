@@ -43,7 +43,16 @@ echo "Profile:   $PROFILE"
 echo "ABIs:      $ABIS"
 
 build_flag=()
-[[ "$PROFILE" == "release" ]] && build_flag=(--release)
+if [[ "$PROFILE" == "release" ]]; then
+  build_flag=(--release)
+  # Keep symbols + line tables in the built .so so we can hand Google Play
+  # native debug symbols (so Rust crashes/ANRs symbolicate). This overrides
+  # `strip = true` in core/Cargo.toml's [profile.release] for THIS Android build
+  # only — we strip the SHIPPED copies ourselves after staging the symbols
+  # (below), so the AAB still ships lean, stripped .so.
+  export CARGO_PROFILE_RELEASE_STRIP=false
+  export CARGO_PROFILE_RELEASE_DEBUG=1
+fi
 
 targets=()
 for abi in $ABIS; do targets+=( -t "$abi" ); done
@@ -54,6 +63,27 @@ cd "$REPO_ROOT/core"
 # `${arr[@]+"${arr[@]}"}` expands to nothing when the array is empty without
 # tripping `set -u` (matters on macOS's bash 3.2).
 cargo ndk "${targets[@]}" --platform 26 -o "$OUT" build --lib ${build_flag[@]+"${build_flag[@]}"}
+
+# For release: stage the unstripped .so as Google Play native debug symbols,
+# then strip the copies that ship in the AAB so it stays lean. `--strip-unneeded`
+# keeps the exported dynamic symbols (JNI Java_* entry points stay resolvable).
+# Debug builds keep their symbols in place and skip this.
+if [[ "$PROFILE" == "release" ]]; then
+  SYMS_DIR="$SCRIPT_DIR/build/native-debug-symbols"
+  rm -rf "$SYMS_DIR"
+  strip_bin="$(find "${ANDROID_NDK_HOME:-}" -name 'llvm-strip' -type f 2>/dev/null | head -1)"
+  while IFS= read -r so; do
+    abi="$(basename "$(dirname "$so")")"
+    mkdir -p "$SYMS_DIR/$abi"
+    cp "$so" "$SYMS_DIR/$abi/libreelvault_core.so"   # unstripped = symbols for Play
+    if [[ -n "$strip_bin" ]]; then
+      "$strip_bin" --strip-unneeded "$so"            # shrink the lib shipped in the AAB
+    else
+      echo "WARNING: llvm-strip not found under ANDROID_NDK_HOME; shipped .so left unstripped." >&2
+    fi
+  done < <(find "$OUT" -name 'libreelvault_core.so')
+  echo "Staged native debug symbols in: $SYMS_DIR"
+fi
 
 echo "Done. Produced:"
 find "$OUT" -name 'libreelvault_core.so' -exec ls -la {} \;
