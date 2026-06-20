@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import org.slf4j.LoggerFactory
 import com.reelvault.util.Strings
 import java.util.prefs.Preferences
@@ -3249,8 +3248,11 @@ class GridViewModel(
                     if (_thumbnails.value.containsKey(videoId)) break
                     if (delayMs > 0) delay(delayMs + (0L..100L).random())
                     val data = try {
-                        thumbnailSemaphore.withPermit {
+                        thumbnailSemaphore.acquire()
+                        try {
                             repository.getThumbnail(videoId, "medium")
+                        } finally {
+                            thumbnailSemaphore.release()
                         }
                     } catch (e: CancellationException) {
                         throw e
