@@ -18,13 +18,13 @@ import GRPCProtobuf
 
 /// Namespace containing generated types for the "reelvault.ReelVault" service.
 @available(macOS 15.0, iOS 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
-public enum Reelvault_ReelVault: Sendable {
+public enum Reelvault_ReelVault {
     /// Service descriptor for the "reelvault.ReelVault" service.
     public static let descriptor = GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault")
     /// Namespace for method metadata.
-    public enum Method: Sendable {
+    public enum Method {
         /// Namespace for "ListVideos" metadata.
-        public enum ListVideos: Sendable {
+        public enum ListVideos {
             /// Request type for "ListVideos".
             public typealias Input = Reelvault_ListVideosRequest
             /// Response type for "ListVideos".
@@ -37,7 +37,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "SearchVideos" metadata.
-        public enum SearchVideos: Sendable {
+        public enum SearchVideos {
             /// Request type for "SearchVideos".
             public typealias Input = Reelvault_SearchRequest
             /// Response type for "SearchVideos".
@@ -50,7 +50,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "GetMetadata" metadata.
-        public enum GetMetadata: Sendable {
+        public enum GetMetadata {
             /// Request type for "GetMetadata".
             public typealias Input = Reelvault_GetMetadataRequest
             /// Response type for "GetMetadata".
@@ -63,7 +63,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "GetThumbnail" metadata.
-        public enum GetThumbnail: Sendable {
+        public enum GetThumbnail {
             /// Request type for "GetThumbnail".
             public typealias Input = Reelvault_GetThumbnailRequest
             /// Response type for "GetThumbnail".
@@ -76,7 +76,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "AddLibraryLocation" metadata.
-        public enum AddLibraryLocation: Sendable {
+        public enum AddLibraryLocation {
             /// Request type for "AddLibraryLocation".
             public typealias Input = Reelvault_AddLocationRequest
             /// Response type for "AddLibraryLocation".
@@ -89,7 +89,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "RemoveLibraryLocation" metadata.
-        public enum RemoveLibraryLocation: Sendable {
+        public enum RemoveLibraryLocation {
             /// Request type for "RemoveLibraryLocation".
             public typealias Input = Reelvault_RemoveLocationRequest
             /// Response type for "RemoveLibraryLocation".
@@ -102,7 +102,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "ListLibraryLocations" metadata.
-        public enum ListLibraryLocations: Sendable {
+        public enum ListLibraryLocations {
             /// Request type for "ListLibraryLocations".
             public typealias Input = Reelvault_ListLocationsRequest
             /// Response type for "ListLibraryLocations".
@@ -115,7 +115,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "ListSubdirectories" metadata.
-        public enum ListSubdirectories: Sendable {
+        public enum ListSubdirectories {
             /// Request type for "ListSubdirectories".
             public typealias Input = Reelvault_ListSubdirectoriesRequest
             /// Response type for "ListSubdirectories".
@@ -128,7 +128,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "ScanLibrary" metadata.
-        public enum ScanLibrary: Sendable {
+        public enum ScanLibrary {
             /// Request type for "ScanLibrary".
             public typealias Input = Reelvault_ScanLibraryRequest
             /// Response type for "ScanLibrary".
@@ -141,7 +141,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "GetScanStatus" metadata.
-        public enum GetScanStatus: Sendable {
+        public enum GetScanStatus {
             /// Request type for "GetScanStatus".
             public typealias Input = Reelvault_GetScanStatusRequest
             /// Response type for "GetScanStatus".
@@ -154,7 +154,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "CreateTag" metadata.
-        public enum CreateTag: Sendable {
+        public enum CreateTag {
             /// Request type for "CreateTag".
             public typealias Input = Reelvault_CreateTagRequest
             /// Response type for "CreateTag".
@@ -167,7 +167,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "DeleteTag" metadata.
-        public enum DeleteTag: Sendable {
+        public enum DeleteTag {
             /// Request type for "DeleteTag".
             public typealias Input = Reelvault_DeleteTagRequest
             /// Response type for "DeleteTag".
@@ -180,7 +180,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "ListTags" metadata.
-        public enum ListTags: Sendable {
+        public enum ListTags {
             /// Request type for "ListTags".
             public typealias Input = Reelvault_ListTagsRequest
             /// Response type for "ListTags".
@@ -193,7 +193,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "TagVideos" metadata.
-        public enum TagVideos: Sendable {
+        public enum TagVideos {
             /// Request type for "TagVideos".
             public typealias Input = Reelvault_TagVideosRequest
             /// Response type for "TagVideos".
@@ -206,7 +206,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UntagVideos" metadata.
-        public enum UntagVideos: Sendable {
+        public enum UntagVideos {
             /// Request type for "UntagVideos".
             public typealias Input = Reelvault_UntagVideosRequest
             /// Response type for "UntagVideos".
@@ -219,7 +219,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "CreateCollection" metadata.
-        public enum CreateCollection: Sendable {
+        public enum CreateCollection {
             /// Request type for "CreateCollection".
             public typealias Input = Reelvault_CreateCollectionRequest
             /// Response type for "CreateCollection".
@@ -232,7 +232,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "DeleteCollection" metadata.
-        public enum DeleteCollection: Sendable {
+        public enum DeleteCollection {
             /// Request type for "DeleteCollection".
             public typealias Input = Reelvault_DeleteCollectionRequest
             /// Response type for "DeleteCollection".
@@ -245,7 +245,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "ListCollections" metadata.
-        public enum ListCollections: Sendable {
+        public enum ListCollections {
             /// Request type for "ListCollections".
             public typealias Input = Reelvault_ListCollectionsRequest
             /// Response type for "ListCollections".
@@ -258,7 +258,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "AddToCollection" metadata.
-        public enum AddToCollection: Sendable {
+        public enum AddToCollection {
             /// Request type for "AddToCollection".
             public typealias Input = Reelvault_AddToCollectionRequest
             /// Response type for "AddToCollection".
@@ -271,7 +271,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "RemoveFromCollection" metadata.
-        public enum RemoveFromCollection: Sendable {
+        public enum RemoveFromCollection {
             /// Request type for "RemoveFromCollection".
             public typealias Input = Reelvault_RemoveFromCollectionRequest
             /// Response type for "RemoveFromCollection".
@@ -284,7 +284,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UpdateVideoNotes" metadata.
-        public enum UpdateVideoNotes: Sendable {
+        public enum UpdateVideoNotes {
             /// Request type for "UpdateVideoNotes".
             public typealias Input = Reelvault_UpdateNotesRequest
             /// Response type for "UpdateVideoNotes".
@@ -297,7 +297,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "DeleteVideo" metadata.
-        public enum DeleteVideo: Sendable {
+        public enum DeleteVideo {
             /// Request type for "DeleteVideo".
             public typealias Input = Reelvault_DeleteVideoRequest
             /// Response type for "DeleteVideo".
@@ -310,7 +310,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "ListGroupMembers" metadata.
-        public enum ListGroupMembers: Sendable {
+        public enum ListGroupMembers {
             /// Request type for "ListGroupMembers".
             public typealias Input = Reelvault_ListGroupMembersRequest
             /// Response type for "ListGroupMembers".
@@ -323,7 +323,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "CreateGroup" metadata.
-        public enum CreateGroup: Sendable {
+        public enum CreateGroup {
             /// Request type for "CreateGroup".
             public typealias Input = Reelvault_CreateGroupRequest
             /// Response type for "CreateGroup".
@@ -336,7 +336,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UngroupVideo" metadata.
-        public enum UngroupVideo: Sendable {
+        public enum UngroupVideo {
             /// Request type for "UngroupVideo".
             public typealias Input = Reelvault_UngroupVideoRequest
             /// Response type for "UngroupVideo".
@@ -349,7 +349,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "SetGroupPreferred" metadata.
-        public enum SetGroupPreferred: Sendable {
+        public enum SetGroupPreferred {
             /// Request type for "SetGroupPreferred".
             public typealias Input = Reelvault_SetGroupPreferredRequest
             /// Response type for "SetGroupPreferred".
@@ -362,7 +362,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "AutoGroupVideos" metadata.
-        public enum AutoGroupVideos: Sendable {
+        public enum AutoGroupVideos {
             /// Request type for "AutoGroupVideos".
             public typealias Input = Reelvault_AutoGroupRequest
             /// Response type for "AutoGroupVideos".
@@ -375,7 +375,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "GenerateProxy" metadata.
-        public enum GenerateProxy: Sendable {
+        public enum GenerateProxy {
             /// Request type for "GenerateProxy".
             public typealias Input = Reelvault_GenerateProxyRequest
             /// Response type for "GenerateProxy".
@@ -388,7 +388,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "ListProxies" metadata.
-        public enum ListProxies: Sendable {
+        public enum ListProxies {
             /// Request type for "ListProxies".
             public typealias Input = Reelvault_ListProxiesRequest
             /// Response type for "ListProxies".
@@ -401,7 +401,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "SetProxyOf" metadata.
-        public enum SetProxyOf: Sendable {
+        public enum SetProxyOf {
             /// Request type for "SetProxyOf".
             public typealias Input = Reelvault_SetProxyOfRequest
             /// Response type for "SetProxyOf".
@@ -414,7 +414,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "RemoveProxyLink" metadata.
-        public enum RemoveProxyLink: Sendable {
+        public enum RemoveProxyLink {
             /// Request type for "RemoveProxyLink".
             public typealias Input = Reelvault_RemoveProxyLinkRequest
             /// Response type for "RemoveProxyLink".
@@ -427,7 +427,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "DetectProxies" metadata.
-        public enum DetectProxies: Sendable {
+        public enum DetectProxies {
             /// Request type for "DetectProxies".
             public typealias Input = Reelvault_DetectProxiesRequest
             /// Response type for "DetectProxies".
@@ -440,7 +440,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "AttachProxies" metadata.
-        public enum AttachProxies: Sendable {
+        public enum AttachProxies {
             /// Request type for "AttachProxies".
             public typealias Input = Reelvault_AttachProxiesRequest
             /// Response type for "AttachProxies".
@@ -453,7 +453,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "GetFilterOptions" metadata.
-        public enum GetFilterOptions: Sendable {
+        public enum GetFilterOptions {
             /// Request type for "GetFilterOptions".
             public typealias Input = Reelvault_GetFilterOptionsRequest
             /// Response type for "GetFilterOptions".
@@ -466,7 +466,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "GetMetadataFacets" metadata.
-        public enum GetMetadataFacets: Sendable {
+        public enum GetMetadataFacets {
             /// Request type for "GetMetadataFacets".
             public typealias Input = Reelvault_MetadataFacetsRequest
             /// Response type for "GetMetadataFacets".
@@ -479,7 +479,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "GetStatus" metadata.
-        public enum GetStatus: Sendable {
+        public enum GetStatus {
             /// Request type for "GetStatus".
             public typealias Input = Reelvault_GetStatusRequest
             /// Response type for "GetStatus".
@@ -492,7 +492,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "GetConfig" metadata.
-        public enum GetConfig: Sendable {
+        public enum GetConfig {
             /// Request type for "GetConfig".
             public typealias Input = Reelvault_GetConfigRequest
             /// Response type for "GetConfig".
@@ -505,7 +505,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UpdateConfig" metadata.
-        public enum UpdateConfig: Sendable {
+        public enum UpdateConfig {
             /// Request type for "UpdateConfig".
             public typealias Input = Reelvault_UpdateConfigRequest
             /// Response type for "UpdateConfig".
@@ -518,7 +518,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "StartPairing" metadata.
-        public enum StartPairing: Sendable {
+        public enum StartPairing {
             /// Request type for "StartPairing".
             public typealias Input = Reelvault_StartPairingRequest
             /// Response type for "StartPairing".
@@ -531,7 +531,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "OpenCatalog" metadata.
-        public enum OpenCatalog: Sendable {
+        public enum OpenCatalog {
             /// Request type for "OpenCatalog".
             public typealias Input = Reelvault_OpenCatalogRequest
             /// Response type for "OpenCatalog".
@@ -544,7 +544,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "CloseCatalog" metadata.
-        public enum CloseCatalog: Sendable {
+        public enum CloseCatalog {
             /// Request type for "CloseCatalog".
             public typealias Input = Reelvault_CloseCatalogRequest
             /// Response type for "CloseCatalog".
@@ -557,7 +557,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "GetCurrentCatalog" metadata.
-        public enum GetCurrentCatalog: Sendable {
+        public enum GetCurrentCatalog {
             /// Request type for "GetCurrentCatalog".
             public typealias Input = Reelvault_GetCurrentCatalogRequest
             /// Response type for "GetCurrentCatalog".
@@ -570,7 +570,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UpdateVideoLocation" metadata.
-        public enum UpdateVideoLocation: Sendable {
+        public enum UpdateVideoLocation {
             /// Request type for "UpdateVideoLocation".
             public typealias Input = Reelvault_UpdateVideoLocationRequest
             /// Response type for "UpdateVideoLocation".
@@ -583,7 +583,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "ListVideosWithLocations" metadata.
-        public enum ListVideosWithLocations: Sendable {
+        public enum ListVideosWithLocations {
             /// Request type for "ListVideosWithLocations".
             public typealias Input = Reelvault_ListVideosWithLocationsRequest
             /// Response type for "ListVideosWithLocations".
@@ -596,7 +596,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "ListNamedLocations" metadata.
-        public enum ListNamedLocations: Sendable {
+        public enum ListNamedLocations {
             /// Request type for "ListNamedLocations".
             public typealias Input = Reelvault_ListNamedLocationsRequest
             /// Response type for "ListNamedLocations".
@@ -609,7 +609,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UpsertNamedLocation" metadata.
-        public enum UpsertNamedLocation: Sendable {
+        public enum UpsertNamedLocation {
             /// Request type for "UpsertNamedLocation".
             public typealias Input = Reelvault_UpsertNamedLocationRequest
             /// Response type for "UpsertNamedLocation".
@@ -622,7 +622,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "DeleteNamedLocation" metadata.
-        public enum DeleteNamedLocation: Sendable {
+        public enum DeleteNamedLocation {
             /// Request type for "DeleteNamedLocation".
             public typealias Input = Reelvault_DeleteNamedLocationRequest
             /// Response type for "DeleteNamedLocation".
@@ -635,7 +635,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UpdateVideoCaptureDate" metadata.
-        public enum UpdateVideoCaptureDate: Sendable {
+        public enum UpdateVideoCaptureDate {
             /// Request type for "UpdateVideoCaptureDate".
             public typealias Input = Reelvault_UpdateVideoCaptureDateRequest
             /// Response type for "UpdateVideoCaptureDate".
@@ -648,7 +648,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UpdateVideoRating" metadata.
-        public enum UpdateVideoRating: Sendable {
+        public enum UpdateVideoRating {
             /// Request type for "UpdateVideoRating".
             public typealias Input = Reelvault_UpdateVideoRatingRequest
             /// Response type for "UpdateVideoRating".
@@ -661,7 +661,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UpdateVideoColorLabel" metadata.
-        public enum UpdateVideoColorLabel: Sendable {
+        public enum UpdateVideoColorLabel {
             /// Request type for "UpdateVideoColorLabel".
             public typealias Input = Reelvault_UpdateVideoColorLabelRequest
             /// Response type for "UpdateVideoColorLabel".
@@ -674,7 +674,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "GetGridSettings" metadata.
-        public enum GetGridSettings: Sendable {
+        public enum GetGridSettings {
             /// Request type for "GetGridSettings".
             public typealias Input = Reelvault_GetGridSettingsRequest
             /// Response type for "GetGridSettings".
@@ -687,7 +687,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UpdateGridSettings" metadata.
-        public enum UpdateGridSettings: Sendable {
+        public enum UpdateGridSettings {
             /// Request type for "UpdateGridSettings".
             public typealias Input = Reelvault_GridSettings
             /// Response type for "UpdateGridSettings".
@@ -700,7 +700,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "SubscribeCatalogEvents" metadata.
-        public enum SubscribeCatalogEvents: Sendable {
+        public enum SubscribeCatalogEvents {
             /// Request type for "SubscribeCatalogEvents".
             public typealias Input = Reelvault_SubscribeCatalogEventsRequest
             /// Response type for "SubscribeCatalogEvents".
@@ -713,7 +713,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "GetWatchSettings" metadata.
-        public enum GetWatchSettings: Sendable {
+        public enum GetWatchSettings {
             /// Request type for "GetWatchSettings".
             public typealias Input = Reelvault_GetWatchSettingsRequest
             /// Response type for "GetWatchSettings".
@@ -726,7 +726,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "UpdateWatchSettings" metadata.
-        public enum UpdateWatchSettings: Sendable {
+        public enum UpdateWatchSettings {
             /// Request type for "UpdateWatchSettings".
             public typealias Input = Reelvault_WatchSettings
             /// Response type for "UpdateWatchSettings".
@@ -739,7 +739,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "ListCameraNameMappings" metadata.
-        public enum ListCameraNameMappings: Sendable {
+        public enum ListCameraNameMappings {
             /// Request type for "ListCameraNameMappings".
             public typealias Input = Reelvault_ListCameraNameMappingsRequest
             /// Response type for "ListCameraNameMappings".
@@ -752,7 +752,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "SetCameraNameMapping" metadata.
-        public enum SetCameraNameMapping: Sendable {
+        public enum SetCameraNameMapping {
             /// Request type for "SetCameraNameMapping".
             public typealias Input = Reelvault_SetCameraNameMappingRequest
             /// Response type for "SetCameraNameMapping".
@@ -765,7 +765,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "ListLensNameMappings" metadata.
-        public enum ListLensNameMappings: Sendable {
+        public enum ListLensNameMappings {
             /// Request type for "ListLensNameMappings".
             public typealias Input = Reelvault_ListLensNameMappingsRequest
             /// Response type for "ListLensNameMappings".
@@ -778,7 +778,7 @@ public enum Reelvault_ReelVault: Sendable {
             )
         }
         /// Namespace for "SetLensNameMapping" metadata.
-        public enum SetLensNameMapping: Sendable {
+        public enum SetLensNameMapping {
             /// Request type for "SetLensNameMapping".
             public typealias Input = Reelvault_SetLensNameMappingRequest
             /// Response type for "SetLensNameMapping".
@@ -905,6 +905,114 @@ public enum Reelvault_ReelVault: Sendable {
                 service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
                 method: "GetSyncRun",
                 type: .unary
+            )
+        }
+        /// Namespace for "GetSyncManifest" metadata.
+        public enum GetSyncManifest {
+            /// Request type for "GetSyncManifest".
+            public typealias Input = Reelvault_SyncManifestRequest
+            /// Response type for "GetSyncManifest".
+            public typealias Output = Reelvault_SyncManifestEntry
+            /// Descriptor for "GetSyncManifest".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "GetSyncManifest"
+            )
+        }
+        /// Namespace for "LookupByContentHash" metadata.
+        public enum LookupByContentHash {
+            /// Request type for "LookupByContentHash".
+            public typealias Input = Reelvault_LookupByContentHashRequest
+            /// Response type for "LookupByContentHash".
+            public typealias Output = Reelvault_LookupByContentHashResponse
+            /// Descriptor for "LookupByContentHash".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "LookupByContentHash"
+            )
+        }
+        /// Namespace for "GetVideoCatalogData" metadata.
+        public enum GetVideoCatalogData {
+            /// Request type for "GetVideoCatalogData".
+            public typealias Input = Reelvault_VideoCatalogDataRequest
+            /// Response type for "GetVideoCatalogData".
+            public typealias Output = Reelvault_VideoCatalogData
+            /// Descriptor for "GetVideoCatalogData".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "GetVideoCatalogData"
+            )
+        }
+        /// Namespace for "ApplyVideoCatalogData" metadata.
+        public enum ApplyVideoCatalogData {
+            /// Request type for "ApplyVideoCatalogData".
+            public typealias Input = Reelvault_ApplyCatalogDataRequest
+            /// Response type for "ApplyVideoCatalogData".
+            public typealias Output = Reelvault_Response
+            /// Descriptor for "ApplyVideoCatalogData".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "ApplyVideoCatalogData"
+            )
+        }
+        /// Namespace for "PrepareRendition" metadata.
+        public enum PrepareRendition {
+            /// Request type for "PrepareRendition".
+            public typealias Input = Reelvault_PrepareRenditionRequest
+            /// Response type for "PrepareRendition".
+            public typealias Output = Reelvault_PrepareRenditionProgress
+            /// Descriptor for "PrepareRendition".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "PrepareRendition"
+            )
+        }
+        /// Namespace for "ListSyncProfiles" metadata.
+        public enum ListSyncProfiles {
+            /// Request type for "ListSyncProfiles".
+            public typealias Input = Reelvault_ListSyncProfilesRequest
+            /// Response type for "ListSyncProfiles".
+            public typealias Output = Reelvault_ListSyncProfilesResponse
+            /// Descriptor for "ListSyncProfiles".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "ListSyncProfiles"
+            )
+        }
+        /// Namespace for "UpsertSyncProfile" metadata.
+        public enum UpsertSyncProfile {
+            /// Request type for "UpsertSyncProfile".
+            public typealias Input = Reelvault_UpsertSyncProfileRequest
+            /// Response type for "UpsertSyncProfile".
+            public typealias Output = Reelvault_SyncProfileResponse
+            /// Descriptor for "UpsertSyncProfile".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "UpsertSyncProfile"
+            )
+        }
+        /// Namespace for "DeleteSyncProfile" metadata.
+        public enum DeleteSyncProfile {
+            /// Request type for "DeleteSyncProfile".
+            public typealias Input = Reelvault_DeleteSyncProfileRequest
+            /// Response type for "DeleteSyncProfile".
+            public typealias Output = Reelvault_Response
+            /// Descriptor for "DeleteSyncProfile".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "DeleteSyncProfile"
+            )
+        }
+        /// Namespace for "GetSyncRun" metadata.
+        public enum GetSyncRun {
+            /// Request type for "GetSyncRun".
+            public typealias Input = Reelvault_GetSyncRunRequest
+            /// Response type for "GetSyncRun".
+            public typealias Output = Reelvault_SyncRunResponse
+            /// Descriptor for "GetSyncRun".
+            public static let descriptor = GRPCCore.MethodDescriptor(
+                service: GRPCCore.ServiceDescriptor(fullyQualifiedService: "reelvault.ReelVault"),
+                method: "GetSyncRun"
             )
         }
         /// Descriptors for all methods in the "reelvault.ReelVault" service.

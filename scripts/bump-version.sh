@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Bump the version across all ReelVault components.
 #
-# Usage: scripts/bump-version.sh <new-version>   (e.g. 0.2.0)
+# Usage: scripts/bump-version.sh [new-version]
+#   If called with no arguments, auto-increments the patch version.
+#   If called with an argument (e.g. 0.2.0), uses that exact version.
+#   To increment major or minor, you must specify the version explicitly.
 #
 # Updates in one shot:
 #   VERSION                        — root source of truth
@@ -15,18 +18,32 @@
 # Rust code uses env!("CARGO_PKG_VERSION") which Cargo sets from Cargo.toml.
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
 NEW_VERSION="${1:-}"
 if [[ -z "$NEW_VERSION" ]]; then
-    echo "Usage: $(basename "$0") <new-version>  (e.g. 0.2.0)" >&2
-    exit 1
+    # Read current VERSION and auto-increment patch
+    CURRENT_VERSION=$(cat "$ROOT/VERSION")
+    if ! [[ "$CURRENT_VERSION" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)(-[A-Za-z0-9.]+)?$ ]]; then
+        echo "Error: current VERSION file has invalid format: $CURRENT_VERSION" >&2
+        exit 1
+    fi
+
+    MAJOR="${BASH_REMATCH[1]}"
+    MINOR="${BASH_REMATCH[2]}"
+    PATCH="${BASH_REMATCH[3]}"
+    PRERELEASE="${BASH_REMATCH[4]:-}"
+
+    # Increment patch, drop any pre-release suffix
+    PATCH=$((PATCH + 1))
+    NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+    echo "Auto-bumping patch version: $CURRENT_VERSION → $NEW_VERSION"
 fi
 
 if ! [[ "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.]+)?$ ]]; then
     echo "Error: version must be X.Y.Z or X.Y.Z-pre.release" >&2
     exit 1
 fi
-
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # 1. Root VERSION file
 printf '%s\n' "$NEW_VERSION" > "$ROOT/VERSION"

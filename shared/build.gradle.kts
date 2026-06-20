@@ -30,6 +30,9 @@ dependencies {
     // OkHttp for the TLS-pinned HTTP client (pairing, fingerprint fetch)
     api("com.squareup.okhttp3:okhttp:4.12.0")
 
+    // JSON parsing
+    api("org.json:json:20240303")
+
     // Logging
     implementation("org.slf4j:slf4j-api:2.0.7")
 
@@ -37,12 +40,12 @@ dependencies {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 }
 
 protobuf {
