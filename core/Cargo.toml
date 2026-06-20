@@ -112,6 +112,9 @@ rayon = "1.10"
 which = "5.0"
 serde_with = "3.4"
 
+# Content hashing for catalog sync (sparse blake3 over first+last 8 MiB)
+blake3 = "1"
+
 # Pattern matching
 regex = "1.10"
 

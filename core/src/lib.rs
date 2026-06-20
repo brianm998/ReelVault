@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 ReelVault Contributors
 
+pub mod content_hash;
 pub mod db;
 pub mod metadata;
 pub mod thumbnails;
@@ -32,6 +33,7 @@ pub mod gpmf;
 pub mod dji;
 pub mod sony_xml;
 pub mod metadata_keys;
+pub mod sync;
 
 /// Platform-agnostic in-process embed logic (loopback gRPC boot, ingest, prune),
 /// shared by the iOS C-ABI surface and the Android JNI surface. Compiled only for

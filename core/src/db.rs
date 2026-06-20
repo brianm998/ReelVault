@@ -233,6 +233,109 @@ fn path_prefix_range(prefix: &str) -> (String, String) {
     (lower, upper)
 }
 
+// ── Catalog Sync structs ────────────────────────────────────────────────────
+
+#[derive(Debug, Clone)]
+pub struct SyncLink {
+    pub id: String,
+    pub local_video_id: String,
+    pub peer_key: String,
+    pub remote_video_id: String,
+    pub origin_hash: Option<String>,
+    pub is_derived: bool,
+    pub derived_height: Option<i32>,
+    pub last_synced_ms: i64,
+    pub local_rev_at_sync: i64,
+    pub remote_rev_at_sync: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct ContentHashHit {
+    pub content_hash: String,
+    pub video_id: String,
+    pub marks_rev: i64,
+    pub duration_ms: i64,
+    pub creation_date_ms: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct SmartCollectionEntry {
+    pub name: String,
+    pub filter_json: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct VideoCatalogData {
+    pub marks_rev: i64,
+    pub tags: Vec<String>,
+    pub tag_colors: Vec<String>,
+    pub collections: Vec<String>,
+    pub smart_collections: Vec<SmartCollectionEntry>,
+    pub rating: i32,
+    pub color_label: String,
+    pub notes: String,
+    pub creation_date_str: String,
+    pub gps_lat: f64,
+    pub gps_lon: f64,
+    pub has_gps: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct SyncManifestRow {
+    pub video_id: String,
+    pub content_hash: Option<String>,
+    pub marks_rev: i64,
+    pub size_bytes: i64,
+    pub duration_ms: i64,
+    pub filename: String,
+    pub width: i32,
+    pub height: i32,
+    pub codec_video: String,
+    pub is_derived: bool,
+    pub proxy_of: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SyncProfile {
+    pub id: String,
+    pub name: String,
+    pub peer_key: String,
+    pub direction: String,
+    pub filter_json: String,
+    pub target_height: i32,
+    pub collection_resolutions: String,
+    pub device_label: String,
+    pub last_run_ms: Option<i64>,
+    pub created_ms: Option<i64>,
+    pub updated_ms: Option<i64>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SyncRun {
+    pub id: String,
+    pub profile_id: String,
+    pub peer_key: String,
+    pub direction: String,
+    pub started_ms: i64,
+    pub finished_ms: Option<i64>,
+    pub state: String,
+    pub total: i64,
+    pub completed: i64,
+    pub failed: i64,
+    pub conflicts: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct SyncRunItem {
+    pub run_id: String,
+    pub source_video_id: String,
+    pub action: String,
+    pub status: String,
+    pub content_hash: Option<String>,
+    pub bytes_done: i64,
+    pub last_error: Option<String>,
+}
+
 impl Database {
     /// Build a `Database` that already points at `path`. Callers should still
     /// invoke [`Database::initialize`] before serving traffic so the schema
@@ -527,6 +630,110 @@ impl Database {
             ("video_locations backfill", "INSERT OR IGNORE INTO video_locations (id, video_id, path, filename, file_size_bytes, is_online, indexed_at)
                 SELECT id || '_p', id, path, filename, COALESCE(file_size_bytes, 0), COALESCE(is_online, 1), COALESCE(indexed_at, 0)
                 FROM videos"),
+            // ── Catalog Sync (Phase 0-5) ──────────────────────────────────────
+            // Sparse blake3 hash for content-based identity across peers.
+            ("videos.content_hash", "ALTER TABLE videos ADD COLUMN content_hash TEXT"),
+            ("idx_videos_content_hash", "CREATE INDEX IF NOT EXISTS idx_videos_content_hash ON videos(content_hash)"),
+            // origin_hash: the content_hash of the canonical original this row was
+            // derived from (NULL on originals; set by ingest_synced on derived copies).
+            ("videos.origin_hash", "ALTER TABLE videos ADD COLUMN origin_hash TEXT"),
+            // is_derived = 1 when this row is a derived/downscaled copy imported from
+            // a peer; 0 for all originals.
+            ("videos.is_derived", "ALTER TABLE videos ADD COLUMN is_derived INTEGER NOT NULL DEFAULT 0"),
+            // marks_rev: monotonic counter bumped by triggers whenever any of the
+            // user-editable marks (tags, collections, rating, color, notes) change.
+            // Lets the sync engine detect mark-only changes without diffing every field.
+            ("videos.marks_rev", "ALTER TABLE videos ADD COLUMN marks_rev INTEGER NOT NULL DEFAULT 0"),
+            // sync_links: remembers which local video corresponds to which remote
+            // video on a given peer, to avoid duplicate downloads on re-sync.
+            ("sync_links table", "CREATE TABLE IF NOT EXISTS sync_links (
+  id TEXT PRIMARY KEY,
+  local_video_id TEXT NOT NULL,
+  peer_key TEXT NOT NULL,
+  remote_video_id TEXT NOT NULL,
+  origin_hash TEXT,
+  is_derived INTEGER NOT NULL DEFAULT 0,
+  derived_height INTEGER,
+  last_synced_ms INTEGER NOT NULL,
+  local_rev_at_sync INTEGER NOT NULL DEFAULT 0,
+  remote_rev_at_sync INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(peer_key, remote_video_id),
+  UNIQUE(local_video_id, peer_key)
+)"),
+            ("idx_sync_links_origin", "CREATE INDEX IF NOT EXISTS idx_sync_links_origin ON sync_links(origin_hash)"),
+            ("idx_sync_links_peer", "CREATE INDEX IF NOT EXISTS idx_sync_links_peer ON sync_links(peer_key)"),
+            // sync_profiles: saved sync configurations (push/pull/mirror, peer, filter).
+            ("sync_profiles table", "CREATE TABLE IF NOT EXISTS sync_profiles (
+  id TEXT PRIMARY KEY,
+  name TEXT,
+  peer_key TEXT,
+  direction TEXT,
+  filter_json TEXT,
+  target_height INTEGER DEFAULT 1080,
+  collection_resolutions TEXT,
+  device_label TEXT,
+  last_run_ms INTEGER,
+  created_ms INTEGER,
+  updated_ms INTEGER
+)"),
+            // sync_runs: one row per sync execution.
+            ("sync_runs table", "CREATE TABLE IF NOT EXISTS sync_runs (
+  id TEXT PRIMARY KEY,
+  profile_id TEXT,
+  peer_key TEXT,
+  direction TEXT,
+  started_ms INTEGER,
+  finished_ms INTEGER,
+  state TEXT,
+  total INTEGER DEFAULT 0,
+  completed INTEGER DEFAULT 0,
+  failed INTEGER DEFAULT 0,
+  conflicts INTEGER DEFAULT 0
+)"),
+            // sync_run_items: per-video progress within a sync run.
+            ("sync_run_items table", "CREATE TABLE IF NOT EXISTS sync_run_items (
+  run_id TEXT,
+  source_video_id TEXT,
+  action TEXT,
+  status TEXT,
+  content_hash TEXT,
+  bytes_done INTEGER DEFAULT 0,
+  last_error TEXT,
+  PRIMARY KEY(run_id, source_video_id)
+)"),
+            // marks_rev triggers: bump marks_rev whenever user-editable marks change.
+            ("marks_rev trigger: video_tags insert", "CREATE TRIGGER IF NOT EXISTS trg_marks_rev_video_tags_ins
+  AFTER INSERT ON video_tags BEGIN
+    UPDATE videos SET marks_rev = marks_rev + 1 WHERE id = NEW.video_id;
+  END"),
+            ("marks_rev trigger: video_tags delete", "CREATE TRIGGER IF NOT EXISTS trg_marks_rev_video_tags_del
+  AFTER DELETE ON video_tags BEGIN
+    UPDATE videos SET marks_rev = marks_rev + 1 WHERE id = OLD.video_id;
+  END"),
+            ("marks_rev trigger: video_user_marks insert", "CREATE TRIGGER IF NOT EXISTS trg_marks_rev_marks_ins
+  AFTER INSERT ON video_user_marks BEGIN
+    UPDATE videos SET marks_rev = marks_rev + 1 WHERE id = NEW.video_id;
+  END"),
+            ("marks_rev trigger: video_user_marks update", "CREATE TRIGGER IF NOT EXISTS trg_marks_rev_marks_upd
+  AFTER UPDATE ON video_user_marks BEGIN
+    UPDATE videos SET marks_rev = marks_rev + 1 WHERE id = NEW.video_id;
+  END"),
+            ("marks_rev trigger: video_notes insert", "CREATE TRIGGER IF NOT EXISTS trg_marks_rev_notes_ins
+  AFTER INSERT ON video_notes BEGIN
+    UPDATE videos SET marks_rev = marks_rev + 1 WHERE id = NEW.video_id;
+  END"),
+            ("marks_rev trigger: video_notes update", "CREATE TRIGGER IF NOT EXISTS trg_marks_rev_notes_upd
+  AFTER UPDATE ON video_notes BEGIN
+    UPDATE videos SET marks_rev = marks_rev + 1 WHERE id = NEW.video_id;
+  END"),
+            ("marks_rev trigger: collection_members insert", "CREATE TRIGGER IF NOT EXISTS trg_marks_rev_colmem_ins
+  AFTER INSERT ON collection_members BEGIN
+    UPDATE videos SET marks_rev = marks_rev + 1 WHERE id = NEW.video_id;
+  END"),
+            ("marks_rev trigger: collection_members delete", "CREATE TRIGGER IF NOT EXISTS trg_marks_rev_colmem_del
+  AFTER DELETE ON collection_members BEGIN
+    UPDATE videos SET marks_rev = marks_rev + 1 WHERE id = OLD.video_id;
+  END"),
         ];
         for (label, sql) in migrations {
             match conn.execute(sql, []) {
@@ -3846,6 +4053,394 @@ impl Database {
             .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
 
         Ok(rows)
+    }
+
+    // ── Catalog Sync helpers ──────────────────────────────────────────────────
+
+    /// Record (or update) a sync link between a local video and a remote peer video.
+    pub fn add_sync_link(
+        &self,
+        local_video_id: &str,
+        peer_key: &str,
+        remote_video_id: &str,
+        origin_hash: Option<&str>,
+        is_derived: bool,
+        derived_height: Option<i32>,
+        local_rev: i64,
+        remote_rev: i64,
+    ) -> Result<()> {
+        let conn = self.get_connection()?;
+        let id = uuid::Uuid::new_v4().to_string();
+        let now_ms = chrono::Utc::now().timestamp_millis();
+        conn.execute(
+            "INSERT INTO sync_links (id, local_video_id, peer_key, remote_video_id, origin_hash, is_derived, derived_height, last_synced_ms, local_rev_at_sync, remote_rev_at_sync)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+             ON CONFLICT(peer_key, remote_video_id) DO UPDATE SET
+               local_video_id = excluded.local_video_id,
+               origin_hash = COALESCE(excluded.origin_hash, sync_links.origin_hash),
+               is_derived = excluded.is_derived,
+               derived_height = excluded.derived_height,
+               last_synced_ms = excluded.last_synced_ms,
+               local_rev_at_sync = excluded.local_rev_at_sync,
+               remote_rev_at_sync = excluded.remote_rev_at_sync",
+            rusqlite::params![id, local_video_id, peer_key, remote_video_id, origin_hash, is_derived as i32, derived_height, now_ms, local_rev, remote_rev],
+        ).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
+    pub fn find_sync_link_by_remote(&self, peer_key: &str, remote_video_id: &str) -> Result<Option<SyncLink>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn.prepare(
+            "SELECT id, local_video_id, peer_key, remote_video_id, origin_hash, is_derived, derived_height, last_synced_ms, local_rev_at_sync, remote_rev_at_sync
+             FROM sync_links WHERE peer_key = ?1 AND remote_video_id = ?2 LIMIT 1"
+        ).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        stmt.query_row(rusqlite::params![peer_key, remote_video_id], |row| {
+            Ok(SyncLink {
+                id: row.get(0)?,
+                local_video_id: row.get(1)?,
+                peer_key: row.get(2)?,
+                remote_video_id: row.get(3)?,
+                origin_hash: row.get(4)?,
+                is_derived: row.get::<_, i32>(5)? != 0,
+                derived_height: row.get(6)?,
+                last_synced_ms: row.get(7)?,
+                local_rev_at_sync: row.get(8)?,
+                remote_rev_at_sync: row.get(9)?,
+            })
+        }).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))
+    }
+
+    pub fn find_sync_link_by_local(&self, local_video_id: &str, peer_key: &str) -> Result<Option<SyncLink>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn.prepare(
+            "SELECT id, local_video_id, peer_key, remote_video_id, origin_hash, is_derived, derived_height, last_synced_ms, local_rev_at_sync, remote_rev_at_sync
+             FROM sync_links WHERE local_video_id = ?1 AND peer_key = ?2 LIMIT 1"
+        ).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        stmt.query_row(rusqlite::params![local_video_id, peer_key], |row| {
+            Ok(SyncLink {
+                id: row.get(0)?,
+                local_video_id: row.get(1)?,
+                peer_key: row.get(2)?,
+                remote_video_id: row.get(3)?,
+                origin_hash: row.get(4)?,
+                is_derived: row.get::<_, i32>(5)? != 0,
+                derived_height: row.get(6)?,
+                last_synced_ms: row.get(7)?,
+                local_rev_at_sync: row.get(8)?,
+                remote_rev_at_sync: row.get(9)?,
+            })
+        }).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))
+    }
+
+    pub fn lookup_by_content_hash(&self, hashes: &[String]) -> Result<Vec<ContentHashHit>> {
+        if hashes.is_empty() { return Ok(vec![]); }
+        let conn = self.get_connection()?;
+        let placeholders: Vec<_> = (1..=hashes.len()).map(|i| format!("?{i}")).collect();
+        let sql = format!(
+            "SELECT v.content_hash, v.id, v.marks_rev, m.duration_ms, m.creation_date
+             FROM videos v
+             LEFT JOIN metadata m ON m.video_id = v.id
+             WHERE v.content_hash IN ({}) AND v.is_derived = 0 AND v.proxy_of IS NULL",
+            placeholders.join(",")
+        );
+        let mut stmt = conn.prepare(&sql).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let params: Vec<&dyn rusqlite::types::ToSql> = hashes.iter().map(|h| h as &dyn rusqlite::types::ToSql).collect();
+        let rows = stmt.query_map(params.as_slice(), |row| {
+            Ok(ContentHashHit {
+                content_hash: row.get::<_, Option<String>>(0)?.unwrap_or_default(),
+                video_id: row.get(1)?,
+                marks_rev: row.get(2)?,
+                duration_ms: row.get::<_, Option<i64>>(3)?.unwrap_or(0),
+                creation_date_ms: 0, // parse from TEXT later if needed
+            })
+        }).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let mut results = Vec::new();
+        for row in rows { results.push(row.map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?); }
+        Ok(results)
+    }
+
+    pub fn set_content_hash(&self, video_id: &str, hash: &str) -> Result<()> {
+        let conn = self.get_connection()?;
+        conn.execute("UPDATE videos SET content_hash = ?1 WHERE id = ?2", rusqlite::params![hash, video_id])
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
+    pub fn get_unhashed_originals(&self, limit: usize) -> Result<Vec<(String, String)>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn.prepare(
+            "SELECT id, path FROM videos WHERE content_hash IS NULL AND is_derived = 0 AND proxy_of IS NULL LIMIT ?1"
+        ).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let rows = stmt.query_map(rusqlite::params![limit as i64], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        }).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let mut out = Vec::new();
+        for row in rows { out.push(row.map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?); }
+        Ok(out)
+    }
+
+    pub fn get_video_catalog_data(&self, video_id: &str) -> Result<Option<VideoCatalogData>> {
+        let conn = self.get_connection()?;
+        let marks_rev: Option<i64> = conn.query_row(
+            "SELECT marks_rev FROM videos WHERE id = ?1", rusqlite::params![video_id],
+            |r| r.get(0)
+        ).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let Some(marks_rev) = marks_rev else { return Ok(None); };
+
+        // Tags
+        let mut stmt = conn.prepare(
+            "SELECT t.name, t.color FROM tags t JOIN video_tags vt ON vt.tag_id = t.id WHERE vt.video_id = ?1"
+        ).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let tag_rows: Vec<(String, Option<String>)> = stmt.query_map(rusqlite::params![video_id], |r| {
+            Ok((r.get(0)?, r.get(1)?))
+        }).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?.filter_map(|r| r.ok()).collect();
+
+        // Manual collections
+        let mut stmt2 = conn.prepare(
+            "SELECT c.name FROM collections c JOIN collection_members cm ON cm.collection_id = c.id WHERE cm.video_id = ?1 AND c.is_smart = 0"
+        ).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let collections: Vec<String> = stmt2.query_map(rusqlite::params![video_id], |r| r.get(0))
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?.filter_map(|r| r.ok()).collect();
+
+        // Smart collections containing this video
+        let mut stmt3 = conn.prepare(
+            "SELECT c.name, c.filter_json FROM collections c JOIN collection_members cm ON cm.collection_id = c.id WHERE cm.video_id = ?1 AND c.is_smart = 1"
+        ).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let smart: Vec<(String, String)> = stmt3.query_map(rusqlite::params![video_id], |r| {
+            Ok((r.get::<_, String>(0)?, r.get::<_, Option<String>>(1)?.unwrap_or_default()))
+        }).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?.filter_map(|r| r.ok()).collect();
+
+        // User marks
+        let marks = conn.query_row(
+            "SELECT rating, color_label FROM video_user_marks WHERE video_id = ?1",
+            rusqlite::params![video_id],
+            |r| Ok((r.get::<_, i32>(0)?, r.get::<_, String>(1)?))
+        ).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let (rating, color_label) = marks.unwrap_or((0, String::new()));
+
+        // Notes
+        let notes: Option<String> = conn.query_row(
+            "SELECT notes FROM video_notes WHERE video_id = ?1", rusqlite::params![video_id],
+            |r| r.get(0)
+        ).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?.flatten();
+
+        // GPS + creation_date from metadata
+        let meta_row = conn.query_row(
+            "SELECT gps_lat, gps_lon, creation_date FROM metadata WHERE video_id = ?1",
+            rusqlite::params![video_id],
+            |r| Ok((r.get::<_, Option<f64>>(0)?, r.get::<_, Option<f64>>(1)?, r.get::<_, Option<String>>(2)?))
+        ).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let (gps_lat, gps_lon, creation_date) = meta_row.unwrap_or((None, None, None));
+        let has_gps = gps_lat.is_some() && gps_lon.is_some();
+
+        Ok(Some(VideoCatalogData {
+            marks_rev,
+            tags: tag_rows.iter().map(|(n, _)| n.clone()).collect(),
+            tag_colors: tag_rows.iter().map(|(_, c)| c.clone().unwrap_or_default()).collect(),
+            collections,
+            smart_collections: smart.into_iter().map(|(n, f)| SmartCollectionEntry { name: n, filter_json: f }).collect(),
+            rating,
+            color_label,
+            notes: notes.unwrap_or_default(),
+            creation_date_str: creation_date.unwrap_or_default(),
+            gps_lat: gps_lat.unwrap_or(0.0),
+            gps_lon: gps_lon.unwrap_or(0.0),
+            has_gps,
+        }))
+    }
+
+    pub fn apply_video_catalog_data(&self, video_id: &str, data: &VideoCatalogData) -> Result<()> {
+        let conn = self.get_connection()?;
+
+        // Tags — match by name, create if missing
+        for (i, tag_name) in data.tags.iter().enumerate() {
+            let color = data.tag_colors.get(i).and_then(|c| if c.is_empty() { None } else { Some(c.as_str()) });
+            let tag_id: Option<String> = conn.query_row(
+                "SELECT id FROM tags WHERE name = ?1", rusqlite::params![tag_name], |r| r.get(0)
+            ).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            let tag_id = if let Some(id) = tag_id {
+                id
+            } else {
+                let new_id = uuid::Uuid::new_v4().to_string();
+                conn.execute("INSERT OR IGNORE INTO tags (id, name, color) VALUES (?1, ?2, ?3)",
+                    rusqlite::params![new_id, tag_name, color])
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+                conn.query_row("SELECT id FROM tags WHERE name = ?1", rusqlite::params![tag_name], |r| r.get(0))
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?
+            };
+            conn.execute("INSERT OR IGNORE INTO video_tags (video_id, tag_id) VALUES (?1, ?2)",
+                rusqlite::params![video_id, tag_id])
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        }
+
+        // Manual collection membership
+        for coll_name in &data.collections {
+            let coll_id: Option<String> = conn.query_row(
+                "SELECT id FROM collections WHERE name = ?1 AND is_smart = 0 LIMIT 1",
+                rusqlite::params![coll_name], |r| r.get(0)
+            ).optional().map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+            let coll_id = if let Some(id) = coll_id {
+                id
+            } else {
+                let new_id = uuid::Uuid::new_v4().to_string();
+                conn.execute("INSERT INTO collections (id, name, is_smart) VALUES (?1, ?2, 0)",
+                    rusqlite::params![new_id, coll_name])
+                    .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+                new_id
+            };
+            conn.execute("INSERT OR IGNORE INTO collection_members (collection_id, video_id) VALUES (?1, ?2)",
+                rusqlite::params![coll_id, video_id])
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        }
+
+        // Rating + color label
+        if data.rating > 0 || !data.color_label.is_empty() {
+            conn.execute(
+                "INSERT INTO video_user_marks (video_id, rating, color_label) VALUES (?1, ?2, ?3)
+                 ON CONFLICT(video_id) DO UPDATE SET rating = excluded.rating, color_label = excluded.color_label, updated_at = CURRENT_TIMESTAMP",
+                rusqlite::params![video_id, data.rating, data.color_label])
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        }
+
+        // Notes
+        if !data.notes.is_empty() {
+            conn.execute(
+                "INSERT INTO video_notes (video_id, notes) VALUES (?1, ?2)
+                 ON CONFLICT(video_id) DO UPDATE SET notes = excluded.notes",
+                rusqlite::params![video_id, data.notes])
+                .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        }
+
+        Ok(())
+    }
+
+    pub fn get_sync_manifest_page(
+        &self,
+        limit: usize,
+        cursor: &str,
+    ) -> Result<Vec<SyncManifestRow>> {
+        let conn = self.get_connection()?;
+        let sql = if cursor.is_empty() {
+            format!(
+                "SELECT v.id, v.content_hash, v.marks_rev, vl.file_size_bytes, m.duration_ms, v.filename, m.width, m.height, COALESCE(m.codec_video,''), v.is_derived, v.proxy_of
+                 FROM videos v
+                 LEFT JOIN metadata m ON m.video_id = v.id
+                 LEFT JOIN video_locations vl ON vl.video_id = v.id AND vl.is_online = 1
+                 WHERE v.proxy_of IS NULL AND v.is_derived = 0
+                 ORDER BY v.id ASC LIMIT {limit}"
+            )
+        } else {
+            format!(
+                "SELECT v.id, v.content_hash, v.marks_rev, vl.file_size_bytes, m.duration_ms, v.filename, m.width, m.height, COALESCE(m.codec_video,''), v.is_derived, v.proxy_of
+                 FROM videos v
+                 LEFT JOIN metadata m ON m.video_id = v.id
+                 LEFT JOIN video_locations vl ON vl.video_id = v.id AND vl.is_online = 1
+                 WHERE v.proxy_of IS NULL AND v.is_derived = 0 AND v.id > '{cursor}'
+                 ORDER BY v.id ASC LIMIT {limit}"
+            )
+        };
+        let mut stmt = conn.prepare(&sql).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let rows = stmt.query_map([], |row| {
+            Ok(SyncManifestRow {
+                video_id: row.get(0)?,
+                content_hash: row.get::<_, Option<String>>(1)?,
+                marks_rev: row.get(2)?,
+                size_bytes: row.get::<_, Option<i64>>(3)?.unwrap_or(0),
+                duration_ms: row.get::<_, Option<i64>>(4)?.unwrap_or(0),
+                filename: row.get(5)?,
+                width: row.get::<_, Option<i32>>(6)?.unwrap_or(0),
+                height: row.get::<_, Option<i32>>(7)?.unwrap_or(0),
+                codec_video: row.get::<_, String>(8)?,
+                is_derived: row.get::<_, i32>(9)? != 0,
+                proxy_of: row.get::<_, Option<String>>(10)?,
+            })
+        }).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let mut out = Vec::new();
+        for row in rows { out.push(row.map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?); }
+        Ok(out)
+    }
+
+    // Sync profile CRUD
+
+    pub fn list_sync_profiles(&self) -> Result<Vec<SyncProfile>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn.prepare("SELECT id, name, peer_key, direction, filter_json, target_height, collection_resolutions, device_label, last_run_ms, created_ms, updated_ms FROM sync_profiles ORDER BY updated_ms DESC")
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let rows = stmt.query_map([], |r| Ok(SyncProfile {
+            id: r.get(0)?,
+            name: r.get::<_, Option<String>>(1)?.unwrap_or_default(),
+            peer_key: r.get::<_, Option<String>>(2)?.unwrap_or_default(),
+            direction: r.get::<_, Option<String>>(3)?.unwrap_or_default(),
+            filter_json: r.get::<_, Option<String>>(4)?.unwrap_or_default(),
+            target_height: r.get::<_, Option<i32>>(5)?.unwrap_or(1080),
+            collection_resolutions: r.get::<_, Option<String>>(6)?.unwrap_or_default(),
+            device_label: r.get::<_, Option<String>>(7)?.unwrap_or_default(),
+            last_run_ms: r.get::<_, Option<i64>>(8)?,
+            created_ms: r.get::<_, Option<i64>>(9)?,
+            updated_ms: r.get::<_, Option<i64>>(10)?,
+        })).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let mut out = Vec::new();
+        for row in rows { out.push(row.map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?); }
+        Ok(out)
+    }
+
+    pub fn upsert_sync_profile(&self, p: &SyncProfile) -> Result<()> {
+        let conn = self.get_connection()?;
+        let now = chrono::Utc::now().timestamp_millis();
+        conn.execute(
+            "INSERT INTO sync_profiles (id, name, peer_key, direction, filter_json, target_height, collection_resolutions, device_label, last_run_ms, created_ms, updated_ms)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)
+             ON CONFLICT(id) DO UPDATE SET name=excluded.name, peer_key=excluded.peer_key, direction=excluded.direction, filter_json=excluded.filter_json, target_height=excluded.target_height, collection_resolutions=excluded.collection_resolutions, device_label=excluded.device_label, last_run_ms=excluded.last_run_ms, updated_ms=excluded.updated_ms",
+            rusqlite::params![p.id, p.name, p.peer_key, p.direction, p.filter_json, p.target_height, p.collection_resolutions, p.device_label, p.last_run_ms, p.created_ms.unwrap_or(now), now],
+        ).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
+    pub fn delete_sync_profile(&self, id: &str) -> Result<()> {
+        let conn = self.get_connection()?;
+        conn.execute("DELETE FROM sync_profiles WHERE id = ?1", rusqlite::params![id])
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
+    pub fn upsert_sync_run(&self, run: &SyncRun) -> Result<()> {
+        let conn = self.get_connection()?;
+        conn.execute(
+            "INSERT INTO sync_runs (id, profile_id, peer_key, direction, started_ms, finished_ms, state, total, completed, failed, conflicts)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)
+             ON CONFLICT(id) DO UPDATE SET finished_ms=excluded.finished_ms, state=excluded.state, total=excluded.total, completed=excluded.completed, failed=excluded.failed, conflicts=excluded.conflicts",
+            rusqlite::params![run.id, run.profile_id, run.peer_key, run.direction, run.started_ms, run.finished_ms, run.state, run.total, run.completed, run.failed, run.conflicts],
+        ).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
+    pub fn upsert_sync_run_item(&self, item: &SyncRunItem) -> Result<()> {
+        let conn = self.get_connection()?;
+        conn.execute(
+            "INSERT INTO sync_run_items (run_id, source_video_id, action, status, content_hash, bytes_done, last_error)
+             VALUES (?1,?2,?3,?4,?5,?6,?7)
+             ON CONFLICT(run_id, source_video_id) DO UPDATE SET action=excluded.action, status=excluded.status, content_hash=excluded.content_hash, bytes_done=excluded.bytes_done, last_error=excluded.last_error",
+            rusqlite::params![item.run_id, item.source_video_id, item.action, item.status, item.content_hash, item.bytes_done, item.last_error],
+        ).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        Ok(())
+    }
+
+    pub fn get_sync_run_items(&self, run_id: &str) -> Result<Vec<SyncRunItem>> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn.prepare("SELECT run_id, source_video_id, action, status, content_hash, bytes_done, last_error FROM sync_run_items WHERE run_id = ?1")
+            .map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let rows = stmt.query_map(rusqlite::params![run_id], |r| Ok(SyncRunItem {
+            run_id: r.get(0)?,
+            source_video_id: r.get(1)?,
+            action: r.get::<_, Option<String>>(2)?.unwrap_or_default(),
+            status: r.get::<_, Option<String>>(3)?.unwrap_or_default(),
+            content_hash: r.get(4)?,
+            bytes_done: r.get::<_, Option<i64>>(5)?.unwrap_or(0),
+            last_error: r.get(6)?,
+        })).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
+        let mut out = Vec::new();
+        for row in rows { out.push(row.map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?); }
+        Ok(out)
     }
 }
 

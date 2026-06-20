@@ -44,4 +44,15 @@ object ReelVaultCore {
     /** Remove every photo-source row whose id is NOT in `presentIdsJson` (a JSON
      *  array). Returns the count removed. The caller MUST pass a COMPLETE set. */
     external fun nativePrunePhotos(presentIdsJson: String): Int
+
+    /**
+     * Ingest a video that was downloaded from a remote daemon during a catalog
+     * sync pull.  [path] is the local filesystem path of the downloaded file;
+     * [filename] is the display name to store; [originHash] is the content hash
+     * from the remote manifest (written as the provenance hash so the sync
+     * engine can match the two copies); [derivedHeight] is the rendition height
+     * (0 = original).  Returns 0 on success, non-zero on failure.
+     */
+    @JvmStatic
+    external fun nativeIngestSynced(path: String, filename: String, originHash: String, derivedHeight: Int): Int
 }

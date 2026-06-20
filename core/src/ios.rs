@@ -337,6 +337,35 @@ pub extern "C" fn reelvault_ingest_bookmark(
     })
 }
 
+/// Ingest a synced (derived/downscaled) video into the on-device catalog,
+/// stamping its provenance. `path` is the local file path (must already be
+/// downloaded); `filename` is its display name (may be NULL); `origin_hash`
+/// is the blake3 hash of the peer original (may be NULL); `derived_height`
+/// is the height of this copy (0 if it is the original). Returns 0 on
+/// success, negative on error.
+///
+/// # Safety
+/// `path`, `filename`, and `origin_hash` must be NUL-terminated C strings
+/// (filename and origin_hash may be null).
+#[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub extern "C" fn reelvault_ingest_synced(
+    path: *const std::os::raw::c_char,
+    filename: *const std::os::raw::c_char,
+    origin_hash: *const std::os::raw::c_char,
+    derived_height: i32,
+) -> i32 {
+    embed::ffi_guard("reelvault_ingest_synced", -99, || {
+        let path = match unsafe { cstring(path) } {
+            Some(s) if !s.is_empty() => s,
+            _ => return -2,
+        };
+        let filename = unsafe { cstring(filename) }.unwrap_or_default();
+        let origin_hash = unsafe { cstring(origin_hash) }.unwrap_or_default();
+        embed::ingest_synced(&path, &filename, &origin_hash, derived_height)
+    })
+}
+
 /// Reconcile the on-device catalog against the Photos library: remove every
 /// `source_kind = 'photo'` row whose `source_id` (PHAsset.localIdentifier) is NOT
 /// in `present_ids_json` (a JSON array). Returns the number removed, or negative

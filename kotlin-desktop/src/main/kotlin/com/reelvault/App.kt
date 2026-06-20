@@ -3317,6 +3317,21 @@ fun ReelVaultTopBar(
                                 }
                             )
                         }
+                        HorizontalDivider()
+                        // Catalog sync — disabled on desktop (no local catalog yet;
+                        // only the Android client embeds the Rust core for now).
+                        DropdownMenuItem(
+                            text = { Text("Sync to Remote…") },
+                            onClick = {},
+                            enabled = false,
+                            leadingIcon = { Icon(Icons.Default.CloudUpload, contentDescription = null) },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Sync from Remote…") },
+                            onClick = {},
+                            enabled = false,
+                            leadingIcon = { Icon(Icons.Default.CloudDownload, contentDescription = null) },
+                        )
                         if (recents.isNotEmpty()) {
                             HorizontalDivider()
                             Text(

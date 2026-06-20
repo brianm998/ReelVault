@@ -99,6 +99,13 @@ final class AppRouter: ObservableObject {
     /// server" while browsing the on-device (Local) library.
     var pairedServerHost: String? { loadStoredServer()?.host }
 
+    /// True when both the local embedded core is bootable AND a paired remote
+    /// endpoint is persisted. Sync requires both endpoints simultaneously:
+    /// the local core as the "home base" and the remote as the transient peer.
+    var canSync: Bool {
+        LocalCore.isAvailable && lastPairedUploadEndpoint() != nil
+    }
+
     /// Reconstruct the last-paired server's media endpoint — address from
     /// UserDefaults, bearer token from the Keychain — so a Local-mode video can be
     /// uploaded to it without first switching to that server. nil if no server is

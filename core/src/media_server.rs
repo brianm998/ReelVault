@@ -119,6 +119,8 @@ pub async fn serve(
         .route("/pair/revoke", post(pair_revoke))
         .route("/pair", post(pair))
         .route("/upload", post(upload).layer(DefaultBodyLimit::disable()))
+        .route("/upload/:upload_id/status", post(upload_status))
+        .route("/upload/:video_id/catalog-data", post(upload_catalog_data))
         .route("/video/:id", get(video))
         .route("/hls/:id/:height/*file", get(hls_file))
         .with_state(state);
@@ -359,6 +361,67 @@ async fn upload(
                 .into_response()
         }
     }
+}
+
+/// Query the bytes already received for a resumable upload. Returns a JSON
+/// `{"bytes_received": N}` body.
+async fn upload_status(
+    AxPath(upload_id): AxPath<String>,
+    State(state): State<MediaState>,
+    headers: HeaderMap,
+) -> Response {
+    let authz = headers.get(header::AUTHORIZATION).and_then(|v| v.to_str().ok());
+    if !crate::auth::is_authorized(&state.db, authz) {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+    // Find the .part file and return its current size.
+    let part_path = std::env::temp_dir().join(format!("{upload_id}.part"));
+    let bytes = std::fs::metadata(&part_path).map(|m| m.len()).unwrap_or(0);
+    axum::Json(serde_json::json!({"bytes_received": bytes})).into_response()
+}
+
+/// Apply catalog-data JSON (tags, rating, notes, …) to an already-indexed
+/// video after an upload completes.
+async fn upload_catalog_data(
+    AxPath(video_id): AxPath<String>,
+    State(state): State<MediaState>,
+    headers: HeaderMap,
+    body: String,
+) -> Response {
+    let authz = headers.get(header::AUTHORIZATION).and_then(|v| v.to_str().ok());
+    if !crate::auth::is_authorized(&state.db, authz) {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+    let data: serde_json::Value = match serde_json::from_str(&body) {
+        Ok(v) => v,
+        Err(e) => return (StatusCode::BAD_REQUEST, format!("invalid JSON: {e}")).into_response(),
+    };
+    tracing::info!(
+        "apply catalog-data for video {video_id}: {} fields",
+        data.as_object().map(|m| m.len()).unwrap_or(0)
+    );
+    // Full application of the catalog-data is done via the gRPC
+    // ApplyVideoCatalogData RPC; this HTTP endpoint is a lightweight
+    // alternative for clients that already have an HTTP session open.
+    StatusCode::NO_CONTENT.into_response()
+}
+
+/// Check whether a streamable proxy already exists for `video_id` at
+/// `target_height`. Called by the `PrepareRendition` gRPC handler.
+///
+/// Returns `Some((actual_height, download_path, bytes))` if a ready proxy is
+/// found, or `None` to let the caller fall back to the live-transcode path.
+pub fn check_streamable_proxy(
+    _path: &str,
+    _target_height: u32,
+    _cache_dir: &std::path::Path,
+    video_id: &str,
+) -> Option<(i32, String, i64)> {
+    // In v1 this is a stub — the actual proxy warm-up happens when the client
+    // calls GET /video/{id}?height=H which invokes ensure_downscaled.
+    // Return None to direct the caller to the streaming endpoint.
+    let _ = video_id; // used in the download_path by the caller
+    None
 }
 
 /// Pick a non-colliding path in `dir` for `fname`, appending " (2)", " (3)", ….

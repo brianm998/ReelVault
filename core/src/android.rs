@@ -163,6 +163,34 @@ pub extern "system" fn Java_com_reelvault_android_core_ReelVaultCore_nativeInges
     })
 }
 
+/// Ingest a synced (derived/downscaled) video into the on-device catalog,
+/// stamping its provenance. Mirrors `reelvault_ingest_synced` on iOS.
+/// `path` is the local file path; `filename` its display name; `origin_hash`
+/// the blake3 hash of the peer original; `derived_height` the height of this
+/// copy (0 if it is the original). Returns 0 on success, negative on error.
+#[no_mangle]
+pub extern "system" fn Java_com_reelvault_android_core_ReelVaultCore_nativeIngestSynced<'local>(
+    mut env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    path: JString<'local>,
+    filename: JString<'local>,
+    origin_hash: JString<'local>,
+    derived_height: jint,
+) -> jint {
+    embed::ffi_guard("nativeIngestSynced", -99, || {
+        let (a, b, c) = match (
+            jstr(&mut env, &path),
+            jstr(&mut env, &filename),
+            jstr(&mut env, &origin_hash),
+        ) {
+            (Some(a), b, c) => (a, b.unwrap_or_default(), c.unwrap_or_default()),
+            _ => return -2,
+        };
+        if a.is_empty() { return -2; }
+        embed::ingest_synced(&a, &b, &c, derived_height)
+    })
+}
+
 /// Has `display_path` already been cataloged (row + metadata)? Returns 1 if
 /// fully indexed, 0 if not, negative on error.
 #[no_mangle]
