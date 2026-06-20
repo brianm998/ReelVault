@@ -786,8 +786,6 @@ private fun LibraryTopAppBar(
             title = {
                 if (isMultiSelect) {
                     Text(stringResource(R.string.grid_selected_count, multiSelectCount))
-                } else {
-                    Text(stringResource(R.string.app_name))
                 }
             },
             navigationIcon = {
