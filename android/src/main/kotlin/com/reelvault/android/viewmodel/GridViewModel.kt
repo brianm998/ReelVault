@@ -202,6 +202,9 @@ class GridViewModel(
     private val _mapFocus = MutableStateFlow<Triple<Double, Double, Double>?>(null)
     val mapFocus: StateFlow<Triple<Double, Double, Double>?> = _mapFocus.asStateFlow()
 
+    private val _mapFocusTrackJson = MutableStateFlow<String?>(null)
+    val mapFocusTrackJson: StateFlow<String?> = _mapFocusTrackJson.asStateFlow()
+
     // ── Video locations (filtered map) ────────────────────────────────────
     // Snapshot of every geotagged video matching the current grid filters.
     // Refreshed asynchronously after each grid reload so the map always
@@ -783,9 +786,14 @@ class GridViewModel(
         _mapFocus.value = Triple(latitude, longitude, radiusKm)
     }
 
-    /** Clear a consumed map-focus request. */
+    fun setMapFocusTrack(trackJson: String?) {
+        _mapFocusTrackJson.value = trackJson
+    }
+
+    /** Clear a consumed map-focus request (also clears the track polyline). */
     fun clearMapFocus() {
         _mapFocus.value = null
+        _mapFocusTrackJson.value = null
     }
 
     fun setMinRatingFilter(n: Int) {

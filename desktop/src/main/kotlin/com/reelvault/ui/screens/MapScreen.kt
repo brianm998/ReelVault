@@ -47,6 +47,9 @@ fun MapScreen(
      *  framing all pins. Set when the user taps a card's location badge; the
      *  caller clears it at the next non-badge navigation into the map. */
     focusedLocation: Pair<Double, Double>? = null,
+    /** JSON polyline `[[lat,lon],…]` to draw as an orange track overlay, or null
+     *  when the focused video has no GPS track (non-GoPro / non-DJI clips). */
+    focusedTrackJson: String? = null,
     /** Fired when the user right-clicks a pin and chooses Name/Rename. The
      *  caller opens the naming dialog and persists via the named-locations RPC. */
     onRenameLocationRequest: ((com.reelvault.ui.components.MapPin) -> Unit)? = null,
@@ -56,6 +59,10 @@ fun MapScreen(
     isLoadingVideoLocations: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
+    val focusedTrackPoints: List<Pair<Double, Double>> = remember(focusedTrackJson) {
+        parseTrackJson(focusedTrackJson)
+    }
+
     // Recomputed each recomposition (cheap) rather than remembered, so labels
     // appear as soon as the named-location list loads. The pin label is the
     // place name when known, otherwise blank (the painter then draws no label).
@@ -114,6 +121,7 @@ fun MapScreen(
                 initialCenter = initLat to initLon,
                 initialZoom = initZoom,
                 pinColor = pinColor,
+                trackPoints = focusedTrackPoints,
                 // Frame the actual pins once laid out (and re-frame when the
                 // filtered set replaces the broader startup set) — except when
                 // focused on a specific coordinate from a card's location badge.
@@ -187,4 +195,15 @@ fun MapScreen(
             }
         }
     }
+}
+
+private val TRACK_PAIR_REGEX = Regex("""\[([+-]?\d+\.?\d*(?:[eE][+-]?\d+)?),([+-]?\d+\.?\d*(?:[eE][+-]?\d+)?)\]""")
+
+internal fun parseTrackJson(json: String?): List<Pair<Double, Double>> {
+    if (json.isNullOrEmpty()) return emptyList()
+    return TRACK_PAIR_REGEX.findAll(json).mapNotNull { m ->
+        val lat = m.groupValues[1].toDoubleOrNull() ?: return@mapNotNull null
+        val lon = m.groupValues[2].toDoubleOrNull() ?: return@mapNotNull null
+        lat to lon
+    }.toList()
 }

@@ -344,7 +344,7 @@ impl Acc {
 
 /// Keep at most `max` evenly-spaced points (returns the input when already
 /// short enough) — same idea as the loudness downsampler.
-fn downsample(pts: &[(f64, f64)], max: usize) -> Vec<(f64, f64)> {
+pub(crate) fn downsample(pts: &[(f64, f64)], max: usize) -> Vec<(f64, f64)> {
     if pts.len() <= max {
         return pts.to_vec();
     }
@@ -352,7 +352,7 @@ fn downsample(pts: &[(f64, f64)], max: usize) -> Vec<(f64, f64)> {
 }
 
 /// Great-circle distance (metres) summed along the point series.
-fn track_distance(pts: &[(f64, f64)]) -> f64 {
+pub(crate) fn track_distance(pts: &[(f64, f64)]) -> f64 {
     const R: f64 = 6_371_000.0;
     pts.windows(2)
         .map(|w| {

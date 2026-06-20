@@ -61,6 +61,7 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.FolderOverlay
 import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Polyline
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -308,6 +309,7 @@ fun LibraryMapScreen(
     BackHandler { onHistoryBack() }
     // "Show on Map" focus request from the detail view, if any.
     val mapFocus by grid.mapFocus.collectAsStateWithLifecycle()
+    val mapFocusTrackJson by grid.mapFocusTrackJson.collectAsStateWithLifecycle()
 
     // Satellite/standard toggle — initialised from SharedPreferences, persisted
     // when changed. rememberSaveable survives configuration changes (rotation).
@@ -405,6 +407,7 @@ fun LibraryMapScreen(
                     groups = groups,
                     accentArgb = accentArgb,
                     focus = mapFocus,
+                    focusedTrackJson = mapFocusTrackJson,
                     isSatellite = isSatellite,
                     onFocusConsumed = { grid.clearMapFocus() },
                     onSelectGroup = { group ->
@@ -474,6 +477,7 @@ private fun MapContent(
     groups: List<LocationFilterGroup>,
     accentArgb: Int,
     focus: Triple<Double, Double, Double>?,
+    focusedTrackJson: String? = null,
     isSatellite: Boolean,
     onFocusConsumed: () -> Unit,
     onSelectGroup: (LocationFilterGroup) -> Unit,
@@ -510,6 +514,19 @@ private fun MapContent(
             }
             mapView.overlays.clear()
 
+            // Draw GPS track polyline (from a "Show on Map" action) under the pins.
+            val trackPoints = parseTrackJson(focusedTrackJson)
+            if (trackPoints.size >= 2) {
+                val polyline = Polyline(mapView).apply {
+                    setPoints(trackPoints)
+                    outlinePaint.color = android.graphics.Color.parseColor("#FF9500")
+                    outlinePaint.strokeWidth = 5f
+                    outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
+                    outlinePaint.strokeJoin = android.graphics.Paint.Join.ROUND
+                }
+                mapView.overlays.add(polyline)
+            }
+
             if (groups.isEmpty()) {
                 mapView.invalidate()
                 return@AndroidView
@@ -545,7 +562,16 @@ private fun MapContent(
             // (only the first time, so later marker refreshes don't yank the view).
             mapView.post {
                 val f = focus
-                if (f != null) {
+                val track = parseTrackJson(focusedTrackJson)
+                if (f != null && track.size >= 2) {
+                    // Fit the track bounding box rather than centering on a single point.
+                    val lats = track.map { it.latitude }
+                    val lons = track.map { it.longitude }
+                    val box = BoundingBox(lats.max(), lons.max(), lats.min(), lons.min())
+                    mapView.zoomToBoundingBox(box, true, 80)
+                    positioned[0] = true
+                    onFocusConsumed()
+                } else if (f != null) {
                     mapView.controller.setZoom(15.0)
                     mapView.controller.setCenter(GeoPoint(f.first, f.second))
                     positioned[0] = true
@@ -568,4 +594,17 @@ private fun MapContent(
             mapView.invalidate()
         },
     )
+}
+
+private fun parseTrackJson(json: String?): List<GeoPoint> {
+    if (json.isNullOrEmpty()) return emptyList()
+    return try {
+        val arr = org.json.JSONArray(json)
+        (0 until arr.length()).mapNotNull { i ->
+            val pair = arr.getJSONArray(i)
+            if (pair.length() >= 2) GeoPoint(pair.getDouble(0), pair.getDouble(1)) else null
+        }
+    } catch (_: Exception) {
+        emptyList()
+    }
 }

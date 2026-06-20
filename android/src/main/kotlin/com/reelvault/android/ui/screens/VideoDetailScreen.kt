@@ -83,8 +83,8 @@ fun VideoDetailScreen(
     /** Session forward (browser-style). Enabled only when [canGoForward]. */
     canGoForward: Boolean = false,
     onHistoryForward: () -> Unit = {},
-    /** "Show on Map" — focus the in-app map on (lat, lon). No-op host hides the button. */
-    onShowOnMap: ((Double, Double) -> Unit)? = null,
+    /** "Show on Map" — focus the in-app map on (lat, lon) with optional GPS track. No-op host hides the button. */
+    onShowOnMap: ((Double, Double, String?) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -288,7 +288,7 @@ private fun DetailContent(
     repository: VideoRepository,
     vm: DetailViewModel,
     gridViewModel: GridViewModel?,
-    onShowOnMap: ((Double, Double) -> Unit)?,
+    onShowOnMap: ((Double, Double, String?) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -713,7 +713,7 @@ private fun LocationSection(
     metadata: VideoMetadata,
     onSetLocation: (lat: Double, lon: Double, writeToFile: Boolean) -> Unit,
     onRemoveLocation: () -> Unit,
-    onShowOnMap: ((Double, Double) -> Unit)?,
+    onShowOnMap: ((Double, Double, String?) -> Unit)?,
 ) {
     val hasLocation = metadata.gpsLatitude != 0.0 || metadata.gpsLongitude != 0.0
     var showPicker by remember { mutableStateOf(false) }
@@ -800,7 +800,7 @@ private fun LocationSection(
                         LocationActionButton(
                             text = stringResource(R.string.detail_show_on_map),
                             icon = Icons.Default.Map,
-                            onClick = { onShowOnMap(metadata.gpsLatitude, metadata.gpsLongitude) },
+                            onClick = { onShowOnMap(metadata.gpsLatitude, metadata.gpsLongitude, metadata.gpsTrack.ifEmpty { null }) },
                         )
                     }
                 }

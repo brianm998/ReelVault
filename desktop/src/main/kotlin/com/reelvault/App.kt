@@ -719,6 +719,7 @@ fun ReelVaultApp(
     // the videos under the pin(s) the user has clicked, listed as cards in the
     // right panel.
     var globalMapFocusLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    var globalMapFocusTrackJson by remember { mutableStateOf<String?>(null) }
     var mapSelectedVideoIds by remember { mutableStateOf<List<String>>(emptyList()) }
     // Non-null while the map's right-click "Name / Rename location" dialog is up,
     // carrying the pin the user right-clicked.
@@ -2047,6 +2048,22 @@ fun ReelVaultApp(
                                 viewMode = ViewMode.MAP
                             }
                         }
+                        // "Show on Map" from the detail panel — carries the GPS track so
+                        // the map can draw the polyline alongside the pin.
+                        val onShowOnMapFromDetail: (Double, Double, String?) -> Unit = { lat, lon, trackJson ->
+                            scope.launch {
+                                gridViewModel.loadVideoLocationsFilteredAsync()
+                                mapSelectedVideoIds = gridViewModel.videoLocations.value
+                                    .filter {
+                                        kotlin.math.abs(it.latitude - lat) < 1e-9 &&
+                                            kotlin.math.abs(it.longitude - lon) < 1e-9
+                                    }
+                                    .map { it.id }
+                                globalMapFocusLocation = lat to lon
+                                globalMapFocusTrackJson = trackJson
+                                viewMode = ViewMode.MAP
+                            }
+                        }
 
                         // Centre content column: the Library Filter bar pinned
                         // above the grid/list. Because this Column sits between
@@ -2185,6 +2202,7 @@ fun ReelVaultApp(
                                             else gridViewModel.nameForLocation(lat, lon)?.name
                                         },
                                         focusedLocation = globalMapFocusLocation,
+                                        focusedTrackJson = globalMapFocusTrackJson,
                                         onRenameLocationRequest = { renameLocationPin = it },
                                         isLoadingVideoLocations = mapLocationsLoading.value,
                                         modifier = Modifier.weight(1f).fillMaxWidth()
@@ -2297,7 +2315,7 @@ fun ReelVaultApp(
                                     videoIdsForDatePicker = videoIds
                                     initialTimestampForPicker = initialTs
                                 },
-                                onShowOnMap = onCardLocationClick,
+                                onShowOnMap = onShowOnMapFromDetail,
                                 modifier = Modifier
                                     .width(rightPanelWidth.dp)
                                     .fillMaxHeight()

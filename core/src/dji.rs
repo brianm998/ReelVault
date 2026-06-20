@@ -36,6 +36,11 @@ pub struct DjiTelemetry {
     pub exposure_time_s: Option<f64>,
     /// Capture timestamp as Unix milliseconds (UTC; SRT carries no offset).
     pub creation_date_ms: Option<i64>,
+    /// Full movement path: every GPS fix in the SRT, downsampled to ≤512
+    /// points. Empty when the clip carries no GPS lock.
+    pub gps_track: Vec<(f64, f64)>,
+    /// Total ground distance along `gps_track` in metres (great-circle sum).
+    pub track_distance_m: f64,
 }
 
 impl DjiTelemetry {
@@ -50,15 +55,14 @@ impl DjiTelemetry {
 
 /// Look for a sidecar `<clip>.srt` / `.SRT` next to `video_path` and parse it.
 /// Returns empty when there's no sidecar (the common non-DJI case) or it can't
-/// be read. Only the head of the file is read — the first records carry the
-/// representative values we want, and DJI SRTs can be many MB.
+/// be read. The full file is read so the GPS track covers the entire flight.
 pub fn read_sidecar(video_path: &Path) -> DjiTelemetry {
     for ext in ["srt", "SRT"] {
         let sidecar = video_path.with_extension(ext);
         if sidecar == *video_path {
             continue;
         }
-        if let Ok(text) = read_head(&sidecar, 64 * 1024) {
+        if let Ok(text) = read_full(&sidecar) {
             let t = parse_srt(&text);
             if !t.is_empty() {
                 return t;
@@ -68,32 +72,70 @@ pub fn read_sidecar(video_path: &Path) -> DjiTelemetry {
     DjiTelemetry::default()
 }
 
-/// Read at most `cap` bytes from the start of a file as lossy UTF-8.
-fn read_head(path: &Path, cap: usize) -> std::io::Result<String> {
-    use std::io::Read;
-    let mut f = std::fs::File::open(path)?;
-    let mut buf = vec![0u8; cap];
-    let mut filled = 0;
-    while filled < buf.len() {
-        match f.read(&mut buf[filled..]) {
-            Ok(0) => break,
-            Ok(n) => filled += n,
-            Err(e) => return Err(e),
-        }
-    }
-    buf.truncate(filled);
-    Ok(String::from_utf8_lossy(&buf).into_owned())
+/// Read an entire file as lossy UTF-8.
+fn read_full(path: &Path) -> std::io::Result<String> {
+    let bytes = std::fs::read(path)?;
+    Ok(String::from_utf8_lossy(&bytes).into_owned())
 }
 
-/// Parse DJI telemetry from SRT text, taking the first informative record.
+/// Parse DJI telemetry from SRT text. Scalar fields (ISO, aperture, shutter,
+/// timestamp) are taken from the first informative record; GPS is collected
+/// from every frame to build the full flight path.
 pub fn parse_srt(text: &str) -> DjiTelemetry {
-    DjiTelemetry {
-        gps: parse_gps(text),
-        iso: first_capture(text, r"(?i)\biso\s*[:=]\s*(\d+)").and_then(|s| s.parse().ok()),
-        aperture: parse_aperture(text),
-        exposure_time_s: parse_shutter(text),
-        creation_date_ms: parse_datetime(text),
+    let mut out = DjiTelemetry::default();
+    out.gps = parse_gps_first(text);
+    out.iso = first_capture(text, r"(?i)\biso\s*[:=]\s*(\d+)").and_then(|s| s.parse().ok());
+    out.aperture = parse_aperture(text);
+    out.exposure_time_s = parse_shutter(text);
+    out.creation_date_ms = parse_datetime(text);
+
+    let all_fixes = collect_gps_track(text);
+    out.track_distance_m = crate::gpmf::track_distance(&all_fixes);
+    out.gps_track = crate::gpmf::downsample(&all_fixes, MAX_TRACK_POINTS);
+    out
+}
+
+/// Maximum GPS points stored after downsampling — matches the GPMF limit.
+const MAX_TRACK_POINTS: usize = 512;
+
+/// Collect every GPS fix from the SRT text as (latitude, longitude), skipping
+/// (0, 0) sentinels. Handles both modern and older format in one pass.
+fn collect_gps_track(text: &str) -> Vec<(f64, f64)> {
+    let mut pts: Vec<(f64, f64)> = Vec::new();
+
+    // Modern format: explicit [latitude: …] [longitude: …] labels, one pair per subtitle.
+    if let Ok(re) = Regex::new(
+        r"(?i)\[latitude\s*[:=]\s*(-?\d+\.?\d*)\].*?\[longitude\s*[:=]\s*(-?\d+\.?\d*)\]",
+    ) {
+        for caps in re.captures_iter(text) {
+            let la = caps.get(1).and_then(|m| m.as_str().parse::<f64>().ok());
+            let lo = caps.get(2).and_then(|m| m.as_str().parse::<f64>().ok());
+            if let (Some(la), Some(lo)) = (la, lo) {
+                if la != 0.0 || lo != 0.0 {
+                    pts.push((la, lo));
+                }
+            }
+        }
     }
+
+    // Older format: GPS(lon, lat, alt) tuples (note lon-first ordering).
+    if pts.is_empty() {
+        if let Ok(re) = Regex::new(
+            r"GPS\(\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*\)",
+        ) {
+            for caps in re.captures_iter(text) {
+                let lo = caps.get(1).and_then(|m| m.as_str().parse::<f64>().ok());
+                let la = caps.get(2).and_then(|m| m.as_str().parse::<f64>().ok());
+                if let (Some(la), Some(lo)) = (la, lo) {
+                    if la != 0.0 || lo != 0.0 {
+                        pts.push((la, lo));
+                    }
+                }
+            }
+        }
+    }
+
+    pts
 }
 
 /// Compile `pat` and return the first capture group, if any.
@@ -104,7 +146,7 @@ fn first_capture(text: &str, pat: &str) -> Option<String> {
 
 /// GPS, trying the modern labelled form first, then the older `GPS(lon,lat,alt)`
 /// tuple (note the lon-first ordering). Returns the first non-(0,0) fix.
-fn parse_gps(text: &str) -> Option<(f64, f64, Option<f64>)> {
+fn parse_gps_first(text: &str) -> Option<(f64, f64, Option<f64>)> {
     // Modern: explicit latitude / longitude / altitude labels.
     let lat = first_capture(text, r"(?i)\blatitude\s*[:=]\s*(-?\d+\.?\d*)").and_then(|s| s.parse::<f64>().ok());
     let lon = first_capture(text, r"(?i)\blongitude\s*[:=]\s*(-?\d+\.?\d*)").and_then(|s| s.parse::<f64>().ok());
@@ -239,6 +281,20 @@ mod tests {
         assert!((t.exposure_time_s.unwrap() - 1.0 / 60.0).abs() < 1e-9); // TV:60
     }
 
+    #[test]
+    fn collects_full_gps_track() {
+        // Three subtitle blocks, each with a distinct GPS fix.
+        let srt = "1\n00:00:00,000 --> 00:00:00,033\n\
+                   [latitude: 41.424724] [longitude: 2.234156] [iso : 100]\n\n\
+                   2\n00:00:00,033 --> 00:00:00,066\n\
+                   [latitude: 41.424800] [longitude: 2.234200] [iso : 100]\n\n\
+                   3\n00:00:00,066 --> 00:00:00,099\n\
+                   [latitude: 41.424900] [longitude: 2.234300] [iso : 100]\n";
+        let t = parse_srt(srt);
+        assert_eq!(t.gps_track.len(), 3, "expected 3 track points");
+        assert!(t.track_distance_m > 0.0, "expected non-zero distance");
+    }
+
     /// Real-file check against the downloaded DJI SRT samples (skips if absent).
     #[test]
     fn reads_real_dji_samples_if_present() {
@@ -252,11 +308,11 @@ mod tests {
             if !p.exists() {
                 continue;
             }
-            let text = read_head(&p, 64 * 1024).unwrap_or_default();
+            let text = read_full(&p).unwrap_or_default();
             let t = parse_srt(&text);
             eprintln!(
-                "DJI {name}: gps={:?} iso={:?} aperture={:?} shutter={:?}",
-                t.gps, t.iso, t.aperture, t.exposure_time_s
+                "DJI {name}: gps={:?} iso={:?} aperture={:?} shutter={:?} track_pts={} dist_m={:.1}",
+                t.gps, t.iso, t.aperture, t.exposure_time_s, t.gps_track.len(), t.track_distance_m
             );
             assert!(t.gps.is_some(), "{name}: expected a GPS fix");
         }

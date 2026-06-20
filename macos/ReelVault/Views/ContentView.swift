@@ -1346,7 +1346,8 @@ struct ContentView: View {
                             renameLocationTarget = RenameLocationTarget(
                                 coordinate: coord, existing: existing)
                         },
-                        isLoadingVideoLocations: gridViewModel.isLoadingVideoLocations
+                        isLoadingVideoLocations: gridViewModel.isLoadingVideoLocations,
+                        trackCoords: decodeTrackJson(gridViewModel.mapFocusTrackJson)
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -1421,6 +1422,9 @@ struct ContentView: View {
                                 .filter { abs($0.latitude - lat) < 1e-9 && abs($0.longitude - lon) < 1e-9 }
                                 .map { $0.id }
                             globalMapFocusCoord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+                            // Pass the GPS track so the map overlay appears on Show on Map.
+                            let track = detailViewModel.metadata?.gpsTrack
+                            gridViewModel.mapFocusTrackJson = (track?.isEmpty == false) ? track : nil
                             withAnimation(.easeInOut(duration: 0.2)) { viewMode = .map }
                         }
                     }
@@ -1472,6 +1476,18 @@ struct ContentView: View {
         leftPanelWidths[viewMode] = clamped
         PanelPrefs.saveWidth(side: .left, mode: viewMode, value: clamped)
     }
+    /// Decode a GPS track JSON string (`"[[lat,lon],…]"`) into map coordinates.
+    private func decodeTrackJson(_ json: String?) -> [CLLocationCoordinate2D] {
+        guard let json,
+              let data = json.data(using: .utf8),
+              let pairs = try? JSONDecoder().decode([[Double]].self, from: data)
+        else { return [] }
+        return pairs.compactMap { pair in
+            guard pair.count >= 2 else { return nil }
+            return CLLocationCoordinate2D(latitude: pair[0], longitude: pair[1])
+        }
+    }
+
     private func setRightPanelWidth(_ width: CGFloat) {
         let clamped = PanelPrefs.clamp(width)
         rightPanelWidths[viewMode] = clamped
