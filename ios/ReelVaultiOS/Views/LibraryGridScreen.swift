@@ -42,6 +42,9 @@ struct LibraryGridScreen: View {
     /// while the sheet is open.
     @State private var showBatchOrganize = false
     @State private var batchOrganizeIds: [String] = []
+    /// Catalog sync sheets (Local mode + a paired remote both required).
+    @State private var showSyncToRemoteSheet = false
+    @State private var showSyncFromRemoteSheet = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -66,6 +69,12 @@ struct LibraryGridScreen: View {
         }
         .sheet(isPresented: $showBatchOrganize) {
             BatchOrganizeSheet(grid: grid, videoIds: batchOrganizeIds)
+        }
+        .sheet(isPresented: $showSyncToRemoteSheet) {
+            SyncSetupSheet(direction: .toRemote)
+        }
+        .sheet(isPresented: $showSyncFromRemoteSheet) {
+            SyncSetupSheet(direction: .fromRemote)
         }
         // Local mode (no server): import videos from the Files app via a
         // security-scoped bookmark (D7). Remote mode uses ImportSheet (upload).
@@ -215,6 +224,25 @@ struct LibraryGridScreen: View {
                         Label("Upload", systemImage: "arrow.up.circle")
                     }
                     .disabled(grid.selectedVideoIds.isEmpty)
+                }
+            }
+            // Catalog sync: push local videos to the remote, or pull remote
+            // videos down to the device. Only shown when the local embedded core
+            // is available AND a remote server has been paired (canSync gate).
+            if router.canSync {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showSyncToRemoteSheet = true
+                    } label: {
+                        Label("Sync to Remote", systemImage: "arrow.up.to.line.circle")
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showSyncFromRemoteSheet = true
+                    } label: {
+                        Label("Sync from Remote", systemImage: "arrow.down.to.line.circle")
+                    }
                 }
             }
             // Batch organize: rating / color label / keywords / collections over

@@ -154,6 +154,12 @@ fun LibraryGridScreen(
     var showUploadSheet by remember { mutableStateOf(false) }
     var uploadTargets by remember { mutableStateOf<List<VideoSummary>>(emptyList()) }
 
+    // ── Catalog sync (Local mode + a server has been paired) ─────────────
+    // canSync mirrors iOS's canSync: local core running AND a paired remote exists.
+    val canSync = isLocal && uploadEndpoint != null
+    var showSyncToRemote by remember { mutableStateOf(false) }
+    var showSyncFromRemote by remember { mutableStateOf(false) }
+
     // ── Stacking state ───────────────────────────────────────────────────
     // stackMembersForVideo: the VideoSummary whose stack badge was tapped,
     // used to open the StackMembersSheet.
@@ -347,6 +353,9 @@ fun LibraryGridScreen(
                                 onError = { /* vm already set _error */ },
                             )
                         },
+                        canSync = canSync,
+                        onSyncToRemote = { showSyncToRemote = true },
+                        onSyncFromRemote = { showSyncFromRemote = true },
                         onBatchOrganize = { showBatchOrganize = true },
                         onBatchShare = {
                             val ids = multiSelectedIds.toList()
@@ -704,6 +713,26 @@ fun LibraryGridScreen(
             }
         }
 
+        // ── Catalog sync sheets (Local mode + paired server) ─────────────
+        if (showSyncToRemote) {
+            uploadEndpoint?.let { ep ->
+                SyncSetupSheet(
+                    direction = com.reelvault.sync.SyncDirection.TO_REMOTE,
+                    endpoint = ep,
+                    onDismiss = { showSyncToRemote = false },
+                )
+            }
+        }
+        if (showSyncFromRemote) {
+            uploadEndpoint?.let { ep ->
+                SyncSetupSheet(
+                    direction = com.reelvault.sync.SyncDirection.FROM_REMOTE,
+                    endpoint = ep,
+                    onDismiss = { showSyncFromRemote = false },
+                )
+            }
+        }
+
         // ── Batch sharing progress indicator ────────────────────────────────
         if (isBatchSharing) {
             AlertDialog(
@@ -750,6 +779,9 @@ private fun LibraryTopAppBar(
     onSelectAll: () -> Unit = {},
     canUpload: Boolean = false,
     onUpload: () -> Unit = {},
+    canSync: Boolean = false,
+    onSyncToRemote: () -> Unit = {},
+    onSyncFromRemote: () -> Unit = {},
     showSortMenu: Boolean,
     onShowSortMenu: () -> Unit,
     onDismissSortMenu: () -> Unit,
@@ -831,6 +863,21 @@ private fun LibraryTopAppBar(
                             Icon(
                                 Icons.Default.CloudUpload,
                                 contentDescription = stringResource(R.string.upload_action),
+                            )
+                        }
+                    }
+                    // Sync to / from the paired server (Local mode + paired server).
+                    if (canSync) {
+                        IconButton(onClick = onSyncToRemote) {
+                            Icon(
+                                Icons.Default.CloudUpload,
+                                contentDescription = "Sync to Remote",
+                            )
+                        }
+                        IconButton(onClick = onSyncFromRemote) {
+                            Icon(
+                                Icons.Default.CloudDownload,
+                                contentDescription = "Sync from Remote",
                             )
                         }
                     }

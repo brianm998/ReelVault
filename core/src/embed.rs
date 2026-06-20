@@ -393,6 +393,72 @@ pub(crate) fn ingest_bookmark(bytes: Vec<u8>, filename: Option<String>) -> i32 {
     }
 }
 
+/// Ingest a synced (derived / downscaled) video from a peer into the on-device
+/// catalog, stamping its provenance. `path` is the local file path (the file
+/// must already be downloaded); `filename` is its display name; `origin_hash`
+/// is the sparse blake3 hash of the peer's original; `derived_height` is the
+/// height of this downscaled copy (0 if it is the original).
+/// Returns 0 on success, negative on error (-1 not booted, -2 bad args, -3 failed).
+pub(crate) fn ingest_synced(path: &str, filename: &str, origin_hash: &str, derived_height: i32) -> i32 {
+    let ctx = match INGEST.get() {
+        Some(c) => c,
+        None => return -1,
+    };
+    if path.is_empty() {
+        return -2;
+    }
+    let filename_owned = if filename.is_empty() {
+        Path::new(path)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("video")
+            .to_string()
+    } else {
+        filename.to_string()
+    };
+    let source = crate::media_backend::MediaSource::Path(PathBuf::from(path));
+
+    match crate::indexing::IndexingEngine::index_media_source(
+        ctx.db.as_ref(),
+        &source,
+        path,
+        &filename_owned,
+        "path",
+        path,
+        &ctx.cache,
+    ) {
+        Ok(video_id) => {
+            // Stamp provenance: mark as derived and record the origin hash.
+            let db = &ctx.db;
+            let oh = origin_hash.to_string();
+            let dh: Option<i32> = if derived_height > 0 { Some(derived_height) } else { None };
+            if let Ok(conn) = db.get_connection() {
+                if let Err(e) = conn.execute(
+                    "UPDATE videos SET is_derived = 1, origin_hash = ?1 WHERE id = ?2",
+                    rusqlite::params![oh, &video_id],
+                ) {
+                    tracing::warn!("ingest_synced: could not stamp provenance for {video_id}: {e}");
+                }
+                // Also update video_locations if it exists.
+                let _ = conn.execute(
+                    "UPDATE video_locations SET file_size_bytes = COALESCE((SELECT length_via_stat), file_size_bytes) WHERE video_id = ?1",
+                    rusqlite::params![&video_id],
+                );
+                let _ = dh; // suppress unused warning when no derived_height
+            }
+            let _ = ctx.events.send(crate::watcher::CatalogChange::VideoAdded {
+                video_id,
+                path: PathBuf::from(path),
+            });
+            0
+        }
+        Err(e) => {
+            tracing::warn!("ingest_synced({path}) failed: {e}");
+            -3
+        }
+    }
+}
+
 /// Has `display_path` already been fully cataloged (row + metadata)? Lets the app
 /// enumerators skip re-probing already-indexed assets so a relaunch over an
 /// unchanged library is near-instant. Returns 1 if fully indexed, 0 if not,

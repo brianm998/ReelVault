@@ -15,6 +15,21 @@ import Foundation
 /// so on-device metadata/thumbnail/proxy generation lands with the native
 /// `MediaBackend` (Phase 2) and Photos/Files ingest (Phase 3).
 enum LocalCore {
+    /// True when the Rust core framework is linked into the binary. Always true
+    /// in a standard iOS build; apps that omit the xcframework compile this to
+    /// false via the REELVAULT_NO_LOCAL_CORE build flag.
+    static var isAvailable: Bool {
+        #if REELVAULT_NO_LOCAL_CORE
+        return false
+        #else
+        return true
+        #endif
+    }
+
+    /// The loopback port the embedded core is bound to, set when `start()` first
+    /// succeeds and kept for the lifetime of the process. Used by SyncManager
+    /// to open a second loopback client alongside the one VideoRepository holds.
+    private(set) static var port: Int? = nil
     /// App-container paths handed to the core explicitly (don't trust `dirs` on
     /// iOS — see docs/IOS_CORE_PORT.md §6.10 / §11.4).
     private static func paths() throws -> (db: String, data: String, cache: String) {
@@ -40,8 +55,11 @@ enum LocalCore {
     static func start() -> Int? {
         do {
             let p = try paths()
-            let port = reelvault_start_embedded(p.db, p.data, p.cache)
-            return port == 0 ? nil : Int(port)
+            let rawPort = reelvault_start_embedded(p.db, p.data, p.cache)
+            guard rawPort != 0 else { return nil }
+            let resolved = Int(rawPort)
+            port = resolved
+            return resolved
         } catch {
             NSLog("LocalCore: failed to prepare container paths: \(error.localizedDescription)")
             return nil

@@ -86,6 +86,17 @@ struct ReelVaultApp: App {
                 Button("Pair a New Device…") {
                     appState.requestPairDevice()
                 }
+
+                Divider()
+
+                // Catalog sync: disabled on desktop — requires an embedded local
+                // core, which the desktop client does not yet have (docs/CATALOG_SYNC.md).
+                Button("Sync to Remote…") {}
+                    .disabled(true)
+                    .help("Desktop sync requires a local catalog (coming soon)")
+                Button("Sync from Remote…") {}
+                    .disabled(true)
+                    .help("Desktop sync requires a local catalog (coming soon)")
             }
 
             // Replace the default Help menu so we can launch our own panel.

@@ -1244,6 +1244,8 @@ impl ReelVaultTrait for ReelVaultService {
     type ScanLibraryStream = Pin<Box<dyn Stream<Item = std::result::Result<ScanProgress, Status>> + Send>>;
     type GenerateProxyStream = Pin<Box<dyn Stream<Item = std::result::Result<ProxyGenerationProgress, Status>> + Send>>;
     type GetThumbnailStream = Pin<Box<dyn Stream<Item = std::result::Result<ThumbnailChunk, Status>> + Send>>;
+    type GetSyncManifestStream = Pin<Box<dyn Stream<Item = std::result::Result<SyncManifestEntry, Status>> + Send>>;
+    type PrepareRenditionStream = Pin<Box<dyn Stream<Item = std::result::Result<PrepareRenditionProgress, Status>> + Send>>;
 
     async fn list_videos(
         &self,
@@ -3632,6 +3634,321 @@ impl ReelVaultTrait for ReelVaultService {
             error: String::new(),
             error_code: 0,
         }))
+    }
+
+    // ── Catalog Sync RPCs ────────────────────────────────────────────────────
+
+    async fn get_sync_manifest(
+        &self,
+        request: Request<SyncManifestRequest>,
+    ) -> std::result::Result<Response<Self::GetSyncManifestStream>, Status> {
+        let req = request.into_inner();
+        let page_size = if req.page_size > 0 { req.page_size as usize } else { 200 };
+        let cursor = req.cursor.clone();
+        let db = Arc::clone(&self.db);
+        let (tx, rx) = tokio::sync::mpsc::channel(32);
+        tokio::task::spawn_blocking(move || {
+            match db.get_sync_manifest_page(page_size, &cursor) {
+                Err(e) => { let _ = tx.blocking_send(Err(Status::internal(e.to_string()))); }
+                Ok(rows) => {
+                    let last_id = rows.last().map(|r| r.video_id.clone()).unwrap_or_default();
+                    for (i, row) in rows.iter().enumerate() {
+                        let is_last = i == rows.len() - 1;
+                        let entry = SyncManifestEntry {
+                            video_id: row.video_id.clone(),
+                            content_hash: row.content_hash.clone().unwrap_or_default(),
+                            hash_pending: row.content_hash.is_none(),
+                            marks_rev: row.marks_rev,
+                            size_bytes: row.size_bytes,
+                            duration_ms: row.duration_ms,
+                            creation_date_ms: 0,
+                            filename: row.filename.clone(),
+                            width: row.width,
+                            height: row.height,
+                            codec_video: row.codec_video.clone(),
+                            is_derived: row.is_derived,
+                            has_streamable_proxy: false,
+                            next_cursor: if is_last { last_id.clone() } else { String::new() },
+                        };
+                        if tx.blocking_send(Ok(entry)).is_err() { break; }
+                    }
+                }
+            }
+        });
+        Ok(Response::new(Box::pin(ReceiverStream::new(rx)) as Self::GetSyncManifestStream))
+    }
+
+    async fn lookup_by_content_hash(
+        &self,
+        request: Request<LookupByContentHashRequest>,
+    ) -> std::result::Result<Response<LookupByContentHashResponse>, Status> {
+        let req = request.into_inner();
+        let db = Arc::clone(&self.db);
+        let hashes = req.content_hash.clone();
+        let hits = tokio::task::spawn_blocking(move || db.lookup_by_content_hash(&hashes))
+            .await
+            .map_err(|e| Status::internal(format!("{e}")))?
+            .map_err(|e| Status::internal(e.to_string()))?;
+        Ok(Response::new(LookupByContentHashResponse {
+            hits: hits.into_iter().map(|h| lookup_by_content_hash_response::Hit {
+                content_hash: h.content_hash,
+                video_id: h.video_id,
+                marks_rev: h.marks_rev,
+                duration_ms: h.duration_ms,
+                creation_date_ms: h.creation_date_ms,
+            }).collect(),
+        }))
+    }
+
+    async fn get_video_catalog_data(
+        &self,
+        request: Request<VideoCatalogDataRequest>,
+    ) -> std::result::Result<Response<VideoCatalogData>, Status> {
+        let req = request.into_inner();
+        let db = Arc::clone(&self.db);
+        let vid = req.video_id.clone();
+        let data = tokio::task::spawn_blocking(move || db.get_video_catalog_data(&vid))
+            .await
+            .map_err(|e| Status::internal(format!("{e}")))?
+            .map_err(|e| Status::internal(e.to_string()))?;
+        match data {
+            None => Err(Status::not_found("video not found")),
+            Some(d) => Ok(Response::new(VideoCatalogData {
+                tags: d.tags,
+                tag_colors: d.tag_colors,
+                collections: d.collections,
+                smart: d.smart_collections.into_iter().map(|s| SmartCollectionSpec { name: s.name, filter_json: s.filter_json }).collect(),
+                rating: d.rating,
+                color_label: d.color_label,
+                notes: d.notes,
+                creation_date_ms: 0,
+                gps_lat: d.gps_lat,
+                gps_lon: d.gps_lon,
+                gps_valid: d.has_gps,
+                marks_rev: d.marks_rev,
+                group: None,
+            })),
+        }
+    }
+
+    async fn apply_video_catalog_data(
+        &self,
+        request: Request<ApplyCatalogDataRequest>,
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
+        let req = request.into_inner();
+        let db = Arc::clone(&self.db);
+        let vid = req.video_id.clone();
+        let data = req.data.ok_or_else(|| Status::invalid_argument("data required"))?;
+        let catalog_data = crate::db::VideoCatalogData {
+            marks_rev: data.marks_rev,
+            tags: data.tags.clone(),
+            tag_colors: data.tag_colors.clone(),
+            collections: data.collections.clone(),
+            smart_collections: data.smart.iter().map(|s| crate::db::SmartCollectionEntry { name: s.name.clone(), filter_json: s.filter_json.clone() }).collect(),
+            rating: data.rating,
+            color_label: data.color_label.clone(),
+            notes: data.notes.clone(),
+            creation_date_str: String::new(),
+            gps_lat: data.gps_lat,
+            gps_lon: data.gps_lon,
+            has_gps: data.gps_valid,
+        };
+        tokio::task::spawn_blocking(move || db.apply_video_catalog_data(&vid, &catalog_data))
+            .await
+            .map_err(|e| Status::internal(format!("{e}")))?
+            .map_err(|e| Status::internal(e.to_string()))?;
+        Ok(Response::new(reelvault::Response {
+            success: true,
+            message: String::new(),
+            error: String::new(),
+            error_code: 0,
+        }))
+    }
+
+    async fn prepare_rendition(
+        &self,
+        request: Request<PrepareRenditionRequest>,
+    ) -> std::result::Result<Response<Self::PrepareRenditionStream>, Status> {
+        let req = request.into_inner();
+        let video_id = req.video_id.clone();
+        let target_height = req.target_height;
+        let db = Arc::clone(&self.db);
+        let (tx, rx) = tokio::sync::mpsc::channel(8);
+
+        tokio::spawn(async move {
+            // Send QUEUED
+            let _ = tx.send(Ok(PrepareRenditionProgress {
+                phase: prepare_rendition_progress::Phase::Queued as i32,
+                fraction: 0.0,
+                detail: "queued".to_string(),
+                ready_height: 0,
+                rendition_bytes: 0,
+                download_path: String::new(),
+            })).await;
+
+            // Check video exists
+            let record = tokio::task::spawn_blocking({
+                let db = db.clone();
+                let vid = video_id.clone();
+                move || db.get_video(&vid)
+            }).await;
+
+            match record {
+                Ok(Ok(Some(_r))) => {
+                    let effective_height = target_height;
+
+                    // Send TRANSCODING
+                    let _ = tx.send(Ok(PrepareRenditionProgress {
+                        phase: prepare_rendition_progress::Phase::Transcoding as i32,
+                        fraction: 0.1,
+                        detail: format!("preparing {}p rendition", effective_height),
+                        ready_height: 0,
+                        rendition_bytes: 0,
+                        download_path: String::new(),
+                    })).await;
+
+                    // For now, report READY pointing at the streaming endpoint.
+                    // Full proxy warm-up is gated on the media server's
+                    // ensure_downscaled which is invoked on the first GET /video.
+                    let dl_path = format!("/video/{}?height={}", video_id, effective_height);
+                    let _ = tx.send(Ok(PrepareRenditionProgress {
+                        phase: prepare_rendition_progress::Phase::Ready as i32,
+                        fraction: 1.0,
+                        detail: "ready".to_string(),
+                        ready_height: effective_height,
+                        rendition_bytes: 0,
+                        download_path: dl_path,
+                    })).await;
+                }
+                _ => {
+                    let _ = tx.send(Ok(PrepareRenditionProgress {
+                        phase: prepare_rendition_progress::Phase::Failed as i32,
+                        fraction: 1.0,
+                        detail: "video not found".to_string(),
+                        ready_height: 0,
+                        rendition_bytes: 0,
+                        download_path: String::new(),
+                    })).await;
+                }
+            }
+        });
+
+        Ok(Response::new(Box::pin(ReceiverStream::new(rx)) as Self::PrepareRenditionStream))
+    }
+
+    async fn list_sync_profiles(
+        &self,
+        _request: Request<ListSyncProfilesRequest>,
+    ) -> std::result::Result<Response<ListSyncProfilesResponse>, Status> {
+        let db = Arc::clone(&self.db);
+        let profiles = tokio::task::spawn_blocking(move || db.list_sync_profiles())
+            .await.map_err(|e| Status::internal(format!("{e}")))?
+            .map_err(|e| Status::internal(e.to_string()))?;
+        Ok(Response::new(ListSyncProfilesResponse {
+            profiles: profiles.into_iter().map(|p| SyncProfileProto {
+                id: p.id,
+                name: p.name,
+                peer_key: p.peer_key,
+                direction: p.direction,
+                filter_json: p.filter_json,
+                target_height: p.target_height,
+                collection_resolutions: p.collection_resolutions,
+                device_label: p.device_label,
+                last_run_ms: p.last_run_ms.unwrap_or(0),
+                created_ms: p.created_ms.unwrap_or(0),
+                updated_ms: p.updated_ms.unwrap_or(0),
+            }).collect(),
+        }))
+    }
+
+    async fn upsert_sync_profile(
+        &self,
+        request: Request<UpsertSyncProfileRequest>,
+    ) -> std::result::Result<Response<SyncProfileResponse>, Status> {
+        let req = request.into_inner();
+        let proto = req.profile.ok_or_else(|| Status::invalid_argument("profile required"))?;
+        let db = Arc::clone(&self.db);
+        let id = if proto.id.is_empty() { uuid::Uuid::new_v4().to_string() } else { proto.id.clone() };
+        let now = chrono::Utc::now().timestamp_millis();
+        let profile = crate::db::SyncProfile {
+            id: id.clone(),
+            name: proto.name,
+            peer_key: proto.peer_key,
+            direction: proto.direction,
+            filter_json: proto.filter_json,
+            target_height: proto.target_height,
+            collection_resolutions: proto.collection_resolutions,
+            device_label: proto.device_label,
+            last_run_ms: if proto.last_run_ms > 0 { Some(proto.last_run_ms) } else { None },
+            created_ms: if proto.created_ms > 0 { Some(proto.created_ms) } else { Some(now) },
+            updated_ms: Some(now),
+        };
+        tokio::task::spawn_blocking(move || db.upsert_sync_profile(&profile))
+            .await.map_err(|e| Status::internal(format!("{e}")))?
+            .map_err(|e| Status::internal(e.to_string()))?;
+        Ok(Response::new(SyncProfileResponse { id }))
+    }
+
+    async fn delete_sync_profile(
+        &self,
+        request: Request<DeleteSyncProfileRequest>,
+    ) -> std::result::Result<Response<reelvault::Response>, Status> {
+        let req = request.into_inner();
+        let db = Arc::clone(&self.db);
+        let id = req.id;
+        tokio::task::spawn_blocking(move || db.delete_sync_profile(&id))
+            .await.map_err(|e| Status::internal(format!("{e}")))?
+            .map_err(|e| Status::internal(e.to_string()))?;
+        Ok(Response::new(reelvault::Response {
+            success: true,
+            message: String::new(),
+            error: String::new(),
+            error_code: 0,
+        }))
+    }
+
+    async fn get_sync_run(
+        &self,
+        request: Request<GetSyncRunRequest>,
+    ) -> std::result::Result<Response<SyncRunResponse>, Status> {
+        let req = request.into_inner();
+        let db = Arc::clone(&self.db);
+        let run_id = req.run_id;
+        let row = tokio::task::spawn_blocking(move || {
+            use rusqlite::OptionalExtension as _;
+            let conn = db.get_connection()?;
+            let row = conn.query_row(
+                "SELECT id, state, total, completed, failed, conflicts, started_ms, finished_ms FROM sync_runs WHERE id = ?1",
+                rusqlite::params![run_id],
+                |r| Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, i64>(2)?,
+                    r.get::<_, i64>(3)?,
+                    r.get::<_, i64>(4)?,
+                    r.get::<_, i64>(5)?,
+                    r.get::<_, i64>(6)?,
+                    r.get::<_, Option<i64>>(7)?,
+                ))
+            ).optional()
+             .map_err(|e| crate::error::ReelVaultError::DatabaseError(e.to_string()))?;
+            Ok::<_, crate::error::ReelVaultError>(row)
+        }).await.map_err(|e| Status::internal(format!("{e}")))?
+          .map_err(|e| Status::internal(e.to_string()))?;
+        match row {
+            None => Err(Status::not_found("run not found")),
+            Some((id, state, total, completed, failed, conflicts, started_ms, finished_ms)) =>
+                Ok(Response::new(SyncRunResponse {
+                    id,
+                    state,
+                    total,
+                    completed,
+                    failed,
+                    conflicts,
+                    started_ms,
+                    finished_ms: finished_ms.unwrap_or(0),
+                })),
+        }
     }
 }
 

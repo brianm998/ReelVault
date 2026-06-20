@@ -98,6 +98,18 @@ int32_t reelvault_ingest_bookmark(const uint8_t *bookmark, uintptr_t len,
                                   const char *filename);
 
 /*
+ * Ingest a synced (derived/downscaled) video into the on-device catalog,
+ * recording its provenance. `path` is the local file path (the file must
+ * already be present on disk); `filename` is its display name (may be NULL);
+ * `origin_hash` is the sparse blake3 content hash of the peer's original
+ * (may be NULL if unknown); `derived_height` is the height of this copy
+ * (0 if it is the original). Returns 0 on success, negative on error.
+ * Call off the main thread.
+ */
+int32_t reelvault_ingest_synced(const char *path, const char *filename,
+                                const char *origin_hash, int32_t derived_height);
+
+/*
  * Reconcile the catalog against the Photos library: remove every photo-source
  * row whose PHAsset.localIdentifier is NOT in `present_ids_json` (a JSON array
  * of the localIdentifiers currently in Photos), pruning videos the user deleted
