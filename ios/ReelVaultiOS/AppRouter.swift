@@ -288,9 +288,9 @@ final class AppRouter: ObservableObject {
                 // no-server screen immediately — the offline option is right there.
                 // The user can still hit Retry on that screen to trigger mDNS.
                 if !OfflineLibrary.shared.entries.isEmpty {
-                    self?.phase = .noServer
+                    self.phase = .noServer
                 } else {
-                    self?.start()
+                    self.start()
                 }
                 return
             }

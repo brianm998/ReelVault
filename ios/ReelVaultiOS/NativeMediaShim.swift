@@ -283,7 +283,7 @@ enum NativeMedia {
             guard let raw = item.identifier?.rawValue else { continue }
             let key = String(raw.split(separator: "/", maxSplits: 1, omittingEmptySubsequences: false).last ?? "")
             guard key.hasPrefix("com.apple.quicktime.") else { continue }
-            if let value = try? await item.load(.stringValue), let value {
+            if let value = try? await item.load(.stringValue) {
                 set(key, value)
             }
         }
@@ -297,7 +297,7 @@ enum NativeMedia {
         var capture: Date?
         let common = (try? await asset.load(.commonMetadata)) ?? []
         for item in common + items where item.commonKey == .commonKeyCreationDate {
-            if let d = try? await item.load(.dateValue), let d { capture = d; break }
+            if let d = try? await item.load(.dateValue) { capture = d; break }
         }
 
         if kind == 1,
