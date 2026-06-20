@@ -667,4 +667,8 @@ jobs:
             The download page auto-detects your OS and asks one question to point you to the correct installer.
 
             ---
+
+            ## Privacy & Legal
+
+            - **[Privacy Policy](https://github.com/brianm998/ReelVault/blob/main/PRIVACY.md)** — What data ReelVault processes and your rights
           files:                  release-artifacts/**/*
