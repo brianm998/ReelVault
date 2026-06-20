@@ -115,7 +115,7 @@ fun ServerPickerScreen(
 
 /**
  * The desktop is the CLIENT here: it enters the 6-digit code the operator reveals
- * on the server (a connected client's Allow banner, “Pair a New Device”, or the
+ * on the server (a connected client's Allow banner, "Pair a New Device", or the
  * daemon log). Mirrors the iOS / macOS pairing-code entry screen.
  */
 @Composable
@@ -126,7 +126,7 @@ fun PairingCodeEntryScreen(
     onSubmit: (String) -> Unit,
     onCancel: () -> Unit,
 ) {
-    var code by remember { mutableStateOf(“”) }
+    var code by remember { mutableStateOf("") }
     val canSubmit = code.trim().length >= 4 && !busy
 
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -142,15 +142,15 @@ fun PairingCodeEntryScreen(
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                “Pair with ${server.displayName}”,
+                "Pair with ${server.displayName}",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                “Enter the 6-digit code shown on the server. Reveal it there with “ +
-                    “\”Pair a New Device\”, the daemon log, or `reelvault-core pairing-code`.”,
+                "Enter the 6-digit code shown on the server. Reveal it there with " +
+                    "\"Pair a New Device\", the daemon log, or `reelvault-core pairing-code`.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -159,7 +159,7 @@ fun PairingCodeEntryScreen(
             OutlinedTextField(
                 value = code,
                 onValueChange = { new -> code = formatPairingCode(new) },
-                placeholder = { Text(“000000”) },
+                placeholder = { Text("000000") },
                 singleLine = true,
                 enabled = !busy,
                 textStyle = MaterialTheme.typography.headlineSmall.copy(
@@ -173,13 +173,13 @@ fun PairingCodeEntryScreen(
             }
             Spacer(Modifier.height(20.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TextButton(onClick = onCancel, enabled = !busy) { Text(Strings[“ui_cancel”]) }
+                TextButton(onClick = onCancel, enabled = !busy) { Text(Strings["ui_cancel"]) }
                 Button(onClick = { onSubmit(code) }, enabled = canSubmit) {
                     if (busy) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(8.dp))
                     }
-                    Text(Strings[“ui_pair”])
+                    Text(Strings["ui_pair"])
                 }
             }
         }
@@ -191,6 +191,6 @@ private fun formatPairingCode(input: String): String {
     return if (digits.length <= 3) {
         digits
     } else {
-        digits.substring(0, 3) + “ “ + digits.substring(3)
+        digits.substring(0, 3) + " " + digits.substring(3)
     }
 }
