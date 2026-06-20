@@ -300,8 +300,15 @@ struct LibraryFilterSheet: View {
 /// Configure which metadata appears in the card's four top stat slots. Writes
 /// the catalog-wide `topSlots` and persists via `saveGridSettings()` (shared
 /// with the macOS/desktop clients).
+///
+/// `grid` is held as a plain `let` (not `@ObservedObject`) so that unrelated
+/// catalog changes during photo sync (e.g. `videos` updates every few seconds)
+/// do not cause this sheet to re-render and reset the Picker list's scroll
+/// position. The current slots are snapshotted into `localSlots` on appear and
+/// written back to the grid on every user change.
 struct TopSlotsConfigSheet: View {
-    @ObservedObject var grid: GridViewModel
+    let grid: GridViewModel
+    @State private var localSlots: [String] = []
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -312,9 +319,11 @@ struct TopSlotsConfigSheet: View {
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 ForEach(0..<4, id: \.self) { i in
-                    Picker("Slot \(i + 1)", selection: slotBinding(i)) {
-                        ForEach(GridStatKey.allCases) { key in
-                            Text(key.displayName).tag(key.rawValue)
+                    if i < localSlots.count {
+                        Picker("Slot \(i + 1)", selection: $localSlots[i]) {
+                            ForEach(GridStatKey.allCases) { key in
+                                Text(key.displayName).tag(key.rawValue)
+                            }
                         }
                     }
                 }
@@ -325,19 +334,15 @@ struct TopSlotsConfigSheet: View {
                 ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } }
             }
         }
+        .onAppear {
+            var slots = grid.topSlots
+            while slots.count < 4 { slots.append("") }
+            localSlots = slots
+        }
+        .onChange(of: localSlots) { _, newValue in
+            grid.topSlots = newValue
+            grid.saveGridSettings()
+        }
         .presentationDetents([.medium, .large])
-    }
-
-    private func slotBinding(_ i: Int) -> Binding<String> {
-        Binding(
-            get: { i < grid.topSlots.count ? grid.topSlots[i] : "" },
-            set: { newValue in
-                var slots = grid.topSlots
-                while slots.count < 4 { slots.append("") }
-                slots[i] = newValue
-                grid.topSlots = slots
-                grid.saveGridSettings()
-            }
-        )
     }
 }
