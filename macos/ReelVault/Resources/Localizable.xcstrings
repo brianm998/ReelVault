@@ -117,6 +117,18 @@
             "state": "translated",
             "value": "文件名"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فائل کا نام"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফাইলের নাম"
+          }
         }
       }
     },
@@ -235,6 +247,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "添加日期"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اضافے کی تاریخ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "যোগ করার তারিখ"
           }
         }
       }
@@ -355,6 +379,18 @@
             "state": "translated",
             "value": "拍摄日期"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ریکارڈنگ کی تاریخ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ধারণের তারিখ"
+          }
         }
       }
     },
@@ -473,6 +509,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "时长"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "دورانیہ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সময়কাল"
           }
         }
       }
@@ -593,6 +641,18 @@
             "state": "translated",
             "value": "文件大小"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فائل کا حجم"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফাইলের আকার"
+          }
         }
       }
     },
@@ -711,6 +771,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "分辨率"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ریزولیوشن"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রেজোলিউশন"
           }
         }
       }
@@ -831,6 +903,18 @@
             "state": "translated",
             "value": "帧率"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فریم ریٹ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফ্রেম রেট"
+          }
         }
       }
     },
@@ -949,6 +1033,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "编解码器"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کوڈیک"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোডেক"
           }
         }
       }
@@ -1069,6 +1165,12 @@
             "state": "translated",
             "value": "比特率"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বিটরেট"
+          }
         }
       }
     },
@@ -1188,6 +1290,12 @@
             "state": "translated",
             "value": "相机"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ক্যামেরা"
+          }
         }
       }
     },
@@ -1306,6 +1414,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "镜头"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لینس"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লেন্স"
           }
         }
       }
@@ -1545,6 +1665,12 @@
             "state": "translated",
             "value": "光圈"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অ্যাপার্চার"
+          }
         }
       }
     },
@@ -1663,6 +1789,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "曝光时间"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نمائش وقت"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এক্সপোজার সময়"
           }
         }
       }
@@ -1783,6 +1921,18 @@
             "state": "translated",
             "value": "焦距"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فوکل لمبائی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফোকাল দৈর্ঘ্য"
+          }
         }
       }
     },
@@ -1901,6 +2051,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "关键词"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کلیدی لفظ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কীওয়ার্ড"
           }
         }
       }
@@ -2021,6 +2183,18 @@
             "state": "translated",
             "value": "配对失败 — 请检查代码并重试。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جوڑنا ناکام ہوا — کوڈ چیک کریں اور دوبارہ کوشش کریں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পেয়ারিং ব্যর্থ হয়েছে — কোডটি যাচাই করে আবার চেষ্টা করুন।"
+          }
         }
       }
     },
@@ -2139,6 +2313,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法连接到 %@。"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ تک نہیں پہنچا جا سکا۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@-এ পৌঁছানো যায়নি।"
           }
         }
       }
@@ -2259,6 +2445,18 @@
             "state": "translated",
             "value": "无法启动后端。请设置 REELVAULT_CORE_BIN 或使用 `cargo build` 构建 core。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ReelVault بیک اینڈ شروع نہیں ہو سکا۔ REELVAULT_CORE_BIN سیٹ کریں یا `cargo build` سے کور بنائیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ReelVault ব্যাকএন্ড শুরু করা যায়নি। REELVAULT_CORE_BIN সেট করুন অথবা `cargo build` দিয়ে কোর বিল্ড করুন।"
+          }
         }
       }
     },
@@ -2377,6 +2575,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "已连接到端口 %ld，但守护进程未响应"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پورٹ %ld سے مربوط ہوا لیکن ڈیمن نے جواب نہیں دیا"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পোর্ট %ld-এ সংযুক্ত হয়েছে কিন্তু ডেমন সাড়া দেয়নি"
           }
         }
       }
@@ -2497,6 +2707,18 @@
             "state": "translated",
             "value": "配对成功，但无法连接到 %@。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جوڑا گیا، لیکن %@ سے منسلک نہ ہو سکا۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পেয়ার হয়েছে, কিন্তু %@-এ সংযোগ করা যায়নি।"
+          }
         }
       }
     },
@@ -2615,6 +2837,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法在 %@ 打开目录"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ پر کیٹلاگ نہیں کھل سکا"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@-এ ক্যাটালগ খোলা যায়নি"
           }
         }
       }
@@ -2735,6 +2969,18 @@
             "state": "translated",
             "value": "无法加载镜头名称：%@"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لینس نام لوڈ کرنے میں ناکامی: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লেন্সের নাম লোড করতে ব্যর্থ হয়েছে: %@"
+          }
         }
       }
     },
@@ -2853,6 +3099,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法保存别名：%@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عرف محفوظ کرنے میں ناکامی: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অ্যালিয়াস সংরক্ষণ করতে ব্যর্থ হয়েছে: %@"
           }
         }
       }
@@ -2973,6 +3231,18 @@
             "state": "translated",
             "value": "无法删除别名：%@"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عرف حذف کرنے میں ناکامی: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অ্যালিয়াস সরাতে ব্যর্থ হয়েছে: %@"
+          }
         }
       }
     },
@@ -3091,6 +3361,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法加载映射：%@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "میپنگز لوڈ کرنے میں ناکامی: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ম্যাপিং লোড করতে ব্যর্থ হয়েছে: %@"
           }
         }
       }
@@ -3211,6 +3493,18 @@
             "state": "translated",
             "value": "无法保存映射：%@"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "میپنگ محفوظ کرنے میں ناکامی: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ম্যাপিং সংরক্ষণ করতে ব্যর্থ হয়েছে: %@"
+          }
         }
       }
     },
@@ -3329,6 +3623,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法删除映射：%@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "میپنگ حذف کرنے میں ناکامی: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ম্যাপিং সরাতে ব্যর্থ হয়েছে: %@"
           }
         }
       }
@@ -3449,6 +3755,18 @@
             "state": "translated",
             "value": "连接错误"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کنکشن میں خرابی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সংযোগ ত্রুটি"
+          }
         }
       }
     },
@@ -3567,6 +3885,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在生成代理…"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پراکسی بنائی جا رہی ہے…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রক্সি তৈরি হচ্ছে…"
           }
         }
       }
@@ -3687,6 +4017,18 @@
             "state": "translated",
             "value": "正在生成代码…"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کوڈ بنایا جا رہا ہے…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোড তৈরি হচ্ছে…"
+          }
         }
       }
     },
@@ -3805,6 +4147,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在连接到 ReelVault…"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ReelVault سے مربوط ہو رہا ہے…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ReelVault-এ সংযুক্ত হচ্ছে…"
           }
         }
       }
@@ -3925,6 +4279,18 @@
             "state": "translated",
             "value": "搜索视频…"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ویڈیوز تلاش کریں…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ভিডিও অনুসন্ধান করুন…"
+          }
         }
       }
     },
@@ -4042,6 +4408,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "按钮）。您可以在一次操作中添加多个文件夹。使用 "
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বাম প্যানেলের বোতাম)। আপনি একটি সেশনে একাধিক ফোল্ডার যোগ করতে পারেন। ব্যবহার করুন"
           }
         }
       }
@@ -4515,6 +4887,12 @@
             "state": "translated",
             "value": " — 一次导入所有匹配的年份文件夹。ReelVault 在后台扫描，文件索引后网格将自动填充。"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " — একসাথে সব মিলে যাওয়া বছরের ফোল্ডার আমদানি করতে। ReelVault পটভূমিতে স্ক্যান করে এবং ফাইলগুলি সূচিবদ্ধ হওয়ার সাথে সাথে গ্রিড পূর্ণ হয়।"
+          }
         }
       }
     },
@@ -4632,6 +5010,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "。面板显示编解码器、分辨率、FPS、比特率、GPS、相机型号、备注、标签等信息。"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "। প্যানেলে কোডেক, রেজোলিউশন, FPS, বিটরেট, GPS, ক্যামেরা মডেল, নোট, ট্যাগ এবং আরও তথ্য দেখা যায়।"
           }
         }
       }
@@ -4869,6 +5253,12 @@
             "state": "translated",
             "value": "目录是一个小型数据库文件，用于存储所有元数据、标签和设置。使用 "
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "একটি ক্যাটালগ হল একটি ছোট ডেটাবেস ফাইল যা আপনার সমস্ত মেটাডেটা, ট্যাগ এবং সেটিংস সংরক্ষণ করে। ব্যবহার করুন"
+          }
         }
       }
     },
@@ -4986,6 +5376,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "目录是 ReelVault 用于记录您的媒体库的 SQLite 文件，包含位置、标签、备注和缩略图。每个目录相互独立。"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "একটি ক্যাটালগ হল সেই SQLite ফাইল যা ReelVault আপনার লাইব্রেরি মনে রাখতে ব্যবহার করে — অবস্থান, ট্যাগ, নোট, থাম্বনেইল। প্রতিটি ক্যাটালগ স্বাধীন।"
           }
         }
       }
@@ -5105,6 +5501,12 @@
             "state": "translated",
             "value": "强调色"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অ্যাকসেন্ট রঙ"
+          }
         }
       }
     },
@@ -5222,6 +5624,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "添加媒体库位置"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লাইব্রেরি অবস্থান যোগ করুন"
           }
         }
       }
@@ -5341,6 +5749,12 @@
             "state": "translated",
             "value": "将选中的视频添加为代理"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "নির্বাচিত ভিডিওটি প্রক্সি হিসেবে যোগ করুন"
+          }
         }
       }
     },
@@ -5458,6 +5872,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "是否允许其与此媒体库配对？"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এটিকে এই লাইব্রেরির সাথে যুক্ত করার অনুমতি দেবেন?"
           }
         }
       }
@@ -5577,6 +5997,12 @@
             "state": "translated",
             "value": "同时嵌入视频文件"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ভিডিও ফাইলেও এম্বেড করুন"
+          }
         }
       }
     },
@@ -5694,6 +6120,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "始终应用这些设置"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সর্বদা এই সেটিংস প্রয়োগ করুন"
           }
         }
       }
@@ -5813,6 +6245,12 @@
             "state": "translated",
             "value": "始终以此分辨率创建代理"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সর্বদা এই রেজোলিউশনে প্রক্সি তৈরি করুন"
+          }
         }
       }
     },
@@ -5930,6 +6368,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "文件名中任意位置"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফাইলের নামের যেকোনো স্থানে"
           }
         }
       }
@@ -6049,6 +6493,12 @@
             "state": "translated",
             "value": "外观与浏览"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "চেহারা ও ব্রাউজ"
+          }
         }
       }
     },
@@ -6166,6 +6616,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "在开头"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "শুরুতে"
           }
         }
       }
@@ -6285,6 +6741,12 @@
             "state": "translated",
             "value": "在末尾"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "শেষে"
+          }
         }
       }
     },
@@ -6402,6 +6864,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "自动分组相似变体"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অনুরূপ ভেরিয়েন্টগুলি স্বয়ংক্রিয়ভাবে গ্রুপ করুন"
           }
         }
       }
@@ -6521,6 +6989,12 @@
             "state": "translated",
             "value": "内置"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অন্তর্নির্মিত"
+          }
         }
       }
     },
@@ -6626,6 +7100,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "合集"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সংগ্রহসমূহ"
           }
         }
       }
@@ -6745,6 +7225,12 @@
             "state": "translated",
             "value": "相机名称"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ক্যামেরার নাম"
+          }
         }
       }
     },
@@ -6862,6 +7348,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "将当前筛选条件（相机、编解码器、评分等）保存为自动更新的智能合集。"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বর্তমান ফিল্টার সেটিংস (ক্যামেরা, কোডেক, রেটিং ইত্যাদি) একটি স্মার্ট সংগ্রহ হিসেবে ক্যাপচার করে যা স্বয়ংক্রিয়ভাবে আপডেট হয়।"
           }
         }
       }
@@ -6981,6 +7473,12 @@
             "state": "translated",
             "value": "目录全局自动标记与检测设置"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ক্যাটালগ-ব্যাপী স্বয়ংক্রিয় ট্যাগিং এবং শনাক্তকরণ সেটিংস"
+          }
         }
       }
     },
@@ -7098,6 +7596,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "选择其他服务器…"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کوئی اور سرور منتخب کریں…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অন্য একটি সার্ভার বেছে নিন…"
           }
         }
       }
@@ -7217,6 +7727,18 @@
             "state": "translated",
             "value": "选择媒体库"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لائبریری منتخب کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "একটি লাইব্রেরি বেছে নিন"
+          }
         }
       }
     },
@@ -7334,6 +7856,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "点击地图上的位置以在此处查看其视频。"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "یہاں اس کی ویڈیوز دیکھنے کے لیے نقشے پر کوئی مقام کلک کریں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এখানে ভিডিও দেখতে মানচিত্রে একটি অবস্থানে ক্লিক করুন।"
           }
         }
       }
@@ -7453,6 +7987,18 @@
             "state": "translated",
             "value": "点击图钉以在右侧列出其视频。⇧/⌘-点击可添加更多位置。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "دائیں جانب ویڈیوز درج کرنے کے لیے کوئی پن کلک کریں۔ مزید مقامات شامل کرنے کے لیے ⇧/⌘-کلک کریں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ডানদিকে ভিডিওর তালিকা দেখতে একটি পিনে ক্লিক করুন। আরও অবস্থান যোগ করতে ⇧/⌘-ক্লিক করুন।"
+          }
         }
       }
     },
@@ -7570,6 +8116,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "点击任意缩略图将其选中，并在 "
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کسی بھی تھمب نیل کو منتخب کرنے اور اس کا مکمل میٹا ڈیٹا لوڈ کرنے کے لیے کلک کریں "
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "যেকোনো থাম্বনেইলে ক্লিক করে সেটি নির্বাচন করুন এবং সম্পূর্ণ মেটাডেটা লোড করুন "
           }
         }
       }
@@ -7689,6 +8247,18 @@
             "state": "translated",
             "value": "点击 "
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کلک کریں "
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ক্লিক করুন "
+          }
         }
       }
     },
@@ -7806,6 +8376,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "点击地图（或现有图钉）以放置候选位置。"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "امیدوار پن رکھنے کے لیے نقشہ (یا کوئی موجودہ پن) کلک کریں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "একটি প্রার্থী পিন ফেলতে মানচিত্রে (বা বিদ্যমান কোনো পিনে) ক্লিক করুন।"
           }
         }
       }
@@ -7925,6 +8507,18 @@
             "state": "translated",
             "value": "代码已过期 — 请关闭后重试。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کوڈ کی میعاد ختم — بند کریں اور دوبارہ کوشش کریں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোডের মেয়াদ শেষ — বন্ধ করুন এবং আবার চেষ্টা করুন।"
+          }
         }
       }
     },
@@ -8042,6 +8636,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "配色方案与预览缩略图设置"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کلر اسکیم اور اسکرب پریویو کی ترتیبات"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রঙের স্কিম এবং স্ক্রাব-প্রিভিউ সেটিংস"
           }
         }
       }
@@ -8161,6 +8767,18 @@
             "state": "translated",
             "value": "复制命令"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کمانڈ کاپی کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কমান্ড কপি করুন"
+          }
         }
       }
     },
@@ -8278,6 +8896,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法生成配对码。请确保 ReelVault 目录已打开且后台服务正在运行。"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جوڑی بنانے کا کوڈ نہیں بنایا جا سکا۔ یقینی بنائیں کہ ReelVault کیٹلاگ کھلا ہے اور ڈیمن چل رہا ہے۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পেয়ারিং কোড তৈরি করা যায়নি। নিশ্চিত করুন একটি ReelVault ক্যাটালগ খোলা আছে এবং ডেমন চলছে।"
           }
         }
       }
@@ -8397,6 +9027,18 @@
             "state": "translated",
             "value": "为此视频创建代理"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اس ویڈیو کا پراکسی بنائیں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই ভিডিওর একটি প্রক্সি তৈরি করুন"
+          }
         }
       }
     },
@@ -8514,6 +9156,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "创建代理…"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پراکسی بنائیں…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রক্সি তৈরি করুন…"
           }
         }
       }
@@ -8633,6 +9287,18 @@
             "state": "translated",
             "value": "正在创建代理…"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پراکسی بن رہا ہے…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রক্সি তৈরি হচ্ছে…"
+          }
         }
       }
     },
@@ -8750,6 +9416,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "自定义"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حسب ضرورت"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কাস্টম"
           }
         }
       }
@@ -8869,6 +9547,18 @@
             "state": "translated",
             "value": "自定义（覆盖）"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حسب ضرورت (اوور رائڈ)"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কাস্টম (ওভাররাইড)"
+          }
         }
       }
     },
@@ -8986,6 +9676,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "自定义（未使用）"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حسب ضرورت (غیر مستعمل)"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কাস্টম (অব্যবহৃত)"
           }
         }
       }
@@ -9205,6 +9907,18 @@
             "state": "translated",
             "value": "详情"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تفصیلات"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বিস্তারিত"
+          }
         }
       }
     },
@@ -9322,6 +10036,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "默认代理高度"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پراکسی کی ڈیفالٹ اونچائی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ডিফল্ট প্রক্সি উচ্চতা"
           }
         }
       }
@@ -9441,6 +10167,18 @@
             "state": "translated",
             "value": "拖动行以重新排序。在网格中双击可打开首选变体。点击 ⭐ 以更改首选项。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ترتیب بدلنے کے لیے قطار کھینچیں۔ گرڈ میں ڈبل کلک پسندیدہ ویریئنٹ کھولتا ہے۔ پسندیدہ تبدیل کرنے کے لیے ⭐ کلک کریں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পুনর্বিন্যাসের জন্য একটি সারি টেনে আনুন। গ্রিডে ডাবল-ক্লিক করলে পছন্দের ভ্যারিয়েন্ট খোলে। পছন্দ পরিবর্তন করতে ⭐ ক্লিক করুন।"
+          }
         }
       }
     },
@@ -9558,6 +10296,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "输入一个或多个目录。在路径中使用 $YEAR（例如 /Volumes/Media/$YEAR/Raw）可一次添加所有匹配的年份文件夹。"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ایک یا زیادہ ڈائریکٹریاں درج کریں۔ ہر ملتے جلتے سال کے فولڈر ایک ساتھ شامل کرنے کے لیے پاتھ میں $YEAR استعمال کریں (مثلاً /Volumes/Media/$YEAR/Raw)۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এক বা একাধিক ডিরেক্টরি প্রবেশ করান। একটি পাথে $YEAR ব্যবহার করুন (যেমন /Volumes/Media/$YEAR/Raw) একসাথে প্রতিটি মিলসই বছরের ফোল্ডার যোগ করতে।"
           }
         }
       }
@@ -9765,6 +10515,18 @@
             "state": "translated",
             "value": "筛选："
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فلٹر:"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফিল্টার:"
+          }
         }
       }
     },
@@ -9858,6 +10620,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "格式"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فارمیٹ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফরম্যাট"
           }
         }
       }
@@ -9977,6 +10751,18 @@
             "state": "translated",
             "value": "来自目录"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کیٹالاگ سے"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ক্যাটালগ থেকে"
+          }
         }
       }
     },
@@ -10094,6 +10880,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "按分辨率限制内联播放；选择默认代理尺寸"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ریزولیوشن کے مطابق ان لائن پلے بیک محدود کریں؛ پہلے سے طے پراکسی سائز منتخب کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রেজোলিউশন অনুযায়ী ইনলাইন প্লেব্যাক নিয়ন্ত্রণ করুন; একটি ডিফল্ট প্রক্সি আকার বেছে নিন"
           }
         }
       }
@@ -10213,6 +11011,18 @@
             "state": "translated",
             "value": "ReelVault 从每个视频中采样的帧数，用于悬停预览缩略图。帧数越多，预览越流畅，但占用内存和后台流量更多。更改将在下次悬停尚未采样的卡片时生效。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ReelVault ہر ویڈیو سے ہوور اسکرب پیش نظارے کے لیے جتنے فریم لیتا ہے۔ زیادہ فریم = ہموار اسکربنگ لیکن زیادہ میموری اور ڈیمن ٹریفک۔ تبدیلیاں اگلی بار اثر میں آئیں گی جب آپ کسی ایسے کارڈ پر ہوور کریں جس کا نمونہ ابھی نہیں لیا گیا۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "হোভার স্ক্রাব প্রিভিউর জন্য ReelVault প্রতিটি ভিডিও থেকে কতটি স্থির ফ্রেম নমুনা নেয়। বেশি ফ্রেম = মসৃণ স্ক্রাবিং কিন্তু বেশি মেমরি ও ডেমন ট্র্যাফিক। পরবর্তীবার যখন আপনি এমন কোনো কার্ডের উপর হোভার করবেন যা এখনও নমুনা নেওয়া হয়নি, তখন পরিবর্তনগুলি কার্যকর হবে।"
+          }
         }
       }
     },
@@ -10324,6 +11134,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "媒体库"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لائبریری"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লাইব্রেরি"
           }
         }
       }
@@ -10443,6 +11265,18 @@
             "state": "translated",
             "value": "镜头名称"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لینس کے نام"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লেন্সের নামসমূহ"
+          }
         }
       }
     },
@@ -10542,6 +11376,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "实时"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "براہ راست"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লাইভ"
           }
         }
       }
@@ -10661,6 +11507,18 @@
             "state": "translated",
             "value": "正在加载当前设置…"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "موجودہ ترتیبات لوڈ ہو رہی ہیں…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বর্তমান সেটিংস লোড করা হচ্ছে…"
+          }
         }
       }
     },
@@ -10779,6 +11637,18 @@
             "state": "translated",
             "value": "正在加载此位置的视频…"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اس مقام پر ویڈیوز لوڈ ہو رہی ہیں…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই অবস্থানে ভিডিও লোড করা হচ্ছে…"
+          }
         }
       }
     },
@@ -10896,6 +11766,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在查找 ReelVault 服务器…"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ReelVault سرورز تلاش کیے جا رہے ہیں…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ReelVault সার্ভার খোঁজা হচ্ছে…"
           }
         }
       }
@@ -11133,6 +12015,18 @@
             "state": "translated",
             "value": "请确保 ReelVault 后台服务正在运行："
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "یقینی بنائیں کہ ReelVault بیک اینڈ چل رہا ہے:"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "নিশ্চিত করুন যে ReelVault ব্যাকএন্ড চলছে:"
+          }
         }
       }
     },
@@ -11250,6 +12144,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "最大内联播放高度"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "زیادہ سے زیادہ ان لائن پلے بیک اونچائی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সর্বাধিক ইনলাইন-প্লেব্যাক উচ্চতা"
           }
         }
       }
@@ -11369,6 +12275,18 @@
             "state": "translated",
             "value": "检测到多个 ReelVault 服务器。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ایک سے زیادہ ReelVault سرور دستیاب ہیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "একাধিক ReelVault সার্ভার উপলব্ধ।"
+          }
         }
       }
     },
@@ -11486,6 +12404,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "新建代理默认使用此高度。越小 = 越快 + 文件越小；越大 = 越接近原始质量。"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نئے بنائے گئے پراکسی بطور ڈیفالٹ اس اونچائی پر ہوں گے۔ چھوٹا = تیز + چھوٹی فائلیں؛ بڑا = اصل معیار کے قریب۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "নতুন তৈরি প্রক্সিগুলি এই উচ্চতায় ডিফল্ট হয়। ছোট = দ্রুততর + ছোট ফাইল; বড় = মূল মানের কাছাকাছি।"
           }
         }
       }
@@ -11605,6 +12535,18 @@
             "state": "translated",
             "value": "暂无合集。请使用左侧面板中的 + 号。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ابھی تک کوئی مجموعہ نہیں۔ بائیں پینل میں + استعمال کریں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এখনও কোনো সংকলন নেই। বাম প্যানেলে + ব্যবহার করুন।"
+          }
         }
       }
     },
@@ -11722,6 +12664,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "没有带地理标记的视频符合当前筛选条件。"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "موجودہ فلٹر سے کوئی جیو ٹیگڈ ویڈیو مطابقت نہیں رکھتی۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বর্তমান ফিল্টারের সাথে কোনো জিওট্যাগযুক্ত ভিডিও মেলে না।"
           }
         }
       }
@@ -11841,6 +12795,18 @@
             "state": "translated",
             "value": "暂无关键词。请在上方输入并按回车键。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ابھی تک کوئی کلیدی لفظ نہیں۔ اوپر ٹائپ کریں اور Return دبائیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এখনও কোনো কীওয়ার্ড নেই। উপরে একটি টাইপ করুন এবং Return চাপুন।"
+          }
         }
       }
     },
@@ -11958,6 +12924,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "暂无映射。"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ابھی تک کوئی میپنگ نہیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এখনও কোনো ম্যাপিং নেই।"
           }
         }
       }
@@ -12077,6 +13055,18 @@
             "state": "translated",
             "value": "无可用元数据"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کوئی میٹا ڈیٹا دستیاب نہیں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোনো মেটাডেটা পাওয়া যাচ্ছে না"
+          }
         }
       }
     },
@@ -12194,6 +13184,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "无最近目录"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کوئی حالیہ کیٹالاگ نہیں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোনো সাম্প্রতিক ক্যাটালগ নেই"
           }
         }
       }
@@ -12313,6 +13315,18 @@
             "state": "translated",
             "value": "暂无最近目录。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ابھی تک کوئی حالیہ کیٹالاگ نہیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এখনও কোনো সাম্প্রতিক ক্যাটালগ নেই।"
+          }
         }
       }
     },
@@ -12430,6 +13444,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "在您的 iPhone 或 iPad 上，打开 ReelVault，选择此电脑的服务器，然后输入："
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اپنے iPhone یا iPad پر، ReelVault کھولیں، اس کمپیوٹر کا سرور منتخب کریں، پھر درج کریں:"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "আপনার iPhone বা iPad-এ, ReelVault খুলুন, এই কম্পিউটারের সার্ভার বেছে নিন, তারপর প্রবেশ করান:"
           }
         }
       }
@@ -12549,6 +13575,18 @@
             "state": "translated",
             "value": "仅在文件元数据中没有拍摄日期时应用。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صرف اس وقت لاگو ہوتا ہے جب فائل کے میٹا ڈیٹا میں کوئی کیپچر تاریخ نہ ہو۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "শুধুমাত্র তখন প্রযোজ্য যখন ফাইলের মেটাডেটায় কোনো ক্যাপচার তারিখ নেই।"
+          }
         }
       }
     },
@@ -12666,6 +13704,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "配对新设备"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نئی ڈیوائس جوڑیں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "নতুন ডিভাইস পেয়ার করুন"
           }
         }
       }
@@ -12785,6 +13835,18 @@
             "state": "translated",
             "value": "平移和缩放地图（触控板捏合手势同样有效），然后点击视频拍摄位置 — 或点击现有图钉以复用该位置。坐标将保存至 ReelVault 目录，并可选择性地嵌入视频文件。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نقشے کو ادھر ادھر کریں اور زوم کریں (ٹریک پیڈ پنچ بھی کام کرتا ہے)، پھر وہاں کلک کریں جہاں ویڈیو ریکارڈ کی گئی تھی — یا کوئی موجودہ پن دوبارہ استعمال کرنے کے لیے اس پر کلک کریں۔ یہ نقاط ReelVault کے کیٹالاگ میں محفوظ ہوتا ہے اور (اختیاری طور پر) ویڈیو فائل میں شامل کیا جاتا ہے۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ম্যাপটি প্যান ও জুম করুন (ট্র্যাকপ্যাড পিঞ্চও কাজ করে), তারপর ভিডিওটি যেখানে ধারণ করা হয়েছিল সেখানে ক্লিক করুন — অথবা বিদ্যমান পিনে ক্লিক করে সেই স্থানটি পুনরায় ব্যবহার করুন। স্থানাঙ্কটি ReelVault-এর ক্যাটালগে সংরক্ষিত হবে এবং (ঐচ্ছিকভাবে) ভিডিও ফাইলে এম্বেড করা হবে।"
+          }
         }
       }
     },
@@ -12902,6 +13964,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "选择元数据字段"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "میٹا ڈیٹا فیلڈ منتخب کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "একটি মেটাডেটা ফিল্ড বেছে নিন"
           }
         }
       }
@@ -13021,6 +14095,18 @@
             "state": "translated",
             "value": "选择视频录制的日期。仅在确知具体时间时才填写 — 否则默认为当地时间正午，以确保时区计算正确。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وہ دن منتخب کریں جس دن ویڈیو ریکارڈ ہوئی۔ مخصوص وقت صرف تب شامل کریں جب آپ کو معلوم ہو — ورنہ دن بطور ڈیفالٹ مقامی وقت کے مطابق دوپہر پر سیٹ ہو جاتا ہے تاکہ ٹائم زون حساب درست رہے۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ভিডিওটি যে দিন রেকর্ড করা হয়েছিল সেটি বেছে নিন। নির্দিষ্ট সময় জানলেই শুধু যোগ করুন — অন্যথায় দিনটি স্থানীয় সময় দুপুরে ডিফল্ট হবে যাতে টাইমজোন গণনা সঠিকভাবে কাজ করে।"
+          }
         }
       }
     },
@@ -13139,6 +14225,18 @@
             "state": "translated",
             "value": "正在播放代理"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پراکسی چل رہی ہے"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রক্সি চালানো হচ্ছে"
+          }
         }
       }
     },
@@ -13244,6 +14342,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "位置"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پوزیشن"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অবস্থান"
           }
         }
       }
@@ -13363,6 +14473,18 @@
             "state": "translated",
             "value": "按 G 键返回网格视图。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "گرڈ پر واپس جانے کے لیے G دبائیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "গ্রিডে ফিরে যেতে G চাপুন।"
+          }
         }
       }
     },
@@ -13481,6 +14603,18 @@
             "state": "translated",
             "value": "防止在相机或上传工具仍在写入时索引录像文件。值越大 = 越安全；值越小 = 文件出现越快。5 秒适合大多数工作流程。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ریکارڈنگ کو انڈیکس ہونے سے روکتا ہے جب تک کیمرہ یا اپلوڈ ٹول اسے لکھ رہا ہو۔ زیادہ = زیادہ محفوظ؛ کم = فائلیں جلد ظاہر ہوتی ہیں۔ اکثر ورک فلو کے لیے 5 سیکنڈ کافی ہے۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ক্যামেরা বা আপলোড টুল এখনও লেখার সময় রেকর্ডিং ইন্ডেক্স হওয়া প্রতিরোধ করে। বেশি = নিরাপদ; কম = ফাইল আগে দেখা যায়। বেশিরভাগ কার্যপ্রবাহের জন্য ৫ সেকেন্ড যথেষ্ট।"
+          }
         }
       }
     },
@@ -13574,6 +14708,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "代理 (0)"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پراکسیز (0)"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রক্সি (০)"
           }
         }
       }
@@ -13693,6 +14839,18 @@
             "state": "translated",
             "value": "代理与播放设置"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پراکسی اور پلے بیک کی ترتیبات"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রক্সি ও প্লেব্যাক সেটিংস"
+          }
         }
       }
     },
@@ -13804,6 +14962,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "最近"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حالیہ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সাম্প্রতিক"
           }
         }
       }
@@ -14035,6 +15205,18 @@
             "state": "translated",
             "value": "ReelVault 帮助"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ReelVault مدد"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ReelVault সহায়তা"
+          }
         }
       }
     },
@@ -14152,6 +15334,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在刷新…"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تازہ کاری جاری ہے…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রিফ্রেশ করা হচ্ছে…"
           }
         }
       }
@@ -14271,6 +15465,18 @@
             "state": "translated",
             "value": "移除位置"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مقام ہٹائیں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অবস্থান সরান"
+          }
         }
       }
     },
@@ -14388,6 +15594,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "重命名镜头"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لینس کا نام تبدیل کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "একটি লেন্সের নাম পরিবর্তন করুন"
           }
         }
       }
@@ -14507,6 +15725,18 @@
             "state": "translated",
             "value": "重试"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "دوبارہ کوشش کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পুনরায় চেষ্টা করুন"
+          }
         }
       }
     },
@@ -14624,6 +15854,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "保存为智能合集"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سمارٹ کلیکشن کے طور پر محفوظ کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্মার্ট কালেকশন হিসেবে সংরক্ষণ করুন"
           }
         }
       }
@@ -14743,6 +15985,18 @@
             "state": "translated",
             "value": "扫描子目录"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ذیلی ڈائریکٹریاں اسکین کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "উপ-ডিরেক্টরি স্ক্যান করুন"
+          }
         }
       }
     },
@@ -14860,6 +16114,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "每个视频的预览帧数"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فی ویڈیو اسکرب فریمز"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ভিডিও প্রতি স্ক্রাব ফ্রেম"
           }
         }
       }
@@ -14979,6 +16245,18 @@
             "state": "translated",
             "value": "在网格中选择视频以在此处查看。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "یہاں دیکھنے کے لیے گرڈ میں ایک ویڈیو منتخب کریں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এখানে দেখতে গ্রিডে একটি ভিডিও নির্বাচন করুন।"
+          }
         }
       }
     },
@@ -15096,6 +16374,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "选择视频以查看详情"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تفصیلات دیکھنے کے لیے ویڈیو منتخب کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বিবরণ দেখতে একটি ভিডিও নির্বাচন করুন"
           }
         }
       }
@@ -15215,6 +16505,18 @@
             "state": "translated",
             "value": "显示所有视频"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تمام ویڈیوز دکھائیں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সব ভিডিও দেখান"
+          }
         }
       }
     },
@@ -15332,6 +16634,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "在地图上显示"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نقشے پر دکھائیں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "মানচিত্রে দেখান"
           }
         }
       }
@@ -15451,6 +16765,18 @@
             "state": "translated",
             "value": "将共享基础名称、时长和帧率的视频堆叠在一起。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ایسی ویڈیوز کو اسٹیک کریں جو بنیادی نام، دورانیہ اور فریم ریٹ مشترک رکھتی ہوں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "একই মূল নাম, দৈর্ঘ্য এবং ফ্রেম রেটযুক্ত ভিডিওগুলি স্ট্যাক করুন।"
+          }
         }
       }
     },
@@ -15568,6 +16894,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "步长："
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مرحلہ:"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ধাপ:"
           }
         }
       }
@@ -15687,6 +17025,18 @@
             "state": "translated",
             "value": "缩略图尺寸"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تھمب نیل کا سائز"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "থাম্বনেইলের আকার"
+          }
         }
       }
     },
@@ -15804,6 +17154,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "文件过大，无法在此播放"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "یہاں چلانے کے لیے بہت بڑا ہے"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এখানে চালানোর জন্য অতিরিক্ত বড়"
           }
         }
       }
@@ -15923,6 +17285,18 @@
             "state": "translated",
             "value": "正在更新地图…"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نقشہ اپ ڈیٹ ہو رہا ہے…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "মানচিত্র আপডেট হচ্ছে…"
+          }
         }
       }
     },
@@ -16040,6 +17414,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "使用底部工具栏中的尺寸滑块调整网格和列表模式下卡片缩略图的大小（范围：120 – 400 pt，默认：220 pt）。上次使用的尺寸将在启动间保留。"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "گرڈ اور فہرست موڈ میں کارڈ تھمب نیل کا سائز ترتیب دینے کے لیے نچلے ٹول بار میں سائز سلائیڈر استعمال کریں (حد: 120 – 400 pt، پیش طے: 220 pt)۔ آپ کا آخری استعمال شدہ سائز ہر بار یاد رکھا جاتا ہے۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "গ্রিড এবং তালিকা মোডে কার্ড থাম্বনেইলগুলির আকার নির্ধারণ করতে নিচের টুলবারের আকার স্লাইডার ব্যবহার করুন (পরিসর: ১২০ – ৪০০ পয়েন্ট, ডিফল্ট: ২২০ পয়েন্ট)। আপনার সর্বশেষ ব্যবহৃত আকার চালু করার পরও মনে রাখা হয়।"
           }
         }
       }
@@ -16159,6 +17545,18 @@
             "state": "translated",
             "value": "用于 macOS 文件系统事件不触发的路径 — 通常为网络挂载（SMB、NFS、SAN）。0 表示完全禁用回退轮询。30 秒是合理的默认值；对于非常大的远程目录树，可适当提高。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ان راستوں کے لیے استعمال ہوتا ہے جہاں macOS کے فائل سسٹم ایونٹس نہیں چلتے — عموماً نیٹ ورک ماؤنٹس (SMB, NFS, SAN)۔ 0 سے فال بیک مکمل طور پر بند ہو جاتا ہے۔ 30 s ایک مناسب پیش طے ہے؛ بہت بڑے ریموٹ درختوں کے لیے اسے بڑھائیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS-এর ফাইলসিস্টেম ইভেন্ট যেখানে চালু হয় না সেই পাথের জন্য ব্যবহৃত হয় — সাধারণত নেটওয়ার্ক মাউন্ট (SMB, NFS, SAN)। ০ ফলব্যাক সম্পূর্ণরূপে নিষ্ক্রিয় করে। ৩০ সেকেন্ড একটি যুক্তিসঙ্গত ডিফল্ট; খুব বড় রিমোট ট্রির জন্য এটি বাড়ান।"
+          }
         }
       }
     },
@@ -16277,6 +17675,18 @@
             "state": "translated",
             "value": "使用 ffmpeg 重写位置 atom，无需重新编码。原始文件以原子方式替换。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ffmpeg کا استعمال کرتے ہوئے دوبارہ انکوڈ کیے بغیر لوکیشن ایٹم کو دوبارہ لکھتا ہے۔ اصل فائل کو ایٹمی طور پر تبدیل کیا جاتا ہے۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পুনরায় এনকোড না করে লোকেশন অ্যাটম পুনরায় লিখতে ffmpeg ব্যবহার করে। মূল ফাইলটি পরমাণুভাবে প্রতিস্থাপিত হয়।"
+          }
         }
       }
     },
@@ -16376,6 +17786,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "视觉效果"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بصری عناصر"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ভিজ্যুয়ালস"
           }
         }
       }
@@ -16495,6 +17917,18 @@
             "state": "translated",
             "value": "此位置（在该地点半径范围内）的视频将显示此名称。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اس مقام پر (جگہ کے دائرے کے اندر) ویڈیوز یہ نام ظاہر کریں گی۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই স্থানের ভিডিওগুলি (স্থানের ব্যাসার্ধের মধ্যে) এই নামটি দেখাবে।"
+          }
         }
       }
     },
@@ -16612,6 +18046,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "带有 GPS 元数据的视频将以图钉形式显示在此处。"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPS میٹا ڈیٹا والی ویڈیوز یہاں پِن کے طور پر ظاہر ہوتی ہیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPS মেটাডেটাযুক্ত ভিডিওগুলি এখানে পিন হিসেবে দেখায়।"
           }
         }
       }
@@ -16731,6 +18177,18 @@
             "state": "translated",
             "value": "监控媒体库位置中的新增和变更文件"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لائبریری مقامات میں نئی اور تبدیل شدہ فائلوں کی نگرانی کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "নতুন এবং পরিবর্তিত ফাইলের জন্য আপনার লাইব্রেরি অবস্থানগুলি পর্যবেক্ষণ করুন"
+          }
         }
       }
     },
@@ -16848,6 +18306,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "关闭时，仅索引直接位于此文件夹中的视频文件。"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بند ہونے پر، صرف اس فولڈر میں براہ راست موجود ویڈیو فائلیں انڈیکس کی جاتی ہیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বন্ধ থাকলে, শুধুমাত্র এই ফোল্ডারে সরাসরি থাকা ভিডিও ফাইলগুলি ইন্ডেক্স করা হবে।"
           }
         }
       }
@@ -17085,6 +18555,18 @@
             "state": "translated",
             "value": "您的视频目录说明"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "آپ کا ویڈیو کیٹلاگ، وضاحت کے ساتھ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "আপনার ভিডিও ক্যাটালগ, ব্যাখ্যাসহ"
+          }
         }
       }
     },
@@ -17309,6 +18791,18 @@
             "state": "translated",
             "value": "右侧面板"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "دائیں پینل"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ডান প্যানেল"
+          }
         }
       }
     },
@@ -17426,6 +18920,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "添加或覆盖映射"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "একটি ম্যাপিং যোগ করুন বা ওভাররাইড করুন"
           }
         }
       }
@@ -17545,6 +19045,12 @@
             "state": "translated",
             "value": "正在分析音频…"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অডিও বিশ্লেষণ করা হচ্ছে…"
+          }
         }
       }
     },
@@ -17662,6 +19168,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "自动标记延时摄影"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "টাইমল্যাপসগুলি স্বয়ংক্রিয়ভাবে ট্যাগ করুন"
           }
         }
       }
@@ -17781,6 +19293,18 @@
             "state": "translated",
             "value": "清除此设备的配对令牌。重新连接需要输入新的配对码。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اس ڈیوائس کا جوڑی بنانے کا ٹوکن صاف ہو جائے گا۔ دوبارہ مربوط ہونے کے لیے آپ کو ایک نیا جوڑی بنانے کا کوڈ درج کرنا ہوگا۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই ডিভাইসের পেয়ারিং টোকেন সরিয়ে দেয়। পুনরায় সংযুক্ত হতে একটি নতুন পেয়ারিং কোড প্রবেশ করাতে হবে।"
+          }
         }
       }
     },
@@ -17892,6 +19416,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "合集"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مجموعے"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সংগ্রহসমূহ"
           }
         }
       }
@@ -18011,6 +19547,18 @@
             "state": "translated",
             "value": "从文件名推断拍摄日期"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فائل نام سے کیپچر کی تاریخ اخذ کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফাইলের নাম থেকে ক্যাপচার তারিখ অনুমান করুন"
+          }
         }
       }
     },
@@ -18128,6 +19676,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "资料库"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لائبریری"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লাইব্রেরি"
           }
         }
       },
@@ -18248,6 +19808,18 @@
             "state": "translated",
             "value": "实时更新"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "براہ راست اپ ڈیٹ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লাইভ আপডেট"
+          }
         }
       }
     },
@@ -18365,6 +19937,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "暂无合集"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ابھی تک کوئی مجموعہ نہیں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এখনও কোনো সংকলন নেই"
           }
         }
       }
@@ -18484,6 +20068,18 @@
             "state": "translated",
             "value": "文件名中没有与此模式匹配的日期。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فائل نام میں اس نمونے سے کوئی تاریخ مطابقت نہیں رکھتی۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফাইলের নামে এই প্যাটার্নের সাথে মিলে এমন কোনো তারিখ নেই।"
+          }
         }
       }
     },
@@ -18601,6 +20197,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "目录中暂无镜头信息。"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کیٹالاگ میں ابھی تک کوئی لینس نہیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ক্যাটালগে এখনও কোনো লেন্স নেই।"
           }
         }
       }
@@ -18720,6 +20328,18 @@
             "state": "translated",
             "value": "未设置规则——此合集匹配所有视频。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کوئی اصول مقرر نہیں — یہ مجموعہ ہر ویڈیو سے مطابقت رکھتا ہے۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোনো নিয়ম নির্ধারিত নেই — এই সংকলনটি প্রতিটি ভিডিওর সাথে মেলে।"
+          }
         }
       }
     },
@@ -18837,6 +20457,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "离线"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "آف لائن"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অফলাইন"
           }
         }
       },
@@ -18957,6 +20589,18 @@
             "state": "translated",
             "value": "播放与代理文件"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پلے بیک اور پراکسیز"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্লেব্যাক ও প্রক্সি"
+          }
         }
       }
     },
@@ -19074,6 +20718,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "智能合集——视频按以下规则自动归集："
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سمارٹ کلیکشن — ویڈیوز ان اصولوں کے مطابق خودکار جمع کی جاتی ہیں:"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্মার্ট সংগ্রহ — এই নিয়মগুলি অনুযায়ী ভিডিওগুলি স্বয়ংক্রিয়ভাবে সংগৃহীত হয়:"
           }
         }
       }
@@ -19193,6 +20849,18 @@
             "state": "translated",
             "value": "目标分辨率"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مطلوبہ ریزولوشن"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লক্ষ্য রেজোলিউশন"
+          }
         }
       }
     },
@@ -19310,6 +20978,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "使用 ffmpeg 在不重新编码的情况下重写文件的 creation_time 元数据。"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ffmpeg کا استعمال کرتے ہوئے دوبارہ انکوڈ کیے بغیر فائل کے creation_time میٹا ڈیٹا کو دوبارہ لکھتا ہے۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পুনরায় এনকোড না করে ফাইলের creation_time মেটাডেটা পুনরায় লিখতে ffmpeg ব্যবহার করে।"
           }
         }
       }
@@ -19548,6 +21228,18 @@
             "state": "translated",
             "value": "启用实时更新"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لائیو اپ ڈیٹس فعال کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লাইভ আপডেট সক্রিয় করুন"
+          }
         }
       }
     },
@@ -19567,6 +21259,12 @@
           "stringUnit": {
             "state": "new",
             "value": "%1$@ video%2$@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ভিডিও%@"
           }
         }
       }
@@ -19698,6 +21396,12 @@
             "state": "translated",
             "value": "%ld 个视频"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%ld টি ভিডিও"
+          }
         }
       }
     },
@@ -19817,6 +21521,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "添加视频"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ভিডিও যোগ করুন"
           }
         }
       }
@@ -19938,6 +21648,12 @@
             "state": "translated",
             "value": "自动"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্বয়ংক্রিয়"
+          }
         }
       }
     },
@@ -20057,6 +21773,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "自动 (%ldp)"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্বয়ংক্রিয় (%ldp)"
           }
         }
       }
@@ -20178,6 +21900,12 @@
             "state": "translated",
             "value": "取消"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বাতিল করুন"
+          }
         }
       }
     },
@@ -20297,6 +22025,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "卡片统计"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কার্ড পরিসংখ্যান"
           }
         }
       }
@@ -20418,6 +22152,18 @@
             "state": "translated",
             "value": "选择服务器"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سرور منتخب کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "একটি সার্ভার বেছে নিন"
+          }
         }
       }
     },
@@ -20537,6 +22283,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "连接"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مربوط ہوں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সংযুক্ত করুন"
           }
         }
       }
@@ -20658,6 +22416,18 @@
             "state": "translated",
             "value": "无法下载选定的视频。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "منتخب ویڈیوز ڈاؤن لوڈ نہیں ہو سکیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "নির্বাচিত ভিডিওগুলি ডাউনলোড করা যায়নি।"
+          }
         }
       }
     },
@@ -20777,6 +22547,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法启动设备上的资料库。"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ڈیوائس پر لائبریری شروع نہیں ہو سکی۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ডিভাইসের লাইব্রেরি শুরু করা যায়নি।"
           }
         }
       }
@@ -20898,6 +22680,18 @@
             "state": "translated",
             "value": "无法在设备上打开此视频。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ڈیوائس پر یہ ویڈیو نہیں کھل سکی۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ডিভাইসে এই ভিডিও খোলা যায়নি।"
+          }
         }
       }
     },
@@ -21017,6 +22811,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法播放此视频。点击播放键重试。"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "یہ ویڈیو نہیں چل سکی۔ دوبارہ کوشش کرنے کے لیے پلے ٹیپ کریں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই ভিডিও চালানো যায়নি। আবার চেষ্টা করতে প্লে ট্যাপ করুন।"
           }
         }
       }
@@ -21138,6 +22944,18 @@
             "state": "translated",
             "value": "详情"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تفصیل"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বিস্তারিত"
+          }
         }
       }
     },
@@ -21257,6 +23075,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "完成"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مکمل"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সম্পন্ন"
           }
         }
       }
@@ -21378,6 +23208,18 @@
             "state": "translated",
             "value": "下载"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ڈاؤن لوڈ کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ডাউনলোড করুন"
+          }
         }
       }
     },
@@ -21497,6 +23339,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "已下载"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ڈاؤن لوڈ ہو گیا"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ডাউনলোড হয়েছে"
           }
         }
       }
@@ -21618,6 +23472,18 @@
             "state": "translated",
             "value": "输入配对码"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جوڑی بنانے کا کوڈ درج کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পেয়ারিং কোড প্রবেশ করান"
+          }
         }
       }
     },
@@ -21737,6 +23603,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "焦距"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فوکل لمبائی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফোকাল দৈর্ঘ্য"
           }
         }
       }
@@ -21858,6 +23736,18 @@
             "state": "translated",
             "value": "忘记此服务器…"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "یہ سرور بھول جائیں…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই সার্ভারটি ভুলে যান…"
+          }
         }
       }
     },
@@ -21977,6 +23867,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "网格"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "گرڈ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "গ্রিড"
           }
         }
       }
@@ -22098,6 +24000,18 @@
             "state": "translated",
             "value": "正在导入照片…"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تصاویر درآمد ہو رہی ہیں…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ছবি আমদানি করা হচ্ছে…"
+          }
         }
       }
     },
@@ -22217,6 +24131,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "保持应用程序打开"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ایپ کھلی رکھیں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অ্যাপ খোলা রাখুন"
           }
         }
       }
@@ -22338,6 +24264,18 @@
             "state": "translated",
             "value": "列表"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فہرست"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "তালিকা"
+          }
         }
       }
     },
@@ -22457,6 +24395,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "本地资料库"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مقامی لائبریری"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্থানীয় লাইব্রেরি"
           }
         }
       }
@@ -22578,6 +24528,18 @@
             "state": "translated",
             "value": "地图"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نقشہ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "মানচিত্র"
+          }
         }
       }
     },
@@ -22697,6 +24659,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "无服务器"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کوئی سرور نہیں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোনো সার্ভার নেই"
           }
         }
       }
@@ -22818,6 +24792,18 @@
             "state": "translated",
             "value": "原始 (%ldp)"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اصل (%ldp)"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "মূল (%ldp)"
+          }
         }
       }
     },
@@ -22937,6 +24923,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "原始（完整）"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اصل (مکمل)"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "মূল (সম্পূর্ণ)"
           }
         }
       }
@@ -23058,6 +25056,18 @@
             "state": "translated",
             "value": "配对"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جوڑیں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পেয়ার করুন"
+          }
         }
       }
     },
@@ -23177,6 +25187,18 @@
             "state": "translated",
             "value": "准备中…"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تیاری جاری ہے…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রস্তুত করা হচ্ছে…"
+          }
         }
       }
     },
@@ -23295,6 +25317,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "质量：%@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "معیار: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "মান: %@"
           }
         }
       }
@@ -23426,6 +25460,18 @@
             "state": "translated",
             "value": "搜索"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تلاش کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অনুসন্ধান"
+          }
         }
       }
     },
@@ -23545,6 +25591,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "选择"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "منتخب کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "নির্বাচন করুন"
           }
         }
       }
@@ -23666,6 +25724,18 @@
             "state": "translated",
             "value": "全选"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سب منتخب کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সব নির্বাচন করুন"
+          }
         }
       }
     },
@@ -23785,6 +25855,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "设置位置"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مقام سیٹ کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অবস্থান সেট করুন"
           }
         }
       }
@@ -23906,6 +25988,18 @@
             "state": "translated",
             "value": "设置"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ترتیبات"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সেটিংস"
+          }
         }
       }
     },
@@ -24025,6 +26119,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "共享"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "شیئر کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "শেয়ার করুন"
           }
         }
       }
@@ -24146,6 +26252,18 @@
             "state": "translated",
             "value": "快门"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "شٹر"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "শাটার"
+          }
         }
       }
     },
@@ -24265,6 +26383,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "上传"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اپ لوڈ کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "আপলোড"
           }
         }
       }
@@ -24386,6 +26516,18 @@
             "state": "translated",
             "value": "上传到服务器"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سرور پر اپ لوڈ کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সার্ভারে আপলোড করুন"
+          }
         }
       }
     },
@@ -24395,6 +26537,18 @@
           "stringUnit": {
             "state": "new",
             "value": "Uploading %1$@ video%2$@ to %3$@."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ویڈیو%@ کو %@ پر اپ لوڈ کیا جا رہا ہے۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ভিডিও%@ %@-এ আপলোড হচ্ছে।"
           }
         }
       }
@@ -24516,6 +26670,18 @@
             "state": "translated",
             "value": "视频"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ویڈیوز"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ভিডিওসমূহ"
+          }
         }
       }
     },
@@ -24633,6 +26799,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "ReelVault 服务器已无法连接。您可以离线浏览已下载的视频。"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ReelVault سرور تک رسائی ممکن نہیں۔ آپ ڈاؤن لوڈ کردہ ویڈیوز آف لائن دیکھ سکتے ہیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ReelVault সার্ভারে আর পৌঁছানো যাচ্ছে না। আপনি আপনার ডাউনলোড করা ভিডিওগুলি অফলাইনে দেখতে পারবেন।"
           }
         }
       }

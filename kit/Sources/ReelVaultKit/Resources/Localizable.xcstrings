@@ -117,6 +117,12 @@
             "state": "translated",
             "value": "%ld星以上"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%ld+ তারা"
+          }
         }
       }
     },
@@ -236,6 +242,12 @@
             "state": "translated",
             "value": "（空）"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(খালি)"
+          }
         }
       }
     },
@@ -354,6 +366,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "一个设备"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "একটি ডিভাইস"
           }
         }
       }
@@ -712,6 +730,12 @@
             "state": "translated",
             "value": "任意"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "যেকোনো"
+          }
         }
       }
     },
@@ -830,6 +854,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "光圈"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অ্যাপার্চার"
           }
         }
       }
@@ -950,6 +980,12 @@
             "state": "translated",
             "value": "应用关键词失败：%@"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কীওয়ার্ড প্রয়োগ ব্যর্থ হয়েছে: %@"
+          }
         }
       }
     },
@@ -1068,6 +1104,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "宽高比"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অ্যাসপেক্ট অনুপাত"
           }
         }
       }
@@ -1188,6 +1230,12 @@
             "state": "translated",
             "value": "附加代理失败：%@"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রক্সি সংযুক্ত করা ব্যর্থ হয়েছে: %@"
+          }
         }
       }
     },
@@ -1306,6 +1354,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "属性"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বৈশিষ্ট্য"
           }
         }
       }
@@ -1426,6 +1480,12 @@
             "state": "translated",
             "value": "音频编解码器"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অডিও কোডেক"
+          }
         }
       }
     },
@@ -1544,6 +1604,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "比特率"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বিটরেট"
           }
         }
       }
@@ -1664,6 +1730,12 @@
             "state": "translated",
             "value": "蓝色"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "নীল"
+          }
         }
       }
     },
@@ -1782,6 +1854,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "相机"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ক্যামেরা"
           }
         }
       }
@@ -1902,6 +1980,12 @@
             "state": "translated",
             "value": "拍摄日期"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ক্যাপচারের তারিখ"
+          }
         }
       }
     },
@@ -2020,6 +2104,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "拍摄年份"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ক্যাপচারের বছর"
           }
         }
       }
@@ -2259,6 +2349,18 @@
             "state": "translated",
             "value": "清除"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صاف کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পরিষ্কার করুন"
+          }
         }
       }
     },
@@ -2377,6 +2479,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "点击资料库面板顶部的 + 按钮以添加文件夹。"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فولڈر شامل کرنے کے لیے لائبریری پینل کے اوپر + بٹن کلک کریں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "একটি ফোল্ডার যোগ করতে Library প্যানেলের শীর্ষে + বোতামে ক্লিক করুন।"
           }
         }
       }
@@ -2497,6 +2611,18 @@
             "state": "translated",
             "value": "编解码器"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کوڈیک"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোডেক"
+          }
         }
       }
     },
@@ -2615,6 +2741,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "颜色"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "رنگ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রঙ"
           }
         }
       }
@@ -2735,6 +2873,18 @@
             "state": "translated",
             "value": "色彩空间"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کلر اسپیس"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রঙের স্থান"
+          }
         }
       }
     },
@@ -2854,6 +3004,18 @@
             "state": "translated",
             "value": "时长"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "دورانیہ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সময়কাল"
+          }
         }
       }
     },
@@ -2972,6 +3134,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "曝光"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نمائش"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এক্সপোজার"
           }
         }
       }
@@ -3211,6 +3385,18 @@
             "state": "translated",
             "value": "添加代理链接失败"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پراکسی لنک شامل کرنے میں ناکامی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রক্সি লিঙ্ক যোগ করতে ব্যর্থ হয়েছে"
+          }
         }
       }
     },
@@ -3329,6 +3515,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "应用“%@”失败"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "'%@' لاگو کرنے میں ناکامی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "'%@' প্রয়োগ করতে ব্যর্থ হয়েছে"
           }
         }
       }
@@ -3449,6 +3647,18 @@
             "state": "translated",
             "value": "创建或查找标签“%@”失败"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ٹیگ '%@' بنانے یا تلاش کرنے میں ناکامی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ট্যাগ '%@' তৈরি বা খুঁজে পেতে ব্যর্থ হয়েছে"
+          }
         }
       }
     },
@@ -3567,6 +3777,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "加载元数据失败：%@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "میٹا ڈیٹا لوڈ کرنے میں ناکامی: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "মেটাডেটা লোড করতে ব্যর্থ হয়েছে: %@"
           }
         }
       }
@@ -3687,6 +3909,18 @@
             "state": "translated",
             "value": "加载视频失败：%@"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ویڈیوز لوڈ کرنے میں ناکامی: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ভিডিও লোড করতে ব্যর্থ হয়েছে: %@"
+          }
         }
       }
     },
@@ -3805,6 +4039,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "从堆叠中移除失败：%@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اسٹیک سے حذف کرنے میں ناکامی: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্ট্যাক থেকে সরাতে ব্যর্থ হয়েছে: %@"
           }
         }
       }
@@ -3925,6 +4171,18 @@
             "state": "translated",
             "value": "移除资料库位置失败"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لائبریری مقام حذف کرنے میں ناکامی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লাইব্রেরি লোকেশন সরাতে ব্যর্থ হয়েছে"
+          }
         }
       }
     },
@@ -4043,6 +4301,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "移除资料库位置失败：%@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لائبریری مقام حذف کرنے میں ناکامی: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লাইব্রেরি লোকেশন সরাতে ব্যর্থ হয়েছে: %@"
           }
         }
       }
@@ -4163,6 +4433,18 @@
             "state": "translated",
             "value": "移除代理链接失败"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پراکسی لنک حذف کرنے میں ناکامی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রক্সি লিঙ্ক সরাতে ব্যর্থ হয়েছে"
+          }
         }
       }
     },
@@ -4281,6 +4563,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "移除标签失败"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ٹیگ حذف کرنے میں ناکامی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ট্যাগ সরাতে ব্যর্থ হয়েছে"
           }
         }
       }
@@ -4401,6 +4695,18 @@
             "state": "translated",
             "value": "从堆叠中移除视频失败"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ویڈیو اسٹیک سے حذف کرنے میں ناکامی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্ট্যাক থেকে ভিডিও সরাতে ব্যর্থ হয়েছে"
+          }
         }
       }
     },
@@ -4519,6 +4825,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "重新排序堆叠失败：%@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اسٹیک ترتیب بدلنے میں ناکامی: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্ট্যাক পুনর্বিন্যাস করতে ব্যর্থ হয়েছে: %@"
           }
         }
       }
@@ -4639,6 +4957,18 @@
             "state": "translated",
             "value": "保存网格设置失败：%@"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "گرڈ ترتیبات محفوظ کرنے میں ناکامی: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "গ্রিড সেটিংস সংরক্ষণ করতে ব্যর্থ হয়েছে: %@"
+          }
         }
       }
     },
@@ -4757,6 +5087,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "设置颜色标签失败：%@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "رنگ لیبل مقرر کرنے میں ناکامی: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রঙের লেবেল সেট করতে ব্যর্থ হয়েছে: %@"
           }
         }
       }
@@ -4877,6 +5219,18 @@
             "state": "translated",
             "value": "设置首选视频失败"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پسندیدہ ویڈیو مقرر کرنے میں ناکامی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পছন্দের ভিডিও সেট করতে ব্যর্থ হয়েছে"
+          }
         }
       }
     },
@@ -4995,6 +5349,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "设置评分失败：%@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "درجہ بندی مقرر کرنے میں ناکامی: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রেটিং সেট করতে ব্যর্থ হয়েছে: %@"
           }
         }
       }
@@ -5115,6 +5481,18 @@
             "state": "translated",
             "value": "设置堆叠主视频失败：%@"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اسٹیک ماسٹر مقرر کرنے میں ناکامی: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্ট্যাক মাস্টার সেট করতে ব্যর্থ হয়েছে: %@"
+          }
         }
       }
     },
@@ -5233,6 +5611,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "解组失败"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "گروپ ختم کرنے میں ناکامی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "গ্রুপ বাতিল করতে ব্যর্থ হয়েছে"
           }
         }
       }
@@ -5353,6 +5743,18 @@
             "state": "translated",
             "value": "取消堆叠失败：%@"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اسٹیک ختم کرنے میں ناکامی: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্ট্যাক বাতিল করতে ব্যর্থ হয়েছে: %@"
+          }
         }
       }
     },
@@ -5471,6 +5873,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "更新备注失败"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نوٹس اپ ڈیٹ کرنے میں ناکامی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "নোট আপডেট করতে ব্যর্থ হয়েছে"
           }
         }
       }
@@ -5591,6 +6005,18 @@
             "state": "translated",
             "value": "文件未找到：%@"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فائل نہیں ملی: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফাইল পাওয়া যায়নি: %@"
+          }
         }
       }
     },
@@ -5709,6 +6135,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "文件大小"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فائل کا حجم"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফাইলের আকার"
           }
         }
       }
@@ -5829,6 +6267,18 @@
             "state": "translated",
             "value": "文件名"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فائل کا نام"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফাইলের নাম"
+          }
         }
       }
     },
@@ -5947,6 +6397,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "焦距"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فوکل لمبائی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফোকাল দৈর্ঘ্য"
           }
         }
       }
@@ -6067,6 +6529,18 @@
             "state": "translated",
             "value": "文件夹"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فولڈر"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফোল্ডার"
+          }
         }
       }
     },
@@ -6185,6 +6659,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "帧数"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فریم تعداد"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফ্রেম সংখ্যা"
           }
         }
       }
@@ -6305,6 +6791,18 @@
             "state": "translated",
             "value": "全分辨率"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مکمل ریزولیوشن"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সম্পূর্ণ রেজোলিউশন"
+          }
         }
       }
     },
@@ -6423,6 +6921,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在生成 %ldp 代理…"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%ldp پراکسی بنائی جا رہی ہے…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%ldp প্রক্সি তৈরি হচ্ছে…"
           }
         }
       }
@@ -6543,6 +7053,18 @@
             "state": "translated",
             "value": "正在生成代理…"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پراکسی بنائی جا رہی ہے…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রক্সি তৈরি হচ্ছে…"
+          }
         }
       }
     },
@@ -6661,6 +7183,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "绿色"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سبز"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সবুজ"
           }
         }
       }
@@ -6781,6 +7315,18 @@
             "state": "translated",
             "value": "分组失败：%@"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "گروپ بنانے میں ناکامی: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "গ্রুপ করতে ব্যর্থ হয়েছে: %@"
+          }
         }
       }
     },
@@ -6899,6 +7445,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "有音频"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "آڈیو موجود ہے"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অডিও আছে"
           }
         }
       }
@@ -7019,6 +7577,18 @@
             "state": "translated",
             "value": "有关键词"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کلیدی الفاظ موجود ہیں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কীওয়ার্ড আছে"
+          }
         }
       }
     },
@@ -7138,6 +7708,18 @@
             "state": "translated",
             "value": "有位置"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مقام موجود ہے"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লোকেশন আছে"
+          }
         }
       }
     },
@@ -7256,6 +7838,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "有代理"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پراکسیز موجود ہیں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রক্সি আছে"
           }
         }
       }
@@ -7495,6 +8089,18 @@
             "state": "translated",
             "value": "选择规则列在详情面板中。编辑合集以更改其收集内容。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اس کے انتخاب کے اصول تفصیلات پینل میں درج ہیں۔ مجموعہ میں ترمیم کریں تاکہ اس کے انتخاب کو تبدیل کیا جا سکے۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এর নির্বাচন নিয়মগুলি বিস্তারিত প্যানেলে তালিকাভুক্ত। এটি কী সংগ্রহ করে তা পরিবর্তন করতে সংকলনটি সম্পাদনা করুন।"
+          }
         }
       }
     },
@@ -7613,6 +8219,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "关键词"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کلیدی الفاظ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কীওয়ার্ডসমূহ"
           }
         }
       }
@@ -7733,6 +8351,18 @@
             "state": "translated",
             "value": "横向"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "افقی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ল্যান্ডস্কেপ"
+          }
         }
       }
     },
@@ -7851,6 +8481,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "镜头"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لینس"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লেন্স"
           }
         }
       }
@@ -7971,6 +8613,18 @@
             "state": "translated",
             "value": "位置"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مقام"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অবস্থান"
+          }
         }
       }
     },
@@ -8089,6 +8743,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "元数据"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "میٹا ڈیٹا"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "মেটাডেটা"
           }
         }
       }
@@ -8209,6 +8875,18 @@
             "state": "translated",
             "value": "否"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نہیں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "না"
+          }
         }
       }
     },
@@ -8327,6 +9005,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "未找到视频"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کوئی ویڈیو نہیں ملی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোনো ভিডিও পাওয়া যায়নি"
           }
         }
       }
@@ -8447,6 +9137,18 @@
             "state": "translated",
             "value": "没有视频匹配当前筛选条件"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "موجودہ فلٹر سے کوئی ویڈیو مطابقت نہیں رکھتی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বর্তমান ফিল্টারের সাথে কোনো ভিডিও মেলে না"
+          }
         }
       }
     },
@@ -8565,6 +9267,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "没有视频匹配此智能合集"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اس سمارٹ مجموعے سے کوئی ویڈیو مطابقت نہیں رکھتی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই স্মার্ট সংকলনের সাথে কোনো ভিডিও মেলে না"
           }
         }
       }
@@ -8685,6 +9399,18 @@
             "state": "translated",
             "value": "无"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کوئی نہیں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কিছু নেই"
+          }
         }
       }
     },
@@ -8803,6 +9529,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "方向"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سمت"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অভিমুখ"
           }
         }
       }
@@ -8923,6 +9661,18 @@
             "state": "translated",
             "value": "像素尺寸"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پکسل کے ابعاد"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পিক্সেল মাত্রা"
+          }
         }
       }
     },
@@ -9041,6 +9791,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "竖向"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عمودی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পোর্ট্রেট"
           }
         }
       }
@@ -9161,6 +9923,18 @@
             "state": "translated",
             "value": "代理视频无法添加到堆叠。请取消选择 %@ 后重试。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پراکسی ویڈیوز کو اسٹیک میں شامل نہیں کیا جا سکتا۔ %@ کا انتخاب ہٹائیں اور دوبارہ کوشش کریں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রক্সি ভিডিও স্ট্যাকে যোগ করা যাবে না। %@ নির্বাচন বাতিল করে আবার চেষ্টা করুন।"
+          }
         }
       }
     },
@@ -9279,6 +10053,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "紫色"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جامنی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বেগুনি"
           }
         }
       }
@@ -9399,6 +10185,18 @@
             "state": "translated",
             "value": "评分"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ریٹنگ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রেটিং"
+          }
         }
       }
     },
@@ -9517,6 +10315,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "红色"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سرخ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লাল"
           }
         }
       }
@@ -9637,6 +10447,18 @@
             "state": "translated",
             "value": "移除关键词失败：%@"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کلیدی لفظ ہٹانا ناکام ہوا: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কীওয়ার্ড সরানো ব্যর্থ হয়েছে: %@"
+          }
         }
       }
     },
@@ -9755,6 +10577,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "重新扫描失败：%@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "دوبارہ اسکین ناکام ہوا: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পুনরায় স্ক্যান ব্যর্থ হয়েছে: %@"
           }
         }
       }
@@ -9875,6 +10709,18 @@
             "state": "translated",
             "value": "分辨率"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ریزولیوشن"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রেজোলিউশন"
+          }
         }
       }
     },
@@ -9993,6 +10839,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "扫描失败：%@"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اسکین ناکام ہوا: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্ক্যান ব্যর্থ হয়েছে: %@"
           }
         }
       }
@@ -10113,6 +10971,18 @@
             "state": "translated",
             "value": "正在扫描 %@…"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ اسکین ہو رہا ہے…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ স্ক্যান করা হচ্ছে…"
+          }
         }
       }
     },
@@ -10231,6 +11101,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "选择至少 2 个视频（Shift+点击或 Cmd+点击）以附加代理"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پراکسیز منسلک کرنے کے لیے کم از کم 2 ویڈیوز منتخب کریں (Shift+کلک یا Cmd+کلک)"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রক্সি সংযুক্ত করতে কমপক্ষে ২টি ভিডিও নির্বাচন করুন (Shift+ক্লিক বা Cmd+ক্লিক)"
           }
         }
       }
@@ -10351,6 +11233,18 @@
             "state": "translated",
             "value": "选择至少 2 个视频（Shift+点击或 Cmd+点击）以创建组"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "گروپ بنانے کے لیے کم از کم 2 ویڈیوز منتخب کریں (Shift+کلک یا Cmd+کلک)"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "গ্রুপ তৈরি করতে কমপক্ষে ২টি ভিডিও নির্বাচন করুন (Shift+ক্লিক বা Cmd+ক্লিক)"
+          }
         }
       }
     },
@@ -10469,6 +11363,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "文本"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "متن"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "টেক্সট"
           }
         }
       }
@@ -10589,6 +11495,18 @@
             "state": "translated",
             "value": "此合集为空"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "یہ کلیکشن خالی ہے"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই সংগ্রহটি খালি"
+          }
         }
       }
     },
@@ -10707,6 +11625,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "未知"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نامعلوم"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অজানা"
           }
         }
       }
@@ -10827,6 +11757,18 @@
             "state": "translated",
             "value": "视频编解码器"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ویڈیو کوڈیک"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ভিডিও কোডেক"
+          }
         }
       }
     },
@@ -10945,6 +11887,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "年份"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سال"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বছর"
           }
         }
       }
@@ -11065,6 +12019,18 @@
             "state": "translated",
             "value": "黄色"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "زرد"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "হলুদ"
+          }
         }
       }
     },
@@ -11183,6 +12149,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "是"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ہاں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "হ্যাঁ"
           }
         }
       }
@@ -11303,6 +12281,18 @@
             "state": "translated",
             "value": "您的资料库为空"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "آپ کی لائبریری خالی ہے"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "আপনার লাইব্রেরি খালি"
+          }
         }
       }
     },
@@ -11421,6 +12411,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "非"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نہیں "
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "নয় "
           }
         }
       }
@@ -11541,6 +12543,18 @@
             "state": "translated",
             "value": "Chyba databáze."
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ڈیٹا بیس میں خرابی۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ডেটাবেস ত্রুটি।"
+          }
         }
       }
     },
@@ -11659,6 +12673,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Video nenalezeno."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ویڈیو نہیں ملی۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ভিডিও পাওয়া যায়নি।"
           }
         }
       }
@@ -11779,6 +12805,18 @@
             "state": "translated",
             "value": "Štítek nenalezen."
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ٹیگ نہیں ملا۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ট্যাগ পাওয়া যায়নি।"
+          }
         }
       }
     },
@@ -11897,6 +12935,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kolekce nenalezena."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مجموعہ نہیں ملا۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সংগ্রহ পাওয়া যায়নি।"
           }
         }
       }
@@ -12017,6 +13067,18 @@
             "state": "translated",
             "value": "Extrakce metadat selhala."
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "میٹا ڈیٹا نکالنا ناکام ہو گیا۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "মেটাডেটা নিষ্কাশন ব্যর্থ হয়েছে।"
+          }
         }
       }
     },
@@ -12135,6 +13197,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Generování náhledu selhalo."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تھمب نیل بنانے میں ناکامی ہوئی۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "থাম্বনেইল তৈরি ব্যর্থ হয়েছে।"
           }
         }
       }
@@ -12255,6 +13329,18 @@
             "state": "translated",
             "value": "Soubor nenalezen."
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فائل نہیں ملی۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফাইল পাওয়া যায়নি।"
+          }
         }
       }
     },
@@ -12373,6 +13459,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Neplatná cesta."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "غلط راستہ۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অবৈধ পথ।"
           }
         }
       }
@@ -12493,6 +13591,18 @@
             "state": "translated",
             "value": "Duplicitní záznam."
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ڈپلیکیٹ اندراج۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "নকল এন্ট্রি।"
+          }
         }
       }
     },
@@ -12611,6 +13721,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Chyba vstup/výstup."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I/O خرابی۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ইনপুট/আউটপুট ত্রুটি।"
           }
         }
       }
@@ -12731,6 +13853,18 @@
             "state": "translated",
             "value": "Chyba konfigurace."
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ترتیب میں خرابی۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কনফিগারেশন ত্রুটি।"
+          }
         }
       }
     },
@@ -12849,6 +13983,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Chyba FFmpeg."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FFmpeg خرابی۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FFmpeg ত্রুটি।"
           }
         }
       }
@@ -12969,6 +14115,18 @@
             "state": "translated",
             "value": "Neplatný požadavek."
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "غلط درخواست۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অবৈধ অনুরোধ।"
+          }
         }
       }
     },
@@ -13087,6 +14245,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Interní chyba."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اندرونی خرابی۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অভ্যন্তরীণ ত্রুটি।"
           }
         }
       }

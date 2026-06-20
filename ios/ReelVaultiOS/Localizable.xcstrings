@@ -1,11 +1,21 @@
 {
   "sourceLanguage": "en",
   "strings": {
-    "\"%@\" will be permanently deleted. The videos in it will not be affected.": {},
-    "\"%@\" will fall back to its raw model name after removal.": {},
-    "\"%@\" will fall back to the built-in mapping after removal.": {},
-    "\"%@\" will go back to showing its recorded name after removal.": {},
-    "%@": {},
+    "\"%@\" will be permanently deleted. The videos in it will not be affected.": {
+      "localizations": {}
+    },
+    "\"%@\" will fall back to its raw model name after removal.": {
+      "localizations": {}
+    },
+    "\"%@\" will fall back to the built-in mapping after removal.": {
+      "localizations": {}
+    },
+    "\"%@\" will go back to showing its recorded name after removal.": {
+      "localizations": {}
+    },
+    "%@": {
+      "localizations": {}
+    },
     "%@ %@": {
       "localizations": {
         "en": {
@@ -16,14 +26,38 @@
         }
       }
     },
-    "%@ found": {},
-    "%@ skipped — only Photos-library videos can be uploaded right now.": {},
+    "%@ found": {
+      "localizations": {
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ পাওয়া গেছে"
+          }
+        }
+      }
+    },
+    "%@ skipped — only Photos-library videos can be uploaded right now.": {
+      "localizations": {
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ এড়িয়ে যাওয়া হয়েছে — এখন শুধুমাত্র Photos লাইব্রেরির ভিডিওগুলি আপলোড করা যাবে।"
+          }
+        }
+      }
+    },
     "%@ video%@": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "new",
             "value": "%1$@ video%2$@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ভিডিও%@"
           }
         }
       }
@@ -38,8 +72,12 @@
         }
       }
     },
-    "%@%%": {},
-    "%@f": {},
+    "%@%%": {
+      "localizations": {}
+    },
+    "%@f": {
+      "localizations": {}
+    },
     "%ld Videos": {
       "comment": "Video count label. %ld = integer count.",
       "extractionState": "stale",
@@ -157,13 +195,41 @@
             "state": "translated",
             "value": "%ld 个视频"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%ld টি ভিডিও"
+          }
         }
       }
     },
-    "≥ %@": {},
-    "≥ source (%@p)": {},
-    "Accent Color": {},
-    "Add or override a mapping": {},
+    "≥ %@": {
+      "localizations": {}
+    },
+    "≥ source (%@p)": {
+      "localizations": {}
+    },
+    "Accent Color": {
+      "localizations": {
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অ্যাকসেন্ট রঙ"
+          }
+        }
+      }
+    },
+    "Add or override a mapping": {
+      "localizations": {
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "একটি ম্যাপিং যোগ করুন বা ওভাররাইড করুন"
+          }
+        }
+      }
+    },
     "Add Videos": {
       "comment": "Navigation title / button for adding videos",
       "extractionState": "stale",
@@ -281,11 +347,35 @@
             "state": "translated",
             "value": "添加视频"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ভিডিও যোগ করুন"
+          }
         }
       }
     },
-    "Also embeds the GPS tag in the video file, not just the catalog.": {},
-    "Analyzing audio…": {},
+    "Also embeds the GPS tag in the video file, not just the catalog.": {
+      "localizations": {
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "শুধু ক্যাটালগে নয়, ভিডিও ফাইলেও GPS ট্যাগ এম্বেড করে।"
+          }
+        }
+      }
+    },
+    "Analyzing audio…": {
+      "localizations": {
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অডিও বিশ্লেষণ করা হচ্ছে…"
+          }
+        }
+      }
+    },
     "Aperture": {
       "comment": "Sort option / EXIF label for lens aperture",
       "extractionState": "stale",
@@ -402,6 +492,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "光圈"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অ্যাপার্চার"
           }
         }
       }
@@ -523,6 +619,12 @@
             "state": "translated",
             "value": "自动"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্বয়ংক্রিয়"
+          }
         }
       }
     },
@@ -643,11 +745,35 @@
             "state": "translated",
             "value": "自动 (%ldp)"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্বয়ংক্রিয় (%ldp)"
+          }
         }
       }
     },
-    "Auto-tag timelapses": {},
-    "Auto-tagging and detection settings apply catalog-wide.": {},
+    "Auto-tag timelapses": {
+      "localizations": {
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "টাইমল্যাপসগুলি স্বয়ংক্রিয়ভাবে ট্যাগ করুন"
+          }
+        }
+      }
+    },
+    "Auto-tagging and detection settings apply catalog-wide.": {
+      "localizations": {
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্বয়ংক্রিয় ট্যাগিং এবং শনাক্তকরণ সেটিংস সমগ্র ক্যাটালগে প্রযোজ্য।"
+          }
+        }
+      }
+    },
     "Bitrate": {
       "comment": "Sort option / metadata label for bitrate",
       "extractionState": "stale",
@@ -765,10 +891,25 @@
             "state": "translated",
             "value": "比特率"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বিটরেট"
+          }
         }
       }
     },
-    "Browse": {},
+    "Browse": {
+      "localizations": {
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ব্রাউজ করুন"
+          }
+        }
+      }
+    },
     "Camera": {
       "comment": "Sort option / EXIF label for camera model",
       "localizations": {
@@ -884,6 +1025,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "相机"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ক্যামেরা"
           }
         }
       }
@@ -1005,11 +1152,35 @@
             "state": "translated",
             "value": "取消"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বাতিল করুন"
+          }
         }
       }
     },
-    "Capture Date": {},
-    "Captures the current filter settings as a smart collection that updates automatically.": {},
+    "Capture Date": {
+      "localizations": {
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ক্যাপচারের তারিখ"
+          }
+        }
+      }
+    },
+    "Captures the current filter settings as a smart collection that updates automatically.": {
+      "localizations": {
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বর্তমান ফিল্টার সেটিংসগুলি একটি স্মার্ট সংগ্রহ হিসেবে ক্যাপচার করে যা স্বয়ংক্রিয়ভাবে আপডেট হয়।"
+          }
+        }
+      }
+    },
     "Card Stats": {
       "comment": "Navigation title for card stats settings",
       "extractionState": "stale",
@@ -1127,10 +1298,31 @@
             "state": "translated",
             "value": "卡片统计"
           }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কার্ড পরিসংখ্যান"
+          }
         }
       }
     },
-    "Changes apply immediately across the whole app.": {},
+    "Changes apply immediately across the whole app.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تبدیلیاں پوری ایپ میں فوری طور پر لاگو ہو جاتی ہیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পরিবর্তনগুলি সঙ্গে সঙ্গে পুরো অ্যাপে প্রযোজ্য হবে।"
+          }
+        }
+      }
+    },
     "Choose a Server": {
       "comment": "Navigation title for server selection",
       "extractionState": "stale",
@@ -1248,12 +1440,69 @@
             "state": "translated",
             "value": "选择服务器"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سرور منتخب کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "একটি সার্ভার বেছে নিন"
+          }
         }
       }
     },
-    "Choose the four stats shown at the top of each card.": {},
-    "Choose…": {},
-    "Clears this device's pairing token. You'll need to enter a new pairing code to reconnect.": {},
+    "Choose the four stats shown at the top of each card.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ہر کارڈ کے اوپر دکھائے جانے والے چار اعداد و شمار منتخب کریں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রতিটি কার্ডের শীর্ষে প্রদর্শিত চারটি পরিসংখ্যান বেছে নিন।"
+          }
+        }
+      }
+    },
+    "Choose…": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "منتخب کریں…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বেছে নিন…"
+          }
+        }
+      }
+    },
+    "Clears this device's pairing token. You'll need to enter a new pairing code to reconnect.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اس ڈیوائس کا جوڑی بنانے کا ٹوکن صاف ہو جائے گا۔ دوبارہ مربوط ہونے کے لیے آپ کو ایک نیا جوڑی بنانے کا کوڈ درج کرنا ہوگا۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই ডিভাইসের পেয়ারিং টোকেন সরিয়ে দেয়। পুনরায় সংযুক্ত হতে একটি নতুন পেয়ারিং কোড প্রবেশ করাতে হবে।"
+          }
+        }
+      }
+    },
     "Codec": {
       "comment": "Sort option / metadata label for video codec",
       "extractionState": "stale",
@@ -1371,11 +1620,53 @@
             "state": "translated",
             "value": "编解码器"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کوڈیک"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোডেক"
+          }
         }
       }
     },
-    "Collections": {},
-    "Color Label": {},
+    "Collections": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مجموعے"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সংগ্রহসমূহ"
+          }
+        }
+      }
+    },
+    "Color Label": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "رنگ کا لیبل"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রঙের লেবেল"
+          }
+        }
+      }
+    },
     "Connect": {
       "comment": "Button to connect to a server",
       "extractionState": "stale",
@@ -1493,11 +1784,53 @@
             "state": "translated",
             "value": "连接"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مربوط ہوں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সংযুক্ত করুন"
+          }
         }
       }
     },
-    "Connecting to %@…": {},
-    "Copy the internal name from the camera field in the video detail panel. Leave marketing name blank to remove a custom override.": {},
+    "Connecting to %@…": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ سے مربوط ہو رہا ہے…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@-এ সংযুক্ত হচ্ছে…"
+          }
+        }
+      }
+    },
+    "Copy the internal name from the camera field in the video detail panel. Leave marketing name blank to remove a custom override.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ویڈیو تفصیل پینل میں کیمرے کے فیلڈ سے اندرونی نام کاپی کریں۔ حسب ضرورت اوور رائڈ ہٹانے کے لیے مارکیٹنگ کا نام خالی رکھیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ভিডিও বিস্তারিত প্যানেলের ক্যামেরা ক্ষেত্র থেকে অভ্যন্তরীণ নাম কপি করুন। কাস্টম ওভাররাইড সরাতে মার্কেটিং নাম ফাঁকা রাখুন।"
+          }
+        }
+      }
+    },
     "Could not download the selected videos.": {
       "comment": "Error when video download fails",
       "extractionState": "stale",
@@ -1614,6 +1947,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法下载选定的视频。"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "منتخب ویڈیوز ڈاؤن لوڈ نہیں ہو سکیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "নির্বাচিত ভিডিওগুলি ডাউনলোড করা যায়নি।"
           }
         }
       }
@@ -1735,6 +2080,18 @@
             "state": "translated",
             "value": "无法启动设备上的资料库。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ڈیوائس پر لائبریری شروع نہیں ہو سکی۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ডিভাইসের লাইব্রেরি শুরু করা যায়নি।"
+          }
         }
       }
     },
@@ -1854,6 +2211,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法在设备上打开此视频。"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ڈیوائس پر یہ ویڈیو نہیں کھل سکی۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ডিভাইসে এই ভিডিও খোলা যায়নি।"
           }
         }
       }
@@ -1975,6 +2344,18 @@
             "state": "translated",
             "value": "无法播放此视频。点击播放键重试。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "یہ ویڈیو نہیں چل سکی۔ دوبارہ کوشش کرنے کے لیے پلے ٹیپ کریں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই ভিডিও চালানো যায়নি। আবার চেষ্টা করতে প্লে ট্যাপ করুন।"
+          }
         }
       }
     },
@@ -2094,6 +2475,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "添加日期"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اضافے کی تاریخ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "যোগ করার তারিখ"
           }
         }
       }
@@ -2215,6 +2608,18 @@
             "state": "translated",
             "value": "拍摄日期"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ریکارڈنگ کی تاریخ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ধারণের তারিখ"
+          }
         }
       }
     },
@@ -2335,12 +2740,69 @@
             "state": "translated",
             "value": "详情"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تفصیل"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বিস্তারিত"
+          }
         }
       }
     },
-    "Details": {},
-    "Detected: %@": {},
-    "Display name": {},
+    "Details": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تفصیلات"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বিস্তারিত"
+          }
+        }
+      }
+    },
+    "Detected: %@": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "شناخت ہوا: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "শনাক্ত হয়েছে: %@"
+          }
+        }
+      }
+    },
+    "Display name": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ڈسپلے نام"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রদর্শন নাম"
+          }
+        }
+      }
+    },
     "Done": {
       "comment": "Done button",
       "extractionState": "stale",
@@ -2457,6 +2919,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "完成"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مکمل"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সম্পন্ন"
           }
         }
       }
@@ -2578,6 +3052,18 @@
             "state": "translated",
             "value": "下载"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ڈاؤن لوڈ کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ডাউনলোড করুন"
+          }
         }
       }
     },
@@ -2698,11 +3184,53 @@
             "state": "translated",
             "value": "已下载"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ڈاؤن لوڈ ہو گیا"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ডাউনলোড হয়েছে"
+          }
         }
       }
     },
-    "Downloading…": {},
-    "Drag the map to position the pin.": {},
+    "Downloading…": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ڈاؤن لوڈ ہو رہا ہے…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ডাউনলোড হচ্ছে…"
+          }
+        }
+      }
+    },
+    "Drag the map to position the pin.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پن رکھنے کے لیے نقشہ کھینچیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পিন স্থাপন করতে মানচিত্র টেনে আনুন।"
+          }
+        }
+      }
+    },
     "Duration": {
       "comment": "Sort option / metadata label for video duration",
       "extractionState": "stale",
@@ -2820,10 +3348,37 @@
             "state": "translated",
             "value": "时长"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "دورانیہ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সময়কাল"
+          }
         }
       }
     },
-    "Enable live updates": {},
+    "Enable live updates": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لائیو اپ ڈیٹس فعال کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লাইভ আপডেট সক্রিয় করুন"
+          }
+        }
+      }
+    },
     "Enter Pairing Code": {
       "comment": "Navigation title for pairing screen",
       "extractionState": "stale",
@@ -2940,6 +3495,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "输入配对码"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جوڑی بنانے کا کوڈ درج کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পেয়ারিং কোড প্রবেশ করান"
           }
         }
       }
@@ -3061,6 +3628,18 @@
             "state": "translated",
             "value": "曝光时间"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نمائش وقت"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এক্সপোজার সময়"
+          }
         }
       }
     },
@@ -3181,10 +3760,37 @@
             "state": "translated",
             "value": "文件大小"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فائل کا حجم"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফাইলের আকার"
+          }
         }
       }
     },
-    "Filename: %@": {},
+    "Filename: %@": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فائل کا نام: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফাইলের নাম: %@"
+          }
+        }
+      }
+    },
     "Focal length": {
       "comment": "EXIF display label for focal length (lowercase variant)",
       "extractionState": "stale",
@@ -3301,6 +3907,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "焦距"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فوکل لمبائی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফোকাল দৈর্ঘ্য"
           }
         }
       }
@@ -3422,10 +4040,37 @@
             "state": "translated",
             "value": "焦距"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فوکل لمبائی"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফোকাল দৈর্ঘ্য"
+          }
         }
       }
     },
-    "Folders": {},
+    "Folders": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فولڈرز"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফোল্ডারসমূহ"
+          }
+        }
+      }
+    },
     "Forget This Server…": {
       "comment": "Button to remove a paired server",
       "extractionState": "stale",
@@ -3542,6 +4187,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "忘记此服务器…"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "یہ سرور بھول جائیں…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই সার্ভারটি ভুলে যান…"
           }
         }
       }
@@ -3663,6 +4320,18 @@
             "state": "translated",
             "value": "帧率"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فریم ریٹ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফ্রেম রেট"
+          }
         }
       }
     },
@@ -3783,11 +4452,53 @@
             "state": "translated",
             "value": "网格"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "گرڈ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "গ্রিড"
+          }
         }
       }
     },
-    "How many still frames ReelVault samples per video for the hover scrub preview. Changes take effect the next time an un-sampled card is hovered.": {},
-    "Importing local videos — keep ReelVault open": {},
+    "How many still frames ReelVault samples per video for the hover scrub preview. Changes take effect the next time an un-sampled card is hovered.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ReelVault ہوور اسکرب پیش نظارے کے لیے فی ویڈیو جتنے فریم لیتا ہے۔ تبدیلیاں اگلی بار اثر میں آئیں گی جب کسی غیر نمونہ شدہ کارڈ پر ہوور کیا جائے۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "হোভার স্ক্রাব প্রিভিউর জন্য ReelVault প্রতিটি ভিডিও থেকে কতটি স্থির ফ্রেম নমুনা নেয়। পরবর্তীবার যখন একটি নমুনাবিহীন কার্ডের উপর হোভার করা হবে, তখন পরিবর্তনগুলি কার্যকর হবে।"
+          }
+        }
+      }
+    },
+    "Importing local videos — keep ReelVault open": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مقامی ویڈیوز درآمد ہو رہی ہیں — ReelVault کھلا رکھیں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্থানীয় ভিডিও আমদানি করা হচ্ছে — ReelVault খোলা রাখুন"
+          }
+        }
+      }
+    },
     "Importing photos…": {
       "comment": "Banner message during photo import ingest",
       "extractionState": "stale",
@@ -3905,14 +4616,101 @@
             "state": "translated",
             "value": "正在导入照片…"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تصاویر درآمد ہو رہی ہیں…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ছবি আমদানি করা হচ্ছে…"
+          }
         }
       }
     },
-    "Infer capture date from filename": {},
-    "Infer from Filename": {},
-    "Internal name": {},
-    "is": {},
-    "is not": {},
+    "Infer capture date from filename": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فائل نام سے کیپچر کی تاریخ اخذ کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফাইলের নাম থেকে ক্যাপচার তারিখ অনুমান করুন"
+          }
+        }
+      }
+    },
+    "Infer from Filename": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فائل نام سے اخذ کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফাইলের নাম থেকে অনুমান করুন"
+          }
+        }
+      }
+    },
+    "Internal name": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اندرونی نام"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অভ্যন্তরীণ নাম"
+          }
+        }
+      }
+    },
+    "is": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ہے"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "হলো"
+          }
+        }
+      }
+    },
+    "is not": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نہیں ہے"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "নয়"
+          }
+        }
+      }
+    },
     "ISO": {
       "comment": "Sort option / EXIF label for ISO sensitivity",
       "extractionState": "stale",
@@ -4150,6 +4948,18 @@
             "state": "translated",
             "value": "保持应用程序打开"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ایپ کھلی رکھیں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অ্যাপ খোলা রাখুন"
+          }
         }
       }
     },
@@ -4270,10 +5080,37 @@
             "state": "translated",
             "value": "关键词"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کلیدی لفظ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কীওয়ার্ড"
+          }
         }
       }
     },
-    "Keywords": {},
+    "Keywords": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کلیدی الفاظ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কীওয়ার্ডসমূহ"
+          }
+        }
+      }
+    },
     "Lens": {
       "comment": "Sort option / EXIF label for lens model",
       "extractionState": "stale",
@@ -4390,6 +5227,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "镜头"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لینس"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লেন্স"
           }
         }
       }
@@ -4509,6 +5358,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "资料库"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لائبریری"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লাইব্রেরি"
           }
         }
       }
@@ -4630,11 +5491,53 @@
             "state": "translated",
             "value": "列表"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فہرست"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "তালিকা"
+          }
         }
       }
     },
-    "Live Updates": {},
-    "Loading…": {},
+    "Live Updates": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "براہ راست اپ ڈیٹ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লাইভ আপডেট"
+          }
+        }
+      }
+    },
+    "Loading…": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لوڈ ہو رہا ہے…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লোড হচ্ছে…"
+          }
+        }
+      }
+    },
     "Local Library": {
       "comment": "Label for on-device local library mode",
       "extractionState": "stale",
@@ -4752,11 +5655,53 @@
             "state": "translated",
             "value": "本地资料库"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مقامی لائبریری"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্থানীয় লাইব্রেরি"
+          }
         }
       }
     },
-    "Location": {},
-    "Looking for a ReelVault server…": {},
+    "Location": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مقام"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অবস্থান"
+          }
+        }
+      }
+    },
+    "Looking for a ReelVault server…": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ایک ReelVault سرور تلاش کیا جا رہا ہے…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "একটি ReelVault সার্ভার খোঁজা হচ্ছে…"
+          }
+        }
+      }
+    },
     "Map": {
       "comment": "Navigation title for map view",
       "extractionState": "stale",
@@ -4874,19 +5819,181 @@
             "state": "translated",
             "value": "地图"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نقشہ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "মানচিত্র"
+          }
         }
       }
     },
-    "Marketing name": {},
-    "Metadata": {},
-    "Newly-generated proxies default to the proxy height. Smaller = faster and smaller files.": {},
-    "No camera metadata.": {},
-    "No collections yet": {},
-    "No collections yet.": {},
-    "No date matches this pattern in the filename.": {},
-    "No lenses in the catalog yet.": {},
-    "No mappings yet. Tap + to add one.": {},
-    "No rules set — this collection matches every video.": {},
+    "Marketing name": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مارکیٹنگ نام"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বিপণন নাম"
+          }
+        }
+      }
+    },
+    "Metadata": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "میٹا ڈیٹا"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "মেটাডেটা"
+          }
+        }
+      }
+    },
+    "Newly-generated proxies default to the proxy height. Smaller = faster and smaller files.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نئے بنائے گئے پراکسی بطور ڈیفالٹ پراکسی کی اونچائی پر ہوں گے۔ چھوٹا = تیز اور چھوٹی فائلیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "নতুন তৈরি প্রক্সিগুলি প্রক্সি উচ্চতায় ডিফল্ট হয়। ছোট = দ্রুততর এবং ছোট ফাইল।"
+          }
+        }
+      }
+    },
+    "No camera metadata.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کوئی کیمرہ میٹا ڈیٹا نہیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোনো ক্যামেরা মেটাডেটা নেই।"
+          }
+        }
+      }
+    },
+    "No collections yet": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ابھی تک کوئی مجموعہ نہیں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এখনও কোনো সংকলন নেই"
+          }
+        }
+      }
+    },
+    "No collections yet.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ابھی تک کوئی مجموعہ نہیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এখনও কোনো সংকলন নেই।"
+          }
+        }
+      }
+    },
+    "No date matches this pattern in the filename.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فائل نام میں اس نمونے سے کوئی تاریخ مطابقت نہیں رکھتی۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফাইলের নামে এই প্যাটার্নের সাথে মিলে এমন কোনো তারিখ নেই।"
+          }
+        }
+      }
+    },
+    "No lenses in the catalog yet.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کیٹالاگ میں ابھی تک کوئی لینس نہیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ক্যাটালগে এখনও কোনো লেন্স নেই।"
+          }
+        }
+      }
+    },
+    "No mappings yet. Tap + to add one.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ابھی تک کوئی میپنگ نہیں۔ ایک شامل کرنے کے لیے + دبائیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এখনও কোনো ম্যাপিং নেই। একটি যোগ করতে + চাপুন।"
+          }
+        }
+      }
+    },
+    "No rules set — this collection matches every video.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کوئی اصول مقرر نہیں — یہ مجموعہ ہر ویڈیو سے مطابقت رکھتا ہے۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোনো নিয়ম নির্ধারিত নেই — এই সংকলনটি প্রতিটি ভিডিওর সাথে মেলে।"
+          }
+        }
+      }
+    },
     "No Server": {
       "comment": "Navigation title when no server is connected",
       "extractionState": "stale",
@@ -5004,10 +6111,37 @@
             "state": "translated",
             "value": "无服务器"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کوئی سرور نہیں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোনো সার্ভার নেই"
+          }
         }
       }
     },
-    "No values": {},
+    "No values": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کوئی قدریں نہیں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোনো মান নেই"
+          }
+        }
+      }
+    },
     "Offline": {
       "comment": "Offline mode label",
       "extractionState": "stale",
@@ -5125,11 +6259,53 @@
             "state": "translated",
             "value": "离线"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "آف لائن"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অফলাইন"
+          }
         }
       }
     },
-    "On first launch, choose **Local Library** to browse videos already on your device, or tap **Connect to Server** to pair with a ReelVault daemon running on your Mac or PC over the local network.": {},
-    "On the connected server, add one or more source folders. The grid fills as files are indexed in the background.": {},
+    "On first launch, choose **Local Library** to browse videos already on your device, or tap **Connect to Server** to pair with a ReelVault daemon running on your Mac or PC over the local network.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پہلی بار شروع کرنے پر، اپنی ڈیوائس پر موجود ویڈیوز دیکھنے کے لیے **Local Library** منتخب کریں، یا مقامی نیٹ ورک پر اپنے Mac یا PC پر چلنے والے ReelVault ڈیمن سے جوڑنے کے لیے **Connect to Server** دبائیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রথম চালুর সময়, আপনার ডিভাইসে থাকা ভিডিওগুলি ব্রাউজ করতে **Local Library** বেছে নিন, অথবা স্থানীয় নেটওয়ার্কে আপনার Mac বা PC-তে চলমান একটি ReelVault ডেমনের সাথে পেয়ার করতে **Connect to Server** চাপুন।"
+          }
+        }
+      }
+    },
+    "On the connected server, add one or more source folders. The grid fills as files are indexed in the background.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "منسلک سرور پر، ایک یا زیادہ ماخذ فولڈر شامل کریں۔ گرڈ اس وقت بھرتا ہے جب فائلیں پس منظر میں فہرست بند ہوتی ہیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সংযুক্ত সার্ভারে, এক বা একাধিক উৎস ফোল্ডার যোগ করুন। ব্যাকগ্রাউন্ডে ফাইলগুলি সূচিবদ্ধ হওয়ার সাথে সাথে গ্রিড পূরণ হবে।"
+          }
+        }
+      }
+    },
     "Original (%ldp)": {
       "comment": "Original quality selector label. %ld = pixel height.",
       "extractionState": "stale",
@@ -5246,6 +6422,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "原始 (%ldp)"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اصل (%ldp)"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "মূল (%ldp)"
           }
         }
       }
@@ -5367,6 +6555,18 @@
             "state": "translated",
             "value": "原始（完整）"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اصل (مکمل)"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "মূল (সম্পূর্ণ)"
+          }
         }
       }
     },
@@ -5486,6 +6686,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "配对"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جوڑیں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পেয়ার করুন"
           }
         }
       }
@@ -5607,13 +6819,85 @@
             "state": "translated",
             "value": "配对失败 — 请检查代码并重试。"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جوڑنا ناکام ہوا — کوڈ چیک کریں اور دوبارہ کوشش کریں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পেয়ারিং ব্যর্থ হয়েছে — কোডটি যাচাই করে আবার চেষ্টা করুন।"
+          }
         }
       }
     },
-    "Pick a video in Grid or List mode to view it here.": {},
-    "Playback & Proxies": {},
-    "Poll fallback interval": {},
-    "Poll fallback is used for network mounts (SMB, NFS, SAN) where filesystem events don't fire. 0 disables it.": {},
+    "Pick a video in Grid or List mode to view it here.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "یہاں دیکھنے کے لیے گرڈ یا فہرست موڈ میں ویڈیو منتخب کریں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এখানে দেখতে গ্রিড বা তালিকা মোডে একটি ভিডিও বেছে নিন।"
+          }
+        }
+      }
+    },
+    "Playback & Proxies": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پلے بیک اور پراکسیز"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্লেব্যাক ও প্রক্সি"
+          }
+        }
+      }
+    },
+    "Poll fallback interval": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پول فال بیک وقفہ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পোল ফলব্যাক বিরতি"
+          }
+        }
+      }
+    },
+    "Poll fallback is used for network mounts (SMB, NFS, SAN) where filesystem events don't fire. 0 disables it.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پول فال بیک نیٹ ورک ماؤنٹس (SMB، NFS، SAN) کے لیے استعمال ہوتا ہے جہاں فائل سسٹم ایونٹس فائر نہیں ہوتے۔ 0 اسے غیر فعال کر دیتا ہے۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "নেটওয়ার্ক মাউন্টের (SMB, NFS, SAN) জন্য পোল ফলব্যাক ব্যবহার করা হয় যেখানে ফাইলসিস্টেম ইভেন্ট সক্রিয় হয় না। ০ হলে এটি নিষ্ক্রিয় থাকে।"
+          }
+        }
+      }
+    },
     "Preparing…": {
       "comment": "Status message while video is being prepared for playback",
       "localizations": {
@@ -5730,10 +7014,37 @@
             "state": "translated",
             "value": "准备中…"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تیاری جاری ہے…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রস্তুত করা হচ্ছে…"
+          }
         }
       }
     },
-    "Proxies (%@)": {},
+    "Proxies (%@)": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پراکسیز (%@)"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "প্রক্সি (%@)"
+          }
+        }
+      }
+    },
     "Quality: %@": {
       "comment": "Quality picker button label. %@ = current quality string e.g. Auto (720p)",
       "localizations": {
@@ -5850,11 +7161,53 @@
             "state": "translated",
             "value": "质量：%@"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "معیار: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "মান: %@"
+          }
         }
       }
     },
-    "Rating": {},
-    "Recorded name": {},
+    "Rating": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ریٹنگ"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রেটিং"
+          }
+        }
+      }
+    },
+    "Recorded name": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ریکارڈ شدہ نام"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রেকর্ড করা নাম"
+          }
+        }
+      }
+    },
     "Remove \"%@: %@\" from smart collection \"%@\"? This changes what the collection gathers.": {
       "localizations": {
         "en": {
@@ -5865,8 +7218,38 @@
         }
       }
     },
-    "Rename internal camera codes to marketing-friendly names, and create short aliases for verbose lens strings. Changes apply to every metadata surface in ReelVault.": {},
-    "Requires pairing": {},
+    "Rename internal camera codes to marketing-friendly names, and create short aliases for verbose lens strings. Changes apply to every metadata surface in ReelVault.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اندرونی کیمرہ کوڈز کو مارکیٹنگ کے موافق ناموں میں تبدیل کریں اور طویل لینس سٹرنگز کے مختصر عرفی نام بنائیں۔ تبدیلیاں ReelVault کی تمام میٹا ڈیٹا سطحوں پر لاگو ہوتی ہیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অভ্যন্তরীণ ক্যামেরা কোডগুলিকে বিপণন-বান্ধব নামে পরিবর্তন করুন এবং দীর্ঘ লেন্স স্ট্রিংগুলির জন্য সংক্ষিপ্ত উপনাম তৈরি করুন। পরিবর্তনগুলি ReelVault-এর প্রতিটি মেটাডেটা পৃষ্ঠে প্রযোজ্য হবে।"
+          }
+        }
+      }
+    },
+    "Requires pairing": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جوڑنا ضروری ہے"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পেয়ারিং প্রয়োজন"
+          }
+        }
+      }
+    },
     "Resolution": {
       "comment": "Sort option / metadata label for video resolution",
       "extractionState": "stale",
@@ -5983,6 +7366,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "分辨率"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ریزولیوشن"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রেজোলিউশন"
           }
         }
       }
@@ -6104,6 +7499,18 @@
             "state": "translated",
             "value": "搜索"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تلاش کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অনুসন্ধান"
+          }
         }
       }
     },
@@ -6224,10 +7631,37 @@
             "state": "translated",
             "value": "选择"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "منتخب کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "নির্বাচন করুন"
+          }
         }
       }
     },
-    "Select a video to see its details.": {},
+    "Select a video to see its details.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تفصیلات دیکھنے کے لیے ایک ویڈیو منتخب کریں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "বিবরণ দেখতে একটি ভিডিও নির্বাচন করুন।"
+          }
+        }
+      }
+    },
     "Select All": {
       "comment": "Button to select all items",
       "extractionState": "stale",
@@ -6344,6 +7778,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "全选"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سب منتخب کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সব নির্বাচন করুন"
           }
         }
       }
@@ -6465,6 +7911,18 @@
             "state": "translated",
             "value": "设置位置"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مقام سیٹ کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অবস্থান সেট করুন"
+          }
         }
       }
     },
@@ -6584,6 +8042,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "设置"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ترتیبات"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সেটিংস"
           }
         }
       }
@@ -6705,6 +8175,18 @@
             "state": "translated",
             "value": "共享"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "شیئر کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "শেয়ার করুন"
+          }
         }
       }
     },
@@ -6825,20 +8307,197 @@
             "state": "translated",
             "value": "快门"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "شٹر"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "শাটার"
+          }
         }
       }
     },
-    "Smart collection — videos are gathered automatically by these rules:": {},
-    "Starting on-device library…": {},
-    "Status": {},
-    "Tap a keyword to add it to all %@. Keywords that already exist on a video are skipped.": {},
-    "Tap any thumbnail to select it. The **inspector** slides in from the trailing edge on iPad (or push to Detail on iPhone) showing codec, resolution, FPS, bitrate, GPS, camera model, notes, tags, and more.": {},
-    "Target resolution": {},
-    "The connected catalog is empty, or no videos match the current filter.": {},
-    "The filename inference default is shared with the Set Capture Date sheet and the Add Library dialog.": {},
-    "The recorded name is the string ReelVault extracts from the file's metadata. Tap swipe-left → trash to remove the alias.": {},
-    "The recorded name must match the string ReelVault stores in the catalog exactly. Tap a row in the list to edit it.": {},
-    "This download is missing.": {},
+    "Smart collection — videos are gathered automatically by these rules:": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سمارٹ کلیکشن — ویڈیوز ان اصولوں کے مطابق خودکار جمع کی جاتی ہیں:"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "স্মার্ট সংগ্রহ — এই নিয়মগুলি অনুযায়ী ভিডিওগুলি স্বয়ংক্রিয়ভাবে সংগৃহীত হয়:"
+          }
+        }
+      }
+    },
+    "Starting on-device library…": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "آلے پر لائبریری شروع ہو رہی ہے…"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ডিভাইসে লাইব্রেরি শুরু হচ্ছে…"
+          }
+        }
+      }
+    },
+    "Status": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حالت"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অবস্থা"
+          }
+        }
+      }
+    },
+    "Tap a keyword to add it to all %@. Keywords that already exist on a video are skipped.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تمام %@ میں شامل کرنے کے لیے کوئی کلیدی لفظ تھپتھپائیں۔ جو کلیدی الفاظ پہلے سے ویڈیو پر موجود ہیں انہیں چھوڑ دیا جائے گا۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সব %@-এ যোগ করতে একটি কীওয়ার্ডে ট্যাপ করুন। যে কীওয়ার্ডগুলি ইতিমধ্যে ভিডিওতে রয়েছে সেগুলি এড়িয়ে যাওয়া হবে।"
+          }
+        }
+      }
+    },
+    "Tap any thumbnail to select it. The **inspector** slides in from the trailing edge on iPad (or push to Detail on iPhone) showing codec, resolution, FPS, bitrate, GPS, camera model, notes, tags, and more.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کوئی بھی تھمب نیل منتخب کرنے کے لیے تھپتھپائیں۔ **انسپکٹر** iPad پر پچھلے کنارے سے کھلتا ہے (یا iPhone پر تفصیل میں جائیں) جس میں کوڈیک، ریزولوشن، FPS، بٹ ریٹ، GPS، کیمرہ ماڈل، نوٹس، ٹیگز اور مزید معلومات ہوتی ہیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "যেকোনো থাম্বনেইলে ট্যাপ করে সেটি নির্বাচন করুন। iPad-এ **ইন্সপেক্টর** ডানদিক থেকে স্লাইড করে আসে (অথবা iPhone-এ বিস্তারিত পৃষ্ঠায় যান) যেখানে কোডেক, রেজোলিউশন, FPS, বিটরেট, GPS, ক্যামেরা মডেল, নোট, ট্যাগ ইত্যাদি দেখানো হয়।"
+          }
+        }
+      }
+    },
+    "Target resolution": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مطلوبہ ریزولوشن"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "লক্ষ্য রেজোলিউশন"
+          }
+        }
+      }
+    },
+    "The connected catalog is empty, or no videos match the current filter.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "منسلک کیٹلاگ خالی ہے، یا موجودہ فلٹر سے کوئی ویڈیو مطابقت نہیں رکھتی۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সংযুক্ত ক্যাটালগটি খালি, অথবা বর্তমান ফিল্টারের সাথে কোনো ভিডিও মেলে না।"
+          }
+        }
+      }
+    },
+    "The filename inference default is shared with the Set Capture Date sheet and the Add Library dialog.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فائل نام کا اندازہ لگانے کی پیش طے شدہ ترتیب سیٹ کیپچر ڈیٹ شیٹ اور ایڈ لائبریری ڈائیلاگ کے ساتھ مشترک ہے۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ফাইলনেম অনুমান ডিফল্টটি ক্যাপচার তারিখ নির্ধারণ শিট এবং লাইব্রেরি যোগ করার ডায়ালগের সাথে ভাগ করা হয়।"
+          }
+        }
+      }
+    },
+    "The recorded name is the string ReelVault extracts from the file's metadata. Tap swipe-left → trash to remove the alias.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ریکارڈ شدہ نام وہ سٹرنگ ہے جو ReelVault فائل کے میٹا ڈیٹا سے نکالتا ہے۔ عرف نام حذف کرنے کے لیے بائیں سوائپ کریں ← ٹریش۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রেকর্ড করা নামটি হলো সেই স্ট্রিং যা ReelVault ফাইলের মেটাডেটা থেকে বের করে। উপনাম সরাতে বাম দিকে সোয়াইপ → ট্র্যাশে ট্যাপ করুন।"
+          }
+        }
+      }
+    },
+    "The recorded name must match the string ReelVault stores in the catalog exactly. Tap a row in the list to edit it.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ریکارڈ شدہ نام بالکل وہی ہونا چاہیے جو ReelVault کیٹلاگ میں محفوظ کرتا ہے۔ ترمیم کے لیے فہرست میں کوئی قطار تھپتھپائیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রেকর্ড করা নামটি অবশ্যই ReelVault ক্যাটালগে সংরক্ষিত স্ট্রিংটির সাথে হুবহু মিলতে হবে। সম্পাদনা করতে তালিকার কোনো সারিতে ট্যাপ করুন।"
+          }
+        }
+      }
+    },
+    "This download is missing.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "یہ ڈاؤن لوڈ موجود نہیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই ডাউনলোডটি নেই।"
+          }
+        }
+      }
+    },
     "Upload": {
       "comment": "Button to upload selected videos",
       "extractionState": "stale",
@@ -6955,6 +8614,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "上传"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اپ لوڈ کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "আপলোড"
           }
         }
       }
@@ -7076,6 +8747,18 @@
             "state": "translated",
             "value": "上传到服务器"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "سرور پر اپ لوڈ کریں"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "সার্ভারে আপলোড করুন"
+          }
         }
       }
     },
@@ -7086,11 +8769,53 @@
             "state": "new",
             "value": "Uploading %1$@ video%2$@ to %3$@."
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ویڈیو%@ کو %@ پر اپ لوڈ کیا جا رہا ہے۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ভিডিও%@ %@-এ আপলোড হচ্ছে।"
+          }
         }
       }
     },
-    "Uses ffmpeg to rewrite the file's creation_time metadata without re-encoding.": {},
-    "Video": {},
+    "Uses ffmpeg to rewrite the file's creation_time metadata without re-encoding.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ffmpeg کا استعمال کرتے ہوئے دوبارہ انکوڈ کیے بغیر فائل کے creation_time میٹا ڈیٹا کو دوبارہ لکھتا ہے۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "পুনরায় এনকোড না করে ফাইলের creation_time মেটাডেটা পুনরায় লিখতে ffmpeg ব্যবহার করে।"
+          }
+        }
+      }
+    },
+    "Video": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ویڈیو"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ভিডিও"
+          }
+        }
+      }
+    },
     "Videos": {
       "comment": "Library title when video count is zero",
       "extractionState": "stale",
@@ -7208,19 +8933,142 @@
             "state": "translated",
             "value": "视频"
           }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ویڈیوز"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ভিডিওসমূহ"
+          }
         }
       }
     },
-    "Videos taller than the inline-playback ceiling are marked \"Too large to play here\" and offered a one-click proxy.": {},
-    "Videos upload at full resolution to the server's import folder, then are indexed into the catalog.": {},
-    "Videos with GPS metadata appear here on the map.": {},
-    "Visuals": {},
-    "Watch videos you downloaded for offline use — no connection needed.": {},
-    "When off, new files appear only after \"Scan Library\".": {},
-    "While connected to a server, choose \"Download for Offline\" on a video to watch it here without a connection.": {},
-    "Will save as: %@": {},
-    "Write-settle delay": {},
-    "Write-settle delay prevents indexing a recording while the camera or upload tool is still writing it. 5 s is fine for most workflows.": {},
+    "Videos taller than the inline-playback ceiling are marked \"Too large to play here\" and offered a one-click proxy.": {
+      "localizations": {}
+    },
+    "Videos upload at full resolution to the server's import folder, then are indexed into the catalog.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ویڈیوز مکمل ریزولوشن پر سرور کے امپورٹ فولڈر میں اپ لوڈ ہوتی ہیں، پھر کیٹلاگ میں انڈیکس کی جاتی ہیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ভিডিওগুলি পূর্ণ রেজোলিউশনে সার্ভারের ইমপোর্ট ফোল্ডারে আপলোড হয়, তারপর ক্যাটালগে ইন্ডেক্স করা হয়।"
+          }
+        }
+      }
+    },
+    "Videos with GPS metadata appear here on the map.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPS میٹا ڈیٹا والی ویڈیوز یہاں نقشے پر ظاہر ہوتی ہیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPS মেটাডেটাযুক্ত ভিডিওগুলি এখানে মানচিত্রে দেখায়।"
+          }
+        }
+      }
+    },
+    "Visuals": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بصری عناصر"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ভিজ্যুয়ালস"
+          }
+        }
+      }
+    },
+    "Watch videos you downloaded for offline use — no connection needed.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "آف لائن استعمال کے لیے ڈاؤن لوڈ کی گئی ویڈیوز دیکھیں — کوئی کنکشن درکار نہیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "অফলাইনে ব্যবহারের জন্য ডাউনলোড করা ভিডিওগুলি দেখুন — কোনো সংযোগের প্রয়োজন নেই।"
+          }
+        }
+      }
+    },
+    "When off, new files appear only after \"Scan Library\".": {
+      "localizations": {}
+    },
+    "While connected to a server, choose \"Download for Offline\" on a video to watch it here without a connection.": {
+      "localizations": {}
+    },
+    "Will save as: %@": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اس طرح محفوظ ہوگا: %@"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এভাবে সংরক্ষিত হবে: %@"
+          }
+        }
+      }
+    },
+    "Write-settle delay": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "رائٹ-سیٹل تاخیر"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রাইট-সেটল বিলম্ব"
+          }
+        }
+      }
+    },
+    "Write-settle delay prevents indexing a recording while the camera or upload tool is still writing it. 5 s is fine for most workflows.": {
+      "localizations": {
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "رائٹ-سیٹل تاخیر ریکارڈنگ کو انڈیکس ہونے سے روکتی ہے جب کیمرہ یا اپ لوڈ ٹول ابھی لکھ رہا ہو۔ اکثر ورک فلوز کے لیے 5 s کافی ہے۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "রাইট-সেটল বিলম্ব ক্যামেরা বা আপলোড টুল এখনও রেকর্ডিং লিখতে থাকাকালীন সেটি ইন্ডেক্স করা থেকে বিরত রাখে। বেশিরভাগ কার্যপ্রবাহের জন্য ৫ সেকেন্ড যথেষ্ট।"
+          }
+        }
+      }
+    },
     "The ReelVault server is no longer reachable. You can browse your downloaded videos offline.": {
       "localizations": {
         "ar": {
@@ -7335,6 +9183,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "ReelVault 服务器已无法连接。您可以离线浏览已下载的视频。"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ReelVault سرور تک رسائی ممکن نہیں۔ آپ ڈاؤن لوڈ کردہ ویڈیوز آف لائن دیکھ سکتے ہیں۔"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ReelVault সার্ভারে আর পৌঁছানো যাচ্ছে না। আপনি আপনার ডাউনলোড করা ভিডিওগুলি অফলাইনে দেখতে পারবেন।"
           }
         }
       }
