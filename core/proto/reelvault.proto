@@ -1370,6 +1370,10 @@ message SyncManifestEntry {
   bool is_derived = 12;
   bool has_streamable_proxy = 13;
   string next_cursor = 14;
+  // Unix milliseconds when this video was deleted on the source, or 0 if live.
+  // Destinations that have a sync_links entry for this video should soft-delete
+  // (is_online = 0) when deleted_at_ms > 0.
+  int64 deleted_at_ms = 15;
 }
 
 message LookupByContentHashRequest {

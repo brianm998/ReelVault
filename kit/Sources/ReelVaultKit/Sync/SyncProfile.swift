@@ -21,6 +21,8 @@ public struct SyncProfile: Identifiable, Codable, Sendable {
     public var lastRunMs: Int64?
     public var createdMs: Int64?
     public var updatedMs: Int64?
+    /// When true, this profile is triggered automatically each time the app foregrounds.
+    public var autoSync: Bool
 
     public init(
         id: String = UUID().uuidString,
@@ -30,7 +32,8 @@ public struct SyncProfile: Identifiable, Codable, Sendable {
         filterJson: String = "",
         targetHeight: Int32 = 1080,
         collectionResolutions: [String: CollectionResolution] = [:],
-        deviceLabel: String = ""
+        deviceLabel: String = "",
+        autoSync: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -40,6 +43,7 @@ public struct SyncProfile: Identifiable, Codable, Sendable {
         self.targetHeight = targetHeight
         self.collectionResolutions = collectionResolutions
         self.deviceLabel = deviceLabel
+        self.autoSync = autoSync
         self.lastRunMs = nil
         self.createdMs = nil
         self.updatedMs = nil

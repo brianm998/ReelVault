@@ -3672,6 +3672,7 @@ impl ReelVaultTrait for ReelVaultService {
                             is_derived: row.is_derived,
                             has_streamable_proxy: row.has_streamable_proxy,
                             next_cursor: if is_last { last_id.clone() } else { String::new() },
+                            deleted_at_ms: row.deleted_at.unwrap_or(0),
                         };
                         if tx.blocking_send(Ok(entry)).is_err() { break; }
                     }

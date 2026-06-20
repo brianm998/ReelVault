@@ -25,7 +25,23 @@ data class SyncProfile(
     val lastRunMs: Long? = null,
     val createdMs: Long? = null,
     val updatedMs: Long? = null,
-)
+    /** When true, this profile is included in WorkManager / scheduled auto-sync runs. */
+    val autoSync: Boolean = false,
+) {
+    companion object {
+        fun fromJson(obj: org.json.JSONObject): SyncProfile = SyncProfile(
+            id = obj.optString("id").ifEmpty { java.util.UUID.randomUUID().toString() },
+            name = obj.optString("name"),
+            peerKey = obj.optString("peerKey"),
+            direction = SyncDirection.values().firstOrNull { it.name == obj.optString("direction") }
+                ?: SyncDirection.TO_REMOTE,
+            filterJson = obj.optString("filterJson"),
+            targetHeight = obj.optInt("targetHeight", 1080),
+            deviceLabel = obj.optString("deviceLabel"),
+            autoSync = obj.optBoolean("autoSync", false),
+        )
+    }
+}
 
 data class CollectionResolution(
     val action: Action,

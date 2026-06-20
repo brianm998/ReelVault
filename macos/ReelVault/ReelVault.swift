@@ -89,14 +89,17 @@ struct ReelVaultApp: App {
 
                 Divider()
 
-                // Catalog sync: disabled on desktop — requires an embedded local
-                // core, which the desktop client does not yet have (docs/CATALOG_SYNC.md).
-                Button("Sync to Remote…") {}
-                    .disabled(true)
-                    .help("Desktop sync requires a local catalog (coming soon)")
-                Button("Sync from Remote…") {}
-                    .disabled(true)
-                    .help("Desktop sync requires a local catalog (coming soon)")
+                // Catalog sync: enabled when a local daemon is connected.
+                Button("Sync to Remote…") { appState.requestSyncToRemote() }
+                    .disabled(!appState.isLocalCatalog)
+                    .help(appState.isLocalCatalog
+                        ? "Sync local catalog to a paired remote device"
+                        : "Desktop sync requires a local catalog (coming soon)")
+                Button("Sync from Remote…") { appState.requestSyncFromRemote() }
+                    .disabled(!appState.isLocalCatalog)
+                    .help(appState.isLocalCatalog
+                        ? "Sync from a paired remote device to local catalog"
+                        : "Desktop sync requires a local catalog (coming soon)")
             }
 
             // Replace the default Help menu so we can launch our own panel.
@@ -131,6 +134,14 @@ final class AppState: ObservableObject {
     @Published private(set) var showHelpRequestToken: Int = 0
     @Published private(set) var pairDeviceRequestToken: Int = 0
 
+    /// True when connected to a local (localhost) daemon as opposed to a remote
+    /// LAN server. Set by ContentView when the connection is established.
+    @Published var isLocalCatalog: Bool = false
+
+    /// Tokens to request sync operations from the menu bar.
+    @Published private(set) var syncToRemoteRequestToken: Int = 0
+    @Published private(set) var syncFromRemoteRequestToken: Int = 0
+
     func requestOpenCatalog() { openCatalogRequestToken += 1 }
     func requestCloseCatalog() { closeCatalogRequestToken += 1 }
     func requestOpenRecent(_ path: String) {
@@ -139,6 +150,8 @@ final class AppState: ObservableObject {
     func requestClearRecents() { clearRecentsRequestToken += 1 }
     func requestShowHelp() { showHelpRequestToken += 1 }
     func requestPairDevice() { pairDeviceRequestToken += 1 }
+    func requestSyncToRemote() { syncToRemoteRequestToken += 1 }
+    func requestSyncFromRemote() { syncFromRemoteRequestToken += 1 }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {

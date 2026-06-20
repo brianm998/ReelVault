@@ -50,6 +50,8 @@ struct ContentView: View {
     @State private var showLibrarySettingsSheet = false
     @State private var showOpenCatalogSheet = false
     @State private var showForgetServerConfirm = false
+    @State private var showSyncToRemoteSheet = false
+    @State private var showSyncFromRemoteSheet = false
     // Wrapper that gives the proxy-picker sheet an Identifiable item
     // to bind to (sheet(item:) requires that). We don't need a real
     // model here — the video summary is enough to derive everything
@@ -474,7 +476,9 @@ struct ContentView: View {
         .modifier(AppCommandSheets(
             appState: appState,
             showHelp: $showHelpSheet,
-            showPairDevice: $showPairDeviceSheet
+            showPairDevice: $showPairDeviceSheet,
+            showSyncToRemote: $showSyncToRemoteSheet,
+            showSyncFromRemote: $showSyncFromRemoteSheet
         ))
     }
 
@@ -1750,6 +1754,7 @@ struct ContentView: View {
     /// A REMOTE daemon owns its own catalog server-side, so we just load whatever
     /// it has mounted (no local open-catalog prompt — `recents` are local paths).
     private func afterConnected(isRemote: Bool) async {
+        appState.isLocalCatalog = !isRemote
         connectionState = .connected
         let existing = await VideoRepository.shared.getCurrentCatalog()
         if existing.isOpen {
@@ -2075,13 +2080,15 @@ struct GlobalKeyboardShortcuts: ViewModifier {
     }
 }
 
-/// Bundles the menu-command-driven sheets (Help, Pair a New Device) into a
+/// Bundles the menu-command-driven sheets (Help, Pair a New Device, Sync) into a
 /// single modifier. Folding these out of `ContentView.body` keeps that already
 /// very large view expression under the SwiftUI type-checker's inference limit.
 private struct AppCommandSheets: ViewModifier {
     @ObservedObject var appState: AppState
     @Binding var showHelp: Bool
     @Binding var showPairDevice: Bool
+    @Binding var showSyncToRemote: Bool
+    @Binding var showSyncFromRemote: Bool
 
     func body(content: Content) -> some View {
         content
@@ -2089,6 +2096,10 @@ private struct AppCommandSheets: ViewModifier {
             .sheet(isPresented: $showHelp) { HelpView() }
             .onChange(of: appState.pairDeviceRequestToken) { _, _ in showPairDevice = true }
             .sheet(isPresented: $showPairDevice) { PairDeviceSheet() }
+            .onChange(of: appState.syncToRemoteRequestToken) { _, _ in showSyncToRemote = true }
+            .sheet(isPresented: $showSyncToRemote) { SyncSetupSheet(direction: .toRemote) }
+            .onChange(of: appState.syncFromRemoteRequestToken) { _, _ in showSyncFromRemote = true }
+            .sheet(isPresented: $showSyncFromRemote) { SyncSetupSheet(direction: .fromRemote) }
     }
 }
 

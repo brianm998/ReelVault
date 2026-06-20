@@ -27,6 +27,11 @@ pub enum SyncAction {
     DeferHashPending,
     /// Multiple local candidates match and the planner can't pick one safely.
     Ambiguous { reason: String },
+    /// The remote video was deleted (has a `deleted_at` tombstone). If we have
+    /// a local copy (found via sync_links), the executor should soft-delete it.
+    SoftDelete {
+        local_video_id: Option<String>,
+    },
 }
 
 /// One resolved action for one remote video.
@@ -70,6 +75,22 @@ impl Planner {
         manifest_rows
             .iter()
             .map(|row| {
+                // TOMBSTONE: source deleted this video. Soft-delete our local copy if we have one.
+                if row.deleted_at.is_some() {
+                    let local_id = self
+                        .db
+                        .find_sync_link_by_remote(&self.peer_key, &row.video_id)
+                        .ok()
+                        .flatten()
+                        .map(|link| link.local_video_id);
+                    return SyncPlanItem {
+                        source_video_id: row.video_id.clone(),
+                        action: SyncAction::SoftDelete { local_video_id: local_id },
+                        content_hash: row.content_hash.clone(),
+                        remote_marks_rev: row.marks_rev,
+                    };
+                }
+
                 // SKIP_DERIVED: source is itself a derived copy — skip.
                 if row.is_derived {
                     return SyncPlanItem {

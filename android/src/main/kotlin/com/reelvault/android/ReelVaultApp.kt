@@ -4,6 +4,11 @@
 package com.reelvault.android
 
 import android.app.Application
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import coil.Coil
 import coil.ImageLoader
 import com.reelvault.android.core.NativeMediaBridge
@@ -11,6 +16,7 @@ import com.reelvault.android.core.ReelVaultCore
 import com.reelvault.android.data.AndroidTokenStorage
 import com.reelvault.android.data.OkHttpChannelFactory
 import com.reelvault.android.data.OfflineLibrary
+import com.reelvault.android.sync.SyncWorker
 import com.reelvault.android.util.MainThreadWatchdog
 import com.reelvault.android.util.OsmConfig
 import com.reelvault.data.remote.PairingClient
@@ -18,6 +24,7 @@ import com.reelvault.data.remote.PinnedTls
 import com.reelvault.data.remote.RemoteConnection
 import com.reelvault.data.repository.VideoRepository
 import java.security.cert.X509Certificate
+import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.X509TrustManager
 
@@ -54,6 +61,27 @@ class ReelVaultApp : Application() {
         // future freeze / black screen is diagnosable from logcat.
         if (BuildConfig.DEBUG) MainThreadWatchdog.start()
         setupCoil()
+        scheduleAutoSync()
+    }
+
+    /**
+     * Register a periodic WorkManager task that runs auto-sync profiles every 15 minutes
+     * (WorkManager's minimum interval), subject to network connectivity. Uses KEEP policy
+     * so repeated app restarts don't reset the countdown.
+     */
+    private fun scheduleAutoSync() {
+        val request = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "reelvault_auto_sync",
+            ExistingPeriodicWorkPolicy.KEEP,
+            request
+        )
     }
 
     /**
