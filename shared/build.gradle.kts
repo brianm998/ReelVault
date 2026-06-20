@@ -30,6 +30,9 @@ dependencies {
     // OkHttp for the TLS-pinned HTTP client (pairing, fingerprint fetch)
     api("com.squareup.okhttp3:okhttp:4.12.0")
 
+    // JSON parsing
+    api("org.json:json:20240303")
+
     // Logging
     implementation("org.slf4j:slf4j-api:2.0.7")
 
