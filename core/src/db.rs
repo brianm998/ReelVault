@@ -236,6 +236,18 @@ fn path_prefix_range(prefix: &str) -> (String, String) {
 // ── Catalog Sync structs ────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
+pub struct SyncLinkParams {
+    pub local_video_id: String,
+    pub peer_key: String,
+    pub remote_video_id: String,
+    pub origin_hash: Option<String>,
+    pub is_derived: bool,
+    pub derived_height: Option<i32>,
+    pub local_rev: i64,
+    pub remote_rev: i64,
+}
+
+#[derive(Debug, Clone)]
 pub struct SyncLink {
     pub id: String,
     pub local_video_id: String,
@@ -4083,17 +4095,7 @@ impl Database {
     // ── Catalog Sync helpers ──────────────────────────────────────────────────
 
     /// Record (or update) a sync link between a local video and a remote peer video.
-    pub fn add_sync_link(
-        &self,
-        local_video_id: &str,
-        peer_key: &str,
-        remote_video_id: &str,
-        origin_hash: Option<&str>,
-        is_derived: bool,
-        derived_height: Option<i32>,
-        local_rev: i64,
-        remote_rev: i64,
-    ) -> Result<()> {
+    pub fn add_sync_link(&self, params: &SyncLinkParams) -> Result<()> {
         let conn = self.get_connection()?;
         let id = uuid::Uuid::new_v4().to_string();
         let now_ms = chrono::Utc::now().timestamp_millis();
@@ -4108,7 +4110,18 @@ impl Database {
                last_synced_ms = excluded.last_synced_ms,
                local_rev_at_sync = excluded.local_rev_at_sync,
                remote_rev_at_sync = excluded.remote_rev_at_sync",
-            rusqlite::params![id, local_video_id, peer_key, remote_video_id, origin_hash, is_derived as i32, derived_height, now_ms, local_rev, remote_rev],
+            rusqlite::params![
+                id,
+                &params.local_video_id,
+                &params.peer_key,
+                &params.remote_video_id,
+                &params.origin_hash,
+                params.is_derived as i32,
+                params.derived_height,
+                now_ms,
+                params.local_rev,
+                params.remote_rev
+            ],
         ).map_err(|e| ReelVaultError::DatabaseError(e.to_string()))?;
         Ok(())
     }
