@@ -290,7 +290,12 @@ private struct RegularLayout: View {
                     Divider()
                     InspectorPanel(grid: grid, video: visibleSelectedVideo(grid),
                                    refreshTick: grid.catalogChangeTick,
-                                   onShowOnMap: { viewMode = .map }) { viewMode = .detail }
+                                   onShowOnMap: {
+                                       if let vid = grid.selectedVideoId {
+                                           grid.loadMapFocusTrack(videoId: vid)
+                                       }
+                                       viewMode = .map
+                                   }) { viewMode = .detail }
                         .frame(width: 300)
                         .transition(.move(edge: .trailing))
                         // Swipe right to *hide* the panel — the selection is kept, so
@@ -368,7 +373,12 @@ private struct RegularLayout: View {
                 .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
         case .detail:
             DetailModeView(grid: grid, connection: connection,
-                           onShowOnMap: { viewMode = .map })
+                           onShowOnMap: {
+                               if let vid = grid.selectedVideoId {
+                                   grid.loadMapFocusTrack(videoId: vid)
+                               }
+                               viewMode = .map
+                           })
         case .map:
             // iPad: tapping a cluster opens a trailing panel of its videos.
             MapModePad(grid: grid, viewMode: $viewMode)
@@ -408,7 +418,11 @@ private struct CompactLayout: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .navigationDestination(item: $pushedVideo) { video in
                     VideoDetailView(video: video, grid: grid, mediaEndpoint: connection,
-                                    onShowOnMap: { pushedVideo = nil; viewMode = .map })
+                                    onShowOnMap: {
+                                        grid.loadMapFocusTrack(videoId: video.id)
+                                        pushedVideo = nil
+                                        viewMode = .map
+                                    })
                 }
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {

@@ -22,8 +22,21 @@ struct LibraryMapView: View {
     @State private var camera: MapCameraPosition = .automatic
     @AppStorage("ios.mapUseSatellite") private var useSatellite = false
 
+    /// Decode `grid.mapFocusTrackJson` into `CLLocationCoordinate2D` points.
+    private var trackCoords: [CLLocationCoordinate2D] {
+        guard let json = grid.mapFocusTrackJson,
+              let data = json.data(using: .utf8),
+              let pairs = try? JSONDecoder().decode([[Double]].self, from: data)
+        else { return [] }
+        return pairs.compactMap { pair in
+            guard pair.count >= 2 else { return nil }
+            return CLLocationCoordinate2D(latitude: pair[0], longitude: pair[1])
+        }
+    }
+
     var body: some View {
         let clusters = grid.mapLocationClusters()
+        let track = trackCoords
         Map(position: $camera) {
             ForEach(clusters) { cluster in
                 Annotation("", coordinate: CLLocationCoordinate2D(
@@ -37,8 +50,15 @@ struct LibraryMapView: View {
                     .buttonStyle(.plain)
                 }
             }
+            if track.count >= 2 {
+                MapPolyline(coordinates: track)
+                    .stroke(.orange, lineWidth: 3)
+            }
         }
         .mapStyle(useSatellite ? .hybrid : .standard)
+        .onChange(of: grid.mapFocusTrackJson) { _, _ in
+            fitToTrack(track)
+        }
         .overlay(alignment: .center) {
             if grid.isLoadingVideoLocations && grid.videoLocations.isEmpty {
                 ProgressView()
@@ -75,11 +95,32 @@ struct LibraryMapView: View {
 
     private func focus(_ f: GeoFilter?) {
         guard let f else { return }
-        let span = MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
-        camera = .region(MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: f.latitude, longitude: f.longitude),
-            span: span))
+        let coords = trackCoords
+        if coords.count >= 2 {
+            // Fit to the track bounding box rather than centering on the single point.
+            fitToTrack(coords)
+        } else {
+            let span = MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+            camera = .region(MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: f.latitude, longitude: f.longitude),
+                span: span))
+        }
         grid.mapFocus = nil
+    }
+
+    private func fitToTrack(_ coords: [CLLocationCoordinate2D]) {
+        guard coords.count >= 2 else { return }
+        let lats = coords.map(\.latitude)
+        let lons = coords.map(\.longitude)
+        let minLat = lats.min()!, maxLat = lats.max()!
+        let minLon = lons.min()!, maxLon = lons.max()!
+        let center = CLLocationCoordinate2D(
+            latitude: (minLat + maxLat) / 2,
+            longitude: (minLon + maxLon) / 2)
+        let span = MKCoordinateSpan(
+            latitudeDelta: max(0.005, (maxLat - minLat) * 1.4),
+            longitudeDelta: max(0.005, (maxLon - minLon) * 1.4))
+        camera = .region(MKCoordinateRegion(center: center, span: span))
     }
 }
 

@@ -109,6 +109,9 @@ fun MapView(
      *  the heavyweight JXMapViewer peer; the caller opens the themed naming
      *  dialog. */
     onRenameLocationRequest: ((pin: MapPin) -> Unit)? = null,
+    /** GPS track to draw as an orange polyline under the pins, or empty when the
+     *  focused video has no track. Pairs are (lat, lon). */
+    trackPoints: List<Pair<Double, Double>> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
     // Live JXMapViewer holder, stable across recompositions. All changing
@@ -119,6 +122,7 @@ fun MapView(
     // recomposition, e.g. on every pin selection.
     val mapHolder = remember { MapHolder() }
     mapHolder.pins = pins
+    mapHolder.trackPoints = trackPoints
     mapHolder.autoFitPins = autoFitPins
     mapHolder.onPinClick = onPinClick
     mapHolder.onMapClick = onMapClick
@@ -354,6 +358,8 @@ private const val ZOOM_MAX = 17
 private class MapHolder {
     var viewer: JXMapViewer? = null
     var pins: List<MapPin> = emptyList()
+    /** GPS track polyline points (lat, lon), or empty when no track is present. */
+    var trackPoints: List<Pair<Double, Double>> = emptyList()
     /** Pin → on-screen pixel position, snapshotted by the painter each draw
      *  so the click handler can hit-test without recomputing. */
     var lastRenderedPins: List<RenderedPin> = emptyList()
@@ -370,6 +376,9 @@ private class MapHolder {
      *  changes — never on every recomposition (e.g. a location-picker pin
      *  click), which would yank the camera back. */
     var lastAppliedInitial: Pair<Pair<Double, Double>, Int>? = null
+    /** Identity of the last track we fitted, so we only re-fit when the track
+     *  changes (comparing by size + first+last point rather than deep equality). */
+    var lastAppliedTrackKey: String? = null
     // Live inputs routed through the holder rather than captured by the factory
     // lambda. SwingPanel keys its component-creating DisposableEffect on the
     // `factory` reference, so a factory that closed over these (which change on
@@ -414,6 +423,9 @@ private fun MapHolder.maybeAutoFit() {
  *  real size — the counterpart to [maybeAutoFit] for the non-auto-fit path
  *  (the location picker, and the map focused on a single coordinate).
  *
+ *  When [trackPoints] are present, fits the bounding box of the track instead
+ *  of centering on a single point, so the full flight/movement path is visible.
+ *
  *  JXMapViewer silently drops an `addressLocation` set while the component is
  *  still 0×0 (not yet laid out) and shows its default top-left viewport, i.e.
  *  the north pole — which is why the location picker opened "zoomed into the
@@ -427,6 +439,16 @@ private fun MapHolder.maybeApplyInitialCenter() {
     val v = viewer ?: return
     // Same guard as maybeAutoFit: addressLocation only sticks once laid out.
     if (v.width <= 0 || v.height <= 0) return
+    val track = trackPoints
+    if (track.size >= 2) {
+        // Fit the track bounding box rather than centering on the single GPS point.
+        val trackKey = "${track.size}:${track.first()}:${track.last()}"
+        if (trackKey == lastAppliedTrackKey) return
+        lastAppliedTrackKey = trackKey
+        val positions = track.mapTo(HashSet()) { (lat, lon) -> GeoPosition(lat, lon) }
+        v.zoomToBestFit(positions, 0.7)
+        return
+    }
     val target = initialCenter to initialZoom
     if (target == lastAppliedInitial) return
     lastAppliedInitial = target
@@ -505,6 +527,24 @@ private class ClusterPainter(private val holder: MapHolder) : Painter<JXMapViewe
         val viewport = viewer.viewportBounds
         val tileFactory = viewer.tileFactory
         val zoom = viewer.zoom
+
+        // Draw GPS track polyline under the pins.
+        val track = holder.trackPoints
+        if (track.size >= 2) {
+            g2.color = AwtColor(0xFF, 0x95, 0x00, 0xD0.toInt())
+            g2.stroke = BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND)
+            for (i in 0 until track.size - 1) {
+                val (lat1, lon1) = track[i]
+                val (lat2, lon2) = track[i + 1]
+                val p1 = tileFactory.geoToPixel(GeoPosition(lat1, lon1), zoom)
+                val p2 = tileFactory.geoToPixel(GeoPosition(lat2, lon2), zoom)
+                val sx1 = (p1.x - viewport.x).toInt()
+                val sy1 = (p1.y - viewport.y).toInt()
+                val sx2 = (p2.x - viewport.x).toInt()
+                val sy2 = (p2.y - viewport.y).toInt()
+                g2.drawLine(sx1, sy1, sx2, sy2)
+            }
+        }
 
         // Render order: secondary (gray) underneath, then named, then the
         // video pins (primary), then the candidate on top. Hit-test order is

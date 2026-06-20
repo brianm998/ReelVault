@@ -232,6 +232,11 @@ public class GridViewModel: ObservableObject {
     /// the map consumes it (recenters) and clears it back to nil.
     @Published public var mapFocus: GeoFilter?
 
+    /// GPS polyline JSON (`[[lat,lon],…]`) for the video whose "Show on Map" was
+    /// just triggered. The library map draws this as a track overlay and
+    /// auto-fits to its bounding box. Nil for clips without a GPS track.
+    @Published public var mapFocusTrackJson: String? = nil
+
     // Thumbnails
     @Published public var thumbnails: [String: PlatformImage] = [:]
 
@@ -2575,6 +2580,17 @@ public class GridViewModel: ObservableObject {
             }
         }
         return out
+    }
+
+    /// Fetch the GPS track for `videoId` and store it in `mapFocusTrackJson` so
+    /// the library map can draw the flight/movement path as an overlay. Called
+    /// just before "Show on Map" navigation so the track is ready when the map
+    /// becomes visible. Clears the field when the video has no GPS track.
+    public func loadMapFocusTrack(videoId: String) {
+        Task { @MainActor in
+            let meta = try? await repository.getVideoMetadata(videoId: videoId)
+            mapFocusTrackJson = (meta?.gpsTrack.isEmpty == false) ? meta?.gpsTrack : nil
+        }
     }
 
     /// Fetch (once) the audio loudness series for `videoId` and cache it.

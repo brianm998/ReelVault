@@ -243,8 +243,9 @@ fun AppRouter() {
                 onBack = onHistoryBack,
                 canGoForward = canGoForward,
                 onHistoryForward = onHistoryForward,
-                onShowOnMap = { lat, lon ->
+                onShowOnMap = { lat, lon, trackJson ->
                     gridViewModel.setMapFocus(lat, lon)
+                    gridViewModel.setMapFocusTrack(trackJson)
                     // Map sits directly on Grid (2-level shape). History still
                     // records […, Detail(X), Map], so chevron-back from the map
                     // returns to Detail(X) while system back goes to the grid.

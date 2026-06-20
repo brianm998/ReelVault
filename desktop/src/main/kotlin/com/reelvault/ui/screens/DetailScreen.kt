@@ -53,8 +53,9 @@ fun DetailScreen(
      *  the existing Unix-ms capture timestamp when one is set, else null. */
     onEditCaptureDate: (videoIds: List<String>, initialTs: Long?) -> Unit = { _, _ -> },
     /** Switches to map mode focused on (lat, lon), highlighting this video and
-     *  any others captured at the same spot. */
-    onShowOnMap: (latitude: Double, longitude: Double) -> Unit = { _, _ -> },
+     *  any others captured at the same spot. The optional [trackJson] is the
+     *  GPS polyline (`[[lat,lon],…]`) for a GoPro/DJI track overlay. */
+    onShowOnMap: (latitude: Double, longitude: Double, trackJson: String?) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val metadata = viewModel.metadata
@@ -475,6 +476,7 @@ fun DetailScreen(
                                 onShowOnMap(
                                     metadata.value!!.gpsLatitude,
                                     metadata.value!!.gpsLongitude,
+                                    metadata.value!!.gpsTrack.ifEmpty { null },
                                 )
                             },
                             modifier = Modifier.fillMaxWidth()

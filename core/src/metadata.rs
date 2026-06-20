@@ -241,13 +241,21 @@ impl MetadataExtractor {
             creation_date = dji.creation_date_ms;
         }
 
-        // GoPro GPMF movement path: a downsampled JSON polyline + its total
-        // ground distance, for a track overlay on the map. NULL when the clip
-        // has no GPS telemetry.
+        // GoPro GPMF or DJI SRT movement path: a downsampled JSON polyline + its
+        // total ground distance, for a track overlay on the map. GPMF takes
+        // priority (GoPro); DJI SRT fills in when GPMF is absent. NULL when the
+        // clip has no GPS telemetry from either source.
         let gps_track = (!gpmf.gps_track.is_empty())
             .then(|| serde_json::to_string(&gpmf.gps_track).ok())
-            .flatten();
-        let gps_track_distance_m = (gpmf.track_distance_m > 0.0).then_some(gpmf.track_distance_m);
+            .flatten()
+            .or_else(|| {
+                (!dji.gps_track.is_empty())
+                    .then(|| serde_json::to_string(&dji.gps_track).ok())
+                    .flatten()
+            });
+        let gps_track_distance_m = (gpmf.track_distance_m > 0.0)
+            .then_some(gpmf.track_distance_m)
+            .or_else(|| (dji.track_distance_m > 0.0).then_some(dji.track_distance_m));
 
         // Recover a missing make prefix. Some files carry only the model
         // (a sidecar wrote `tiff:Model` but no make, and ffprobe had none

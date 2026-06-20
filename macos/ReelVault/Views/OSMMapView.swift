@@ -49,6 +49,8 @@ struct OSMMapView: View {
     var onRenameLocationRequest: ((OSMMapPin) -> Void)? = nil
     /// Fill color for `.video` pins — the user's chosen accent.
     var pinColor: NSColor = .controlAccentColor
+    /// GPS track polyline to draw over the map. Empty when no track is available.
+    var trackCoords: [CLLocationCoordinate2D] = []
 
     /// Visible camera-to-ground distance in meters. State (not a Binding) so
     /// internal slider and pan/zoom interactions stay in sync without
@@ -70,6 +72,7 @@ struct OSMMapView: View {
         initialCenter: CLLocationCoordinate2D,
         initialZoomMeters: Double,
         autoFitPins: Bool = false,
+        trackCoords: [CLLocationCoordinate2D] = [],
         onMapClick: ((CLLocationCoordinate2D) -> Void)? = nil,
         onPinClick: ((OSMMapPin) -> Void)? = nil,
         onRenameLocationRequest: ((OSMMapPin) -> Void)? = nil,
@@ -79,6 +82,7 @@ struct OSMMapView: View {
         self.initialCenter = initialCenter
         self.initialZoomMeters = initialZoomMeters
         self.autoFitPins = autoFitPins
+        self.trackCoords = trackCoords
         self.onMapClick = onMapClick
         self.onPinClick = onPinClick
         self.onRenameLocationRequest = onRenameLocationRequest
@@ -97,6 +101,7 @@ struct OSMMapView: View {
                 initialCenter: initialCenter,
                 initialZoomMeters: initialZoomMeters,
                 autoFitPins: autoFitPins,
+                trackCoords: trackCoords,
                 cameraDistance: $cameraDistance,
                 satellite: satellite,
                 onMapClick: onMapClick,
@@ -144,6 +149,8 @@ private struct _OSMMapKitView: NSViewRepresentable {
     /// "the parent currently wants this zoom."
     let initialZoomMeters: Double
     let autoFitPins: Bool
+    /// GPS track to draw as an orange polyline overlay. Empty when no track.
+    var trackCoords: [CLLocationCoordinate2D] = []
     /// Two-way binding for camera-to-ground distance in meters. The slider
     /// writes it; pan/zoom gestures update it via the delegate.
     @Binding var cameraDistance: Double
@@ -238,12 +245,14 @@ private struct _OSMMapKitView: NSViewRepresentable {
         context.coordinator.mapView = mapView
 
         context.coordinator.syncAnnotations(to: pins)
+        context.coordinator.syncPolyline(to: trackCoords, on: mapView)
         return mapView
     }
 
     func updateNSView(_ nsView: MKMapView, context: Context) {
         context.coordinator.parent = self
         context.coordinator.syncAnnotations(to: pins)
+        context.coordinator.syncPolyline(to: trackCoords, on: nsView)
         applyBasemap(satellite: satellite, to: nsView, coordinator: context.coordinator)
 
         // Auto-fit on the first non-empty pin set. Late-arriving data
@@ -386,6 +395,9 @@ private struct _OSMMapKitView: NSViewRepresentable {
         var parent: _OSMMapKitView
         weak var mapView: MKMapView?
         var tileOverlay: MKTileOverlay?
+        /// Currently displayed GPS track polyline, or nil. Kept so we can
+        /// remove the old one before adding a new one on changes.
+        var trackPolyline: MKPolyline?
         /// `true` between a programmatic `setCamera` call and the resulting
         /// `regionDidChangeAnimated` delegate callback, so we don't echo the
         /// programmatic change back into the binding (which would re-trigger
@@ -409,11 +421,19 @@ private struct _OSMMapKitView: NSViewRepresentable {
             self.parent = parent
         }
 
-        // MARK: Tile rendering
+        // MARK: Tile + polyline rendering
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: any MKOverlay) -> MKOverlayRenderer {
             if let tile = overlay as? MKTileOverlay {
                 return MKTileOverlayRenderer(tileOverlay: tile)
+            }
+            if let polyline = overlay as? MKPolyline {
+                let r = MKPolylineRenderer(polyline: polyline)
+                r.strokeColor = NSColor.systemOrange
+                r.lineWidth = 3
+                r.lineCap = .round
+                r.lineJoin = .round
+                return r
             }
             return MKOverlayRenderer(overlay: overlay)
         }
@@ -649,6 +669,26 @@ private struct _OSMMapKitView: NSViewRepresentable {
             // Reset the accumulator so the next event measures *delta*,
             // not total magnification since gesture start.
             recognizer.magnification = 0
+        }
+
+        // MARK: Track polyline sync
+
+        /// Replace the current GPS track polyline overlay with a new one from
+        /// `coords`. Adds above the OSM tile layer and below annotations.
+        /// When `coords` is empty the existing polyline is removed.
+        func syncPolyline(to coords: [CLLocationCoordinate2D], on mapView: MKMapView) {
+            if let old = trackPolyline {
+                mapView.removeOverlay(old)
+                trackPolyline = nil
+            }
+            guard coords.count >= 2 else { return }
+            var mutable = coords
+            let polyline = MKPolyline(coordinates: &mutable, count: mutable.count)
+            // Add above labels so the track draws on top of the tile imagery
+            // but the tile overlay renderer is still consulted first (the
+            // `.aboveLabels` level is rendered after `.aboveRoads`).
+            mapView.addOverlay(polyline, level: .aboveLabels)
+            trackPolyline = polyline
         }
 
         // MARK: Pin diffing

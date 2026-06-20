@@ -35,6 +35,9 @@ struct MapTopLevelView: View {
     /// changed). Surfaces a spinner over the map; the previously-plotted pins
     /// stay put until the new set arrives so the map never blanks out.
     var isLoadingVideoLocations: Bool = false
+    /// GPS track to draw as a polyline overlay, or empty when the focused video
+    /// has no track (non-GoPro / non-DJI clips).
+    var trackCoords: [CLLocationCoordinate2D] = []
 
     /// Co-located videos grouped into one pin so a single marker shows the
     /// count and clicking it selects the whole group. Bucketed to ~1 m. The
@@ -82,6 +85,7 @@ struct MapTopLevelView: View {
                     // Auto-fit to all pins unless the caller asked to centre on
                     // a specific coordinate.
                     autoFitPins: focusedCoordinate == nil,
+                    trackCoords: trackCoords,
                     onMapClick: { _ in
                         // A click clear of every pin clears the selection.
                         if !selectedVideoIds.isEmpty { onSelectionChange([]) }
