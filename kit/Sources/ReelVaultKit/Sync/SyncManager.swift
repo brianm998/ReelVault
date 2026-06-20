@@ -124,7 +124,7 @@ public final class SyncManager: ObservableObject {
             returning: [(Bool, String?)].self
         ) { group in
             for entry in manifestEntries where !entry.isDerived {
-                group.addTask { [weak self] in
+                group.addTask { @MainActor @Sendable [weak self] in
                     guard let self else { return (false, nil) }
                     await self.semaphore.wait()
                     defer { Task { await self.semaphore.signal() } }
@@ -219,7 +219,7 @@ public final class SyncManager: ObservableObject {
             returning: [(Bool, String?)].self
         ) { group in
             for entry in manifestEntries where !entry.isDerived {
-                group.addTask { [weak self] in
+                group.addTask { @MainActor @Sendable [weak self] in
                     guard let self else { return (false, nil) }
                     await self.semaphore.wait()
                     defer { Task { await self.semaphore.signal() } }
