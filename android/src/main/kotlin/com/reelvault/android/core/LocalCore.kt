@@ -29,11 +29,19 @@ object LocalCore {
         val support = File(context.filesDir, "ReelVault").apply { mkdirs() }
         val catalog = File(support, "catalog.db")
         val cache = File(context.cacheDir, "ReelVault").apply { mkdirs() }
-        val p = ReelVaultCore.nativeStartEmbedded(
-            catalog.absolutePath,
-            support.absolutePath,
-            cache.absolutePath,
-        )
+        val p = try {
+            ReelVaultCore.nativeStartEmbedded(
+                catalog.absolutePath,
+                support.absolutePath,
+                cache.absolutePath,
+            )
+        } catch (t: Throwable) {
+            // ReelVaultCore.<clinit> may have failed earlier (libreelvault_core.so
+            // absent), poisoning the class — NoClassDefFoundError is thrown here
+            // instead of the original UnsatisfiedLinkError. Degrade gracefully.
+            Log.e(TAG, "LocalCore: embedded core unavailable: $t")
+            return null
+        }
         port = p
         if (p > 0) {
             Log.i(TAG, "LocalCore: embedded core on 127.0.0.1:$p")
@@ -45,7 +53,11 @@ object LocalCore {
 
     /** Park the embedded core (on app suspend / switch to a server). */
     fun stop() {
-        ReelVaultCore.nativeStopEmbedded()
+        try {
+            ReelVaultCore.nativeStopEmbedded()
+        } catch (_: Throwable) {
+            // no-op if the native lib was never loaded
+        }
         port = 0
     }
 }
