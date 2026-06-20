@@ -257,6 +257,13 @@ impl MetadataExtractor {
             .then_some(gpmf.track_distance_m)
             .or_else(|| (dji.track_distance_m > 0.0).then_some(dji.track_distance_m));
 
+        // GoPro GPMF inertial data: accelerometer and gyroscope magnitude series.
+        // Each is stored as a little-endian f32 byte array (480 points max).
+        let accel_magnitude = (!gpmf.accel_magnitude.is_empty())
+            .then(|| serialize_f32_vec(&gpmf.accel_magnitude));
+        let gyro_magnitude = (!gpmf.gyro_magnitude.is_empty())
+            .then(|| serialize_f32_vec(&gpmf.gyro_magnitude));
+
         // Recover a missing make prefix. Some files carry only the model
         // (a sidecar wrote `tiff:Model` but no make, and ffprobe had none
         // either), leaving a bare code like "ILCE-7SM2". When that code
@@ -421,8 +428,8 @@ impl MetadataExtractor {
               creation_date, camera_model,
               lens_model, gps_latitude, gps_longitude, gps_altitude, gps_track, gps_track_distance_m,
               iso, aperture, exposure_time_s, focal_length_mm,
-              exposure_mode, exposure_program, white_balance, metadata_json)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              exposure_mode, exposure_program, white_balance, accel_magnitude, gyro_magnitude, metadata_json)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(video_id) DO UPDATE SET
              duration_ms=excluded.duration_ms,
              frame_count=excluded.frame_count,
@@ -466,6 +473,8 @@ impl MetadataExtractor {
              exposure_mode=excluded.exposure_mode,
              exposure_program=excluded.exposure_program,
              white_balance=excluded.white_balance,
+             accel_magnitude=excluded.accel_magnitude,
+             gyro_magnitude=excluded.gyro_magnitude,
              metadata_json=excluded.metadata_json,
              -- Invalidate the lazily-cached loudness series: the file content may
              -- have changed (an in-place edit re-runs this UPSERT), so force a
@@ -512,6 +521,8 @@ impl MetadataExtractor {
                 final_exposure_mode,
                 final_exposure_program,
                 final_white_balance,
+                accel_magnitude,
+                gyro_magnitude,
                 metadata_json
             ],
         )
@@ -1465,6 +1476,13 @@ fn downsample_avg(src: &[f32], max: usize) -> Vec<f32> {
             let slice = &src[start..end];
             slice.iter().sum::<f32>() / slice.len() as f32
         })
+        .collect()
+}
+
+/// Serialize a Vec<f32> to little-endian bytes for BLOB storage.
+fn serialize_f32_vec(samples: &[f32]) -> Vec<u8> {
+    samples.iter()
+        .flat_map(|&f| f.to_le_bytes())
         .collect()
 }
 

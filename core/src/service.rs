@@ -403,7 +403,7 @@ impl ReelVaultService {
                     exposure_mode, exposure_program, white_balance,
                     color_transfer, color_primaries, dynamic_range, timecode_start, capture_fps,
                     bit_depth, audio_bit_depth, audio_language, audio_track_count, spatial, projection,
-                    gps_track, gps_track_distance_m
+                    gps_track, gps_track_distance_m, accel_magnitude, gyro_magnitude
                  FROM metadata WHERE video_id = ?",
                 [video_id],
                 |row| {
@@ -445,6 +445,8 @@ impl ReelVaultService {
                         row.get::<_, Option<String>>(34)?,
                         row.get::<_, Option<String>>(35)?,
                         row.get::<_, Option<f64>>(36)?,
+                        row.get::<_, Option<Vec<u8>>>(37)?,
+                        row.get::<_, Option<Vec<u8>>>(38)?,
                     ))
                 },
             )
@@ -469,12 +471,12 @@ impl ReelVaultService {
              exposure_mode, exposure_program, white_balance,
              color_transfer, color_primaries, dynamic_range, timecode_start, capture_fps,
              bit_depth, audio_bit_depth, audio_language, audio_track_count, spatial, projection,
-             gps_track, gps_track_distance_m) =
+             gps_track, gps_track_distance_m, accel_magnitude, gyro_magnitude) =
             row.unwrap_or((0, None, None, 0, 0, 0.0, 0, None, false, 0, 0, None, None, None, None, None, None,
                            None, None, None, None, None, None, None,
                            None, None, None, None, None,
                            None, None, None, None, false, None,
-                           None, None));
+                           None, None, None, None));
 
         let camera_model_str = camera_model.unwrap_or_default();
         // Resolve marketing name with the user's custom overrides
@@ -539,6 +541,8 @@ impl ReelVaultService {
             projection: projection.unwrap_or_default(),
             gps_track: gps_track.unwrap_or_default(),
             gps_track_distance_m: gps_track_distance_m.unwrap_or(0.0),
+            accel_magnitude: accel_magnitude.unwrap_or_default(),
+            gyro_magnitude: gyro_magnitude.unwrap_or_default(),
             tags,
             collections: db.get_video_collections(video_id).unwrap_or_default(),
             notes,

@@ -466,6 +466,11 @@ impl Database {
             // and later opens read it back. NULL = not yet computed; an empty blob
             // = computed and the video has no usable audio (don't recompute).
             ("metadata.audio_loudness", "ALTER TABLE metadata ADD COLUMN audio_loudness BLOB"),
+            // GoPro GPMF inertial data: accelerometer and gyroscope magnitude series.
+            // Each is a little-endian f32 array of 480 points downsampled from the
+            // full telemetry stream. NULL when no GPMF or no ACCL/GYRO stream.
+            ("metadata.accel_magnitude", "ALTER TABLE metadata ADD COLUMN accel_magnitude BLOB"),
+            ("metadata.gyro_magnitude",  "ALTER TABLE metadata ADD COLUMN gyro_magnitude BLOB"),
             // Multi-location tracking: one logical video may exist as copies in
             // multiple watched directories. `video_locations` records every
             // filesystem path for a video_id; tags/metadata/collections are

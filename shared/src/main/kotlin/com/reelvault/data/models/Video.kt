@@ -245,6 +245,11 @@ data class VideoMetadata(
      *  none), and its total ground distance in metres (0 if none). */
     val gpsTrack: String = "",
     val gpsTrackDistanceM: Double = 0.0,
+    /** GoPro GPMF motion series: accelerometer magnitude envelope (m/s²) and
+     *  gyroscope magnitude envelope (rad/s), each downsampled to 480 float32
+     *  values stored as little-endian bytes (empty when no GPMF or non-GoPro). */
+    val accelMagnitude: ByteArray = ByteArray(0),
+    val gyroMagnitude: ByteArray = ByteArray(0),
 ) {
     val resolution: String get() = "$width x $height"
     /** True when the clip is 360°/spherical. */

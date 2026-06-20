@@ -500,6 +500,11 @@ message VideoMetadata {
   // in metres (0 if none). Detail-only — not on the grid summary.
   string gps_track = 52;
   double gps_track_distance_m = 53;
+  // GoPro GPMF motion series: accelerometer magnitude envelope and gyroscope
+  // magnitude envelope, each downsampled to 480 float32 values stored as
+  // little-endian bytes (empty when no GPMF or non-GoPro).
+  bytes accel_magnitude = 54;
+  bytes gyro_magnitude = 55;
 }
 
 message GetThumbnailRequest {
