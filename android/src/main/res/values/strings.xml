@@ -556,4 +556,10 @@
     <string name="upload_failed">Failed</string>
     <string name="upload_skipped">%1$d skipped (not on-device files)</string>
     <string name="upload_close">Close</string>
+
+    <!-- Server unreachable / offline mode prompt -->
+    <string name="offline_server_unreachable_title">Server Unreachable</string>
+    <string name="offline_server_unreachable_message">The ReelVault server is no longer reachable. You can browse your downloaded videos offline.</string>
+    <string name="offline_go_offline">Go Offline</string>
+    <string name="offline_keep_waiting">Keep Waiting</string>
 </resources>

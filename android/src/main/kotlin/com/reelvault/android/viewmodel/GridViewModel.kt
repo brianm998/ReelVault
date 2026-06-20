@@ -1257,6 +1257,7 @@ class GridViewModel(
     fun resetForNewSession() {
         listLoadJob?.cancel()
         stopCatalogEventStream()
+        stopConnectionMonitor()
         navHistory.clear()
         restoreExpected = null
         _filterLocation.value = null
@@ -1570,12 +1571,68 @@ class GridViewModel(
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // Live server connection monitor
+    // ─────────────────────────────────────────────────────────────────────
+
+    private val _serverUnreachable = MutableStateFlow(false)
+    val serverUnreachable: StateFlow<Boolean> = _serverUnreachable.asStateFlow()
+    private var monitorJob: Job? = null
+
+    /** Start probing [host]:[grpcPort] every 30 s. Sets [serverUnreachable] when
+     *  the server stops answering. No-op in Local mode (caller checks isRemote). */
+    fun startConnectionMonitor(host: String, grpcPort: Int) {
+        monitorJob?.cancel()
+        _serverUnreachable.value = false
+        monitorJob = viewModelScope.launch {
+            runMonitor(host, grpcPort, initialDelayMs = 30_000L)
+        }
+    }
+
+    fun stopConnectionMonitor() {
+        monitorJob?.cancel()
+        monitorJob = null
+        _serverUnreachable.value = false
+    }
+
+    /** Silence the alert for 5 minutes, then resume normal 30-s probing. */
+    fun keepWaiting(host: String, grpcPort: Int) {
+        _serverUnreachable.value = false
+        monitorJob?.cancel()
+        monitorJob = viewModelScope.launch {
+            runMonitor(host, grpcPort, initialDelayMs = 300_000L)
+        }
+    }
+
+    private suspend fun runMonitor(host: String, grpcPort: Int, initialDelayMs: Long) {
+        var delayMs = initialDelayMs
+        while (isActive) {
+            delay(delayMs)
+            _serverUnreachable.value = !isServerReachable(host, grpcPort)
+            delayMs = 30_000L
+        }
+    }
+
+    private suspend fun isServerReachable(host: String, port: Int): Boolean =
+        withContext(Dispatchers.IO) {
+            try {
+                java.net.Socket().use { socket ->
+                    socket.soTimeout = 5_000
+                    socket.connect(java.net.InetSocketAddress(host, port), 5_000)
+                    true
+                }
+            } catch (_: Exception) {
+                false
+            }
+        }
+
+    // ─────────────────────────────────────────────────────────────────────
     // ViewModel lifecycle
     // ─────────────────────────────────────────────────────────────────────
 
     override fun onCleared() {
         super.onCleared()
         stopCatalogEventStream()
+        stopConnectionMonitor()
         gridSettingsSaveJob?.cancel()
         locationsRefreshJob?.cancel()
     }

@@ -28,6 +28,7 @@ final class AppRouter: ObservableObject {
     /// Everything the media client needs to stream from the connected server.
     struct ConnectionInfo: Equatable {
         var host: String
+        var grpcPort: Int
         var mediaPort: Int
         var fingerprintHex: String
         var bearerToken: String?
@@ -36,6 +37,9 @@ final class AppRouter: ObservableObject {
     @Published var phase: Phase
     @Published var discovered: [DiscoveredServer] = []
     @Published var connection: ConnectionInfo?
+    /// Set when a live-session server probe fails and the user hasn't yet
+    /// acknowledged it. Drives the "server unreachable" alert in ConnectedRootView.
+    @Published var serverUnreachable = false
     /// True while an on-device (Local) ingest pass is running. Drives the
     /// "keep the app open" banner — on-device ingest only progresses in the
     /// foreground (no background task), so the user shouldn't leave mid-pass.
@@ -108,6 +112,7 @@ final class AppRouter: ObservableObject {
     private let discovery = ServerDiscovery()
     private var discoverTask: Task<Void, Never>?
     private var collectTask: Task<Void, Never>?
+    private var monitorTask: Task<Void, Never>?
     /// Server + resolved fingerprint awaiting a pairing code.
     private var pending: (server: DiscoveredServer, fingerprint: String)?
     /// The last server we successfully connected to this session (set in
@@ -241,6 +246,7 @@ final class AppRouter: ObservableObject {
                 mediaPort: mediaPort, fingerprintHex: fingerprint))
             connection = ConnectionInfo(
                 host: server.host,
+                grpcPort: server.grpcPort,
                 mediaPort: mediaPort,
                 fingerprintHex: fingerprint,
                 bearerToken: token
@@ -277,8 +283,15 @@ final class AppRouter: ObservableObject {
             let der = await PinnedTLS.fetchServerCertificate(
                 host: s.host, port: s.grpcPort, expectedFingerprintHex: s.fingerprintHex)
             guard der != nil else {
-                NSLog("ReelVault: cached server \(s.host):\(s.grpcPort) unreachable or changed — falling back to mDNS")
-                self.start()
+                NSLog("ReelVault: cached server \(s.host):\(s.grpcPort) unreachable or changed")
+                // When offline downloads exist, skip the mDNS window and show the
+                // no-server screen immediately — the offline option is right there.
+                // The user can still hit Retry on that screen to trigger mDNS.
+                if !OfflineLibrary.shared.entries.isEmpty {
+                    self?.phase = .noServer
+                } else {
+                    self?.start()
+                }
                 return
             }
             NSLog("ReelVault: reconnecting directly to cached server \(s.host):\(s.grpcPort)")
@@ -446,10 +459,60 @@ final class AppRouter: ObservableObject {
     /// the no-server screen as a fallback; leave via "Look for a Server" /
     /// "Use On-Device Library" in the offline view.
     func enterOffline() {
+        stopConnectionMonitor()
         discoverTask?.cancel()
         collectTask?.cancel()
         discovery.stop()
         phase = .offline
+    }
+
+    // ── Live session connection monitor ───────────────────────────────────────
+
+    /// Start a background monitor that probes the gRPC port every 30 seconds.
+    /// Sets `serverUnreachable` when the probe fails (clears it when it recovers).
+    /// No-op in Local mode (connection is nil). Call on entering the connected grid.
+    func startConnectionMonitor() {
+        guard let c = connection else { return }
+        monitorTask?.cancel()
+        serverUnreachable = false
+        let host = c.host; let grpcPort = c.grpcPort; let fp = c.fingerprintHex
+        monitorTask = Task { [weak self] in
+            await self?.runMonitor(host: host, grpcPort: grpcPort, fp: fp,
+                                   initialDelay: 30_000_000_000)
+        }
+    }
+
+    /// Stop the monitor and clear any pending unreachable flag.
+    func stopConnectionMonitor() {
+        monitorTask?.cancel()
+        monitorTask = nil
+        serverUnreachable = false
+    }
+
+    /// "Keep Waiting" — dismiss the alert and silence re-prompts for 5 minutes.
+    func keepWaiting() {
+        guard let c = connection else { serverUnreachable = false; return }
+        serverUnreachable = false
+        monitorTask?.cancel()
+        let host = c.host; let grpcPort = c.grpcPort; let fp = c.fingerprintHex
+        monitorTask = Task { [weak self] in
+            await self?.runMonitor(host: host, grpcPort: grpcPort, fp: fp,
+                                   initialDelay: 300_000_000_000)
+        }
+    }
+
+    private func runMonitor(host: String, grpcPort: Int, fp: String,
+                            initialDelay: UInt64) async {
+        var delay = initialDelay
+        while !Task.isCancelled {
+            do { try await Task.sleep(nanoseconds: delay) } catch { return }
+            guard !Task.isCancelled else { return }
+            let der = await PinnedTLS.fetchServerCertificate(
+                host: host, port: grpcPort, expectedFingerprintHex: fp)
+            guard !Task.isCancelled else { return }
+            serverUnreachable = (der == nil)
+            delay = 30_000_000_000  // subsequent probes every 30 s
+        }
     }
 
     /// Connect to a manually-entered server (from the error screen). Assumes the

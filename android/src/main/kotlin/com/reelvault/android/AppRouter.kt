@@ -167,6 +167,16 @@ fun AppRouter() {
             )
         }
         composable(Screen.Grid.route) {
+            // Start the live server health monitor in remote mode so the
+            // grid can detect a dropped connection and offer offline browsing.
+            LaunchedEffect(Unit) {
+                if (app.videoRepository.isRemote) {
+                    val saved = DefaultServerPrefs(context).load()
+                    if (saved != null) {
+                        gridViewModel.startConnectionMonitor(saved.host, saved.grpcPort)
+                    }
+                }
+            }
             LibraryGridScreen(
                 repository = app.videoRepository,
                 vm = gridViewModel,
@@ -229,7 +239,17 @@ fun AppRouter() {
                     navController.navigate(Screen.Connection.route) {
                         popUpTo(0) { inclusive = true }
                     }
-                }
+                },
+                onGoOffline = {
+                    // Server is unreachable; user chose to browse downloaded videos.
+                    // Keep the last-server pref so the next launch reconnects to it.
+                    app.videoRepository.disconnect()
+                    gridViewModel.resetForNewSession()
+                    isConnected = false
+                    navController.navigate(Screen.OfflineLibrary.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
             )
         }
         composable(Screen.Detail.route) { backStack ->
