@@ -7000,6 +7000,9 @@
     "The recorded name must match the string ReelVault stores in the catalog exactly. Tap a row in the list to edit it." : {
 
     },
+    "The ReelVault server is no longer reachable. You can browse your downloaded videos offline." : {
+
+    },
     "This download is missing." : {
 
     },
